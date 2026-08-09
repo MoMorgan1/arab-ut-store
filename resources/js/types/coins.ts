@@ -73,6 +73,9 @@ export type CoinsStoreTranslations = {
         help: string;
         label: string;
         preset_label: string;
+        slider_label: string;
+        minimum_label: string;
+        maximum_label: string;
         clamped: string;
     };
     actions: {

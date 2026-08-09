@@ -77,6 +77,9 @@ const store = {
         help: 'Enter an amount in the allowed increments.',
         label: 'Amount',
         preset_label: 'Quick amounts',
+        slider_label: 'Choose the Coins amount',
+        minimum_label: 'Minimum',
+        maximum_label: 'Maximum',
         clamped: 'Amount adjusted to this delivery limit.',
     },
     actions: {
@@ -140,7 +143,7 @@ function availableProps() {
         amount: {
             increment: 10_000,
             minimum: 50_000,
-            presets: [50_000, 100_000, 500_000, 1_000_000],
+            presets: [50_000, 100_000, 500_000, 1_000_000, 5_000_000],
         },
         checkoutCurrency: 'SAR',
         direction: 'ltr',
@@ -216,6 +219,14 @@ function quoteResponseForRequest(
 }
 
 function selectPlatform(label: string) {
+    fireEvent.click(screen.getByRole('radio', { name: label }));
+    fireEvent.click(
+        screen.getByRole('button', { name: store.actions.continue }),
+    );
+}
+
+function selectConsoleDelivery(label: 'Normal' | 'Fast') {
+    selectPlatform('PS / Xbox');
     fireEvent.click(screen.getByRole('radio', { name: label }));
     fireEvent.click(
         screen.getByRole('button', { name: store.actions.continue }),
@@ -343,6 +354,224 @@ describe('Coins homepage', () => {
         ).toHaveAttribute('src', '/images/store/platforms/pc-logo.svg');
     });
 
+    it('renders the WordPress amount controls in order for fast console delivery', () => {
+        render(<StoreHome />);
+        selectConsoleDelivery('Fast');
+
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
+        });
+        const range = screen.getByRole('slider', {
+            name: store.amount_copy.slider_label,
+        });
+        const fiveMillion = screen.getByRole('button', { name: '5M' });
+
+        expect(range).toHaveAttribute('min', '50000');
+        expect(range).toHaveAttribute('max', '20000000');
+        expect(range).toHaveAttribute('step', '10000');
+        expect(range).toHaveValue('50000');
+        expect(fiveMillion).toBeVisible();
+        expect(
+            fiveMillion.compareDocumentPosition(range) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+
+        fireEvent.change(range, { target: { value: '500000' } });
+
+        expect(amountInput).toHaveValue('500000');
+        expect(screen.getByRole('button', { name: '+1M' })).toBeVisible();
+        expect(screen.getByRole('button', { name: '-1M' })).toBeVisible();
+    });
+
+    it.each([
+        { delivery: 'Normal' as const, platform: 'PS / Xbox' },
+        { delivery: null, platform: 'PC' },
+    ])(
+        'caps $platform $delivery amounts at 2M and hides the 5M quick chip',
+        ({ delivery, platform }) => {
+            render(<StoreHome />);
+
+            if (delivery === null) {
+                selectPlatform(platform);
+            } else {
+                selectConsoleDelivery(delivery);
+            }
+
+            expect(
+                screen.getByRole('slider', {
+                    name: store.amount_copy.slider_label,
+                }),
+            ).toHaveAttribute('max', '2000000');
+            expect(screen.getByText('2M')).toBeVisible();
+            expect(
+                screen.queryByRole('button', { name: '5M' }),
+            ).not.toBeInTheDocument();
+        },
+    );
+
+    it('keeps quick chips, range, typed input, and adjustments synchronized', () => {
+        render(<StoreHome />);
+        selectConsoleDelivery('Fast');
+
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
+        });
+        const range = screen.getByRole('slider', {
+            name: store.amount_copy.slider_label,
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: '500K' }));
+        expect(amountInput).toHaveValue('500000');
+        expect(range).toHaveValue('500000');
+
+        fireEvent.change(range, { target: { value: '1000000' } });
+        expect(amountInput).toHaveValue('1000000');
+
+        fireEvent.focus(amountInput);
+        fireEvent.change(amountInput, { target: { value: '750,000 coins' } });
+        expect(amountInput).toHaveValue('750000');
+        fireEvent.blur(amountInput);
+        expect(range).toHaveValue('750000');
+
+        fireEvent.click(screen.getByRole('button', { name: '+1M' }));
+        expect(amountInput).toHaveValue('1750000');
+        expect(range).toHaveValue('1750000');
+        fireEvent.click(screen.getByRole('button', { name: '-1M' }));
+        expect(amountInput).toHaveValue('750000');
+        expect(range).toHaveValue('750000');
+    });
+
+    it('snaps a typed 55K amount to 60K on blur', () => {
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
+        });
+
+        fireEvent.focus(amountInput);
+        fireEvent.change(amountInput, { target: { value: '55000' } });
+        expect(amountInput).toHaveValue('55000');
+        fireEvent.blur(amountInput);
+
+        expect(amountInput).toHaveValue('60,000');
+        expect(
+            screen.getByRole('slider', {
+                name: store.amount_copy.slider_label,
+            }),
+        ).toHaveValue('60000');
+    });
+
+    it('restores the last valid quantity when the typed amount is empty on blur', () => {
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: '500K' }));
+        fireEvent.focus(amountInput);
+        fireEvent.change(amountInput, { target: { value: '' } });
+        expect(amountInput).toHaveValue('');
+        fireEvent.blur(amountInput);
+
+        expect(amountInput).toHaveValue('500,000');
+    });
+
+    it('keeps million adjustments bounded at the selected minimum and maximum', () => {
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: '-1M' }));
+        expect(amountInput).toHaveValue('50000');
+
+        fireEvent.click(screen.getByRole('button', { name: '1M' }));
+        fireEvent.click(screen.getByRole('button', { name: '+1M' }));
+        expect(amountInput).toHaveValue('2000000');
+        fireEvent.click(screen.getByRole('button', { name: '+1M' }));
+        expect(amountInput).toHaveValue('2000000');
+    });
+
+    it('debounces a range drag to one quote for its final quantity', async () => {
+        const fetchMock = vi.fn((input: RequestInfo | URL) =>
+            Promise.resolve(quoteResponseForRequest(input)),
+        );
+
+        vi.stubGlobal('fetch', fetchMock);
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        const range = screen.getByRole('slider', {
+            name: store.amount_copy.slider_label,
+        });
+        fireEvent.change(range, { target: { value: '100000' } });
+        fireEvent.change(range, { target: { value: '500000' } });
+        fireEvent.change(range, { target: { value: '1000000' } });
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+        });
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const request = new URL(
+            String(fetchMock.mock.calls[0][0]),
+            'https://arab-ut.test',
+        );
+        expect(request.searchParams.get('quantity')).toBe('1000000');
+    });
+
+    it.each([
+        { destination: 'Normal', path: 'delivery' as const },
+        { destination: 'PC', path: 'platform' as const },
+    ])(
+        'clamps fast console to $destination before requesting its quote',
+        async ({ destination, path }) => {
+            const fetchMock = vi.fn((input: RequestInfo | URL) =>
+                Promise.resolve(quoteResponseForRequest(input)),
+            );
+
+            vi.stubGlobal('fetch', fetchMock);
+            render(<StoreHome />);
+            selectConsoleDelivery('Fast');
+            fireEvent.click(screen.getByRole('button', { name: '5M' }));
+
+            fireEvent.click(
+                screen.getByRole('button', { name: store.actions.back }),
+            );
+
+            if (path === 'platform') {
+                fireEvent.click(
+                    screen.getByRole('button', {
+                        name: store.actions.back,
+                    }),
+                );
+            }
+
+            fireEvent.click(screen.getByRole('radio', { name: destination }));
+            fireEvent.click(
+                screen.getByRole('button', {
+                    name: store.actions.continue,
+                }),
+            );
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(300);
+            });
+
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            const request = new URL(
+                String(fetchMock.mock.calls[0][0]),
+                'https://arab-ut.test',
+            );
+            expect(request.searchParams.get('quantity')).toBe('2000000');
+        },
+    );
+
     it('keeps an active amount preset as a safe no-op during debounce and after success', async () => {
         const fetchMock = vi.fn((input: RequestInfo | URL) =>
             Promise.resolve(quoteResponseForRequest(input)),
@@ -353,7 +582,7 @@ describe('Coins homepage', () => {
         selectPlatform('PC');
 
         const activePreset = screen.getByRole('button', {
-            name: '50,000',
+            name: '50K',
             pressed: true,
         });
 
@@ -479,7 +708,9 @@ describe('Coins homepage', () => {
         expect(screen.getByText(store.amount_copy.title)).toBeVisible();
         expect(screen.getByLabelText('Step 2 of 2')).toBeVisible();
         expect(
-            screen.getByRole('spinbutton', { name: store.amount_copy.label }),
+            screen.getByRole('slider', {
+                name: store.amount_copy.slider_label,
+            }),
         ).toHaveAttribute('max', '2000000');
 
         await act(async () => {
@@ -503,15 +734,12 @@ describe('Coins homepage', () => {
         );
 
         expect(screen.getByLabelText('Step 3 of 3')).toBeVisible();
-        expect(
-            screen.getByRole('spinbutton', { name: store.amount_copy.label }),
-        ).toHaveAttribute('min', '50000');
-        expect(
-            screen.getByRole('spinbutton', { name: store.amount_copy.label }),
-        ).toHaveAttribute('max', '20000000');
-        expect(
-            screen.getByRole('spinbutton', { name: store.amount_copy.label }),
-        ).toHaveAttribute('step', '10000');
+        const range = screen.getByRole('slider', {
+            name: store.amount_copy.slider_label,
+        });
+        expect(range).toHaveAttribute('min', '50000');
+        expect(range).toHaveAttribute('max', '20000000');
+        expect(range).toHaveAttribute('step', '10000');
     });
 
     it('clamps an excessive fast amount when delivery changes to normal and announces it', () => {
@@ -523,7 +751,7 @@ describe('Coins homepage', () => {
         );
 
         fireEvent.change(
-            screen.getByRole('spinbutton', { name: store.amount_copy.label }),
+            screen.getByRole('textbox', { name: store.amount_copy.label }),
             { target: { value: '20000000' } },
         );
         fireEvent.click(
@@ -539,8 +767,8 @@ describe('Coins homepage', () => {
             screen.getByRole('button', { name: store.actions.continue }),
         );
         expect(
-            screen.getByRole('spinbutton', { name: store.amount_copy.label }),
-        ).toHaveValue(2_000_000);
+            screen.getByRole('textbox', { name: store.amount_copy.label }),
+        ).toHaveValue('2,000,000');
     });
 
     it('clamps and announces a 20M fast-console amount when switching to PC', () => {
@@ -551,7 +779,7 @@ describe('Coins homepage', () => {
             screen.getByRole('button', { name: store.actions.continue }),
         );
         fireEvent.change(
-            screen.getByRole('spinbutton', { name: store.amount_copy.label }),
+            screen.getByRole('textbox', { name: store.amount_copy.label }),
             { target: { value: '20000000' } },
         );
 
@@ -572,8 +800,8 @@ describe('Coins homepage', () => {
         );
 
         expect(
-            screen.getByRole('spinbutton', { name: store.amount_copy.label }),
-        ).toHaveValue(2_000_000);
+            screen.getByRole('textbox', { name: store.amount_copy.label }),
+        ).toHaveValue('2,000,000');
     });
 
     it('ignores a stale quote response after aborting the previous request', async () => {
@@ -603,7 +831,7 @@ describe('Coins homepage', () => {
         });
 
         fireEvent.change(
-            screen.getByRole('spinbutton', { name: store.amount_copy.label }),
+            screen.getByRole('textbox', { name: store.amount_copy.label }),
             { target: { value: '100000' } },
         );
 

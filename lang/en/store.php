@@ -56,6 +56,9 @@ return [
         'help' => 'Enter an amount within the limit for your selection.',
         'label' => 'Coins amount',
         'preset_label' => 'Amount presets',
+        'slider_label' => 'Choose the Coins amount',
+        'minimum_label' => 'Minimum',
+        'maximum_label' => 'Maximum',
         'clamped' => 'The amount was reduced to the maximum for this selection.',
     ],
     'actions' => [

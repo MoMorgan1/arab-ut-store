@@ -98,8 +98,7 @@ function clampSelection(
     selectionMessage: string,
     clampMessage: string,
 ) {
-    const quantity = quantityFromInput(state.quantityInput);
-    const isClamped = quantity !== null && quantity > maximum;
+    const isClamped = state.lastValidQuantity > maximum;
 
     return {
         announcement: isClamped ? clampMessage : selectionMessage,

@@ -4,7 +4,7 @@ return [
     'quantity' => [
         'minimum' => 50_000,
         'increment' => 10_000,
-        'presets' => [50_000, 100_000, 500_000, 1_000_000],
+        'presets' => [50_000, 100_000, 500_000, 1_000_000, 5_000_000],
     ],
     'product_image_url' => '/images/store/coins/ut-coin-80.webp',
     'platforms' => [

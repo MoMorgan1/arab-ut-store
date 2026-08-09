@@ -1,6 +1,7 @@
-import type { Ref } from 'react';
+import { useState } from 'react';
+import type { CSSProperties, Ref } from 'react';
 
-import { formatCoins } from '@/lib/money';
+import { formatCoins, formatCompactCoins } from '@/lib/money';
 import type {
     CoinsAmountRules,
     CoinsProductSummary,
@@ -16,16 +17,25 @@ type AmountStepProps = {
     isValid: boolean;
     locale: 'ar' | 'en';
     maximum: number;
+    onAdjust: (delta: number) => void;
     onBack: () => void;
-    onPreset: (preset: number) => void;
+    onCommit: (value: number) => void;
+    onQuantityBlur: () => void;
     onQuantityChange: (value: string) => void;
     onRestart: () => void;
     product: CoinsProductSummary;
-    quantity: number | null;
+    quantity: number;
     quantityInput: string;
     quoteState: CoinsQuoteViewState;
     translations: CoinsStoreTranslations;
 };
+
+const DECREMENTS = [-1_000_000, -500_000, -100_000, -50_000];
+const INCREMENTS = [50_000, 100_000, 500_000, 1_000_000];
+
+function adjustmentLabel(delta: number): string {
+    return `${delta > 0 ? '+' : '-'}${formatCompactCoins(Math.abs(delta))}`;
+}
 
 export function AmountStep({
     amount,
@@ -33,8 +43,10 @@ export function AmountStep({
     isValid,
     locale,
     maximum,
+    onAdjust,
     onBack,
-    onPreset,
+    onCommit,
+    onQuantityBlur,
     onQuantityChange,
     onRestart,
     product,
@@ -43,49 +55,154 @@ export function AmountStep({
     quoteState,
     translations,
 }: AmountStepProps) {
+    const [isEditing, setIsEditing] = useState(false);
+    const fillPercentage =
+        maximum === amount.minimum
+            ? 0
+            : ((quantity - amount.minimum) / (maximum - amount.minimum)) * 100;
+    const sliderStyle = {
+        '--coins-slider-fill': `${Math.max(0, Math.min(100, fillPercentage)).toFixed(2)}%`,
+    } as CSSProperties;
+
+    function commitDirectly(value: number) {
+        setIsEditing(true);
+        onCommit(value);
+    }
+
+    function adjustDirectly(delta: number) {
+        setIsEditing(true);
+        onAdjust(delta);
+    }
+
     return (
         <div className="coins-step">
             <h2 className="coins-step__title" ref={focusRef} tabIndex={-1}>
                 {translations.amount_copy.title}
             </h2>
             <p className="coins-step__help">{translations.amount_copy.help}</p>
-            <label className="coins-amount-label" htmlFor="coins-amount">
-                {translations.amount_copy.label}
-            </label>
+
             <div className="coins-amount-field">
-                <input
-                    aria-invalid={!isValid}
-                    className="coins-amount-input"
-                    id="coins-amount"
-                    inputMode="numeric"
-                    max={maximum}
-                    min={amount.minimum}
-                    onChange={(event) =>
-                        onQuantityChange(event.currentTarget.value)
-                    }
-                    step={amount.increment}
-                    type="number"
-                    value={quantityInput}
-                />
-                <span>{translations.units.coins}</span>
-            </div>
-            <fieldset className="coins-presets">
-                <legend>{translations.amount_copy.preset_label}</legend>
-                <div className="coins-presets__grid">
-                    {amount.presets
-                        .filter((preset) => preset <= maximum)
-                        .map((preset) => (
-                            <button
-                                aria-pressed={quantity === preset}
-                                key={preset}
-                                onClick={() => onPreset(preset)}
-                                type="button"
-                            >
-                                {formatCoins(preset, locale)}
-                            </button>
-                        ))}
+                <label className="coins-amount-label" htmlFor="coins-amount">
+                    {translations.amount_copy.label}
+                </label>
+                <div className="coins-amount-field__control">
+                    <input
+                        aria-invalid={!isValid}
+                        className="coins-amount-input"
+                        id="coins-amount"
+                        inputMode="numeric"
+                        onBlur={() => {
+                            setIsEditing(false);
+                            onQuantityBlur();
+                        }}
+                        onChange={(event) =>
+                            onQuantityChange(event.currentTarget.value)
+                        }
+                        onFocus={(event) => {
+                            setIsEditing(true);
+                            event.currentTarget.select();
+                        }}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                                event.preventDefault();
+                                event.currentTarget.blur();
+                            }
+                        }}
+                        type="text"
+                        value={
+                            isEditing
+                                ? quantityInput
+                                : formatCoins(quantity, locale)
+                        }
+                    />
+                    <span>{translations.units.coins}</span>
                 </div>
-            </fieldset>
+            </div>
+
+            <div
+                aria-label={translations.amount_copy.preset_label}
+                className="coins-quick-amounts"
+                role="group"
+            >
+                {amount.presets
+                    .filter((preset) => preset <= maximum)
+                    .map((preset) => (
+                        <button
+                            aria-pressed={isValid && quantity === preset}
+                            key={preset}
+                            onClick={() => {
+                                if (!isValid || quantity !== preset) {
+                                    commitDirectly(preset);
+                                }
+                            }}
+                            type="button"
+                        >
+                            {formatCompactCoins(preset)}
+                        </button>
+                    ))}
+            </div>
+
+            <input
+                aria-label={translations.amount_copy.slider_label}
+                className="coins-amount-slider"
+                max={maximum}
+                min={amount.minimum}
+                onChange={(event) =>
+                    commitDirectly(Number(event.currentTarget.value))
+                }
+                step={amount.increment}
+                style={sliderStyle}
+                type="range"
+                value={quantity}
+            />
+
+            <div className="coins-slider-labels">
+                <span
+                    aria-label={`${translations.amount_copy.minimum_label}: ${formatCompactCoins(amount.minimum)}`}
+                >
+                    {formatCompactCoins(amount.minimum)}
+                </span>
+                <span
+                    aria-label={`${translations.amount_copy.maximum_label}: ${formatCompactCoins(maximum)}`}
+                >
+                    {formatCompactCoins(maximum)}
+                </span>
+            </div>
+
+            <div className="coins-adjustments">
+                <div>
+                    {DECREMENTS.map((delta) => (
+                        <button
+                            className="coins-adjustment coins-adjustment--minus"
+                            key={delta}
+                            onClick={() => adjustDirectly(delta)}
+                            type="button"
+                        >
+                            {adjustmentLabel(delta)}
+                        </button>
+                    ))}
+                </div>
+                <div>
+                    {INCREMENTS.map((delta) => (
+                        <button
+                            className="coins-adjustment coins-adjustment--plus"
+                            key={delta}
+                            onClick={() => adjustDirectly(delta)}
+                            type="button"
+                        >
+                            {adjustmentLabel(delta)}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <QuotePanel
+                locale={locale}
+                onRestart={onRestart}
+                state={quoteState}
+                translations={translations}
+            />
+
             <div className="coins-step__actions coins-step__actions--amount">
                 <button
                     className="coins-secondary-action"
@@ -95,12 +212,6 @@ export function AmountStep({
                     {translations.actions.back}
                 </button>
             </div>
-            <QuotePanel
-                locale={locale}
-                onRestart={onRestart}
-                state={quoteState}
-                translations={translations}
-            />
             <p className="coins-product-reference">
                 <img
                     alt=""

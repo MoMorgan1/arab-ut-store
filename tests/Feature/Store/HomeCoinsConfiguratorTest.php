@@ -76,7 +76,7 @@ test('the Arabic and English homepages expose the exact localized Coins contract
             ->where('amount', [
                 'minimum' => 50_000,
                 'increment' => 10_000,
-                'presets' => [50_000, 100_000, 500_000, 1_000_000],
+                'presets' => [50_000, 100_000, 500_000, 1_000_000, 5_000_000],
             ])
             ->where('platforms.0.value', 'playstation')
             ->where('platforms.0.iconUrls', [

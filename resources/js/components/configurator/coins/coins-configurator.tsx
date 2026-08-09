@@ -12,6 +12,7 @@ import type {
 import { AmountStep } from './amount-step';
 import { interpolate } from './configurator-copy';
 import {
+    clampAndSnapQuantity,
     coinsConfiguratorReducer,
     createInitialConfiguratorState,
     quantityFromInput,
@@ -177,7 +178,8 @@ export function CoinsConfigurator({
     }
 
     function updateQuantity(value: string) {
-        const nextQuantity = quantityFromInput(value);
+        const sanitizedValue = value.replace(/[^0-9]/g, '');
+        const nextQuantity = quantityFromInput(sanitizedValue);
         const isValid =
             nextQuantity !== null &&
             nextQuantity >= amount.minimum &&
@@ -188,16 +190,31 @@ export function CoinsConfigurator({
         dispatch({
             type: 'quantity-changed',
             validQuantity: isValid ? nextQuantity : null,
-            value,
+            value: sanitizedValue,
         });
     }
 
-    function choosePreset(preset: number) {
-        if (quantity === preset) {
-            return;
-        }
+    function commitQuantity(value: number) {
+        invalidateQuoteRequest();
+        dispatch({
+            type: 'quantity-committed',
+            value: clampAndSnapQuantity(
+                value,
+                amount.minimum,
+                maximum,
+                amount.increment,
+            ),
+        });
+    }
 
-        updateQuantity(String(preset));
+    function adjustQuantity(delta: number) {
+        commitQuantity(state.lastValidQuantity + delta);
+    }
+
+    function commitTypedQuantity() {
+        commitQuantity(
+            quantityFromInput(state.quantityInput) ?? state.lastValidQuantity,
+        );
     }
 
     const liveMessage =
@@ -251,12 +268,14 @@ export function CoinsConfigurator({
                     isValid={quantityIsValid}
                     locale={locale}
                     maximum={maximum}
+                    onAdjust={adjustQuantity}
                     onBack={goBack}
-                    onPreset={choosePreset}
+                    onCommit={commitQuantity}
+                    onQuantityBlur={commitTypedQuantity}
                     onQuantityChange={updateQuantity}
                     onRestart={restart}
                     product={product}
-                    quantity={quantity}
+                    quantity={state.lastValidQuantity}
                     quantityInput={state.quantityInput}
                     quoteState={state.quoteState}
                     translations={translations}
