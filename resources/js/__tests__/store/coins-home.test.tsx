@@ -267,6 +267,22 @@ describe('Coins homepage', () => {
         ).toHaveAttribute('href', '#coins');
     });
 
+    it('omits unsupported credential and commerce controls', () => {
+        render(<StoreHome />);
+
+        expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', {
+                name: /cart|checkout|buy|order/i,
+            }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', {
+                name: /cart|checkout|buy|order/i,
+            }),
+        ).not.toBeInTheDocument();
+    });
+
     it.each([
         {
             cta: 'Choose your Coins',
