@@ -2,7 +2,6 @@
 
 return [
     'brand' => 'Arab UT',
-    'browse_services' => 'Browse services',
     'checkout_notice' => 'All final prices and checkout are in Saudi Riyal (:currency).',
     'language' => 'العربية',
     'currency' => 'Currency',

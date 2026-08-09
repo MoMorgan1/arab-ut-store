@@ -7,10 +7,10 @@ type StorePageProps = {
     checkoutCurrency: string;
     direction: 'rtl' | 'ltr';
     displayCurrency: string;
+    displayCurrencies: string[];
     locale: 'ar' | 'en';
     ui: StoreLayoutTranslations & {
         brand: string;
-        browse_services: string;
         checkout_notice: string;
         home_title: string;
         service_notice: string;
@@ -19,14 +19,21 @@ type StorePageProps = {
 
 export default function StoreHome() {
     const page = usePage<StorePageProps>();
-    const { checkoutCurrency, direction, displayCurrency, locale, ui } =
-        page.props;
+    const {
+        checkoutCurrency,
+        direction,
+        displayCurrencies,
+        displayCurrency,
+        locale,
+        ui,
+    } = page.props;
 
     return (
         <StoreLayout
             currentUrl={page.url}
             direction={direction}
             displayCurrency={displayCurrency}
+            displayCurrencies={displayCurrencies}
             locale={locale}
             ui={ui}
         >
@@ -41,21 +48,6 @@ export default function StoreHome() {
                 <p className="max-w-prose leading-7 text-[var(--arabut-muted)]">
                     {ui.checkout_notice.replace(':currency', checkoutCurrency)}
                 </p>
-                <a
-                    className="inline-flex min-h-11 items-center rounded bg-[var(--arabut-gold)] px-5 font-semibold text-[var(--arabut-navy)] transition outline-none hover:bg-[var(--arabut-gold-bright)] focus-visible:ring-2 focus-visible:ring-[var(--arabut-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--arabut-navy)]"
-                    href="#services"
-                >
-                    {ui.browse_services}
-                </a>
-            </section>
-            <section
-                aria-labelledby="services-heading"
-                className="border-t border-[var(--arabut-line)] py-8"
-                id="services"
-            >
-                <h2 className="text-2xl font-semibold" id="services-heading">
-                    {ui.browse_services}
-                </h2>
             </section>
         </StoreLayout>
     );

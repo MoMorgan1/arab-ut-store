@@ -1,7 +1,5 @@
 import type { PropsWithChildren } from 'react';
 
-const displayCurrencies = ['SAR', 'USD', 'EUR', 'GBP'] as const;
-
 export type StoreLayoutTranslations = {
     currency_selector: string;
     language: string;
@@ -14,6 +12,7 @@ type StoreLayoutProps = PropsWithChildren<{
     locale: 'ar' | 'en';
     direction: 'rtl' | 'ltr';
     displayCurrency: string;
+    displayCurrencies: string[];
     ui: StoreLayoutTranslations;
 }>;
 
@@ -41,6 +40,7 @@ export default function StoreLayout({
     currentUrl,
     direction,
     displayCurrency,
+    displayCurrencies,
     locale,
     ui,
 }: StoreLayoutProps) {

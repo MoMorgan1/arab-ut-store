@@ -15,10 +15,10 @@ const mockPage = vi.hoisted(() => ({
         checkoutCurrency: 'SAR',
         direction: 'ltr',
         displayCurrency: 'USD',
+        displayCurrencies: ['SAR', 'USD', 'EUR', 'GBP'],
         locale: 'en',
         ui: {
             brand: 'Arab UT',
-            browse_services: 'Browse services',
             checkout_notice:
                 'All final prices and checkout are in Saudi Riyal (:currency).',
             currency: 'Currency',
@@ -59,10 +59,11 @@ describe('StoreLayout', () => {
     it('links from Arabic to English with query state and language metadata', () => {
         render(
             <StoreLayout
-                currentUrl="/ar?campaign=spring&currency=EUR#services"
+                currentUrl="/ar?campaign=spring&currency=EUR#offers"
                 locale="ar"
                 direction="rtl"
                 displayCurrency="EUR"
+                displayCurrencies={['SAR', 'USD', 'EUR', 'GBP']}
                 ui={arabicUi}
             >
                 <p>محتوى المتجر</p>
@@ -72,7 +73,7 @@ describe('StoreLayout', () => {
         expect(screen.getByRole('banner')).toHaveAttribute('dir', 'rtl');
         expect(screen.getByRole('link', { name: 'English' })).toHaveAttribute(
             'href',
-            '/en?campaign=spring&currency=EUR#services',
+            '/en?campaign=spring&currency=EUR#offers',
         );
         expect(screen.getByRole('link', { name: 'English' })).toHaveAttribute(
             'lang',
@@ -87,10 +88,11 @@ describe('StoreLayout', () => {
     it('links from English to the default Arabic route with query state and metadata', () => {
         render(
             <StoreLayout
-                currentUrl="/en?campaign=spring&currency=USD#services"
+                currentUrl="/en?campaign=spring&currency=USD#offers"
                 locale="en"
                 direction="ltr"
                 displayCurrency="USD"
+                displayCurrencies={['SAR', 'USD', 'EUR', 'GBP']}
                 ui={englishUi}
             >
                 <p>Store content</p>
@@ -101,19 +103,20 @@ describe('StoreLayout', () => {
 
         expect(languageLink).toHaveAttribute(
             'href',
-            '/?campaign=spring&currency=USD#services',
+            '/?campaign=spring&currency=USD#offers',
         );
         expect(languageLink).toHaveAttribute('lang', 'ar');
         expect(languageLink).toHaveAttribute('dir', 'rtl');
     });
 
-    it('offers every supported currency while preserving unrelated URL state', () => {
+    it('renders only supplied currencies while preserving unrelated URL state', () => {
         render(
             <StoreLayout
-                currentUrl="/en?campaign=spring&coupon=SAVE&currency=USD#services"
+                currentUrl="/en?campaign=spring&coupon=SAVE&currency=USD#offers"
                 locale="en"
                 direction="ltr"
                 displayCurrency="USD"
+                displayCurrencies={['USD', 'CAD']}
                 ui={englishUi}
             >
                 <p>Store content</p>
@@ -131,14 +134,14 @@ describe('StoreLayout', () => {
 
         expect(selectorToggle.closest('details')).toHaveAttribute('open');
 
-        for (const currency of ['SAR', 'USD', 'EUR', 'GBP']) {
+        for (const currency of ['USD', 'CAD']) {
             const currencyLink = within(selector).getByRole('link', {
                 name: currency,
             });
 
             expect(currencyLink).toHaveAttribute(
                 'href',
-                `/en?campaign=spring&coupon=SAVE&currency=${currency}#services`,
+                `/en?campaign=spring&coupon=SAVE&currency=${currency}#offers`,
             );
 
             if (currency === 'USD') {
@@ -147,15 +150,24 @@ describe('StoreLayout', () => {
                 expect(currencyLink).not.toHaveAttribute('aria-current');
             }
         }
+
+        expect(
+            within(selector).queryByRole('link', { name: 'SAR' }),
+        ).not.toBeInTheDocument();
+        expect(
+            within(selector).queryByRole('link', { name: 'EUR' }),
+        ).not.toBeInTheDocument();
     });
 
-    it('uses a page-specific title and sends the service CTA to a real section', () => {
+    it('uses a page-specific title without rendering a dead-end service CTA', () => {
         render(<StoreHome />);
 
         expect(document.title).toBe('Home - Arab UT');
         expect(
-            screen.getByRole('link', { name: 'Browse services' }),
-        ).toHaveAttribute('href', '#services');
-        expect(document.querySelector('section#services')).toBeInTheDocument();
+            document.querySelector('a[href="#services"]'),
+        ).not.toBeInTheDocument();
+        expect(
+            document.querySelector('section#services'),
+        ).not.toBeInTheDocument();
     });
 });

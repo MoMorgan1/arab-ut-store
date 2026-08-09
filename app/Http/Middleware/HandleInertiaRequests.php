@@ -43,6 +43,7 @@ class HandleInertiaRequests extends Middleware
             'locale' => $locale,
             'direction' => $locale === 'ar' ? 'rtl' : 'ltr',
             'displayCurrency' => $request->session()->get('display_currency'),
+            'displayCurrencies' => config('store.display_currencies'),
             'checkoutCurrency' => config('store.checkout_currency'),
             'ui' => trans('ui'),
             'auth' => [

@@ -23,6 +23,15 @@ test('the English storefront route uses left-to-right metadata', function () {
             ->where('direction', 'ltr'));
 });
 
+test('the storefront shares the configured display currency list', function () {
+    config()->set('store.display_currencies', ['SAR', 'CAD']);
+
+    $this->get('/')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('displayCurrencies', ['SAR', 'CAD']));
+});
+
 test('unsupported locale prefixes return not found', function () {
     $this->get('/fr')->assertNotFound();
 });

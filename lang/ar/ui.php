@@ -2,7 +2,6 @@
 
 return [
     'brand' => 'عرب يو تي',
-    'browse_services' => 'تصفّح الخدمات',
     'checkout_notice' => 'كل الأسعار النهائية والدفع بالريال السعودي (:currency).',
     'language' => 'English',
     'currency' => 'العملة',
