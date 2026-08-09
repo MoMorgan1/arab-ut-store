@@ -3,7 +3,7 @@
 **Status:** Approved from Mohamed's 2026-08-09 browser feedback  
 **Scope:** Homepage hero and the existing Coins platform, delivery, and amount flow  
 **Complexity:** Medium
-**Implementation status:** The WordPress-first refinement described below is approved but not yet implemented.
+**Implementation status:** Verified on 2026-08-09 through the full automated gate and the Arabic/English browser matrix.
 
 ## Outcome
 

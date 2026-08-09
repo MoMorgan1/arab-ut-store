@@ -303,6 +303,7 @@ describe('Coins homepage', () => {
 
         fireEvent.click(screen.getByRole('radio', { name: 'PS / Xbox' }));
 
+        expect(screen.getAllByRole('status')).toHaveLength(1);
         const selectionStatus = screen.getByRole('status');
         expect(selectionStatus).toHaveClass('sr-only');
         expect(selectionStatus).not.toBeVisible();
@@ -317,6 +318,43 @@ describe('Coins homepage', () => {
         expect(within(progress).getByText(store.progress.amount)).toBeVisible();
     });
 
+    it.each([
+        {
+            direction: 'ltr' as const,
+            help: 'Enter the amount you want.',
+            locale: 'en' as const,
+        },
+        {
+            direction: 'rtl' as const,
+            help: 'اكتب الكمية اللي تبيها.',
+            locale: 'ar' as const,
+        },
+    ])(
+        'renders the exact $locale amount helper without exposing restart',
+        ({ direction, help, locale }) => {
+            mockPage.props = {
+                ...availableProps(),
+                direction,
+                locale,
+                store: {
+                    ...store,
+                    amount_copy: { ...store.amount_copy, help },
+                },
+            };
+
+            render(<StoreHome />);
+            selectPlatform('PC');
+
+            expect(screen.getByText(help)).toBeVisible();
+            expect(
+                screen.getByRole('button', { name: store.actions.back }),
+            ).toBeVisible();
+            expect(
+                screen.queryByRole('button', { name: 'Start again' }),
+            ).not.toBeInTheDocument();
+        },
+    );
+
     it('shows the WordPress delivery annotations and amount total surface', async () => {
         render(<StoreHome />);
         selectPlatform('PS / Xbox');
@@ -330,6 +368,7 @@ describe('Coins homepage', () => {
 
         expect(normalCard).not.toBeNull();
         expect(fastCard).not.toBeNull();
+        expect(screen.getAllByRole('radio')).toHaveLength(2);
         expect(within(normalCard!).getByText('Lower cost')).toBeVisible();
         expect(within(normalCard!).getByText(/150/)).toBeVisible();
         expect(within(normalCard!).getByText('Up to 2M')).toBeVisible();
@@ -349,6 +388,21 @@ describe('Coins homepage', () => {
         });
 
         expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
+        const quoteResult = document.querySelector(
+            '.coins-quote-panel__result',
+        );
+        const adjustments = document.querySelector('.coins-adjustments');
+        expect(quoteResult).not.toBeNull();
+        expect(adjustments).not.toBeNull();
+        expect(
+            adjustments!.compareDocumentPosition(quoteResult!) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(quoteResult?.matches('a, button')).toBe(false);
+        expect(quoteResult?.querySelector('a, button')).toBeNull();
+        expect(
+            screen.getByRole('button', { name: store.actions.back }),
+        ).toBeVisible();
         expect(
             screen.queryByRole('button', { name: 'Start again' }),
         ).not.toBeInTheDocument();
@@ -510,6 +564,28 @@ describe('Coins homepage', () => {
         expect(adjustments.map((adjustment) => adjustment.textContent)).toEqual(
             ['-1M', '-500K', '-100K', '-50K', '+50K', '+100K', '+500K', '+1M'],
         );
+
+        for (const accessibleName of [
+            '50K',
+            '100K',
+            '500K',
+            '1M',
+            '5M',
+            '-1M',
+            '-500K',
+            '-100K',
+            '-50K',
+            '+50K',
+            '+100K',
+            '+500K',
+            '+1M',
+            store.actions.back,
+        ]) {
+            expect(
+                screen.getByRole('button', { name: accessibleName }),
+            ).toBeVisible();
+        }
+
         orderedControls.slice(0, -1).forEach((control, index) => {
             expect(
                 control.compareDocumentPosition(orderedControls[index + 1]) &
