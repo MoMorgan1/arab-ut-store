@@ -4,7 +4,7 @@ Status: Phase 3 implementation in progress
 
 Approved by Mohamed on 2026-08-09.
 
-Milestone 1 (repository and bilingual application foundation) is implemented, independently reviewed, and verified by GitHub CI on [draft PR #1](https://github.com/MoMorgan1/arab-ut-store/pull/1). Task 2 (the authoritative commerce schema and domain vocabulary) is implemented and verified by GitHub CI, including the MariaDB lane, on [draft PR #2](https://github.com/MoMorgan1/arab-ut-store/pull/2). The bilingual Coins homepage and server-authoritative quote slice using local development pricing are implemented locally and awaiting their Task 3 branch/CI publication. Main-branch protection remains pending a signed-in GitHub admin session. Payment integration remains deferred.
+Milestone 1 (repository and bilingual application foundation) is implemented, independently reviewed, and verified by GitHub CI on [draft PR #1](https://github.com/MoMorgan1/arab-ut-store/pull/1). Task 2 (the authoritative commerce schema and domain vocabulary) is implemented and verified by GitHub CI, including the MariaDB lane, on [draft PR #2](https://github.com/MoMorgan1/arab-ut-store/pull/2). The bilingual Coins homepage and server-authoritative quote slice using local development pricing are implemented and submitted for GitHub CI on [draft PR #3](https://github.com/MoMorgan1/arab-ut-store/pull/3). Main-branch protection remains pending a signed-in GitHub admin session. Payment integration remains deferred.
 
 ## Current documents
 
