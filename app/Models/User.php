@@ -6,8 +6,10 @@ namespace App\Models;
 use App\Enums\UserRole;
 use App\Models\Concerns\HasPublicUlid;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Attributes\Appends;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -17,10 +19,12 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
+ * @property string $first_name
+ * @property string $last_name
  * @property string $name
  * @property string $email
  * @property Carbon|null $email_verified_at
- * @property string $password
+ * @property string|null $password
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
@@ -28,12 +32,21 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'phone', 'password', 'preferred_locale', 'display_currency'])]
+#[Appends(['name'])]
+#[Fillable(['first_name', 'last_name', 'email', 'phone', 'password', 'preferred_locale', 'display_currency'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasPublicUlid, Notifiable;
+
+    /** @return Attribute<string, never> */
+    protected function name(): Attribute
+    {
+        return Attribute::get(
+            fn (): string => trim($this->first_name.' '.$this->last_name),
+        );
+    }
 
     /**
      * Get the attributes that should be cast.

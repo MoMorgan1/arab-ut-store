@@ -30,6 +30,10 @@ final readonly class Money
 
     public function plus(self $other): self
     {
+        if ($other->halalah > PHP_INT_MAX - $this->halalah) {
+            throw new DomainException('A money operation cannot overflow a signed 64-bit amount.');
+        }
+
         return self::fromHalalah($this->halalah + $other->halalah);
     }
 
@@ -46,6 +50,10 @@ final readonly class Money
     {
         if ($quantity < 0) {
             throw new InvalidArgumentException('A quantity cannot be negative.');
+        }
+
+        if ($this->halalah !== 0 && $quantity > intdiv(PHP_INT_MAX, $this->halalah)) {
+            throw new DomainException('A money operation cannot overflow a signed 64-bit amount.');
         }
 
         return self::fromHalalah($this->halalah * $quantity);

@@ -180,9 +180,9 @@ return new class extends Migration
             $table->id();
             $table->ulid('public_id')->unique();
             $table->foreignId('wallet_account_id')->constrained()->restrictOnDelete();
-            $table->foreignId('order_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('refund_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('created_by_user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('order_id')->nullable()->constrained()->restrictOnDelete();
+            $table->foreignId('refund_id')->nullable()->constrained()->restrictOnDelete();
+            $table->foreignId('created_by_user_id')->nullable()->constrained('users')->restrictOnDelete();
             $table->string('type')->index();
             $this->nonnegativeMoneyColumn($table, 'amount_halalah');
             $this->nonnegativeMoneyColumn($table, 'balance_after_halalah');
@@ -250,7 +250,7 @@ return new class extends Migration
                 $name = "{$table}_{$column}_nonnegative";
 
                 if (in_array($driver, ['mysql', 'mariadb'], true)) {
-                    DB::statement("ALTER TABLE {$table} ADD CONSTRAINT {$name} CHECK ({$column} >= 0)");
+                    DB::statement("ALTER TABLE {$table} ADD CONSTRAINT {$name} CHECK ({$column} BETWEEN 0 AND 9223372036854775807)");
                 }
             }
         }
@@ -272,9 +272,9 @@ return new class extends Migration
     private function nonnegativeMoneyColumn(Blueprint $table, string $column): ColumnDefinition
     {
         if (DB::connection()->getDriverName() === 'sqlite') {
-            return $table->rawColumn($column, "integer check ({$column} >= 0)");
+            return $table->rawColumn($column, "integer check ({$column} between 0 and 9223372036854775807)");
         }
 
-        return $table->unsignedBigInteger($column);
+        return $table->bigInteger($column);
     }
 };

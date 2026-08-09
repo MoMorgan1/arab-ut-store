@@ -182,6 +182,7 @@ return new class extends Migration
         });
 
         $this->enforceNonnegativeMoney();
+        $this->enforceCompleteSourceIdentities();
     }
 
     public function down(): void
@@ -200,8 +201,23 @@ return new class extends Migration
                 $name = "{$table}_{$column}_nonnegative";
 
                 if (in_array($driver, ['mysql', 'mariadb'], true)) {
-                    DB::statement("ALTER TABLE {$table} ADD CONSTRAINT {$name} CHECK ({$column} >= 0)");
+                    DB::statement("ALTER TABLE {$table} ADD CONSTRAINT {$name} CHECK ({$column} BETWEEN 0 AND 9223372036854775807)");
                 }
+            }
+        }
+    }
+
+    private function enforceCompleteSourceIdentities(): void
+    {
+        $driver = DB::connection()->getDriverName();
+
+        foreach (['categories', 'products', 'product_variants'] as $table) {
+            if ($driver === 'sqlite') {
+                $condition = '(NEW.source_id IS NULL AND NEW.external_id IS NOT NULL) OR (NEW.source_id IS NOT NULL AND NEW.external_id IS NULL)';
+                DB::statement("CREATE TRIGGER {$table}_source_identity_insert BEFORE INSERT ON {$table} WHEN {$condition} BEGIN SELECT RAISE(ABORT, 'source identity must be complete'); END");
+                DB::statement("CREATE TRIGGER {$table}_source_identity_update BEFORE UPDATE OF source_id, external_id ON {$table} WHEN {$condition} BEGIN SELECT RAISE(ABORT, 'source identity must be complete'); END");
+            } elseif (in_array($driver, ['mysql', 'mariadb'], true)) {
+                DB::statement("ALTER TABLE {$table} ADD CONSTRAINT {$table}_source_identity_complete CHECK ((source_id IS NULL AND external_id IS NULL) OR (source_id IS NOT NULL AND external_id IS NOT NULL))");
             }
         }
     }
@@ -209,9 +225,9 @@ return new class extends Migration
     private function nonnegativeMoneyColumn(Blueprint $table, string $column): ColumnDefinition
     {
         if (DB::connection()->getDriverName() === 'sqlite') {
-            return $table->rawColumn($column, "integer check ({$column} >= 0)");
+            return $table->rawColumn($column, "integer check ({$column} between 0 and 9223372036854775807)");
         }
 
-        return $table->unsignedBigInteger($column);
+        return $table->bigInteger($column);
     }
 };

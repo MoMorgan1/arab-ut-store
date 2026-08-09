@@ -151,7 +151,7 @@ return new class extends Migration
                 $name = "{$table}_{$column}_nonnegative";
 
                 if (in_array($driver, ['mysql', 'mariadb'], true)) {
-                    DB::statement("ALTER TABLE {$table} ADD CONSTRAINT {$name} CHECK ({$column} >= 0)");
+                    DB::statement("ALTER TABLE {$table} ADD CONSTRAINT {$name} CHECK ({$column} BETWEEN 0 AND 9223372036854775807)");
                 }
             }
         }
@@ -160,9 +160,9 @@ return new class extends Migration
     private function nonnegativeMoneyColumn(Blueprint $table, string $column): ColumnDefinition
     {
         if (DB::connection()->getDriverName() === 'sqlite') {
-            return $table->rawColumn($column, "integer check ({$column} >= 0)");
+            return $table->rawColumn($column, "integer check ({$column} between 0 and 9223372036854775807)");
         }
 
-        return $table->unsignedBigInteger($column);
+        return $table->bigInteger($column);
     }
 };

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OrderStatusHistoryStatus;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OrderStatusHistory extends DomainModel
@@ -14,6 +15,7 @@ class OrderStatusHistory extends DomainModel
     protected function casts(): array
     {
         return [
+            'status' => OrderStatusHistoryStatus::class,
             'metadata' => 'array',
             'created_at' => 'immutable_datetime',
         ];

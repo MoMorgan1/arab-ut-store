@@ -19,7 +19,7 @@ class CatalogSource extends DomainModel
     /** @return HasMany<Category, $this> */
     public function categories(): HasMany
     {
-        return $this->hasMany(Category::class);
+        return $this->hasMany(Category::class, 'source_id');
     }
 
     /** @return HasMany<Product, $this> */

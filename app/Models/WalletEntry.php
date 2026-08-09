@@ -14,6 +14,8 @@ class WalletEntry extends DomainModel
     {
         return [
             'type' => WalletEntryType::class,
+            'amount_halalah' => 'integer',
+            'balance_after_halalah' => 'integer',
             'metadata' => 'array',
             'created_at' => 'immutable_datetime',
         ];

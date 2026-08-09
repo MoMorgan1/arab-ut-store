@@ -8,7 +8,6 @@ use App\Enums\ProductAuthority;
 use App\Enums\ServiceType;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property Platform $platform
@@ -64,10 +63,10 @@ class ProductVariant extends DomainModel
         return $this->hasMany(OrderItem::class);
     }
 
-    /** @return HasOne<PriceRule, $this> */
-    public function priceRule(): HasOne
+    /** @return HasMany<PriceRule, $this> */
+    public function priceRules(): HasMany
     {
-        return $this->hasOne(PriceRule::class);
+        return $this->hasMany(PriceRule::class);
     }
 
     /** @return HasMany<PriceProposal, $this> */

@@ -2,18 +2,27 @@
 
 use App\Enums\FulfillmentStatus;
 use App\Enums\Market;
+use App\Enums\OrderStatusHistoryStatus;
 use App\Enums\Platform;
 use App\Enums\ProductAuthority;
 use App\Enums\ServiceType;
 use App\Models\CatalogSource;
+use App\Models\Category;
 use App\Models\FulfillmentJob;
 use App\Models\Order;
+use App\Models\OrderItemSecret;
+use App\Models\PersonalAccessToken;
+use App\Models\PhoneVerification;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\StaffAuditLog;
 use App\Models\User;
+use App\Models\WalletAccount;
+use App\Models\WalletEntry;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 const DOMAIN_TABLES = [
     'users', 'social_accounts', 'phone_verifications', 'personal_access_tokens', 'staff_audit_logs',
@@ -50,6 +59,48 @@ test('catalog source identities are unique within a source', function () {
 
     expect(fn () => Product::factory()->for($source, 'source')->create(['external_id' => 'external-42']))
         ->toThrow(QueryException::class);
+});
+
+test('catalog source identity pairs are either both null or both populated', function (string $modelClass) {
+    $source = CatalogSource::factory()->create();
+
+    expect(fn () => $modelClass::factory()->create([
+        'source_id' => $source->id,
+        'external_id' => null,
+    ]))->toThrow(QueryException::class)
+        ->and(fn () => $modelClass::factory()->create([
+            'source_id' => null,
+            'external_id' => 'external-without-source',
+        ]))->toThrow(QueryException::class);
+
+    expect($modelClass::factory()->create([
+        'source_id' => null,
+        'external_id' => null,
+    ])->exists)->toBeTrue()
+        ->and($modelClass::factory()->create([
+            'source_id' => $source->id,
+            'external_id' => 'external-with-source',
+        ])->exists)->toBeTrue();
+
+    $sourced = $modelClass::factory()->create([
+        'source_id' => $source->id,
+        'external_id' => 'external-for-update',
+    ]);
+    $sourced->external_id = null;
+    expect(fn () => $sourced->save())->toThrow(QueryException::class);
+})->with([
+    'categories' => Category::class,
+    'products' => Product::class,
+    'variants' => ProductVariant::class,
+]);
+
+test('catalog sources load categories through source_id', function () {
+    $source = CatalogSource::factory()->create();
+    $category = Category::factory()->for($source, 'source')->create([
+        'external_id' => 'category-42',
+    ]);
+
+    expect($source->categories()->sole()->is($category))->toBeTrue();
 });
 
 test('variant SKUs are globally unique', function () {
@@ -119,17 +170,41 @@ test('variant price history persists through the singular history table', functi
     ]);
 });
 
+test('variants can have multiple scoped price rules', function () {
+    $variant = ProductVariant::factory()->create();
+
+    $variant->priceRules()->createMany([
+        ['name' => 'Base automation rule', 'configuration' => ['margin_basis_points' => 1000]],
+        ['name' => 'Campaign override', 'configuration' => ['margin_basis_points' => 500]],
+    ]);
+
+    expect($variant->fresh()->priceRules)->toHaveCount(2);
+});
+
 test('order status history persists through the singular history table', function () {
     $order = Order::factory()->create();
 
     $history = $order->statusHistory()->create([
-        'status' => 'received',
+        'status' => OrderStatusHistoryStatus::Received,
     ]);
 
     $this->assertDatabaseHas('order_status_history', [
         'id' => $history->id,
         'order_id' => $order->id,
     ]);
+    expect($history->status)->toBe(OrderStatusHistoryStatus::Received);
+});
+
+test('status history has an explicit boundary for order and item failure states', function () {
+    $order = Order::factory()->hasItems(1)->create();
+    $item = $order->items()->firstOrFail();
+
+    $history = $order->statusHistory()->create([
+        'order_item_id' => $item->id,
+        'status' => OrderStatusHistoryStatus::Failed,
+    ]);
+
+    expect($history->status)->toBe(OrderStatusHistoryStatus::Failed);
 });
 
 test('each customer has at most one wallet account', function () {
@@ -180,6 +255,17 @@ test('money columns reject negative values', function () {
     ]))->toThrow(QueryException::class);
 });
 
+test('money storage uses signed 64-bit integer columns', function () {
+    foreach (DOMAIN_TABLES as $table) {
+        foreach (Schema::getColumns($table) as $column) {
+            if (str_ends_with($column['name'], '_halalah')) {
+                expect(strtolower($column['type']))
+                    ->not->toContain('unsigned', "Unsigned money column [{$table}.{$column['name']}]");
+            }
+        }
+    }
+});
+
 test('wallet entries are append-only at the database boundary', function () {
     $user = User::factory()->create();
     $walletId = DB::table('wallet_accounts')->insertGetId([
@@ -205,6 +291,159 @@ test('wallet entries are append-only at the database boundary', function () {
         ->toThrow(QueryException::class);
 });
 
+test('wallet entry parents cannot be deleted after an entry is posted', function () {
+    $account = WalletAccount::factory()->create();
+    WalletEntry::factory()->for($account, 'walletAccount')->create();
+
+    $orderAccount = WalletAccount::factory()->create();
+    $order = Order::factory()->create();
+    WalletEntry::factory()->for($orderAccount, 'walletAccount')->for($order)->create();
+
+    $refundAccount = WalletAccount::factory()->create();
+    $refundOrder = Order::factory()->create();
+    $refund = $refundOrder->refunds()->create([
+        'method' => 'wallet',
+        'status' => 'completed',
+        'amount_halalah' => 500,
+    ]);
+    WalletEntry::factory()->for($refundAccount, 'walletAccount')->for($refund)->create();
+
+    $creatorAccount = WalletAccount::factory()->create();
+    $creator = User::factory()->create();
+    WalletEntry::factory()->for($creatorAccount, 'walletAccount')->for($creator, 'createdBy')->create();
+
+    expect(fn () => $account->delete())->toThrow(QueryException::class)
+        ->and(fn () => $order->delete())->toThrow(QueryException::class)
+        ->and(fn () => $refund->delete())->toThrow(QueryException::class)
+        ->and(fn () => $creator->delete())->toThrow(QueryException::class);
+});
+
+test('wallet entry parent foreign keys are restrictive', function () {
+    $parentColumns = ['wallet_account_id', 'order_id', 'refund_id', 'created_by_user_id'];
+    $foreignKeys = collect(Schema::getForeignKeys('wallet_entries'))
+        ->filter(fn (array $key): bool => count(array_intersect($key['columns'], $parentColumns)) > 0);
+
+    expect($foreignKeys)->toHaveCount(4);
+
+    foreach ($foreignKeys as $foreignKey) {
+        expect($foreignKey['on_delete'])->toBeIn(['restrict', 'no action']);
+    }
+});
+
+test('wallet entry money values are integers', function () {
+    $entry = new WalletEntry;
+    $entry->setRawAttributes([
+        'amount_halalah' => '1000',
+        'balance_after_halalah' => '2500',
+    ]);
+
+    expect($entry->amount_halalah)->toBeInt()
+        ->and($entry->balance_after_halalah)->toBeInt();
+});
+
+test('order item secrets require trusted writes and serialize without ciphertext', function () {
+    $order = Order::factory()->hasItems(1)->create();
+    $secret = new OrderItemSecret([
+        'order_item_id' => $order->items()->firstOrFail()->id,
+        'encrypted_payload' => ['account' => 'synthetic-account'],
+        'masked_summary' => ['account' => 's***t'],
+    ]);
+
+    expect($secret->getAttributes())->not->toHaveKey('encrypted_payload');
+
+    $secret->forceFill([
+        'encrypted_payload' => ['account' => 'synthetic-account'],
+    ])->save();
+
+    $ciphertext = DB::table('order_item_secrets')->where('id', $secret->id)->value('encrypted_payload');
+
+    expect($ciphertext)->not->toContain('synthetic-account')
+        ->and($secret->fresh()->encrypted_payload)->toBe(['account' => 'synthetic-account'])
+        ->and($secret->fresh()->toArray())->not->toHaveKey('encrypted_payload');
+});
+
+test('verification and access token hashes stay out of serialization', function () {
+    $user = User::factory()->create();
+    $verification = PhoneVerification::create([
+        'user_id' => $user->id,
+        'phone' => '+966500000000',
+        'code_hash' => 'synthetic-code-hash',
+        'expires_at' => now()->addMinutes(5),
+    ]);
+    $token = PersonalAccessToken::create([
+        'tokenable_type' => User::class,
+        'tokenable_id' => $user->id,
+        'name' => 'Synthetic test token',
+        'token' => hash('sha256', 'synthetic-token-value'),
+    ]);
+
+    expect($verification->toArray())->not->toHaveKey('code_hash')
+        ->and($token->toArray())->not->toHaveKey('token');
+});
+
+test('personal access tokens resolve their polymorphic owners', function () {
+    $user = User::factory()->create();
+    $token = PersonalAccessToken::create([
+        'tokenable_type' => User::class,
+        'tokenable_id' => $user->id,
+        'name' => 'Synthetic test token',
+        'token' => hash('sha256', 'another-synthetic-token'),
+    ]);
+
+    expect($token->tokenable->is($user))->toBeTrue();
+});
+
+test('staff audit logs resolve their polymorphic subjects', function () {
+    $user = User::factory()->create();
+    $order = Order::factory()->create();
+    $audit = StaffAuditLog::create([
+        'actor_user_id' => $user->id,
+        'action' => 'synthetic.audit',
+        'auditable_type' => Order::class,
+        'auditable_id' => $order->id,
+    ]);
+
+    expect($audit->auditable->is($order))->toBeTrue();
+});
+
+test('public IDs are generated as valid ULIDs and ignore mass assignment overrides', function () {
+    $attemptedOverride = (string) Str::ulid();
+    $source = CatalogSource::create([
+        'public_id' => $attemptedOverride,
+        'key' => 'mass-assignment-source',
+        'name' => 'Mass assignment source',
+        'authority' => ProductAuthority::Automation,
+        'is_enabled' => true,
+    ]);
+
+    expect(Str::isUlid($source->public_id))->toBeTrue()
+        ->and($source->public_id)->not->toBe($attemptedOverride);
+});
+
+test('public ID imports reject invalid ULIDs', function () {
+    $invalid = CatalogSource::factory()->make();
+    expect(fn () => $invalid->usePublicIdForImport('not-a-ulid'))
+        ->toThrow(InvalidArgumentException::class);
+
+    $invalidDirectAssignment = CatalogSource::factory()->make();
+    $invalidDirectAssignment->public_id = 'not-a-ulid';
+    expect(fn () => $invalidDirectAssignment->save())
+        ->toThrow(InvalidArgumentException::class);
+});
+
+test('public ID imports accept an explicit valid ULID before creation', function () {
+    $importedId = (string) Str::ulid();
+    $imported = CatalogSource::factory()->make()->usePublicIdForImport($importedId);
+    $imported->save();
+    expect($imported->public_id)->toBe($importedId);
+});
+
+test('public IDs cannot change after creation', function () {
+    $source = CatalogSource::factory()->create();
+    $source->public_id = (string) Str::ulid();
+    expect(fn () => $source->save())->toThrow(LogicException::class);
+});
+
 test('operational lookup columns are indexed', function (string $table, array $columns) {
     expect(Schema::hasIndex($table, $columns))->toBeTrue("Missing index on [{$table}] for [".implode(', ', $columns).']');
 })->with([
@@ -217,8 +456,8 @@ test('operational lookup columns are indexed', function (string $table, array $c
 ]);
 
 test('critical commerce records keep enforced foreign keys', function (string $table, string $referencedTable) {
-    $foreignTables = collect(DB::select("PRAGMA foreign_key_list('{$table}')"))
-        ->pluck('table');
+    $foreignTables = collect(Schema::getForeignKeys($table))
+        ->pluck('foreign_table');
 
     expect($foreignTables)->toContain($referencedTable);
 })->with([

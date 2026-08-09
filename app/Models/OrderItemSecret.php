@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[Hidden(['encrypted_payload'])]
 class OrderItemSecret extends DomainModel
 {
+    /** @var list<string> */
+    protected $guarded = ['id', 'public_id', 'encrypted_payload'];
+
     /** @return array<string, string> */
     protected function casts(): array
     {

@@ -13,5 +13,5 @@ abstract class DomainModel extends Model
     use HasFactory, HasPublicUlid;
 
     /** @var list<string> */
-    protected $guarded = ['id'];
+    protected $guarded = ['id', 'public_id'];
 }

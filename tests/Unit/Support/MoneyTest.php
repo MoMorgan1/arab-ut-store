@@ -27,3 +27,18 @@ test('SAR multiplication uses an integer quantity without mutating the unit pric
     expect($unitPrice->multiply(3)->halalah())->toBe(375)
         ->and($unitPrice->halalah())->toBe(125);
 });
+
+test('SAR arithmetic accepts the signed 64-bit upper boundary', function () {
+    expect(Money::fromHalalah(PHP_INT_MAX)->halalah())->toBe(PHP_INT_MAX)
+        ->and(Money::fromHalalah(PHP_INT_MAX - 1)->plus(Money::fromHalalah(1))->halalah())
+        ->toBe(PHP_INT_MAX)
+        ->and(Money::fromHalalah(intdiv(PHP_INT_MAX, 2))->multiply(2)->halalah())
+        ->toBe(intdiv(PHP_INT_MAX, 2) * 2);
+});
+
+test('SAR arithmetic rejects signed 64-bit overflow before PHP evaluates it', function () {
+    expect(fn () => Money::fromHalalah(PHP_INT_MAX)->plus(Money::fromHalalah(1)))
+        ->toThrow(DomainException::class, 'overflow')
+        ->and(fn () => Money::fromHalalah(intdiv(PHP_INT_MAX, 2) + 1)->multiply(2))
+        ->toThrow(DomainException::class, 'overflow');
+});

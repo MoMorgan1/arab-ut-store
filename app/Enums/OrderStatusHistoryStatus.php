@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum OrderItemStatus: string
+enum OrderStatusHistoryStatus: string
 {
     case PendingPayment = 'pending_payment';
     case Received = 'received';

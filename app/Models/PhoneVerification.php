@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[Hidden(['code_hash'])]
 class PhoneVerification extends DomainModel
 {
     /** @return array<string, string> */
