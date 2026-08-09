@@ -1380,6 +1380,10 @@
         font-size: 0.75rem;
     }
 
+    .coins-progress__item:not(:last-child)::after {
+        inset-inline-start: 2.25rem;
+    }
+
     .coins-choice-grid--delivery {
         grid-template-columns: 1fr;
     }
