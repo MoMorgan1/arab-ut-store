@@ -23,6 +23,17 @@ test('the English storefront route uses left-to-right metadata', function () {
             ->where('direction', 'ltr'));
 });
 
+test('the public brand remains Arab UT in the :locale storefront', function (string $path, string $locale) {
+    $this->get($path)
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('locale', $locale)
+            ->where('ui.brand', 'Arab UT'));
+})->with([
+    'Arabic' => ['/', 'ar'],
+    'English' => ['/en', 'en'],
+]);
+
 test('the storefront shares the configured display currency list', function () {
     config()->set('store.display_currencies', ['SAR', 'CAD']);
 

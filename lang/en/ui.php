@@ -2,7 +2,6 @@
 
 return [
     'brand' => 'Arab UT',
-    'checkout_notice' => 'All final prices and checkout are in Saudi Riyal (:currency).',
     'language' => 'العربية',
     'currency' => 'Currency',
     'currency_selector' => 'Choose display currency',

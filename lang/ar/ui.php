@@ -1,8 +1,7 @@
 <?php
 
 return [
-    'brand' => 'عرب يو تي',
-    'checkout_notice' => 'كل الأسعار النهائية والدفع بالريال السعودي (:currency).',
+    'brand' => 'Arab UT',
     'language' => 'English',
     'currency' => 'العملة',
     'currency_selector' => 'اختر عملة العرض',

@@ -168,4 +168,14 @@ describe('StoreLayout', () => {
             document.querySelector('section#services'),
         ).not.toBeInTheDocument();
     });
+
+    it('does not expose the checkout currency policy on the homepage', () => {
+        render(<StoreHome />);
+
+        expect(
+            screen.queryByText(
+                'All final prices and checkout are in Saudi Riyal (SAR).',
+            ),
+        ).not.toBeInTheDocument();
+    });
 });

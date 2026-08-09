@@ -11,7 +11,6 @@ type StorePageProps = {
     locale: 'ar' | 'en';
     ui: StoreLayoutTranslations & {
         brand: string;
-        checkout_notice: string;
         home_title: string;
         service_notice: string;
     };
@@ -19,14 +18,8 @@ type StorePageProps = {
 
 export default function StoreHome() {
     const page = usePage<StorePageProps>();
-    const {
-        checkoutCurrency,
-        direction,
-        displayCurrencies,
-        displayCurrency,
-        locale,
-        ui,
-    } = page.props;
+    const { direction, displayCurrencies, displayCurrency, locale, ui } =
+        page.props;
 
     return (
         <StoreLayout
@@ -45,9 +38,6 @@ export default function StoreHome() {
                 <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">
                     {ui.brand}
                 </h1>
-                <p className="max-w-prose leading-7 text-[var(--arabut-muted)]">
-                    {ui.checkout_notice.replace(':currency', checkoutCurrency)}
-                </p>
             </section>
         </StoreLayout>
     );
