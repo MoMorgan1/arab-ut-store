@@ -34,9 +34,7 @@ const mockPage = vi.hoisted(() => ({
 }));
 
 vi.mock('@inertiajs/react', () => ({
-    Head: ({ title }: { title: string }) => (
-        <title>{`${title} - Arab UT`}</title>
-    ),
+    Head: ({ title }: { title: string }) => <title>{title}</title>,
     usePage: () => mockPage,
 }));
 
@@ -162,7 +160,7 @@ describe('StoreLayout', () => {
     it('uses a page-specific title without rendering a dead-end service CTA', () => {
         render(<StoreHome />);
 
-        expect(document.title).toBe('Home - Arab UT');
+        expect(document.title).toBe('Home');
         expect(
             document.querySelector('a[href="#services"]'),
         ).not.toBeInTheDocument();

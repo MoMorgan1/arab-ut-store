@@ -68,3 +68,17 @@ test('an unsupported display currency never overwrites a persisted preference', 
             ->where('displayCurrency', 'EUR')
             ->where('checkoutCurrency', 'SAR'));
 });
+
+test('a stale display currency preference is replaced by the configured default', function () {
+    config()->set('store.display_currencies', ['SAR', 'CAD']);
+    config()->set('store.default_display_currency', 'CAD');
+
+    $this->withSession(['display_currency' => 'JPY'])
+        ->get('/')
+        ->assertOk()
+        ->assertSessionHas('display_currency', 'CAD')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('displayCurrency', 'CAD')
+            ->where('displayCurrencies', ['SAR', 'CAD'])
+            ->where('checkoutCurrency', 'SAR'));
+});

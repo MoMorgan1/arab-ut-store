@@ -22,7 +22,9 @@ class SetDisplayCurrency
             $request->session()->put('display_currency', $currency);
         }
 
-        if (! $request->session()->has('display_currency')) {
+        $displayCurrency = $request->session()->get('display_currency');
+
+        if (! in_array($displayCurrency, $supportedCurrencies, true)) {
             $request->session()->put('display_currency', config('store.default_display_currency'));
         }
 

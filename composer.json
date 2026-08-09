@@ -61,10 +61,12 @@
             "pint --parallel --test"
         ],
         "ci:check": [
+            "@validate:ci",
             "Composer\\Config::disableProcessTimeout",
             "@test",
             "npm run ci:check"
         ],
+        "validate:ci": "composer validate --strict --no-check-publish",
         "types:check": [
             "phpstan analyse"
         ],
