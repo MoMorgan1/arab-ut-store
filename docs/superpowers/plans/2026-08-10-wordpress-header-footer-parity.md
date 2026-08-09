@@ -718,6 +718,10 @@ git commit -m "feat: reproduce WordPress storefront footer"
 - Modify: `routes/console.php`
 - Modify: `lang/ar/store.php`
 - Modify: `lang/en/store.php`
+- Modify: `lang/ar/ui.php`
+- Modify: `lang/en/ui.php`
+- Modify: `resources/js/components/store/store-footer.tsx`
+- Modify: `resources/js/types/store-shell.ts`
 - Modify: `resources/js/components/configurator/coins/amount-step.tsx`
 - Modify: `resources/js/components/configurator/coins/coins-configurator.tsx`
 - Modify: `resources/js/components/configurator/coins/quote-panel.tsx`
@@ -725,7 +729,7 @@ git commit -m "feat: reproduce WordPress storefront footer"
 - Modify: `resources/js/lib/coins-api.ts`
 - Modify: `resources/js/lib/money.ts`
 - Modify: `resources/js/types/coins.ts`
-- Modify focused Coins/locale tests only.
+- Modify focused Coins/locale/footer tests only.
 
 **Interfaces and decisions:**
 - `total.{amountHalalah,currency:'SAR'}` remains the only authoritative price and future checkout value.
