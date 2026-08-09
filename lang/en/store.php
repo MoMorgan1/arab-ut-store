@@ -3,11 +3,18 @@
 return [
     'seo_title' => 'Arab UT | FC 27 Ultimate Team Coins',
     'hero' => [
-        'badge' => 'FC 27 services for players worldwide',
-        'title' => 'Arab UT',
-        'accent' => 'Ultimate Team Coins',
-        'subtitle' => 'Choose your platform, delivery speed, and amount to see your current quote.',
-        'cta' => 'Check price',
+        'badge' => 'Everything you need for FC 27, all in one place.',
+        'title' => 'FIFA 27 Coins',
+        'accent' => 'At the best prices',
+        'subtitle' => 'Fast, secure FIFA 27 Coins delivery to your account — backed by our guarantee or a refund.',
+        'cta' => 'Choose your Coins',
+        'proof_label' => 'Store proof',
+        'stats' => [
+            ['value' => '+8,877', 'label' => 'Customers served'],
+            ['value' => '+29,161', 'label' => 'Completed orders'],
+            ['value' => '30B+', 'label' => 'Coins delivered'],
+            ['value' => '99.9%', 'label' => 'Security rate'],
+        ],
     ],
     'coins_section' => [
         'tag' => 'FC 27 Coins',

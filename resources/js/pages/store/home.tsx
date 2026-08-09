@@ -87,6 +87,21 @@ export default function StoreHome() {
                             <a className="store-hero__cta" href="#coins">
                                 {store.hero.cta}
                             </a>
+                            <dl
+                                aria-label={store.hero.proof_label}
+                                className="store-hero__stats"
+                                role="group"
+                            >
+                                {store.hero.stats.map((stat) => (
+                                    <div
+                                        className="store-hero__stat"
+                                        key={`${stat.value}-${stat.label}`}
+                                    >
+                                        <dd>{stat.value}</dd>
+                                        <dt>{stat.label}</dt>
+                                    </div>
+                                ))}
+                            </dl>
                         </div>
                     </section>
 

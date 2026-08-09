@@ -94,6 +94,8 @@ test('the Arabic and English homepages expose the exact localized Coins contract
             ->where('platforms.1.deliveries', [])
             ->has('platforms', 2)
             ->has('store.seo_title')
+            ->has('store.hero.stats', 4)
+            ->has('store.hero.proof_label')
             ->missing('platforms.0.market')
             ->missing('platforms.1.market'));
 })->with([

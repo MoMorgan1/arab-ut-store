@@ -10,9 +10,25 @@
 @font-face {
     font-family: 'Thmanyah Sans';
     font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+    src: url('/fonts/thmanyah/thmanyahsans-Light.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Thmanyah Sans';
+    font-style: normal;
     font-weight: 400;
     font-display: swap;
     src: url('/fonts/thmanyah/thmanyahsans-Regular.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Thmanyah Sans';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('/fonts/thmanyah/thmanyahsans-Medium.woff2') format('woff2');
 }
 
 @font-face {
@@ -24,11 +40,53 @@
 }
 
 @font-face {
+    font-family: 'Thmanyah Sans';
+    font-style: normal;
+    font-weight: 900;
+    font-display: swap;
+    src: url('/fonts/thmanyah/thmanyahsans-Black.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Thmanyah Serif Display';
+    font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+    src: url('/fonts/thmanyah/thmanyahserifdisplay-Light.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Thmanyah Serif Display';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/fonts/thmanyah/thmanyahserifdisplay-Regular.woff2')
+        format('woff2');
+}
+
+@font-face {
+    font-family: 'Thmanyah Serif Display';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('/fonts/thmanyah/thmanyahserifdisplay-Medium.woff2')
+        format('woff2');
+}
+
+@font-face {
     font-family: 'Thmanyah Serif Display';
     font-style: normal;
     font-weight: 700;
     font-display: swap;
     src: url('/fonts/thmanyah/thmanyahserifdisplay-Bold.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Thmanyah Serif Display';
+    font-style: normal;
+    font-weight: 900;
+    font-display: swap;
+    src: url('/fonts/thmanyah/thmanyahserifdisplay-Black.woff2') format('woff2');
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -168,9 +226,13 @@
         @apply bg-background text-foreground;
     }
 
+    html.store-document body,
+    .store-shell {
+        font-family: 'Thmanyah Sans', Tahoma, Arial, sans-serif;
+    }
+
     .store-shell {
         min-width: 20rem;
-        font-family: 'Thmanyah Sans', ui-sans-serif, system-ui, sans-serif;
     }
 
     .store-shell button,
@@ -410,7 +472,7 @@
     .store-hero h1 {
         margin: 0;
         color: var(--arabut-ink);
-        font-family: 'Thmanyah Serif Display', ui-serif, Georgia, serif;
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
         font-size: clamp(2.15rem, 6vw, 3.9rem);
         font-weight: 700;
         line-height: 1.08;
@@ -467,6 +529,46 @@
     .store-hero__cta:focus-visible {
         outline: 2px solid var(--arabut-focus);
         outline-offset: 3px;
+    }
+
+    .store-hero__stats {
+        display: grid;
+        width: min(100%, 42rem);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin: 2rem auto 0;
+        border: 1px solid var(--arabut-line);
+        border-radius: 1rem;
+        background: rgb(30 23 14 / 85%);
+        padding-block: 1.25rem;
+    }
+
+    .store-hero__stat {
+        min-width: 0;
+        padding-inline: clamp(0.65rem, 2.5vw, 1.5rem);
+        text-align: center;
+    }
+
+    .store-hero__stat + .store-hero__stat {
+        border-inline-start: 1px solid var(--arabut-line);
+    }
+
+    .store-hero__stat dd {
+        margin: 0;
+        color: var(--arabut-gold);
+        direction: ltr;
+        font-size: clamp(1.05rem, 2.5vw, 1.4rem);
+        font-weight: 700;
+        line-height: 1.2;
+        unicode-bidi: isolate;
+        white-space: nowrap;
+    }
+
+    .store-hero__stat dt {
+        margin-block-start: 0.25rem;
+        color: var(--arabut-muted);
+        font-size: clamp(0.68rem, 1.5vw, 0.8rem);
+        font-weight: 400;
+        line-height: 1.35;
     }
 
     .store-coins-section {
@@ -529,7 +631,7 @@
     .store-section-heading h2 {
         margin: 0;
         color: var(--arabut-ink);
-        font-family: 'Thmanyah Serif Display', ui-serif, Georgia, serif;
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
         font-size: clamp(1.75rem, 4vw, 2.5rem);
         font-weight: 700;
         line-height: 1.2;
@@ -1061,6 +1163,24 @@
             url('/images/store/hero/background-mobile.webp') center top / cover
                 no-repeat,
             var(--arabut-navy);
+    }
+
+    .store-hero__stats {
+        width: min(100%, 24rem);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding-block: 0;
+    }
+
+    .store-hero__stat {
+        padding-block: 0.85rem;
+    }
+
+    .store-hero__stat:nth-child(odd) {
+        border-inline-start: 0;
+    }
+
+    .store-hero__stat:nth-child(n + 3) {
+        border-block-start: 1px solid var(--arabut-line);
     }
 
     .store-coins-section {

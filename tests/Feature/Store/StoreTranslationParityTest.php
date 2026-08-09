@@ -57,19 +57,24 @@ test('Arabic customer copy consistently calls the service كوينز', function 
     $arabic = require lang_path('ar/store.php');
     $serialized = json_encode($arabic, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
 
-    expect(data_get($arabic, 'hero.accent'))->toBe('كوينز ألتيميت تيم')
+    expect(data_get($arabic, 'hero.title'))->toBe('كوينز فيفا 27')
         ->and(data_get($arabic, 'coins_section.title'))->toBe('اختر باقة الكوينز')
         ->and(data_get($arabic, 'amount_copy.label'))->toBe('كمية الكوينز')
         ->and($serialized)->not->toContain('عملات')
         ->and($serialized)->not->toContain('العملات');
 });
 
-test('the quote-only hero action accurately describes checking the price', function () {
+test('the hero uses the approved bilingual copy and proof contract', function () {
     /** @var array<string, mixed> $arabic */
     $arabic = require lang_path('ar/store.php');
     /** @var array<string, mixed> $english */
     $english = require lang_path('en/store.php');
 
-    expect(data_get($arabic, 'hero.cta'))->toBe('شوف السعر')
-        ->and(data_get($english, 'hero.cta'))->toBe('Check price');
+    expect(data_get($arabic, 'hero.badge'))->toBe('كل اللي تحتاجه في FC 27، بمكان واحد')
+        ->and(data_get($arabic, 'hero.title'))->toBe('كوينز فيفا 27')
+        ->and(data_get($arabic, 'hero.accent'))->toBe('بأفضل الأسعار')
+        ->and(data_get($arabic, 'hero.cta'))->toBe('اختر كوينزك')
+        ->and(data_get($english, 'hero.cta'))->toBe('Choose your Coins')
+        ->and(data_get($arabic, 'hero.stats'))->toHaveCount(4)
+        ->and(data_get($english, 'hero.stats'))->toHaveCount(4);
 });

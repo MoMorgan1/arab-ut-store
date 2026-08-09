@@ -4,6 +4,7 @@ import {
     fireEvent,
     render,
     screen,
+    within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -22,11 +23,19 @@ vi.mock('@inertiajs/react', () => ({
 const store = {
     seo_title: 'FC 27 Coins',
     hero: {
-        badge: 'FC 27 services for players worldwide',
-        title: 'Arab UT',
-        accent: 'Ultimate Team Coins',
-        subtitle: 'Choose a platform, delivery route, and amount.',
-        cta: 'Check price',
+        badge: 'Everything you need for FC 27, all in one place.',
+        title: 'FIFA 27 Coins',
+        accent: 'At the best prices',
+        subtitle:
+            'Fast, secure FIFA 27 Coins delivery to your account — backed by our guarantee or a refund.',
+        cta: 'Choose your Coins',
+        proof_label: 'Store proof',
+        stats: [
+            { value: '+8,877', label: 'Customers served' },
+            { value: '+29,161', label: 'Completed orders' },
+            { value: '30B+', label: 'Coins delivered' },
+            { value: '99.9%', label: 'Security rate' },
+        ],
     },
     coins_section: {
         tag: 'FC 27 Coins',
@@ -242,38 +251,30 @@ afterEach(() => {
 });
 
 describe('Coins homepage', () => {
-    it('renders the exact wordmark and no forbidden commerce or proof UI', () => {
+    it('renders the exact hero copy, proof, and primary Coins link', () => {
         render(<StoreHome />);
 
-        expect(screen.getAllByText('Arab UT')).toHaveLength(2);
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-            'Arab UT Ultimate Team Coins',
+            'FIFA 27 Coins At the best prices',
         );
-        expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
+        const proof = screen.getByRole('group', { name: 'Store proof' });
+        expect(within(proof).getByText('+8,877')).toBeVisible();
+        expect(within(proof).getByText('+29,161')).toBeVisible();
+        expect(within(proof).getByText('30B+')).toBeVisible();
+        expect(within(proof).getByText('99.9%')).toBeVisible();
         expect(
-            screen.queryByRole('link', { name: /cart|checkout/i }),
-        ).not.toBeInTheDocument();
-        expect(
-            screen.queryByRole('button', { name: /cart|checkout|buy|order/i }),
-        ).not.toBeInTheDocument();
-        expect(
-            screen.queryByText(/review|customers|orders/i),
-        ).not.toBeInTheDocument();
-        expect(
-            screen.queryByText(
-                'All final prices and checkout are in Saudi Riyal (SAR).',
-            ),
-        ).not.toBeInTheDocument();
+            screen.getByRole('link', { name: 'Choose your Coins' }),
+        ).toHaveAttribute('href', '#coins');
     });
 
     it.each([
         {
-            cta: 'Check price',
+            cta: 'Choose your Coins',
             direction: 'ltr' as const,
             locale: 'en' as const,
         },
         {
-            cta: 'شوف السعر',
+            cta: 'اختر كوينزك',
             direction: 'rtl' as const,
             locale: 'ar' as const,
         },
