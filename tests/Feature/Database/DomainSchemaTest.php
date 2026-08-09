@@ -94,6 +94,35 @@ test('catalog source identity pairs are either both null or both populated', fun
     'variants' => ProductVariant::class,
 ]);
 
+test('catalog source identity foreign keys are restrictive', function (string $table) {
+    $sourceForeignKey = collect(Schema::getForeignKeys($table))
+        ->first(fn (array $foreignKey): bool => $foreignKey['columns'] === ['source_id']);
+
+    expect($sourceForeignKey)->not->toBeNull()
+        ->and($sourceForeignKey['foreign_table'])->toBe('catalog_sources')
+        ->and($sourceForeignKey['on_delete'])->toBeIn(['restrict', 'no action']);
+})->with([
+    'categories' => 'categories',
+    'products' => 'products',
+    'variants' => 'product_variants',
+]);
+
+test('catalog sources cannot be deleted while source identities reference them', function (string $modelClass) {
+    $source = CatalogSource::factory()->create();
+    $sourcedRecord = $modelClass::factory()->create([
+        'source_id' => $source->id,
+        'external_id' => 'retained-source-identity',
+    ]);
+
+    expect(fn () => $source->delete())->toThrow(QueryException::class)
+        ->and($source->fresh())->not->toBeNull()
+        ->and($sourcedRecord->fresh()->source_id)->toBe($source->id);
+})->with([
+    'a category' => Category::class,
+    'a product' => Product::class,
+    'a variant' => ProductVariant::class,
+]);
+
 test('catalog sources load categories through source_id', function () {
     $source = CatalogSource::factory()->create();
     $category = Category::factory()->for($source, 'source')->create([

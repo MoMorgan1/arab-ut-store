@@ -30,7 +30,7 @@ return new class extends Migration
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
             $table->ulid('public_id')->unique();
-            $table->foreignId('source_id')->nullable()->constrained('catalog_sources')->nullOnDelete();
+            $table->foreignId('source_id')->nullable()->constrained('catalog_sources')->restrictOnDelete();
             $table->string('external_id')->nullable();
             $table->string('slug')->unique();
             $table->string('name_ar');
@@ -47,7 +47,7 @@ return new class extends Migration
             $table->id();
             $table->ulid('public_id')->unique();
             $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('source_id')->nullable()->constrained('catalog_sources')->nullOnDelete();
+            $table->foreignId('source_id')->nullable()->constrained('catalog_sources')->restrictOnDelete();
             $table->string('external_id')->nullable();
             $table->string('slug')->unique();
             $table->string('service_type')->index();
@@ -67,7 +67,7 @@ return new class extends Migration
             $table->id();
             $table->ulid('public_id')->unique();
             $table->foreignId('product_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('source_id')->nullable()->constrained('catalog_sources')->nullOnDelete();
+            $table->foreignId('source_id')->nullable()->constrained('catalog_sources')->restrictOnDelete();
             $table->string('external_id')->nullable();
             $table->string('sku')->unique();
             $table->string('service_type');
