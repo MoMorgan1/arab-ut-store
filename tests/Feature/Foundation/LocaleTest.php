@@ -23,6 +23,10 @@ test('the English storefront route uses left-to-right metadata', function () {
             ->where('direction', 'ltr'));
 });
 
+test('unsupported locale prefixes return not found', function () {
+    $this->get('/fr')->assertNotFound();
+});
+
 test('a supported display currency persists without changing the SAR checkout currency', function () {
     $this->get('/?currency=USD')
         ->assertOk()
@@ -33,5 +37,25 @@ test('a supported display currency persists without changing the SAR checkout cu
     $this->get('/')
         ->assertInertia(fn (Assert $page) => $page
             ->where('displayCurrency', 'USD')
+            ->where('checkoutCurrency', 'SAR'));
+});
+
+test('an unsupported display currency keeps the default preference', function () {
+    $this->get('/?currency=JPY')
+        ->assertOk()
+        ->assertSessionHas('display_currency', 'SAR')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('displayCurrency', 'SAR')
+            ->where('checkoutCurrency', 'SAR'));
+});
+
+test('an unsupported display currency never overwrites a persisted preference', function () {
+    $this->withSession(['display_currency' => 'EUR'])
+        ->get('/en?currency=JPY')
+        ->assertOk()
+        ->assertSessionHas('display_currency', 'EUR')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('locale', 'en')
+            ->where('displayCurrency', 'EUR')
             ->where('checkoutCurrency', 'SAR'));
 });
