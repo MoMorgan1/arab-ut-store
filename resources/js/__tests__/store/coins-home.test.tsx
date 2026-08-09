@@ -354,27 +354,53 @@ describe('Coins homepage', () => {
         ).toHaveAttribute('src', '/images/store/platforms/pc-logo.svg');
     });
 
-    it('renders the WordPress amount controls in order for fast console delivery', () => {
+    it('renders every WordPress amount control in its exact DOM order', () => {
         render(<StoreHome />);
         selectConsoleDelivery('Fast');
 
         const amountInput = screen.getByRole('textbox', {
             name: store.amount_copy.label,
         });
+        const quickAmounts = screen.getByRole('group', {
+            name: store.amount_copy.preset_label,
+        });
+        const quickChips = within(quickAmounts).getAllByRole('button');
         const range = screen.getByRole('slider', {
             name: store.amount_copy.slider_label,
         });
+        const sliderLabels = Array.from(
+            document.querySelectorAll('.coins-slider-labels > span'),
+        );
+        const adjustments = Array.from(
+            document.querySelectorAll('.coins-adjustment'),
+        );
+        const quotePanel = screen.getByRole('region', {
+            name: store.quote.title,
+        });
         const fiveMillion = screen.getByRole('button', { name: '5M' });
+        const orderedControls = [
+            amountInput,
+            ...quickChips,
+            range,
+            ...sliderLabels,
+            ...adjustments,
+            quotePanel,
+        ];
 
+        expect(quickChips).toHaveLength(5);
+        expect(sliderLabels).toHaveLength(2);
+        expect(adjustments).toHaveLength(8);
+        orderedControls.slice(0, -1).forEach((control, index) => {
+            expect(
+                control.compareDocumentPosition(orderedControls[index + 1]) &
+                    Node.DOCUMENT_POSITION_FOLLOWING,
+            ).toBeTruthy();
+        });
         expect(range).toHaveAttribute('min', '50000');
         expect(range).toHaveAttribute('max', '20000000');
         expect(range).toHaveAttribute('step', '10000');
         expect(range).toHaveValue('50000');
         expect(fiveMillion).toBeVisible();
-        expect(
-            fiveMillion.compareDocumentPosition(range) &
-                Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
 
         fireEvent.change(range, { target: { value: '500000' } });
 
@@ -596,6 +622,102 @@ describe('Coins homepage', () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
 
         fireEvent.click(activePreset);
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+        });
+
+        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(screen.queryByText(store.quote.loading)).not.toBeInTheDocument();
+    });
+
+    it('keeps the quote lifecycle alive when an unchanged amount is blurred', async () => {
+        const fetchMock = vi.fn((input: RequestInfo | URL) =>
+            Promise.resolve(quoteResponseForRequest(input)),
+        );
+
+        vi.stubGlobal('fetch', fetchMock);
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
+        });
+        fireEvent.focus(amountInput);
+        fireEvent.blur(amountInput);
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+        });
+
+        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+
+        fireEvent.focus(amountInput);
+        fireEvent.blur(amountInput);
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+        });
+
+        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(screen.queryByText(store.quote.loading)).not.toBeInTheDocument();
+    });
+
+    it('keeps the quote lifecycle alive at the minimum adjustment bound', async () => {
+        const fetchMock = vi.fn((input: RequestInfo | URL) =>
+            Promise.resolve(quoteResponseForRequest(input)),
+        );
+
+        vi.stubGlobal('fetch', fetchMock);
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        const decrement = screen.getByRole('button', { name: '-1M' });
+        fireEvent.click(decrement);
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+        });
+
+        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+
+        fireEvent.click(decrement);
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+        });
+
+        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(screen.queryByText(store.quote.loading)).not.toBeInTheDocument();
+    });
+
+    it('keeps the quote lifecycle alive at the maximum adjustment bound', async () => {
+        const fetchMock = vi.fn((input: RequestInfo | URL) =>
+            Promise.resolve(quoteResponseForRequest(input)),
+        );
+
+        vi.stubGlobal('fetch', fetchMock);
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        fireEvent.click(screen.getByRole('button', { name: '1M' }));
+        const increment = screen.getByRole('button', { name: '+1M' });
+        fireEvent.click(increment);
+        fireEvent.click(increment);
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+        });
+
+        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+
+        fireEvent.click(increment);
 
         await act(async () => {
             await vi.advanceTimersByTimeAsync(300);

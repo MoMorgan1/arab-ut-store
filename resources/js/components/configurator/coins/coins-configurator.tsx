@@ -195,15 +195,26 @@ export function CoinsConfigurator({
     }
 
     function commitQuantity(value: number) {
+        const committedQuantity = clampAndSnapQuantity(
+            value,
+            amount.minimum,
+            maximum,
+            amount.increment,
+        );
+        const quantityInputAlreadyMatches =
+            quantityFromInput(state.quantityInput) === committedQuantity;
+
+        if (
+            committedQuantity === state.lastValidQuantity &&
+            quantityInputAlreadyMatches
+        ) {
+            return;
+        }
+
         invalidateQuoteRequest();
         dispatch({
             type: 'quantity-committed',
-            value: clampAndSnapQuantity(
-                value,
-                amount.minimum,
-                maximum,
-                amount.increment,
-            ),
+            value: committedQuantity,
         });
     }
 

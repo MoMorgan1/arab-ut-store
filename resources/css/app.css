@@ -231,10 +231,6 @@
         font-family: 'Thmanyah Sans', Tahoma, Arial, sans-serif;
     }
 
-    .store-shell {
-        min-width: 20rem;
-    }
-
     .store-shell button,
     .store-shell input,
     .store-shell summary {
