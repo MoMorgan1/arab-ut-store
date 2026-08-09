@@ -197,6 +197,21 @@ function availableProps() {
                 cart: 'Cart',
                 account: 'Account',
             },
+            footer: {
+                description: 'Trusted FC 27 services.',
+                important_links: 'Important links',
+                privacy: 'Privacy Policy',
+                returns: 'Returns Policy',
+                warranty: 'Warranty and Compensation',
+                ea_backup_codes: 'EA Backup Codes',
+                terms: 'Terms of Service',
+                customer_service: 'Customer service',
+                whatsapp: 'WhatsApp support',
+                payment_methods: 'Accepted payment methods',
+                legal_navigation: 'Legal navigation',
+                copyright: 'Copyright © :year Arab UT.',
+                ea_disclaimer: 'Independent from EA Sports.',
+            },
         },
     };
 }

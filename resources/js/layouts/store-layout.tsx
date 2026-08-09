@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from 'react';
 
+import { StoreFooter } from '@/components/store/store-footer';
 import { StoreHeader } from '@/components/store/store-header';
 import type {
     StoreShellConfig,
@@ -49,6 +50,7 @@ export default function StoreLayout({
             <main className="store-main" id="store-content">
                 {children}
             </main>
+            <StoreFooter locale={locale} shell={storeShell} translations={ui} />
         </div>
     );
 }
