@@ -52,6 +52,26 @@ test('Arabic and English store translation leaves and placeholders stay in parit
         ->and(translationTokens(data_get($english, 'accessibility.steps')))->toBe(['current', 'total']);
 });
 
+test('Arabic and English shell translation leaves and placeholders stay in parity', function () {
+    /** @var array<string, mixed> $arabic */
+    $arabic = require lang_path('ar/ui.php');
+    /** @var array<string, mixed> $english */
+    $english = require lang_path('en/ui.php');
+    $arabicKeys = translationLeafKeys($arabic);
+    $englishKeys = translationLeafKeys($english);
+
+    expect($arabicKeys)->toBe($englishKeys);
+
+    foreach ($arabicKeys as $key) {
+        expect(translationTokens(data_get($arabic, $key)))
+            ->toBe(translationTokens(data_get($english, $key)), "Placeholder mismatch at [{$key}].");
+    }
+
+    expect(data_get($arabic, 'simple_pages.cart.title'))->toBe('السلة')
+        ->and(data_get($english, 'simple_pages.cart.title'))->toBe('Cart')
+        ->and(translationTokens(data_get($arabic, 'footer.copyright')))->toBe(['year']);
+});
+
 test('Arabic customer copy consistently calls the service كوينز', function () {
     /** @var array<string, mixed> $arabic */
     $arabic = require lang_path('ar/store.php');

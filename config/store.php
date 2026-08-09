@@ -6,4 +6,22 @@ return [
     'checkout_currency' => 'SAR',
     'default_display_currency' => 'SAR',
     'display_currencies' => ['SAR', 'USD', 'EUR', 'GBP'],
+    'support' => [
+        'whatsapp_url' => 'https://wa.me/966537998099',
+        'email' => 'info@arab-ut.com',
+    ],
+    'socials' => [
+        'x' => 'https://x.com/fut_fi',
+        'instagram' => 'https://www.instagram.com/arabutcoins/',
+    ],
+    'simple_pages' => [
+        'cart', 'sbc', 'fut_champions', 'privacy', 'returns',
+        'warranty', 'ea_backup_codes', 'terms',
+    ],
+    'payments' => [
+        ['name' => 'Mada', 'image_url' => '/images/store/payments/mada.png', 'width' => 120, 'height' => 41],
+        ['name' => 'Visa', 'image_url' => '/images/store/payments/visa.png', 'width' => 120, 'height' => 39],
+        ['name' => 'Mastercard', 'image_url' => '/images/store/payments/mastercard.png', 'width' => 120, 'height' => 75],
+        ['name' => 'Apple Pay', 'image_url' => '/images/store/payments/apple-pay.png', 'width' => 120, 'height' => 50],
+    ],
 ];

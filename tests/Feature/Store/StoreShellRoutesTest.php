@@ -1,0 +1,70 @@
+<?php
+
+use App\Models\User;
+use Inertia\Testing\AssertableInertia as Assert;
+
+test('every non-transactional storefront destination has the right bilingual page contract', function (
+    string $path,
+    string $locale,
+    string $page,
+    string $title,
+    string $body,
+) {
+    $this->get($path)
+        ->assertOk()
+        ->assertInertia(fn (Assert $inertia) => $inertia
+            ->component('store/simple-page')
+            ->where('locale', $locale)
+            ->where('page.key', $page)
+            ->where('page.title', $title)
+            ->where('page.body', $body)
+            ->where('storeShell.homeUrl', $locale === 'en' ? '/en' : '/')
+            ->where('storeShell.coinsUrl', $locale === 'en' ? '/en#coins' : '/#coins')
+            ->where('storeShell.cartUrl', $locale === 'en' ? '/en/cart' : '/cart')
+            ->where('storeShell.sbcUrl', $locale === 'en' ? '/en/sbc' : '/sbc')
+            ->where('storeShell.futChampionsUrl', $locale === 'en' ? '/en/fut-champions' : '/fut-champions')
+            ->where('storeShell.privacyUrl', $locale === 'en' ? '/en/privacy' : '/privacy')
+            ->where('storeShell.returnsUrl', $locale === 'en' ? '/en/returns' : '/returns')
+            ->where('storeShell.warrantyUrl', $locale === 'en' ? '/en/warranty' : '/warranty')
+            ->where('storeShell.eaBackupCodesUrl', $locale === 'en' ? '/en/ea-backup-codes' : '/ea-backup-codes')
+            ->where('storeShell.termsUrl', $locale === 'en' ? '/en/terms' : '/terms')
+            ->where('storeShell.accountUrl', '/login')
+            ->where('storeShell.whatsappUrl', 'https://wa.me/966537998099')
+            ->where('storeShell.email', 'info@arab-ut.com')
+            ->where('storeShell.payments.0', [
+                'name' => 'Mada',
+                'imageUrl' => '/images/store/payments/mada.png',
+                'width' => 120,
+                'height' => 41,
+            ])
+            ->where('storeShell.socials.x', 'https://x.com/fut_fi')
+            ->where('storeShell.socials.instagram', 'https://www.instagram.com/arabutcoins/')
+            ->missing('storeShell.socials.tiktok')
+            ->missing('storeShell.socials.snapchat'));
+})->with([
+    'cart' => ['/cart', 'ar', 'cart', 'السلة', 'السلة بتكون جاهزة مع مرحلة الطلب والدفع. حالياً تقدر تختار خدمتك من الرئيسية.'],
+    'explicit Arabic cart' => ['/ar/cart', 'ar', 'cart', 'السلة', 'السلة بتكون جاهزة مع مرحلة الطلب والدفع. حالياً تقدر تختار خدمتك من الرئيسية.'],
+    'English cart' => ['/en/cart', 'en', 'cart', 'Cart', 'The cart will be enabled with the ordering and payment stage. You can choose your service from the home page now.'],
+    'SBC' => ['/sbc', 'ar', 'sbc', 'خدمات SBC', 'نجهز صفحة SBC وربط المنتجات الآلي. بتلقى كل الخيارات هنا بعد اكتمال الربط.'],
+    'English SBC' => ['/en/sbc', 'en', 'sbc', 'SBC Services', 'We are preparing the SBC catalog and automated product connection. All options will appear here when the connection is complete.'],
+    'FUT Champions' => ['/fut-champions', 'ar', 'fut_champions', 'FUT Champions', 'نجهز صفحة الخدمة وتفاصيل الطلب. تقدر تتواصل معنا لو تحتاج مساعدة الآن.'],
+    'English FUT Champions' => ['/en/fut-champions', 'en', 'fut_champions', 'FUT Champions', 'We are preparing the service page and order details. Contact us if you need help now.'],
+    'privacy' => ['/privacy', 'ar', 'privacy', 'سياسة الخصوصية', 'ننقل ونراجع سياسة الخصوصية للمتجر الجديد. ما نجمع أي بيانات من هذه الصفحة.'],
+    'English privacy' => ['/en/privacy', 'en', 'privacy', 'Privacy Policy', 'We are migrating and reviewing the policy for the new store. This page does not collect any data.'],
+    'returns' => ['/returns', 'ar', 'returns', 'سياسة الاسترجاع', 'ننقل شروط الاسترجاع بصياغة واضحة قبل تفعيل الدفع.'],
+    'English returns' => ['/en/returns', 'en', 'returns', 'Returns Policy', 'We are migrating the return terms in clear language before payments are enabled.'],
+    'warranty' => ['/warranty', 'ar', 'warranty', 'سياسة الضمان والتعويض', 'ننقل تفاصيل الضمان والتعويض قبل تفعيل الطلبات.'],
+    'English warranty' => ['/en/warranty', 'en', 'warranty', 'Warranty and Compensation', 'We are migrating the warranty and compensation details before orders are enabled.'],
+    'EA codes' => ['/ea-backup-codes', 'ar', 'ea_backup_codes', 'أكواد EA الاحتياطية', 'نجهز شرح بسيط وآمن لطريقة استخراج الأكواد.'],
+    'English EA codes' => ['/en/ea-backup-codes', 'en', 'ea_backup_codes', 'EA Backup Codes', 'We are preparing a simple, secure guide for obtaining backup codes.'],
+    'terms' => ['/terms', 'ar', 'terms', 'شروط الخدمة', 'ننقل ونراجع شروط الخدمة قبل إطلاق الطلب والدفع.'],
+    'English terms' => ['/en/terms', 'en', 'terms', 'Terms of Service', 'We are migrating and reviewing the terms before ordering and payments launch.'],
+]);
+
+test('the account destination changes from login to the authenticated dashboard', function () {
+    $this->actingAs(User::factory()->create())
+        ->get('/cart')
+        ->assertOk()
+        ->assertInertia(fn (Assert $inertia) => $inertia
+            ->where('storeShell.accountUrl', '/dashboard'));
+});
