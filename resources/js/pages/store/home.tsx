@@ -2,13 +2,16 @@ import { Head, usePage } from '@inertiajs/react';
 
 import { CoinsConfigurator } from '@/components/configurator/coins';
 import StoreLayout from '@/layouts/store-layout';
-import type { StoreLayoutTranslations } from '@/layouts/store-layout';
 import type {
     CoinsAmountRules,
     CoinsAvailability,
     CoinsPlatformOption,
     CoinsStoreTranslations,
 } from '@/types/coins';
+import type {
+    StoreShellConfig,
+    StoreShellTranslations,
+} from '@/types/store-shell';
 
 type StorePageProps = {
     direction: 'rtl' | 'ltr';
@@ -20,9 +23,8 @@ type StorePageProps = {
     amount: CoinsAmountRules;
     platforms: CoinsPlatformOption[];
     store: CoinsStoreTranslations;
-    ui: StoreLayoutTranslations & {
-        home_title: string;
-    };
+    storeShell: StoreShellConfig;
+    ui: StoreShellTranslations;
 };
 
 export default function StoreHome() {
@@ -37,6 +39,7 @@ export default function StoreHome() {
         quoteUrl,
         status,
         store,
+        storeShell,
         ui,
     } = page.props;
     const hasHomepageContract =
@@ -52,6 +55,7 @@ export default function StoreHome() {
             displayCurrency={displayCurrency}
             displayCurrencies={displayCurrencies}
             locale={locale}
+            storeShell={storeShell}
             ui={ui}
         >
             <Head title={store?.seo_title ?? ui.home_title} />

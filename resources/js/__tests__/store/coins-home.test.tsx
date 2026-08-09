@@ -159,6 +159,23 @@ function availableProps() {
         quoteUrl: '/en/coins/quote',
         status: 'available',
         store,
+        storeShell: {
+            homeUrl: '/en',
+            coinsUrl: '/en#coins',
+            cartUrl: '/en/cart',
+            sbcUrl: '/en/sbc',
+            futChampionsUrl: '/en/fut-champions',
+            accountUrl: '/en/my-account',
+            privacyUrl: '/en/privacy',
+            returnsUrl: '/en/returns',
+            warrantyUrl: '/en/warranty',
+            eaBackupCodesUrl: '/en/ea-backup-codes',
+            termsUrl: '/en/terms',
+            whatsappUrl: 'https://wa.me/966537998099',
+            email: 'support@example.com',
+            socials: { x: '', instagram: '' },
+            payments: [],
+        },
         ui: {
             brand: 'Arab UT',
             checkout_notice:
@@ -168,6 +185,18 @@ function availableProps() {
             language: 'العربية',
             skip_to_content: 'Skip to content',
             store_tools: 'Store tools',
+            header: {
+                primary_navigation: 'Primary navigation',
+                preferences: 'Display preferences',
+                home: 'Home',
+                coins: 'Coins',
+                sbc: 'SBC',
+                fut_champions: 'FUT Champions',
+                most_requested: 'Most requested',
+                whatsapp: 'WhatsApp',
+                cart: 'Cart',
+                account: 'Account',
+            },
         },
     };
 }
@@ -293,15 +322,18 @@ describe('Coins homepage', () => {
 
     it('omits unsupported credential and commerce controls', () => {
         render(<StoreHome />);
+        const main = screen.getByRole('main');
 
-        expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
         expect(
-            screen.queryByRole('link', {
+            within(main).queryByLabelText(/password/i),
+        ).not.toBeInTheDocument();
+        expect(
+            within(main).queryByRole('link', {
                 name: /cart|checkout|buy|order/i,
             }),
         ).not.toBeInTheDocument();
         expect(
-            screen.queryByRole('button', {
+            within(main).queryByRole('button', {
                 name: /cart|checkout|buy|order/i,
             }),
         ).not.toBeInTheDocument();
@@ -415,9 +447,11 @@ describe('Coins homepage', () => {
         expect(backButton).toBeVisible();
         expect(document.querySelector('.coins-product-reference')).toBeNull();
         expect(
-            document.querySelector(
-                'img[src="/images/store/coins/ut-coin-80.webp"]',
-            ),
+            screen
+                .getByRole('main')
+                .querySelector(
+                    'img[src="/images/store/coins/ut-coin-80.webp"]',
+                ),
         ).toBeNull();
         expect(
             screen.queryByRole('button', { name: 'Start again' }),

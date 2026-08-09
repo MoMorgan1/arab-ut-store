@@ -22,6 +22,7 @@ export default function SimpleStorePage() {
             displayCurrency={displayCurrency}
             displayCurrencies={displayCurrencies}
             locale={locale}
+            storeShell={storeShell}
             ui={ui}
         >
             <Head title={page.title} />

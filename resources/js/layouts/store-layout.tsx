@@ -1,12 +1,12 @@
 import type { PropsWithChildren } from 'react';
 
-export type StoreLayoutTranslations = {
-    brand: string;
-    currency_selector: string;
-    language: string;
-    skip_to_content: string;
-    store_tools: string;
-};
+import { StoreHeader } from '@/components/store/store-header';
+import type {
+    StoreShellConfig,
+    StoreShellTranslations,
+} from '@/types/store-shell';
+
+export type StoreLayoutTranslations = StoreShellTranslations;
 
 type StoreLayoutProps = PropsWithChildren<{
     currentUrl: string;
@@ -14,27 +14,9 @@ type StoreLayoutProps = PropsWithChildren<{
     direction: 'rtl' | 'ltr';
     displayCurrency: string;
     displayCurrencies: string[];
-    ui: StoreLayoutTranslations;
+    storeShell: StoreShellConfig;
+    ui: StoreShellTranslations;
 }>;
-
-function relativeUrl(currentUrl: string): URL {
-    return new URL(currentUrl, 'https://arab-ut.local');
-}
-
-function currencyHref(currentUrl: string, currency: string): string {
-    const url = relativeUrl(currentUrl);
-
-    url.searchParams.set('currency', currency);
-
-    return `${url.pathname}${url.search}${url.hash}`;
-}
-
-function languageHref(currentUrl: string, locale: 'ar' | 'en'): string {
-    const url = relativeUrl(currentUrl);
-    const targetPath = locale === 'ar' ? '/en' : '/';
-
-    return `${targetPath}${url.search}${url.hash}`;
-}
 
 export default function StoreLayout({
     children,
@@ -43,11 +25,9 @@ export default function StoreLayout({
     displayCurrency,
     displayCurrencies,
     locale,
+    storeShell,
     ui,
 }: StoreLayoutProps) {
-    const targetLocale = locale === 'ar' ? 'en' : 'ar';
-    const targetDirection = targetLocale === 'ar' ? 'rtl' : 'ltr';
-
     return (
         <div
             className="store-shell min-h-screen bg-[var(--arabut-navy)] text-[var(--arabut-ink)]"
@@ -57,74 +37,15 @@ export default function StoreLayout({
             <a className="store-skip-link" href="#store-content">
                 {ui.skip_to_content}
             </a>
-            <header className="store-header" dir={direction}>
-                <div className="store-header__inner">
-                    <a
-                        aria-label={ui.brand}
-                        className="store-wordmark"
-                        href={locale === 'ar' ? '/' : '/en'}
-                    >
-                        <img
-                            alt=""
-                            aria-hidden="true"
-                            height="40"
-                            src="/images/arabut-logo-header.webp"
-                            width="40"
-                        />
-                        <span>{ui.brand}</span>
-                    </a>
-                    <div className="store-tools">
-                        <nav aria-label={ui.store_tools}>
-                            <a
-                                className="store-tool-link"
-                                dir={targetDirection}
-                                href={languageHref(currentUrl, locale)}
-                                lang={targetLocale}
-                            >
-                                {ui.language}
-                            </a>
-                        </nav>
-                        <nav aria-label={ui.currency_selector}>
-                            <details className="group relative">
-                                <summary
-                                    aria-label={`${ui.currency_selector}: ${displayCurrency}`}
-                                    className="store-currency-toggle"
-                                >
-                                    <span aria-hidden="true">
-                                        {displayCurrency}
-                                    </span>
-                                    <span
-                                        aria-hidden="true"
-                                        className="transition group-open:rotate-180"
-                                    >
-                                        ⌄
-                                    </span>
-                                </summary>
-                                <ul className="store-currency-menu ltr:right-0 rtl:left-0">
-                                    {displayCurrencies.map((currency) => (
-                                        <li key={currency}>
-                                            <a
-                                                aria-current={
-                                                    currency === displayCurrency
-                                                        ? 'page'
-                                                        : undefined
-                                                }
-                                                className="store-currency-option"
-                                                href={currencyHref(
-                                                    currentUrl,
-                                                    currency,
-                                                )}
-                                            >
-                                                {currency}
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </details>
-                        </nav>
-                    </div>
-                </div>
-            </header>
+            <StoreHeader
+                currentUrl={currentUrl}
+                direction={direction}
+                displayCurrencies={displayCurrencies}
+                displayCurrency={displayCurrency}
+                locale={locale}
+                shell={storeShell}
+                translations={ui}
+            />
             <main className="store-main" id="store-content">
                 {children}
             </main>
