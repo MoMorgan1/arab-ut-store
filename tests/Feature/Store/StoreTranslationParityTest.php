@@ -58,7 +58,7 @@ test('Arabic customer copy consistently calls the service كوينز', function 
     $serialized = json_encode($arabic, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
 
     expect(data_get($arabic, 'hero.title'))->toBe('كوينز فيفا 27')
-        ->and(data_get($arabic, 'coins_section.title'))->toBe('اختر باقة الكوينز')
+        ->and(data_get($arabic, 'coins_section.title'))->toBe('اطلب الكوينز')
         ->and(data_get($arabic, 'amount_copy.label'))->toBe('كمية الكوينز')
         ->and($serialized)->not->toContain('عملات')
         ->and($serialized)->not->toContain('العملات');
@@ -74,6 +74,8 @@ test('the configurator uses the approved WordPress annotations', function () {
         ->and(data_get($arabic, 'delivery.badges.normal'))->toBe('ميزانية أقل')
         ->and(data_get($arabic, 'delivery.badges.fast'))->toBe('موصى به')
         ->and(data_get($english, 'delivery.badges.fast'))->toBe('Recommended')
+        ->and(data_get($arabic, 'quote.refreshing'))->toBe('نحدّث السعر…')
+        ->and(data_get($english, 'quote.refreshing'))->toBe('Refreshing price…')
         ->and(data_get($arabic, 'actions'))->not->toHaveKey('restart')
         ->and(data_get($english, 'actions'))->not->toHaveKey('restart');
 });

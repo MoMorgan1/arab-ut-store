@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react';
 
 export type StoreLayoutTranslations = {
+    brand: string;
     currency_selector: string;
     language: string;
     skip_to_content: string;
@@ -59,7 +60,7 @@ export default function StoreLayout({
             <header className="store-header" dir={direction}>
                 <div className="store-header__inner">
                     <a
-                        aria-label="Arab UT"
+                        aria-label={ui.brand}
                         className="store-wordmark"
                         href={locale === 'ar' ? '/' : '/en'}
                     >
@@ -70,7 +71,7 @@ export default function StoreLayout({
                             src="/images/arabut-logo-header.webp"
                             width="40"
                         />
-                        <span>Arab UT</span>
+                        <span>{ui.brand}</span>
                     </a>
                     <div className="store-tools">
                         <nav aria-label={ui.store_tools}>

@@ -41,6 +41,7 @@ vi.mock('@inertiajs/react', () => ({
 const englishUi = mockPage.props.ui;
 const arabicUi = {
     ...englishUi,
+    brand: 'عرب التيميت',
     currency: 'العملة',
     currency_selector: 'اختر عملة العرض',
     language: 'English',
@@ -69,6 +70,9 @@ describe('StoreLayout', () => {
         );
 
         expect(screen.getByRole('banner')).toHaveAttribute('dir', 'rtl');
+        expect(
+            screen.getByRole('link', { name: 'عرب التيميت' }),
+        ).toHaveTextContent('عرب التيميت');
         expect(screen.getByRole('link', { name: 'English' })).toHaveAttribute(
             'href',
             '/en?campaign=spring&currency=EUR#offers',
@@ -98,6 +102,10 @@ describe('StoreLayout', () => {
         );
 
         const languageLink = screen.getByRole('link', { name: 'العربية' });
+
+        expect(screen.getByRole('link', { name: 'Arab UT' })).toHaveTextContent(
+            'Arab UT',
+        );
 
         expect(languageLink).toHaveAttribute(
             'href',

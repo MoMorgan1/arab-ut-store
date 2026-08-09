@@ -11,8 +11,16 @@ type QuotePanelProps = {
 };
 
 export function QuotePanel({ locale, state, translations }: QuotePanelProps) {
+    const quote =
+        state.status === 'success' || state.status === 'refreshing'
+            ? state.quote
+            : null;
+
     return (
         <section
+            aria-busy={
+                state.status === 'loading' || state.status === 'refreshing'
+            }
             aria-labelledby="coins-quote-title"
             className="coins-quote-panel"
         >
@@ -31,17 +39,24 @@ export function QuotePanel({ locale, state, translations }: QuotePanelProps) {
                 </p>
             ) : null}
 
-            {state.status === 'success' ? (
+            {quote !== null ? (
                 <div aria-live="polite" className="coins-quote-panel__result">
                     <span>{translations.quote.total}</span>
                     <strong>
                         {formatHalalah(
-                            state.quote.total.amountHalalah,
-                            state.quote.total.currency,
+                            quote.total.amountHalalah,
+                            quote.total.currency,
                             locale,
                         )}
                     </strong>
                 </div>
+            ) : null}
+
+            {state.status === 'refreshing' ? (
+                <p aria-live="polite" className="coins-quote-panel__refreshing">
+                    <span aria-hidden="true" className="coins-loading-mark" />
+                    {translations.quote.refreshing}
+                </p>
             ) : null}
 
             {state.status === 'validation' ? (

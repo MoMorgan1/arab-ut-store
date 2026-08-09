@@ -107,6 +107,16 @@ function clampSelection(
     };
 }
 
+function quoteStateForValidRefresh(
+    quoteState: CoinsQuoteViewState,
+): CoinsQuoteViewState {
+    if (quoteState.status === 'success' || quoteState.status === 'refreshing') {
+        return { quote: quoteState.quote, status: 'refreshing' };
+    }
+
+    return { status: 'idle' };
+}
+
 export function coinsConfiguratorReducer(
     state: CoinsConfiguratorState,
     action: CoinsConfiguratorAction,
@@ -158,7 +168,7 @@ export function coinsConfiguratorReducer(
                 quantityInput: action.value,
                 quoteState:
                     action.validQuantity !== null
-                        ? { status: 'idle' }
+                        ? quoteStateForValidRefresh(state.quoteState)
                         : { status: 'validation' },
             };
         case 'quantity-normalized':
@@ -172,10 +182,17 @@ export function coinsConfiguratorReducer(
                 announcement: '',
                 lastValidQuantity: action.value,
                 quantityInput: String(action.value),
-                quoteState: { status: 'idle' },
+                quoteState: quoteStateForValidRefresh(state.quoteState),
             };
         case 'quote-loading':
-            return { ...state, quoteState: { status: 'loading' } };
+            return {
+                ...state,
+                quoteState:
+                    state.quoteState.status === 'success' ||
+                    state.quoteState.status === 'refreshing'
+                        ? quoteStateForValidRefresh(state.quoteState)
+                        : { status: 'loading' },
+            };
         case 'quote-succeeded':
             return {
                 ...state,

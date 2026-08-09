@@ -73,6 +73,7 @@ return [
     'quote' => [
         'title' => 'Your current quote',
         'loading' => 'Calculating the current quote…',
+        'refreshing' => 'Refreshing price…',
         'total' => 'Total',
         'unavailable' => 'Coins pricing is temporarily unavailable.',
         'validation_error' => 'Check your selection and amount.',

@@ -94,6 +94,7 @@ const store = {
     quote: {
         title: 'Your live quote',
         loading: 'Checking the current price',
+        refreshing: 'Refreshing price…',
         total: 'Total',
         unavailable: 'Pricing is unavailable right now.',
         validation_error: 'Check the selected amount and try again.',
@@ -355,7 +356,7 @@ describe('Coins homepage', () => {
         },
     );
 
-    it('shows the WordPress delivery annotations and amount total surface', async () => {
+    it('shows the WordPress delivery annotations and amount quote footer', async () => {
         render(<StoreHome />);
         selectPlatform('PS / Xbox');
 
@@ -392,17 +393,24 @@ describe('Coins homepage', () => {
             '.coins-quote-panel__result',
         );
         const adjustments = document.querySelector('.coins-adjustments');
+        const backButton = screen.getByRole('button', {
+            name: store.actions.back,
+        });
         expect(quoteResult).not.toBeNull();
         expect(adjustments).not.toBeNull();
         expect(
-            adjustments!.compareDocumentPosition(quoteResult!) &
+            backButton.compareDocumentPosition(quoteResult!) &
                 Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
         expect(quoteResult?.matches('a, button')).toBe(false);
         expect(quoteResult?.querySelector('a, button')).toBeNull();
+        expect(backButton).toBeVisible();
+        expect(document.querySelector('.coins-product-reference')).toBeNull();
         expect(
-            screen.getByRole('button', { name: store.actions.back }),
-        ).toBeVisible();
+            document.querySelector(
+                'img[src="/images/store/coins/ut-coin-80.webp"]',
+            ),
+        ).toBeNull();
         expect(
             screen.queryByRole('button', { name: 'Start again' }),
         ).not.toBeInTheDocument();
@@ -538,6 +546,9 @@ describe('Coins homepage', () => {
         const quotePanel = screen.getByRole('region', {
             name: store.quote.title,
         });
+        const backButton = screen.getByRole('button', {
+            name: store.actions.back,
+        });
         const fiveMillion = screen.getByRole('button', { name: '5M' });
         const orderedControls = [
             amountInput,
@@ -545,6 +556,7 @@ describe('Coins homepage', () => {
             range,
             ...sliderLabels,
             ...adjustments,
+            backButton,
             quotePanel,
         ];
 
@@ -604,6 +616,39 @@ describe('Coins homepage', () => {
         expect(screen.getByRole('button', { name: '+1M' })).toBeVisible();
         expect(screen.getByRole('button', { name: '-1M' })).toBeVisible();
     });
+
+    it.each([
+        { direction: 'rtl' as const, locale: 'ar' as const },
+        { direction: 'ltr' as const, locale: 'en' as const },
+    ])(
+        'renders only Latin numeric digits in the $locale customer surface',
+        async ({ direction, locale }) => {
+            mockPage.props = {
+                ...availableProps(),
+                direction,
+                locale,
+            };
+
+            render(<StoreHome />);
+            selectPlatform('PC');
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(300);
+            });
+
+            const amountInput = screen.getByRole('textbox', {
+                name: store.amount_copy.label,
+            });
+            const customerSurface = document.querySelector('.store-shell');
+
+            expect(amountInput).toHaveValue('50,000');
+            expect(customerSurface?.textContent).toContain('6.00');
+            expect(customerSurface?.textContent).toContain('SAR');
+            expect(
+                `${amountInput.getAttribute('value') ?? ''} ${customerSurface?.textContent ?? ''}`,
+            ).not.toMatch(/[٠-٩]/);
+        },
+    );
 
     it.each([
         { delivery: 'Normal' as const, platform: 'PS / Xbox' },
@@ -745,6 +790,201 @@ describe('Coins homepage', () => {
             'https://arab-ut.test',
         );
         expect(request.searchParams.get('quantity')).toBe('1000000');
+    });
+
+    it.each(['typing', 'slider', 'chip', 'adjustment'] as const)(
+        'keeps the successful price visible while %s refreshes its quote',
+        async (interaction) => {
+            const refreshedQuote = deferred<Response>();
+            let requestCount = 0;
+
+            vi.stubGlobal(
+                'fetch',
+                vi.fn(() => {
+                    requestCount += 1;
+
+                    return requestCount === 1
+                        ? Promise.resolve(quoteResponse(600, 'pc', 50_000))
+                        : refreshedQuote.promise;
+                }),
+            );
+
+            render(<StoreHome />);
+            selectPlatform('PC');
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(300);
+            });
+
+            expect(
+                screen.getByText((text) => text.includes('6.00')),
+            ).toBeVisible();
+
+            if (interaction === 'typing') {
+                fireEvent.change(
+                    screen.getByRole('textbox', {
+                        name: store.amount_copy.label,
+                    }),
+                    { target: { value: '100000' } },
+                );
+            } else if (interaction === 'slider') {
+                fireEvent.change(
+                    screen.getByRole('slider', {
+                        name: store.amount_copy.slider_label,
+                    }),
+                    { target: { value: '100000' } },
+                );
+            } else if (interaction === 'chip') {
+                fireEvent.click(screen.getByRole('button', { name: '100K' }));
+            } else {
+                fireEvent.click(screen.getByRole('button', { name: '+50K' }));
+            }
+
+            expect(
+                screen.getByText((text) => text.includes('6.00')),
+            ).toBeVisible();
+            expect(screen.getByText(store.quote.refreshing)).toBeVisible();
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(300);
+            });
+
+            expect(
+                screen.getByText((text) => text.includes('6.00')),
+            ).toBeVisible();
+            expect(screen.getByText(store.quote.refreshing)).toBeVisible();
+
+            await act(async () => {
+                refreshedQuote.resolve(quoteResponse(700, 'pc', 100_000));
+                await Promise.resolve();
+            });
+
+            expect(
+                screen.getByText((text) => text.includes('7.00')),
+            ).toBeVisible();
+            expect(
+                screen.queryByText(store.quote.refreshing),
+            ).not.toBeInTheDocument();
+        },
+    );
+
+    it('clears the previous price when a refresh fails closed', async () => {
+        let requestCount = 0;
+
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => {
+                requestCount += 1;
+
+                return Promise.resolve(
+                    requestCount === 1
+                        ? quoteResponse(600, 'pc', 50_000)
+                        : new Response(
+                              JSON.stringify({
+                                  error: {
+                                      code: 'coins_pricing_unavailable',
+                                      message: 'Unavailable',
+                                  },
+                              }),
+                              { status: 503 },
+                          ),
+                );
+            }),
+        );
+
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: '100K' }));
+        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+        });
+
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            store.quote.unavailable,
+        );
+        expect(
+            screen.queryByText((text) => text.includes('6.00')),
+        ).not.toBeInTheDocument();
+    });
+
+    it('clears the previous price when typed input becomes invalid', async () => {
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+        });
+
+        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
+        fireEvent.change(
+            screen.getByRole('textbox', {
+                name: store.amount_copy.label,
+            }),
+            { target: { value: '55555' } },
+        );
+
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            store.quote.validation_error,
+        );
+        expect(
+            screen.queryByText((text) => text.includes('6.00')),
+        ).not.toBeInTheDocument();
+    });
+
+    it('never carries a PC price into a new console selection', async () => {
+        const consoleQuote = deferred<Response>();
+        let requestCount = 0;
+
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => {
+                requestCount += 1;
+
+                return requestCount === 1
+                    ? Promise.resolve(quoteResponse(600, 'pc', 50_000))
+                    : consoleQuote.promise;
+            }),
+        );
+
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+        });
+
+        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
+        fireEvent.click(
+            screen.getByRole('button', { name: store.actions.back }),
+        );
+        fireEvent.click(screen.getByRole('radio', { name: 'PS / Xbox' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: store.actions.continue }),
+        );
+        fireEvent.click(screen.getByRole('radio', { name: 'Fast' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: store.actions.continue }),
+        );
+
+        expect(
+            screen.queryByText((text) => text.includes('6.00')),
+        ).not.toBeInTheDocument();
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+        });
+
+        expect(screen.getByText(store.quote.loading)).toBeVisible();
+        expect(
+            screen.queryByText((text) => text.includes('6.00')),
+        ).not.toBeInTheDocument();
     });
 
     it.each([

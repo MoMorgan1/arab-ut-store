@@ -1,3 +1,4 @@
+import { formatInteger } from '@/lib/money';
 import type { CoinsStoreTranslations } from '@/types/coins';
 
 import { interpolate } from './configurator-copy';
@@ -7,6 +8,7 @@ export type CoinsStep = 'platform' | 'delivery' | 'amount';
 type ProgressRailProps = {
     current: CoinsStep;
     includesDelivery: boolean;
+    locale: 'ar' | 'en';
     onNavigate: (step: CoinsStep) => void;
     translations: Pick<CoinsStoreTranslations, 'accessibility' | 'progress'>;
 };
@@ -14,6 +16,7 @@ type ProgressRailProps = {
 export function ProgressRail({
     current,
     includesDelivery,
+    locale,
     onNavigate,
     translations,
 }: ProgressRailProps) {
@@ -31,8 +34,8 @@ export function ProgressRail({
     ];
     const currentIndex = steps.findIndex((step) => step.value === current);
     const ariaLabel = interpolate(translations.accessibility.steps, {
-        current: currentIndex + 1,
-        total: steps.length,
+        current: formatInteger(currentIndex + 1, locale),
+        total: formatInteger(steps.length, locale),
     });
 
     return (
@@ -45,7 +48,7 @@ export function ProgressRail({
                             aria-hidden="true"
                             className="coins-progress__number"
                         >
-                            {index + 1}
+                            {formatInteger(index + 1, locale)}
                         </span>
                         <span>{step.label}</span>
                     </>

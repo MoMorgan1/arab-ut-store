@@ -5,7 +5,6 @@ import type {
     CoinsDeliveryValue,
     CoinsPlatformOption,
     CoinsPlatformValue,
-    CoinsProductSummary,
     CoinsStoreTranslations,
 } from '@/types/coins';
 
@@ -27,7 +26,6 @@ type CoinsConfiguratorProps = {
     amount: CoinsAmountRules;
     locale: 'ar' | 'en';
     platforms: CoinsPlatformOption[];
-    product: CoinsProductSummary;
     quoteUrl: string;
     translations: CoinsStoreTranslations;
 };
@@ -36,7 +34,6 @@ export function CoinsConfigurator({
     amount,
     locale,
     platforms,
-    product,
     quoteUrl,
     translations,
 }: CoinsConfiguratorProps) {
@@ -247,6 +244,7 @@ export function CoinsConfigurator({
             <ProgressRail
                 current={state.step}
                 includesDelivery={!isPc}
+                locale={locale}
                 onNavigate={navigateTo}
                 translations={translations}
             />
@@ -271,6 +269,7 @@ export function CoinsConfigurator({
             {state.step === 'delivery' && selectedPlatform !== null ? (
                 <DeliveryStep
                     focusRef={deliveryHeading}
+                    locale={locale}
                     onBack={goBack}
                     onChoose={chooseDelivery}
                     onContinue={continueFromDelivery}
@@ -292,7 +291,6 @@ export function CoinsConfigurator({
                     onCommit={commitQuantity}
                     onQuantityBlur={commitTypedQuantity}
                     onQuantityChange={updateQuantity}
-                    product={product}
                     quantity={state.lastValidQuantity}
                     quantityInput={state.quantityInput}
                     quoteState={state.quoteState}

@@ -23,15 +23,15 @@ test('the English storefront route uses left-to-right metadata', function () {
             ->where('direction', 'ltr'));
 });
 
-test('the public brand remains Arab UT in the :locale storefront', function (string $path, string $locale) {
+test('the storefront exposes the exact localized wordmark in the :locale locale', function (string $path, string $locale, string $brand) {
     $this->get($path)
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('locale', $locale)
-            ->where('ui.brand', 'Arab UT'));
+            ->where('ui.brand', $brand));
 })->with([
-    'Arabic' => ['/', 'ar'],
-    'English' => ['/en', 'en'],
+    'Arabic' => ['/', 'ar', 'عرب التيميت'],
+    'English' => ['/en', 'en', 'Arab UT'],
 ]);
 
 test('the storefront shares the configured display currency list', function () {

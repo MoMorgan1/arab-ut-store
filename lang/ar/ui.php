@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'brand' => 'Arab UT',
+    'brand' => 'عرب التيميت',
     'language' => 'English',
     'currency' => 'العملة',
     'currency_selector' => 'اختر عملة العرض',

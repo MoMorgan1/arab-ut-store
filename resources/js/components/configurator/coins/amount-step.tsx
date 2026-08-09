@@ -4,7 +4,6 @@ import type { CSSProperties, Ref } from 'react';
 import { formatCoins, formatCompactCoins } from '@/lib/money';
 import type {
     CoinsAmountRules,
-    CoinsProductSummary,
     CoinsQuoteViewState,
     CoinsStoreTranslations,
 } from '@/types/coins';
@@ -22,7 +21,6 @@ type AmountStepProps = {
     onCommit: (value: number) => void;
     onQuantityBlur: () => void;
     onQuantityChange: (value: string) => void;
-    product: CoinsProductSummary;
     quantity: number;
     quantityInput: string;
     quoteState: CoinsQuoteViewState;
@@ -32,8 +30,8 @@ type AmountStepProps = {
 const DECREMENTS = [-1_000_000, -500_000, -100_000, -50_000];
 const INCREMENTS = [50_000, 100_000, 500_000, 1_000_000];
 
-function adjustmentLabel(delta: number): string {
-    return `${delta > 0 ? '+' : '-'}${formatCompactCoins(Math.abs(delta))}`;
+function adjustmentLabel(delta: number, locale: 'ar' | 'en'): string {
+    return `${delta > 0 ? '+' : '-'}${formatCompactCoins(Math.abs(delta), locale)}`;
 }
 
 export function AmountStep({
@@ -47,7 +45,6 @@ export function AmountStep({
     onCommit,
     onQuantityBlur,
     onQuantityChange,
-    product,
     quantity,
     quantityInput,
     quoteState,
@@ -135,7 +132,7 @@ export function AmountStep({
                             }}
                             type="button"
                         >
-                            {formatCompactCoins(preset)}
+                            {formatCompactCoins(preset, locale)}
                         </button>
                     ))}
             </div>
@@ -156,14 +153,14 @@ export function AmountStep({
 
             <div className="coins-slider-labels">
                 <span
-                    aria-label={`${translations.amount_copy.minimum_label}: ${formatCompactCoins(amount.minimum)}`}
+                    aria-label={`${translations.amount_copy.minimum_label}: ${formatCompactCoins(amount.minimum, locale)}`}
                 >
-                    {formatCompactCoins(amount.minimum)}
+                    {formatCompactCoins(amount.minimum, locale)}
                 </span>
                 <span
-                    aria-label={`${translations.amount_copy.maximum_label}: ${formatCompactCoins(maximum)}`}
+                    aria-label={`${translations.amount_copy.maximum_label}: ${formatCompactCoins(maximum, locale)}`}
                 >
-                    {formatCompactCoins(maximum)}
+                    {formatCompactCoins(maximum, locale)}
                 </span>
             </div>
 
@@ -176,7 +173,7 @@ export function AmountStep({
                             onClick={() => adjustDirectly(delta)}
                             type="button"
                         >
-                            {adjustmentLabel(delta)}
+                            {adjustmentLabel(delta, locale)}
                         </button>
                     ))}
                 </div>
@@ -188,17 +185,11 @@ export function AmountStep({
                             onClick={() => adjustDirectly(delta)}
                             type="button"
                         >
-                            {adjustmentLabel(delta)}
+                            {adjustmentLabel(delta, locale)}
                         </button>
                     ))}
                 </div>
             </div>
-
-            <QuotePanel
-                locale={locale}
-                state={quoteState}
-                translations={translations}
-            />
 
             <div className="coins-step__actions coins-step__actions--amount">
                 <button
@@ -209,16 +200,11 @@ export function AmountStep({
                     {translations.actions.back}
                 </button>
             </div>
-            <p className="coins-product-reference">
-                <img
-                    alt=""
-                    aria-hidden="true"
-                    height="36"
-                    src={product.imageUrl}
-                    width="36"
-                />
-                <span>{product.name}</span>
-            </p>
+            <QuotePanel
+                locale={locale}
+                state={quoteState}
+                translations={translations}
+            />
         </div>
     );
 }

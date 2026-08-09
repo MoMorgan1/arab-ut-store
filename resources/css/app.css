@@ -247,6 +247,7 @@
 
 @layer components {
     .store-shell {
+        --store-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
         overflow-x: clip;
         background: var(--arabut-navy);
         color: var(--arabut-ink);
@@ -417,6 +418,23 @@
         text-align: center;
     }
 
+    .store-hero::after {
+        content: '';
+        position: absolute;
+        inset: -30% auto -30% -45%;
+        width: 32%;
+        opacity: 0;
+        background: linear-gradient(
+            90deg,
+            transparent,
+            rgb(228 183 86 / 14%),
+            transparent
+        );
+        pointer-events: none;
+        transform: translate3d(-120%, 0, 0) skewX(-14deg);
+        animation: store-hero-sweep 1100ms var(--store-ease-out) 450ms both;
+    }
+
     .store-hero__glow {
         position: absolute;
         inset-block-start: -8rem;
@@ -430,6 +448,7 @@
             transparent 70%
         );
         pointer-events: none;
+        animation: store-hero-glow 900ms var(--store-ease-out) both;
     }
 
     .store-hero__content {
@@ -514,12 +533,18 @@
         font-weight: 700;
         text-decoration: none;
         transition:
+            transform 180ms var(--store-ease-out),
             background-color 160ms ease,
             border-color 160ms ease;
     }
 
     .store-hero__cta:hover {
         background: var(--arabut-gold-bright);
+        transform: translateY(-2px);
+    }
+
+    .store-hero__cta:active {
+        transform: translateY(0) scale(0.98);
     }
 
     .store-hero__cta:focus-visible {
@@ -542,6 +567,19 @@
         min-width: 0;
         padding-inline: clamp(0.65rem, 2.5vw, 1.5rem);
         text-align: center;
+        animation: store-stat-reveal 560ms var(--store-ease-out) both;
+    }
+
+    .store-hero__stat:nth-child(2) {
+        animation-delay: 90ms;
+    }
+
+    .store-hero__stat:nth-child(3) {
+        animation-delay: 180ms;
+    }
+
+    .store-hero__stat:nth-child(4) {
+        animation-delay: 270ms;
     }
 
     .store-hero__stat + .store-hero__stat {
@@ -554,6 +592,7 @@
         direction: ltr;
         font-size: clamp(1.05rem, 2.5vw, 1.4rem);
         font-weight: 700;
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
         line-height: 1.2;
         unicode-bidi: isolate;
         white-space: nowrap;
@@ -618,6 +657,7 @@
         max-width: 42rem;
         margin-block-end: 2rem;
         text-align: start;
+        animation: store-section-reveal 700ms var(--store-ease-out) 180ms both;
     }
 
     .store-section-heading > p {
@@ -774,6 +814,7 @@
         width: 100%;
         margin: 0;
         color: var(--arabut-ink);
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
         font-size: clamp(1.35rem, 2.5vw, 1.8rem);
         font-weight: 700;
         line-height: 1.25;
@@ -987,8 +1028,7 @@
     .coins-secondary-action:focus-visible,
     .coins-quick-amounts button:focus-visible,
     .coins-adjustment:focus-visible,
-    .coins-amount-slider:focus-visible,
-    .coins-amount-input:focus-visible {
+    .coins-amount-slider:focus-visible {
         outline: 2px solid var(--arabut-focus);
         outline-offset: 3px;
     }
@@ -1001,7 +1041,7 @@
 
     .coins-step__actions--amount {
         display: block;
-        margin-block-start: 1rem;
+        margin-block-start: 1.25rem;
     }
 
     .coins-amount-field {
@@ -1014,10 +1054,32 @@
 
     .coins-amount-field__control {
         display: flex;
+        width: min(100%, 22rem);
         min-width: 0;
+        margin-inline: auto;
         align-items: baseline;
         justify-content: center;
         gap: 0.55rem;
+        border-block-end: 1px solid rgb(212 168 67 / 24%);
+        padding: 0 0 0.35rem;
+        transition:
+            border-color 160ms ease,
+            box-shadow 160ms ease;
+    }
+
+    .coins-amount-field__control:hover {
+        border-block-end-color: rgb(212 168 67 / 44%);
+    }
+
+    .coins-amount-field__control:focus-within {
+        border-block-end-color: var(--arabut-gold-bright);
+        box-shadow: 0 2px 0 rgb(212 168 67 / 12%);
+    }
+
+    .coins-amount-field__control:has(.coins-amount-input:focus-visible) {
+        border-radius: 0.25rem;
+        outline: 2px solid var(--arabut-focus);
+        outline-offset: 3px;
     }
 
     .coins-amount-input {
@@ -1026,24 +1088,15 @@
         max-width: 100%;
         flex: 0 1 auto;
         border: 0;
-        border-block-end: 2px solid transparent;
         background: transparent;
         padding: 0;
         color: var(--arabut-gold-bright);
         direction: ltr;
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
         font-size: clamp(1.65rem, 7vw, 2.15rem);
         font-weight: 700;
         outline: 0;
         text-align: center;
-        transition: border-color 160ms ease;
-    }
-
-    .coins-amount-input:hover {
-        border-block-end-color: rgb(212 168 67 / 30%);
-    }
-
-    .coins-amount-input:focus {
-        border-block-end-color: var(--arabut-gold);
     }
 
     .coins-amount-field__control > span {
@@ -1114,26 +1167,29 @@
             (var(--coins-slider-track) - var(--coins-slider-thumb)) / 2
         );
         appearance: none;
-        border: 2px solid #15120e;
+        border: 2px solid #2a2115;
         border-radius: 50%;
-        background: radial-gradient(
-            circle at 35% 30%,
-            #fff1b7 0 12%,
-            #d4a843 38%,
-            #b8860b 100%
-        );
+        background: var(--arabut-gold-bright);
         box-shadow:
-            0 0 0 2px rgb(255 241 183 / 92%),
-            0 0 0 6px rgb(212 168 67 / 18%),
-            0 0 16px rgb(212 168 67 / 60%);
+            0 0 0 4px rgb(212 168 67 / 12%),
+            0 3px 8px rgb(0 0 0 / 32%);
+        transition:
+            box-shadow 160ms var(--store-ease-out),
+            transform 160ms var(--store-ease-out);
+    }
+
+    .coins-amount-slider:hover::-webkit-slider-thumb {
+        box-shadow:
+            0 0 0 5px rgb(212 168 67 / 18%),
+            0 3px 8px rgb(0 0 0 / 32%);
+        transform: scale(1.04);
     }
 
     .coins-amount-slider:focus-visible::-webkit-slider-thumb {
         box-shadow:
-            0 0 0 3px rgb(255 241 183),
-            0 0 0 9px rgb(212 168 67 / 28%),
-            0 0 24px rgb(212 168 67 / 82%),
-            0 6px 16px rgb(0 0 0 / 38%);
+            0 0 0 3px rgb(255 241 183 / 94%),
+            0 0 0 7px rgb(212 168 67 / 22%),
+            0 3px 8px rgb(0 0 0 / 32%);
     }
 
     .coins-amount-slider::-moz-range-track {
@@ -1145,21 +1201,29 @@
     .coins-amount-slider::-moz-range-thumb {
         width: var(--coins-slider-thumb);
         height: var(--coins-slider-thumb);
-        border: 2px solid #15120e;
+        border: 2px solid #2a2115;
         border-radius: 50%;
-        background: #d4a843;
+        background: var(--arabut-gold-bright);
         box-shadow:
-            0 0 0 2px rgb(255 241 183 / 92%),
-            0 0 0 6px rgb(212 168 67 / 18%),
-            0 0 16px rgb(212 168 67 / 60%);
+            0 0 0 4px rgb(212 168 67 / 12%),
+            0 3px 8px rgb(0 0 0 / 32%);
+        transition:
+            box-shadow 160ms var(--store-ease-out),
+            transform 160ms var(--store-ease-out);
+    }
+
+    .coins-amount-slider:hover::-moz-range-thumb {
+        box-shadow:
+            0 0 0 5px rgb(212 168 67 / 18%),
+            0 3px 8px rgb(0 0 0 / 32%);
+        transform: scale(1.04);
     }
 
     .coins-amount-slider:focus-visible::-moz-range-thumb {
         box-shadow:
-            0 0 0 3px rgb(255 241 183),
-            0 0 0 9px rgb(212 168 67 / 28%),
-            0 0 24px rgb(212 168 67 / 82%),
-            0 6px 16px rgb(0 0 0 / 38%);
+            0 0 0 3px rgb(255 241 183 / 94%),
+            0 0 0 7px rgb(212 168 67 / 22%),
+            0 3px 8px rgb(0 0 0 / 32%);
     }
 
     .coins-slider-labels {
@@ -1212,17 +1276,18 @@
     }
 
     .coins-quote-panel {
-        min-block-size: 7rem;
-        margin-block-start: 1.25rem;
-        border: 1px solid rgb(212 168 67 / 18%);
-        border-radius: 0.75rem;
-        background: rgb(212 168 67 / 6%);
-        padding: 1rem;
+        min-block-size: 5.75rem;
+        margin-block-start: 1.5rem;
+        border: 0;
+        border-block-start: 1px solid rgb(212 168 67 / 20%);
+        background: transparent;
+        padding: 1.15rem 0 0;
     }
 
     .coins-quote-panel__title {
         margin: 0;
         color: var(--arabut-muted);
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
         font-size: 0.88rem;
         font-weight: 700;
     }
@@ -1234,6 +1299,7 @@
     }
 
     .coins-quote-panel__message,
+    .coins-quote-panel__refreshing,
     .coins-quote-panel__error {
         display: flex;
         margin: 0.75rem 0 0;
@@ -1244,6 +1310,12 @@
 
     .coins-quote-panel__error {
         color: var(--arabut-danger);
+    }
+
+    .coins-quote-panel__refreshing {
+        margin-block-start: 0.25rem;
+        color: var(--arabut-muted);
+        font-size: 0.78rem;
     }
 
     .coins-loading-mark {
@@ -1272,25 +1344,11 @@
         flex: 0 0 auto;
         color: var(--arabut-gold-bright);
         direction: ltr;
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
         font-size: 1.5rem;
         font-variant-numeric: tabular-nums;
         text-align: end;
         unicode-bidi: isolate;
-    }
-
-    .coins-product-reference {
-        display: flex;
-        margin: 0.8rem 0 0;
-        align-items: center;
-        gap: 0.55rem;
-        color: var(--arabut-muted);
-        font-size: 0.82rem;
-    }
-
-    .coins-product-reference img {
-        width: 2rem;
-        height: 2rem;
-        object-fit: contain;
     }
 
     .coins-unavailable {
@@ -1501,6 +1559,58 @@
     }
 }
 
+@keyframes store-hero-glow {
+    from {
+        opacity: 0.35;
+        transform: scale(0.88);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes store-hero-sweep {
+    0% {
+        opacity: 0;
+        transform: translate3d(-120%, 0, 0) skewX(-14deg);
+    }
+
+    24% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate3d(520%, 0, 0) skewX(-14deg);
+    }
+}
+
+@keyframes store-stat-reveal {
+    from {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes store-section-reveal {
+    from {
+        opacity: 0;
+        transform: translateY(0.875rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 @keyframes coins-loading {
     to {
         opacity: 0.35;
@@ -1508,6 +1618,25 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .store-hero::after {
+        display: none;
+    }
+
+    .store-hero__glow,
+    .store-hero__stat,
+    .store-section-heading {
+        opacity: 1;
+        transform: none;
+        animation: none;
+    }
+
+    .store-hero__cta:hover,
+    .store-hero__cta:active,
+    .coins-amount-slider:hover::-webkit-slider-thumb,
+    .coins-amount-slider:hover::-moz-range-thumb {
+        transform: none;
+    }
+
     .coins-loading-mark {
         animation: none;
     }

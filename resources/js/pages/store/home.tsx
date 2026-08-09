@@ -124,7 +124,6 @@ export default function StoreHome() {
                                     amount={amount}
                                     locale={locale}
                                     platforms={platforms}
-                                    product={product}
                                     quoteUrl={quoteUrl}
                                     translations={store}
                                 />

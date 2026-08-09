@@ -87,6 +87,7 @@ export type CoinsStoreTranslations = {
     quote: {
         title: string;
         loading: string;
+        refreshing: string;
         total: string;
         unavailable: string;
         validation_error: string;
@@ -120,5 +121,6 @@ export type CoinsQuoteViewState =
     | { status: 'idle' }
     | { status: 'loading' }
     | { status: 'success'; quote: CoinsQuote }
+    | { status: 'refreshing'; quote: CoinsQuote }
     | { status: 'validation' }
     | { status: 'unavailable' };

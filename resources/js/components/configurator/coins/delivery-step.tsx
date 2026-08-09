@@ -1,6 +1,6 @@
 import type { Ref } from 'react';
 
-import { formatCompactCoins } from '@/lib/money';
+import { formatCompactCoins, formatInteger } from '@/lib/money';
 import type {
     CoinsDeliveryValue,
     CoinsPlatformOption,
@@ -12,6 +12,7 @@ import { SelectionCard } from './selection-card';
 
 type DeliveryStepProps = {
     focusRef: Ref<HTMLLegendElement>;
+    locale: 'ar' | 'en';
     onBack: () => void;
     onChoose: (value: CoinsDeliveryValue) => void;
     onContinue: () => void;
@@ -22,6 +23,7 @@ type DeliveryStepProps = {
 
 export function DeliveryStep({
     focusRef,
+    locale,
     onBack,
     onChoose,
     onContinue,
@@ -54,13 +56,17 @@ export function DeliveryStep({
                             <strong>{label}</strong>
                             <small>
                                 {interpolate(translations.delivery.eta, {
-                                    minutes: delivery.minutesPerMillion,
+                                    minutes: formatInteger(
+                                        delivery.minutesPerMillion,
+                                        locale,
+                                    ),
                                 })}
                             </small>
                             <span className="coins-delivery-maximum">
                                 {interpolate(translations.delivery.maximum, {
                                     maximum: formatCompactCoins(
                                         delivery.maximum,
+                                        locale,
                                     ),
                                 })}
                             </span>
