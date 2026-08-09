@@ -90,7 +90,6 @@ const store = {
     actions: {
         continue: 'Continue',
         back: 'Back',
-        restart: 'Start again',
     },
     quote: {
         title: 'Your live quote',
@@ -318,7 +317,7 @@ describe('Coins homepage', () => {
         expect(within(progress).getByText(store.progress.amount)).toBeVisible();
     });
 
-    it('shows the WordPress delivery annotations and amount total surface', () => {
+    it('shows the WordPress delivery annotations and amount total surface', async () => {
         render(<StoreHome />);
         selectPlatform('PS / Xbox');
 
@@ -344,8 +343,14 @@ describe('Coins homepage', () => {
         );
 
         expect(screen.getByText('Enter the amount you want.')).toBeVisible();
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+        });
+
+        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
         expect(
-            screen.queryByRole('button', { name: store.actions.restart }),
+            screen.queryByRole('button', { name: 'Start again' }),
         ).not.toBeInTheDocument();
         expect(
             screen.getByRole('region', { name: store.quote.title }),

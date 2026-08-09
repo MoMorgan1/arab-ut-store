@@ -33,7 +33,6 @@ export type CoinsConfiguratorAction =
           clampMessage: string;
       }
     | { type: 'navigated'; step: CoinsStep }
-    | { type: 'restarted'; minimum: number }
     | {
           type: 'quantity-changed';
           value: string;
@@ -150,8 +149,6 @@ export function coinsConfiguratorReducer(
                 quoteState: { status: 'idle' },
                 step: action.step,
             };
-        case 'restarted':
-            return createInitialConfiguratorState(action.minimum);
         case 'quantity-changed':
             return {
                 ...state,

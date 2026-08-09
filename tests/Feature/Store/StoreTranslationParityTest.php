@@ -73,7 +73,9 @@ test('the configurator uses the approved WordPress annotations', function () {
     expect(data_get($arabic, 'amount_copy.help'))->toBe('اكتب الكمية اللي تبيها.')
         ->and(data_get($arabic, 'delivery.badges.normal'))->toBe('ميزانية أقل')
         ->and(data_get($arabic, 'delivery.badges.fast'))->toBe('موصى به')
-        ->and(data_get($english, 'delivery.badges.fast'))->toBe('Recommended');
+        ->and(data_get($english, 'delivery.badges.fast'))->toBe('Recommended')
+        ->and(data_get($arabic, 'actions'))->not->toHaveKey('restart')
+        ->and(data_get($english, 'actions'))->not->toHaveKey('restart');
 });
 
 test('the hero uses the approved bilingual copy and proof contract', function () {

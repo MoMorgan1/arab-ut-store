@@ -69,7 +69,6 @@ return [
     'actions' => [
         'continue' => 'Continue',
         'back' => 'Back',
-        'restart' => 'Start again',
     ],
     'quote' => [
         'title' => 'Your current quote',

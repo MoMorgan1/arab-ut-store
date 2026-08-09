@@ -69,7 +69,6 @@ return [
     'actions' => [
         'continue' => 'التالي',
         'back' => 'رجوع',
-        'restart' => 'ابدأ من جديد',
     ],
     'quote' => [
         'title' => 'سعرك الآن',

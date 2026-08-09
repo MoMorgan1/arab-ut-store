@@ -83,7 +83,6 @@ export type CoinsStoreTranslations = {
     actions: {
         continue: string;
         back: string;
-        restart: string;
     };
     quote: {
         title: string;
