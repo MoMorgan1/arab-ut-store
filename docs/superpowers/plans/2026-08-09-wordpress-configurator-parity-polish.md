@@ -43,7 +43,7 @@
 - Consumes: existing `navigateTo(step: CoinsStep)`, delivery `maximum` and `minutesPerMillion`, reducer-owned quantity, and `CoinsQuoteViewState`.
 - Produces: `ProgressRail` prop `onNavigate: (step: CoinsStep) => void`; delivery copy keys `badge`, `maximum`, and concise helper text; a `QuotePanel` without restart props; visually hidden live selection announcements.
 
-- [ ] **Step 1: Write failing parity and annotation tests**
+- [x] **Step 1: Write failing parity and annotation tests**
 
 Add exact translation assertions:
 
@@ -88,7 +88,7 @@ expect(screen.getByRole('region', { name: store.quote.title })).toBeVisible();
 
 Add a backward-progress test: after reaching amount, the completed platform and delivery steps are buttons; clicking delivery returns focus to the delivery legend. Current and future steps are not clickable.
 
-- [ ] **Step 2: Run focused tests and capture RED**
+- [x] **Step 2: Run focused tests and capture RED**
 
 Run:
 
@@ -101,7 +101,7 @@ npm test -- resources/js/__tests__/store/coins-home.test.tsx
 
 Expected: failures for old helper copy, missing delivery badges/caps, visible selection strip, noninteractive completed steps, and visible restart action.
 
-- [ ] **Step 3: Implement backward-only WordPress progress behavior**
+- [x] **Step 3: Implement backward-only WordPress progress behavior**
 
 Extend the progress contract:
 
@@ -116,7 +116,7 @@ type ProgressRailProps = {
 
 For each completed step, render a real button with the number and label and call `onNavigate(step)`. Render current/future steps as noninteractive content. Keep `aria-current="step"` on the current item and do not expose future steps as disabled fake buttons. Pass `navigateTo` from `CoinsConfigurator`.
 
-- [ ] **Step 4: Hide the visual selection strip without removing accessibility feedback**
+- [x] **Step 4: Hide the visual selection strip without removing accessibility feedback**
 
 Keep the existing conditional live region but change its class to a visually hidden utility:
 
@@ -130,7 +130,7 @@ Keep the existing conditional live region but change its class to a visually hid
 
 Do not use `display: none`, `hidden`, or `aria-hidden`, because the announcement must remain available to assistive technology.
 
-- [ ] **Step 5: Reproduce the WordPress delivery cards**
+- [x] **Step 5: Reproduce the WordPress delivery cards**
 
 Add bilingual keys under `delivery`:
 
@@ -156,7 +156,7 @@ Render each card in WordPress order with a badge, name, ETA, and maximum:
 
 Use `ميزانية أقل` and `موصى به` in Arabic. Keep the native radio and existing `SelectionCard` focus behavior.
 
-- [ ] **Step 6: Apply the amount and total annotations**
+- [x] **Step 6: Apply the amount and total annotations**
 
 Set Arabic helper to `اكتب الكمية اللي تبيها.` and English to `Enter the amount you want.` Remove `onRestart` from `AmountStep` and `QuotePanel`, delete the visible restart button, and keep the quote status region.
 
@@ -171,7 +171,7 @@ The result markup remains semantic and stable:
 
 Do not turn the price into a button or CTA.
 
-- [ ] **Step 7: Port the verified WordPress CSS structure**
+- [x] **Step 7: Port the verified WordPress CSS structure**
 
 Use the exported references:
 
@@ -188,7 +188,7 @@ Port only the corresponding storefront rules:
 - total row with label and tabular gold price, no nested restart link;
 - WordPress spacing rhythm and max-width while retaining existing semantic tokens and focus rings.
 
-- [ ] **Step 8: Verify Task 1 and commit**
+- [x] **Step 8: Verify Task 1 and commit**
 
 Run:
 
@@ -222,13 +222,13 @@ git commit -m "feat: match the WordPress Coins configurator"
 - Consumes: Task 1 WordPress-parity markup and behavior.
 - Produces: the same component/API contract with verified hierarchy, focus, touch sizing, responsive behavior, and browser evidence.
 
-- [ ] **Step 1: Run the required design passes against the parity build**
+- [x] **Step 1: Run the required design passes against the parity build**
 
 Read `.impeccable.md`, then apply `frontend-design`, `ui-ux-pro-max`, `arrange`, `adapt`, `typeset`, and `polish`. Treat WordPress as the source of truth; reject any generated palette, font, layout, or effect that replaces it.
 
 Record only actionable deltas in the task report. Allowed changes are limited to spacing, alignment, legibility, focus, contrast, responsive reflow, stable loading/error geometry, and touch target size.
 
-- [ ] **Step 2: Add regression tests for annotation and hierarchy contracts**
+- [x] **Step 2: Add regression tests for annotation and hierarchy contracts**
 
 Assert:
 
@@ -240,7 +240,7 @@ Assert:
 - exactly two delivery cards remain and include badge, ETA, and maximum;
 - all quick chips, adjustment controls, and navigation buttons retain accessible names.
 
-- [ ] **Step 3: Apply the smallest Impeccable CSS refinements**
+- [x] **Step 3: Apply the smallest Impeccable CSS refinements**
 
 Use the existing 4/8px-derived spacing rhythm. Ensure:
 
@@ -251,7 +251,7 @@ Use the existing 4/8px-derived spacing rhythm. Ensure:
 - all interactive targets are at least 44px with at least 8px practical separation;
 - reduced-motion behavior remains intact and no decorative animation is added.
 
-- [ ] **Step 4: Run the full automated gate**
+- [x] **Step 4: Run the full automated gate**
 
 Run:
 
@@ -262,7 +262,7 @@ git diff --check
 
 Expected: Composer validation, Pint, PHPStan, Pest, Vitest, ESLint, Prettier, TypeScript, and Vite build all pass.
 
-- [ ] **Step 5: Verify the real browser in both locales**
+- [x] **Step 5: Verify the real browser in both locales**
 
 Use the existing local preview and verify `/` and `/en` at widths `320`, `390`, `768`, `807`, and `1440`:
 
@@ -276,7 +276,7 @@ Use the existing local preview and verify `/` and `/en` at widths `320`, `390`, 
 - live price survives unchanged blur, equivalent typed input, and min/max no-op adjustments;
 - Thmanyah fonts are loaded, targets are at least 44px, focus is visible, no horizontal overflow exists, and the console has no errors.
 
-- [ ] **Step 6: Update status and commit**
+- [x] **Step 6: Update status and commit**
 
 Change the design spec implementation status from pending to verified only after the browser and automated gates pass. Commit:
 
