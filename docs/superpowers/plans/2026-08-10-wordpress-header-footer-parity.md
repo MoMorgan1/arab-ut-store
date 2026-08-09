@@ -704,7 +704,157 @@ git commit -m "feat: reproduce WordPress storefront footer"
 
 ---
 
-### Task 4: Responsive Polish, Accessibility, and Release Gates
+### Task 4: Coins Live Quote and Display-Currency Refinements
+
+**Files:**
+- Create: `app/Actions/Pricing/ConvertDisplayMoney.php`
+- Create: `app/Console/Commands/RefreshDisplayExchangeRates.php`
+- Create: `tests/Unit/Pricing/ConvertDisplayMoneyTest.php`
+- Create: `tests/Feature/Console/RefreshDisplayExchangeRatesTest.php`
+- Modify: `app/Http/Controllers/Store/CoinsQuoteController.php`
+- Modify: `app/Http/Middleware/SetDisplayCurrency.php`
+- Modify: `app/ValueObjects/Pricing/CoinsQuote.php`
+- Modify: `config/store.php`
+- Modify: `routes/console.php`
+- Modify: `lang/ar/store.php`
+- Modify: `lang/en/store.php`
+- Modify: `resources/js/components/configurator/coins/amount-step.tsx`
+- Modify: `resources/js/components/configurator/coins/coins-configurator.tsx`
+- Modify: `resources/js/components/configurator/coins/quote-panel.tsx`
+- Modify: `resources/js/components/configurator/coins/use-coins-quote-request.ts`
+- Modify: `resources/js/lib/coins-api.ts`
+- Modify: `resources/js/lib/money.ts`
+- Modify: `resources/js/types/coins.ts`
+- Modify focused Coins/locale tests only.
+
+**Interfaces and decisions:**
+- `total.{amountHalalah,currency:'SAR'}` remains the only authoritative price and future checkout value.
+- Add `displayTotal.{amountMinor,currency}` computed on the server from the session-selected display currency. The quote request must not accept a currency field.
+- Use the existing WordPress provider, ExchangeRate-API Open Access, only from a scheduled refresh command. Add its required attribution unobtrusively in the footer. Never call it in the customer quote request.
+- Persist canonical `SAR -> target` decimal-string rates in `exchange_rates`; accept only complete provider responses for all configured non-SAR currencies and upsert atomically.
+- Use checked integer half-up conversion with eight-decimal rates; never use PHP or JavaScript floating-point conversion.
+- A missing, malformed, or rate aged 30 hours or more fails the non-SAR quote closed with the existing no-store 503 envelope. SAR requires no rate.
+- Checkout remains SAR regardless of the historical WordPress AED comment.
+
+- [ ] **Step 1: Re-fetch official documentation and verify the provider contract**
+
+Read current official Laravel 13 HTTP client/scheduling docs and ExchangeRate-API Open Access endpoint, supported currencies, attribution, and terms. Record URLs/date/decisions in the task report. Verify SAR, USD, EUR, and GBP support and that the data is display-only.
+
+- [ ] **Step 2: Write and run focused backend RED tests**
+
+Cover unchanged SAR authority plus matching `displayTotal`, exact half-up integer conversion, overflow/malformed/stale/missing-rate failures, session-derived currency, rejected quote `currency` input that cannot mutate the preference, complete atomic refresh, provider errors, no request-path HTTP, no-store, and daily schedule registration.
+
+- [ ] **Step 3: Implement fixed-point conversion and background refresh**
+
+The rate means quote-currency major units per one SAR and has exactly eight decimal places. For the currently supported two-decimal currencies calculate:
+
+```text
+displayMinor = round_half_up(authoritativeHalalah * scaledRate / 100000000)
+```
+
+Guard every multiplication and rounding increment against integer overflow. Fetch `https://open.er-api.com/v6/latest/SAR` with timeout/bounded retry from the command only, validate the complete response before a transaction, and schedule one daily refresh.
+
+- [ ] **Step 4: Write and run focused frontend RED tests**
+
+Cover exact matching `displayTotal`, selected-currency mismatch failure, rendering EUR/USD/GBP rather than SAR, comma-grouped Latin amount input during editing/slider/chip changes, and immediate quote requests on every valid change with abort/stale-response protection and retained previous price until the new response arrives.
+
+- [ ] **Step 5: Remove the quote debounce and implement the strict display contract**
+
+Dispatch/fetch immediately for each valid platform/delivery/quantity tuple. Abort the previous request, ignore stale responses, keep a valid prior price visible while refreshing, and clear it only for invalid input, tuple changes, or errors. Format the amount as `200,000` while editing and use generic exact minor-unit formatting for the visible display total.
+
+- [ ] **Step 6: Add the WordPress normal-delivery suggestion and exact copy fix**
+
+When console delivery is Normal and quantity is at least 1,500,000, show the localized WordPress suggestion that Fast supports more than 2M. Its action selects Fast and returns to the Delivery step. Change the Arabic hero badge exactly to `كل اللي تحتاجه في FC 27 بمكان واحد`.
+
+- [ ] **Step 7: Focused GREEN, guards, browser proof, and commit**
+
+Run focused Pest/Vitest plus Pint, PHPStan, ESLint, Prettier, TypeScript, build, Clean Code Guard, Test Guard, and Docs Guard. Verify AR/EN at 320/390/768/1440, immediate slider/type/chip quotes, EUR display, normal suggestion, keyboard/focus, reduced motion, no overflow, and zero console errors. Commit only owned files with `feat: refine live Coins quoting` and do not push.
+
+---
+
+### Task 5: Secure Coins Cart Backend
+
+**Complexity:** Ambitious, split from the UI so encryption and transactional behavior are reviewed independently.
+
+**Scope:** authenticated Coins add-to-cart only. Payment, order creation, fulfillment submission, and secret access by staff are excluded.
+
+**Files:**
+- Create: migration/model for `cart_item_secrets` and the one-active-cart invariant.
+- Create: authenticated Coins cart request/controller/action and safe idempotency handling.
+- Create: cart-secret purge command and schedule/config.
+- Modify: Cart/CartItem/IdempotencyKey relations and serialization protection.
+- Modify: locale-aware cart/resume routes and a real cart read controller.
+- Create focused feature, database, unit, and command tests.
+
+**Security contract:**
+- EA credentials are `ea_email`, opaque `ea_password`, and exactly five distinct eight-digit ASCII backup codes. Mohamed's newer five-code requirement intentionally replaces WordPress's obsolete optional three-code behavior.
+- Credentials never enter `cart_items.configuration`, sessions, URLs, Inertia props, old input, logs, analytics, exception context, response bodies, or browser storage.
+- `cart_item_secrets` is one-to-one with a cart item and mirrors the existing encrypted/hidden/guarded order-secret pattern. Ciphertext and masked PII are purged after a configurable 24-hour default while the safe cart line remains and requires re-entry.
+- The endpoint is auth-only JSON with CSRF, per-user throttling, no-store on every response, exact key allowlists, and an `Idempotency-Key` header.
+- The server always re-quotes with `QuoteCoins`; it ignores/prohibits client price/product/variant authority and writes the active SAR cart, safe item, encrypted secret, and safe idempotency response in one transaction.
+- Idempotency uses an application-keyed HMAC-SHA-256 fingerprint including user and every request field; same key/payload safely replays, mismatch returns 409, and no secret enters the stored response.
+
+- [ ] **Step 1: Read official Laravel 13 encryption, validation, request normalization, auth, rate-limiting, transaction, and scheduling docs**
+
+Confirm encrypted casts require TEXT/LONGTEXT, authenticated encryption/key rotation behavior, JSON 422 behavior without old-input flashing, array key allowlists, and current middleware names.
+
+- [ ] **Step 2: Write and run schema/security RED tests**
+
+Prove unique/cascading one-to-one secret ownership, ciphertext-at-rest, hidden serialization, guarded mass assignment, nullable payload purge, safe masked summary, one active cart per user under concurrency, idempotency field hiding, and SQLite/MariaDB migration compatibility.
+
+- [ ] **Step 3: Implement the minimal schema and models**
+
+Add the secret table, an honest database invariant for one active authenticated cart, relations, encrypted array cast, retention fields, and safe model boundaries. Do not edit historical migrations.
+
+- [ ] **Step 4: Write and run endpoint RED tests**
+
+Cover guest 401, valid PS normal/fast/PC, exact five-code validation, unknown fields, password preservation, client-authority rejection, server repricing, one transaction, safe 201 response, 409 replay mismatch, 429, 503, rollback, concurrency, and proof that no secret sentinel appears in response/session/log-facing serialization.
+
+- [ ] **Step 5: Implement authenticated add-to-cart and safe resume/cart reads**
+
+Guests may carry only validated platform/delivery/quantity through an intended login-resume GET. The JSON POST creates a distinct line for every submission (`quantity=1`) because credentials are per item. Configuration stores only safe service/platform/market/delivery/Coins quantity and server quote metadata; cart/item currency remains SAR.
+
+- [ ] **Step 6: Add purge operations and verify**
+
+Schedule an idempotent hourly purge of due cart-secret ciphertext and masked PII. Do not implement checkout handoff yet. Run focused/full PHP gates, Clean Code Guard, Test Guard, Docs Guard, MariaDB lifecycle, and commit only owned backend files with `feat: add secure Coins cart backend`.
+
+---
+
+### Task 6: Coins Credentials and Real Cart UI
+
+**Files:**
+- Create: `resources/js/components/configurator/coins/credentials-step.tsx`
+- Create: secure Coins cart API helper with same-origin JSON/CSRF behavior.
+- Create: `resources/js/pages/store/cart.tsx`
+- Modify: Coins reducer/configurator/progress/amount/quote components and types.
+- Modify: shared auth/cart props, safe translations, and WordPress-parity CSS.
+- Create/modify focused configurator/cart/layout tests.
+
+**Flow:** platform -> delivery when console -> amount -> EA credentials -> add to cart. PC marks delivery complete and skips its screen. Guests can configure safely but must log in before credential fields; after Fortify login they resume at credentials with only validated non-sensitive choices.
+
+- [ ] **Step 1: Re-audit WordPress five-step hierarchy and current React reducer, then run required UI skills**
+
+Use WordPress structure first. Run `frontend-design`, `ui-ux-pro-max`, `arrange`, `typeset`, `clarify`, `adapt`, and final `polish`; reject suggestions that replace Thmanyah, warm black/gold, or the verified configurator hierarchy.
+
+- [ ] **Step 2: Write and run frontend RED tests**
+
+Cover four visible progress decisions plus final add action, PC delivery skip, guest login gate/resume URL, five accessible code inputs, password visibility, exact error focus, pending double-submit prevention, stable in-memory idempotency key, safe errors, 201 redirect/cart-count update, state clearing, and absence of credentials from URL/DOM summaries/storage/analytics.
+
+- [ ] **Step 3: Implement in-memory-only credentials and secure submission**
+
+Use email/password/five code fields with explicit labels, LTR Latin code controls, disabled spellcheck/autocomplete appropriate for third-party credentials, accessible inline validation, and no Inertia remember/localStorage/sessionStorage. Submit same-origin JSON with CSRF and clear/unmount all secret state on success or explicit cancel.
+
+- [ ] **Step 4: Implement the real read-only cart summary**
+
+Replace the cart placeholder with authenticated safe lines showing service, platform/delivery, Coins quantity, authoritative SAR snapshot, masked credential state/expiry, and remove/back actions only if backed by real endpoints. Do not add a fake checkout or payment control.
+
+- [ ] **Step 5: WordPress parity, polish, and verification**
+
+Match the original account-details/summary hierarchy before refining. Verify AR/EN at 320/390/768/1440, RTL/LTR, 44px targets, password manager/autofill behavior, keyboard/focus/error flow, 200% zoom, reduced motion, no overflow, no console error, and no secret in browser URL/storage/DOM summary/network response. Run full CI and guards, then commit only owned UI files with `feat: complete secure Coins cart flow`.
+
+---
+
+### Task 7: Responsive Polish, Accessibility, and Release Gates
 
 **Files:**
 - Modify: `resources/css/app.css`
