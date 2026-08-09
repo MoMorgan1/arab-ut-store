@@ -156,11 +156,6 @@ function availableProps() {
         displayCurrency: 'SAR',
         locale: 'en',
         platforms,
-        product: {
-            imageUrl: '/images/store/coins/ut-coin-80.webp',
-            name: 'FC 27 Coins',
-            publicId: '01K00000000000000000000000',
-        },
         quoteUrl: '/en/coins/quote',
         status: 'available',
         store,
@@ -281,6 +276,19 @@ describe('Coins homepage', () => {
         expect(
             screen.getByRole('link', { name: 'Choose your Coins' }),
         ).toHaveAttribute('href', '#coins');
+    });
+
+    it('renders the available configurator from status while ignoring a legacy product value', () => {
+        mockPage.props = { ...availableProps(), product: null };
+
+        render(<StoreHome />);
+
+        expect(
+            screen.getByRole('group', { name: store.platform.title }),
+        ).toBeVisible();
+        expect(
+            screen.queryByRole('heading', { name: store.availability.title }),
+        ).not.toBeInTheDocument();
     });
 
     it('omits unsupported credential and commerce controls', () => {
@@ -843,7 +851,14 @@ describe('Coins homepage', () => {
             expect(
                 screen.getByText((text) => text.includes('6.00')),
             ).toBeVisible();
-            expect(screen.getByText(store.quote.refreshing)).toBeVisible();
+            const refreshingStatus = screen.getByText(store.quote.refreshing);
+            const retainedPrice = screen.getByText((text) =>
+                text.includes('6.00'),
+            );
+
+            expect(refreshingStatus).toBeVisible();
+            expect(refreshingStatus.closest('[aria-busy="true"]')).toBeNull();
+            expect(retainedPrice.closest('[aria-busy="true"]')).not.toBeNull();
 
             await act(async () => {
                 await vi.advanceTimersByTimeAsync(300);
@@ -1484,7 +1499,6 @@ describe('Coins homepage', () => {
     it('fails closed when homepage pricing is unavailable', () => {
         mockPage.props = {
             ...availableProps(),
-            product: null,
             status: 'unavailable',
         };
 

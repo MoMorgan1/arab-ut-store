@@ -18,9 +18,6 @@ export function QuotePanel({ locale, state, translations }: QuotePanelProps) {
 
     return (
         <section
-            aria-busy={
-                state.status === 'loading' || state.status === 'refreshing'
-            }
             aria-labelledby="coins-quote-title"
             className="coins-quote-panel"
         >
@@ -40,7 +37,11 @@ export function QuotePanel({ locale, state, translations }: QuotePanelProps) {
             ) : null}
 
             {quote !== null ? (
-                <div aria-live="polite" className="coins-quote-panel__result">
+                <div
+                    aria-busy={state.status === 'refreshing'}
+                    aria-live="polite"
+                    className="coins-quote-panel__result"
+                >
                     <span>{translations.quote.total}</span>
                     <strong>
                         {formatHalalah(

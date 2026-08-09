@@ -7,7 +7,6 @@ import type {
     CoinsAmountRules,
     CoinsAvailability,
     CoinsPlatformOption,
-    CoinsProductSummary,
     CoinsStoreTranslations,
 } from '@/types/coins';
 
@@ -17,7 +16,6 @@ type StorePageProps = {
     displayCurrencies: string[];
     locale: 'ar' | 'en';
     status: CoinsAvailability;
-    product: CoinsProductSummary | null;
     quoteUrl: string;
     amount: CoinsAmountRules;
     platforms: CoinsPlatformOption[];
@@ -36,7 +34,6 @@ export default function StoreHome() {
         displayCurrency,
         locale,
         platforms,
-        product,
         quoteUrl,
         status,
         store,
@@ -119,7 +116,7 @@ export default function StoreHome() {
                                 <span>{store.coins_section.intro}</span>
                             </header>
 
-                            {status === 'available' && product !== null ? (
+                            {status === 'available' ? (
                                 <CoinsConfigurator
                                     amount={amount}
                                     locale={locale}

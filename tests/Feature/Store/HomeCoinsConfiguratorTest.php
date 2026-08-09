@@ -61,17 +61,15 @@ function createHomeCatalog(): Product
     return $product;
 }
 
-test('the Arabic and English homepages expose the exact localized Coins contract', function (string $path, string $name, string $quoteUrl) {
-    $product = createHomeCatalog();
+test('the Arabic and English homepages expose the exact localized Coins contract', function (string $path, string $quoteUrl) {
+    createHomeCatalog();
 
     $this->get($path)
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('store/home')
             ->where('status', 'available')
-            ->where('product.publicId', $product->public_id)
-            ->where('product.name', $name)
-            ->where('product.imageUrl', '/images/store/coins/ut-coin-80.webp')
+            ->missing('product')
             ->where('quoteUrl', $quoteUrl)
             ->where('amount', [
                 'minimum' => 50_000,
@@ -99,13 +97,12 @@ test('the Arabic and English homepages expose the exact localized Coins contract
             ->missing('platforms.0.market')
             ->missing('platforms.1.market'));
 })->with([
-    'Arabic' => ['/', 'كوينز ألتيميت تيم', '/coins/quote'],
-    'English' => ['/en', 'Ultimate Team Coins', '/en/coins/quote'],
+    'Arabic' => ['/', '/coins/quote'],
+    'English' => ['/en', '/en/coins/quote'],
 ]);
 
 test('configured Coins media URLs resolve to public assets', function () {
     $urls = [
-        config('coins.product_image_url'),
         ...collect(config('coins.platforms'))->flatMap(
             fn (array $platform): array => $platform['icon_urls'],
         )->all(),
@@ -122,7 +119,7 @@ test('the homepage remains honest when local catalog or pricing is unavailable',
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('status', 'unavailable')
-            ->where('product', null)
+            ->missing('product')
             ->where('quoteUrl', '/coins/quote')
             ->has('platforms', 2)
             ->has('store.availability.title'));
@@ -141,7 +138,7 @@ test('the homepage fails closed when an active Coins pricing rule has an unknown
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('status', 'unavailable')
-            ->where('product', null));
+            ->missing('product'));
 });
 
 test('an optional Xbox Coins variant is not exposed as a separate homepage choice', function () {
@@ -172,7 +169,7 @@ test('the homepage fails closed when either localized Coins product name is blan
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('status', 'unavailable')
-            ->where('product', null));
+            ->missing('product'));
 })->with([
     'empty Arabic name' => ['name_ar', ''],
     'empty English name' => ['name_en', ''],
@@ -193,7 +190,7 @@ test('the homepage fails closed when pricing does not cover the minimum legal qu
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('status', 'unavailable')
-            ->where('product', null));
+            ->missing('product'));
 });
 
 test('the homepage fails closed when a later legal quantity would overflow pricing', function () {
@@ -221,7 +218,7 @@ test('the homepage fails closed when a later legal quantity would overflow prici
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('status', 'unavailable')
-            ->where('product', null));
+            ->missing('product'));
 });
 
 test('homepage props omit supplier market and forbidden policy proof and credential copy', function () {

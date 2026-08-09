@@ -25,12 +25,6 @@ export type CoinsAmountRules = {
     presets: number[];
 };
 
-export type CoinsProductSummary = {
-    publicId: string;
-    name: string;
-    imageUrl: string;
-};
-
 export type CoinsStoreTranslations = {
     seo_title: string;
     hero: {

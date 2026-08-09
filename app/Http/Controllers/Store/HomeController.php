@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Store;
 
 use App\Enums\Platform;
 use App\Http\Controllers\Controller;
-use App\Models\Product;
 use App\Services\Catalog\CoinsCatalogReader;
 use DomainException;
 use Illuminate\Http\Request;
@@ -18,21 +17,17 @@ class HomeController extends Controller
 {
     public function __invoke(Request $request, CoinsCatalogReader $catalog): Response
     {
-        $product = null;
+        $status = 'unavailable';
 
         try {
-            $product = $catalog->assertHomepageAvailable();
+            $catalog->assertHomepageAvailable();
+            $status = 'available';
         } catch (DomainException|ValueError) {
             // The public homepage stays available while pricing fails closed.
         }
 
         return Inertia::render('store/home', [
-            'status' => $product instanceof Product ? 'available' : 'unavailable',
-            'product' => $product instanceof Product ? [
-                'publicId' => $product->public_id,
-                'name' => $product->getAttribute('name_'.app()->getLocale()),
-                'imageUrl' => config('coins.product_image_url'),
-            ] : null,
+            'status' => $status,
             'quoteUrl' => $request->route('locale') === 'en'
                 ? route('localized.coins.quote', ['locale' => 'en'], absolute: false)
                 : route('coins.quote', absolute: false),
