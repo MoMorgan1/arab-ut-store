@@ -185,7 +185,11 @@ export function CoinsConfigurator({
             nextQuantity % amount.increment === 0;
 
         invalidateQuoteRequest();
-        dispatch({ isValid, type: 'quantity-changed', value });
+        dispatch({
+            type: 'quantity-changed',
+            validQuantity: isValid ? nextQuantity : null,
+            value,
+        });
     }
 
     function choosePreset(preset: number) {

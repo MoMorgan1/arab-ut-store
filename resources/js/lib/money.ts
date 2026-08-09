@@ -20,3 +20,15 @@ export function formatCoins(quantity: number, locale: 'ar' | 'en'): string {
         maximumFractionDigits: 0,
     }).format(quantity);
 }
+
+export function formatCompactCoins(quantity: number): string {
+    if (!Number.isSafeInteger(quantity) || quantity <= 0) {
+        throw new RangeError('Coins quantity must be a positive safe integer.');
+    }
+
+    if (quantity % 1_000_000 === 0) {
+        return `${quantity / 1_000_000}M`;
+    }
+
+    return `${quantity / 1_000}K`;
+}

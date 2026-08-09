@@ -10,6 +10,7 @@ import type { CoinsStep } from './progress-rail';
 export type CoinsConfiguratorState = {
     announcement: string;
     deliveryValue: CoinsDeliveryValue | null;
+    lastValidQuantity: number;
     platformValue: CoinsPlatformValue | null;
     quantityInput: string;
     quoteState: CoinsQuoteViewState;
@@ -33,7 +34,12 @@ export type CoinsConfiguratorAction =
       }
     | { type: 'navigated'; step: CoinsStep }
     | { type: 'restarted'; minimum: number }
-    | { type: 'quantity-changed'; value: string; isValid: boolean }
+    | {
+          type: 'quantity-changed';
+          value: string;
+          validQuantity: number | null;
+      }
+    | { type: 'quantity-committed'; value: number }
     | { type: 'quote-loading' }
     | { type: 'quote-succeeded'; quote: CoinsQuote }
     | { type: 'quote-validation' }
@@ -49,12 +55,36 @@ export function quantityFromInput(value: string): number | null {
     return Number.isSafeInteger(quantity) ? quantity : null;
 }
 
+export function clampAndSnapQuantity(
+    value: number,
+    minimum: number,
+    maximum: number,
+    increment: number,
+): number {
+    if (
+        !Number.isSafeInteger(value) ||
+        !Number.isSafeInteger(minimum) ||
+        !Number.isSafeInteger(maximum) ||
+        !Number.isSafeInteger(increment) ||
+        increment <= 0 ||
+        minimum > maximum
+    ) {
+        throw new RangeError('Invalid Coins quantity bounds.');
+    }
+
+    const clamped = Math.min(maximum, Math.max(minimum, value));
+    const snapped = Math.round(clamped / increment) * increment;
+
+    return Math.min(maximum, Math.max(minimum, snapped));
+}
+
 export function createInitialConfiguratorState(
     minimum: number,
 ): CoinsConfiguratorState {
     return {
         announcement: '',
         deliveryValue: null,
+        lastValidQuantity: minimum,
         platformValue: null,
         quantityInput: String(minimum),
         quoteState: { status: 'idle' },
@@ -73,6 +103,7 @@ function clampSelection(
 
     return {
         announcement: isClamped ? clampMessage : selectionMessage,
+        lastValidQuantity: isClamped ? maximum : state.lastValidQuantity,
         quantityInput: isClamped ? String(maximum) : state.quantityInput,
     };
 }
@@ -125,10 +156,21 @@ export function coinsConfiguratorReducer(
             return {
                 ...state,
                 announcement: '',
+                lastValidQuantity:
+                    action.validQuantity ?? state.lastValidQuantity,
                 quantityInput: action.value,
-                quoteState: action.isValid
-                    ? { status: 'idle' }
-                    : { status: 'validation' },
+                quoteState:
+                    action.validQuantity !== null
+                        ? { status: 'idle' }
+                        : { status: 'validation' },
+            };
+        case 'quantity-committed':
+            return {
+                ...state,
+                announcement: '',
+                lastValidQuantity: action.value,
+                quantityInput: String(action.value),
+                quoteState: { status: 'idle' },
             };
         case 'quote-loading':
             return { ...state, quoteState: { status: 'loading' } };
