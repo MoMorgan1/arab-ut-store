@@ -6,17 +6,11 @@ import type {
 
 type QuotePanelProps = {
     locale: 'ar' | 'en';
-    onRestart: () => void;
     state: CoinsQuoteViewState;
-    translations: Pick<CoinsStoreTranslations, 'actions' | 'quote'>;
+    translations: Pick<CoinsStoreTranslations, 'quote'>;
 };
 
-export function QuotePanel({
-    locale,
-    onRestart,
-    state,
-    translations,
-}: QuotePanelProps) {
+export function QuotePanel({ locale, state, translations }: QuotePanelProps) {
     return (
         <section
             aria-labelledby="coins-quote-title"
@@ -60,16 +54,6 @@ export function QuotePanel({
                 <p className="coins-quote-panel__error" role="alert">
                     {translations.quote.unavailable}
                 </p>
-            ) : null}
-
-            {state.status === 'success' ? (
-                <button
-                    className="coins-text-action"
-                    onClick={onRestart}
-                    type="button"
-                >
-                    {translations.actions.restart}
-                </button>
             ) : null}
         </section>
     );

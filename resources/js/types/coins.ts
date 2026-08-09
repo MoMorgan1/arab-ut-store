@@ -66,6 +66,8 @@ export type CoinsStoreTranslations = {
         title: string;
         help: string;
         eta: string;
+        badges: Record<CoinsDeliveryValue, string>;
+        maximum: string;
         options: Record<CoinsDeliveryValue, string>;
     };
     amount_copy: {

@@ -67,6 +67,11 @@ const store = {
         title: 'Choose delivery',
         help: 'Select the route for this console order.',
         eta: ':minutes minutes per million',
+        badges: {
+            normal: 'Lower cost',
+            fast: 'Recommended',
+        },
+        maximum: 'Up to :maximum',
         options: {
             normal: 'Normal',
             fast: 'Fast',
@@ -74,7 +79,7 @@ const store = {
     },
     amount_copy: {
         title: 'Choose the amount',
-        help: 'Enter an amount in the allowed increments.',
+        help: 'Enter the amount you want.',
         label: 'Amount',
         preset_label: 'Quick amounts',
         slider_label: 'Choose the Coins amount',
@@ -290,6 +295,103 @@ describe('Coins homepage', () => {
         expect(
             screen.queryByRole('button', {
                 name: /cart|checkout|buy|order/i,
+            }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('keeps selection feedback hidden while exposing every progress label', () => {
+        render(<StoreHome />);
+
+        fireEvent.click(screen.getByRole('radio', { name: 'PS / Xbox' }));
+
+        const selectionStatus = screen.getByRole('status');
+        expect(selectionStatus).toHaveClass('sr-only');
+        expect(selectionStatus).not.toBeVisible();
+
+        const progress = screen.getByRole('list', { name: /Step 1 of 3/ });
+        expect(
+            within(progress).getByText(store.progress.platform),
+        ).toBeVisible();
+        expect(
+            within(progress).getByText(store.progress.delivery),
+        ).toBeVisible();
+        expect(within(progress).getByText(store.progress.amount)).toBeVisible();
+    });
+
+    it('shows the WordPress delivery annotations and amount total surface', () => {
+        render(<StoreHome />);
+        selectPlatform('PS / Xbox');
+
+        const normalCard = screen
+            .getByRole('radio', { name: 'Normal' })
+            .closest('label');
+        const fastCard = screen
+            .getByRole('radio', { name: 'Fast' })
+            .closest('label');
+
+        expect(normalCard).not.toBeNull();
+        expect(fastCard).not.toBeNull();
+        expect(within(normalCard!).getByText('Lower cost')).toBeVisible();
+        expect(within(normalCard!).getByText(/150/)).toBeVisible();
+        expect(within(normalCard!).getByText('Up to 2M')).toBeVisible();
+        expect(within(fastCard!).getByText('Recommended')).toBeVisible();
+        expect(within(fastCard!).getByText(/45/)).toBeVisible();
+        expect(within(fastCard!).getByText('Up to 20M')).toBeVisible();
+
+        fireEvent.click(screen.getByRole('radio', { name: 'Fast' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: store.actions.continue }),
+        );
+
+        expect(screen.getByText('Enter the amount you want.')).toBeVisible();
+        expect(
+            screen.queryByRole('button', { name: store.actions.restart }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('region', { name: store.quote.title }),
+        ).toBeVisible();
+    });
+
+    it('allows backward navigation through completed progress steps only', () => {
+        render(<StoreHome />);
+        selectConsoleDelivery('Fast');
+
+        const amountProgress = screen.getByRole('list', {
+            name: /Step 3 of 3/,
+        });
+        expect(
+            within(amountProgress).getByRole('button', {
+                name: store.progress.platform,
+            }),
+        ).toBeVisible();
+        const deliveryStep = within(amountProgress).getByRole('button', {
+            name: store.progress.delivery,
+        });
+        expect(
+            within(amountProgress).queryByRole('button', {
+                name: store.progress.amount,
+            }),
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(deliveryStep);
+
+        expect(screen.getByText(store.delivery.title)).toHaveFocus();
+        const deliveryProgress = screen.getByRole('list', {
+            name: /Step 2 of 3/,
+        });
+        expect(
+            within(deliveryProgress).getByRole('button', {
+                name: store.progress.platform,
+            }),
+        ).toBeVisible();
+        expect(
+            within(deliveryProgress).queryByRole('button', {
+                name: store.progress.delivery,
+            }),
+        ).not.toBeInTheDocument();
+        expect(
+            within(deliveryProgress).queryByRole('button', {
+                name: store.progress.amount,
             }),
         ).not.toBeInTheDocument();
     });
@@ -820,21 +922,11 @@ describe('Coins homepage', () => {
         expect(screen.getByText(store.platform.title)).toHaveFocus();
     });
 
-    it('focuses the amount heading when PC skips delivery and the platform heading after restart', async () => {
+    it('focuses the amount heading when PC skips delivery', () => {
         render(<StoreHome />);
         selectPlatform('PC');
 
         expect(screen.getByText(store.amount_copy.title)).toHaveFocus();
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        fireEvent.click(
-            screen.getByRole('button', { name: store.actions.restart }),
-        );
-
-        expect(screen.getByText(store.platform.title)).toHaveFocus();
     });
 
     it('uses the canonical playstation parameter for the combined console card and never sends xbox', async () => {

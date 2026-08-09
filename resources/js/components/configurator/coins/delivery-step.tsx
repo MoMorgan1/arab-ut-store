@@ -1,5 +1,6 @@
 import type { Ref } from 'react';
 
+import { formatCompactCoins } from '@/lib/money';
 import type {
     CoinsDeliveryValue,
     CoinsPlatformOption,
@@ -47,12 +48,22 @@ export function DeliveryStep({
                             onChange={() => onChoose(delivery.value)}
                             value={delivery.value}
                         >
+                            <span className="coins-delivery-badge">
+                                {translations.delivery.badges[delivery.value]}
+                            </span>
                             <strong>{label}</strong>
                             <small>
                                 {interpolate(translations.delivery.eta, {
                                     minutes: delivery.minutesPerMillion,
                                 })}
                             </small>
+                            <span className="coins-delivery-maximum">
+                                {interpolate(translations.delivery.maximum, {
+                                    maximum: formatCompactCoins(
+                                        delivery.maximum,
+                                    ),
+                                })}
+                            </span>
                         </SelectionCard>
                     );
                 })}

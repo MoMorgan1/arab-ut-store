@@ -171,12 +171,6 @@ export function CoinsConfigurator({
         navigateTo(state.step === 'amount' && !isPc ? 'delivery' : 'platform');
     }
 
-    function restart() {
-        invalidateQuoteRequest();
-        pendingFocus.current = 'platform';
-        dispatch({ minimum: amount.minimum, type: 'restarted' });
-    }
-
     function updateQuantity(value: string) {
         const sanitizedValue = value.replace(/[^0-9]/g, '');
         const nextQuantity = quantityFromInput(sanitizedValue);
@@ -253,11 +247,12 @@ export function CoinsConfigurator({
             <ProgressRail
                 current={state.step}
                 includesDelivery={!isPc}
+                onNavigate={navigateTo}
                 translations={translations}
             />
 
             {liveMessage !== '' ? (
-                <p className="coins-live" role="status">
+                <p className="sr-only" role="status" style={{ opacity: 0 }}>
                     {liveMessage}
                 </p>
             ) : null}
@@ -297,7 +292,6 @@ export function CoinsConfigurator({
                     onCommit={commitQuantity}
                     onQuantityBlur={commitTypedQuantity}
                     onQuantityChange={updateQuantity}
-                    onRestart={restart}
                     product={product}
                     quantity={state.lastValidQuantity}
                     quantityInput={state.quantityInput}

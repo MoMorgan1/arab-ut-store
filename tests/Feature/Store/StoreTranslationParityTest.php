@@ -64,6 +64,18 @@ test('Arabic customer copy consistently calls the service كوينز', function 
         ->and($serialized)->not->toContain('العملات');
 });
 
+test('the configurator uses the approved WordPress annotations', function () {
+    /** @var array<string, mixed> $arabic */
+    $arabic = require lang_path('ar/store.php');
+    /** @var array<string, mixed> $english */
+    $english = require lang_path('en/store.php');
+
+    expect(data_get($arabic, 'amount_copy.help'))->toBe('اكتب الكمية اللي تبيها.')
+        ->and(data_get($arabic, 'delivery.badges.normal'))->toBe('ميزانية أقل')
+        ->and(data_get($arabic, 'delivery.badges.fast'))->toBe('موصى به')
+        ->and(data_get($english, 'delivery.badges.fast'))->toBe('Recommended');
+});
+
 test('the hero uses the approved bilingual copy and proof contract', function () {
     /** @var array<string, mixed> $arabic */
     $arabic = require lang_path('ar/store.php');

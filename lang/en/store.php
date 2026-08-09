@@ -46,6 +46,11 @@ return [
         'title' => 'Choose delivery speed',
         'help' => 'Normal and fast delivery have separate limits and quotes.',
         'eta' => ':minutes minutes per million Coins',
+        'badges' => [
+            'normal' => 'Lower cost',
+            'fast' => 'Recommended',
+        ],
+        'maximum' => 'Up to :maximum',
         'options' => [
             'normal' => 'Normal',
             'fast' => 'Fast',
@@ -53,7 +58,7 @@ return [
     ],
     'amount_copy' => [
         'title' => 'Choose the amount',
-        'help' => 'Enter an amount within the limit for your selection.',
+        'help' => 'Enter the amount you want.',
         'label' => 'Coins amount',
         'preset_label' => 'Amount presets',
         'slider_label' => 'Choose the Coins amount',

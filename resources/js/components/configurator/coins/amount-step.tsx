@@ -22,7 +22,6 @@ type AmountStepProps = {
     onCommit: (value: number) => void;
     onQuantityBlur: () => void;
     onQuantityChange: (value: string) => void;
-    onRestart: () => void;
     product: CoinsProductSummary;
     quantity: number;
     quantityInput: string;
@@ -48,7 +47,6 @@ export function AmountStep({
     onCommit,
     onQuantityBlur,
     onQuantityChange,
-    onRestart,
     product,
     quantity,
     quantityInput,
@@ -82,7 +80,7 @@ export function AmountStep({
             <p className="coins-step__help">{translations.amount_copy.help}</p>
 
             <div className="coins-amount-field">
-                <label className="coins-amount-label" htmlFor="coins-amount">
+                <label className="sr-only" htmlFor="coins-amount">
                     {translations.amount_copy.label}
                 </label>
                 <div className="coins-amount-field__control">
@@ -198,7 +196,6 @@ export function AmountStep({
 
             <QuotePanel
                 locale={locale}
-                onRestart={onRestart}
                 state={quoteState}
                 translations={translations}
             />
