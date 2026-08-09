@@ -39,6 +39,7 @@ export type CoinsConfiguratorAction =
           value: string;
           validQuantity: number | null;
       }
+    | { type: 'quantity-normalized'; value: string }
     | { type: 'quantity-committed'; value: number }
     | { type: 'quote-loading' }
     | { type: 'quote-succeeded'; quote: CoinsQuote }
@@ -162,6 +163,11 @@ export function coinsConfiguratorReducer(
                     action.validQuantity !== null
                         ? { status: 'idle' }
                         : { status: 'validation' },
+            };
+        case 'quantity-normalized':
+            return {
+                ...state,
+                quantityInput: action.value,
             };
         case 'quantity-committed':
             return {

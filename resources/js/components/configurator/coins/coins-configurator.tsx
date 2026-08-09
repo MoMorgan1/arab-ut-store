@@ -186,6 +186,19 @@ export function CoinsConfigurator({
             nextQuantity <= maximum &&
             nextQuantity % amount.increment === 0;
 
+        if (isValid && nextQuantity === state.lastValidQuantity) {
+            const normalizedValue = String(nextQuantity);
+
+            if (state.quantityInput !== normalizedValue) {
+                dispatch({
+                    type: 'quantity-normalized',
+                    value: normalizedValue,
+                });
+            }
+
+            return;
+        }
+
         invalidateQuoteRequest();
         dispatch({
             type: 'quantity-changed',

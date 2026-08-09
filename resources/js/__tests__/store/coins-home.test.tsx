@@ -388,8 +388,21 @@ describe('Coins homepage', () => {
         ];
 
         expect(quickChips).toHaveLength(5);
+        expect(quickChips.map((chip) => chip.textContent)).toEqual([
+            '50K',
+            '100K',
+            '500K',
+            '1M',
+            '5M',
+        ]);
         expect(sliderLabels).toHaveLength(2);
+        expect(
+            sliderLabels.map((label) => label.getAttribute('aria-label')),
+        ).toEqual(['Minimum: 50K', 'Maximum: 20M']);
         expect(adjustments).toHaveLength(8);
+        expect(adjustments.map((adjustment) => adjustment.textContent)).toEqual(
+            ['-1M', '-500K', '-100K', '-50K', '+50K', '+100K', '+500K', '+1M'],
+        );
         orderedControls.slice(0, -1).forEach((control, index) => {
             expect(
                 control.compareDocumentPosition(orderedControls[index + 1]) &
@@ -665,6 +678,57 @@ describe('Coins homepage', () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(screen.queryByText(store.quote.loading)).not.toBeInTheDocument();
     });
+
+    it.each(['50,000', '050000'])(
+        'normalizes an equivalent %s paste without restarting the quote lifecycle',
+        async (equivalentInput) => {
+            const fetchMock = vi.fn((input: RequestInfo | URL) =>
+                Promise.resolve(quoteResponseForRequest(input)),
+            );
+
+            vi.stubGlobal('fetch', fetchMock);
+            render(<StoreHome />);
+            selectPlatform('PC');
+
+            const amountInput = screen.getByRole('textbox', {
+                name: store.amount_copy.label,
+            });
+            fireEvent.focus(amountInput);
+            fireEvent.change(amountInput, {
+                target: { value: equivalentInput },
+            });
+            expect(amountInput).toHaveValue('50000');
+            fireEvent.blur(amountInput);
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(300);
+            });
+
+            expect(
+                screen.getByText((text) => text.includes('6.00')),
+            ).toBeVisible();
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+
+            fireEvent.focus(amountInput);
+            fireEvent.change(amountInput, {
+                target: { value: equivalentInput },
+            });
+            expect(amountInput).toHaveValue('50000');
+            fireEvent.blur(amountInput);
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(300);
+            });
+
+            expect(
+                screen.getByText((text) => text.includes('6.00')),
+            ).toBeVisible();
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            expect(
+                screen.queryByText(store.quote.loading),
+            ).not.toBeInTheDocument();
+        },
+    );
 
     it('keeps the quote lifecycle alive at the minimum adjustment bound', async () => {
         const fetchMock = vi.fn((input: RequestInfo | URL) =>
