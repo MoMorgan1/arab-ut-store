@@ -1,10 +1,14 @@
 :root {
-    --arabut-navy: #071426;
-    --arabut-navy-raised: #10253f;
-    --arabut-ink: #e9f0f7;
-    --arabut-muted: #b7c3d1;
-    --arabut-gold: #d8ad4b;
-    --arabut-gold-bright: #f3cf73;
-    --arabut-line: rgb(216 173 75 / 28%);
-    --arabut-focus: #f3cf73;
+    --arabut-navy-deep: #080705;
+    --arabut-navy: #0d0b08;
+    --arabut-navy-raised: #1c1814;
+    --arabut-navy-active: #241e18;
+    --arabut-ink: #ede4d0;
+    --arabut-muted: #a89880;
+    --arabut-gold: #d4a843;
+    --arabut-gold-bright: #e4b756;
+    --arabut-line: rgb(212 168 67 / 16%);
+    --arabut-focus: #d4a843;
+    --arabut-danger: #ffb4a9;
+    --arabut-radius: 1.25rem;
 }

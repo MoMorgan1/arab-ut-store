@@ -1,25 +1,52 @@
 import { Head, usePage } from '@inertiajs/react';
 
+import { CoinsConfigurator } from '@/components/configurator/coins';
 import StoreLayout from '@/layouts/store-layout';
 import type { StoreLayoutTranslations } from '@/layouts/store-layout';
+import type {
+    CoinsAmountRules,
+    CoinsAvailability,
+    CoinsPlatformOption,
+    CoinsProductSummary,
+    CoinsStoreTranslations,
+} from '@/types/coins';
 
 type StorePageProps = {
-    checkoutCurrency: string;
     direction: 'rtl' | 'ltr';
     displayCurrency: string;
     displayCurrencies: string[];
     locale: 'ar' | 'en';
+    status: CoinsAvailability;
+    product: CoinsProductSummary | null;
+    quoteUrl: string;
+    amount: CoinsAmountRules;
+    platforms: CoinsPlatformOption[];
+    store: CoinsStoreTranslations;
     ui: StoreLayoutTranslations & {
-        brand: string;
         home_title: string;
-        service_notice: string;
     };
 };
 
 export default function StoreHome() {
     const page = usePage<StorePageProps>();
-    const { direction, displayCurrencies, displayCurrency, locale, ui } =
-        page.props;
+    const {
+        amount,
+        direction,
+        displayCurrencies,
+        displayCurrency,
+        locale,
+        platforms,
+        product,
+        quoteUrl,
+        status,
+        store,
+        ui,
+    } = page.props;
+    const hasHomepageContract =
+        store !== undefined &&
+        status !== undefined &&
+        amount !== undefined &&
+        platforms !== undefined;
 
     return (
         <StoreLayout
@@ -30,15 +57,83 @@ export default function StoreHome() {
             locale={locale}
             ui={ui}
         >
-            <Head title={ui.home_title} />
-            <section className="max-w-xl space-y-4 py-8 sm:py-14">
-                <p className="text-sm font-medium tracking-wide text-[var(--arabut-gold)]">
-                    {ui.service_notice}
-                </p>
-                <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">
-                    {ui.brand}
-                </h1>
-            </section>
+            <Head title={store?.seo_title ?? ui.home_title} />
+            {hasHomepageContract ? (
+                <>
+                    <section
+                        aria-labelledby="store-hero-title"
+                        className="store-hero"
+                    >
+                        <div aria-hidden="true" className="store-hero__glow" />
+                        <div className="store-hero__content">
+                            <img
+                                alt=""
+                                aria-hidden="true"
+                                className="store-hero__logo"
+                                height="140"
+                                src="/images/store/hero/arabut-logo-hero.webp"
+                                width="140"
+                            />
+                            <p className="store-hero__badge">
+                                {store.hero.badge}
+                            </p>
+                            <h1 id="store-hero-title">
+                                <span>{store.hero.title}</span>{' '}
+                                <strong>{store.hero.accent}</strong>
+                            </h1>
+                            <p className="store-hero__subtitle">
+                                {store.hero.subtitle}
+                            </p>
+                            <a className="store-hero__cta" href="#coins">
+                                {store.hero.cta}
+                            </a>
+                        </div>
+                    </section>
+
+                    <section
+                        aria-labelledby="coins-section-title"
+                        className="store-coins-section"
+                        id="coins"
+                    >
+                        <div className="store-coins-section__inner">
+                            <header className="store-section-heading">
+                                <p>{store.coins_section.tag}</p>
+                                <h2 id="coins-section-title">
+                                    {store.coins_section.title}
+                                </h2>
+                                <span>{store.coins_section.intro}</span>
+                            </header>
+
+                            {status === 'available' && product !== null ? (
+                                <CoinsConfigurator
+                                    amount={amount}
+                                    locale={locale}
+                                    platforms={platforms}
+                                    product={product}
+                                    quoteUrl={quoteUrl}
+                                    translations={store}
+                                />
+                            ) : (
+                                <section
+                                    aria-labelledby="coins-unavailable-title"
+                                    className="coins-unavailable"
+                                >
+                                    <span
+                                        aria-hidden="true"
+                                        className="coins-unavailable__mark"
+                                    />
+                                    <div>
+                                        <h2 id="coins-unavailable-title">
+                                            {store.availability.title}
+                                        </h2>
+                                        <p>{store.availability.body}</p>
+                                    </div>
+                                </section>
+                            )}
+                        </div>
+                    </section>
+                </>
+            ) : null}
         </StoreLayout>
     );
 }

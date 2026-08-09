@@ -6,7 +6,7 @@
 
 **Architecture:** One Laravel 13 monolith owns commerce state and renders React 19/TypeScript pages through Inertia 3. MariaDB stores authoritative records; database-backed jobs/outbox provide durable background work on shared hosting; n8n remains the external supplier and WhatsApp orchestrator. Every order item has independent configuration, temporary encrypted secrets, and fulfillment state. Automation uses scoped versioned APIs and stable IDs.
 
-**Tech stack:** PHP 8.3, Laravel 13, Laravel Fortify, Laravel Socialite, MariaDB, React 19, TypeScript, Inertia 3, Tailwind CSS 4, Pest, Vite, GitHub Actions, Hostinger, and the existing n8n/Whapi/FFT/UTT services. Task 6 will select and lock a compatible `tecnickcom/tc-lib-pdf` version with an embedded Arabic-capable font.
+**Approved target tech stack:** PHP 8.3, Laravel 13, Laravel Fortify, planned Task 3 integration of Laravel Socialite, MariaDB, React 19, TypeScript, Inertia 3, Tailwind CSS 4, Pest, Vite, GitHub Actions, Hostinger, and the existing n8n/Whapi/FFT/UTT services. Task 6 will select and lock a compatible `tecnickcom/tc-lib-pdf` version with an embedded Arabic-capable font.
 
 **Status:** Approved by Mohamed on 2026-08-09 and in execution. A live payment adapter remains a separately authorized milestone.
 
@@ -100,7 +100,7 @@ interface OrderItemSecretVault
 - [ ] Enable branch protection after the first passing GitHub workflow.
 - [x] Generate Laravel 13 with the official React/Inertia starter and Pest, then record the exact resolved versions in both lock files.
 - [x] Write failing tests for a healthy application response, Arabic default locale/RTL metadata, English locale/LTR metadata, and persisted display-currency preference.
-- [x] Implement the locale/currency middleware, bilingual route prefix behavior, base store layout, and the first dark navy/gold design tokens.
+- [x] Implement the locale/currency middleware, bilingual route prefix behavior, base store layout, and the first dark store tokens; Task 5 later refined them to the approved WordPress-continuous warm palette.
 - [x] Add scripts for `composer test`, PHP formatting/static checks selected during bootstrap, TypeScript checking, frontend tests, lint, and `npm run build`.
 - [x] Run the focused tests, full test suites, and production asset build.
 - [x] Commit: `chore: bootstrap bilingual Arab UT application`
@@ -133,13 +133,13 @@ interface OrderItemSecretVault
 
 **Steps:**
 
-- [ ] Write failing unit tests proving SAR arithmetic uses integer minor units and PlayStation/Xbox map to `console` while PC maps to `pc`.
-- [ ] Write a failing schema test for required foreign keys, unique source/SKU constraints, item-scoped fulfillment uniqueness, wallet ledger immutability support, and indexed lookup columns.
-- [ ] Implement backed enums, `Money`, migrations, casts, relationships, factories, and seed only non-sensitive reference data.
-- [ ] Store Arabic and English content in explicit `*_ar` and `*_en` columns; use public ULIDs alongside internal numeric primary keys.
-- [ ] Add database constraints for idempotency key uniqueness, `(source_id, external_id)` uniqueness, nonnegative money, and one wallet account per customer.
-- [ ] Run a clean migration, rollback/re-migrate, focused tests, and the full suite.
-- [ ] Commit: `feat: establish commerce domain schema`
+- [x] Write failing unit tests proving SAR arithmetic uses integer minor units and PlayStation/Xbox map to `console` while PC maps to `pc`.
+- [x] Write a failing schema test for required foreign keys, unique source/SKU constraints, item-scoped fulfillment uniqueness, wallet ledger immutability support, and indexed lookup columns.
+- [x] Implement backed enums, `Money`, migrations, casts, relationships, factories, and seed only non-sensitive reference data.
+- [x] Store Arabic and English content in explicit `*_ar` and `*_en` columns; use public ULIDs alongside internal numeric primary keys.
+- [x] Add database constraints for idempotency key uniqueness, `(source_id, external_id)` uniqueness, nonnegative money, and one wallet account per customer.
+- [x] Run a clean migration, rollback/re-migrate, focused tests, and the full suite.
+- [x] Commit: `feat: establish commerce domain schema`
 
 ## Task 3: Implement customer authentication, WhatsApp verification, and roles
 
@@ -211,9 +211,10 @@ interface OrderItemSecretVault
 - [ ] Write failing tests for the exact platform matrix, PlayStation/Xbox customer labels, shared console market, SBC search/filter mapping, Arabic/English content fallback, and hidden/unavailable variants.
 - [ ] Write failing cart tests for multiple service items, durable configuration, edit/remove, server-authoritative repricing, stale-price notice, and login round-trip preservation.
 - [ ] Implement config-driven service schemas so Coins, SBCs, Objectives, Rivals, and FUT Champions share primitives without becoming one generic form.
-- [ ] Build the Coins-first mobile homepage and page-specific configurators using the approved dark design system.
-- [ ] Add accessible keyboard/focus/error/loading/empty states, RTL/LTR layout tests, responsive visual checks, and reduced-motion support.
-- [ ] Run store/cart tests, frontend tests, type checking, lint, and production build.
+- [x] Build the bilingual Coins-first homepage and server-authoritative Coins quote configurator using the approved WordPress-continuous dark design system, with one combined `PS / Xbox` choice and one `PC` choice.
+- [x] Add keyboard/focus/error/loading/unavailable states, RTL/LTR tests, responsive checks, and reduced-motion support for the Coins slice.
+- [x] Run the Coins store and pricing tests, frontend tests, type checking, lint, and production build.
+- [ ] Build the remaining SBC, Objectives, Rivals, FUT Champions, catalog, and cart experiences, then apply the same accessibility and verification gates to those slices.
 - [ ] Commit: `feat: build storefront configurators and cart`
 
 ## Task 6: Implement checkout, orders, wallet, discounts, loyalty, and receipts

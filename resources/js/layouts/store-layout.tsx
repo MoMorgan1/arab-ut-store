@@ -49,38 +49,33 @@ export default function StoreLayout({
 
     return (
         <div
-            className="min-h-screen bg-[var(--arabut-navy)] text-[var(--arabut-ink)]"
+            className="store-shell min-h-screen bg-[var(--arabut-navy)] text-[var(--arabut-ink)]"
             dir={direction}
             lang={locale}
         >
-            <a
-                className="sr-only z-50 rounded bg-[var(--arabut-gold)] px-4 py-2 text-[var(--arabut-navy)] focus:not-sr-only focus:absolute focus:start-3 focus:top-3"
-                href="#store-content"
-            >
+            <a className="store-skip-link" href="#store-content">
                 {ui.skip_to_content}
             </a>
-            <header
-                className="border-b border-[var(--arabut-line)] bg-[var(--arabut-navy)]"
-                dir={direction}
-            >
-                <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+            <header className="store-header" dir={direction}>
+                <div className="store-header__inner">
                     <a
                         aria-label="Arab UT"
-                        className="shrink-0"
+                        className="store-wordmark"
                         href={locale === 'ar' ? '/' : '/en'}
                     >
                         <img
-                            alt="Arab UT"
-                            className="h-8 w-auto"
+                            alt=""
+                            aria-hidden="true"
                             height="40"
                             src="/images/arabut-logo-header.webp"
-                            width="148"
+                            width="40"
                         />
+                        <span>Arab UT</span>
                     </a>
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="store-tools">
                         <nav aria-label={ui.store_tools}>
                             <a
-                                className="rounded px-2 py-2 text-[var(--arabut-muted)] transition outline-none hover:text-[var(--arabut-gold-bright)] focus-visible:ring-2 focus-visible:ring-[var(--arabut-focus)]"
+                                className="store-tool-link"
                                 dir={targetDirection}
                                 href={languageHref(currentUrl, locale)}
                                 lang={targetLocale}
@@ -92,7 +87,7 @@ export default function StoreLayout({
                             <details className="group relative">
                                 <summary
                                     aria-label={`${ui.currency_selector}: ${displayCurrency}`}
-                                    className="flex min-h-9 cursor-pointer list-none items-center gap-1 rounded border border-[var(--arabut-line)] px-2 font-medium text-[var(--arabut-ink)] transition outline-none hover:border-[var(--arabut-gold)] focus-visible:ring-2 focus-visible:ring-[var(--arabut-focus)] [&::-webkit-details-marker]:hidden"
+                                    className="store-currency-toggle"
                                 >
                                     <span aria-hidden="true">
                                         {displayCurrency}
@@ -101,10 +96,10 @@ export default function StoreLayout({
                                         aria-hidden="true"
                                         className="transition group-open:rotate-180"
                                     >
-                                        ▾
+                                        ⌄
                                     </span>
                                 </summary>
-                                <ul className="absolute top-full z-20 mt-2 min-w-24 space-y-1 rounded border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] p-2 shadow-xl ltr:right-0 rtl:left-0">
+                                <ul className="store-currency-menu ltr:right-0 rtl:left-0">
                                     {displayCurrencies.map((currency) => (
                                         <li key={currency}>
                                             <a
@@ -113,7 +108,7 @@ export default function StoreLayout({
                                                         ? 'page'
                                                         : undefined
                                                 }
-                                                className="flex min-h-9 items-center rounded px-3 font-medium text-[var(--arabut-muted)] transition outline-none hover:text-[var(--arabut-gold-bright)] focus-visible:ring-2 focus-visible:ring-[var(--arabut-focus)] aria-current:bg-[var(--arabut-gold)] aria-current:text-[var(--arabut-navy)]"
+                                                className="store-currency-option"
                                                 href={currencyHref(
                                                     currentUrl,
                                                     currency,
@@ -129,10 +124,7 @@ export default function StoreLayout({
                     </div>
                 </div>
             </header>
-            <main
-                className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6"
-                id="store-content"
-            >
+            <main className="store-main" id="store-content">
                 {children}
             </main>
         </div>

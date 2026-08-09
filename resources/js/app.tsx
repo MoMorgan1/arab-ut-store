@@ -5,9 +5,12 @@ import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { formatDocumentTitle } from '@/lib/document-title';
+import {
+    DEFAULT_APPLICATION_NAME,
+    formatDocumentTitle,
+} from '@/lib/document-title';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || DEFAULT_APPLICATION_NAME;
 
 createInertiaApp({
     title: (title) => formatDocumentTitle(title, appName),
