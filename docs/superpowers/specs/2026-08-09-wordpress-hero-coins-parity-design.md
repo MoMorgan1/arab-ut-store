@@ -36,14 +36,16 @@ The hero continues using the exact WordPress crest and responsive premium backgr
 - Supporting line: `Fast, secure FIFA 27 Coins delivery to your account — backed by our guarantee or a refund.`
 - Primary anchor: `Choose your Coins`, linked to `#coins`
 
-The hero restores the exact four WordPress proof items as approved marketing content, in the same order, with thin separators and no invented icons:
+The hero restores four proof items in the same WordPress order, with thin separators and no invented icons. The first two values are calculated from the supplied exports; the final two remain the approved fixed marketing values because the export cannot prove them:
 
 | Value | Arabic label | English label |
 | --- | --- | --- |
-| `+10,739` | `عميل سعيد` | `Happy customers` |
-| `+21,888` | `طلب مكتمل` | `Completed orders` |
+| `+8,877` | `عميل خدمناهم` | `Customers served` |
+| `+29,161` | `طلب مكتمل` | `Completed orders` |
 | `+30 مليار` / `30B+` | `كوينز تم توصيلها` | `Coins delivered` |
 | `99.9%` | `نسبة الأمان` | `Security rate` |
+
+`8,877` is the number of distinct normalized customer mobile numbers attached to at least one completed order. `29,161` is the count of unique orders whose source status is one of the five audited completed statuses. The raw customer export contains 13,081 source customer IDs, while the order export contains 34,211 unique orders and 36,210 item rows. The selected Coins amount is absent from most dynamic `COIN_PS` and `COIN_PC` rows, so total Coins delivered cannot be recomputed reliably.
 
 The proof strip remains a compact single row where practical and becomes a balanced two-column grid only if required to prevent overflow at narrow widths.
 
@@ -97,7 +99,7 @@ The quote endpoint, integer SAR calculation, availability checks, and fail-close
 - Slider and buttons keep at least a 44px touch target.
 - Five quick chips stay in one row when space permits and never overflow the viewport.
 - Platform choices remain side by side on mobile.
-- RTL reverses the visual range direction without reversing the numeric meaning or keyboard semantics.
+- The range remains numerically and visually left-to-right in both locales, matching the deployed WordPress control; the surrounding labels and controls still follow the page direction.
 - The range input has an explicit localized accessible name and exposes min, max, step, and current value.
 - Amount entry remains usable by keyboard and mobile numeric input.
 - `prefers-reduced-motion` is respected.
@@ -132,7 +134,7 @@ Automated tests will first fail and then cover:
 - unchanged debounced quote, abort, stale-response, and fail-closed behavior;
 - no dead cart, checkout, credential, or payment controls.
 
-Browser verification covers Arabic and English at 320, 390, 768, and 1440 pixels, including font loading, proof-strip wrapping, slider direction, touch geometry, focus rings, and horizontal overflow.
+Browser verification covers Arabic and English at 320, 390, 768, and 1440 pixels, including font loading, proof-strip wrapping, the WordPress left-to-right range direction, touch geometry, focus rings, and horizontal overflow.
 
 ## Inputs and dependencies
 
