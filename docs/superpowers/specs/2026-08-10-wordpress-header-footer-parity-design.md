@@ -1,6 +1,6 @@
 # WordPress Header and Footer Parity
 
-**Status:** Approved direction; awaiting Mohamed's review of this written specification  
+**Status:** Approved by Mohamed on 2026-08-10
 **Scope:** Storefront header, footer, and simple destinations required to avoid dead navigation  
 **Complexity:** Medium
 
