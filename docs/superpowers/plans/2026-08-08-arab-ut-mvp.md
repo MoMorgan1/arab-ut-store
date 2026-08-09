@@ -6,7 +6,7 @@
 
 **Architecture:** One Laravel 13 monolith owns commerce state and renders React 19/TypeScript pages through Inertia 3. MariaDB stores authoritative records; database-backed jobs/outbox provide durable background work on shared hosting; n8n remains the external supplier and WhatsApp orchestrator. Every order item has independent configuration, temporary encrypted secrets, and fulfillment state. Automation uses scoped versioned APIs and stable IDs.
 
-**Tech stack:** PHP 8.3, Laravel 13, Laravel Fortify, Laravel Socialite, MariaDB, React 19, TypeScript, Inertia 3, Tailwind CSS 4, Pest, Vite, the current `tecnickcom/tc-lib-pdf` release with an embedded Arabic-capable font, GitHub Actions, Hostinger, existing n8n/Whapi/FFT/UTT.
+**Tech stack:** PHP 8.3, Laravel 13, Laravel Fortify, Laravel Socialite, MariaDB, React 19, TypeScript, Inertia 3, Tailwind CSS 4, Pest, Vite, GitHub Actions, Hostinger, and the existing n8n/Whapi/FFT/UTT services. Task 6 will select and lock a compatible `tecnickcom/tc-lib-pdf` version with an embedded Arabic-capable font.
 
 **Status:** Approved by Mohamed on 2026-08-09 and in execution. A live payment adapter remains a separately authorized milestone.
 
@@ -96,13 +96,14 @@ interface OrderItemSecretVault
 
 **Steps:**
 
-- [ ] Create the private repository only after confirming Mohamed is signed into `momorgan1`; enable branch protection after the first passing workflow.
-- [ ] Generate Laravel 13 with the official React/Inertia starter and Pest, then record the exact resolved versions in both lock files.
-- [ ] Write failing tests for a healthy application response, Arabic default locale/RTL metadata, English locale/LTR metadata, and persisted display-currency preference.
-- [ ] Implement the locale/currency middleware, bilingual route prefix behavior, base store layout, and the first dark navy/gold design tokens.
-- [ ] Add scripts for `composer test`, PHP formatting/static checks selected during bootstrap, TypeScript checking, frontend tests, lint, and `npm run build`.
-- [ ] Run the focused tests, full test suites, and production asset build.
-- [ ] Commit: `chore: bootstrap bilingual Arab UT application`
+- [x] Create the private repository after confirming Mohamed is signed into `momorgan1`.
+- [ ] Enable branch protection after the first passing GitHub workflow.
+- [x] Generate Laravel 13 with the official React/Inertia starter and Pest, then record the exact resolved versions in both lock files.
+- [x] Write failing tests for a healthy application response, Arabic default locale/RTL metadata, English locale/LTR metadata, and persisted display-currency preference.
+- [x] Implement the locale/currency middleware, bilingual route prefix behavior, base store layout, and the first dark navy/gold design tokens.
+- [x] Add scripts for `composer test`, PHP formatting/static checks selected during bootstrap, TypeScript checking, frontend tests, lint, and `npm run build`.
+- [x] Run the focused tests, full test suites, and production asset build.
+- [x] Commit: `chore: bootstrap bilingual Arab UT application`
 
 ## Task 2: Establish the authoritative schema and domain vocabulary
 

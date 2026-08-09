@@ -4,6 +4,8 @@ Status: Phase 3 implementation in progress
 
 Approved by Mohamed on 2026-08-09.
 
+Milestone 1 (repository and bilingual application foundation) is implemented and undergoing final GitHub verification. Payment integration remains deferred.
+
 ## Current documents
 
 | Document | Purpose | Status |
