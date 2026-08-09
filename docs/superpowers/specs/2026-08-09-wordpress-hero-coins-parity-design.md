@@ -3,10 +3,11 @@
 **Status:** Approved from Mohamed's 2026-08-09 browser feedback  
 **Scope:** Homepage hero and the existing Coins platform, delivery, and amount flow  
 **Complexity:** Medium
+**Implementation status:** The WordPress-first refinement described below is approved but not yet implemented.
 
 ## Outcome
 
-The new Laravel/React storefront will retain its server-authoritative pricing and accessible state management while restoring the parts of the WordPress homepage Mohamed explicitly prefers: its Thmanyah typography, hero proof strip, and exact Coins amount-selection experience.
+The new Laravel/React storefront will retain its server-authoritative pricing and accessible state management while reproducing the approved WordPress homepage and Coins configurator faithfully. WordPress parity comes first; Frontend Design, UI/UX Pro, and Impeccable are then used to improve accessibility, responsive behavior, hierarchy, and finish without inventing a different visual identity.
 
 This revision does not add account credentials, cart, checkout, or payment steps. Those surfaces will be added only when their working backend flows exist.
 
@@ -15,6 +16,16 @@ This revision does not add account credentials, cart, checkout, or payment steps
 1. **WordPress-faithful live-step parity — selected.** Reproduce the WordPress hero, platform, delivery, and amount interactions while keeping only the steps that work in the MVP. This gives Mohamed the design he approved without introducing dead checkout controls.
 2. **Literal five-step WordPress clone.** Copy credentials and payment steps too. Rejected because those flows are not implemented and would create misleading or nonfunctional controls.
 3. **Add only a native range input to the current amount screen.** Rejected because it would not match the WordPress experience Mohamed asked to preserve.
+
+## Required design workflow
+
+1. Inspect the matching live WordPress state and the exported theme/plugin implementation before changing the React/CSS equivalent.
+2. Match the verified WordPress structure, order, proportions, official assets, Thmanyah typography, warm black/gold surfaces, selected states, and responsive behavior for the working MVP steps.
+3. Do not add WordPress controls for credentials, checkout, or payment until those flows work. Literal parity applies to the implemented platform, delivery, and amount flow, not to dead future controls.
+4. After parity, run Frontend Design, UI/UX Pro, and the relevant Impeccable passes. Improvements may fix contrast, spacing, focus, touch geometry, overflow, and hierarchy but may not replace the approved WordPress design with a generic alternative.
+5. Any consequential departure from the WordPress reference requires Mohamed's approval.
+
+Generic design-system suggestions are advisory. The verified WordPress reference overrides generated palettes, fonts, layouts, and effects when they conflict.
 
 ## Hero design
 
@@ -65,19 +76,30 @@ The public platform contract remains exactly two choices: one combined `PS / Xbo
 - PS/Xbox continues to the delivery step.
 - PC skips delivery and continues directly to amount.
 - Only implemented steps are shown in the progress rail.
+- The progress rail follows the WordPress dot-and-line treatment: labels align with their dots, connector lines sit behind the dots without crossing text, the current step uses solid gold, and completed steps may navigate backward only.
 - Existing focus movement, RTL/LTR behavior, keyboard access, announcements, and back navigation remain intact.
+- The visible `Selected: ...` / `المحدد: ...` strip is removed. Selection changes remain available through a visually hidden live region for assistive technology.
+
+### Delivery step
+
+- Preserve the WordPress card order, proportions, surfaces, selection mark, and responsive stacking.
+- Normal delivery shows its lower-budget positioning, approximately 150 minutes per million, and 2M maximum.
+- Fast delivery shows its recommended positioning, approximately 45 minutes per million, and 20M maximum.
+- The step helper uses concise Gulf Arabic rather than repeating limits already visible in the cards.
+- Primary and back actions retain the WordPress hierarchy and at least 44px touch targets.
 
 ### Amount selector order
 
 The amount step follows the deployed WordPress order:
 
-1. Editable formatted amount display with the localized Coins unit.
-2. Five quick chips above the range track: `50K`, `100K`, `500K`, `1M`, `5M`; chips above the active maximum are omitted.
-3. Accessible range input with a gold filled track and WordPress-style thumb.
-4. Endpoint labels below the track: `50K` and the active maximum (`2M` or `20M`).
-5. Adjustment controls: `-1M`, `-500K`, `-100K`, `-50K`, `+50K`, `+100K`, `+500K`, `+1M`.
-6. Live server-authoritative price panel.
-7. Existing back/restart navigation.
+1. Step title and the exact Arabic helper `اكتب الكمية اللي تبيها.`; English receives the equivalent concise instruction.
+2. Editable formatted amount display with the localized Coins unit.
+3. Five quick chips above the range track: `50K`, `100K`, `500K`, `1M`, `5M`; chips above the active maximum are omitted.
+4. Accessible range input with a gold filled track and WordPress-style thumb.
+5. Endpoint labels below the track: `50K` and the active maximum (`2M` or `20M`).
+6. Adjustment controls: `-1M`, `-500K`, `-100K`, `-50K`, `+50K`, `+100K`, `+500K`, `+1M`.
+7. Live server-authoritative total, arranged as the highest-priority result after the amount controls with a stable tabular price and clear loading, validation, and unavailable states.
+8. Back navigation only. The visible restart action is removed.
 
 ### Quantity rules
 
@@ -109,6 +131,7 @@ The quote endpoint, integer SAR calculation, availability checks, and fail-close
 - `StoreHome` renders the hero copy and proof strip.
 - `CoinsConfigurator` remains the owner of the selected platform, delivery, quantity, navigation, and quote lifecycle.
 - `AmountStep` renders the amount display, quick chips, range, adjustment controls, and quote panel.
+- `ProgressRail` owns backward-only completed-step navigation and never exposes future steps as interactive.
 - Formatting helpers create compact K/M labels and localized full quantities.
 - Locale files remain the only source of customer-facing Arabic and English copy.
 - Server-provided limits remain authoritative; the UI does not hardcode a competing pricing contract.
@@ -127,12 +150,16 @@ Automated tests will first fail and then cover:
 - exact Arabic/English hero copy and the four proof items;
 - exact Thmanyah storefront font contract;
 - exact two-platform behavior;
+- no visible selection-announcement strip while screen-reader announcements remain available;
+- exact WordPress progress hierarchy and backward-only completed-step navigation;
+- delivery-card WordPress parity, selected states, timing, caps, and responsive layout;
 - all five quick chips and their DOM order above the range;
 - slider min, max, step, value, and dynamic maximum;
 - synchronization between typed input, chips, range, and adjustment controls;
 - clamping, snapping, keyboard input, and PC delivery skipping;
 - unchanged debounced quote, abort, stale-response, and fail-closed behavior;
-- no dead cart, checkout, credential, or payment controls.
+- no dead cart, checkout, credential, or payment controls;
+- concise amount helper copy, no visible restart action, and a stable high-priority total layout.
 
 Browser verification covers Arabic and English at 320, 390, 768, and 1440 pixels, including font loading, proof-strip wrapping, the WordPress left-to-right range direction, touch geometry, focus rings, and horizontal overflow.
 
