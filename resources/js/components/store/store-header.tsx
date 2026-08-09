@@ -141,6 +141,9 @@ export function StoreHeader(props: StoreHeaderProps) {
         shell,
         translations,
     } = props;
+    const wordmarkMatch = translations.brand.match(/^(.*)\s+(\S+)$/u);
+    const wordmarkName = wordmarkMatch?.[1] ?? translations.brand;
+    const wordmarkAccent = wordmarkMatch?.[2];
     const navigation = [
         {
             key: 'home',
@@ -180,11 +183,27 @@ export function StoreHeader(props: StoreHeaderProps) {
                         <img
                             alt=""
                             aria-hidden="true"
-                            height="40"
+                            height="48"
                             src="/images/arabut-logo-header.webp"
-                            width="40"
+                            width="48"
                         />
-                        <span>{translations.brand}</span>
+                        <span
+                            aria-hidden="true"
+                            className="store-wordmark__text"
+                            dir={direction}
+                        >
+                            <span className="store-wordmark__name">
+                                {wordmarkName}
+                            </span>
+                            {wordmarkAccent === undefined ? null : (
+                                <>
+                                    {' '}
+                                    <span className="store-wordmark__accent">
+                                        {wordmarkAccent}
+                                    </span>
+                                </>
+                            )}
+                        </span>
                     </a>
                     <div className="store-header__actions">
                         <StorePreferences
@@ -233,6 +252,7 @@ export function StoreHeader(props: StoreHeaderProps) {
                     ))}
                     <li className="store-primary-nav__whatsapp">
                         <a
+                            className="store-primary-nav__whatsapp-target"
                             href={shell.whatsappUrl}
                             rel="noopener noreferrer"
                             target="_blank"

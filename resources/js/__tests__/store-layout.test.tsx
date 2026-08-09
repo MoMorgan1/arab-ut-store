@@ -173,8 +173,14 @@ describe('StoreLayout', () => {
         );
         const languageLink = screen.getByRole('link', { name: 'العربية' });
 
-        expect(screen.getByRole('link', { name: 'Arab UT' })).toHaveTextContent(
-            'Arab UT',
+        const wordmark = screen.getByRole('link', { name: 'Arab UT' });
+
+        expect(wordmark).toHaveTextContent('Arab UT');
+        expect(within(wordmark).getByText('Arab')).toHaveClass(
+            'store-wordmark__name',
+        );
+        expect(within(wordmark).getByText('UT')).toHaveClass(
+            'store-wordmark__accent',
         );
 
         expect(languageLink).toHaveAttribute(

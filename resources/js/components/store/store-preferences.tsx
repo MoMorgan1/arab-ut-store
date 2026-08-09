@@ -111,7 +111,6 @@ export function StorePreferences({
                 type="button"
             >
                 <PreferencesIcon />
-                <strong aria-hidden="true">{displayCurrency}</strong>
             </button>
             {isOpen ? (
                 <div

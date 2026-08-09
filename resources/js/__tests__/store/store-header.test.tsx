@@ -167,6 +167,57 @@ describe('StoreHeader', () => {
         expect(document.querySelector('a[href="#"]')).not.toBeInTheDocument();
     });
 
+    it('preserves the WordPress wordmark treatment and accessible brand name', () => {
+        renderHeader();
+
+        const wordmark = screen.getByRole('link', { name: 'Arab UT' });
+        const crest = wordmark.querySelector('img');
+
+        expect(wordmark).toHaveClass('store-wordmark');
+        expect(wordmark).toHaveAccessibleName('Arab UT');
+        expect(crest).toHaveAttribute('width', '48');
+        expect(crest).toHaveAttribute('height', '48');
+        expect(within(wordmark).getByText('Arab')).toHaveClass(
+            'store-wordmark__name',
+        );
+        expect(within(wordmark).getByText('UT')).toHaveClass(
+            'store-wordmark__accent',
+        );
+    });
+
+    it('keeps the closed preferences trigger icon-only and exposes the selected currency when open', () => {
+        renderHeader();
+
+        const trigger = screen.getByRole('button', {
+            name: 'Display preferences',
+        });
+
+        expect(trigger).toHaveAccessibleName('Display preferences');
+        expect(trigger).not.toHaveTextContent('USD');
+        expect(trigger.querySelector('svg')).toBeInTheDocument();
+
+        fireEvent.click(trigger);
+
+        expect(
+            within(
+                screen.getByRole('dialog', {
+                    name: 'Display preferences',
+                }),
+            ).getByRole('link', { name: 'USD' }),
+        ).toHaveAttribute('aria-current', 'page');
+    });
+
+    it('uses the exact safe WhatsApp destination and touch-target contract', () => {
+        renderHeader();
+
+        const whatsapp = screen.getByRole('link', { name: 'WhatsApp' });
+
+        expect(whatsapp).toHaveAttribute('href', 'https://wa.me/966537998099');
+        expect(whatsapp).toHaveAttribute('target', '_blank');
+        expect(whatsapp).toHaveAttribute('rel', 'noopener noreferrer');
+        expect(whatsapp).toHaveClass('store-primary-nav__whatsapp-target');
+    });
+
     it('uses shell destinations for guest account and cart with a visible zero count', () => {
         renderHeader();
 
@@ -181,37 +232,23 @@ describe('StoreHeader', () => {
         expect(screen.getByText('0')).toBeInTheDocument();
     });
 
-    it('marks simple destinations as pages and the coins hash as a location', () => {
-        const { rerender } = renderHeader('/en/sbc?currency=USD');
+    it.each([
+        ['/en', 'Home', 'page'],
+        ['/en?currency=USD#coins', 'Coins', 'location'],
+        ['/en/sbc?currency=USD', 'SBC', 'page'],
+        ['/en/fut-champions?currency=USD', 'FUT Champions', 'page'],
+    ])(
+        'marks %s as the active %s destination',
+        (currentUrl, accessibleName, current) => {
+            renderHeader(currentUrl);
 
-        expect(screen.getByRole('link', { name: /SBC/ })).toHaveAttribute(
-            'aria-current',
-            'page',
-        );
-        expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute(
-            'aria-current',
-        );
-
-        rerender(
-            <StoreHeader
-                currentUrl="/en?currency=USD#coins"
-                direction="ltr"
-                displayCurrencies={['SAR', 'USD', 'EUR']}
-                displayCurrency="USD"
-                locale="en"
-                shell={shell}
-                translations={translations}
-            />,
-        );
-
-        expect(screen.getByRole('link', { name: 'Coins' })).toHaveAttribute(
-            'aria-current',
-            'location',
-        );
-        expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute(
-            'aria-current',
-        );
-    });
+            expect(
+                screen.getByRole('link', {
+                    name: accessibleName === 'SBC' ? /SBC/ : accessibleName,
+                }),
+            ).toHaveAttribute('aria-current', current);
+        },
+    );
 
     it('preserves the current route in currency and language links', () => {
         renderHeader('/en/privacy?campaign=spring&currency=USD#details');

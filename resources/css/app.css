@@ -310,15 +310,23 @@
     }
 
     .store-wordmark img {
-        width: 2.25rem;
-        height: 2.25rem;
+        width: 3rem;
+        height: 3rem;
         object-fit: contain;
     }
 
-    .store-wordmark span {
-        direction: ltr;
+    .store-wordmark__text {
         unicode-bidi: isolate;
-        font-size: 1.08rem;
+        color: var(--arabut-ink);
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+        font-size: 1.05rem;
+        font-weight: 800;
+        letter-spacing: 0;
+        white-space: nowrap;
+    }
+
+    .store-wordmark__accent {
+        color: var(--arabut-gold);
     }
 
     .store-header__actions {
@@ -381,11 +389,6 @@
 
     .store-preferences__trigger {
         padding: 0;
-    }
-
-    .store-preferences__trigger strong {
-        font-size: 0.6rem;
-        font-weight: 900;
     }
 
     .store-header__icon-link:focus-visible,
@@ -552,8 +555,8 @@
         margin-inline-start: auto;
     }
 
-    .store-primary-nav__whatsapp a {
-        min-height: 2.125rem;
+    .store-primary-nav__whatsapp-target {
+        min-height: 2.75rem;
         margin-inline-start: 0.5rem;
         border-radius: 999px;
         background: linear-gradient(135deg, #25d366, #128c7e);
@@ -1589,12 +1592,12 @@
     }
 
     .store-wordmark img {
-        width: 2.25rem;
-        height: 2.25rem;
+        width: 2.875rem;
+        height: 2.875rem;
     }
 
-    .store-wordmark span {
-        font-size: 0.92rem;
+    .store-wordmark__text {
+        font-size: 0.94rem;
         white-space: nowrap;
     }
 
@@ -1653,8 +1656,8 @@
         background: rgb(212 168 67 / 12%);
     }
 
-    .store-primary-nav__whatsapp a {
-        min-height: 2.375rem;
+    .store-primary-nav__whatsapp-target {
+        min-height: 2.75rem;
         margin-inline-start: 0;
     }
 
@@ -1805,8 +1808,8 @@
     }
 
     .store-wordmark img {
-        width: 2rem;
-        height: 2rem;
+        width: 2.875rem;
+        height: 2.875rem;
     }
 
     .store-header__actions {
@@ -1904,9 +1907,15 @@
 
     .store-hero__cta:hover,
     .store-hero__cta:active,
+    .store-primary-nav a:hover::after,
+    .store-primary-nav a[aria-current]::after,
     .coins-amount-slider:hover::-webkit-slider-thumb,
     .coins-amount-slider:hover::-moz-range-thumb {
         transform: none;
+    }
+
+    .store-primary-nav a::after {
+        transition: none;
     }
 
     .coins-loading-mark {
