@@ -73,6 +73,8 @@ export type CoinsStoreTranslations = {
         minimum_label: string;
         maximum_label: string;
         clamped: string;
+        normal_delivery_suggestion: string;
+        switch_to_fast: string;
     };
     actions: {
         continue: string;
@@ -107,6 +109,10 @@ export type CoinsQuote = {
     total: {
         amountHalalah: number;
         currency: 'SAR';
+    };
+    displayTotal: {
+        amountMinor: number;
+        currency: string;
     };
     pricedAt: string;
 };

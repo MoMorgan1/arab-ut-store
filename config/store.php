@@ -6,6 +6,11 @@ return [
     'checkout_currency' => 'SAR',
     'default_display_currency' => 'SAR',
     'display_currencies' => ['SAR', 'USD', 'EUR', 'GBP'],
+    'display_exchange_rates' => [
+        'provider_url' => 'https://open.er-api.com/v6/latest/SAR',
+        'source' => 'exchange-rate-api-open-access',
+        'max_age_hours' => 30,
+    ],
     'support' => [
         'whatsapp_url' => 'https://wa.me/966537998099',
         'email' => 'info@arab-ut.com',

@@ -1,4 +1,4 @@
-import { formatHalalah } from '@/lib/money';
+import { formatMinorUnits } from '@/lib/money';
 import type {
     CoinsQuoteViewState,
     CoinsStoreTranslations,
@@ -44,9 +44,9 @@ export function QuotePanel({ locale, state, translations }: QuotePanelProps) {
                 >
                     <span>{translations.quote.total}</span>
                     <strong>
-                        {formatHalalah(
-                            quote.total.amountHalalah,
-                            quote.total.currency,
+                        {formatMinorUnits(
+                            quote.displayTotal.amountMinor,
+                            quote.displayTotal.currency,
                             locale,
                         )}
                     </strong>

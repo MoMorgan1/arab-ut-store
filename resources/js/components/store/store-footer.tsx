@@ -164,6 +164,15 @@ export function StoreFooter({ locale, shell, translations }: StoreFooterProps) {
             <p className="store-footer__disclaimer" dir="ltr">
                 {translations.footer.ea_disclaimer}
             </p>
+            <p className="store-footer__disclaimer" dir="ltr">
+                <a
+                    href="https://www.exchangerate-api.com"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                >
+                    {translations.footer.exchange_rate_attribution}
+                </a>
+            </p>
         </footer>
     );
 }

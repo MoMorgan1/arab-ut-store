@@ -18,7 +18,11 @@ class SetDisplayCurrency
         $currency = $request->query('currency');
         $supportedCurrencies = config('store.display_currencies');
 
-        if (in_array($currency, $supportedCurrencies, true)) {
+        $isStorefrontNavigation = $request->isMethod('GET')
+            && ! $request->expectsJson()
+            && ! $request->routeIs('coins.quote', 'localized.coins.quote');
+
+        if ($isStorefrontNavigation && in_array($currency, $supportedCurrencies, true)) {
             $request->session()->put('display_currency', $currency);
         }
 

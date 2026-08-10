@@ -17,6 +17,34 @@ export function formatHalalah(
     }).format(amountHalalah / 100);
 }
 
+export function formatMinorUnits(
+    amountMinor: number,
+    currency: string,
+    locale: 'ar' | 'en',
+): string {
+    if (!Number.isSafeInteger(amountMinor) || amountMinor < 0) {
+        throw new RangeError(
+            'Minor units must be a non-negative safe integer.',
+        );
+    }
+
+    const amount = BigInt(amountMinor);
+    const major = amount / 100n;
+    const fraction = (amount % 100n).toString().padStart(2, '0');
+    const parts = new Intl.NumberFormat(moneyLocale(locale), {
+        currency,
+        currencyDisplay: 'code',
+        maximumFractionDigits: 2,
+        minimumFractionDigits: 2,
+        numberingSystem: 'latn',
+        style: 'currency',
+    }).formatToParts(major);
+
+    return parts
+        .map((part) => (part.type === 'fraction' ? fraction : part.value))
+        .join('');
+}
+
 export function formatCoins(quantity: number, locale: 'ar' | 'en'): string {
     return new Intl.NumberFormat(moneyLocale(locale), {
         maximumFractionDigits: 0,

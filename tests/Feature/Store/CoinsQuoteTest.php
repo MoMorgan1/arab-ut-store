@@ -2,9 +2,11 @@
 
 use App\Enums\Platform;
 use App\Enums\ServiceType;
+use App\Models\ExchangeRate;
 use App\Models\PriceRule;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 
 /**
@@ -93,11 +95,55 @@ test('PlayStation is the canonical combined PS and Xbox Coins option', function 
         ->assertJsonPath('data.delivery', 'normal')
         ->assertJsonPath('data.quantity', 100_000)
         ->assertJsonPath('data.total.amountHalalah', 500)
-        ->assertJsonPath('data.total.currency', 'SAR');
+        ->assertJsonPath('data.total.currency', 'SAR')
+        ->assertJsonPath('data.displayTotal.amountMinor', 500)
+        ->assertJsonPath('data.displayTotal.currency', 'SAR');
 
     expect($playStation->json('data.pricedAt'))->toBeString()
         ->and(now()->parse($playStation->json('data.pricedAt'))->isUtc())->toBeTrue();
 });
+
+test('a foreign display quote keeps SAR authority and uses only the session-selected rate', function () {
+    createQuoteCatalog();
+    ExchangeRate::create([
+        'base_currency' => 'SAR',
+        'quote_currency' => 'USD',
+        'rate' => '0.26666667',
+        'source' => 'exchange-rate-api-open-access',
+        'fetched_at' => now(),
+    ]);
+    Http::preventStrayRequests();
+
+    $response = $this->withSession(['display_currency' => 'USD'])
+        ->getJson('/en/coins/quote?platform=pc&quantity=50000');
+
+    assertQuoteIsNotStored($response);
+    $response->assertOk()
+        ->assertJsonPath('data.total.amountHalalah', 300)
+        ->assertJsonPath('data.total.currency', 'SAR')
+        ->assertJsonPath('data.displayTotal.amountMinor', 80)
+        ->assertJsonPath('data.displayTotal.currency', 'USD')
+        ->assertJsonMissingPath('data.checkoutCurrency');
+});
+
+test('missing or exactly 30 hour old display rates fail a foreign quote closed', function (string $failure) {
+    createQuoteCatalog();
+
+    if ($failure === 'stale') {
+        ExchangeRate::create([
+            'base_currency' => 'SAR',
+            'quote_currency' => 'EUR',
+            'rate' => '0.25000000',
+            'source' => 'exchange-rate-api-open-access',
+            'fetched_at' => now()->subHours(30),
+        ]);
+    }
+
+    assertQuoteUnavailable(
+        $this->withSession(['display_currency' => 'EUR'])
+            ->getJson('/coins/quote?platform=pc&quantity=50000'),
+    );
+})->with(['missing', 'stale']);
 
 test('Xbox is rejected because it is not a separate public Coins option', function () {
     createQuoteCatalog();

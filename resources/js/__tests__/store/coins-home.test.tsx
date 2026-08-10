@@ -86,6 +86,9 @@ const store = {
         minimum_label: 'Minimum',
         maximum_label: 'Maximum',
         clamped: 'Amount adjusted to this delivery limit.',
+        normal_delivery_suggestion:
+            'Fast delivery supports more than 2M Coins.',
+        switch_to_fast: 'Switch to Fast',
     },
     actions: {
         continue: 'Continue',
@@ -211,6 +214,7 @@ function availableProps() {
                 legal_navigation: 'Legal navigation',
                 copyright: 'Copyright © :year Arab UT.',
                 ea_disclaimer: 'Independent from EA Sports.',
+                exchange_rate_attribution: 'Rates By Exchange Rate API',
             },
         },
     };
@@ -221,6 +225,8 @@ function quoteResponse(
     platform: 'playstation' | 'pc' = 'pc',
     quantity = 50_000,
     delivery: 'normal' | 'fast' | null = platform === 'pc' ? null : 'fast',
+    displayAmountMinor = amountHalalah,
+    displayCurrency = 'SAR',
 ): Response {
     return new Response(
         JSON.stringify({
@@ -231,6 +237,10 @@ function quoteResponse(
                 pricedAt: '2026-08-09T12:00:00Z',
                 productId: '01K00000000000000000000000',
                 quantity,
+                displayTotal: {
+                    amountMinor: displayAmountMinor,
+                    currency: displayCurrency,
+                },
                 total: {
                     amountHalalah,
                     currency: 'SAR',
@@ -669,7 +679,7 @@ describe('Coins homepage', () => {
 
         fireEvent.change(range, { target: { value: '500000' } });
 
-        expect(amountInput).toHaveValue('500000');
+        expect(amountInput).toHaveValue('500,000');
         expect(screen.getByRole('button', { name: '+1M' })).toBeVisible();
         expect(screen.getByRole('button', { name: '-1M' })).toBeVisible();
     });
@@ -745,23 +755,23 @@ describe('Coins homepage', () => {
         });
 
         fireEvent.click(screen.getByRole('button', { name: '500K' }));
-        expect(amountInput).toHaveValue('500000');
+        expect(amountInput).toHaveValue('500,000');
         expect(range).toHaveValue('500000');
 
         fireEvent.change(range, { target: { value: '1000000' } });
-        expect(amountInput).toHaveValue('1000000');
+        expect(amountInput).toHaveValue('1,000,000');
 
         fireEvent.focus(amountInput);
         fireEvent.change(amountInput, { target: { value: '750,000 coins' } });
-        expect(amountInput).toHaveValue('750000');
+        expect(amountInput).toHaveValue('750,000');
         fireEvent.blur(amountInput);
         expect(range).toHaveValue('750000');
 
         fireEvent.click(screen.getByRole('button', { name: '+1M' }));
-        expect(amountInput).toHaveValue('1750000');
+        expect(amountInput).toHaveValue('1,750,000');
         expect(range).toHaveValue('1750000');
         fireEvent.click(screen.getByRole('button', { name: '-1M' }));
-        expect(amountInput).toHaveValue('750000');
+        expect(amountInput).toHaveValue('750,000');
         expect(range).toHaveValue('750000');
     });
 
@@ -775,7 +785,7 @@ describe('Coins homepage', () => {
 
         fireEvent.focus(amountInput);
         fireEvent.change(amountInput, { target: { value: '55000' } });
-        expect(amountInput).toHaveValue('55000');
+        expect(amountInput).toHaveValue('55,000');
         fireEvent.blur(amountInput);
 
         expect(amountInput).toHaveValue('60,000');
@@ -812,16 +822,16 @@ describe('Coins homepage', () => {
         });
 
         fireEvent.click(screen.getByRole('button', { name: '-1M' }));
-        expect(amountInput).toHaveValue('50000');
+        expect(amountInput).toHaveValue('50,000');
 
         fireEvent.click(screen.getByRole('button', { name: '1M' }));
         fireEvent.click(screen.getByRole('button', { name: '+1M' }));
-        expect(amountInput).toHaveValue('2000000');
+        expect(amountInput).toHaveValue('2,000,000');
         fireEvent.click(screen.getByRole('button', { name: '+1M' }));
-        expect(amountInput).toHaveValue('2000000');
+        expect(amountInput).toHaveValue('2,000,000');
     });
 
-    it('debounces a range drag to one quote for its final quantity', async () => {
+    it('requests immediately for every valid range change', async () => {
         const fetchMock = vi.fn((input: RequestInfo | URL) =>
             Promise.resolve(quoteResponseForRequest(input)),
         );
@@ -837,16 +847,70 @@ describe('Coins homepage', () => {
         fireEvent.change(range, { target: { value: '500000' } });
         fireEvent.change(range, { target: { value: '1000000' } });
 
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock).toHaveBeenCalledTimes(4);
         const request = new URL(
-            String(fetchMock.mock.calls[0][0]),
+            String(fetchMock.mock.calls[3][0]),
             'https://arab-ut.test',
         );
         expect(request.searchParams.get('quantity')).toBe('1000000');
+    });
+
+    it('keeps comma-grouped Latin digits while editing from every amount control', () => {
+        render(<StoreHome />);
+        selectConsoleDelivery('Fast');
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
+        });
+
+        fireEvent.focus(amountInput);
+        fireEvent.change(amountInput, { target: { value: '750000' } });
+        expect(amountInput).toHaveValue('750,000');
+        fireEvent.change(
+            screen.getByRole('slider', {
+                name: store.amount_copy.slider_label,
+            }),
+            { target: { value: '1000000' } },
+        );
+        expect(amountInput).toHaveValue('1,000,000');
+        fireEvent.click(screen.getByRole('button', { name: '500K' }));
+        expect(amountInput).toHaveValue('500,000');
+    });
+
+    it('renders the page-selected EUR display total instead of authoritative SAR', async () => {
+        mockPage.props = { ...availableProps(), displayCurrency: 'EUR' };
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() =>
+                Promise.resolve(
+                    quoteResponse(600, 'pc', 50_000, null, 137, 'EUR'),
+                ),
+            ),
+        );
+
+        render(<StoreHome />);
+        selectPlatform('PC');
+        await act(async () => await Promise.resolve());
+
+        expect(
+            screen.getByText((text) => text.includes('1.37')),
+        ).toHaveTextContent('EUR');
+        expect(
+            screen.queryByText((text) => text.includes('6.00')),
+        ).not.toBeInTheDocument();
+    });
+
+    it('offers Fast for normal delivery at 1.5M and returns to delivery with Fast selected', () => {
+        render(<StoreHome />);
+        selectConsoleDelivery('Normal');
+        fireEvent.change(
+            screen.getByRole('textbox', { name: store.amount_copy.label }),
+            { target: { value: '1500000' } },
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Switch to Fast' }));
+
+        expect(screen.getByText(store.delivery.title)).toHaveFocus();
+        expect(screen.getByRole('radio', { name: 'Fast' })).toBeChecked();
     });
 
     it.each(['typing', 'slider', 'chip', 'adjustment'] as const)(
@@ -1089,9 +1153,9 @@ describe('Coins homepage', () => {
                 await vi.advanceTimersByTimeAsync(300);
             });
 
-            expect(fetchMock).toHaveBeenCalledTimes(1);
+            expect(fetchMock).toHaveBeenCalledTimes(3);
             const request = new URL(
-                String(fetchMock.mock.calls[0][0]),
+                String(fetchMock.mock.calls[2][0]),
                 'https://arab-ut.test',
             );
             expect(request.searchParams.get('quantity')).toBe('2000000');
@@ -1184,7 +1248,7 @@ describe('Coins homepage', () => {
             fireEvent.change(amountInput, {
                 target: { value: equivalentInput },
             });
-            expect(amountInput).toHaveValue('50000');
+            expect(amountInput).toHaveValue('50,000');
             fireEvent.blur(amountInput);
 
             await act(async () => {
@@ -1200,7 +1264,7 @@ describe('Coins homepage', () => {
             fireEvent.change(amountInput, {
                 target: { value: equivalentInput },
             });
-            expect(amountInput).toHaveValue('50000');
+            expect(amountInput).toHaveValue('50,000');
             fireEvent.blur(amountInput);
 
             await act(async () => {
@@ -1266,7 +1330,7 @@ describe('Coins homepage', () => {
         });
 
         expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
-        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock).toHaveBeenCalledTimes(3);
 
         fireEvent.click(increment);
 
@@ -1275,7 +1339,7 @@ describe('Coins homepage', () => {
         });
 
         expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
-        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock).toHaveBeenCalledTimes(3);
         expect(screen.queryByText(store.quote.loading)).not.toBeInTheDocument();
     });
 

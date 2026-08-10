@@ -35,6 +35,7 @@ return [
         'legal_navigation' => 'Legal navigation',
         'copyright' => 'Copyright © :year Arab UT. All rights reserved.',
         'ea_disclaimer' => 'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
+        'exchange_rate_attribution' => 'Rates By Exchange Rate API',
     ],
     'simple_pages' => [
         'eyebrow' => 'Arab UT',

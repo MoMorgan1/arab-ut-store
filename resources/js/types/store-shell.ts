@@ -66,6 +66,7 @@ export type StoreShellTranslations = {
         legal_navigation: string;
         copyright: string;
         ea_disclaimer: string;
+        exchange_rate_attribution: string;
     };
     simple_pages: {
         eyebrow: string;

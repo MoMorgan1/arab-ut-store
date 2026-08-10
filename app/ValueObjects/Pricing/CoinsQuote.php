@@ -19,8 +19,11 @@ final readonly class CoinsQuote
         public CarbonImmutable $pricedAt,
     ) {}
 
-    /** @return array<string, mixed> */
-    public function toArray(): array
+    /**
+     * @param  array{amountMinor: int, currency: string}  $displayTotal
+     * @return array<string, mixed>
+     */
+    public function toArray(array $displayTotal): array
     {
         return [
             'productId' => $this->productId,
@@ -33,6 +36,7 @@ final readonly class CoinsQuote
                 'amountHalalah' => $this->total->halalah(),
                 'currency' => $this->total->currency(),
             ],
+            'displayTotal' => $displayTotal,
             'pricedAt' => $this->pricedAt->utc()->toIso8601String(),
         ];
     }

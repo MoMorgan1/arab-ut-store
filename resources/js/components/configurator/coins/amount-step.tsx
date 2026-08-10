@@ -4,6 +4,7 @@ import type { CSSProperties, Ref } from 'react';
 import { formatCoins, formatCompactCoins } from '@/lib/money';
 import type {
     CoinsAmountRules,
+    CoinsDeliveryValue,
     CoinsQuoteViewState,
     CoinsStoreTranslations,
 } from '@/types/coins';
@@ -16,11 +17,13 @@ type AmountStepProps = {
     isValid: boolean;
     locale: 'ar' | 'en';
     maximum: number;
+    delivery: CoinsDeliveryValue | null;
     onAdjust: (delta: number) => void;
     onBack: () => void;
     onCommit: (value: number) => void;
     onQuantityBlur: () => void;
     onQuantityChange: (value: string) => void;
+    onSwitchToFast: () => void;
     quantity: number;
     quantityInput: string;
     quoteState: CoinsQuoteViewState;
@@ -36,6 +39,7 @@ function adjustmentLabel(delta: number, locale: 'ar' | 'en'): string {
 
 export function AmountStep({
     amount,
+    delivery,
     focusRef,
     isValid,
     locale,
@@ -45,6 +49,7 @@ export function AmountStep({
     onCommit,
     onQuantityBlur,
     onQuantityChange,
+    onSwitchToFast,
     quantity,
     quantityInput,
     quoteState,
@@ -106,7 +111,9 @@ export function AmountStep({
                         type="text"
                         value={
                             isEditing
-                                ? quantityInput
+                                ? quantityInput === ''
+                                    ? ''
+                                    : formatCoins(Number(quantityInput), locale)
                                 : formatCoins(quantity, locale)
                         }
                     />
@@ -190,6 +197,21 @@ export function AmountStep({
                     ))}
                 </div>
             </div>
+
+            {delivery === 'normal' && quantity >= 1_500_000 ? (
+                <div className="coins-step__actions">
+                    <p className="coins-step__help">
+                        {translations.amount_copy.normal_delivery_suggestion}
+                    </p>
+                    <button
+                        className="coins-secondary-action"
+                        onClick={onSwitchToFast}
+                        type="button"
+                    >
+                        {translations.amount_copy.switch_to_fast}
+                    </button>
+                </div>
+            ) : null}
 
             <div className="coins-step__actions coins-step__actions--amount">
                 <button

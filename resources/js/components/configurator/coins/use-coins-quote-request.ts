@@ -6,12 +6,11 @@ import type { CoinsDeliveryValue, CoinsPlatformValue } from '@/types/coins';
 
 import type { CoinsConfiguratorAction } from './configurator-state';
 
-const QUOTE_DEBOUNCE_MS = 250;
-
 type UseCoinsQuoteRequestOptions = {
     active: boolean;
     delivery: CoinsDeliveryValue | null;
     dispatch: Dispatch<CoinsConfiguratorAction>;
+    expectedDisplayCurrency: string;
     platform: CoinsPlatformValue | null;
     quantity: number | null;
     quoteUrl: string;
@@ -25,6 +24,7 @@ export function useCoinsQuoteRequest({
     active,
     delivery,
     dispatch,
+    expectedDisplayCurrency,
     platform,
     quantity,
     quoteUrl,
@@ -41,54 +41,60 @@ export function useCoinsQuoteRequest({
 
         const controller = new AbortController();
         activeController.current = controller;
-        const timer = window.setTimeout(() => {
-            dispatch({ type: 'quote-loading' });
+        dispatch({ type: 'quote-loading' });
 
-            void quoteCoins({
-                delivery,
-                platform,
-                quantity,
-                quoteUrl,
-                signal: controller.signal,
+        void quoteCoins({
+            delivery,
+            expectedDisplayCurrency,
+            platform,
+            quantity,
+            quoteUrl,
+            signal: controller.signal,
+        })
+            .then((quote) => {
+                if (
+                    controller.signal.aborted ||
+                    version !== requestVersion.current
+                ) {
+                    return;
+                }
+
+                dispatch({ quote, type: 'quote-succeeded' });
             })
-                .then((quote) => {
-                    if (
-                        controller.signal.aborted ||
-                        version !== requestVersion.current
-                    ) {
-                        return;
-                    }
+            .catch((error: unknown) => {
+                if (
+                    controller.signal.aborted ||
+                    version !== requestVersion.current ||
+                    isAbortError(error)
+                ) {
+                    return;
+                }
 
-                    dispatch({ quote, type: 'quote-succeeded' });
-                })
-                .catch((error: unknown) => {
-                    if (
-                        controller.signal.aborted ||
-                        version !== requestVersion.current ||
-                        isAbortError(error)
-                    ) {
-                        return;
-                    }
-
-                    dispatch({
-                        type:
-                            error instanceof CoinsQuoteRequestError &&
-                            error.status === 422
-                                ? 'quote-validation'
-                                : 'quote-unavailable',
-                    });
+                dispatch({
+                    type:
+                        error instanceof CoinsQuoteRequestError &&
+                        error.status === 422
+                            ? 'quote-validation'
+                            : 'quote-unavailable',
                 });
-        }, QUOTE_DEBOUNCE_MS);
+            });
 
         return () => {
-            window.clearTimeout(timer);
             controller.abort();
 
             if (activeController.current === controller) {
                 activeController.current = null;
             }
         };
-    }, [active, delivery, dispatch, platform, quantity, quoteUrl]);
+    }, [
+        active,
+        delivery,
+        dispatch,
+        expectedDisplayCurrency,
+        platform,
+        quantity,
+        quoteUrl,
+    ]);
 
     return function invalidateQuoteRequest() {
         requestVersion.current += 1;

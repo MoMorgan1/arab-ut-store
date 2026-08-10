@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Store;
 
+use App\Actions\Pricing\ConvertDisplayMoney;
 use App\Actions\Pricing\QuoteCoins;
 use App\Enums\DeliveryMode;
 use App\Enums\Platform;
@@ -13,8 +14,11 @@ use ValueError;
 
 class CoinsQuoteController extends Controller
 {
-    public function __invoke(CoinsQuoteRequest $request, QuoteCoins $quoteCoins): JsonResponse
-    {
+    public function __invoke(
+        CoinsQuoteRequest $request,
+        QuoteCoins $quoteCoins,
+        ConvertDisplayMoney $convertDisplayMoney,
+    ): JsonResponse {
         $validated = $request->safe();
 
         try {
@@ -25,6 +29,10 @@ class CoinsQuoteController extends Controller
                     : null,
                 $validated->integer('quantity'),
             );
+            $displayTotal = $convertDisplayMoney->execute(
+                $quote->total,
+                (string) $request->session()->get('display_currency'),
+            );
         } catch (DomainException|ValueError) {
             return response()->json([
                 'error' => [
@@ -34,7 +42,7 @@ class CoinsQuoteController extends Controller
             ], 503)->header('Cache-Control', 'no-store');
         }
 
-        return response()->json(['data' => $quote->toArray()])
+        return response()->json(['data' => $quote->toArray($displayTotal)])
             ->header('Cache-Control', 'no-store');
     }
 }

@@ -109,6 +109,7 @@ const translations = {
         copyright: 'Copyright © :year Arab UT. All rights reserved.',
         ea_disclaimer:
             'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
+        exchange_rate_attribution: 'Rates By Exchange Rate API',
     },
     simple_pages: {
         eyebrow: 'Arab UT',
@@ -215,6 +216,19 @@ describe('StoreFooter', () => {
         expect(
             within(footer).getByRole('link', { name: 'info@arab-ut.com' }),
         ).toHaveAttribute('href', 'mailto:info@arab-ut.com');
+    });
+
+    it('discreetly attributes the display exchange-rate provider', () => {
+        const footer = renderFooter();
+        const attribution = within(footer).getByRole('link', {
+            name: 'Rates By Exchange Rate API',
+        });
+
+        expect(attribution).toHaveAttribute(
+            'href',
+            'https://www.exchangerate-api.com',
+        );
+        expect(attribution).toHaveAttribute('rel', 'noopener noreferrer');
     });
 
     it('shows exact payment assets, the current year, and the EA disclaimer', () => {

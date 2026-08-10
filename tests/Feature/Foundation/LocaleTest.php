@@ -93,3 +93,10 @@ test('a stale display currency preference is replaced by the configured default'
             ->where('displayCurrencies', ['SAR', 'CAD'])
             ->where('checkoutCurrency', 'SAR'));
 });
+
+test('a rejected currency on either quote endpoint cannot mutate the display preference', function (string $path) {
+    $this->withSession(['display_currency' => 'EUR'])
+        ->getJson($path.'?platform=pc&quantity=50000&currency=USD')
+        ->assertUnprocessable()
+        ->assertSessionHas('display_currency', 'EUR');
+})->with(['/coins/quote', '/en/coins/quote']);

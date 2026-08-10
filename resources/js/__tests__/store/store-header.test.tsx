@@ -71,6 +71,7 @@ const translations = {
         legal_navigation: '',
         copyright: '',
         ea_disclaimer: '',
+        exchange_rate_attribution: 'Rates By Exchange Rate API',
     },
     simple_pages: {
         eyebrow: '',

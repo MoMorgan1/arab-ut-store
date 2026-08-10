@@ -106,7 +106,7 @@ test('the hero uses the approved bilingual copy and proof contract', function ()
     /** @var array<string, mixed> $english */
     $english = require lang_path('en/store.php');
 
-    expect(data_get($arabic, 'hero.badge'))->toBe('كل اللي تحتاجه في FC 27، بمكان واحد')
+    expect(data_get($arabic, 'hero.badge'))->toBe('كل اللي تحتاجه في FC 27 بمكان واحد')
         ->and(data_get($arabic, 'hero.title'))->toBe('كوينز فيفا 27')
         ->and(data_get($arabic, 'hero.accent'))->toBe('بأفضل الأسعار')
         ->and(data_get($arabic, 'hero.cta'))->toBe('اختر كوينزك')

@@ -8,6 +8,7 @@ type QuoteCoinsInput = {
     quoteUrl: string;
     platform: CoinsPlatformValue;
     delivery: CoinsDeliveryValue | null;
+    expectedDisplayCurrency: string;
     quantity: number;
     signal: AbortSignal;
 };
@@ -106,7 +107,10 @@ function responseMatchesRequest(
 
 function parseQuote(
     payload: unknown,
-    request: Pick<QuoteCoinsInput, 'delivery' | 'platform' | 'quantity'>,
+    request: Pick<
+        QuoteCoinsInput,
+        'delivery' | 'expectedDisplayCurrency' | 'platform' | 'quantity'
+    >,
 ): CoinsQuote | null {
     if (!isRecord(payload) || !isRecord(payload.data)) {
         return null;
@@ -128,7 +132,12 @@ function parseQuote(
         !Number.isSafeInteger(data.total.amountHalalah) ||
         data.total.amountHalalah <= 0 ||
         data.total.amountHalalah % 100 !== 0 ||
-        data.total.currency !== 'SAR'
+        data.total.currency !== 'SAR' ||
+        !isRecord(data.displayTotal) ||
+        typeof data.displayTotal.amountMinor !== 'number' ||
+        !Number.isSafeInteger(data.displayTotal.amountMinor) ||
+        data.displayTotal.amountMinor <= 0 ||
+        data.displayTotal.currency !== request.expectedDisplayCurrency
     ) {
         return null;
     }
@@ -139,6 +148,10 @@ function parseQuote(
 
     return {
         delivery: data.delivery,
+        displayTotal: {
+            amountMinor: data.displayTotal.amountMinor,
+            currency: data.displayTotal.currency,
+        },
         market: data.market,
         platform: data.platform,
         pricedAt: data.pricedAt,
@@ -164,6 +177,7 @@ export async function quoteCoins({
     quoteUrl,
     platform,
     delivery,
+    expectedDisplayCurrency,
     quantity,
     signal,
 }: QuoteCoinsInput): Promise<CoinsQuote> {
@@ -198,7 +212,12 @@ export async function quoteCoins({
         throw new CoinsQuoteRequestError(response.status, code);
     }
 
-    const quote = parseQuote(payload, { delivery, platform, quantity });
+    const quote = parseQuote(payload, {
+        delivery,
+        expectedDisplayCurrency,
+        platform,
+        quantity,
+    });
 
     if (quote === null) {
         throw new CoinsQuoteRequestError(503, 'coins_pricing_unavailable');

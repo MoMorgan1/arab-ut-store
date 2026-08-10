@@ -9,6 +9,10 @@ const validPcQuote = {
     pricedAt: '2026-08-09T12:00:00Z',
     productId: '01K00000000000000000000000',
     quantity: 50_000,
+    displayTotal: {
+        amountMinor: 160,
+        currency: 'USD',
+    },
     total: {
         amountHalalah: 600,
         currency: 'SAR',
@@ -33,6 +37,7 @@ function failedResponse(payload: unknown, status = 503): Response {
 function requestPcQuote() {
     return quoteCoins({
         delivery: null,
+        expectedDisplayCurrency: 'USD',
         platform: 'pc',
         quantity: 50_000,
         quoteUrl: '/en/coins/quote',
@@ -52,6 +57,68 @@ describe('quoteCoins response contract', () => {
         );
 
         await expect(requestPcQuote()).resolves.toEqual(validPcQuote);
+    });
+
+    it.each([
+        ['missing display total', { ...validPcQuote, displayTotal: undefined }],
+        [
+            'zero display amount',
+            {
+                ...validPcQuote,
+                displayTotal: { amountMinor: 0, currency: 'USD' },
+            },
+        ],
+        [
+            'unsafe display amount',
+            {
+                ...validPcQuote,
+                displayTotal: {
+                    amountMinor: Number.MAX_SAFE_INTEGER + 1,
+                    currency: 'USD',
+                },
+            },
+        ],
+        [
+            'mismatched display currency',
+            {
+                ...validPcQuote,
+                displayTotal: { amountMinor: 160, currency: 'EUR' },
+            },
+        ],
+        [
+            'foreign halalah alias',
+            {
+                ...validPcQuote,
+                displayTotal: { amountHalalah: 160, currency: 'USD' },
+            },
+        ],
+    ])('fails closed on %s', async (_, data) => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => Promise.resolve(successfulResponse(data))),
+        );
+
+        await expect(requestPcQuote()).rejects.toMatchObject({
+            code: 'coins_pricing_unavailable',
+            status: 503,
+        });
+    });
+
+    it('never sends display currency as quote input', async () => {
+        const fetchMock = vi.fn((input: RequestInfo | URL) => {
+            void input;
+
+            return Promise.resolve(successfulResponse(validPcQuote));
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        await requestPcQuote();
+
+        const url = new URL(
+            String(fetchMock.mock.calls[0][0]),
+            'https://arab-ut.test',
+        );
+        expect(url.searchParams.has('currency')).toBe(false);
     });
 
     it('accepts the UTC +00:00 timestamp emitted by the live quote endpoint', async () => {
@@ -178,6 +245,7 @@ describe('quoteCoins response contract', () => {
         await expect(
             quoteCoins({
                 delivery: 'normal',
+                expectedDisplayCurrency: 'USD',
                 platform: 'playstation',
                 quantity: 50_000,
                 quoteUrl: '/en/coins/quote',

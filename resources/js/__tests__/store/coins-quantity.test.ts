@@ -5,7 +5,7 @@ import {
     coinsConfiguratorReducer,
     createInitialConfiguratorState,
 } from '@/components/configurator/coins/configurator-state';
-import { formatCoins, formatCompactCoins, formatHalalah } from '@/lib/money';
+import { formatCoins, formatCompactCoins, formatMinorUnits } from '@/lib/money';
 
 const quote = {
     delivery: null,
@@ -14,6 +14,7 @@ const quote = {
     pricedAt: '2026-08-09T12:00:00Z',
     productId: '01K00000000000000000000000',
     quantity: 50_000,
+    displayTotal: { amountMinor: 160, currency: 'USD' },
     total: { amountHalalah: 600, currency: 'SAR' as const },
     variantId: '01K00000000000000000000001',
 };
@@ -46,23 +47,39 @@ describe('Coins quantity controls', () => {
     });
 
     it.each(['ar', 'en'] as const)(
-        'uses Latin digits for %s amount, compact, and SAR price output',
+        'uses Latin digits for exact %s amount, compact, and minor-unit output',
         (locale) => {
             const values = [
                 formatCoins(1_234_567, locale),
                 formatCompactCoins(500_000, locale),
-                formatHalalah(650, 'SAR', locale),
+                formatMinorUnits(1, 'EUR', locale),
+                formatMinorUnits(650, 'SAR', locale),
             ];
 
             expect(values).toEqual(
                 expect.arrayContaining([
                     '1,234,567',
                     '500K',
+                    expect.stringContaining('0.01'),
                     expect.stringContaining('6.50'),
                 ]),
             );
+            expect(values.join(' ')).toContain('EUR');
             expect(values.join(' ')).toContain('SAR');
             expect(values.join(' ')).not.toMatch(/[٠-٩]/);
+        },
+    );
+
+    it.each([
+        ['USD', 123_456_789, '1,234,567.89'],
+        ['EUR', 10, '0.10'],
+        ['GBP', 1, '0.01'],
+    ])(
+        'formats %s minor units without binary division',
+        (currency, amount, expected) => {
+            expect(formatMinorUnits(amount, currency, 'en')).toContain(
+                expected,
+            );
         },
     );
 

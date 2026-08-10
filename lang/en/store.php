@@ -65,6 +65,8 @@ return [
         'minimum_label' => 'Minimum',
         'maximum_label' => 'Maximum',
         'clamped' => 'The amount was reduced to the maximum for this selection.',
+        'normal_delivery_suggestion' => 'Fast delivery supports more than 2M Coins.',
+        'switch_to_fast' => 'Switch to Fast',
     ],
     'actions' => [
         'continue' => 'Continue',

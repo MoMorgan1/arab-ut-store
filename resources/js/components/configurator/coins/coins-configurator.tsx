@@ -1,3 +1,4 @@
+import { usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useReducer, useRef } from 'react';
 
 import type {
@@ -37,6 +38,7 @@ export function CoinsConfigurator({
     quoteUrl,
     translations,
 }: CoinsConfiguratorProps) {
+    const { displayCurrency } = usePage<{ displayCurrency: string }>().props;
     const [state, dispatch] = useReducer(
         coinsConfiguratorReducer,
         amount.minimum,
@@ -79,6 +81,7 @@ export function CoinsConfigurator({
             quantityIsValid,
         delivery: requestDelivery,
         dispatch,
+        expectedDisplayCurrency: displayCurrency,
         platform: selectedPlatform?.value ?? null,
         quantity,
         quoteUrl,
@@ -166,6 +169,11 @@ export function CoinsConfigurator({
 
     function goBack() {
         navigateTo(state.step === 'amount' && !isPc ? 'delivery' : 'platform');
+    }
+
+    function switchToFast() {
+        chooseDelivery('fast');
+        navigateTo('delivery');
     }
 
     function updateQuantity(value: string) {
@@ -282,6 +290,7 @@ export function CoinsConfigurator({
             {state.step === 'amount' && selectedPlatform !== null ? (
                 <AmountStep
                     amount={amount}
+                    delivery={requestDelivery}
                     focusRef={amountHeading}
                     isValid={quantityIsValid}
                     locale={locale}
@@ -291,6 +300,7 @@ export function CoinsConfigurator({
                     onCommit={commitQuantity}
                     onQuantityBlur={commitTypedQuantity}
                     onQuantityChange={updateQuantity}
+                    onSwitchToFast={switchToFast}
                     quantity={state.lastValidQuantity}
                     quantityInput={state.quantityInput}
                     quoteState={state.quoteState}

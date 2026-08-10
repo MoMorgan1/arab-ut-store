@@ -67,6 +67,7 @@ const mockPage = vi.hoisted(() => ({
                 legal_navigation: 'Legal navigation',
                 copyright: 'Copyright © :year Arab UT.',
                 ea_disclaimer: 'Independent from EA Sports.',
+                exchange_rate_attribution: 'Rates By Exchange Rate API',
             },
         },
     },
