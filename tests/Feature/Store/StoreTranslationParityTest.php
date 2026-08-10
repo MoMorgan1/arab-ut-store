@@ -71,9 +71,15 @@ test('Arabic and English shell translation leaves and placeholders stay in parit
         ->and(data_get($english, 'header.fut_champions'))->toBe('FUT Champions')
         ->and($arabic['footer'])->not->toHaveKey('legal_navigation')
         ->and($english['footer'])->not->toHaveKey('legal_navigation')
-        ->and(data_get($arabic, 'simple_pages.cart.title'))->toBe('السلة')
-        ->and(data_get($english, 'simple_pages.cart.title'))->toBe('Cart')
+        ->and(data_get($arabic, 'footer.payment_methods'))->toBe('طرق الدفع عند الإطلاق')
+        ->and(data_get($english, 'footer.payment_methods'))->toBe('Payment methods at launch')
+        ->and($arabic['simple_pages'])->not->toHaveKey('cart')
+        ->and($english['simple_pages'])->not->toHaveKey('cart')
         ->and(translationTokens(data_get($arabic, 'footer.copyright')))->toBe(['year']);
+});
+
+test('the live simple-page allowlist excludes the real cart destination', function () {
+    expect(config('store.simple_pages'))->not->toContain('cart');
 });
 
 test('Arabic customer copy consistently calls the service كوينز', function () {

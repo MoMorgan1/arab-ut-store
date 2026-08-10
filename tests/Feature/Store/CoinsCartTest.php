@@ -593,6 +593,27 @@ test('resume stores only validated safe selection as the intended login destinat
     expect(session()->all())->not->toContain('unsafe-sentinel');
 });
 
+test('guest resume redirects to authentication in the originating storefront locale', function (
+    string $resumeUrl,
+    string $loginUrl,
+) {
+    $this->get($resumeUrl)->assertRedirect($loginUrl);
+
+    $intended = (string) session('url.intended');
+    parse_str((string) parse_url($intended, PHP_URL_QUERY), $intendedQuery);
+
+    expect(parse_url($intended, PHP_URL_PATH))->toBe(parse_url($resumeUrl, PHP_URL_PATH))
+        ->and($intendedQuery)->toBe([
+            'platform' => 'pc',
+            'quantity' => '50000',
+        ])
+        ->and($intended)->not->toContain('password')
+        ->not->toContain('backup_codes');
+})->with([
+    'Arabic' => ['/cart/items/coins/resume?platform=pc&quantity=50000', '/login'],
+    'English' => ['/en/cart/items/coins/resume?platform=pc&quantity=50000', '/en/login'],
+]);
+
 test('localized writes and resume returns preserve the English storefront', function () {
     createCartCatalog();
     $this->actingAs(User::factory()->create());

@@ -14,7 +14,7 @@ use Tests\TestCase;
 uses(TestCase::class);
 
 test('concurrent first additions create one active cart and two credential-bound lines', function () {
-    if (config('database.default') !== 'mysql') {
+    if (! supportsConcurrentCartLocking()) {
         $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL row locking.');
     }
 
@@ -39,7 +39,7 @@ test('concurrent first additions create one active cart and two credential-bound
 });
 
 test('concurrent same-key additions replay one identical safe response', function () {
-    if (config('database.default') !== 'mysql') {
+    if (! supportsConcurrentCartLocking()) {
         $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL row locking.');
     }
 
@@ -66,6 +66,11 @@ test('concurrent same-key additions replay one identical safe response', functio
         ->and($userCart->items()->whereHas('secret')->count())->toBe(1)
         ->and(DB::table('idempotency_keys')->where('key', $idempotencyKey)->count())->toBe(1);
 });
+
+function supportsConcurrentCartLocking(): bool
+{
+    return in_array(DB::connection()->getDriverName(), ['mariadb', 'mysql'], true);
+}
 
 function createConcurrentCatalog(): void
 {

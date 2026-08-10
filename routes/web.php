@@ -10,6 +10,11 @@ use App\Http\Middleware\NoStore;
 use App\Http\Middleware\RequireCoinsCartJson;
 use App\Http\Middleware\ValidateCoinsCartResume;
 use Illuminate\Support\Facades\Route;
+use Laravel\Fortify\Features;
+use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
+use Laravel\Fortify\Http\Controllers\NewPasswordController;
+use Laravel\Fortify\Http\Controllers\PasswordResetLinkController;
+use Laravel\Fortify\Http\Controllers\RegisteredUserController;
 
 Route::get('/', HomeController::class)->name('home');
 Route::get('/coins/quote', CoinsQuoteController::class)->name('coins.quote');
@@ -30,6 +35,12 @@ $simpleStorePages = [
     'ea_backup_codes' => '/ea-backup-codes',
     'terms' => '/terms',
 ];
+$localizedLoginMiddleware = array_filter([
+    'guest:'.config('fortify.guard'),
+    config('fortify.limiters.login')
+        ? 'throttle:'.config('fortify.limiters.login')
+        : null,
+]);
 
 foreach ($simpleStorePages as $page => $uri) {
     Route::get($uri, SimpleStorePageController::class)
@@ -38,7 +49,7 @@ foreach ($simpleStorePages as $page => $uri) {
 
 Route::prefix('{locale}')
     ->whereIn('locale', config('store.locales'))
-    ->group(function () use ($simpleStorePages): void {
+    ->group(function () use ($localizedLoginMiddleware, $simpleStorePages): void {
         Route::get('/', HomeController::class)->name('localized.home');
         Route::get('/coins/quote', CoinsQuoteController::class)->name('localized.coins.quote');
         Route::get('/cart', CartController::class)->name('localized.store.cart');
@@ -48,6 +59,37 @@ Route::prefix('{locale}')
         Route::get('/cart/items/coins/resume', CoinsCartResumeController::class)
             ->middleware([NoStore::class, ValidateCoinsCartResume::class, 'auth'])
             ->name('localized.cart.items.coins.resume');
+
+        Route::get('/login', [AuthenticatedSessionController::class, 'create'])
+            ->middleware(['guest:'.config('fortify.guard')])
+            ->name('localized.login');
+        Route::post('/login', [AuthenticatedSessionController::class, 'store'])
+            ->middleware($localizedLoginMiddleware)
+            ->name('localized.login.store');
+
+        if (Features::enabled(Features::registration())) {
+            Route::get('/register', [RegisteredUserController::class, 'create'])
+                ->middleware(['guest:'.config('fortify.guard')])
+                ->name('localized.register');
+            Route::post('/register', [RegisteredUserController::class, 'store'])
+                ->middleware(['guest:'.config('fortify.guard')])
+                ->name('localized.register.store');
+        }
+
+        if (Features::enabled(Features::resetPasswords())) {
+            Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])
+                ->middleware(['guest:'.config('fortify.guard')])
+                ->name('localized.password.request');
+            Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
+                ->middleware(['guest:'.config('fortify.guard')])
+                ->name('localized.password.email');
+            Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])
+                ->middleware(['guest:'.config('fortify.guard')])
+                ->name('localized.password.reset');
+            Route::post('/reset-password', [NewPasswordController::class, 'store'])
+                ->middleware(['guest:'.config('fortify.guard')])
+                ->name('localized.password.update');
+        }
 
         foreach ($simpleStorePages as $page => $uri) {
             Route::get($uri, SimpleStorePageController::class)

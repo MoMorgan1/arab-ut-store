@@ -73,7 +73,7 @@ test('the database derives active ownership from user status and SAR currency', 
         'updated_at' => $now,
     ]);
 
-    if (DB::connection()->getDriverName() === 'mysql') {
+    if (in_array(DB::connection()->getDriverName(), ['mariadb', 'mysql'], true)) {
         expect($insertWithMismatchedKey)->toThrow(QueryException::class);
         DB::table('carts')->insert([
             'public_id' => (string) str()->ulid(),

@@ -64,7 +64,7 @@ const mockPage = vi.hoisted(() => ({
                 terms: 'Terms of Service',
                 customer_service: 'Customer service',
                 whatsapp: 'WhatsApp support',
-                payment_methods: 'Accepted payment methods',
+                payment_methods: 'Payment methods at launch',
                 copyright: 'Copyright © :year Arab UT.',
                 ea_disclaimer: 'Independent from EA Sports.',
                 exchange_rate_attribution: 'Rates By Exchange Rate API',

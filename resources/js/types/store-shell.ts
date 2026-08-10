@@ -1,7 +1,6 @@
 export type StoreLocale = 'ar' | 'en';
 
 export type SimpleStorePageKey =
-    | 'cart'
     | 'sbc'
     | 'fut_champions'
     | 'privacy'

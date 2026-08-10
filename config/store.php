@@ -20,8 +20,8 @@ return [
         'instagram' => 'https://www.instagram.com/arabutcoins/',
     ],
     'simple_pages' => [
-        'cart', 'sbc', 'fut_champions', 'privacy', 'returns',
-        'warranty', 'ea_backup_codes', 'terms',
+        'sbc', 'fut_champions', 'privacy', 'returns', 'warranty',
+        'ea_backup_codes', 'terms',
     ],
     'payments' => [
         ['name' => 'Mada', 'image_url' => '/images/store/payments/mada.png', 'width' => 120, 'height' => 41],

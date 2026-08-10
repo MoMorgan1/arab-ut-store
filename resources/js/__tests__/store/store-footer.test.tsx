@@ -82,7 +82,7 @@ const translations = {
         terms: 'Terms of Service',
         customer_service: 'Customer service',
         whatsapp: 'WhatsApp support',
-        payment_methods: 'Accepted payment methods',
+        payment_methods: 'Payment methods at launch',
         copyright: 'Copyright © :year Arab UT. All rights reserved.',
         ea_disclaimer:
             'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
@@ -91,7 +91,6 @@ const translations = {
     simple_pages: {
         eyebrow: 'Arab UT',
         back_home: 'Back to home',
-        cart: { title: 'Cart', body: '' },
         sbc: { title: 'SBC', body: '' },
         fut_champions: { title: 'FUT Champions', body: '' },
         privacy: { title: 'Privacy', body: '' },
@@ -216,6 +215,8 @@ describe('StoreFooter', () => {
 
         const footer = renderFooter();
 
+        expect(footer).toHaveTextContent('Payment methods at launch');
+        expect(footer).not.toHaveTextContent('Accepted payment methods');
         expect(within(footer).getAllByRole('img')).toHaveLength(4);
 
         for (const payment of shell.payments) {

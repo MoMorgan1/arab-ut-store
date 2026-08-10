@@ -29,6 +29,7 @@ class CreateNewUser implements CreatesNewUsers
             'last_name' => $input['last_name'],
             'email' => $input['email'],
             'password' => $input['password'],
+            'preferred_locale' => app()->getLocale(),
         ]);
     }
 }

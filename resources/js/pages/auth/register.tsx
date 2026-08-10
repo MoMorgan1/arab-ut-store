@@ -6,22 +6,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { login } from '@/routes';
-import { store } from '@/routes/register';
+import type { AuthRoutes, AuthUiTranslations } from '@/types/auth';
 
 type Props = {
+    authRoutes: AuthRoutes;
+    authUi: AuthUiTranslations;
     passwordRules: string;
 };
 
-export default function Register({ passwordRules }: Props) {
+export default function Register({ authRoutes, authUi, passwordRules }: Props) {
     return (
         <>
-            <Head title="Register" />
+            <Head title={authUi.register.head_title} />
             <Form
-                {...store.form()}
+                action={authRoutes.registerStoreUrl}
+                method="post"
                 resetOnSuccess={['password', 'password_confirmation']}
                 disableWhileProcessing
-                className="flex flex-col gap-6"
+                className="auth-form"
             >
                 {({ processing, errors }) => (
                     <>
@@ -29,7 +31,7 @@ export default function Register({ passwordRules }: Props) {
                             <div className="grid gap-2 sm:grid-cols-2">
                                 <div className="grid gap-2">
                                     <Label htmlFor="first_name">
-                                        First name
+                                        {authUi.fields.first_name}
                                     </Label>
                                     <Input
                                         id="first_name"
@@ -39,7 +41,8 @@ export default function Register({ passwordRules }: Props) {
                                         tabIndex={1}
                                         autoComplete="given-name"
                                         name="first_name"
-                                        placeholder="First name"
+                                        placeholder={authUi.fields.first_name}
+                                        className="h-11"
                                     />
                                     <InputError
                                         message={errors.first_name}
@@ -48,7 +51,9 @@ export default function Register({ passwordRules }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="last_name">Last name</Label>
+                                    <Label htmlFor="last_name">
+                                        {authUi.fields.last_name}
+                                    </Label>
                                     <Input
                                         id="last_name"
                                         type="text"
@@ -56,7 +61,8 @@ export default function Register({ passwordRules }: Props) {
                                         tabIndex={2}
                                         autoComplete="family-name"
                                         name="last_name"
-                                        placeholder="Last name"
+                                        placeholder={authUi.fields.last_name}
+                                        className="h-11"
                                     />
                                     <InputError
                                         message={errors.last_name}
@@ -66,7 +72,9 @@ export default function Register({ passwordRules }: Props) {
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
+                                <Label htmlFor="email">
+                                    {authUi.fields.email}
+                                </Label>
                                 <Input
                                     id="email"
                                     type="email"
@@ -75,27 +83,33 @@ export default function Register({ passwordRules }: Props) {
                                     autoComplete="email"
                                     name="email"
                                     placeholder="email@example.com"
+                                    className="h-11"
                                 />
                                 <InputError message={errors.email} />
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="password">Password</Label>
+                                <Label htmlFor="password">
+                                    {authUi.fields.password}
+                                </Label>
                                 <PasswordInput
                                     id="password"
                                     required
                                     tabIndex={4}
                                     autoComplete="new-password"
                                     name="password"
-                                    placeholder="Password"
+                                    placeholder={authUi.fields.password}
                                     passwordrules={passwordRules}
+                                    className="h-11"
+                                    showLabel={authUi.password_visibility.show}
+                                    hideLabel={authUi.password_visibility.hide}
                                 />
                                 <InputError message={errors.password} />
                             </div>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="password_confirmation">
-                                    Confirm password
+                                    {authUi.fields.password_confirmation}
                                 </Label>
                                 <PasswordInput
                                     id="password_confirmation"
@@ -103,8 +117,13 @@ export default function Register({ passwordRules }: Props) {
                                     tabIndex={5}
                                     autoComplete="new-password"
                                     name="password_confirmation"
-                                    placeholder="Confirm password"
+                                    placeholder={
+                                        authUi.fields.password_confirmation
+                                    }
                                     passwordrules={passwordRules}
+                                    className="h-11"
+                                    showLabel={authUi.password_visibility.show}
+                                    hideLabel={authUi.password_visibility.hide}
                                 />
                                 <InputError
                                     message={errors.password_confirmation}
@@ -113,19 +132,23 @@ export default function Register({ passwordRules }: Props) {
 
                             <Button
                                 type="submit"
-                                className="mt-2 w-full"
+                                className="mt-2 h-11 w-full"
                                 tabIndex={6}
                                 data-test="register-user-button"
                             >
                                 {processing && <Spinner />}
-                                Create account
+                                {authUi.register.submit}
                             </Button>
                         </div>
 
-                        <div className="text-center text-sm text-muted-foreground">
-                            Already have an account?{' '}
-                            <TextLink href={login()} tabIndex={7}>
-                                Log in
+                        <div className="auth-form__switch">
+                            {authUi.register.login_prompt}{' '}
+                            <TextLink
+                                className="auth-inline-link"
+                                href={authRoutes.loginUrl}
+                                tabIndex={7}
+                            >
+                                {authUi.register.login_link}
                             </TextLink>
                         </div>
                     </>
@@ -134,8 +157,3 @@ export default function Register({ passwordRules }: Props) {
         </>
     );
 }
-
-Register.layout = {
-    title: 'Create an account',
-    description: 'Enter your details below to create your account',
-};

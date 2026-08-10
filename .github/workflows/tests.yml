@@ -91,12 +91,17 @@ jobs:
           php artisan migrate:rollback --force
           php artisan migrate --force
 
-      - name: Run focused domain tests on MariaDB
+      - name: Run focused domain and cart tests on MariaDB
         run: >-
           php vendor/bin/pest --configuration phpunit.mariadb.xml
           tests/Feature/Database/DomainSchemaTest.php
+          tests/Feature/Database/CartSecuritySchemaTest.php
           tests/Feature/Auth/RegistrationTest.php
           tests/Feature/Settings/ProfileUpdateTest.php
+          tests/Feature/Store/CoinsCartTest.php
+          tests/Feature/Console/PurgeCartItemSecretsTest.php
+          tests/Integration/ActiveCartInvariantUpgradeTest.php
+          tests/Integration/CoinsCartConcurrencyTest.php
           tests/Unit/Enums/OrderItemStatusTest.php
           tests/Unit/Enums/PlatformTest.php
           tests/Unit/Support/MoneyTest.php

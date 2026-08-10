@@ -31,7 +31,7 @@ return [
         'terms' => 'شروط الخدمة',
         'customer_service' => 'خدمة العملاء',
         'whatsapp' => 'واتساب',
-        'payment_methods' => 'طرق الدفع المقبولة',
+        'payment_methods' => 'طرق الدفع عند الإطلاق',
         'copyright' => '© :year Arab UT. جميع الحقوق محفوظة.',
         'ea_disclaimer' => 'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
         'exchange_rate_attribution' => 'Rates By Exchange Rate API',
@@ -39,10 +39,6 @@ return [
     'simple_pages' => [
         'eyebrow' => 'عرب التيميت',
         'back_home' => 'ارجع للرئيسية',
-        'cart' => [
-            'title' => 'السلة',
-            'body' => 'السلة بتكون جاهزة مع مرحلة الطلب والدفع. حالياً تقدر تختار خدمتك من الرئيسية.',
-        ],
         'sbc' => [
             'title' => 'خدمات SBC',
             'body' => 'نجهز صفحة SBC وربط المنتجات الآلي. بتلقى كل الخيارات هنا بعد اكتمال الربط.',

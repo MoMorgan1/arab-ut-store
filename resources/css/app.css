@@ -246,6 +246,153 @@
 }
 
 @layer components {
+    .auth-shell {
+        display: grid;
+        min-height: 100svh;
+        place-items: center;
+        overflow-x: clip;
+        background-color: var(--arabut-navy-deep);
+        background-image:
+            linear-gradient(rgb(8 7 5 / 84%), rgb(13 11 8 / 96%)),
+            url('/images/store/stadium-mobile.webp');
+        background-position: center;
+        background-size: cover;
+        padding: clamp(1rem, 4vw, 2.5rem);
+        color: var(--arabut-ink);
+        font-family: 'Thmanyah Sans', Tahoma, Arial, sans-serif;
+    }
+
+    .auth-shell__panel {
+        width: min(100%, 30rem);
+        border: 1px solid var(--arabut-line);
+        border-radius: var(--arabut-radius);
+        background: rgb(28 24 20 / 96%);
+        box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 38%);
+        padding: clamp(1.25rem, 5vw, 2.5rem);
+    }
+
+    .auth-shell__content,
+    .auth-shell__heading,
+    .auth-form {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .auth-shell__content {
+        gap: 2rem;
+    }
+
+    .auth-shell__heading {
+        align-items: center;
+        gap: 0.75rem;
+        text-align: center;
+    }
+
+    .auth-shell__brand {
+        display: inline-flex;
+        min-height: 2.75rem;
+        align-items: center;
+        gap: 0.75rem;
+        color: var(--arabut-ink);
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 800;
+        text-decoration: none;
+    }
+
+    .auth-shell__brand img {
+        width: 4rem;
+        height: 4rem;
+        object-fit: contain;
+    }
+
+    .auth-shell h1 {
+        max-width: 18ch;
+        color: var(--arabut-ink);
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+        font-size: clamp(1.8rem, 7vw, 2.4rem);
+        font-weight: 800;
+        line-height: 1.15;
+    }
+
+    .auth-shell__heading p {
+        max-width: 38ch;
+        color: var(--arabut-muted);
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+
+    .auth-form {
+        gap: 1.5rem;
+    }
+
+    .auth-shell [data-slot='label'] {
+        color: var(--arabut-ink);
+        font-size: 1rem;
+    }
+
+    .auth-shell [data-slot='input'] {
+        border-color: rgb(237 228 208 / 20%);
+        background: rgb(8 7 5 / 72%);
+        color: var(--arabut-ink);
+        font-size: 1rem;
+    }
+
+    .auth-shell [data-slot='input']::placeholder {
+        color: var(--arabut-muted);
+    }
+
+    .auth-shell [data-slot='button'][type='submit'] {
+        min-height: 2.75rem;
+        background: var(--arabut-gold-bright);
+        color: var(--arabut-navy-deep);
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .auth-shell [data-slot='checkbox'] {
+        border-color: rgb(237 228 208 / 35%);
+    }
+
+    .auth-shell a:focus-visible,
+    .auth-shell button:focus-visible,
+    .auth-shell input:focus-visible {
+        outline: 3px solid var(--arabut-focus);
+        outline-offset: 3px;
+    }
+
+    .auth-inline-link {
+        display: inline-flex;
+        min-height: 2.75rem;
+        align-items: center;
+        color: var(--arabut-gold-bright);
+        text-underline-offset: 0.25rem;
+    }
+
+    .auth-form__switch {
+        color: var(--arabut-muted);
+        font-size: 1rem;
+        line-height: 1.6;
+        text-align: center;
+    }
+
+    @media (min-width: 48rem) {
+        .auth-shell {
+            background-image:
+                linear-gradient(rgb(8 7 5 / 82%), rgb(13 11 8 / 95%)),
+                url('/images/store/stadium.webp');
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .auth-shell *,
+        .auth-shell *::before,
+        .auth-shell *::after {
+            scroll-behavior: auto !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+
     .store-shell {
         --store-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
         overflow-x: clip;

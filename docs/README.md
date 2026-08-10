@@ -1,10 +1,12 @@
 # Arab UT project documentation
 
-Status: Phase 3 implementation in progress
+Status: Incremental storefront implementation in progress; not the full MVP and not launch-ready
 
 Approved by Mohamed on 2026-08-09.
 
-Milestone 1 (repository and bilingual application foundation) is implemented, independently reviewed, and verified by GitHub CI on [draft PR #1](https://github.com/MoMorgan1/arab-ut-store/pull/1). Task 2 (the authoritative commerce schema and domain vocabulary) is implemented and verified by GitHub CI, including the MariaDB lane, on [draft PR #2](https://github.com/MoMorgan1/arab-ut-store/pull/2). The bilingual Coins homepage and server-authoritative quote slice using local development pricing are implemented and submitted for GitHub CI on [draft PR #3](https://github.com/MoMorgan1/arab-ut-store/pull/3). Main-branch protection remains pending a signed-in GitHub admin session. Payment integration remains deferred.
+The repository currently contains the bilingual Laravel/React foundation, authoritative commerce schema, WordPress-parity storefront shell, Coins configurator with server-authoritative quotes, secure authenticated Coins cart storage, a real read-only cart page, and localized email/password login, registration, and password-reset handoff. Those are verified incremental slices, not evidence that the approved MVP or production launch is complete. Main-branch protection remains pending a signed-in GitHub admin session, and payment integration remains deferred.
+
+Major planned areas still include the remaining service catalog and service-specific flows, checkout and the payment-provider adapter, order lifecycle and wallet/account experiences, admin and support operations, fulfillment and n8n integrations, customer notifications, catalog/data import, production infrastructure and deployment, and final launch-policy and operational readiness checks. Google and WhatsApp authentication are not part of the active auth slice.
 
 ## Current documents
 

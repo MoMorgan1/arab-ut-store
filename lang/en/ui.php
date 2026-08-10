@@ -31,7 +31,7 @@ return [
         'terms' => 'Terms of Service',
         'customer_service' => 'Customer service',
         'whatsapp' => 'WhatsApp',
-        'payment_methods' => 'Accepted payment methods',
+        'payment_methods' => 'Payment methods at launch',
         'copyright' => 'Copyright © :year Arab UT. All rights reserved.',
         'ea_disclaimer' => 'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
         'exchange_rate_attribution' => 'Rates By Exchange Rate API',
@@ -39,10 +39,6 @@ return [
     'simple_pages' => [
         'eyebrow' => 'Arab UT',
         'back_home' => 'Back to home',
-        'cart' => [
-            'title' => 'Cart',
-            'body' => 'The cart will be enabled with the ordering and payment stage. You can choose your service from the home page now.',
-        ],
         'sbc' => [
             'title' => 'SBC Services',
             'body' => 'We are preparing the SBC catalog and automated product connection. All options will appear here when the connection is complete.',

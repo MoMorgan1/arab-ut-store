@@ -74,7 +74,6 @@ const mockPage = vi.hoisted(() => ({
             simple_pages: {
                 eyebrow: '',
                 back_home: '',
-                cart: { title: '', body: '' },
                 sbc: { title: '', body: '' },
                 fut_champions: { title: '', body: '' },
                 privacy: { title: '', body: '' },

@@ -60,7 +60,7 @@ class HandleInertiaRequests extends Middleware
                 'sbcUrl' => $storeUrl('sbc'),
                 'futChampionsUrl' => $storeUrl('fut_champions'),
                 'accountUrl' => $request->user() === null
-                    ? route('login', absolute: false)
+                    ? route($routeName('login'), $routeParameters, absolute: false)
                     : route('dashboard', absolute: false),
                 'privacyUrl' => $storeUrl('privacy'),
                 'returnsUrl' => $storeUrl('returns'),

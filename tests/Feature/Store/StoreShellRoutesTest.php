@@ -28,7 +28,7 @@ test('every non-transactional storefront destination has the right bilingual pag
             ->where('storeShell.warrantyUrl', $locale === 'en' ? '/en/warranty' : '/warranty')
             ->where('storeShell.eaBackupCodesUrl', $locale === 'en' ? '/en/ea-backup-codes' : '/ea-backup-codes')
             ->where('storeShell.termsUrl', $locale === 'en' ? '/en/terms' : '/terms')
-            ->where('storeShell.accountUrl', '/login')
+            ->where('storeShell.accountUrl', $locale === 'en' ? '/en/login' : '/login')
             ->where('storeShell.whatsappUrl', 'https://wa.me/966537998099')
             ->where('storeShell.email', 'info@arab-ut.com')
             ->where('storeShell.payments.0', [

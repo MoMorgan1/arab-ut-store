@@ -29,6 +29,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ValidateCoinsCartResume::class);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, RequireCoinsCartJson::class);
+        $middleware->redirectGuestsTo(fn (Request $request): string => $request->route('locale') === 'en'
+            ? route('localized.login', ['locale' => 'en'], absolute: false)
+            : route('login', absolute: false));
 
         $middleware->web(append: [
             SetLocale::class,
