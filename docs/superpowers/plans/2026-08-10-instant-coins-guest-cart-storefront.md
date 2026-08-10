@@ -44,7 +44,7 @@
 - `CoinsQuote` gains `public int $priceVersion`, populated from `ProductVariant::price_version`, and includes it in `toArray()`.
 - `HomeController` emits `quoteSchedules` keyed by `playstation:normal`, `playstation:fast`, and `pc`; the diagnostic `quoteUrl` remains.
 
-- [ ] **Step 1: Write schedule RED tests**
+- [x] **Step 1: Write schedule RED tests**
 
 Add datasets proving 196 normal entries, 1,996 fast entries, 196 PC entries, exact first/last index quantities, tier and override totals, one shared timestamp, matching array lengths, display-currency fixed-point values, `priceVersion`, safe integers, and fail-closed stale/malformed/missing rates. Example assertion:
 
@@ -69,7 +69,7 @@ expect($schedule['minimum'])->toBe(50_000)
     );
 ```
 
-- [ ] **Step 2: Run backend RED**
+- [x] **Step 2: Run backend RED**
 
 Run:
 
@@ -82,7 +82,7 @@ php vendor/bin/pest tests/Unit/Pricing/BuildCoinsQuoteScheduleTest.php tests/Fea
 
 Expected: FAIL because `BuildCoinsQuoteSchedule` and `quoteSchedules` do not exist and quote payloads lack `priceVersion`.
 
-- [ ] **Step 3: Implement the schedule builder**
+- [x] **Step 3: Implement the schedule builder**
 
 Load the selected product/variants, all required active rules, and the selected display rate once before entering the quantity loops. Use `CoinsPriceCalculator` for every entry and reuse one validated fixed-point currency converter for the complete batch. Do not invoke `QuoteCoins` or query the exchange-rate model inside a quantity loop:
 
@@ -142,11 +142,11 @@ Before returning, reject inconsistent product ID, variant ID, price version, pla
 
 Add a focused all-three-schedules budget regression asserting at most 10 database queries and less than 1,000 ms. Prove pricing parity against `QuoteCoins` at minimum/maximum values, every tier boundary, every exact override, and the fast/normal floor boundary. The performance test must fail if catalog, rule, or rate reads occur inside the quantity loop.
 
-- [ ] **Step 4: Emit all schedules from the homepage**
+- [x] **Step 4: Emit all schedules from the homepage**
 
 Inject `BuildCoinsQuoteSchedule`, read the middleware-selected display currency from the request/session contract already shared by Inertia, and build the three exact keys. Catch pricing/domain/value failures at the same public fail-closed boundary used today; never serialize a partial or malformed schedule as available.
 
-- [ ] **Step 5: Run backend GREEN and static checks**
+- [x] **Step 5: Run backend GREEN and static checks**
 
 Run the Step 2 command, then:
 
@@ -157,7 +157,7 @@ php vendor/bin/pint --dirty
 
 Expected: all focused tests pass, PHPStan reports 0 errors, Pint exits 0.
 
-- [ ] **Step 6: Commit Task 1**
+- [x] **Step 6: Commit Task 1**
 
 ```powershell
 git add app/Actions/Pricing/BuildCoinsQuoteSchedule.php app/Actions/Pricing/QuoteCoins.php app/ValueObjects/Pricing/CoinsQuote.php app/Http/Controllers/Store/HomeController.php tests/Unit/Pricing/BuildCoinsQuoteScheduleTest.php tests/Feature/Store/HomeCoinsConfiguratorTest.php tests/Feature/Store/CoinsQuoteTest.php
