@@ -2,10 +2,17 @@
 
 namespace App\Http\Controllers\Store;
 
+use App\Enums\DeliveryMode;
+use App\Enums\Market;
+use App\Enums\Platform;
+use App\Enums\ServiceType;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\CartItem;
+use DateTimeImmutable;
+use DateTimeInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -53,18 +60,98 @@ final class CartController extends Controller
 
     /**
      * @param  array<string, mixed>|null  $configuration
-     * @return array<string, mixed>
+     * @return array<string, int|string|null>
      */
     private function safeConfiguration(?array $configuration): array
     {
-        return array_intersect_key($configuration ?? [], array_flip([
-            'service_type',
-            'platform',
-            'market',
-            'delivery',
-            'coins_quantity',
-            'quoted_at',
-            'price_version',
-        ]));
+        if ($configuration === null) {
+            return [];
+        }
+
+        return [
+            ...$this->safeEnumField($configuration, 'service_type', ServiceType::cases()),
+            ...$this->safeEnumField($configuration, 'platform', Platform::cases()),
+            ...$this->safeEnumField($configuration, 'market', Market::cases()),
+            ...$this->safeEnumField($configuration, 'delivery', DeliveryMode::cases()),
+            ...$this->safeCoinsQuantity($configuration),
+            ...$this->safeQuotedAt($configuration),
+            ...$this->safePriceVersion($configuration),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @param  list<ServiceType|Platform|Market|DeliveryMode>  $allowedCases
+     * @return array<string, string|null>
+     */
+    private function safeEnumField(array $configuration, string $field, array $allowedCases): array
+    {
+        if (! array_key_exists($field, $configuration)) {
+            return [];
+        }
+
+        $configurationValue = $configuration[$field];
+
+        if ($configurationValue === null) {
+            return [$field => null];
+        }
+
+        $allowedValues = array_map(fn ($allowedCase): string => $allowedCase->value, $allowedCases);
+
+        return is_string($configurationValue) && in_array($configurationValue, $allowedValues, true)
+            ? [$field => $configurationValue]
+            : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @return array{coins_quantity?: int}
+     */
+    private function safeCoinsQuantity(array $configuration): array
+    {
+        $quantity = $configuration['coins_quantity'] ?? null;
+        $minimum = Config::integer('coins.quantity.minimum');
+        $increment = Config::integer('coins.quantity.increment');
+        $maximum = max(
+            Config::integer('coins.platforms.playstation.maximum'),
+            Config::integer('coins.platforms.pc.maximum'),
+        );
+
+        return is_int($quantity)
+            && $quantity >= $minimum
+            && $quantity <= $maximum
+            && $quantity % $increment === 0
+                ? ['coins_quantity' => $quantity]
+                : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @return array{quoted_at?: string}
+     */
+    private function safeQuotedAt(array $configuration): array
+    {
+        $quotedAt = $configuration['quoted_at'] ?? null;
+
+        if (! is_string($quotedAt)
+            || DateTimeImmutable::createFromFormat(DateTimeInterface::ATOM, $quotedAt) === false
+            || DateTimeImmutable::getLastErrors() !== false) {
+            return [];
+        }
+
+        return ['quoted_at' => $quotedAt];
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @return array{price_version?: int}
+     */
+    private function safePriceVersion(array $configuration): array
+    {
+        $priceVersion = $configuration['price_version'] ?? null;
+
+        return is_int($priceVersion) && $priceVersion > 0
+            ? ['price_version' => $priceVersion]
+            : [];
     }
 }

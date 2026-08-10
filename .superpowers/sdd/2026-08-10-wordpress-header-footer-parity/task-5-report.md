@@ -580,3 +580,128 @@ No Task 6 UI, checkout, payment, order, fulfillment, staff secret-access, histor
 - Local PHP still requires explicit `-d extension=...` flags. Deployment PHP must enable Laravel's required OpenSSL, mbstring, and PDO driver extensions normally.
 - The ephemeral MariaDB password and all synthetic credentials remain absent from this report and production files.
 - No implementation blocker remains.
+
+---
+
+## Fix round 2/5: constrain safe cart configuration reads
+
+### Scope and contract
+
+Closed the remaining nested-configuration boundary finding without changing writes, routes, UI, pricing authority, or credential storage. `CartController` no longer returns allowlisted values merely because their top-level key is approved. Each output field is independently projected into this exact safe contract:
+
+- `service_type`, `platform`, `market`, and `delivery`: a scalar string matching the corresponding application enum, or explicit `null`;
+- `coins_quantity`: an integer from the configured 50,000 minimum through the configured 20,000,000 global maximum, in configured 10,000 increments;
+- `quoted_at`: a scalar string that strictly parses as `DateTimeInterface::ATOM`;
+- `price_version`: a positive integer.
+
+Missing or invalid fields are omitted. Arrays, objects, nested maps/lists, unknown enum strings, numeric strings, invalid timestamps, and non-positive versions are never copied recursively to Inertia.
+
+### TDD RED evidence
+
+Covering test file: `tests/Feature/Store/CoinsCartTest.php`.
+
+Compound/nested poison RED:
+
+```powershell
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest tests/Feature/Store/CoinsCartTest.php --filter="compound values" --stop-on-failure
+```
+
+Exact result: 1 test ran, 0 passed, 8 assertions. The first data set failed because `cart.items.0.configuration.service_type` was present when expected missing. The data-driven regression contains a nested array/object/map/list poison case for every previously allowed key: `service_type`, `platform`, `market`, `delivery`, `coins_quantity`, `quoted_at`, and `price_version`.
+
+Invalid scalar RED:
+
+```powershell
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest tests/Feature/Store/CoinsCartTest.php --filter="invalid scalar values" --stop-on-failure
+```
+
+Exact result: 1 test ran, 0 passed, 8 assertions. The first data set failed because the unknown scalar service type `unknown-service` was returned instead of omitted. The remaining data sets cover a non-string platform, unknown market/delivery, numeric-string Coins quantity, invalid timestamp, and non-positive version.
+
+Preservation baseline captured before the production edit:
+
+```powershell
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest tests/Feature/Store/CoinsCartTest.php --filter="preserve valid nullable summaries" --stop-on-failure
+```
+
+Exact result: 2 tests passed, 18 assertions. A valid PC cart with `delivery = null` retained the complete safe summary on both `/cart` and `/en/cart`.
+
+### GREEN and final gates
+
+Focused projection GREEN:
+
+```powershell
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest tests/Feature/Store/CoinsCartTest.php --filter="cart reads" --stop-on-failure
+```
+
+Exact result: 17 tests passed, 175 assertions.
+
+Complete Coins cart feature file:
+
+```powershell
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest tests/Feature/Store/CoinsCartTest.php --stop-on-failure
+```
+
+Exact result: 45 tests passed, 452 assertions.
+
+Combined cart/schema security focus:
+
+```powershell
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest tests/Feature/Store/CoinsCartTest.php tests/Feature/Database/CartSecuritySchemaTest.php --stop-on-failure
+```
+
+Exact result: 50 tests passed, 476 assertions.
+
+Full relevant PHP gate:
+
+```powershell
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest
+```
+
+Exact result: 283 tests, 280 passed, 3 environment-gated skips, 2,558 assertions.
+
+Mechanical gates:
+
+```powershell
+php -d extension=mbstring vendor\bin\pint --test
+php -d extension=mbstring vendor\bin\phpstan analyse --memory-limit=1G
+git diff --check
+```
+
+The first PHPStan run correctly rejected three new bare-array return annotations with `missingType.iterableValue`. The current official identifier documentation was consulted at <https://phpstan.org/error-identifiers/missingType.iterableValue>. A guard refinement then proved an aggregate optional-key shape was narrower than PHPStan could establish for dynamically keyed enum projection; <https://phpstan.org/error-identifiers/return.type> was consulted and the aggregate now declares its concrete `int|string|null` value union while field helpers retain specific shapes. Final result: Pint passed, PHPStan passed with 0 errors, and `git diff --check` produced no output.
+
+### Security and leak checks
+
+- Production scan for `Nested Configuration Poison Sentinel`, existing password/code poison sentinels, and backup-code fragments across `app`, `bootstrap`, `config`, `database`, `lang`, and `routes`: 0 matches.
+- Changed-path scan for credential persistence/logging primitives (`localStorage`, `sessionStorage`, `withInput`, log calls, session `put`/`flash`, and `$request->all`): 0 matches.
+- Response assertions prove the nested poison sentinel never appears in serialized Inertia output, while valid bilingual summaries remain byte-safe scalar/null structures.
+
+### Guard passes
+
+Clean Code Guard:
+
+- all new functions stay within the 20-line target, use at most three parameters, and have one projection responsibility;
+- one shared enum-field projector serves four present enum fields without speculative interfaces or configuration flags;
+- no catches, logging, fallback success, recursive serializer, or mutation of stored cart data was introduced;
+- enum values come from installed application enums, integer bounds come from existing Coins configuration, and timestamp parsing uses the installed PHP runtime API.
+
+Test Guard:
+
+- regressions assert real persisted JSON and the actual Inertia boundary with no mocks;
+- the seven compound and seven invalid-scalar variants use Pest data sets rather than duplicate test bodies;
+- expected output is literal and independently derived; each case catches a distinct allowed-key mutation;
+- the Arabic/English preservation data set exercises both real route forms and explicit nullable delivery behavior.
+
+Docs Guard:
+
+- every field name, enum class, config key, timestamp format, route, test path, command, and result count in this section was checked against final source or fresh command output;
+- the PHPStan behavior is linked to its primary identifier documentation;
+- no compatibility, performance, or production-readiness claim was added.
+
+### Owned files and concerns
+
+Modified only:
+
+- `app/Http/Controllers/Store/CartController.php`
+- `tests/Feature/Store/CoinsCartTest.php`
+- `.superpowers/sdd/2026-08-10-wordpress-header-footer-parity/task-5-report.md`
+
+No UI, migration, route, request, action, credential storage, checkout, payment, order, fulfillment, or unrelated file was changed. No implementation concern or blocker remains.

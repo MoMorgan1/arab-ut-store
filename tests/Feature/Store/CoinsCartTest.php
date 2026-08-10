@@ -400,6 +400,7 @@ test('cart reads expose safe lines and credential reentry state only', function 
     createCartCatalog();
     $this->actingAs(User::factory()->create());
     addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'read-key')->assertCreated();
+    $cartItem = CartItem::sole();
 
     $response = $this->get('/cart');
 
@@ -407,11 +408,19 @@ test('cart reads expose safe lines and credential reentry state only', function 
         ->component('store/simple-page')
         ->where('cart.count', 1)
         ->where('cart.items.0.requiresCredentials', false)
+        ->where('cart.items.0.configuration', [
+            'service_type' => 'coins',
+            'platform' => 'playstation',
+            'market' => 'console',
+            'delivery' => 'normal',
+            'coins_quantity' => 100_000,
+            'quoted_at' => $cartItem->configuration['quoted_at'],
+            'price_version' => 11,
+        ])
         ->missing('cart.items.0.secret'));
     expect($response->getContent())->not->toContain('Opaque Cart Password Sentinel')
         ->not->toContain('81000001');
 
-    $cartItem = CartItem::sole();
     $cartItem->update(['configuration' => [
         ...$cartItem->configuration,
         'ea_password' => 'Poison Password Sentinel',
@@ -438,6 +447,77 @@ test('cart reads expose safe lines and credential reentry state only', function 
     $this->get('/cart')->assertInertia(fn (Assert $page) => $page
         ->where('cart.items.0.requiresCredentials', true));
 });
+
+test('cart reads omit compound values nested under safe configuration keys', function (string $field, mixed $poison) {
+    createCartCatalog();
+    $this->actingAs(User::factory()->create());
+    addCoinsToCart('/cart/items/coins', coinsCartPayload(), "compound-{$field}")->assertCreated();
+
+    $cartItem = CartItem::sole();
+    $cartItem->update(['configuration' => [
+        ...$cartItem->configuration,
+        $field => $poison,
+    ]]);
+
+    $response = $this->get('/cart');
+    $response->assertInertia(fn (Assert $page) => $page
+        ->missing("cart.items.0.configuration.{$field}"));
+    expect($response->getContent())->not->toContain('Nested Configuration Poison Sentinel');
+})->with([
+    'service type array' => ['service_type', ['ea_password' => 'Nested Configuration Poison Sentinel']],
+    'platform object' => ['platform', (object) ['secret' => 'Nested Configuration Poison Sentinel']],
+    'market list' => ['market', ['Nested Configuration Poison Sentinel']],
+    'delivery map' => ['delivery', ['credentials' => ['Nested Configuration Poison Sentinel']]],
+    'Coins quantity object' => ['coins_quantity', (object) ['value' => 'Nested Configuration Poison Sentinel']],
+    'quote timestamp list' => ['quoted_at', ['Nested Configuration Poison Sentinel']],
+    'price version map' => ['price_version', ['identifier' => 'Nested Configuration Poison Sentinel']],
+]);
+
+test('cart reads omit invalid scalar values under safe configuration keys', function (string $field, mixed $invalidValue) {
+    createCartCatalog();
+    $this->actingAs(User::factory()->create());
+    addCoinsToCart('/cart/items/coins', coinsCartPayload(), "invalid-scalar-{$field}")->assertCreated();
+
+    $cartItem = CartItem::sole();
+    $cartItem->update(['configuration' => [
+        ...$cartItem->configuration,
+        $field => $invalidValue,
+    ]]);
+
+    $this->get('/cart')->assertInertia(fn (Assert $page) => $page
+        ->missing("cart.items.0.configuration.{$field}"));
+})->with([
+    'unknown service type' => ['service_type', 'unknown-service'],
+    'non-string platform' => ['platform', 27],
+    'unknown market' => ['market', 'mobile'],
+    'unknown delivery' => ['delivery', 'instant'],
+    'string Coins quantity' => ['coins_quantity', '100000'],
+    'invalid quote timestamp' => ['quoted_at', 'tomorrow'],
+    'non-positive price version' => ['price_version', 0],
+]);
+
+test('cart reads preserve valid nullable summaries on both storefront locales', function (string $uri) {
+    createCartCatalog();
+    $this->actingAs(User::factory()->create());
+    $payload = coinsCartPayload(['platform' => 'pc', 'quantity' => 100_000]);
+    unset($payload['delivery']);
+    addCoinsToCart('/cart/items/coins', $payload, 'valid-read-'.($uri === '/cart' ? 'ar' : 'en'))->assertCreated();
+
+    $cartItem = CartItem::sole();
+    $this->get($uri)->assertInertia(fn (Assert $page) => $page
+        ->where('cart.items.0.configuration', [
+            'service_type' => 'coins',
+            'platform' => 'pc',
+            'market' => 'pc',
+            'delivery' => null,
+            'coins_quantity' => 100_000,
+            'quoted_at' => $cartItem->configuration['quoted_at'],
+            'price_version' => 11,
+        ]));
+})->with([
+    'Arabic cart' => '/cart',
+    'English cart' => '/en/cart',
+]);
 
 test('resume stores only validated safe selection as the intended login destination', function () {
     $safeUrl = '/cart/items/coins/resume?platform=playstation&delivery=fast&quantity=100000';
