@@ -74,7 +74,8 @@ expect($schedule['minimum'])->toBe(50_000)
 Run:
 
 ```powershell
-$env:PHPRC="$PWD\..\..\tools\php.ini"
+$commonGitDir = (Resolve-Path (git rev-parse --git-common-dir)).Path
+$env:PHPRC = (Resolve-Path (Join-Path $commonGitDir '..\..\tools\php.ini')).Path
 $env:PHP_INI_SCAN_DIR=''
 php vendor/bin/pest tests/Unit/Pricing/BuildCoinsQuoteScheduleTest.php tests/Feature/Store/HomeCoinsConfiguratorTest.php tests/Feature/Store/CoinsQuoteTest.php --compact
 ```
@@ -638,9 +639,11 @@ Inspect changed production code for duplicated pricing/owner logic, broad contro
 - [ ] **Step 2: Run the full aggregate gate**
 
 ```powershell
-$env:PHPRC="$PWD\..\..\tools\php.ini"
+$commonGitDir = (Resolve-Path (git rev-parse --git-common-dir)).Path
+$toolsDir = (Resolve-Path (Join-Path $commonGitDir '..\..\tools')).Path
+$env:PHPRC = Join-Path $toolsDir 'php.ini'
 $env:PHP_INI_SCAN_DIR=''
-php ..\..\tools\composer.phar ci:check
+php (Join-Path $toolsDir 'composer.phar') ci:check
 git diff --check
 ```
 
