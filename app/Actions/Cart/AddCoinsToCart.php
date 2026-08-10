@@ -47,7 +47,7 @@ final readonly class AddCoinsToCart
     {
         $idempotencyScope = self::SCOPE.":user:{$user->id}";
         $requestHash = CoinsCartFingerprint::generate(
-            (int) $user->id,
+            Cart::activeOwnerKey((int) $user->id),
             $validated,
             (string) config('app.key'),
         );

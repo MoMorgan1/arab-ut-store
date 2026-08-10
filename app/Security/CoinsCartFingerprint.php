@@ -5,10 +5,10 @@ namespace App\Security;
 final class CoinsCartFingerprint
 {
     /** @param array<string, mixed> $validated */
-    public static function generate(int $userId, array $validated, string $applicationKey): string
+    public static function generate(string $ownerKey, array $validated, string $applicationKey): string
     {
         $canonicalRequest = [
-            'user_id' => $userId,
+            'owner_key' => $ownerKey,
             'platform' => $validated['platform'],
             'delivery' => $validated['delivery'] ?? null,
             'quantity' => (int) $validated['quantity'],

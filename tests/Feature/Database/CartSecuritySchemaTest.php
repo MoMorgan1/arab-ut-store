@@ -6,6 +6,7 @@ use App\Models\CartItemSecret;
 use App\Models\IdempotencyKey;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\ValueObjects\Cart\CartOwner;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -89,6 +90,86 @@ test('the database derives active ownership from user status and SAR currency', 
 
     expect(DB::table('carts')->where('status', 'active')->value('active_owner_key'))
         ->toBe("user:{$user->id}");
+});
+
+test('the database derives active guest ownership and gives authenticated owners precedence', function () {
+    $guestHmac = hash('sha256', 'schema-guest-owner');
+    $now = now();
+    $guestCart = [
+        'public_id' => (string) str()->ulid(),
+        'user_id' => null,
+        'session_key' => $guestHmac,
+        'status' => 'active',
+        'currency' => 'SAR',
+        'created_at' => $now,
+        'updated_at' => $now,
+    ];
+
+    if (in_array(DB::connection()->getDriverName(), ['mariadb', 'mysql'], true)) {
+        expect(fn () => DB::table('carts')->insert([
+            ...$guestCart,
+            'active_owner_key' => 'caller-controlled-owner',
+        ]))->toThrow(QueryException::class);
+        DB::table('carts')->insert($guestCart);
+    } else {
+        DB::table('carts')->insert([
+            ...$guestCart,
+            'active_owner_key' => 'caller-controlled-owner',
+        ]);
+    }
+
+    expect(DB::table('carts')->value('active_owner_key'))->toBe("guest:{$guestHmac}")
+        ->and(Cart::query()->activeForOwner(CartOwner::guest($guestHmac))->sole()->session_key)
+        ->toBe($guestHmac);
+
+    $userId = User::factory()->create()->id;
+
+    if (in_array(DB::connection()->getDriverName(), ['mariadb', 'mysql'], true)) {
+        expect(fn () => DB::table('carts')->update([
+            'user_id' => $userId,
+            'active_owner_key' => 'another-invalid-owner',
+        ]))->toThrow(QueryException::class);
+        DB::table('carts')->update(['user_id' => $userId]);
+    } else {
+        DB::table('carts')->update([
+            'user_id' => $userId,
+            'active_owner_key' => 'another-invalid-owner',
+        ]);
+    }
+
+    expect(DB::table('carts')->value('active_owner_key'))->toStartWith('user:');
+
+    DB::table('carts')->update(['status' => 'converted']);
+
+    expect(DB::table('carts')->value('active_owner_key'))->toBeNull();
+});
+
+test('SQLite guest derivation ignores a caller key that collides with another owner', function () {
+    if (DB::connection()->getDriverName() !== 'sqlite') {
+        $this->markTestSkipped('MariaDB rejects every explicit generated-column value.');
+    }
+
+    $user = User::factory()->create();
+    Cart::create([
+        'user_id' => $user->id,
+        'status' => 'active',
+        'currency' => 'SAR',
+    ]);
+    $guestHmac = hash('sha256', 'colliding-caller-guest-owner');
+
+    DB::table('carts')->insert([
+        'public_id' => (string) str()->ulid(),
+        'session_key' => $guestHmac,
+        'active_owner_key' => "user:{$user->id}",
+        'status' => 'active',
+        'currency' => 'SAR',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    expect(DB::table('carts')->count())->toBe(2)
+        ->and(DB::table('carts')->where('session_key', $guestHmac)->value('active_owner_key'))
+        ->toBe("guest:{$guestHmac}");
 });
 
 test('cart secrets are encrypted hidden guarded and cascade with their item', function () {

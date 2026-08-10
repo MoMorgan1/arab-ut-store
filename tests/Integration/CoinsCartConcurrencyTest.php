@@ -67,6 +67,29 @@ test('concurrent same-key additions replay one identical safe response', functio
         ->and(DB::table('idempotency_keys')->where('key', $idempotencyKey)->count())->toBe(1);
 });
 
+test('concurrent same-guest first cart acquisitions resolve to one active cart', function () {
+    if (! supportsConcurrentCartLocking()) {
+        $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL row locking.');
+    }
+
+    expect(DB::transactionLevel())->toBe(0);
+    $guestHmac = hash_hmac('sha256', 'concurrent-guest-owner', 'synthetic-concurrency-key');
+    $first = concurrentGuestCartProcess($guestHmac);
+    $second = concurrentGuestCartProcess($guestHmac);
+    $first->start();
+    $second->start();
+    $first->wait();
+    $second->wait();
+    refreshConcurrentConnection();
+
+    expect($first->isSuccessful())->toBeTrue($first->getErrorOutput())
+        ->and($second->isSuccessful())->toBeTrue($second->getErrorOutput())
+        ->and(trim($first->getOutput()))->not->toBe('')
+        ->and(trim($second->getOutput()))->toBe(trim($first->getOutput()))
+        ->and(Cart::query()->whereNull('user_id')->where('session_key', $guestHmac)->count())->toBe(1)
+        ->and(Cart::query()->where('active_owner_key', "guest:{$guestHmac}")->count())->toBe(1);
+});
+
 function supportsConcurrentCartLocking(): bool
 {
     return in_array(DB::connection()->getDriverName(), ['mariadb', 'mysql'], true);
@@ -126,6 +149,21 @@ function concurrentCartProcess(int $userId, string $key): Process
         base_path('tests/Support/ConcurrentCoinsCartAdd.php'),
         (string) $userId,
         $key,
+    ], base_path(), concurrentDatabaseEnvironment(), timeout: 30);
+}
+
+function concurrentGuestCartProcess(string $guestHmac): Process
+{
+    return new Process([
+        PHP_BINARY,
+        '-d',
+        'extension=openssl',
+        '-d',
+        'extension=mbstring',
+        '-d',
+        'extension=pdo_mysql',
+        base_path('tests/Support/ConcurrentGuestCartCreate.php'),
+        $guestHmac,
     ], base_path(), concurrentDatabaseEnvironment(), timeout: 30);
 }
 
