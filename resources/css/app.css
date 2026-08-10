@@ -1782,7 +1782,7 @@
     .store-footer__payments img {
         display: block;
         width: auto;
-        max-width: 3rem;
+        max-width: none;
         height: 1.375rem;
         object-fit: contain;
     }

@@ -1,11 +1,33 @@
+import { readFileSync } from 'node:fs';
+
 import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+    afterAll,
+    afterEach,
+    beforeAll,
+    describe,
+    expect,
+    it,
+    vi,
+} from 'vitest';
 
 import StoreLayout from '@/layouts/store-layout';
 import type {
     StoreShellConfig,
     StoreShellTranslations,
 } from '@/types/store-shell';
+
+const appCss = readFileSync('resources/css/app.css', 'utf8');
+const paymentImageDeclarations = appCss.match(
+    /\.store-footer__payments img\s*\{(?<declarations>[^}]*)\}/,
+)?.groups?.declarations;
+
+if (paymentImageDeclarations === undefined) {
+    throw new Error('Footer payment image declarations were not found.');
+}
+
+const paymentStyle = document.createElement('style');
+paymentStyle.textContent = `.store-footer__payments img {${paymentImageDeclarations}}`;
 
 const shell: StoreShellConfig = {
     homeUrl: '/en',
@@ -120,6 +142,14 @@ function renderFooter() {
     return screen.getByRole('contentinfo');
 }
 
+beforeAll(() => {
+    document.head.append(paymentStyle);
+});
+
+afterAll(() => {
+    paymentStyle.remove();
+});
+
 afterEach(() => {
     cleanup();
     vi.useRealTimers();
@@ -210,5 +240,17 @@ describe('StoreFooter', () => {
             'Copyright © 2031 Arab UT. All rights reserved.',
         );
         expect(footer).toHaveTextContent(translations.footer.ea_disclaimer);
+    });
+
+    it('preserves each payment mark aspect ratio without a width cap', () => {
+        const footer = renderFooter();
+
+        for (const image of within(footer).getAllByRole('img')) {
+            const style = getComputedStyle(image);
+
+            expect(style.width).toBe('auto');
+            expect(style.maxWidth).toBe('none');
+            expect(style.height).toBe('1.375rem');
+        }
     });
 });

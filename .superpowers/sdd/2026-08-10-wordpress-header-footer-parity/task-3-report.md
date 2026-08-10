@@ -74,12 +74,12 @@ Browser verification used the local Laravel application at `127.0.0.1:8015` and 
 
 Required matrix completed for both Arabic and English at 320, 390, 768, and 1440 px (8 cases):
 
-| Width | Layout | AR | EN |
-| ---: | --- | :---: | :---: |
-| 320 | one column | pass | pass |
-| 390 | one column | pass | pass |
-| 768 | brand row plus two lower columns | pass | pass |
-| 1440 | three columns | pass | pass |
+| Width | Layout                           |  AR  |  EN  |
+| ----: | -------------------------------- | :--: | :--: |
+|   320 | one column                       | pass | pass |
+|   390 | one column                       | pass | pass |
+|   768 | brand row plus two lower columns | pass | pass |
+|  1440 | three columns                    | pass | pass |
 
 Across all cases:
 
@@ -112,3 +112,53 @@ The Vite build emitted only existing notices that public font, hero, and stadium
 Fresh post-report verification also passed: focused Vitest 8/8, full Vitest 108/108, lint, Prettier, TypeScript, and the Vite production build (2327 modules, 10.81 s). `git diff --check` reported no whitespace errors, and all four destination asset hashes matched the authoritative values above.
 
 Clean-code and test-guard reviews found no unused fallback paths, duplicated external configuration, mock-only assertions, snapshots, timing dependencies, or unrelated behavior changes. Component data flow remains typed and server-owned; private SVG components avoid adding dependencies.
+
+## Review fix round 1: payment proportions
+
+The P1 review finding identified that `.store-footer__payments img` combined the correct WordPress height (`1.375rem`, 22 px) with `max-width: 3rem`. Because the four source marks have different intrinsic ratios, that second-axis cap stretched Mada, Visa, and Apple Pay. The focused fix changes only the cap to `max-width: none`, retaining `width: auto`, the 22 px height, explicit HTML dimensions, and `object-fit: contain`.
+
+The regression loads the real footer image declarations from `resources/css/app.css`, applies them through the test DOM's stylesheet engine, and checks every rendered payment image. It therefore fails if a fixed width or width cap is reintroduced rather than merely matching CSS source text.
+
+Genuine focused RED before the production change:
+
+```text
+npm test -- resources/js/__tests__/store/store-footer.test.tsx
+Test Files  1 failed (1)
+Tests       1 failed | 3 passed (4)
+Expected computed maxWidth: none
+Received computed maxWidth: 3rem
+```
+
+Focused GREEN after the one-line production change:
+
+```text
+npm test -- resources/js/__tests__/store/store-footer.test.tsx
+Test Files  1 passed (1)
+Tests       4 passed (4)
+```
+
+Browser geometry was reverified in the explicitly capped matrix: Arabic and English at 390 and 1440 px (4 cases). Every case rendered exactly one footer, loaded all four marks, used the correct locale direction, and measured 0 px document/body horizontal overflow. Browser console warnings and errors were empty.
+
+| Mark       | Natural size | Rendered size in all 4 cases | Expected intrinsic width at 22 px | Maximum ratio delta |
+| ---------- | -----------: | ---------------------------: | --------------------------------: | ------------------: |
+| Mada       |     120 × 41 |               64.375 × 22 px |                         64.390 px |            0.000693 |
+| Visa       |     120 × 39 |               67.688 × 22 px |                         67.692 px |            0.000219 |
+| Mastercard |     120 × 75 |               35.188 × 22 px |                         35.200 px |            0.000568 |
+| Apple Pay  |     120 × 50 |               52.797 × 22 px |                         52.800 px |            0.000142 |
+
+Computed CSS in all four browser cases was `height: 22px`, `max-width: none`, and the intrinsic auto width shown above. The small sub-pixel differences are browser pixel rounding; every ratio delta was below 0.001.
+
+The UI review remained scoped to the authoritative WordPress payment treatment. UI/UX Pro Max's generic Liquid Glass, Inter, light slate, and red recommendations were rejected because they conflict with the WordPress-first gate and Arab UT's Thmanyah warm-black/navy/gold identity. The final adapt/arrange/typeset/polish pass made no unrelated visual changes.
+
+Fresh final gates for review round 1:
+
+```text
+Focused Vitest: 2 files, 9 tests passed
+Full Vitest: 8 files, 109 tests passed
+npm run lint:check: passed
+npm run format:check: passed
+npm run types:check: passed
+npm run build: passed (Vite 8.2.1, 2327 modules, 11.10 s)
+```
+
+The build retained only the previously documented runtime-resolution notices for existing font, hero, and stadium paths.
