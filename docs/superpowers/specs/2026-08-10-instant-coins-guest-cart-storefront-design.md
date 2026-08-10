@@ -14,7 +14,7 @@ The storefront remains WordPress-first: warm black/gold materials, official Arab
 
 ## Considered approaches
 
-1. **Server-generated quote schedule plus guest cart — selected.** The server calculates every legal quote from the existing `QuoteCoins` and display-currency actions when composing the homepage, serializes compact indexed schedules, and still re-quotes when adding to cart. This gives exact instant prices with one pricing implementation.
+1. **Server-generated quote schedule plus guest cart — selected.** The server loads the validated catalog, pricing rules, and display rate once, calculates every legal quote in memory with the same integer-safe `CoinsPriceCalculator`, serializes compact indexed schedules, and still re-quotes through `QuoteCoins` when adding to cart. This gives exact instant prices without repeating database reads or maintaining a second browser pricing implementation.
 2. **Duplicate the pricing formula in TypeScript.** Rejected because tier, override, currency, and rounding changes could make the browser disagree with the server.
 3. **Keep one HTTP request per slider movement and hide the loading text.** Rejected because it only hides latency and does not make pricing instant.
 
@@ -28,7 +28,7 @@ The homepage receives one compact schedule for each available mode:
 - `playstation:fast`, 50K–20M in 10K increments;
 - `pc`, 50K–2M in 10K increments.
 
-Each schedule contains the minimum, maximum, increment, authoritative SAR minor-unit totals, display-currency minor-unit totals, currency code, variant public ID, price version, and one server timestamp. Array position maps to quantity using `(quantity - minimum) / increment`; quantities are not repeated as JSON keys. The schedule is generated exclusively through the existing pricing and currency-conversion actions, uses safe integers, and fails the affected homepage mode closed when any entry cannot be priced exactly.
+Each schedule contains the minimum, maximum, increment, authoritative SAR minor-unit totals, display-currency minor-unit totals, currency code, variant public ID, price version, and one server timestamp. Array position maps to quantity using `(quantity - minimum) / increment`; quantities are not repeated as JSON keys. The schedule builder loads each required catalog/rule/rate record once, reuses the existing integer-safe calculator and fixed-point conversion arithmetic in memory, and fails the affected homepage mode closed when any entry cannot be priced exactly. Generating all three schedules must stay within 10 database queries and one second under the focused performance fixture.
 
 The existing GET quote endpoint remains available as a compatibility and diagnostic surface, but the homepage amount interaction does not call it for schedule-covered values.
 

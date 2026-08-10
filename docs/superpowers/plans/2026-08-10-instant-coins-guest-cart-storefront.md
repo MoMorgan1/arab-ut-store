@@ -4,7 +4,7 @@
 
 **Goal:** Make every legal Coins amount show its exact price immediately, let guests securely complete the configurator and add to cart, claim that cart after authentication, and finish the approved WordPress-faithful storefront polish.
 
-**Architecture:** Laravel remains the sole pricing authority. It emits compact indexed quote schedules generated through the existing quote and fixed-point currency actions; React performs only bounds-checked schedule lookup and the cart endpoint re-quotes. Guest and authenticated carts share a `CartOwner` boundary backed by an HMAC guest token and a database-enforced one-active-cart invariant; authentication transactionally claims the guest cart without decrypting credentials.
+**Architecture:** Laravel remains the sole pricing authority. It loads catalog, validated rules, and a fresh display rate once, then emits compact indexed quote schedules using the existing integer-safe calculator and fixed-point conversion arithmetic in memory; React performs only bounds-checked schedule lookup and the cart endpoint re-quotes. Guest and authenticated carts share a `CartOwner` boundary backed by an HMAC guest token and a database-enforced one-active-cart invariant; authentication transactionally claims the guest cart without decrypting credentials.
 
 **Tech Stack:** Laravel 13, PHP 8.5, Inertia v3, React 19, TypeScript, Pest, Vitest, SQLite, MariaDB 12.3, Vite, local Thmanyah fonts.
 
@@ -84,13 +84,14 @@ Expected: FAIL because `BuildCoinsQuoteSchedule` and `quoteSchedules` do not exi
 
 - [ ] **Step 3: Implement the schedule builder**
 
-Use the existing actions for every entry; do not call the calculator or exchange-rate model directly:
+Load the selected product/variants, all required active rules, and the selected display rate once before entering the quantity loops. Use `CoinsPriceCalculator` for every entry and reuse one validated fixed-point currency converter for the complete batch. Do not invoke `QuoteCoins` or query the exchange-rate model inside a quantity loop:
 
 ```php
 final readonly class BuildCoinsQuoteSchedule
 {
     public function __construct(
-        private QuoteCoins $quoteCoins,
+        private CoinsCatalogReader $catalog,
+        private CoinsPriceCalculator $calculator,
         private ConvertDisplayMoney $convertDisplayMoney,
     ) {}
 
@@ -105,17 +106,16 @@ final readonly class BuildCoinsQuoteSchedule
         $increment = Config::integer('coins.quantity.increment');
         $totalsHalalah = [];
         $displayTotalsMinor = [];
-        $first = null;
+        $context = $this->loadPricingContextOnce($platform, $delivery, $displayCurrency);
 
         for ($quantity = $minimum; $quantity <= $maximum; $quantity += $increment) {
-            $quote = $this->quoteCoins->execute($platform, $delivery, $quantity);
-            $display = $this->convertDisplayMoney->execute($quote->total, $displayCurrency);
-            $first ??= $quote;
-            $totalsHalalah[] = $quote->total->halalah();
+            $total = $this->calculator->calculate($context->rule, $quantity, $context->normalRule);
+            $display = $context->displayConverter->convert($total);
+            $totalsHalalah[] = $total->halalah();
             $displayTotalsMinor[] = $display['amountMinor'];
         }
 
-        if ($first === null || count($totalsHalalah) !== count($displayTotalsMinor)) {
+        if (count($totalsHalalah) !== count($displayTotalsMinor)) {
             throw new DomainException('A complete Coins quote schedule is unavailable.');
         }
 
@@ -126,9 +126,9 @@ final readonly class BuildCoinsQuoteSchedule
             'minimum' => $minimum,
             'maximum' => $maximum,
             'increment' => $increment,
-            'productId' => $first->productId,
-            'variantId' => $first->variantId,
-            'priceVersion' => $first->priceVersion,
+            'productId' => $context->productId,
+            'variantId' => $context->variantId,
+            'priceVersion' => $context->priceVersion,
             'pricedAt' => now('UTC')->toIso8601String(),
             'displayCurrency' => $displayCurrency,
             'totalsHalalah' => $totalsHalalah,
@@ -139,6 +139,8 @@ final readonly class BuildCoinsQuoteSchedule
 ```
 
 Before returning, reject inconsistent product ID, variant ID, price version, platform, delivery, or currency across entries and reject array lengths that do not equal `intdiv($maximum - $minimum, $increment) + 1`.
+
+Add a focused all-three-schedules budget regression asserting at most 10 database queries and less than 1,000 ms. Prove pricing parity against `QuoteCoins` at minimum/maximum values, every tier boundary, every exact override, and the fast/normal floor boundary. The performance test must fail if catalog, rule, or rate reads occur inside the quantity loop.
 
 - [ ] **Step 4: Emit all schedules from the homepage**
 
