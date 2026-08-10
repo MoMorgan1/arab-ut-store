@@ -47,7 +47,7 @@
 - Consumes: existing `store` translation prop and the `store-document` class in `resources/views/app.blade.php`.
 - Produces: `CoinsStoreTranslations['hero']['stats']` as `Array<{ value: string; label: string }>` and `proof_label: string` for the accessible proof group.
 
-- [ ] **Step 1: Write failing translation and hero behavior tests**
+- [x] **Step 1: Write failing translation and hero behavior tests**
 
 Update the exact-copy Pest assertion and add proof parity:
 
@@ -82,7 +82,7 @@ expect(screen.getByRole('link', { name: 'Choose your Coins' })).toHaveAttribute(
 
 In the homepage feature test, assert `store.hero.stats` has four entries and `store.hero.proof_label` exists.
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
 Run:
 
@@ -93,7 +93,7 @@ npm test -- resources/js/__tests__/store/coins-home.test.tsx
 
 Expected: failures for the old hero strings, missing proof keys, and absent proof group.
 
-- [ ] **Step 3: Add the exact bilingual hero contract**
+- [x] **Step 3: Add the exact bilingual hero contract**
 
 Use this TypeScript shape:
 
@@ -128,7 +128,7 @@ Render semantic proof without icons:
 
 Keep the crest, background, `#coins` target, and single real CTA. Do not add the WordPress “How it works” link because its target is outside this MVP.
 
-- [ ] **Step 4: Copy and register the exact WordPress font files**
+- [x] **Step 4: Copy and register the exact WordPress font files**
 
 Mechanically copy the seven missing WOFF2 files from the previously extracted WordPress theme:
 
@@ -152,7 +152,7 @@ html.store-document body,
 
 Style the proof as the WordPress text-only row with thin separators, cream/gold contrast, 700-weight values, and 400-weight labels. At narrow widths, use a two-column layout only when required to prevent overflow.
 
-- [ ] **Step 5: Verify GREEN and commit**
+- [x] **Step 5: Verify GREEN and commit**
 
 Run:
 
@@ -173,6 +173,8 @@ git add -- lang/ar/store.php lang/en/store.php resources/js/types/coins.ts resou
 git commit -m "feat: restore WordPress hero proof and typography"
 ```
 
+**Task 1 completion evidence:** The WordPress hero proof and exact Thmanyah typography shipped in the Task 1 implementation/fix range ending at `947fb31`. The final release browser matrix and current full branch gates continue to verify the bilingual hero, four proof values, real `#coins` CTA, and Serif Display/Sans font split.
+
 ---
 
 ### Task 2: Reducer-owned bounded quantity behavior
@@ -186,7 +188,7 @@ git commit -m "feat: restore WordPress hero proof and typography"
 - Consumes: minimum, maximum, and increment supplied by the existing catalog/selection contract.
 - Produces: `clampAndSnapQuantity(value, minimum, maximum, increment): number`, `formatCompactCoins(quantity): string`, reducer state `lastValidQuantity: number`, and action `{ type: 'quantity-committed'; value: number }`.
 
-- [ ] **Step 1: Write the pure behavior tests**
+- [x] **Step 1: Write the pure behavior tests**
 
 Create focused tests:
 
@@ -245,7 +247,7 @@ describe('Coins quantity controls', () => {
 });
 ```
 
-- [ ] **Step 2: Run the new test and verify RED**
+- [x] **Step 2: Run the new test and verify RED**
 
 Run:
 
@@ -255,7 +257,7 @@ npm test -- resources/js/__tests__/store/coins-quantity.test.ts
 
 Expected: module export/type failures because the helper, reducer field, and action do not exist.
 
-- [ ] **Step 3: Implement bounded quantity helpers and reducer actions**
+- [x] **Step 3: Implement bounded quantity helpers and reducer actions**
 
 Implement the helper with safe integers and exact 10K snapping:
 
@@ -302,7 +304,7 @@ export function formatCompactCoins(quantity: number): string {
 }
 ```
 
-- [ ] **Step 4: Verify GREEN and existing reducer behavior**
+- [x] **Step 4: Verify GREEN and existing reducer behavior**
 
 Run:
 
@@ -313,12 +315,14 @@ npm run types:check
 
 Expected: quantity tests and existing homepage lifecycle tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add -- resources/js/__tests__/store/coins-quantity.test.ts resources/js/components/configurator/coins/configurator-state.ts resources/js/lib/money.ts
 git commit -m "feat: add bounded Coins quantity controls"
 ```
+
+**Task 2 completion evidence:** The bounded quantity helpers and reducer contract shipped in `dae4e23`. Later slider and live-quote fixes retained the safe-integer bounds, selected-mode clamping, last-valid input restoration, and exact compact labels, with the current full branch suites covering the integrated behavior.
 
 ---
 
@@ -338,7 +342,7 @@ git commit -m "feat: add bounded Coins quantity controls"
 - Consumes: Task 2 `clampAndSnapQuantity`, `formatCompactCoins`, `lastValidQuantity`, and `quantity-committed`.
 - Produces: synchronized editable amount, five quick chips, range, endpoint labels, adjustments, and live quote using the unchanged quote endpoint.
 
-- [ ] **Step 1: Write failing server-contract and component tests**
+- [x] **Step 1: Write failing server-contract and component tests**
 
 Change the homepage amount prop expectation to:
 
@@ -388,7 +392,7 @@ Add separate tests for:
 - quick chips precede the range in DOM order;
 - no cart, checkout, credentials, or payment control appears.
 
-- [ ] **Step 2: Run focused suites and verify RED**
+- [x] **Step 2: Run focused suites and verify RED**
 
 Run:
 
@@ -399,7 +403,7 @@ npm test -- resources/js/__tests__/store/coins-home.test.tsx
 
 Expected: failure for the missing 5M server prop, slider, adjustment controls, new translation keys, and synchronization behavior.
 
-- [ ] **Step 3: Extend the localized amount contract and server presets**
+- [x] **Step 3: Extend the localized amount contract and server presets**
 
 Add `5_000_000` to `config/coins.php`. Add these bilingual keys under `amount_copy` and TypeScript:
 
@@ -411,7 +415,7 @@ maximum_label: string;
 
 Keep customer-facing copy in locale files; compact numeric button labels remain data labels.
 
-- [ ] **Step 4: Implement the synchronized WordPress control**
+- [x] **Step 4: Implement the synchronized WordPress control**
 
 `CoinsConfigurator` owns four paths into the same reducer state:
 
@@ -449,7 +453,7 @@ Typing sends sanitized ASCII digits through `quantity-changed`; blur commits the
 
 Use a local `isEditing` boolean only to switch the textbox between raw edit text and formatted display text; the reducer remains the sole numeric source of truth. Compute a CSS custom property from `(value - minimum) / (maximum - minimum)` for the gold filled track.
 
-- [ ] **Step 5: Reproduce the WordPress slider CSS responsively**
+- [x] **Step 5: Reproduce the WordPress slider CSS responsively**
 
 Port only the relevant proportions from `assets/css/homepage.css`: warm dark input, compact gold quick chips, a 6–8px track, circular gold thumb, red decrement buttons, green increment buttons, and the bordered live price area. Keep:
 
@@ -468,7 +472,7 @@ Port only the relevant proportions from `assets/css/homepage.css`: warm dark inp
 
 At 320px, preserve one five-chip row, 44px targets, and no page overflow. Do not copy global WordPress selectors or sticky purchase UI.
 
-- [ ] **Step 6: Verify focused and full gates**
+- [x] **Step 6: Verify focused and full gates**
 
 Run:
 
@@ -481,7 +485,7 @@ git diff --check
 
 Expected: all PHP/React tests, Pint, PHPStan, ESLint, Prettier, TypeScript, and Vite build pass.
 
-- [ ] **Step 7: Verify the real browser at four breakpoints and both locales**
+- [x] **Step 7: Verify the real browser at four breakpoints and both locales**
 
 Start the existing local preview and verify `/` and `/en` at widths `320`, `390`, `768`, and `1440`:
 
@@ -494,12 +498,14 @@ Start the existing local preview and verify `/` and `/en` at widths `320`, `390`
 - dragging and ± controls produce the matching live quote;
 - no horizontal overflow, console error, or dead commerce control exists.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```powershell
 git add -- config/coins.php tests/Feature/Store/HomeCoinsConfiguratorTest.php resources/js/components/configurator/coins/amount-step.tsx resources/js/components/configurator/coins/coins-configurator.tsx resources/js/components/configurator/coins/configurator-state.ts resources/js/types/coins.ts resources/css/app.css resources/js/__tests__/store/coins-home.test.tsx lang/ar/store.php lang/en/store.php
 git commit -m "feat: restore the WordPress Coins amount selector"
 ```
+
+**Task 3 completion evidence:** The WordPress amount selector shipped in `7d83785`, with quote-lifecycle hardening in `3de79fd` and `6550e7f`. The implemented control includes the editable grouped amount, five quick chips, left-to-right range, endpoint labels, eight bounded adjustments, localized limits, and server-authoritative live quote. Task 4 later superseded this task's original debounce detail with the approved immediate abortable-request behavior. Final branch verification at `c0e7114` passed 303 Pest tests (300 passed, 3 expected skips, 3,042 assertions), 144 Vitest tests, all static/build gates, and the bilingual responsive browser checks recorded in the later release-gate plan.
 
 ---
 
