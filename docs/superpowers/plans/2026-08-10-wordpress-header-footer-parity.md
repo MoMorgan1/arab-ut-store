@@ -744,15 +744,15 @@ Completed in `a7f7f72` with payment-proportion fix `46ac701`: focused footer/lay
 - A missing, malformed, or rate aged 30 hours or more fails the non-SAR quote closed with the existing no-store 503 envelope. SAR requires no rate.
 - Checkout remains SAR regardless of the historical WordPress AED comment.
 
-- [ ] **Step 1: Re-fetch official documentation and verify the provider contract**
+- [x] **Step 1: Re-fetch official documentation and verify the provider contract**
 
 Read current official Laravel 13 HTTP client/scheduling docs and ExchangeRate-API Open Access endpoint, supported currencies, attribution, and terms. Record URLs/date/decisions in the task report. Verify SAR, USD, EUR, and GBP support and that the data is display-only.
 
-- [ ] **Step 2: Write and run focused backend RED tests**
+- [x] **Step 2: Write and run focused backend RED tests**
 
 Cover unchanged SAR authority plus matching `displayTotal`, exact half-up integer conversion, overflow/malformed/stale/missing-rate failures, session-derived currency, rejected quote `currency` input that cannot mutate the preference, complete atomic refresh, provider errors, no request-path HTTP, no-store, and daily schedule registration.
 
-- [ ] **Step 3: Implement fixed-point conversion and background refresh**
+- [x] **Step 3: Implement fixed-point conversion and background refresh**
 
 The rate means quote-currency major units per one SAR and has exactly eight decimal places. For the currently supported two-decimal currencies calculate:
 
@@ -762,21 +762,23 @@ displayMinor = round_half_up(authoritativeHalalah * scaledRate / 100000000)
 
 Guard every multiplication and rounding increment against integer overflow. Fetch `https://open.er-api.com/v6/latest/SAR` with timeout/bounded retry from the command only, validate the complete response before a transaction, and schedule one daily refresh.
 
-- [ ] **Step 4: Write and run focused frontend RED tests**
+- [x] **Step 4: Write and run focused frontend RED tests**
 
 Cover exact matching `displayTotal`, selected-currency mismatch failure, rendering EUR/USD/GBP rather than SAR, comma-grouped Latin amount input during editing/slider/chip changes, and immediate quote requests on every valid change with abort/stale-response protection and retained previous price until the new response arrives.
 
-- [ ] **Step 5: Remove the quote debounce and implement the strict display contract**
+- [x] **Step 5: Remove the quote debounce and implement the strict display contract**
 
 Dispatch/fetch immediately for each valid platform/delivery/quantity tuple. Abort the previous request, ignore stale responses, keep a valid prior price visible while refreshing, and clear it only for invalid input, tuple changes, or errors. Format the amount as `200,000` while editing and use generic exact minor-unit formatting for the visible display total.
 
-- [ ] **Step 6: Add the WordPress normal-delivery suggestion and exact copy fix**
+- [x] **Step 6: Add the WordPress normal-delivery suggestion and exact copy fix**
 
 When console delivery is Normal and quantity is at least 1,500,000, show the localized WordPress suggestion that Fast supports more than 2M. Its action selects Fast and returns to the Delivery step. Change the Arabic hero badge exactly to `كل اللي تحتاجه في FC 27 بمكان واحد`.
 
-- [ ] **Step 7: Focused GREEN, guards, browser proof, and commit**
+- [x] **Step 7: Focused GREEN, guards, browser proof, and commit**
 
 Run focused Pest/Vitest plus Pint, PHPStan, ESLint, Prettier, TypeScript, build, Clean Code Guard, Test Guard, and Docs Guard. Verify AR/EN at 320/390/768/1440, immediate slider/type/chip quotes, EUR display, normal suggestion, keyboard/focus, reduced motion, no overflow, and zero console errors. Commit only owned files with `feat: refine live Coins quoting` and do not push.
+
+Completed in `29d9f72` with hardening fix `c62952e`: focused backend 80/80 and frontend 97/97 passed before the fix round; final full Pest passed 227 with 3 expected skips and 2,048 assertions, and final Vitest passed 123/123 with ESLint, Prettier, TypeScript, and Vite build. Browser verification passed Arabic/English at 320px, 390px, 768px, and 1440px plus a EUR Slow-3G interaction proving immediate requests, aborted stale work, retained price, grouped Latin input, converted result, focus, reduced motion, no overflow, and a clean console. The fix round added verified caret preservation and duplicate-provider-key rejection; scoped re-review found no remaining P0-P2.
 
 ---
 
