@@ -2,12 +2,10 @@
 
 namespace App\Http\Requests\Store;
 
-use App\Enums\DeliveryMode;
-use App\Enums\Platform;
+use App\Validation\CoinsSelectionRules;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
-use Illuminate\Validation\Rule;
 
 class CoinsQuoteRequest extends FormRequest
 {
@@ -19,31 +17,7 @@ class CoinsQuoteRequest extends FormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
-        $platform = $this->input('platform');
-        $delivery = $this->input('delivery');
-        $isPc = $platform === Platform::Pc->value;
-        $maximum = match (true) {
-            $isPc => config('coins.platforms.pc.maximum'),
-            $delivery === DeliveryMode::Fast->value => config('coins.platforms.playstation.deliveries.fast.maximum'),
-            default => config('coins.platforms.playstation.deliveries.normal.maximum'),
-        };
-
-        return [
-            'platform' => [
-                'required',
-                Rule::enum(Platform::class)->only([Platform::PlayStation, Platform::Pc]),
-            ],
-            'delivery' => $isPc
-                ? ['missing']
-                : ['required', Rule::enum(DeliveryMode::class)],
-            'quantity' => [
-                'required',
-                'integer',
-                'min:'.config('coins.quantity.minimum'),
-                'max:'.$maximum,
-                'multiple_of:'.config('coins.quantity.increment'),
-            ],
-        ];
+        return app(CoinsSelectionRules::class)->for($this->input('platform'), $this->input('delivery'));
     }
 
     /** @return array<callable(Validator): void> */

@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'cart' => [
+        'validation_error' => 'Check the Coins cart details.',
+        'unknown_fields' => 'The request contains unsupported fields.',
+        'idempotency_key' => 'A valid Idempotency-Key header is required.',
+        'idempotency_conflict' => 'This request key was already used for different cart details.',
+    ],
     'seo_title' => 'Arab UT | FC 27 Ultimate Team Coins',
     'hero' => [
         'badge' => 'Everything you need for FC 27, all in one place.',

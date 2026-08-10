@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'cart' => [
+        'validation_error' => 'راجع بيانات إضافة الكوينز إلى السلة.',
+        'unknown_fields' => 'يحتوي الطلب على حقول غير مدعومة.',
+        'idempotency_key' => 'يلزم ترويسة Idempotency-Key صالحة.',
+        'idempotency_conflict' => 'استُخدم مفتاح الطلب هذا سابقًا مع بيانات سلة مختلفة.',
+    ],
     'seo_title' => 'Arab UT | كوينز FC 27 ألتيميت تيم',
     'hero' => [
         'badge' => 'كل اللي تحتاجه في FC 27 بمكان واحد',

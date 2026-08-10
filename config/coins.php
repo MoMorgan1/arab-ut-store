@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'cart' => [
+        'secret_retention_hours' => (int) env('COINS_CART_SECRET_RETENTION_HOURS', 24),
+        'rate_limit_per_minute' => (int) env('COINS_CART_RATE_LIMIT_PER_MINUTE', 10),
+    ],
     'quantity' => [
         'minimum' => 50_000,
         'increment' => 10_000,

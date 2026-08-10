@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\PurgeCartItemSecrets;
 use App\Console\Commands\RefreshDisplayExchangeRates;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -10,3 +11,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command(RefreshDisplayExchangeRates::class)->daily();
+Schedule::command(PurgeCartItemSecrets::class)->hourly()->withoutOverlapping();
