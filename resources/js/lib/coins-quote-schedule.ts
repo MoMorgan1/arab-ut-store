@@ -241,10 +241,7 @@ export function parseCoinsQuoteSchedules(
         (key) => schedules[key]?.pricedAt,
     ).filter((timestamp): timestamp is string => timestamp !== undefined);
 
-    if (
-        timestamps.length === SCHEDULE_KEYS.length &&
-        timestamps.some((timestamp) => timestamp !== timestamps[0])
-    ) {
+    if (timestamps.some((timestamp) => timestamp !== timestamps[0])) {
         return unavailableSchedules();
     }
 

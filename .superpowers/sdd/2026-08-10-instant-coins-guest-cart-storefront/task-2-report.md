@@ -99,3 +99,13 @@ npm run ci:check
 ```
 
 Result: 15 Vitest files and 184/184 tests passed; ESLint, Prettier, TypeScript, and the Vite production build passed. The build repeated only the previously documented runtime asset/font URL warnings.
+
+### Partial-snapshot timestamp follow-up
+
+A final review identified that the timestamp check only ran when all three modes parsed successfully. RED was captured with a malformed PC schedule plus individually valid Fast and Normal schedules carrying different timestamps:
+
+```powershell
+npx vitest run resources/js/__tests__/store/coins-schedule.test.ts -t "remaining valid schedules have different timestamps"
+```
+
+Result: 1/1 failed as expected because both console schedules remained usable. The timestamp invariant now compares every non-null schedule. Any disagreement closes the complete snapshot even when another mode was already malformed. The complete schedule suite then passed 30/30.
