@@ -15,7 +15,7 @@ return [
         'home' => 'الرئيسية',
         'coins' => 'كوينز',
         'sbc' => 'SBC',
-        'fut_champions' => 'FUT Champions',
+        'fut_champions' => 'فوت تشامبيونز',
         'most_requested' => 'الأكثر طلباً',
         'whatsapp' => 'تواصل معنا',
         'cart' => 'السلة',

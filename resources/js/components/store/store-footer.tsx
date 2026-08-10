@@ -146,33 +146,26 @@ export function StoreFooter({ locale, shell, translations }: StoreFooterProps) {
             </div>
 
             <div className="store-footer__bottom">
-                <p>
-                    {translations.footer.copyright.replace(
-                        ':year',
-                        String(year),
-                    )}
+                <p className="store-footer__legal-line">
+                    <span>
+                        {translations.footer.copyright.replace(
+                            ':year',
+                            String(year),
+                        )}
+                    </span>
+                    <span aria-hidden="true"> · </span>
+                    <span dir="ltr">{translations.footer.ea_disclaimer}</span>
+                    <span aria-hidden="true"> · </span>
+                    <a
+                        dir="ltr"
+                        href="https://www.exchangerate-api.com"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                    >
+                        {translations.footer.exchange_rate_attribution}
+                    </a>
                 </p>
-                <nav aria-label={translations.footer.legal_navigation}>
-                    {legalLinks.slice(0, 2).map(([label, href]) => (
-                        <a key={href} href={href}>
-                            {label}
-                        </a>
-                    ))}
-                </nav>
             </div>
-
-            <p className="store-footer__disclaimer" dir="ltr">
-                {translations.footer.ea_disclaimer}
-            </p>
-            <p className="store-footer__disclaimer" dir="ltr">
-                <a
-                    href="https://www.exchangerate-api.com"
-                    rel="noopener noreferrer"
-                    target="_blank"
-                >
-                    {translations.footer.exchange_rate_attribution}
-                </a>
-            </p>
         </footer>
     );
 }

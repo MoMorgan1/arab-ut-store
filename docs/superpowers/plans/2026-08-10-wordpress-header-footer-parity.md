@@ -844,42 +844,46 @@ Completed in `e2a3f04` with hardening fixes `8c560ae` and `bb9e7fa`: the final f
 
 **Flow:** platform -> delivery when console -> amount -> EA credentials -> add to cart. PC marks delivery complete and skips its screen. Guests can configure safely but must log in before credential fields; after Fortify login they resume at credentials with only validated non-sensitive choices.
 
-- [ ] **Step 1: Re-audit WordPress five-step hierarchy and current React reducer, then run required UI skills**
+- [x] **Step 1: Re-audit WordPress five-step hierarchy and current React reducer, then run required UI skills**
 
 Use WordPress structure first. Run `frontend-design`, `ui-ux-pro-max`, `arrange`, `typeset`, `clarify`, `adapt`, and final `polish`; reject suggestions that replace Thmanyah, warm black/gold, or the verified configurator hierarchy.
 
-- [ ] **Step 2: Write and run frontend RED tests**
+- [x] **Step 2: Write and run frontend RED tests**
 
 Cover four visible progress decisions plus final add action, PC delivery skip, guest login gate/resume URL, five accessible code inputs, password visibility, exact error focus, pending double-submit prevention, stable in-memory idempotency key, safe errors, 201 redirect/cart-count update, state clearing, and absence of credentials from URL/DOM summaries/storage/analytics.
 
-- [ ] **Step 3: Implement in-memory-only credentials and secure submission**
+- [x] **Step 3: Implement in-memory-only credentials and secure submission**
 
 Use email/password/five code fields with explicit labels, LTR Latin code controls, disabled spellcheck/autocomplete appropriate for third-party credentials, accessible inline validation, and no Inertia remember/localStorage/sessionStorage. Submit same-origin JSON with CSRF and clear/unmount all secret state on success or explicit cancel.
 
-- [ ] **Step 4: Implement the real read-only cart summary**
+- [x] **Step 4: Implement the real read-only cart summary**
 
 Replace the cart placeholder with authenticated safe lines showing service, platform/delivery, Coins quantity, authoritative SAR snapshot, masked credential state/expiry, and remove/back actions only if backed by real endpoints. Do not add a fake checkout or payment control.
 
-- [ ] **Step 5: WordPress parity, polish, and verification**
+- [x] **Step 5: WordPress parity, polish, and verification**
 
 Match the original account-details/summary hierarchy before refining. Verify AR/EN at 320/390/768/1440, RTL/LTR, 44px targets, password manager/autofill behavior, keyboard/focus/error flow, 200% zoom, reduced motion, no overflow, no console error, and no secret in browser URL/storage/DOM summary/network response. Run full CI and guards, then commit only owned UI files with `feat: complete secure Coins cart flow`.
+
+Completed in `258c15c` with hardening fixes `a4ecbad`, `dd5389d`, and `ba8e1d8`: final frontend CI passed 142/142 and final backend verification passed 286 tests with 3 expected skips; lint, formatting, TypeScript, Vite build, Pint, PHPStan, Composer validation, leak checks, and Arabic/English browser security gates passed. Three scoped review rounds fixed safe 422 recovery, authoritative cart counts, honest service rendering, Arabic bidi isolation, and removed masked-email identity from browser/cart projections entirely. The final scoped verdict was SPEC PASS / TASK QUALITY PASS.
 
 ---
 
 ### Task 7: Responsive Polish, Accessibility, and Release Gates
 
 **Files:**
-- Modify: `resources/css/app.css`
+- Modify: storefront header/footer/configurator/cart components, translations, and `resources/css/app.css`
+- Modify: quote/pricing setup only if diagnosis proves a valid supported amount or selected display currency can fail despite healthy configured data
 - Modify: `resources/js/__tests__/store/store-header.test.tsx`
 - Modify: `resources/js/__tests__/store/store-footer.test.tsx`
 - Modify: `resources/js/__tests__/store/store-simple-page.test.tsx`
+- Modify: focused Coins quote/configurator/cart regressions and any narrow backend tests required by the diagnosed quote failure
 - Modify: `docs/superpowers/plans/2026-08-10-wordpress-header-footer-parity.md`
 
 **Interfaces:**
 - Consumes: completed shell, header, preferences, footer, routes, and assets from Tasks 1–3.
 - Produces: browser-verified bilingual storefront shell with no P0–P2 accessibility, responsive, console, or dead-destination defect.
 
-- [ ] **Step 1: Strengthen semantic regression coverage before visual refinements**
+- [x] **Step 1: Strengthen semantic regression coverage before visual refinements**
 
 Add assertions for landmark order, active state on simple pages, exact nav order, all external `rel` values, and no placeholder links across the complete rendered shell:
 
@@ -899,7 +903,7 @@ for (const link of document.querySelectorAll('a')) {
 }
 ```
 
-- [ ] **Step 2: Run regression RED or characterization GREEN**
+- [x] **Step 2: Run regression RED or characterization GREEN**
 
 ```powershell
 npm test -- resources/js/__tests__/store/store-header.test.tsx resources/js/__tests__/store/store-footer.test.tsx resources/js/__tests__/store/store-simple-page.test.tsx resources/js/__tests__/store-layout.test.tsx
@@ -907,13 +911,25 @@ npm test -- resources/js/__tests__/store/store-header.test.tsx resources/js/__te
 
 Expected: any newly exposed semantic gap fails before its minimal fix; otherwise record the tests as characterization GREEN and do not invent a code change.
 
-- [ ] **Step 3: Run required design and code guards**
+- [x] **Step 3: Run required design and code guards**
 
 Apply `arrange`, `adapt`, `typeset`, and `polish` against the WordPress reference. Then run `clean-code-guard` on production changes and `test-guard` on new tests. Fix only concrete findings; preserve WordPress parity.
 
 Include the two deferred Task 3 P2 items: payment badges must be auto-width with the WordPress inline padding so Visa never protrudes, and aspect-ratio verification must assert rendered browser geometry rather than exact CSS declarations.
 
-- [ ] **Step 4: Build production assets and run browser verification**
+Also apply Mohamed's final storefront feedback without changing the underlying business flow:
+
+- remove the duplicate bottom legal-links navigation while retaining the main legal-links section;
+- merge the EA independence disclaimer into the copyright/legal line;
+- remove the standalone ExchangeRate-API attribution row, but retain the provider's required discreet linked attribution inside the merged legal line;
+- restore payment-mark intrinsic proportions, auto-width badges, and WordPress inline padding so no mark is zoomed, clipped, or protruding;
+- make the WhatsApp navigation pill visually smaller while preserving a minimum 44px interactive target;
+- use `فوت تشامبيونز` on Arabic navigation and keep `FUT Champions` in English;
+- verify `Thmanyah Serif Display` through computed styles on Arabic headings and large display text, with `Thmanyah Sans` retained for body and controls;
+- restyle the normal-delivery `>2M` Fast suggestion as a cohesive WordPress-faithful callout with one clear action;
+- diagnose the observed valid large-quantity quote failure before changing behavior. A valid supported platform/delivery/quantity with healthy pricing and display-currency data must calculate automatically. Keep fail-closed behavior for genuinely missing, malformed, or stale pricing/rate data; do not add request-path provider HTTP or fabricated fallback rates.
+
+- [x] **Step 4: Build production assets and run browser verification**
 
 ```powershell
 npm run build
@@ -936,7 +952,7 @@ Verify `/`, `/en`, `/cart`, `/en/cart`, `/sbc`, `/en/sbc`, `/fut-champions`, `/e
 - TikTok, Snapchat, placeholder href="#", dead buttons, and fake checkout controls are absent.
 ```
 
-- [ ] **Step 5: Run full verification gates**
+- [x] **Step 5: Run full verification gates**
 
 ```powershell
 php work/tools/composer.phar ci:check
@@ -946,7 +962,7 @@ git status --short
 
 Expected: Composer validation, Pint, PHPStan, Pest, Vitest, ESLint, Prettier, TypeScript, and Vite build all pass; diff check is clean; only planned files are changed.
 
-- [ ] **Step 6: Update plan evidence and commit final polish**
+- [x] **Step 6: Update plan evidence and commit final polish**
 
 Mark only genuinely completed checkboxes, add exact test/browser evidence under this task, then commit:
 
@@ -956,3 +972,11 @@ git commit -m "fix: polish bilingual storefront shell"
 ```
 
 Do not push, merge, or deploy without Mohamed's explicit instruction.
+
+**Task 7 evidence (2026-08-10):**
+
+- Exact RED/GREEN: shell translation RED was 4/5 with Arabic FUT copy wrong; frontend RED was 68/71 with genuine footer/Fast-callout gaps plus one corrected accessible-name query. Focused GREEN is 5 files/76 tests; translation GREEN is 5 tests/536 assertions.
+- Quote diagnosis: both reported PS/Fast values were covered by the active 10K-increment/20M-max rule and quoted correctly in SAR. The 503 came from empty fresh-rate state after a transient failed provider refresh. No pricing contract changed. The real refresh later succeeded, and exact 14.18M USD / 18.21M EUR requests returned 200 with display totals 75,627 / 84,058 minor units and safe no-store headers; the 14.18M USD browser flow rendered automatically.
+- Browser: 50 production cases across `/`, `/en`, bilingual cart/SBC/FUT/privacy routes and 320/390/768/807/1440 all returned 200 with landmarks, Serif Display h1, no document overflow, no placeholder/unsafe link, no fake checkout, and zero console warning/error. Additional passes covered 200% zoom, reduced motion, 14-step keyboard focus, preferences focus/URL restoration, sticky `#coins`, 44px targets, exact labels/fonts, intrinsic payment geometry, and the one-action Fast switch.
+- Footer decision: retain the main five-link legal section; remove only the duplicate bottom nav; merge copyright, EA independence, and linked ExchangeRate-API attribution into one legal line. Rendered payment badges are auto-width with 8px inline padding and no protrusion.
+- Final gates: frontend CI passed 11 files/142 tests plus ESLint, Prettier, TypeScript, and build; backend passed 289 tests (286 passed, 3 skipped) and 2,761 assertions; Pint, PHPStan zero errors, Composer strict validation, and `git diff --check` passed. Guard and owned-file details are in `.superpowers/sdd/2026-08-10-wordpress-header-footer-parity/task-7-report.md`.

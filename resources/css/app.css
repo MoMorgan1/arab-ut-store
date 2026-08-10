@@ -555,16 +555,31 @@
         margin-inline-start: auto;
     }
 
-    .store-primary-nav__whatsapp-target {
+    .store-primary-nav a.store-primary-nav__whatsapp-target {
         min-height: 2.75rem;
         margin-inline-start: 0.5rem;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        padding-inline: 0.125rem;
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 700;
+        box-shadow: none;
+    }
+
+    .store-primary-nav__whatsapp-visual {
+        display: inline-flex;
+        min-height: 2.125rem;
+        align-items: center;
+        gap: 0.4rem;
         border-radius: 999px;
         background: linear-gradient(135deg, #25d366, #128c7e);
-        padding-inline: 0.875rem;
-        color: #fff;
-        font-size: 0.82rem;
-        font-weight: 700;
-        box-shadow: 0 2px 8px rgb(37 211 102 / 28%);
+        padding-inline: 0.7rem;
+        box-shadow: 0 2px 8px rgb(37 211 102 / 24%);
+        transition:
+            filter 160ms var(--store-ease-out),
+            box-shadow 160ms var(--store-ease-out);
     }
 
     .store-primary-nav__whatsapp a::after {
@@ -572,7 +587,14 @@
     }
 
     .store-primary-nav__whatsapp a:hover {
+        border-color: transparent;
+        background: transparent;
         color: #fff;
+    }
+
+    .store-primary-nav__whatsapp a:hover .store-primary-nav__whatsapp-visual {
+        filter: brightness(1.06);
+        box-shadow: 0 3px 10px rgb(37 211 102 / 34%);
     }
 
     #coins {
@@ -1235,6 +1257,59 @@
     .coins-step__actions--amount {
         display: block;
         margin-block-start: 1.25rem;
+    }
+
+    .coins-fast-suggestion {
+        display: grid;
+        margin-block-start: 1.25rem;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.75rem;
+        border: 1px solid rgb(212 168 67 / 30%);
+        border-radius: 0.625rem;
+        background: linear-gradient(
+            135deg,
+            rgb(212 168 67 / 12%),
+            rgb(36 30 24 / 54%)
+        );
+        padding: 0.625rem 0.75rem;
+    }
+
+    .coins-fast-suggestion__icon {
+        display: inline-grid;
+        width: 2.125rem;
+        height: 2.125rem;
+        place-items: center;
+        border-radius: 50%;
+        background: rgb(212 168 67 / 16%);
+        color: var(--arabut-gold-bright);
+    }
+
+    .coins-fast-suggestion__copy {
+        margin: 0;
+        color: var(--arabut-ink);
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .coins-fast-suggestion__action {
+        min-height: 2.75rem;
+        border: 0;
+        border-radius: 0.5rem;
+        background: var(--arabut-gold);
+        padding: 0.55rem 0.875rem;
+        color: var(--arabut-navy-deep);
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .coins-fast-suggestion__action:hover {
+        background: var(--arabut-gold-bright);
+    }
+
+    .coins-fast-suggestion__action:focus-visible {
+        outline: 2px solid var(--arabut-focus);
+        outline-offset: 3px;
     }
 
     .coins-amount-field {
@@ -2108,8 +2183,10 @@
 
     .store-footer__payments span {
         display: inline-flex;
-        width: 4rem;
-        height: 2rem;
+        width: auto;
+        min-width: 0;
+        min-height: 1.875rem;
+        flex: 0 0 auto;
         align-items: center;
         justify-content: center;
         border-radius: 0.375rem;
@@ -2126,61 +2203,93 @@
     }
 
     .store-footer__bottom {
-        display: flex;
         width: min(100% - 4rem, 72rem);
         min-width: 0;
         margin-inline: auto;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
         border-block-start: 1px solid rgb(237 228 208 / 6%);
-        padding-block: 0.75rem;
+        padding-block: 1rem;
     }
 
-    .store-footer__bottom p {
+    .store-footer__legal-line {
         color: var(--arabut-muted);
-        font-size: 0.82rem;
-        line-height: 1.55;
+        font-size: 0.75rem;
+        line-height: 1.7;
+        text-align: center;
     }
 
-    .store-footer__bottom nav {
-        display: flex;
-        min-width: 0;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.25rem 1rem;
-    }
-
-    .store-footer__bottom nav a {
-        display: inline-flex;
-        min-height: 2.75rem;
-        align-items: center;
-        color: var(--arabut-muted);
-        font-size: 0.82rem;
-        line-height: 1.4;
-        text-decoration: none;
+    .store-footer__legal-line a {
+        color: inherit;
+        text-underline-offset: 0.18em;
         transition: color 180ms var(--store-ease-out);
     }
 
-    .store-footer__bottom nav a:hover {
+    .store-footer__legal-line a:hover {
         color: var(--arabut-gold-bright);
-    }
-
-    .store-footer__disclaimer {
-        width: min(100% - 4rem, 72rem);
-        margin-inline: auto;
-        border-block-start: 1px solid rgb(237 228 208 / 5%);
-        padding-block: 0.75rem 1rem;
-        color: var(--arabut-muted);
-        font-size: 0.75rem;
-        line-height: 1.6;
-        text-align: center;
     }
 
     .store-footer a:focus-visible {
         border-radius: 0.25rem;
         outline: 2px solid var(--arabut-gold-bright);
         outline-offset: 0.1875rem;
+    }
+
+    .store-simple-page {
+        display: flex;
+        width: min(100% - 4rem, 72rem);
+        min-height: clamp(24rem, 55vh, 38rem);
+        margin-inline: auto;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 0.875rem;
+        padding-block: clamp(4rem, 9vw, 7rem);
+    }
+
+    .store-simple-page > p {
+        max-width: 54ch;
+        margin: 0;
+        color: var(--arabut-muted);
+        font-size: clamp(1rem, 1.7vw, 1.125rem);
+        line-height: 1.75;
+    }
+
+    .store-simple-page > p:first-child {
+        color: var(--arabut-gold-bright);
+        font-size: 0.8rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+    }
+
+    .store-simple-page h1 {
+        max-width: 18ch;
+        margin: 0;
+        color: var(--arabut-ink);
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+        font-size: clamp(2.25rem, 6vw, 4rem);
+        font-weight: 700;
+        line-height: 1.08;
+    }
+
+    .store-simple-page > a {
+        display: inline-flex;
+        min-height: 2.75rem;
+        margin-block-start: 0.75rem;
+        align-items: center;
+        border: 1px solid rgb(212 168 67 / 34%);
+        border-radius: 0.5rem;
+        padding: 0.6rem 1rem;
+        color: var(--arabut-gold-bright);
+        font-weight: 800;
+        text-decoration: none;
+    }
+
+    .store-simple-page > a:hover {
+        background: rgb(212 168 67 / 10%);
+    }
+
+    .store-simple-page > a:focus-visible {
+        outline: 2px solid var(--arabut-focus);
+        outline-offset: 3px;
     }
 }
 
@@ -2208,7 +2317,7 @@
 @media (max-width: 35rem) {
     .store-footer__grid,
     .store-footer__bottom,
-    .store-footer__disclaimer {
+    .store-simple-page {
         width: min(100% - 2.5rem, 72rem);
     }
 
@@ -2222,14 +2331,17 @@
         grid-column: auto;
     }
 
-    .store-footer__bottom {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.25rem;
+    .store-footer__legal-line {
+        text-align: start;
     }
 
-    .store-footer__disclaimer {
-        text-align: start;
+    .coins-fast-suggestion {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .coins-fast-suggestion__action {
+        grid-column: 1 / -1;
+        width: 100%;
     }
 }
 
@@ -2309,9 +2421,12 @@
         background: rgb(212 168 67 / 12%);
     }
 
-    .store-primary-nav__whatsapp-target {
+    .store-primary-nav a.store-primary-nav__whatsapp-target {
         min-height: 2.75rem;
         margin-inline-start: 0;
+        border-color: transparent;
+        background: transparent;
+        padding-inline: 0.125rem;
     }
 
     #coins {

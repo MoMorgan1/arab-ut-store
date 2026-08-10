@@ -1004,7 +1004,15 @@ describe('Coins homepage', () => {
             { target: { value: '1500000' } },
         );
 
-        fireEvent.click(screen.getByRole('button', { name: 'Switch to Fast' }));
+        const suggestion = screen.getByRole('complementary', {
+            name: store.amount_copy.normal_delivery_suggestion,
+        });
+        const action = within(suggestion).getByRole('button', {
+            name: 'Switch to Fast',
+        });
+
+        expect(within(suggestion).getAllByRole('button')).toHaveLength(1);
+        fireEvent.click(action);
 
         expect(screen.getByText(store.delivery.title)).toHaveFocus();
         expect(screen.getByRole('radio', { name: 'Fast' })).toBeChecked();

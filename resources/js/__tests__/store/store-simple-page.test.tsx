@@ -101,3 +101,30 @@ it('renders a non-transactional branded destination', () => {
     ).not.toBeInTheDocument();
     expect(document.querySelector('a[href="#"]')).not.toBeInTheDocument();
 });
+
+it('keeps the complete shell semantic order, active nav, and safe external links', () => {
+    render(<SimpleStorePage />);
+
+    const banner = screen.getByRole('banner');
+    const main = screen.getByRole('main');
+    const contentinfo = screen.getByRole('contentinfo');
+
+    expect([...document.body.querySelectorAll('header, main, footer')]).toEqual(
+        [banner, main, contentinfo],
+    );
+    expect(screen.getByRole('link', { name: /^SBC/ })).toHaveAttribute(
+        'aria-current',
+        'page',
+    );
+
+    for (const link of document.querySelectorAll<HTMLAnchorElement>('a')) {
+        const href = link.getAttribute('href');
+
+        expect(href).not.toBe('#');
+
+        if (href?.startsWith('http')) {
+            expect(link).toHaveAttribute('target', '_blank');
+            expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+        }
+    }
+});

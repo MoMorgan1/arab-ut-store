@@ -277,8 +277,10 @@ export function StoreHeader(props: StoreHeaderProps) {
                             rel="noopener noreferrer"
                             target="_blank"
                         >
-                            <WhatsAppIcon />
-                            <span>{translations.header.whatsapp}</span>
+                            <span className="store-primary-nav__whatsapp-visual">
+                                <WhatsAppIcon />
+                                <span>{translations.header.whatsapp}</span>
+                            </span>
                         </a>
                     </li>
                 </ul>

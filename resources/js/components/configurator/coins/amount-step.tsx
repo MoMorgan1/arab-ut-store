@@ -235,18 +235,41 @@ export function AmountStep({
             </div>
 
             {delivery === 'normal' && quantity >= 1_500_000 ? (
-                <div className="coins-step__actions">
-                    <p className="coins-step__help">
+                <aside
+                    aria-label={
+                        translations.amount_copy.normal_delivery_suggestion
+                    }
+                    className="coins-fast-suggestion"
+                >
+                    <span
+                        aria-hidden="true"
+                        className="coins-fast-suggestion__icon"
+                    >
+                        <svg
+                            fill="none"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            width="18"
+                        >
+                            <path
+                                d="m13 2-8 12h6l-1 8 9-13h-6V2Z"
+                                stroke="currentColor"
+                                strokeLinejoin="round"
+                                strokeWidth="1.8"
+                            />
+                        </svg>
+                    </span>
+                    <p className="coins-fast-suggestion__copy">
                         {translations.amount_copy.normal_delivery_suggestion}
                     </p>
                     <button
-                        className="coins-secondary-action"
+                        className="coins-fast-suggestion__action"
                         onClick={onSwitchToFast}
                         type="button"
                     >
                         {translations.amount_copy.switch_to_fast}
                     </button>
-                </div>
+                </aside>
             ) : null}
 
             <div className="coins-step__actions coins-step__actions--amount">
