@@ -185,7 +185,7 @@ git commit -m "feat: publish exact Coins quote schedules"
 - `CoinsConfigurator` receives `quoteSchedules` and never uses `quoteUrl` for schedule-covered homepage interactions.
 - The existing GET quote parser/hook stays available for compatibility tests but is not mounted by the homepage configurator.
 
-- [ ] **Step 1: Write frontend RED tests**
+- [x] **Step 1: Write frontend RED tests**
 
 Cover exact lookup at minimum, middle, and maximum; rejection of off-step/out-of-bounds/mismatched arrays/unsafe totals/currency mismatch; no fetch on platform, delivery, input, chip, slider, and adjustment changes; immediate total replacement without refreshing copy; invalid editing retains the last exact total until commit; platform/delivery changes fail closed until a matching schedule exists.
 
@@ -196,7 +196,7 @@ expect(screen.getByText('SAR 100.00')).toBeVisible();
 expect(screen.queryByText(/Refreshing|نحدّث/u)).not.toBeInTheDocument();
 ```
 
-- [ ] **Step 2: Run frontend RED**
+- [x] **Step 2: Run frontend RED**
 
 ```powershell
 npx vitest run resources/js/__tests__/store/coins-schedule.test.ts resources/js/__tests__/store/coins-home.test.tsx
@@ -204,7 +204,7 @@ npx vitest run resources/js/__tests__/store/coins-schedule.test.ts resources/js/
 
 Expected: FAIL because schedule types/parser do not exist and the current configurator calls the quote endpoint.
 
-- [ ] **Step 3: Implement the strict lookup**
+- [x] **Step 3: Implement the strict lookup**
 
 ```ts
 export function quoteFromSchedule(
@@ -251,11 +251,11 @@ export function quoteFromSchedule(
 
 Validate the complete schedule once at the prop boundary and do not silently truncate arrays.
 
-- [ ] **Step 4: Replace network lifecycle with derived schedule state**
+- [x] **Step 4: Replace network lifecycle with derived schedule state**
 
 Select keys as `pc` or `${platform}:${delivery}`. Every committed quantity action derives the next quote in the same reducer/render cycle. Remove `loading` and `refreshing` presentation from schedule-driven transitions while preserving validation/unavailable states. Do not interpolate between schedule points.
 
-- [ ] **Step 5: Run frontend GREEN and static gates**
+- [x] **Step 5: Run frontend GREEN and static gates**
 
 ```powershell
 npx vitest run resources/js/__tests__/store/coins-schedule.test.ts resources/js/__tests__/store/coins-home.test.tsx
@@ -267,7 +267,7 @@ npm run build
 
 Expected: focused tests and all four static/build gates pass.
 
-- [ ] **Step 6: Commit Task 2**
+- [x] **Step 6: Commit Task 2**
 
 ```powershell
 git add resources/js/lib/coins-quote-schedule.ts resources/js/types/coins.ts resources/js/pages/store/home.tsx resources/js/components/configurator/coins resources/js/__tests__/store/coins-schedule.test.ts resources/js/__tests__/store/coins-home.test.tsx
