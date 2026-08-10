@@ -1,7 +1,9 @@
 # Instant Coins, Guest Cart, and Storefront Continuity
 
-**Status:** Approved by Mohamed on 2026-08-10  
-**Scope:** Coins homepage/configurator, guest cart ownership, authentication handoff, and the approved storefront polish batch  
+**Status:** Approved by Mohamed on 2026-08-10
+
+**Scope:** Coins homepage/configurator, guest cart ownership, authentication handoff, and the approved storefront polish batch
+
 **Complexity:** Ambitious
 
 ## Outcome
@@ -166,4 +168,3 @@ Arabic RTL and English LTR are verified at 320, 390, 768, and 1440 pixels for ho
 - The current open ExchangeRate-API remains usable only with its required attribution.
 - No provider credentials are requested in chat.
 - Checkout and payment remain outside this batch until a real provider and launch policy are approved.
-
