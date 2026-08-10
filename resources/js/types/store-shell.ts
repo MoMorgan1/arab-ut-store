@@ -63,7 +63,6 @@ export type StoreShellTranslations = {
         customer_service: string;
         whatsapp: string;
         payment_methods: string;
-        legal_navigation: string;
         copyright: string;
         ea_disclaimer: string;
         exchange_rate_attribution: string;

@@ -69,6 +69,8 @@ test('Arabic and English shell translation leaves and placeholders stay in parit
 
     expect(data_get($arabic, 'header.fut_champions'))->toBe('فوت تشامبيونز')
         ->and(data_get($english, 'header.fut_champions'))->toBe('FUT Champions')
+        ->and($arabic['footer'])->not->toHaveKey('legal_navigation')
+        ->and($english['footer'])->not->toHaveKey('legal_navigation')
         ->and(data_get($arabic, 'simple_pages.cart.title'))->toBe('السلة')
         ->and(data_get($english, 'simple_pages.cart.title'))->toBe('Cart')
         ->and(translationTokens(data_get($arabic, 'footer.copyright')))->toBe(['year']);

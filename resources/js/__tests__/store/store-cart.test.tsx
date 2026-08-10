@@ -110,7 +110,6 @@ const mockPage = vi.hoisted(() => ({
                 customer_service: '',
                 whatsapp: '',
                 payment_methods: '',
-                legal_navigation: '',
                 copyright: '',
                 ea_disclaimer: '',
                 exchange_rate_attribution: '',

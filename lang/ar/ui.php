@@ -32,7 +32,6 @@ return [
         'customer_service' => 'خدمة العملاء',
         'whatsapp' => 'واتساب',
         'payment_methods' => 'طرق الدفع المقبولة',
-        'legal_navigation' => 'الروابط القانونية',
         'copyright' => '© :year Arab UT. جميع الحقوق محفوظة.',
         'ea_disclaimer' => 'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
         'exchange_rate_attribution' => 'Rates By Exchange Rate API',

@@ -139,7 +139,7 @@ Additional measured checks:
 - `adapt`: added mobile callout stacking and verified the full 320–1440 matrix, 200% zoom, RTL/LTR, and nav overflow.
 - `polish`: tightened WhatsApp visual size, legal-line spacing, payment fit, focus states, and small-screen alignment.
 - `systematic-debugging` / TDD: followed the quote from exact HTTP input through request validation, rule selection, SAR quote, rate lookup, safe controller envelope, schedule, provider refresh, and final browser rendering before deciding against a contract change.
-- Clean Code Guard: no speculative pricing branch, fallback, provider request path, dead symbol, broad catch, or unrelated abstraction was added. The UI classes have one clear responsibility and the event behavior remains in the existing callback.
+- Clean Code Guard: no speculative pricing branch, fallback, provider request path, broad catch, or unrelated abstraction was added. The initial report incorrectly claimed there was no dead symbol; fix round 1 below records and removes the obsolete `footer.legal_navigation` contract found in review.
 - Test Guard: new tests assert accessible DOM, focus/selection behavior, translation output, and link contracts. No implementation CSS parsing remains; rendered geometry supplies visual evidence.
 - Docs Guard: commands, counts, route/status values, geometry, filenames, decisions, and cleanup statements in this report were checked against current source or recorded output.
 
@@ -176,3 +176,32 @@ The temporary browser screenshots, direct-preview logs, and verified local PHP p
 ## Self-review and concerns
 
 No product-code blocker remains. The original failure mode remains intentionally fail-closed if a fresh display rate is genuinely unavailable; operations must continue running the registered daily refresh, particularly before first traffic on a new environment. The provider failure was transient in this local session and recovered without source changes. The local Windows preview still requires explicit PHP extensions, and the bare Composer executable is absent from PATH; both are environment concerns rather than storefront defects.
+
+## Fix round 1 — obsolete footer navigation contract
+
+Review found `footer.legal_navigation` still declared in `StoreShellTranslations`, both locale dictionaries, and seven typed test fixtures even though Task 7 removed the duplicate bottom legal `<nav>` and the production footer had no consumer. This contradicted the initial Clean Code Guard claim above.
+
+Strict TDD evidence:
+
+- RED: the shell translation contract added an absence assertion before production edits. The focused Pest run failed one test after 154 assertions with `Expecting […] not to have key 'legal_navigation'`.
+- GREEN: after the minimal deletion, the same focused Pest case passed with 155 assertions. The seven affected Vitest files passed 91 tests and `tsc --noEmit` passed.
+- The regression tests the observable bilingual shell payload: a label for a removed navigation landmark must not be shipped. It does not parse implementation source or mock an internal dependency.
+
+Full fix-round gates passed: 11 Vitest files / 142 tests, ESLint, Prettier, TypeScript, production Vite build, 289 Pest tests (286 passed, 3 skipped) / 2,760 assertions, Pint, PHPStan with zero errors, and strict Composer validation. Vite retained only the previously documented absolute public-asset resolution notices.
+
+Fix-round owned files:
+
+- `resources/js/types/store-shell.ts`
+- `lang/ar/ui.php`
+- `lang/en/ui.php`
+- `tests/Feature/Store/StoreTranslationParityTest.php`
+- `resources/js/__tests__/store-layout.test.tsx`
+- `resources/js/__tests__/store/coins-credentials-flow.test.tsx`
+- `resources/js/__tests__/store/coins-home.test.tsx`
+- `resources/js/__tests__/store/store-cart.test.tsx`
+- `resources/js/__tests__/store/store-footer.test.tsx`
+- `resources/js/__tests__/store/store-header.test.tsx`
+- `resources/js/__tests__/store/store-simple-page.test.tsx`
+- this report
+
+After the change, `legal_navigation` appears under live source/tests only in the two intentional negative regression assertions. Two historical implementation-plan snippets still show the superseded Task 3 contract; they are retained as historical plan evidence and are not live types, dictionaries, or fixtures.
