@@ -67,3 +67,35 @@ The build repeated existing warnings for runtime-resolved `/images/store/*` and 
 
 - `CoinsQuote.priceVersion` remains optional because the legacy GET parser is intentionally preserved unchanged for compatibility; every schedule-derived quote contains the validated positive version.
 - Task 2 does not change the guest-cart/login flow, checkout behavior, styles, or UI polish. Those remain for their owning tasks.
+
+## Review fix round
+
+The review found two fail-closed gaps and one lost compatibility-test surface. Focused RED was captured before the parser fix:
+
+```powershell
+npx vitest run resources/js/__tests__/store/coins-schedule.test.ts -t "undeclared field|timestamps differ"
+```
+
+Result: 2/2 failed for the expected reasons. A schedule containing an undeclared field was accepted, and three schedules with different `pricedAt` values were returned as a usable snapshot.
+
+The parser now requires the exact 13-field schedule wire contract. An extra field closes only that malformed mode. When all three otherwise-valid schedules do not share one exact server timestamp, the complete snapshot closes rather than mixing quote generations.
+
+The preserved `useCoinsQuoteRequest` compatibility path now has its own reducer-backed harness instead of depending on obsolete homepage-network tests. It covers loading to success, 422 validation, 503 unavailable, invalid 200 responses, unmount abort, stale-response suppression after a quantity change, and explicit invalidation. The homepage still does not mount this hook.
+
+ULID and UTC timestamp validation moved to `resources/js/lib/wire-validators.ts`. Both the legacy GET parser and schedule parser consume the same functions. The shared validator matrix covers valid ULID boundaries, forbidden ULID characters, `Z`/`+00:00` UTC forms, fractional seconds, non-UTC offsets, malformed offsets, and invalid calendar dates; the existing API and schedule contract tests protect both consumers.
+
+Focused review gate:
+
+```powershell
+npx vitest run resources/js/__tests__/store/coins-schedule.test.ts resources/js/__tests__/store/coins-api.test.ts resources/js/__tests__/store/coins-quote-request.test.tsx resources/js/__tests__/store/wire-validators.test.ts
+```
+
+Result: 74/74 passed.
+
+Final review gate:
+
+```powershell
+npm run ci:check
+```
+
+Result: 15 Vitest files and 184/184 tests passed; ESLint, Prettier, TypeScript, and the Vite production build passed. The build repeated only the previously documented runtime asset/font URL warnings.

@@ -1,3 +1,4 @@
+import { isUtcWireTimestamp, isWireUlid } from '@/lib/wire-validators';
 import type {
     CoinsAmountRules,
     CoinsDeliveryValue,
@@ -23,10 +24,22 @@ const SCHEDULE_KEYS: CoinsQuoteScheduleKey[] = [
     'playstation:fast',
     'pc',
 ];
-const ULID_PATTERN = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
+const SCHEDULE_FIELDS = [
+    'delivery',
+    'displayCurrency',
+    'displayTotalsMinor',
+    'increment',
+    'market',
+    'maximum',
+    'minimum',
+    'platform',
+    'pricedAt',
+    'priceVersion',
+    'productId',
+    'totalsHalalah',
+    'variantId',
+] as const;
 const CURRENCY_PATTERN = /^[A-Z]{3}$/;
-const UTC_TIMESTAMP_PATTERN =
-    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,3}))?(?:Z|\+00:00)$/;
 
 function unavailableSchedules(): CoinsQuoteSchedules {
     return {
@@ -52,37 +65,16 @@ function isPositiveSafeInteger(candidate: unknown): candidate is number {
     );
 }
 
-function isUlid(candidate: unknown): candidate is string {
-    return typeof candidate === 'string' && ULID_PATTERN.test(candidate);
-}
-
-function isUtcTimestamp(candidate: unknown): candidate is string {
-    if (typeof candidate !== 'string') {
-        return false;
-    }
-
-    const match = UTC_TIMESTAMP_PATTERN.exec(candidate);
-
-    if (match === null) {
-        return false;
-    }
-
-    const normalized = `${match[1]}.${(match[2] ?? '').padEnd(3, '0')}Z`;
-    const timestamp = new Date(candidate);
-
-    return (
-        Number.isFinite(timestamp.getTime()) &&
-        timestamp.toISOString() === normalized
-    );
-}
-
-function hasExactScheduleKeys(candidate: JsonRecord): boolean {
+function hasExactKeys(
+    candidate: JsonRecord,
+    expectedKeys: readonly string[],
+): boolean {
     const receivedKeys = Object.keys(candidate).sort();
-    const expectedKeys = [...SCHEDULE_KEYS].sort();
+    const sortedExpectedKeys = [...expectedKeys].sort();
 
     return (
-        receivedKeys.length === expectedKeys.length &&
-        receivedKeys.every((key, index) => key === expectedKeys[index])
+        receivedKeys.length === sortedExpectedKeys.length &&
+        receivedKeys.every((key, index) => key === sortedExpectedKeys[index])
     );
 }
 
@@ -154,10 +146,10 @@ function hasValidIdentity(
     pricedAt: unknown,
 ): boolean {
     return (
-        isUlid(productId) &&
-        isUlid(variantId) &&
+        isWireUlid(productId) &&
+        isWireUlid(variantId) &&
         isPositiveSafeInteger(priceVersion) &&
-        isUtcTimestamp(pricedAt)
+        isUtcWireTimestamp(pricedAt)
     );
 }
 
@@ -188,7 +180,7 @@ function parseSchedule(
     amount: CoinsAmountRules,
     expected: ExpectedSchedule,
 ): CoinsQuoteSchedule | null {
-    if (!isRecord(candidate)) {
+    if (!isRecord(candidate) || !hasExactKeys(candidate, SCHEDULE_FIELDS)) {
         return null;
     }
 
@@ -219,7 +211,7 @@ export function parseCoinsQuoteSchedules(
     amount: CoinsAmountRules,
     platforms: readonly CoinsPlatformOption[],
 ): CoinsQuoteSchedules {
-    if (!isRecord(payload) || !hasExactScheduleKeys(payload)) {
+    if (!isRecord(payload) || !hasExactKeys(payload, SCHEDULE_KEYS)) {
         return unavailableSchedules();
     }
 
@@ -229,7 +221,7 @@ export function parseCoinsQuoteSchedules(
         return unavailableSchedules();
     }
 
-    return {
+    const schedules: CoinsQuoteSchedules = {
         pc: parseSchedule(payload.pc, displayCurrency, amount, expected.pc),
         'playstation:fast': parseSchedule(
             payload['playstation:fast'],
@@ -244,6 +236,19 @@ export function parseCoinsQuoteSchedules(
             expected['playstation:normal'],
         ),
     };
+
+    const timestamps = SCHEDULE_KEYS.map(
+        (key) => schedules[key]?.pricedAt,
+    ).filter((timestamp): timestamp is string => timestamp !== undefined);
+
+    if (
+        timestamps.length === SCHEDULE_KEYS.length &&
+        timestamps.some((timestamp) => timestamp !== timestamps[0])
+    ) {
+        return unavailableSchedules();
+    }
+
+    return schedules;
 }
 
 function scheduleHeaderIsValid(schedule: CoinsQuoteSchedule): boolean {

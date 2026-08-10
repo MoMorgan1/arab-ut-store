@@ -1,3 +1,4 @@
+import { isUtcWireTimestamp, isWireUlid } from '@/lib/wire-validators';
 import type {
     CoinsDeliveryValue,
     CoinsPlatformValue,
@@ -14,10 +15,6 @@ type QuoteCoinsInput = {
 };
 
 type JsonRecord = Record<string, unknown>;
-
-const ULID_PATTERN = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
-const UTC_TIMESTAMP_PATTERN =
-    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,3}))?(?:Z|\+00:00)$/;
 
 export class CoinsQuoteRequestError extends Error {
     readonly status: number;
@@ -43,10 +40,6 @@ function isDelivery(value: unknown): value is CoinsDeliveryValue | null {
     return value === null || value === 'normal' || value === 'fast';
 }
 
-function isUlid(value: unknown): value is string {
-    return typeof value === 'string' && ULID_PATTERN.test(value);
-}
-
 function parseQuoteErrorCode(payload: unknown): string | null {
     if (!isRecord(payload) || !isRecord(payload.error)) {
         return null;
@@ -64,26 +57,6 @@ function parseQuoteErrorCode(payload: unknown): string | null {
     }
 
     return code;
-}
-
-function isUtcTimestamp(value: unknown): value is string {
-    if (typeof value !== 'string') {
-        return false;
-    }
-
-    const match = UTC_TIMESTAMP_PATTERN.exec(value);
-
-    if (match === null) {
-        return false;
-    }
-
-    const normalized = `${match[1]}.${(match[2] ?? '').padEnd(3, '0')}Z`;
-    const timestamp = new Date(value);
-
-    return (
-        Number.isFinite(timestamp.getTime()) &&
-        timestamp.toISOString() === normalized
-    );
 }
 
 function responseMatchesRequest(
@@ -119,14 +92,14 @@ function parseQuote(
     const data = payload.data;
 
     if (
-        !isUlid(data.productId) ||
-        !isUlid(data.variantId) ||
+        !isWireUlid(data.productId) ||
+        !isWireUlid(data.variantId) ||
         !isPlatform(data.platform) ||
         (data.market !== 'console' && data.market !== 'pc') ||
         !isDelivery(data.delivery) ||
         typeof data.quantity !== 'number' ||
         !Number.isSafeInteger(data.quantity) ||
-        !isUtcTimestamp(data.pricedAt) ||
+        !isUtcWireTimestamp(data.pricedAt) ||
         !isRecord(data.total) ||
         typeof data.total.amountHalalah !== 'number' ||
         !Number.isSafeInteger(data.total.amountHalalah) ||

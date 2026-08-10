@@ -180,6 +180,43 @@ describe('Coins quote schedule', () => {
         });
     });
 
+    it('fails only a schedule that contains an undeclared field', () => {
+        const parsed = parseCoinsQuoteSchedules(
+            {
+                ...schedules(),
+                pc: { ...schedules().pc, unexpected: 'not contracted' },
+            },
+            'USD',
+            amount,
+            platforms,
+        );
+
+        expect(parsed.pc).toBeNull();
+        expect(parsed['playstation:normal']).not.toBeNull();
+        expect(parsed['playstation:fast']).not.toBeNull();
+    });
+
+    it('fails the complete snapshot closed when schedule timestamps differ', () => {
+        const parsed = parseCoinsQuoteSchedules(
+            {
+                ...schedules(),
+                'playstation:fast': {
+                    ...schedules()['playstation:fast'],
+                    pricedAt: '2026-08-10T12:00:01Z',
+                },
+            },
+            'USD',
+            amount,
+            platforms,
+        );
+
+        expect(parsed).toEqual({
+            pc: null,
+            'playstation:fast': null,
+            'playstation:normal': null,
+        });
+    });
+
     it.each([
         ['display currency', { displayCurrency: 'EUR' }],
         ['minimum', { minimum: 40_000 }],
