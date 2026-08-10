@@ -418,3 +418,88 @@ PHPStan initially reported one `argument.type` error because PHP types `strrchr`
 Clean Code Guard found no remaining violation: the shared contract owns one duplicated security rule used by both writer and reader, functions are small, installed APIs were verified in source, and there are no suppressions, broad catches, dead branches, or speculative types. Test Guard found no violation: the punctuation variants are data-driven, the three 422 scenarios have materially different response/UX contracts, HTTP is the only mocked frontend boundary, and backend projection uses the migrated database. Docs Guard verified every round-two path, command, count, test result, URL, browser metric, cleanup statement, and contract claim against source or recorded output.
 
 No product blocker remains. Environmental caveats are unchanged: the Windows preview needs explicit PHP extensions/config caching, and Vite emits informational absolute-public-asset warnings; the rendered assets and tested flows were unaffected, and no preview artifact remains in the commit.
+
+## Fix round 3 — remove email identity from cart reads
+
+This section supersedes the round-one and round-two masked-email cart behavior. A syntactically valid email such as `a***@example.test` is indistinguishable from the former generated mask, so no local-part character or domain is now written to `masked_summary`, projected by `CartController`, typed in browser props, translated, or rendered. The encrypted payload remains unchanged and continues to contain the submitted EA email, opaque password, and five backup codes.
+
+### Backend RED/GREEN
+
+Test file: `tests/Feature/Store/CoinsCartTest.php`.
+
+Poisoned legacy-row RED:
+
+```text
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest tests\Feature\Store\CoinsCartTest.php --filter="collide with the former mask grammar|poisoned legacy summary emails" --stop-on-failure
+```
+
+Result: exit 1; one failed test and nine assertions. A legacy plaintext `masked_summary.email` caused `requiresCredentials: true` instead of being ignored while retaining the safe non-PII credential state.
+
+Accepted-collision RED:
+
+```text
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest tests\Feature\Store\CoinsCartTest.php --filter="collide with the former mask grammar" --stop-on-failure
+```
+
+Result: exit 1; the first collision data set failed with 14 assertions because `cart.items.0.credentials.maskedEmail` was serialized. The data set covers `_***@example.test`, `+***@example.test`, `!***@example.test`, and `a***@example.test`, all accepted by the real `CoinsCartRequest` route.
+
+Writer RED:
+
+```text
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest tests\Feature\Store\CoinsCartTest.php --filter="supported Coins modes" --stop-on-failure
+```
+
+Result: exit 1; the first mode failed with 34 assertions because the persisted summary still contained `email: c***@example.test`.
+
+GREEN command:
+
+```text
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest tests\Feature\Store\CoinsCartTest.php --filter="supported Coins modes|collide with the former mask grammar|poisoned legacy summary emails"
+```
+
+GREEN result: eight passed tests and 207 assertions. New writes store only `has_password: true` and `backup_code_count: 5`; encrypted payload keys remain `ea_email`, `ea_password`, and `backup_codes`. Cart reads derive only `hasPassword`, `backupCodeCount`, and `retainedUntil`, ignore any legacy/poison `email` entry, keep the valid credential-received state, and never serialize the email entry or submitted collision value. The obsolete `App\Security\CoinsMaskedEmail` class was deleted because it has no safe consumer.
+
+### Frontend RED/GREEN and bidi
+
+Test file: `resources/js/__tests__/store/store-cart.test.tsx`.
+
+The first attempted RED invocation used the unsupported Vitest flag `--stop-on-failure` and exited with a CLI option error; it is not counted as behavior evidence. The genuine RED command was:
+
+```text
+npx vitest run resources/js/__tests__/store/store-cart.test.tsx
+```
+
+RED result: exit 1; two failed and two passed. English still rendered `a***@example.com` in a `<bdi dir="ltr">`, and the Arabic credential card still contained the obsolete LTR identity isolate.
+
+GREEN command: the same valid Vitest command.
+
+GREEN result: four passed tests. `StoreCartItem`, `StoreCartTranslations`, both locale dictionaries, and the cart component no longer contain masked-email fields/copy/rendering. English shows only the secure-retention state and five-code count. Arabic keeps the entire credential state in inherited RTL with no nested LTR identity isolate.
+
+### Browser and persistence proof
+
+The production build was served at 320px through the same direct Windows PHP preview harness. A synthetic authenticated account submitted the accepted collision email `a***@collision.test`, a synthetic opaque password, and five synthetic codes through the real same-origin endpoint.
+
+- English `/en/cart`: the credential card showed only `EA details`, the retention deadline, and `5 backup codes stored`. Neither the collision email/domain nor password/first code appeared; no `bdi` or nested LTR identity element existed; there was no overlay; and `scrollWidth` was 305 at `innerWidth` 320.
+- Arabic `/cart`: the document and credential card inherited RTL, no identity isolate existed, the email/domain/password/code were absent, no overlay appeared, and `scrollWidth` remained 305.
+- The persisted summary contained exactly `has_password` and `backup_code_count`; the encrypted payload retained exactly the three credential keys. A temporary legacy `email: legacy-poison-sentinel@example.test` was then added to the summary and the live Arabic cart reloaded: the non-PII credential state remained visible, re-entry stayed hidden, and the poison value/domain was absent.
+- Browser developer logs contained zero warnings or errors. The screenshot confirmed the warm black/gold Arabic cart remained visually intact after removing the identity line.
+
+The synthetic tab, server, user and user-owned cart/idempotency data, logs, and config cache were removed. Final checks showed port 8136 closed, zero synthetic users, zero carts, and no `bootstrap/cache/config.php`.
+
+### Full gates, leak checks, and guards
+
+```text
+npm run ci:check
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest --stop-on-failure
+php -d extension=mbstring vendor\bin\pint --parallel --test
+php -d extension=mbstring -d extension=openssl -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\phpstan analyse --no-progress --memory-limit=1G
+php -d extension=openssl -d extension=mbstring C:\Users\hp\Documents\Codex\2026-08-08\hi\work\tools\composer.phar validate --strict --no-check-publish
+```
+
+Final results: frontend CI passed 11 Vitest files and 142 tests, ESLint, Prettier, TypeScript, and the production Vite build. Backend Pest passed 286 tests with three skipped and 2,759 assertions. Pint passed, PHPStan reported zero errors, and Composer validation passed. Vite retained only the previously documented absolute public-asset runtime warnings.
+
+Production source contains no `CoinsMaskedEmail`, `maskedEmail`, or `masked_email` reference and no local/session storage, Inertia remember, console, or credential-query sink in the changed cart path. Only the backend regression assertions name the removed `maskedEmail` property to prove it is absent. Live URL/DOM checks and the existing storage-boundary tests found no credential propagation outside ordinary component memory and encrypted persistence. `git diff --check` passed.
+
+Clean Code Guard found no violation: the unsafe abstraction and its only call sites were deleted, no replacement abstraction or speculative compatibility branch was added, and the controller/action functions became smaller. Test Guard found no violation: the four collision variants are data-driven, persistence/projection use the real migrated database, and the English/Arabic UI tests assert rendered behavior and direction rather than component internals. Docs Guard verified the superseding contract, symbols, commands, counts, field names, persistence keys, browser metrics, and cleanup claims against the current implementation and recorded outputs.
+
+No product blocker remains. The only environmental caveats remain the explicit Windows PHP extensions/config-cache preview setup and Vite's informational absolute-public-asset warnings; neither affected the verified cart.

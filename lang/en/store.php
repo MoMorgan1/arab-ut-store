@@ -29,7 +29,6 @@ return [
         'credentials' => 'EA details',
         'credentials_ready' => 'Stored securely until :expiry',
         'credentials_missing' => 'EA details need to be entered again.',
-        'masked_email' => 'EA email: :email',
         'backup_codes' => ':count backup codes stored',
     ],
     'seo_title' => 'Arab UT | FC 27 Ultimate Team Coins',

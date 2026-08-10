@@ -100,7 +100,6 @@ export type StoreCartItem = {
     credentials: {
         backupCodeCount: 5;
         hasPassword: true;
-        maskedEmail: string;
         retainedUntil: string;
     } | null;
     id: string;
@@ -130,7 +129,6 @@ export type StoreCartTranslations = {
     credentials: string;
     credentials_ready: string;
     credentials_missing: string;
-    masked_email: string;
     backup_codes: string;
 };
 

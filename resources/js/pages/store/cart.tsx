@@ -169,10 +169,6 @@ function CredentialState({
         <div className="store-cart-credentials">
             <h3>{translations.credentials}</h3>
             <p>{interpolate(translations.credentials_ready, { expiry })}</p>
-            <MaskedEmail
-                maskedEmail={cartItem.credentials.maskedEmail}
-                template={translations.masked_email}
-            />
             <p>
                 {interpolate(translations.backup_codes, {
                     count: formatInteger(
@@ -182,24 +178,6 @@ function CredentialState({
                 })}
             </p>
         </div>
-    );
-}
-
-function MaskedEmail({
-    maskedEmail,
-    template,
-}: {
-    maskedEmail: string;
-    template: string;
-}) {
-    const [beforeEmail, afterEmail] = template.split(':email');
-
-    return (
-        <p>
-            {beforeEmail}
-            <bdi dir="ltr">{maskedEmail}</bdi>
-            {afterEmail}
-        </p>
     );
 }
 

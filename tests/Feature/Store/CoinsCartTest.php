@@ -174,7 +174,6 @@ test('supported Coins modes create distinct safe lines with encrypted credential
         ->and($secret->encrypted_payload['ea_password'])->toBe('  Opaque Cart Password Sentinel  ')
         ->and($secret->encrypted_payload['backup_codes'])->toHaveCount(5)
         ->and($secret->masked_summary)->toBe([
-            'email' => 'c***@example.test',
             'has_password' => true,
             'backup_code_count' => 5,
         ])
@@ -409,10 +408,10 @@ test('cart reads expose safe lines and credential reentry state only', function 
         ->where('cartCount', 1)
         ->where('cart.count', 1)
         ->where('cart.items.0.requiresCredentials', false)
-        ->where('cart.items.0.credentials.maskedEmail', 'c***@example.test')
         ->where('cart.items.0.credentials.hasPassword', true)
         ->where('cart.items.0.credentials.backupCodeCount', 5)
         ->has('cart.items.0.credentials.retainedUntil')
+        ->missing('cart.items.0.credentials.maskedEmail')
         ->where('cart.items.0.configuration', [
             'service_type' => 'coins',
             'platform' => 'playstation',
@@ -424,7 +423,8 @@ test('cart reads expose safe lines and credential reentry state only', function 
         ])
         ->missing('cart.items.0.secret'));
     expect($response->getContent())->not->toContain('Opaque Cart Password Sentinel')
-        ->not->toContain('81000001');
+        ->not->toContain('81000001')
+        ->not->toContain('cart-sentinel@example.test');
 
     $cartItem->update(['configuration' => [
         ...$cartItem->configuration,
@@ -454,7 +454,7 @@ test('cart reads expose safe lines and credential reentry state only', function 
         ->where('cart.items.0.credentials', null));
 });
 
-test('cart reads reject plaintext email from the masked credential summary', function () {
+test('cart reads ignore poisoned legacy summary emails without requiring credential reentry', function () {
     createCartCatalog();
     $this->actingAs(User::factory()->create());
     addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'plaintext-summary-key')->assertCreated();
@@ -469,15 +469,16 @@ test('cart reads reject plaintext email from the masked credential summary', fun
     $response = $this->get('/cart');
 
     $response->assertInertia(fn (Assert $page) => $page
-        ->where('cart.items.0.requiresCredentials', true)
-        ->where('cart.items.0.credentials', null));
+        ->where('cart.items.0.requiresCredentials', false)
+        ->where('cart.items.0.credentials.hasPassword', true)
+        ->where('cart.items.0.credentials.backupCodeCount', 5)
+        ->missing('cart.items.0.credentials.maskedEmail'));
     expect($response->getContent())->not->toContain('plaintext-summary-sentinel@example.test');
 });
 
-test('cart reads preserve safe masks for accepted punctuation initials', function (string $initial, string $key) {
+test('cart reads never project accepted emails that collide with the former mask grammar', function (string $email, string $key) {
     createCartCatalog();
     $this->actingAs(User::factory()->create());
-    $email = "{$initial}player@example.test";
 
     addCoinsToCart(
         '/cart/items/coins',
@@ -489,12 +490,15 @@ test('cart reads preserve safe masks for accepted punctuation initials', functio
 
     $response->assertInertia(fn (Assert $page) => $page
         ->where('cart.items.0.requiresCredentials', false)
-        ->where('cart.items.0.credentials.maskedEmail', "{$initial}***@example.test"));
+        ->where('cart.items.0.credentials.hasPassword', true)
+        ->where('cart.items.0.credentials.backupCodeCount', 5)
+        ->missing('cart.items.0.credentials.maskedEmail'));
     expect($response->getContent())->not->toContain($email);
 })->with([
-    'underscore initial' => ['_', 'underscore-mask-key'],
-    'plus initial' => ['+', 'plus-mask-key'],
-    'bang initial' => ['!', 'bang-mask-key'],
+    'underscore collision' => ['_***@example.test', 'underscore-collision-key'],
+    'plus collision' => ['+***@example.test', 'plus-collision-key'],
+    'bang collision' => ['!***@example.test', 'bang-collision-key'],
+    'letter collision' => ['a***@example.test', 'letter-collision-key'],
 ]);
 
 test('cart reads omit compound values nested under safe configuration keys', function (string $field, mixed $poison) {

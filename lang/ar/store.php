@@ -29,7 +29,6 @@ return [
         'credentials' => 'بيانات EA',
         'credentials_ready' => 'محفوظة بأمان إلى :expiry',
         'credentials_missing' => 'تحتاج تدخل بيانات EA من جديد.',
-        'masked_email' => 'بريد EA: :email',
         'backup_codes' => 'محفوظة :count أكواد احتياطية',
     ],
     'seo_title' => 'Arab UT | كوينز FC 27 ألتيميت تيم',

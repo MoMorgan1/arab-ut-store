@@ -14,7 +14,6 @@ use App\Models\IdempotencyKey;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Security\CoinsCartFingerprint;
-use App\Security\CoinsMaskedEmail;
 use App\ValueObjects\Pricing\CoinsQuote;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -159,11 +158,9 @@ final readonly class AddCoinsToCart
     /** @param array<string, mixed> $credentials */
     private function createSecret(CartItem $cartItem, array $credentials): void
     {
-        $email = (string) $credentials['ea_email'];
         $cartSecret = new CartItemSecret([
             'cart_item_id' => $cartItem->id,
             'masked_summary' => [
-                'email' => CoinsMaskedEmail::fromValidatedEmail($email),
                 'has_password' => true,
                 'backup_code_count' => count($credentials['backup_codes']),
             ],

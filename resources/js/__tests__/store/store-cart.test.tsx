@@ -24,7 +24,6 @@ const mockPage = vi.hoisted(() => ({
                     credentials: {
                         backupCodeCount: 5,
                         hasPassword: true,
-                        maskedEmail: 'p***@example.com',
                         retainedUntil: '2026-08-11T12:00:00+00:00',
                     },
                     id: '01K00000000000000000000000',
@@ -57,7 +56,6 @@ const mockPage = vi.hoisted(() => ({
                 credentials: 'EA details',
                 credentials_ready: 'Stored securely until :expiry',
                 credentials_missing: 'EA details need to be entered again.',
-                masked_email: 'EA email: :email',
                 backup_codes: ':count backup codes stored',
             },
         },
@@ -142,7 +140,6 @@ beforeEach(() => {
     mockPage.props.cart.items[0].configuration = validConfiguration;
     mockPage.props.direction = 'ltr';
     mockPage.props.locale = 'en';
-    mockPage.props.cartPage.translations.masked_email = 'EA email: :email';
 });
 
 it('renders only the authoritative read-only Coins cart summary', () => {
@@ -154,7 +151,7 @@ it('renders only the authoritative read-only Coins cart summary', () => {
     expect(screen.getByText('Fast')).toBeVisible();
     expect(screen.getByText('500,000 Coins')).toBeVisible();
     expect(screen.getByText(/125\.00/)).toBeVisible();
-    expect(screen.getByText('p***@example.com')).toBeVisible();
+    expect(document.body.textContent).not.toContain('EA email:');
     expect(screen.getByText('5 backup codes stored')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Back to Coins' })).toHaveAttribute(
         'href',
@@ -205,17 +202,14 @@ it('does not invent a Coins presentation for another safe service type', () => {
     ).not.toBeInTheDocument();
 });
 
-it('keeps the Arabic masked-email label RTL and isolates only its value as LTR', () => {
+it('keeps the Arabic credential state RTL without an email identity isolate', () => {
     mockPage.props.direction = 'rtl';
     mockPage.props.locale = 'ar';
-    mockPage.props.cartPage.translations.masked_email = 'بريد EA: :email';
 
     render(<StoreCart />);
 
-    const maskedEmail = screen.getByText('p***@example.com');
-    const sentence = maskedEmail.closest('p');
+    const credentialState = document.querySelector('.store-cart-credentials');
 
-    expect(sentence?.closest('[dir]')).toHaveAttribute('dir', 'rtl');
-    expect(maskedEmail.tagName).toBe('BDI');
-    expect(maskedEmail).toHaveAttribute('dir', 'ltr');
+    expect(credentialState?.closest('[dir]')).toHaveAttribute('dir', 'rtl');
+    expect(credentialState?.querySelector('[dir="ltr"]')).toBeNull();
 });
