@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Cart;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -50,6 +51,7 @@ class HandleInertiaRequests extends Middleware
             'displayCurrency' => $request->session()->get('display_currency'),
             'displayCurrencies' => config('store.display_currencies'),
             'checkoutCurrency' => config('store.checkout_currency'),
+            'cartCount' => $this->cartCount($request),
             'ui' => trans('ui'),
             'storeShell' => [
                 'homeUrl' => $homeUrl,
@@ -83,5 +85,19 @@ class HandleInertiaRequests extends Middleware
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
+    }
+
+    private function cartCount(Request $request): int
+    {
+        if ($request->user() === null) {
+            return 0;
+        }
+
+        $activeCart = Cart::query()
+            ->activeForUser((int) $request->user()->id)
+            ->withCount('items')
+            ->first();
+
+        return $activeCart->items_count ?? 0;
     }
 }

@@ -50,6 +50,8 @@ const store = {
         platform: 'Platform',
         delivery: 'Delivery',
         amount: 'Amount',
+        credentials: 'EA details',
+        summary: 'Summary',
     },
     platform: {
         title: 'Choose your platform',
@@ -89,6 +91,41 @@ const store = {
         normal_delivery_suggestion:
             'Fast delivery supports more than 2M Coins.',
         switch_to_fast: 'Switch to Fast',
+    },
+    credentials: {
+        title: 'EA account details',
+        trust: 'Encrypted and removed automatically.',
+        email: 'EA email',
+        password: 'EA password',
+        show_password: 'Show password',
+        hide_password: 'Hide password',
+        backup_codes: 'EA backup codes',
+        backup_code: 'Backup code :number',
+        backup_help: 'Enter five different codes.',
+        required_email: 'Enter a valid EA email.',
+        required_password: 'Enter your EA password.',
+        required_code: 'Enter an 8-digit backup code.',
+        duplicate_code: 'Each code must be different.',
+        clear: 'Cancel and clear details',
+    },
+    summary: {
+        title: 'Review and add',
+        service: 'Service',
+        service_value: 'FC 27 Coins',
+        platform: 'Platform',
+        delivery: 'Delivery',
+        delivery_pc: 'Not required for PC',
+        quantity: 'Quantity',
+        total: 'Authoritative total',
+        credentials_ready: 'EA details ready securely',
+        add: 'Add to cart',
+        adding: 'Adding to cart…',
+        retry: 'Try adding again',
+        transport_error: 'Connection interrupted. Try again.',
+        validation_error: 'Review the EA details.',
+        conflict_error: 'Start a new submission.',
+        unavailable_error: 'Pricing unavailable.',
+        generic_error: 'Could not add Coins.',
     },
     actions: {
         continue: 'Continue',
@@ -152,6 +189,13 @@ function availableProps() {
             increment: 10_000,
             minimum: 50_000,
             presets: [50_000, 100_000, 500_000, 1_000_000, 5_000_000],
+        },
+        auth: { user: { id: 1, name: 'Player', email: 'player@example.com' } },
+        cartCount: 0,
+        coinsCart: {
+            addUrl: '/en/cart/items/coins',
+            initialSelection: null,
+            resumeUrl: '/en/cart/items/coins/resume',
         },
         checkoutCurrency: 'SAR',
         direction: 'ltr',
@@ -374,7 +418,7 @@ describe('Coins homepage', () => {
         expect(selectionStatus).toHaveClass('sr-only');
         expect(selectionStatus).not.toBeVisible();
 
-        const progress = screen.getByRole('list', { name: /Step 1 of 3/ });
+        const progress = screen.getByRole('list', { name: /Step 1 of 5/ });
         expect(
             within(progress).getByText(store.progress.platform),
         ).toBeVisible();
@@ -382,6 +426,12 @@ describe('Coins homepage', () => {
             within(progress).getByText(store.progress.delivery),
         ).toBeVisible();
         expect(within(progress).getByText(store.progress.amount)).toBeVisible();
+        expect(
+            within(progress).getByText(store.progress.credentials),
+        ).toBeVisible();
+        expect(
+            within(progress).getByText(store.progress.summary),
+        ).toBeVisible();
     });
 
     it.each([
@@ -491,7 +541,7 @@ describe('Coins homepage', () => {
         selectConsoleDelivery('Fast');
 
         const amountProgress = screen.getByRole('list', {
-            name: /Step 3 of 3/,
+            name: /Step 3 of 5/,
         });
         expect(
             within(amountProgress).getByRole('button', {
@@ -511,7 +561,7 @@ describe('Coins homepage', () => {
 
         expect(screen.getByText(store.delivery.title)).toHaveFocus();
         const deliveryProgress = screen.getByRole('list', {
-            name: /Step 2 of 3/,
+            name: /Step 2 of 5/,
         });
         expect(
             within(deliveryProgress).getByRole('button', {
@@ -1480,7 +1530,7 @@ describe('Coins homepage', () => {
             screen.queryByText(store.delivery.title),
         ).not.toBeInTheDocument();
         expect(screen.getByText(store.amount_copy.title)).toBeVisible();
-        expect(screen.getByLabelText('Step 2 of 2')).toBeVisible();
+        expect(screen.getByLabelText('Step 2 of 4')).toBeVisible();
         expect(
             screen.getByRole('slider', {
                 name: store.amount_copy.slider_label,
@@ -1507,7 +1557,7 @@ describe('Coins homepage', () => {
             screen.getByRole('button', { name: store.actions.continue }),
         );
 
-        expect(screen.getByLabelText('Step 3 of 3')).toBeVisible();
+        expect(screen.getByLabelText('Step 3 of 5')).toBeVisible();
         const range = screen.getByRole('slider', {
             name: store.amount_copy.slider_label,
         });

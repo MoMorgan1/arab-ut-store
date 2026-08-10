@@ -405,9 +405,14 @@ test('cart reads expose safe lines and credential reentry state only', function 
     $response = $this->get('/cart');
 
     $response->assertOk()->assertInertia(fn (Assert $page) => $page
-        ->component('store/simple-page')
+        ->component('store/cart')
+        ->where('cartCount', 1)
         ->where('cart.count', 1)
         ->where('cart.items.0.requiresCredentials', false)
+        ->where('cart.items.0.credentials.maskedEmail', 'c***@example.test')
+        ->where('cart.items.0.credentials.hasPassword', true)
+        ->where('cart.items.0.credentials.backupCodeCount', 5)
+        ->has('cart.items.0.credentials.retainedUntil')
         ->where('cart.items.0.configuration', [
             'service_type' => 'coins',
             'platform' => 'playstation',
@@ -445,7 +450,8 @@ test('cart reads expose safe lines and credential reentry state only', function 
     CartItemSecret::sole()->update(['retained_until' => now()->subMinute()]);
     $this->artisan('cart-secrets:purge')->assertSuccessful();
     $this->get('/cart')->assertInertia(fn (Assert $page) => $page
-        ->where('cart.items.0.requiresCredentials', true));
+        ->where('cart.items.0.requiresCredentials', true)
+        ->where('cart.items.0.credentials', null));
 });
 
 test('cart reads omit compound values nested under safe configuration keys', function (string $field, mixed $poison) {

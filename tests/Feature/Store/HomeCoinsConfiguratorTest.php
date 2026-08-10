@@ -5,6 +5,7 @@ use App\Enums\ServiceType;
 use App\Models\PriceRule;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /**
@@ -61,7 +62,12 @@ function createHomeCatalog(): Product
     return $product;
 }
 
-test('the Arabic and English homepages expose the exact localized Coins contract', function (string $path, string $quoteUrl) {
+test('the Arabic and English homepages expose the exact localized Coins contract', function (
+    string $path,
+    string $quoteUrl,
+    string $addUrl,
+    string $resumeUrl,
+) {
     createHomeCatalog();
 
     $this->get($path)
@@ -71,6 +77,9 @@ test('the Arabic and English homepages expose the exact localized Coins contract
             ->where('status', 'available')
             ->missing('product')
             ->where('quoteUrl', $quoteUrl)
+            ->where('coinsCart.addUrl', $addUrl)
+            ->where('coinsCart.resumeUrl', $resumeUrl)
+            ->where('coinsCart.initialSelection', null)
             ->where('amount', [
                 'minimum' => 50_000,
                 'increment' => 10_000,
@@ -97,9 +106,34 @@ test('the Arabic and English homepages expose the exact localized Coins contract
             ->missing('platforms.0.market')
             ->missing('platforms.1.market'));
 })->with([
-    'Arabic' => ['/', '/coins/quote'],
-    'English' => ['/en', '/en/coins/quote'],
+    'Arabic' => ['/', '/coins/quote', '/cart/items/coins', '/cart/items/coins/resume'],
+    'English' => ['/en', '/en/coins/quote', '/en/cart/items/coins', '/en/cart/items/coins/resume'],
 ]);
+
+test('an authenticated homepage rehydrates only a validated safe resume selection', function () {
+    createHomeCatalog();
+    $this->actingAs(User::factory()->create());
+
+    $this->get('/en?step=credentials&platform=playstation&delivery=fast&quantity=100000')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('coinsCart.initialSelection', [
+                'platform' => 'playstation',
+                'delivery' => 'fast',
+                'quantity' => 100_000,
+            ])
+            ->missing('coinsCart.initialSelection.credentials'));
+
+    $this->get('/en?step=credentials&platform=pc&quantity=50001')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('coinsCart.initialSelection', null));
+
+    $this->get('/en?step=credentials&platform=pc&quantity=50000&ea_password=must-not-enter-a-url')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('coinsCart.initialSelection', null));
+});
 
 test('configured Coins media URLs resolve to public assets', function () {
     $urls = [
@@ -221,7 +255,7 @@ test('the homepage fails closed when a later legal quantity would overflow prici
             ->missing('product'));
 });
 
-test('homepage props omit supplier market and forbidden policy proof and credential copy', function () {
+test('homepage props omit supplier market, policy proof, and credential values', function () {
     createHomeCatalog();
 
     $props = $this->get('/')->inertiaPage()['props'];
@@ -230,7 +264,10 @@ test('homepage props omit supplier market and forbidden policy proof and credent
     expect($serialized)
         ->not->toContain('"market"')
         ->not->toContain('current balance')
-        ->not->toContain('credentials')
+        ->not->toContain('"eaEmail"')
+        ->not->toContain('"eaPassword"')
+        ->not->toContain('"encrypted_payload"')
+        ->not->toContain('"masked_summary"')
         ->not->toContain('reviews')
         ->not->toContain('checkout currency');
 });

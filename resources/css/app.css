@@ -1184,10 +1184,14 @@
     }
 
     .coins-primary-action {
+        display: inline-grid;
         width: 100%;
         min-height: 3.15rem;
+        place-items: center;
         background: var(--arabut-gold);
         color: var(--arabut-navy-deep);
+        text-align: center;
+        text-decoration: none;
     }
 
     .coins-primary-action:hover:not(:disabled) {
@@ -1216,6 +1220,10 @@
     .coins-amount-slider:focus-visible {
         outline: 2px solid var(--arabut-focus);
         outline-offset: 3px;
+    }
+
+    .coins-primary-action--full {
+        margin-block-start: 1rem;
     }
 
     .coins-step__actions {
@@ -1534,6 +1542,336 @@
         font-variant-numeric: tabular-nums;
         text-align: end;
         unicode-bidi: isolate;
+    }
+
+    .coins-credentials__trust,
+    .coins-credentials-ready {
+        display: flex;
+        margin: 0.75rem 0 1.5rem;
+        align-items: center;
+        gap: 0.65rem;
+        color: var(--arabut-muted);
+        line-height: 1.55;
+    }
+
+    .coins-security-mark {
+        width: 0.8rem;
+        height: 0.8rem;
+        flex: 0 0 auto;
+        border: 2px solid var(--arabut-gold-bright);
+        border-radius: 50%;
+        box-shadow: 0 0 0 4px rgb(212 168 67 / 10%);
+    }
+
+    .coins-credentials-form {
+        display: grid;
+        gap: 1.25rem;
+    }
+
+    .coins-credential-field {
+        display: grid;
+        min-width: 0;
+        gap: 0.45rem;
+    }
+
+    .coins-credential-field > label,
+    .coins-backup-codes legend {
+        color: var(--arabut-ink);
+        font-weight: 700;
+        line-height: 1.45;
+    }
+
+    .coins-credential-field > input,
+    .coins-password-control {
+        min-width: 0;
+        min-height: 3rem;
+        border: 1px solid rgb(255 255 255 / 14%);
+        border-radius: 0.65rem;
+        background: var(--arabut-navy-active);
+    }
+
+    .coins-credential-field > input,
+    .coins-password-control input {
+        width: 100%;
+        min-width: 0;
+        min-height: 3rem;
+        border: 0;
+        background: transparent;
+        padding: 0.7rem 0.8rem;
+        color: var(--arabut-ink);
+        font: inherit;
+        outline: 0;
+    }
+
+    .coins-credential-field > input:focus-visible,
+    .coins-password-control:has(input:focus-visible) {
+        border-color: var(--arabut-gold-bright);
+        outline: 2px solid var(--arabut-focus);
+        outline-offset: 2px;
+    }
+
+    .coins-credential-field > input[aria-invalid='true'],
+    .coins-password-control:has(input[aria-invalid='true']) {
+        border-color: var(--arabut-danger);
+    }
+
+    .coins-password-control {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 2.75rem;
+        overflow: hidden;
+    }
+
+    .coins-password-control button {
+        display: grid;
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        place-items: center;
+        border: 0;
+        background: transparent;
+        color: var(--arabut-muted);
+    }
+
+    .coins-password-control button:hover {
+        color: var(--arabut-gold-bright);
+    }
+
+    .coins-password-control button:focus-visible,
+    .coins-clear-action:focus-visible {
+        outline: 2px solid var(--arabut-focus);
+        outline-offset: -3px;
+    }
+
+    .coins-backup-codes {
+        min-width: 0;
+        margin: 0;
+        border: 0;
+        padding: 0;
+    }
+
+    .coins-backup-codes > p {
+        margin: 0.35rem 0 0.85rem;
+        color: var(--arabut-muted);
+        line-height: 1.5;
+    }
+
+    .coins-backup-codes__grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+
+    .coins-backup-codes__grid label {
+        font-size: 0.8rem;
+    }
+
+    .coins-backup-codes__grid input {
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.08em;
+        text-align: center;
+    }
+
+    .coins-field-error,
+    .coins-submit-error {
+        margin: 0;
+        color: #ff8f8f;
+        font-size: 0.82rem;
+        line-height: 1.45;
+    }
+
+    .coins-step__actions--split {
+        margin-block-start: 1.5rem;
+    }
+
+    .coins-clear-action {
+        min-height: 2.75rem;
+        margin-block-start: 0.75rem;
+        border: 0;
+        background: transparent;
+        padding: 0.5rem;
+        color: var(--arabut-muted);
+        text-decoration: underline;
+        text-underline-offset: 0.25rem;
+    }
+
+    .coins-clear-action:hover:not(:disabled) {
+        color: var(--arabut-ink);
+    }
+
+    .coins-order-summary {
+        margin: 1.25rem 0 0;
+    }
+
+    .coins-order-summary > div {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        border-block-end: 1px solid var(--arabut-line);
+        padding-block: 0.85rem;
+    }
+
+    .coins-order-summary dt {
+        color: var(--arabut-muted);
+    }
+
+    .coins-order-summary dd {
+        margin: 0;
+        color: var(--arabut-ink);
+        font-weight: 700;
+        text-align: end;
+    }
+
+    .coins-order-summary__total dd {
+        color: var(--arabut-gold-bright);
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+        font-size: 1.4rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .coins-redirecting {
+        margin: 2rem 0 0;
+        color: var(--arabut-muted);
+        text-align: center;
+    }
+
+    .store-cart-page {
+        width: min(100% - 2rem, 70rem);
+        min-height: 32rem;
+        margin-inline: auto;
+        padding-block: clamp(3rem, 7vw, 6rem);
+    }
+
+    .store-cart-page__heading > p {
+        margin: 0 0 0.65rem;
+        color: var(--arabut-gold-bright);
+        font-weight: 700;
+    }
+
+    .store-cart-page__heading h1 {
+        margin: 0;
+        color: var(--arabut-ink);
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+        font-size: clamp(2rem, 5vw, 3.4rem);
+        line-height: 1.15;
+    }
+
+    .store-cart-lines {
+        display: grid;
+        gap: 1.25rem;
+        margin: 2rem 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .store-cart-line {
+        border: 1px solid var(--arabut-line);
+        border-radius: 1rem;
+        background: rgb(20 18 15 / 88%);
+        padding: clamp(1.15rem, 3vw, 1.75rem);
+        box-shadow: 0 1.25rem 3.5rem rgb(0 0 0 / 24%);
+    }
+
+    .store-cart-line__title {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+    }
+
+    .store-cart-line__title span,
+    .store-cart-line__title h2 {
+        margin: 0;
+    }
+
+    .store-cart-line__title span {
+        color: var(--arabut-muted);
+        font-size: 0.8rem;
+    }
+
+    .store-cart-line__title h2 {
+        color: var(--arabut-ink);
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+        font-size: 1.35rem;
+    }
+
+    .store-cart-line__summary {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin: 1.4rem 0 0;
+        border-block: 1px solid var(--arabut-line);
+    }
+
+    .store-cart-line__summary > div {
+        min-width: 0;
+        padding: 1rem;
+    }
+
+    .store-cart-line__summary dt {
+        color: var(--arabut-muted);
+        font-size: 0.8rem;
+    }
+
+    .store-cart-line__summary dd {
+        margin: 0.3rem 0 0;
+        color: var(--arabut-ink);
+        font-weight: 700;
+        overflow-wrap: anywhere;
+    }
+
+    .store-cart-line__total dd {
+        color: var(--arabut-gold-bright);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .store-cart-credentials {
+        margin-block-start: 1.25rem;
+        color: var(--arabut-muted);
+    }
+
+    .store-cart-credentials h3,
+    .store-cart-credentials p {
+        margin: 0;
+    }
+
+    .store-cart-credentials h3 {
+        color: var(--arabut-ink);
+        font-size: 1rem;
+    }
+
+    .store-cart-credentials p {
+        margin-block-start: 0.35rem;
+        overflow-wrap: anywhere;
+    }
+
+    .store-cart-credentials--missing {
+        color: #ffb0b0;
+    }
+
+    .store-cart-empty {
+        margin-block: 2rem;
+        border-block: 1px solid var(--arabut-line);
+        padding-block: 1.5rem;
+        color: var(--arabut-muted);
+    }
+
+    .store-cart-back {
+        display: inline-grid;
+        min-height: 2.75rem;
+        place-items: center;
+        border: 1px solid rgb(183 195 209 / 38%);
+        border-radius: 0.55rem;
+        padding: 0.65rem 1rem;
+        color: var(--arabut-ink);
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .store-cart-back:hover {
+        border-color: var(--arabut-gold);
+    }
+
+    .store-cart-back:focus-visible {
+        outline: 2px solid var(--arabut-focus);
+        outline-offset: 3px;
     }
 
     .coins-unavailable {
@@ -2044,6 +2382,18 @@
         inset-inline-end: calc(-50% + 1.125rem);
     }
 
+    .coins-progress__step > span:last-child {
+        font-size: 0.68rem;
+    }
+
+    .coins-backup-codes__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .store-cart-line__summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .coins-choice-grid--delivery {
         grid-template-columns: 1fr;
     }
@@ -2140,6 +2490,19 @@
 
     .coins-progress__step {
         font-size: 0.75rem;
+    }
+
+    .coins-progress__step > span:last-child {
+        font-size: 0.62rem;
+    }
+
+    .coins-backup-codes__grid,
+    .store-cart-line__summary {
+        grid-template-columns: 1fr;
+    }
+
+    .coins-step__actions--split {
+        grid-template-columns: 1fr;
     }
 }
 

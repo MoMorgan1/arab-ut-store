@@ -2,9 +2,11 @@ import { Head, usePage } from '@inertiajs/react';
 
 import { CoinsConfigurator } from '@/components/configurator/coins';
 import StoreLayout from '@/layouts/store-layout';
+import type { User } from '@/types/auth';
 import type {
     CoinsAmountRules,
     CoinsAvailability,
+    CoinsCartConfig,
     CoinsPlatformOption,
     CoinsStoreTranslations,
 } from '@/types/coins';
@@ -21,6 +23,9 @@ type StorePageProps = {
     status: CoinsAvailability;
     quoteUrl: string;
     amount: CoinsAmountRules;
+    auth: { user: User | null };
+    cartCount: number;
+    coinsCart: CoinsCartConfig;
     platforms: CoinsPlatformOption[];
     store: CoinsStoreTranslations;
     storeShell: StoreShellConfig;
@@ -31,6 +36,9 @@ export default function StoreHome() {
     const page = usePage<StorePageProps>();
     const {
         amount,
+        auth,
+        cartCount,
+        coinsCart,
         direction,
         displayCurrencies,
         displayCurrency,
@@ -55,6 +63,7 @@ export default function StoreHome() {
             displayCurrency={displayCurrency}
             displayCurrencies={displayCurrencies}
             locale={locale}
+            cartCount={cartCount}
             storeShell={storeShell}
             ui={ui}
         >
@@ -123,6 +132,8 @@ export default function StoreHome() {
                             {status === 'available' ? (
                                 <CoinsConfigurator
                                     amount={amount}
+                                    authenticated={auth.user !== null}
+                                    cart={coinsCart}
                                     locale={locale}
                                     platforms={platforms}
                                     quoteUrl={quoteUrl}

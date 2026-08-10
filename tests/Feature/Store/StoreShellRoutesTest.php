@@ -42,9 +42,6 @@ test('every non-transactional storefront destination has the right bilingual pag
             ->missing('storeShell.socials.tiktok')
             ->missing('storeShell.socials.snapchat'));
 })->with([
-    'cart' => ['/cart', 'ar', 'cart', 'السلة', 'السلة بتكون جاهزة مع مرحلة الطلب والدفع. حالياً تقدر تختار خدمتك من الرئيسية.'],
-    'explicit Arabic cart' => ['/ar/cart', 'ar', 'cart', 'السلة', 'السلة بتكون جاهزة مع مرحلة الطلب والدفع. حالياً تقدر تختار خدمتك من الرئيسية.'],
-    'English cart' => ['/en/cart', 'en', 'cart', 'Cart', 'The cart will be enabled with the ordering and payment stage. You can choose your service from the home page now.'],
     'SBC' => ['/sbc', 'ar', 'sbc', 'خدمات SBC', 'نجهز صفحة SBC وربط المنتجات الآلي. بتلقى كل الخيارات هنا بعد اكتمال الربط.'],
     'English SBC' => ['/en/sbc', 'en', 'sbc', 'SBC Services', 'We are preparing the SBC catalog and automated product connection. All options will appear here when the connection is complete.'],
     'FUT Champions' => ['/fut-champions', 'ar', 'fut_champions', 'FUT Champions', 'نجهز صفحة الخدمة وتفاصيل الطلب. تقدر تتواصل معنا لو تحتاج مساعدة الآن.'],
@@ -59,6 +56,25 @@ test('every non-transactional storefront destination has the right bilingual pag
     'English EA codes' => ['/en/ea-backup-codes', 'en', 'ea_backup_codes', 'EA Backup Codes', 'We are preparing a simple, secure guide for obtaining backup codes.'],
     'terms' => ['/terms', 'ar', 'terms', 'شروط الخدمة', 'ننقل ونراجع شروط الخدمة قبل إطلاق الطلب والدفع.'],
     'English terms' => ['/en/terms', 'en', 'terms', 'Terms of Service', 'We are migrating and reviewing the terms before ordering and payments launch.'],
+]);
+
+test('the cart destinations render the real safe cart page', function (string $path, string $locale) {
+    $this->get($path)
+        ->assertOk()
+        ->assertInertia(fn (Assert $inertia) => $inertia
+            ->component('store/cart')
+            ->where('locale', $locale)
+            ->where('cart.count', 0)
+            ->where('cart.currency', 'SAR')
+            ->where('cart.items', [])
+            ->where('cartPage.backUrl', $locale === 'en' ? '/en#coins' : '/#coins')
+            ->has('cartPage.translations.title')
+            ->missing('checkout')
+            ->missing('payment'));
+})->with([
+    'cart' => ['/cart', 'ar'],
+    'explicit Arabic cart' => ['/ar/cart', 'ar'],
+    'English cart' => ['/en/cart', 'en'],
 ]);
 
 test('the account destination changes from login to the authenticated dashboard', function () {

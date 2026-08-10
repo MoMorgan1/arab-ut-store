@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Store;
 use App\Enums\Platform;
 use App\Http\Controllers\Controller;
 use App\Services\Catalog\CoinsCatalogReader;
+use App\Validation\CoinsSelectionRules;
 use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Inertia\Response;
 use LogicException;
@@ -15,8 +17,11 @@ use ValueError;
 
 class HomeController extends Controller
 {
-    public function __invoke(Request $request, CoinsCatalogReader $catalog): Response
-    {
+    public function __invoke(
+        Request $request,
+        CoinsCatalogReader $catalog,
+        CoinsSelectionRules $selectionRules,
+    ): Response {
         $status = 'unavailable';
 
         try {
@@ -31,6 +36,11 @@ class HomeController extends Controller
             'quoteUrl' => $request->route('locale') === 'en'
                 ? route('localized.coins.quote', ['locale' => 'en'], absolute: false)
                 : route('coins.quote', absolute: false),
+            'coinsCart' => [
+                'addUrl' => $this->storeRoute($request, 'cart.items.coins.store'),
+                'resumeUrl' => $this->storeRoute($request, 'cart.items.coins.resume'),
+                'initialSelection' => $this->initialSelection($request, $selectionRules),
+            ],
             'amount' => [
                 'minimum' => config('coins.quantity.minimum'),
                 'increment' => config('coins.quantity.increment'),
@@ -39,6 +49,52 @@ class HomeController extends Controller
             'platforms' => $this->platforms(),
             'store' => trans('store'),
         ]);
+    }
+
+    private function storeRoute(Request $request, string $route): string
+    {
+        return $request->route('locale') === 'en'
+            ? route("localized.{$route}", ['locale' => 'en'], absolute: false)
+            : route($route, absolute: false);
+    }
+
+    /** @return array{platform: string, delivery: string|null, quantity: int}|null */
+    private function initialSelection(Request $request, CoinsSelectionRules $selectionRules): ?array
+    {
+        if (
+            $request->user() === null
+            || $request->query('step') !== 'credentials'
+            || $this->queryContainsCredentials($request)
+        ) {
+            return null;
+        }
+
+        $selection = $request->only(['platform', 'delivery', 'quantity']);
+        $validator = Validator::make(
+            $selection,
+            $selectionRules->for($selection['platform'] ?? null, $selection['delivery'] ?? null),
+        );
+
+        if ($validator->fails()) {
+            return null;
+        }
+
+        return [
+            'platform' => (string) $selection['platform'],
+            'delivery' => isset($selection['delivery']) ? (string) $selection['delivery'] : null,
+            'quantity' => (int) $selection['quantity'],
+        ];
+    }
+
+    private function queryContainsCredentials(Request $request): bool
+    {
+        foreach (['credentials', 'ea_email', 'ea_password', 'backup_codes'] as $field) {
+            if ($request->query->has($field)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @return list<array<string, mixed>> */

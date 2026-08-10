@@ -4,6 +4,24 @@ export type CoinsDeliveryValue = 'normal' | 'fast';
 
 export type CoinsAvailability = 'available' | 'unavailable';
 
+export type CoinsCredentials = {
+    eaEmail: string;
+    eaPassword: string;
+    backupCodes: [string, string, string, string, string];
+};
+
+export type CoinsResumeSelection = {
+    platform: CoinsPlatformValue;
+    delivery: CoinsDeliveryValue | null;
+    quantity: number;
+};
+
+export type CoinsCartConfig = {
+    addUrl: string;
+    initialSelection: CoinsResumeSelection | null;
+    resumeUrl: string;
+};
+
 export type CoinsDeliveryOption = {
     value: CoinsDeliveryValue;
     label: string;
@@ -49,6 +67,8 @@ export type CoinsStoreTranslations = {
         platform: string;
         delivery: string;
         amount: string;
+        credentials: string;
+        summary: string;
     };
     platform: {
         title: string;
@@ -75,6 +95,41 @@ export type CoinsStoreTranslations = {
         clamped: string;
         normal_delivery_suggestion: string;
         switch_to_fast: string;
+    };
+    credentials: {
+        title: string;
+        trust: string;
+        email: string;
+        password: string;
+        show_password: string;
+        hide_password: string;
+        backup_codes: string;
+        backup_code: string;
+        backup_help: string;
+        required_email: string;
+        required_password: string;
+        required_code: string;
+        duplicate_code: string;
+        clear: string;
+    };
+    summary: {
+        title: string;
+        service: string;
+        service_value: string;
+        platform: string;
+        delivery: string;
+        delivery_pc: string;
+        quantity: string;
+        total: string;
+        credentials_ready: string;
+        add: string;
+        adding: string;
+        retry: string;
+        transport_error: string;
+        validation_error: string;
+        conflict_error: string;
+        unavailable_error: string;
+        generic_error: string;
     };
     actions: {
         continue: string;

@@ -3,7 +3,8 @@ import type { CoinsStoreTranslations } from '@/types/coins';
 
 import { interpolate } from './configurator-copy';
 
-export type CoinsStep = 'platform' | 'delivery' | 'amount';
+export type CoinsStep =
+    'platform' | 'delivery' | 'amount' | 'credentials' | 'summary';
 
 type ProgressRailProps = {
     current: CoinsStep;
@@ -31,6 +32,8 @@ export function ProgressRail({
               ]
             : []),
         { value: 'amount', label: translations.progress.amount },
+        { value: 'credentials', label: translations.progress.credentials },
+        { value: 'summary', label: translations.progress.summary },
     ];
     const currentIndex = steps.findIndex((step) => step.value === current);
     const ariaLabel = interpolate(translations.accessibility.steps, {

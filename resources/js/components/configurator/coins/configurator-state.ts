@@ -3,6 +3,7 @@ import type {
     CoinsPlatformValue,
     CoinsQuote,
     CoinsQuoteViewState,
+    CoinsResumeSelection,
 } from '@/types/coins';
 
 import type { CoinsStep } from './progress-rail';
@@ -80,7 +81,20 @@ export function clampAndSnapQuantity(
 
 export function createInitialConfiguratorState(
     minimum: number,
+    initialSelection: CoinsResumeSelection | null = null,
 ): CoinsConfiguratorState {
+    if (initialSelection !== null) {
+        return {
+            announcement: '',
+            deliveryValue: initialSelection.delivery,
+            lastValidQuantity: initialSelection.quantity,
+            platformValue: initialSelection.platform,
+            quantityInput: String(initialSelection.quantity),
+            quoteState: { status: 'idle' },
+            step: 'credentials',
+        };
+    }
+
     return {
         announcement: '',
         deliveryValue: null,
@@ -156,7 +170,10 @@ export function coinsConfiguratorReducer(
         case 'navigated':
             return {
                 ...state,
-                quoteState: { status: 'idle' },
+                quoteState:
+                    action.step === 'platform' || action.step === 'delivery'
+                        ? { status: 'idle' }
+                        : state.quoteState,
                 step: action.step,
             };
         case 'quantity-changed':

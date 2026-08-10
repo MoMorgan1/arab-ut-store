@@ -83,3 +83,65 @@ export type SimpleStorePageProps = {
     storeShell: StoreShellConfig;
     ui: StoreShellTranslations;
 };
+
+export type StoreCartConfiguration = Partial<{
+    coins_quantity: number;
+    delivery: 'normal' | 'fast' | null;
+    market: 'console' | 'pc';
+    platform: 'playstation' | 'pc';
+    price_version: number;
+    quoted_at: string;
+    service_type: 'coins';
+}>;
+
+export type StoreCartItem = {
+    configuration: StoreCartConfiguration;
+    credentials: {
+        backupCodeCount: 5;
+        hasPassword: true;
+        maskedEmail: string;
+        retainedUntil: string;
+    } | null;
+    id: string;
+    quantity: number;
+    requiresCredentials: boolean;
+    totalHalalah: number;
+    unitPriceHalalah: number;
+};
+
+export type StoreCartTranslations = {
+    title: string;
+    eyebrow: string;
+    empty: string;
+    back: string;
+    service: string;
+    coins_service: string;
+    platform: string;
+    platform_playstation: string;
+    platform_pc: string;
+    delivery: string;
+    delivery_normal: string;
+    delivery_fast: string;
+    delivery_pc: string;
+    quantity: string;
+    coins_unit: string;
+    total: string;
+    credentials: string;
+    credentials_ready: string;
+    credentials_missing: string;
+    masked_email: string;
+    backup_codes: string;
+};
+
+export type StoreCartPageProps = {
+    auth: { user: { id: number; name: string } | null };
+    cartCount: number;
+    cart: { count: number; currency: 'SAR'; items: StoreCartItem[] };
+    cartPage: { backUrl: string; translations: StoreCartTranslations };
+    direction: 'rtl' | 'ltr';
+    displayCurrency: string;
+    displayCurrencies: string[];
+    locale: StoreLocale;
+    storeShell: StoreShellConfig;
+    ui: StoreShellTranslations;
+};

@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { StorePreferences } from '@/components/store/store-preferences';
+
 import type {
     StoreLocale,
     StoreShellConfig,
@@ -7,6 +9,7 @@ import type {
 
 export type StoreHeaderProps = {
     currentUrl: string;
+    cartCount?: number;
     locale: StoreLocale;
     direction: 'rtl' | 'ltr';
     displayCurrency: string;
@@ -134,6 +137,7 @@ function AccountIcon() {
 export function StoreHeader(props: StoreHeaderProps) {
     const {
         currentUrl,
+        cartCount = 0,
         direction,
         displayCurrencies,
         displayCurrency,
@@ -141,6 +145,22 @@ export function StoreHeader(props: StoreHeaderProps) {
         shell,
         translations,
     } = props;
+    const [visibleCartCount, setVisibleCartCount] = useState(cartCount);
+
+    useEffect(() => {
+        function updateCartCount(event: Event) {
+            const nextCount = (event as CustomEvent<number>).detail;
+
+            if (Number.isSafeInteger(nextCount) && nextCount >= 0) {
+                setVisibleCartCount(nextCount);
+            }
+        }
+
+        window.addEventListener('arabut:cart-count', updateCartCount);
+
+        return () =>
+            window.removeEventListener('arabut:cart-count', updateCartCount);
+    }, []);
     const wordmarkMatch = translations.brand.match(/^(.*)\s+(\S+)$/u);
     const wordmarkName = wordmarkMatch?.[1] ?? translations.brand;
     const wordmarkAccent = wordmarkMatch?.[2];
@@ -219,7 +239,7 @@ export function StoreHeader(props: StoreHeaderProps) {
                             href={shell.cartUrl}
                         >
                             <CartIcon />
-                            <span aria-hidden="true">0</span>
+                            <span aria-hidden="true">{visibleCartCount}</span>
                         </a>
                         <a
                             aria-label={translations.header.account}

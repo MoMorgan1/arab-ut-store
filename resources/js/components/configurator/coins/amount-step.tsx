@@ -24,6 +24,8 @@ type AmountStepProps = {
     onQuantityBlur: () => void;
     onQuantityChange: (value: string) => void;
     onSwitchToFast: () => void;
+    onContinue: () => void;
+    continueHref: string | null;
     quantity: number;
     quantityInput: string;
     quoteState: CoinsQuoteViewState;
@@ -39,6 +41,7 @@ function adjustmentLabel(delta: number, locale: 'ar' | 'en'): string {
 
 export function AmountStep({
     amount,
+    continueHref,
     delivery,
     focusRef,
     isValid,
@@ -47,6 +50,7 @@ export function AmountStep({
     onAdjust,
     onBack,
     onCommit,
+    onContinue,
     onQuantityBlur,
     onQuantityChange,
     onSwitchToFast,
@@ -259,6 +263,24 @@ export function AmountStep({
                 state={quoteState}
                 translations={translations}
             />
+            {quoteState.status === 'success' ? (
+                continueHref === null ? (
+                    <button
+                        className="coins-primary-action coins-primary-action--full"
+                        onClick={onContinue}
+                        type="button"
+                    >
+                        {translations.actions.continue}
+                    </button>
+                ) : (
+                    <a
+                        className="coins-primary-action coins-primary-action--full"
+                        href={continueHref}
+                    >
+                        {translations.actions.continue}
+                    </a>
+                )
+            ) : null}
         </div>
     );
 }

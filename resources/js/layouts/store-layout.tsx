@@ -11,6 +11,7 @@ export type StoreLayoutTranslations = StoreShellTranslations;
 
 type StoreLayoutProps = PropsWithChildren<{
     currentUrl: string;
+    cartCount?: number;
     locale: 'ar' | 'en';
     direction: 'rtl' | 'ltr';
     displayCurrency: string;
@@ -21,6 +22,7 @@ type StoreLayoutProps = PropsWithChildren<{
 
 export default function StoreLayout({
     children,
+    cartCount = 0,
     currentUrl,
     direction,
     displayCurrency,
@@ -40,6 +42,7 @@ export default function StoreLayout({
             </a>
             <StoreHeader
                 currentUrl={currentUrl}
+                cartCount={cartCount}
                 direction={direction}
                 displayCurrencies={displayCurrencies}
                 displayCurrency={displayCurrency}

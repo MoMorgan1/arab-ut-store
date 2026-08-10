@@ -1,8 +1,11 @@
-import { usePage } from '@inertiajs/react';
-import { useEffect, useMemo, useReducer, useRef } from 'react';
+import { router, usePage } from '@inertiajs/react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
+import { CoinsCartRequestError, submitCoinsCart } from '@/lib/coins-cart-api';
 import type {
     CoinsAmountRules,
+    CoinsCartConfig,
+    CoinsCredentials,
     CoinsDeliveryValue,
     CoinsPlatformOption,
     CoinsPlatformValue,
@@ -17,14 +20,18 @@ import {
     createInitialConfiguratorState,
     quantityFromInput,
 } from './configurator-state';
+import { CredentialsStep, emptyCoinsCredentials } from './credentials-step';
 import { DeliveryStep } from './delivery-step';
 import { PlatformStep } from './platform-step';
 import { ProgressRail } from './progress-rail';
 import type { CoinsStep } from './progress-rail';
+import { SummaryStep } from './summary-step';
 import { useCoinsQuoteRequest } from './use-coins-quote-request';
 
 type CoinsConfiguratorProps = {
     amount: CoinsAmountRules;
+    authenticated: boolean;
+    cart: CoinsCartConfig;
     locale: 'ar' | 'en';
     platforms: CoinsPlatformOption[];
     quoteUrl: string;
@@ -33,6 +40,8 @@ type CoinsConfiguratorProps = {
 
 export function CoinsConfigurator({
     amount,
+    authenticated,
+    cart,
     locale,
     platforms,
     quoteUrl,
@@ -41,13 +50,24 @@ export function CoinsConfigurator({
     const { displayCurrency } = usePage<{ displayCurrency: string }>().props;
     const [state, dispatch] = useReducer(
         coinsConfiguratorReducer,
-        amount.minimum,
-        createInitialConfiguratorState,
+        createInitialConfiguratorState(amount.minimum, cart.initialSelection),
     );
+    const [credentials, setCredentials] = useState<CoinsCredentials>(
+        emptyCoinsCredentials,
+    );
+    const [pending, setPending] = useState(false);
+    const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+    const [retrying, setRetrying] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const credentialsRef = useRef(credentials);
+    const idempotencyKey = useRef<string | null>(null);
+    const pendingSubmission = useRef(false);
     const pendingFocus = useRef<CoinsStep | null>(null);
     const platformHeading = useRef<HTMLLegendElement | null>(null);
     const deliveryHeading = useRef<HTMLLegendElement | null>(null);
     const amountHeading = useRef<HTMLHeadingElement | null>(null);
+    const credentialsHeading = useRef<HTMLHeadingElement | null>(null);
+    const summaryHeading = useRef<HTMLHeadingElement | null>(null);
 
     const selectedPlatform = useMemo(
         () =>
@@ -75,7 +95,7 @@ export function CoinsConfigurator({
     const requestDelivery = isPc ? null : (selectedDelivery?.value ?? null);
     const invalidateQuoteRequest = useCoinsQuoteRequest({
         active:
-            state.step === 'amount' &&
+            (state.step === 'amount' || state.step === 'credentials') &&
             selectedPlatform !== null &&
             deliveryIsValid &&
             quantityIsValid,
@@ -92,16 +112,30 @@ export function CoinsConfigurator({
             return;
         }
 
-        const target =
-            state.step === 'platform'
-                ? platformHeading.current
-                : state.step === 'delivery'
-                  ? deliveryHeading.current
-                  : amountHeading.current;
+        const targets: Record<CoinsStep, HTMLElement | null> = {
+            amount: amountHeading.current,
+            credentials: credentialsHeading.current,
+            delivery: deliveryHeading.current,
+            platform: platformHeading.current,
+            summary: summaryHeading.current,
+        };
 
-        target?.focus({ preventScroll: true });
+        targets[state.step]?.focus({ preventScroll: true });
         pendingFocus.current = null;
     }, [state.step]);
+
+    useEffect(() => {
+        if (redirectUrl !== null) {
+            router.visit(redirectUrl);
+        }
+    }, [redirectUrl]);
+
+    useEffect(() => {
+        return () => {
+            credentialsRef.current = emptyCoinsCredentials();
+            idempotencyKey.current = null;
+        };
+    }, []);
 
     function selectionAnnouncement(value: string) {
         return interpolate(translations.accessibility.selection, { value });
@@ -113,6 +147,12 @@ export function CoinsConfigurator({
         dispatch({ step, type: 'navigated' });
     }
 
+    function beginNewSubmission() {
+        idempotencyKey.current = null;
+        setRetrying(false);
+        setSubmitError(null);
+    }
+
     function choosePlatform(value: CoinsPlatformValue) {
         const platform = platforms.find((option) => option.value === value);
 
@@ -121,6 +161,7 @@ export function CoinsConfigurator({
         }
 
         invalidateQuoteRequest();
+        beginNewSubmission();
         dispatch({
             clampMessage: translations.amount_copy.clamped,
             maximum: platform.maximum,
@@ -142,6 +183,7 @@ export function CoinsConfigurator({
         }
 
         invalidateQuoteRequest();
+        beginNewSubmission();
         dispatch({
             clampMessage: translations.amount_copy.clamped,
             maximum: delivery.maximum,
@@ -168,7 +210,15 @@ export function CoinsConfigurator({
     }
 
     function goBack() {
-        navigateTo(state.step === 'amount' && !isPc ? 'delivery' : 'platform');
+        if (state.step === 'summary') {
+            navigateTo('credentials');
+        } else if (state.step === 'credentials') {
+            navigateTo('amount');
+        } else {
+            navigateTo(
+                state.step === 'amount' && !isPc ? 'delivery' : 'platform',
+            );
+        }
     }
 
     function switchToFast() {
@@ -199,6 +249,7 @@ export function CoinsConfigurator({
         }
 
         invalidateQuoteRequest();
+        beginNewSubmission();
         dispatch({
             type: 'quantity-changed',
             validQuantity: isValid ? nextQuantity : null,
@@ -224,6 +275,7 @@ export function CoinsConfigurator({
         }
 
         invalidateQuoteRequest();
+        beginNewSubmission();
         dispatch({
             type: 'quantity-committed',
             value: committedQuantity,
@@ -238,6 +290,113 @@ export function CoinsConfigurator({
         commitQuantity(
             quantityFromInput(state.quantityInput) ?? state.lastValidQuantity,
         );
+    }
+
+    function resumeUrl(): string | null {
+        if (authenticated || selectedPlatform === null) {
+            return null;
+        }
+
+        const url = new URL(cart.resumeUrl, window.location.origin);
+        url.searchParams.set('platform', selectedPlatform.value);
+        url.searchParams.set('quantity', String(state.lastValidQuantity));
+
+        if (requestDelivery !== null) {
+            url.searchParams.set('delivery', requestDelivery);
+        }
+
+        return `${url.pathname}${url.search}`;
+    }
+
+    function updateCredentials(nextCredentials: CoinsCredentials) {
+        credentialsRef.current = nextCredentials;
+        setCredentials(nextCredentials);
+        beginNewSubmission();
+    }
+
+    function clearCredentials() {
+        const emptyCredentials = emptyCoinsCredentials();
+
+        credentialsRef.current = emptyCredentials;
+        setCredentials(emptyCredentials);
+        beginNewSubmission();
+        navigateTo('amount');
+    }
+
+    function submitErrorMessage(error: CoinsCartRequestError): string {
+        if (error.code === 'transport_error') {
+            return translations.summary.transport_error;
+        }
+
+        if (error.status === 422) {
+            return translations.summary.validation_error;
+        }
+
+        if (error.status === 409) {
+            return translations.summary.conflict_error;
+        }
+
+        if (error.status === 503) {
+            return translations.summary.unavailable_error;
+        }
+
+        return translations.summary.generic_error;
+    }
+
+    async function addToCart() {
+        const quote =
+            state.quoteState.status === 'success'
+                ? state.quoteState.quote
+                : null;
+
+        if (
+            pendingSubmission.current ||
+            selectedPlatform === null ||
+            quote === null
+        ) {
+            return;
+        }
+
+        pendingSubmission.current = true;
+        setPending(true);
+        setSubmitError(null);
+        idempotencyKey.current ??= crypto.randomUUID();
+
+        try {
+            const addition = await submitCoinsCart({
+                cartUrl: cart.addUrl,
+                credentials: credentialsRef.current,
+                delivery: requestDelivery,
+                idempotencyKey: idempotencyKey.current,
+                platform: selectedPlatform.value,
+                quantity: state.lastValidQuantity,
+            });
+            const emptyCredentials = emptyCoinsCredentials();
+
+            credentialsRef.current = emptyCredentials;
+            idempotencyKey.current = null;
+            setCredentials(emptyCredentials);
+            setRedirectUrl(addition.cartUrl);
+            window.dispatchEvent(
+                new CustomEvent<number>('arabut:cart-count', {
+                    detail: addition.cartCount,
+                }),
+            );
+        } catch (error) {
+            if (!(error instanceof CoinsCartRequestError)) {
+                throw error;
+            }
+
+            if (error.conclusive) {
+                idempotencyKey.current = null;
+            }
+
+            setRetrying(!error.conclusive || error.status === 409);
+            setSubmitError(submitErrorMessage(error));
+        } finally {
+            pendingSubmission.current = false;
+            setPending(false);
+        }
     }
 
     const liveMessage =
@@ -290,6 +449,7 @@ export function CoinsConfigurator({
             {state.step === 'amount' && selectedPlatform !== null ? (
                 <AmountStep
                     amount={amount}
+                    continueHref={resumeUrl()}
                     delivery={requestDelivery}
                     focusRef={amountHeading}
                     isValid={quantityIsValid}
@@ -298,6 +458,7 @@ export function CoinsConfigurator({
                     onAdjust={adjustQuantity}
                     onBack={goBack}
                     onCommit={commitQuantity}
+                    onContinue={() => navigateTo('credentials')}
                     onQuantityBlur={commitTypedQuantity}
                     onQuantityChange={updateQuantity}
                     onSwitchToFast={switchToFast}
@@ -307,6 +468,50 @@ export function CoinsConfigurator({
                     translations={translations}
                 />
             ) : null}
+
+            {state.step === 'credentials' && selectedPlatform !== null ? (
+                <CredentialsStep
+                    credentials={credentials}
+                    focusRef={credentialsHeading}
+                    locale={locale}
+                    onBack={goBack}
+                    onCancel={clearCredentials}
+                    onChange={updateCredentials}
+                    onContinue={() => {
+                        if (state.quoteState.status === 'success') {
+                            navigateTo('summary');
+                        }
+                    }}
+                    quoteState={state.quoteState}
+                    translations={translations}
+                />
+            ) : null}
+
+            {state.step === 'summary' &&
+            selectedPlatform !== null &&
+            state.quoteState.status === 'success' &&
+            redirectUrl === null ? (
+                <SummaryStep
+                    delivery={requestDelivery}
+                    error={submitError}
+                    focusRef={summaryHeading}
+                    locale={locale}
+                    onAdd={addToCart}
+                    onBack={goBack}
+                    onCancel={clearCredentials}
+                    pending={pending}
+                    platform={selectedPlatform.value}
+                    quote={state.quoteState.quote}
+                    retrying={retrying}
+                    translations={translations}
+                />
+            ) : null}
+
+            {redirectUrl === null ? null : (
+                <p className="coins-redirecting" role="status">
+                    {translations.summary.adding}
+                </p>
+            )}
         </div>
     );
 }

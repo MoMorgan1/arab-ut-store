@@ -9,6 +9,7 @@ use App\Enums\ServiceType;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\CartItemSecret;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Http\Request;
@@ -29,11 +30,15 @@ final class CartController extends Controller
             ->values()
             ->all() ?? [];
 
-        return Inertia::render('store/simple-page', [
-            'page' => [
-                'key' => 'cart',
-                'title' => trans('ui.simple_pages.cart.title'),
-                'body' => trans('ui.simple_pages.cart.body'),
+        $localized = $request->route('locale') === 'en';
+        $homeUrl = $localized
+            ? route('localized.home', ['locale' => 'en'], absolute: false)
+            : route('home', absolute: false);
+
+        return Inertia::render('store/cart', [
+            'cartPage' => [
+                'backUrl' => "{$homeUrl}#coins",
+                'translations' => trans('store.cart_page'),
             ],
             'cart' => [
                 'count' => count($safeCartItems),
@@ -46,15 +51,48 @@ final class CartController extends Controller
     /** @return array<string, mixed> */
     private function safeCartItem(CartItem $cartItem): array
     {
+        $credentials = $this->safeCredentials($cartItem->secret);
+
         return [
             'id' => $cartItem->public_id,
             'quantity' => $cartItem->quantity,
             'unitPriceHalalah' => $cartItem->unit_price_halalah,
             'totalHalalah' => $cartItem->total_halalah,
             'configuration' => $this->safeConfiguration($cartItem->configuration),
-            'requiresCredentials' => $cartItem->secret === null
-                || $cartItem->secret->getRawOriginal('encrypted_payload') === null
-                || $cartItem->secret->deleted_at !== null,
+            'credentials' => $credentials,
+            'requiresCredentials' => $credentials === null,
+        ];
+    }
+
+    /** @return array{maskedEmail: string, hasPassword: true, backupCodeCount: 5, retainedUntil: string}|null */
+    private function safeCredentials(?CartItemSecret $secret): ?array
+    {
+        $retainedUntil = $secret?->getAttribute('retained_until');
+
+        if ($secret === null
+            || $secret->getRawOriginal('encrypted_payload') === null
+            || $secret->getAttribute('deleted_at') !== null
+            || ! $retainedUntil instanceof DateTimeInterface
+            || $retainedUntil <= new DateTimeImmutable) {
+            return null;
+        }
+
+        $summary = $secret->masked_summary;
+
+        if (! is_array($summary)
+            || ! is_string($summary['email'] ?? null)
+            || strlen($summary['email']) > 254
+            || preg_match('/\A[^\s@]+@[^\s@]+\z/D', $summary['email']) !== 1
+            || ($summary['has_password'] ?? null) !== true
+            || ($summary['backup_code_count'] ?? null) !== 5) {
+            return null;
+        }
+
+        return [
+            'maskedEmail' => $summary['email'],
+            'hasPassword' => true,
+            'backupCodeCount' => 5,
+            'retainedUntil' => $retainedUntil->format(DateTimeInterface::ATOM),
         ];
     }
 
