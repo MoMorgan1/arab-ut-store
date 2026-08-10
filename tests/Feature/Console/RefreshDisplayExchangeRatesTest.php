@@ -67,6 +67,34 @@ test('an incomplete provider response leaves every prior rate unchanged', functi
     expect(ExchangeRate::query()->pluck('source')->unique()->all())->toBe(['previous']);
 });
 
+test('duplicate configured currency keys leave every prior rate unchanged', function () {
+    foreach (['USD' => '0.26000000', 'EUR' => '0.22000000', 'GBP' => '0.19000000'] as $currency => $rate) {
+        ExchangeRate::create([
+            'base_currency' => 'SAR',
+            'quote_currency' => $currency,
+            'rate' => $rate,
+            'source' => 'previous',
+            'fetched_at' => now()->subDay(),
+        ]);
+    }
+
+    Http::fake([
+        'https://open.er-api.com/v6/latest/SAR' => Http::response(
+            '{"result":"success","base_code":"SAR","rates":{"SAR":1,"USD":0.26,"USD":0.27,"EUR":0.23,"GBP":0.20}}',
+        ),
+    ]);
+
+    $this->artisan('currency:refresh-display-rates')->assertFailed();
+
+    expect(ExchangeRate::query()->orderBy('quote_currency')->get()->mapWithKeys(
+        fn (ExchangeRate $rate): array => [$rate->quote_currency => [$rate->rate, $rate->source]],
+    )->all())->toBe([
+        'EUR' => ['0.22000000', 'previous'],
+        'GBP' => ['0.19000000', 'previous'],
+        'USD' => ['0.26000000', 'previous'],
+    ]);
+});
+
 test('provider transport and contract failures return failure without writing rates', function (
     int $status,
     string $payload,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, Ref } from 'react';
 
 import { formatCoins, formatCompactCoins } from '@/lib/money';
@@ -56,6 +56,10 @@ export function AmountStep({
     translations,
 }: AmountStepProps) {
     const [isEditing, setIsEditing] = useState(false);
+    const amountInputRef = useRef<HTMLInputElement | null>(null);
+    const pendingSelection = useRef<{ end: number; start: number } | null>(
+        null,
+    );
     const fillPercentage =
         maximum === amount.minimum
             ? 0
@@ -63,6 +67,21 @@ export function AmountStep({
     const sliderStyle = {
         '--coins-slider-fill': `${Math.max(0, Math.min(100, fillPercentage)).toFixed(2)}%`,
     } as CSSProperties;
+
+    useLayoutEffect(() => {
+        const input = amountInputRef.current;
+        const selection = pendingSelection.current;
+
+        if (input === null || selection === null) {
+            return;
+        }
+
+        input.setSelectionRange(
+            positionAfterDigits(input.value, selection.start),
+            positionAfterDigits(input.value, selection.end),
+        );
+        pendingSelection.current = null;
+    }, [isEditing, locale, quantityInput]);
 
     function commitDirectly(value: number) {
         setIsEditing(true);
@@ -95,9 +114,21 @@ export function AmountStep({
                             setIsEditing(false);
                             onQuantityBlur();
                         }}
-                        onChange={(event) =>
-                            onQuantityChange(event.currentTarget.value)
-                        }
+                        onChange={(event) => {
+                            const input = event.currentTarget;
+
+                            pendingSelection.current = {
+                                end: digitsBefore(
+                                    input.value,
+                                    input.selectionEnd,
+                                ),
+                                start: digitsBefore(
+                                    input.value,
+                                    input.selectionStart,
+                                ),
+                            };
+                            onQuantityChange(input.value);
+                        }}
                         onFocus={(event) => {
                             setIsEditing(true);
                             event.currentTarget.select();
@@ -109,6 +140,7 @@ export function AmountStep({
                             }
                         }}
                         type="text"
+                        ref={amountInputRef}
                         value={
                             isEditing
                                 ? quantityInput === ''
@@ -229,4 +261,32 @@ export function AmountStep({
             />
         </div>
     );
+}
+
+function digitsBefore(value: string, position: number | null): number {
+    if (position === null) {
+        return value.replace(/[^0-9]/g, '').length;
+    }
+
+    return value.slice(0, position).replace(/[^0-9]/g, '').length;
+}
+
+function positionAfterDigits(value: string, digitCount: number): number {
+    if (digitCount === 0) {
+        return 0;
+    }
+
+    let seenDigits = 0;
+
+    for (let index = 0; index < value.length; index += 1) {
+        if (/[0-9]/.test(value[index])) {
+            seenDigits += 1;
+
+            if (seenDigits === digitCount) {
+                return index + 1;
+            }
+        }
+    }
+
+    return value.length;
 }

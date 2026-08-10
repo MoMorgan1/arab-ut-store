@@ -876,6 +876,53 @@ describe('Coins homepage', () => {
         expect(amountInput).toHaveValue('500,000');
     });
 
+    it('preserves the logical caret through middle insertion deletion and subsequent typing', () => {
+        render(<StoreHome />);
+        selectConsoleDelivery('Fast');
+        fireEvent.click(screen.getByRole('button', { name: '100K' }));
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
+        }) as HTMLInputElement;
+
+        fireEvent.focus(amountInput);
+        amountInput.setSelectionRange(1, 1);
+        fireEvent.change(amountInput, {
+            target: {
+                selectionEnd: 2,
+                selectionStart: 2,
+                value: '1500,000',
+            },
+        });
+
+        expect(amountInput).toHaveValue('1,500,000');
+        expect(amountInput.selectionStart).toBe(3);
+        expect(amountInput.selectionEnd).toBe(3);
+
+        fireEvent.change(amountInput, {
+            target: {
+                selectionEnd: 2,
+                selectionStart: 2,
+                value: '1,00,000',
+            },
+        });
+
+        expect(amountInput).toHaveValue('100,000');
+        expect(amountInput.selectionStart).toBe(1);
+        expect(amountInput.selectionEnd).toBe(1);
+
+        fireEvent.change(amountInput, {
+            target: {
+                selectionEnd: 2,
+                selectionStart: 2,
+                value: '1200,000',
+            },
+        });
+
+        expect(amountInput).toHaveValue('1,200,000');
+        expect(amountInput.selectionStart).toBe(3);
+        expect(amountInput.selectionEnd).toBe(3);
+    });
+
     it('renders the page-selected EUR display total instead of authoritative SAR', async () => {
         mockPage.props = { ...availableProps(), displayCurrency: 'EUR' };
         vi.stubGlobal(

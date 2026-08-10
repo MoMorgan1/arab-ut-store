@@ -80,12 +80,18 @@ final class RefreshDisplayExchangeRates extends Command
 
         foreach ($configured as $currency) {
             $quotedCurrency = preg_quote($currency, '/');
+            $matchCount = preg_match_all(
+                '/"'.$quotedCurrency.'"\s*:\s*(?<rate>[^,}\s]+)/',
+                $ratesMatch['rates'],
+                $rateMatches,
+                PREG_SET_ORDER,
+            );
 
-            if (preg_match('/"'.$quotedCurrency.'"\s*:\s*(?<rate>[^,}\s]+)/', $ratesMatch['rates'], $rateMatch) !== 1) {
+            if ($matchCount !== 1) {
                 return null;
             }
 
-            $canonicalRate = $this->quantizeRate($rateMatch['rate']);
+            $canonicalRate = $this->quantizeRate($rateMatches[0]['rate']);
 
             if ($canonicalRate === null) {
                 return null;

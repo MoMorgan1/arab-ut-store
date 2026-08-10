@@ -149,3 +149,47 @@ MariaDB was not run because no local MariaDB server was configured (`127.0.0.1:3
 ## Guard review
 
 Clean-code review found a single conversion boundary, no request-path provider client, no fallback rates, explicit overflow/freshness failures, and no duplicated checkout calculation. Test review found behavior-level assertions for contract, atomicity, schedule, session immutability, cancellation, retained results, focus, and display formatting. Documentation review checked command names, counts, limitations, and the provider link against fresh command/browser evidence.
+
+## Review fix round 1: caret stability and duplicate rate keys
+
+Two review findings were reproduced before production edits.
+
+Focused React RED:
+
+```text
+1 failed, 50 skipped
+Middle insertion rendered 1,500,000 but selectionStart/selectionEnd moved to 9 instead of logical position 3.
+```
+
+Focused PHP RED with the prescribed PHPRC:
+
+```text
+1 failed
+A payload containing duplicate USD keys unexpectedly completed successfully (status 0).
+```
+
+The amount input now captures selection endpoints as counts of preceding Latin digits before controlled-value normalization, then restores both endpoints against the newly grouped value in a layout effect. This preserves the logical caret without removing live commas or changing immediate quote dispatch.
+
+The refresh command now lexically collects each configured currency token from the isolated raw `rates` object and requires exactly one occurrence before quantization. Missing or duplicate configured keys fail before the transaction, leaving all prior rows unchanged; JSON last-key-wins behavior can no longer disagree with the selected decimal token.
+
+Focused GREEN:
+
+```text
+Caret regression: 1/1 passed
+Duplicate-key regression: 1/1 passed, 2 assertions
+Complete homepage suite: 51/51 passed
+Complete refresh-command suite: 8/8 passed, 17 assertions
+```
+
+Fresh full gates:
+
+```text
+Pint: passed
+PHPStan: passed, 0 errors
+Pest: 230 tests; 227 passed, 3 skipped; 2,048 assertions
+Vitest: 8 files, 123/123 tests passed
+ESLint, Prettier, TypeScript: passed
+Vite production build: passed, 2,327 modules
+```
+
+Browser verification used English and Arabic at 390 × 844. In both LTR and RTL, starting from `100,000` at caret 1, inserting `5` in the middle produced `1,500,000` with selection 3/3. Selecting the inserted digit at 2–3 and pressing Backspace returned `100,000` with selection 1/1; subsequent typing of `2` produced `1,200,000` with selection 3/3. The input remained focused, horizontal overflow was absent, and browser console warnings/errors were empty.
