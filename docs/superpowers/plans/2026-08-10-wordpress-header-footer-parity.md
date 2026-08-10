@@ -145,7 +145,7 @@ export type SimpleStorePageProps = {
 };
 ```
 
-- [ ] **Step 1: Read current official framework documentation**
+- [x] **Step 1: Read current official framework documentation**
 
 Open and record the current recommended patterns used by this task:
 
@@ -158,7 +158,7 @@ https://inertiajs.com/pages
 
 Confirm no API selected in the plan is deprecated or changed in the installed Laravel/Inertia versions.
 
-- [ ] **Step 2: Write failing Laravel route and shared-prop tests**
+- [x] **Step 2: Write failing Laravel route and shared-prop tests**
 
 Add datasets for every destination and both locales. Assert the component, exact page key, localized title/body, and shell destinations:
 
@@ -199,6 +199,8 @@ it('renders every simple storefront destination in both locales', function (
 
 - [ ] **Step 3: Run Laravel RED**
 
+Not completed as specified: the first run used a local PHP runtime without `pdo_sqlite`, so it failed before reaching the intended missing-feature assertions. The final feature behavior and GREEN gates are verified in the Task 1 report; this procedural gap is retained rather than rewritten as completed history.
+
 Run:
 
 ```powershell
@@ -207,7 +209,7 @@ php artisan test tests/Feature/Store/StoreShellRoutesTest.php tests/Feature/Stor
 
 Expected: FAIL because the routes, `storeShell` props, and UI translation trees do not exist.
 
-- [ ] **Step 4: Write failing simple-page React tests**
+- [x] **Step 4: Write failing simple-page React tests**
 
 Test that the page renders its localized heading/body inside the existing layout without introducing a form or commerce button. Footer composition belongs to Task 3:
 
@@ -223,7 +225,7 @@ it('renders a non-transactional branded destination', () => {
 });
 ```
 
-- [ ] **Step 5: Run React RED**
+- [x] **Step 5: Run React RED**
 
 Run:
 
@@ -233,7 +235,7 @@ npm test -- resources/js/__tests__/store/store-simple-page.test.tsx
 
 Expected: FAIL because `store/simple-page` and its props do not exist.
 
-- [ ] **Step 6: Implement the configuration and translations**
+- [x] **Step 6: Implement the configuration and translations**
 
 Add deterministic configuration; do not store labels in configuration:
 
@@ -296,7 +298,7 @@ Use these simple-page titles and bodies; none promises an activation date:
 
 Add the remaining legal labels (`privacy`, `returns`, `warranty`, `ea_backup_codes`, `terms`), legal-navigation label, and `copyright` with the same meaning and exact `:year` placeholder in both locales. Arabic uses light Gulf phrasing without slang that harms clarity.
 
-- [ ] **Step 7: Implement locale-aware routes, controller, and shared props**
+- [x] **Step 7: Implement locale-aware routes, controller, and shared props**
 
 Register every route from one fixed map using the existing unprefixed default-Arabic plus supported `/{locale}` convention. The `/ar` routes remain supported because `config('store.locales')` contains `ar` and `en`, while generated Arabic navigation URLs use the canonical unprefixed route. Use route defaults rather than accepting an arbitrary page key:
 
@@ -340,7 +342,7 @@ return Inertia::render('store/simple-page', [
 
 `HandleInertiaRequests` computes localized internal URLs with named routes, maps configured `image_url` keys to the TypeScript `imageUrl` contract, and sets `accountUrl` to the dashboard for an authenticated user and login for a guest.
 
-- [ ] **Step 8: Implement the typed simple page**
+- [x] **Step 8: Implement the typed simple page**
 
 Create `SimpleStorePage` with `Head`, `StoreLayout`, one labelled section, and no forms:
 
@@ -366,7 +368,7 @@ return <StoreLayout
 </StoreLayout>;
 ```
 
-- [ ] **Step 9: Run focused GREEN and commit**
+- [x] **Step 9: Run focused GREEN and commit**
 
 Run:
 
@@ -406,7 +408,7 @@ git commit -m "feat: add bilingual storefront destinations"
 - Produces: `activeState(key: 'home' | 'coins' | 'sbc' | 'fut_champions', currentUrl: string): 'page' | 'location' | undefined` as a private pure header helper.
 - Changes: `StoreLayoutProps` gains required `storeShell: StoreShellConfig`; both `home.tsx` and `simple-page.tsx` pass the shared prop explicitly.
 
-- [ ] **Step 1: Verify authoritative asset hashes and copy only exact files**
+- [x] **Step 1: Verify authoritative asset hashes and copy only exact files**
 
 Verify source SHA-256 values before copying:
 
@@ -417,7 +419,7 @@ logo-champions-80.webp: a090463aaddf7cb4ae6ab5dc476212fd3c57befd766ea0f7fcb1acfb
 
 Copy from `arabut-child/assets/images/` into `public/images/store/navigation/`, then verify destination hashes match.
 
-- [ ] **Step 2: Read current official interaction testing documentation**
+- [x] **Step 2: Read current official interaction testing documentation**
 
 ```text
 https://react.dev/reference/react/useEffect
@@ -427,7 +429,7 @@ https://vitest.dev/guide/mocking
 
 Use the installed Testing Library APIs; do not add `@testing-library/user-event` if it is not already locked.
 
-- [ ] **Step 3: Write failing header and popover tests**
+- [x] **Step 3: Write failing header and popover tests**
 
 Cover the two landmarks/rows, exact nav order, icons, active states, guest account link, cart count zero, currency URL preservation, language equivalent-path preservation, Escape/outside-click close, and focus restoration:
 
@@ -448,7 +450,7 @@ expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 expect(screen.getByRole('button', { name: 'Display preferences' })).toHaveFocus();
 ```
 
-- [ ] **Step 4: Run header RED**
+- [x] **Step 4: Run header RED**
 
 ```powershell
 npm test -- resources/js/__tests__/store/store-header.test.tsx resources/js/__tests__/store-layout.test.tsx
@@ -456,7 +458,7 @@ npm test -- resources/js/__tests__/store/store-header.test.tsx resources/js/__te
 
 Expected: FAIL because the full header, active nav, and managed preferences popover do not exist.
 
-- [ ] **Step 5: Implement URL helpers and preferences lifecycle**
+- [x] **Step 5: Implement URL helpers and preferences lifecycle**
 
 Keep helpers pure and exported for direct tests:
 
@@ -469,7 +471,7 @@ export function currencyHref(currentUrl: string, currency: string): string;
 
 Implement a button/popover rather than nested `<nav>` elements. On open, set `aria-expanded=true`; on Escape or outside pointer-down, close; Escape restores focus to the trigger. Currency links keep the path, unrelated query values, and hash.
 
-- [ ] **Step 6: Implement the two-row header**
+- [x] **Step 6: Implement the two-row header**
 
 Build the navigation from this fixed order and render the full two-row hierarchy. `NavigationIcon` is a private component in the same file that returns the inline Home/WhatsApp SVG or an `<img>` for Coins/SBC/FUT:
 
@@ -520,7 +522,7 @@ const navigation = [
 
 Use the existing crest and Coins image, the copied SBC/FUT images, inline accessible SVG for account/cart/preferences/WhatsApp, `target="_blank" rel="noopener noreferrer"` for WhatsApp, `aria-current="page"` for matching simple destinations, and `aria-current="location"` for Coins only when the current hash is `#coins`.
 
-- [ ] **Step 7: Reproduce WordPress header CSS, then refine safely**
+- [x] **Step 7: Reproduce WordPress header CSS, then refine safely**
 
 Implement the approved geometry and responsive behavior:
 
@@ -538,7 +540,7 @@ Implement the approved geometry and responsive behavior:
 
 Match WordPress warm-black surfaces, line borders, gold active pill/badge, blur, and 44px controls. Preserve existing skip-link behavior and add `scroll-margin-top` for `#coins` so the sticky header does not cover the section heading.
 
-- [ ] **Step 8: Run focused GREEN and commit**
+- [x] **Step 8: Run focused GREEN and commit**
 
 ```powershell
 npm test -- resources/js/__tests__/store/store-header.test.tsx resources/js/__tests__/store-layout.test.tsx
@@ -572,7 +574,7 @@ git commit -m "feat: reproduce WordPress storefront header"
 - Consumes: `StoreShellConfig` and `StoreShellTranslations` from Task 1.
 - Produces: `StoreFooter({ locale, shell, translations }: StoreFooterProps)` and the single page `contentinfo` landmark.
 
-- [ ] **Step 1: Verify and copy exact WordPress payment assets**
+- [x] **Step 1: Verify and copy exact WordPress payment assets**
 
 ```text
 pay-mada.png: e1885eaaf226de64a8cc346d2531b096be20b3b6158291dfbba2525b3e36a1ce
@@ -583,7 +585,7 @@ pay-applepay.png: 6e8a9fddb817b21293a3225b0749d2ebe18004b6d96b7aa4f40a1a68157d23
 
 Copy and rename only at the destination names listed above; verify destination hashes.
 
-- [ ] **Step 2: Write failing footer tests**
+- [x] **Step 2: Write failing footer tests**
 
 Assert the three columns, legal links, contact destinations, exact social omissions, four payment images, copyright year, and disclaimer:
 
@@ -609,7 +611,7 @@ expect(within(footer).getAllByRole('img')).toEqual(expect.arrayContaining([
 expect(document.querySelector('a[href="#"]')).not.toBeInTheDocument();
 ```
 
-- [ ] **Step 3: Run footer RED**
+- [x] **Step 3: Run footer RED**
 
 ```powershell
 npm test -- resources/js/__tests__/store/store-footer.test.tsx resources/js/__tests__/store-layout.test.tsx
@@ -617,7 +619,7 @@ npm test -- resources/js/__tests__/store/store-footer.test.tsx resources/js/__te
 
 Expected: FAIL because no footer is rendered.
 
-- [ ] **Step 4: Implement the footer component**
+- [x] **Step 4: Implement the footer component**
 
 Render the WordPress hierarchy exactly once. Define `legalLinks` from the five typed shell URLs, `year` once, and private inline `XIcon`/`InstagramIcon` SVG components in the same file. Payment data comes from the server-owned shell configuration:
 
@@ -666,7 +668,7 @@ const year = new Date().getFullYear();
 
 Use accessible labels for icon-only social links, safe external-link attributes, lazy-loaded payment images with explicit dimensions, and the current year from one `new Date().getFullYear()` value.
 
-- [ ] **Step 5: Reproduce and refine WordPress footer CSS**
+- [x] **Step 5: Reproduce and refine WordPress footer CSS**
 
 ```css
 .store-footer__grid {
@@ -686,7 +688,7 @@ Use accessible labels for icon-only social links, safe external-link attributes,
 
 Use warm-black layering, gold headings, cream text, 44px social/contact controls, restrained hover lift, and wrapping legal/payment groups. Footer content must not create page overflow at 320px.
 
-- [ ] **Step 6: Run focused GREEN and commit**
+- [x] **Step 6: Run focused GREEN and commit**
 
 ```powershell
 npm test -- resources/js/__tests__/store/store-footer.test.tsx resources/js/__tests__/store-layout.test.tsx
@@ -701,6 +703,8 @@ Expected: all pass.
 git add public/images/store/payments resources/js/components/store/store-footer.tsx resources/js/layouts/store-layout.tsx resources/js/__tests__/store/store-footer.test.tsx resources/js/__tests__/store-layout.test.tsx resources/css/app.css
 git commit -m "feat: reproduce WordPress storefront footer"
 ```
+
+Completed in `a7f7f72` with payment-proportion fix `46ac701`: focused footer/layout tests 9/9 and full Vitest 109/109 passed; ESLint, Prettier, TypeScript, Vite build, exact payment hashes, and `git diff --check` passed. Browser verification passed for Arabic and English at 320px, 390px, 768px, and 1440px, including reduced motion, focus, 44px targets, no document overflow, correct assets, and zero console errors. The scoped re-review found no remaining P0/P1; Task 7 retains two P2 polish items: restore WordPress-style auto-width payment-badge padding and replace the CSS-declaration regression with rendered browser ratio coverage.
 
 ---
 
@@ -902,6 +906,8 @@ Expected: any newly exposed semantic gap fails before its minimal fix; otherwise
 - [ ] **Step 3: Run required design and code guards**
 
 Apply `arrange`, `adapt`, `typeset`, and `polish` against the WordPress reference. Then run `clean-code-guard` on production changes and `test-guard` on new tests. Fix only concrete findings; preserve WordPress parity.
+
+Include the two deferred Task 3 P2 items: payment badges must be auto-width with the WordPress inline padding so Visa never protrudes, and aspect-ratio verification must assert rendered browser geometry rather than exact CSS declarations.
 
 - [ ] **Step 4: Build production assets and run browser verification**
 
