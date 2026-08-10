@@ -2,6 +2,7 @@ import { Head, usePage } from '@inertiajs/react';
 
 import { CoinsConfigurator } from '@/components/configurator/coins';
 import StoreLayout from '@/layouts/store-layout';
+import { parseCoinsQuoteSchedules } from '@/lib/coins-quote-schedule';
 import type { User } from '@/types/auth';
 import type {
     CoinsAmountRules,
@@ -21,6 +22,7 @@ type StorePageProps = {
     displayCurrencies: string[];
     locale: 'ar' | 'en';
     status: CoinsAvailability;
+    quoteSchedules?: unknown;
     quoteUrl: string;
     amount: CoinsAmountRules;
     auth: { user: User | null };
@@ -44,7 +46,7 @@ export default function StoreHome() {
         displayCurrency,
         locale,
         platforms,
-        quoteUrl,
+        quoteSchedules,
         status,
         store,
         storeShell,
@@ -55,6 +57,12 @@ export default function StoreHome() {
         status !== undefined &&
         amount !== undefined &&
         platforms !== undefined;
+    const schedules = parseCoinsQuoteSchedules(
+        quoteSchedules,
+        displayCurrency,
+        amount,
+        platforms,
+    );
 
     return (
         <StoreLayout
@@ -136,7 +144,7 @@ export default function StoreHome() {
                                     cart={coinsCart}
                                     locale={locale}
                                     platforms={platforms}
-                                    quoteUrl={quoteUrl}
+                                    quoteSchedules={schedules}
                                     translations={store}
                                 />
                             ) : (

@@ -1,5 +1,4 @@
 import {
-    act,
     cleanup,
     fireEvent,
     render,
@@ -183,6 +182,66 @@ const platforms = [
     },
 ] as const;
 
+function quoteSchedule(
+    platform: 'playstation' | 'pc',
+    delivery: 'normal' | 'fast' | null,
+    maximum: number,
+    amountMinorFor: (quantity: number) => number,
+    displayCurrency = 'SAR',
+) {
+    const minimum = 50_000;
+    const increment = 10_000;
+    const quantities = Array.from(
+        { length: (maximum - minimum) / increment + 1 },
+        (_, index) => minimum + index * increment,
+    );
+
+    return {
+        delivery,
+        displayCurrency,
+        displayTotalsMinor: quantities.map(amountMinorFor),
+        increment,
+        market: platform === 'pc' ? 'pc' : 'console',
+        maximum,
+        minimum,
+        platform,
+        pricedAt: '2026-08-10T12:00:00+00:00',
+        priceVersion: 1,
+        productId: '01K00000000000000000000000',
+        totalsHalalah: quantities.map(amountMinorFor),
+        variantId:
+            platform === 'pc'
+                ? '01K00000000000000000000001'
+                : '01K00000000000000000000002',
+    };
+}
+
+function quoteSchedules(displayCurrency = 'SAR') {
+    return {
+        pc: quoteSchedule(
+            'pc',
+            null,
+            2_000_000,
+            (quantity) => quantity,
+            displayCurrency,
+        ),
+        'playstation:fast': quoteSchedule(
+            'playstation',
+            'fast',
+            20_000_000,
+            (quantity) => quantity + 200_000,
+            displayCurrency,
+        ),
+        'playstation:normal': quoteSchedule(
+            'playstation',
+            'normal',
+            2_000_000,
+            (quantity) => quantity + 100_000,
+            displayCurrency,
+        ),
+    };
+}
+
 function availableProps() {
     return {
         amount: {
@@ -203,6 +262,7 @@ function availableProps() {
         displayCurrency: 'SAR',
         locale: 'en',
         platforms,
+        quoteSchedules: quoteSchedules(),
         quoteUrl: '/en/coins/quote',
         status: 'available',
         store,
@@ -263,58 +323,6 @@ function availableProps() {
     };
 }
 
-function quoteResponse(
-    amountHalalah: number,
-    platform: 'playstation' | 'pc' = 'pc',
-    quantity = 50_000,
-    delivery: 'normal' | 'fast' | null = platform === 'pc' ? null : 'fast',
-    displayAmountMinor = amountHalalah,
-    displayCurrency = 'SAR',
-): Response {
-    return new Response(
-        JSON.stringify({
-            data: {
-                delivery,
-                market: platform === 'pc' ? 'pc' : 'console',
-                platform,
-                pricedAt: '2026-08-09T12:00:00Z',
-                productId: '01K00000000000000000000000',
-                quantity,
-                displayTotal: {
-                    amountMinor: displayAmountMinor,
-                    currency: displayCurrency,
-                },
-                total: {
-                    amountHalalah,
-                    currency: 'SAR',
-                },
-                variantId: '01K00000000000000000000001',
-            },
-        }),
-        {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200,
-        },
-    );
-}
-
-function quoteResponseForRequest(
-    input: RequestInfo | URL,
-    amountHalalah = 600,
-): Response {
-    const url = new URL(String(input), 'https://arab-ut.test');
-    const platform = url.searchParams.get('platform') as 'playstation' | 'pc';
-    const delivery = url.searchParams.get('delivery') as
-        'normal' | 'fast' | null;
-
-    return quoteResponse(
-        amountHalalah,
-        platform,
-        Number(url.searchParams.get('quantity')),
-        delivery,
-    );
-}
-
 function selectPlatform(label: string) {
     fireEvent.click(screen.getByRole('radio', { name: label }));
     fireEvent.click(
@@ -330,25 +338,11 @@ function selectConsoleDelivery(label: 'Normal' | 'Fast') {
     );
 }
 
-function deferred<T>() {
-    let resolve!: (value: T) => void;
-    const promise = new Promise<T>((resolver) => {
-        resolve = resolver;
-    });
-
-    return { promise, resolve };
-}
-
 beforeEach(() => {
     mockPage.props = availableProps();
     mockPage.url = '/en';
     vi.useFakeTimers();
-    vi.stubGlobal(
-        'fetch',
-        vi.fn((input: RequestInfo | URL) =>
-            Promise.resolve(quoteResponseForRequest(input)),
-        ),
-    );
+    vi.stubGlobal('fetch', vi.fn());
 });
 
 afterEach(() => {
@@ -359,6 +353,28 @@ afterEach(() => {
 });
 
 describe('Coins homepage', () => {
+    it('shows exact schedule totals immediately without requesting another quote', () => {
+        const fetchMock = vi.fn();
+
+        vi.stubGlobal('fetch', fetchMock);
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        expect(
+            screen.getByText((text) => text.includes('500.00')),
+        ).toBeVisible();
+
+        fireEvent.click(screen.getByRole('button', { name: '500K' }));
+
+        expect(
+            screen.getByText((text) => text.includes('5,000.00')),
+        ).toBeVisible();
+        expect(
+            screen.queryByText(store.quote.refreshing),
+        ).not.toBeInTheDocument();
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it('renders the exact hero copy, proof, and primary Coins link', () => {
         render(<StoreHome />);
 
@@ -470,7 +486,7 @@ describe('Coins homepage', () => {
         },
     );
 
-    it('shows the WordPress delivery annotations and amount quote footer', async () => {
+    it('shows the WordPress delivery annotations and amount quote footer', () => {
         render(<StoreHome />);
         selectPlatform('PS / Xbox');
 
@@ -498,11 +514,9 @@ describe('Coins homepage', () => {
 
         expect(screen.getByText('Enter the amount you want.')).toBeVisible();
 
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
+        expect(
+            screen.getByText((text) => text.includes('2,500.00')),
+        ).toBeVisible();
         const quoteResult = document.querySelector(
             '.coins-quote-panel__result',
         );
@@ -738,7 +752,7 @@ describe('Coins homepage', () => {
         { direction: 'ltr' as const, locale: 'en' as const },
     ])(
         'renders only Latin numeric digits in the $locale customer surface',
-        async ({ direction, locale }) => {
+        ({ direction, locale }) => {
             mockPage.props = {
                 ...availableProps(),
                 direction,
@@ -748,17 +762,13 @@ describe('Coins homepage', () => {
             render(<StoreHome />);
             selectPlatform('PC');
 
-            await act(async () => {
-                await vi.advanceTimersByTimeAsync(300);
-            });
-
             const amountInput = screen.getByRole('textbox', {
                 name: store.amount_copy.label,
             });
             const customerSurface = document.querySelector('.store-shell');
 
             expect(amountInput).toHaveValue('50,000');
-            expect(customerSurface?.textContent).toContain('6.00');
+            expect(customerSurface?.textContent).toContain('500.00');
             expect(customerSurface?.textContent).toContain('SAR');
             expect(
                 `${amountInput.getAttribute('value') ?? ''} ${customerSurface?.textContent ?? ''}`,
@@ -880,11 +890,8 @@ describe('Coins homepage', () => {
         expect(amountInput).toHaveValue('2,000,000');
     });
 
-    it('requests immediately for every valid range change', async () => {
-        const fetchMock = vi.fn((input: RequestInfo | URL) =>
-            Promise.resolve(quoteResponseForRequest(input)),
-        );
-
+    it('updates every valid range change locally without a quote request', () => {
+        const fetchMock = vi.fn();
         vi.stubGlobal('fetch', fetchMock);
         render(<StoreHome />);
         selectPlatform('PC');
@@ -896,12 +903,13 @@ describe('Coins homepage', () => {
         fireEvent.change(range, { target: { value: '500000' } });
         fireEvent.change(range, { target: { value: '1000000' } });
 
-        expect(fetchMock).toHaveBeenCalledTimes(4);
-        const request = new URL(
-            String(fetchMock.mock.calls[3][0]),
-            'https://arab-ut.test',
-        );
-        expect(request.searchParams.get('quantity')).toBe('1000000');
+        expect(
+            screen.getByText((text) => text.includes('10,000.00')),
+        ).toBeVisible();
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(
+            screen.queryByText(store.quote.refreshing),
+        ).not.toBeInTheDocument();
     });
 
     it('keeps comma-grouped Latin digits while editing from every amount control', () => {
@@ -972,26 +980,21 @@ describe('Coins homepage', () => {
         expect(amountInput.selectionEnd).toBe(3);
     });
 
-    it('renders the page-selected EUR display total instead of authoritative SAR', async () => {
-        mockPage.props = { ...availableProps(), displayCurrency: 'EUR' };
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(() =>
-                Promise.resolve(
-                    quoteResponse(600, 'pc', 50_000, null, 137, 'EUR'),
-                ),
-            ),
-        );
+    it('renders the page-selected EUR schedule total instead of authoritative SAR', () => {
+        mockPage.props = {
+            ...availableProps(),
+            displayCurrency: 'EUR',
+            quoteSchedules: quoteSchedules('EUR'),
+        };
 
         render(<StoreHome />);
         selectPlatform('PC');
-        await act(async () => await Promise.resolve());
 
         expect(
-            screen.getByText((text) => text.includes('1.37')),
+            screen.getByText((text) => text.includes('500.00')),
         ).toHaveTextContent('EUR');
         expect(
-            screen.queryByText((text) => text.includes('6.00')),
+            screen.queryByText((text) => text.includes('SAR')),
         ).not.toBeInTheDocument();
     });
 
@@ -1017,33 +1020,20 @@ describe('Coins homepage', () => {
         expect(screen.getByRole('radio', { name: 'Fast' })).toBeChecked();
     });
 
-    it.each(['typing', 'slider', 'chip', 'adjustment'] as const)(
-        'keeps the successful price visible while %s refreshes its quote',
-        async (interaction) => {
-            const refreshedQuote = deferred<Response>();
-            let requestCount = 0;
+    it.each([
+        'typing',
+        'slider',
+        'keyboard slider',
+        'chip',
+        'adjustment',
+    ] as const)(
+        'replaces the visible price synchronously for %s without refreshing',
+        (interaction) => {
+            const fetchMock = vi.fn();
 
-            vi.stubGlobal(
-                'fetch',
-                vi.fn(() => {
-                    requestCount += 1;
-
-                    return requestCount === 1
-                        ? Promise.resolve(quoteResponse(600, 'pc', 50_000))
-                        : refreshedQuote.promise;
-                }),
-            );
-
+            vi.stubGlobal('fetch', fetchMock);
             render(<StoreHome />);
             selectPlatform('PC');
-
-            await act(async () => {
-                await vi.advanceTimersByTimeAsync(300);
-            });
-
-            expect(
-                screen.getByText((text) => text.includes('6.00')),
-            ).toBeVisible();
 
             if (interaction === 'typing') {
                 fireEvent.change(
@@ -1052,13 +1042,19 @@ describe('Coins homepage', () => {
                     }),
                     { target: { value: '100000' } },
                 );
-            } else if (interaction === 'slider') {
-                fireEvent.change(
-                    screen.getByRole('slider', {
-                        name: store.amount_copy.slider_label,
-                    }),
-                    { target: { value: '100000' } },
-                );
+            } else if (
+                interaction === 'slider' ||
+                interaction === 'keyboard slider'
+            ) {
+                const slider = screen.getByRole('slider', {
+                    name: store.amount_copy.slider_label,
+                });
+
+                if (interaction === 'keyboard slider') {
+                    fireEvent.keyDown(slider, { key: 'ArrowRight' });
+                }
+
+                fireEvent.change(slider, { target: { value: '100000' } });
             } else if (interaction === 'chip') {
                 fireEvent.click(screen.getByRole('button', { name: '100K' }));
             } else {
@@ -1066,385 +1062,72 @@ describe('Coins homepage', () => {
             }
 
             expect(
-                screen.getByText((text) => text.includes('6.00')),
+                screen.getByText((text) => text.includes('1,000.00')),
             ).toBeVisible();
-            const refreshingStatus = screen.getByText(store.quote.refreshing);
-            const retainedPrice = screen.getByText((text) =>
-                text.includes('6.00'),
-            );
-
-            expect(refreshingStatus).toBeVisible();
-            expect(refreshingStatus.closest('[aria-busy="true"]')).toBeNull();
-            expect(retainedPrice.closest('[aria-busy="true"]')).not.toBeNull();
-
-            await act(async () => {
-                await vi.advanceTimersByTimeAsync(300);
-            });
-
             expect(
-                screen.getByText((text) => text.includes('6.00')),
-            ).toBeVisible();
-            expect(screen.getByText(store.quote.refreshing)).toBeVisible();
-
-            await act(async () => {
-                refreshedQuote.resolve(quoteResponse(700, 'pc', 100_000));
-                await Promise.resolve();
-            });
-
-            expect(
-                screen.getByText((text) => text.includes('7.00')),
-            ).toBeVisible();
+                screen.queryByText((text) => text.includes('500.00')),
+            ).not.toBeInTheDocument();
             expect(
                 screen.queryByText(store.quote.refreshing),
             ).not.toBeInTheDocument();
+            expect(fetchMock).not.toHaveBeenCalled();
         },
     );
 
-    it('clears the previous price when a refresh fails closed', async () => {
-        let requestCount = 0;
-
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(() => {
-                requestCount += 1;
-
-                return Promise.resolve(
-                    requestCount === 1
-                        ? quoteResponse(600, 'pc', 50_000)
-                        : new Response(
-                              JSON.stringify({
-                                  error: {
-                                      code: 'coins_pricing_unavailable',
-                                      message: 'Unavailable',
-                                  },
-                              }),
-                              { status: 503 },
-                          ),
-                );
-            }),
-        );
-
+    it('retains the last exact total only while invalid text is being edited', () => {
         render(<StoreHome />);
         selectPlatform('PC');
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
         });
 
-        fireEvent.click(screen.getByRole('button', { name: '100K' }));
-        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
+        fireEvent.focus(amountInput);
+        fireEvent.change(amountInput, { target: { value: '55555' } });
 
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByRole('alert')).toHaveTextContent(
-            store.quote.unavailable,
-        );
         expect(
-            screen.queryByText((text) => text.includes('6.00')),
+            screen.getByText((text) => text.includes('500.00')),
+        ).toBeVisible();
+        expect(
+            screen.queryByRole('button', { name: store.actions.continue }),
         ).not.toBeInTheDocument();
+
+        fireEvent.blur(amountInput);
+
+        expect(amountInput).toHaveValue('60,000');
+        expect(
+            screen.getByText((text) => text.includes('600.00')),
+        ).toBeVisible();
     });
 
-    it('clears the previous price when typed input becomes invalid', async () => {
+    it('fails only a malformed selected mode closed without carrying the PC total', () => {
+        const malformedSchedules = quoteSchedules();
+
+        malformedSchedules['playstation:fast'].totalsHalalah = [1];
+        mockPage.props = {
+            ...availableProps(),
+            quoteSchedules: malformedSchedules,
+        };
         render(<StoreHome />);
         selectPlatform('PC');
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
-        fireEvent.change(
-            screen.getByRole('textbox', {
-                name: store.amount_copy.label,
-            }),
-            { target: { value: '55555' } },
-        );
-
-        expect(screen.getByRole('alert')).toHaveTextContent(
-            store.quote.validation_error,
-        );
         expect(
-            screen.queryByText((text) => text.includes('6.00')),
-        ).not.toBeInTheDocument();
-    });
+            screen.getByText((text) => text.includes('500.00')),
+        ).toBeVisible();
 
-    it('never carries a PC price into a new console selection', async () => {
-        const consoleQuote = deferred<Response>();
-        let requestCount = 0;
-
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(() => {
-                requestCount += 1;
-
-                return requestCount === 1
-                    ? Promise.resolve(quoteResponse(600, 'pc', 50_000))
-                    : consoleQuote.promise;
-            }),
-        );
-
-        render(<StoreHome />);
-        selectPlatform('PC');
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
         fireEvent.click(
             screen.getByRole('button', { name: store.actions.back }),
         );
-        fireEvent.click(screen.getByRole('radio', { name: 'PS / Xbox' }));
-        fireEvent.click(
-            screen.getByRole('button', { name: store.actions.continue }),
-        );
+        selectPlatform('PS / Xbox');
         fireEvent.click(screen.getByRole('radio', { name: 'Fast' }));
         fireEvent.click(
             screen.getByRole('button', { name: store.actions.continue }),
         );
 
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            store.quote.unavailable,
+        );
         expect(
-            screen.queryByText((text) => text.includes('6.00')),
+            screen.queryByText((text) => text.includes('500.00')),
         ).not.toBeInTheDocument();
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByText(store.quote.loading)).toBeVisible();
-        expect(
-            screen.queryByText((text) => text.includes('6.00')),
-        ).not.toBeInTheDocument();
-    });
-
-    it.each([
-        { destination: 'Normal', path: 'delivery' as const },
-        { destination: 'PC', path: 'platform' as const },
-    ])(
-        'clamps fast console to $destination before requesting its quote',
-        async ({ destination, path }) => {
-            const fetchMock = vi.fn((input: RequestInfo | URL) =>
-                Promise.resolve(quoteResponseForRequest(input)),
-            );
-
-            vi.stubGlobal('fetch', fetchMock);
-            render(<StoreHome />);
-            selectConsoleDelivery('Fast');
-            fireEvent.click(screen.getByRole('button', { name: '5M' }));
-
-            fireEvent.click(
-                screen.getByRole('button', { name: store.actions.back }),
-            );
-
-            if (path === 'platform') {
-                fireEvent.click(
-                    screen.getByRole('button', {
-                        name: store.actions.back,
-                    }),
-                );
-            }
-
-            fireEvent.click(screen.getByRole('radio', { name: destination }));
-            fireEvent.click(
-                screen.getByRole('button', {
-                    name: store.actions.continue,
-                }),
-            );
-
-            await act(async () => {
-                await vi.advanceTimersByTimeAsync(300);
-            });
-
-            expect(fetchMock).toHaveBeenCalledTimes(3);
-            const request = new URL(
-                String(fetchMock.mock.calls[2][0]),
-                'https://arab-ut.test',
-            );
-            expect(request.searchParams.get('quantity')).toBe('2000000');
-        },
-    );
-
-    it('keeps an active amount preset as a safe no-op during debounce and after success', async () => {
-        const fetchMock = vi.fn((input: RequestInfo | URL) =>
-            Promise.resolve(quoteResponseForRequest(input)),
-        );
-
-        vi.stubGlobal('fetch', fetchMock);
-        render(<StoreHome />);
-        selectPlatform('PC');
-
-        const activePreset = screen.getByRole('button', {
-            name: '50K',
-            pressed: true,
-        });
-
-        fireEvent.click(activePreset);
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-
-        fireEvent.click(activePreset);
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(screen.queryByText(store.quote.loading)).not.toBeInTheDocument();
-    });
-
-    it('keeps the quote lifecycle alive when an unchanged amount is blurred', async () => {
-        const fetchMock = vi.fn((input: RequestInfo | URL) =>
-            Promise.resolve(quoteResponseForRequest(input)),
-        );
-
-        vi.stubGlobal('fetch', fetchMock);
-        render(<StoreHome />);
-        selectPlatform('PC');
-
-        const amountInput = screen.getByRole('textbox', {
-            name: store.amount_copy.label,
-        });
-        fireEvent.focus(amountInput);
-        fireEvent.blur(amountInput);
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-
-        fireEvent.focus(amountInput);
-        fireEvent.blur(amountInput);
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(screen.queryByText(store.quote.loading)).not.toBeInTheDocument();
-    });
-
-    it.each(['50,000', '050000'])(
-        'normalizes an equivalent %s paste without restarting the quote lifecycle',
-        async (equivalentInput) => {
-            const fetchMock = vi.fn((input: RequestInfo | URL) =>
-                Promise.resolve(quoteResponseForRequest(input)),
-            );
-
-            vi.stubGlobal('fetch', fetchMock);
-            render(<StoreHome />);
-            selectPlatform('PC');
-
-            const amountInput = screen.getByRole('textbox', {
-                name: store.amount_copy.label,
-            });
-            fireEvent.focus(amountInput);
-            fireEvent.change(amountInput, {
-                target: { value: equivalentInput },
-            });
-            expect(amountInput).toHaveValue('50,000');
-            fireEvent.blur(amountInput);
-
-            await act(async () => {
-                await vi.advanceTimersByTimeAsync(300);
-            });
-
-            expect(
-                screen.getByText((text) => text.includes('6.00')),
-            ).toBeVisible();
-            expect(fetchMock).toHaveBeenCalledTimes(1);
-
-            fireEvent.focus(amountInput);
-            fireEvent.change(amountInput, {
-                target: { value: equivalentInput },
-            });
-            expect(amountInput).toHaveValue('50,000');
-            fireEvent.blur(amountInput);
-
-            await act(async () => {
-                await vi.advanceTimersByTimeAsync(300);
-            });
-
-            expect(
-                screen.getByText((text) => text.includes('6.00')),
-            ).toBeVisible();
-            expect(fetchMock).toHaveBeenCalledTimes(1);
-            expect(
-                screen.queryByText(store.quote.loading),
-            ).not.toBeInTheDocument();
-        },
-    );
-
-    it('keeps the quote lifecycle alive at the minimum adjustment bound', async () => {
-        const fetchMock = vi.fn((input: RequestInfo | URL) =>
-            Promise.resolve(quoteResponseForRequest(input)),
-        );
-
-        vi.stubGlobal('fetch', fetchMock);
-        render(<StoreHome />);
-        selectPlatform('PC');
-
-        const decrement = screen.getByRole('button', { name: '-1M' });
-        fireEvent.click(decrement);
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-
-        fireEvent.click(decrement);
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(screen.queryByText(store.quote.loading)).not.toBeInTheDocument();
-    });
-
-    it('keeps the quote lifecycle alive at the maximum adjustment bound', async () => {
-        const fetchMock = vi.fn((input: RequestInfo | URL) =>
-            Promise.resolve(quoteResponseForRequest(input)),
-        );
-
-        vi.stubGlobal('fetch', fetchMock);
-        render(<StoreHome />);
-        selectPlatform('PC');
-
-        fireEvent.click(screen.getByRole('button', { name: '1M' }));
-        const increment = screen.getByRole('button', { name: '+1M' });
-        fireEvent.click(increment);
-        fireEvent.click(increment);
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
-        expect(fetchMock).toHaveBeenCalledTimes(3);
-
-        fireEvent.click(increment);
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
-        expect(fetchMock).toHaveBeenCalledTimes(3);
-        expect(screen.queryByText(store.quote.loading)).not.toBeInTheDocument();
     });
 
     it('moves focus through console steps and back to each step heading', () => {
@@ -1482,13 +1165,9 @@ describe('Coins homepage', () => {
         expect(screen.getByText(store.amount_copy.title)).toHaveFocus();
     });
 
-    it('uses the canonical playstation parameter for the combined console card and never sends xbox', async () => {
-        const fetchMock = vi.fn((input: RequestInfo | URL) =>
-            Promise.resolve(quoteResponseForRequest(input)),
-        );
-
+    it('uses the canonical playstation schedule for the combined console card', () => {
+        const fetchMock = vi.fn();
         vi.stubGlobal('fetch', fetchMock);
-
         render(<StoreHome />);
         selectPlatform('PS / Xbox');
         fireEvent.click(screen.getByRole('radio', { name: 'Normal' }));
@@ -1496,39 +1175,16 @@ describe('Coins homepage', () => {
             screen.getByRole('button', { name: store.actions.continue }),
         );
 
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        const urls = fetchMock.mock.calls.map(
-            ([input]) => new URL(String(input), 'https://arab-ut.test'),
-        );
-
-        expect(urls).toHaveLength(1);
-        expect(urls[0].searchParams.get('platform')).toBe('playstation');
-        expect(urls[0].toString()).not.toContain('xbox');
+        expect(
+            screen.getByText((text) => text.includes('1,500.00')),
+        ).toBeVisible();
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('removes delivery from the PC flow and requests a quote without a delivery parameter', async () => {
-        vi.stubGlobal(
-            'fetch',
-            vi.fn((input: RequestInfo | URL) => {
-                const url = new URL(String(input), 'https://arab-ut.test');
+    it('removes delivery from the PC flow and selects the PC schedule locally', () => {
+        const fetchMock = vi.fn();
 
-                if (url.searchParams.has('delivery')) {
-                    return Promise.resolve(
-                        new Response(
-                            JSON.stringify({
-                                message: 'Delivery is prohibited.',
-                            }),
-                            { status: 422 },
-                        ),
-                    );
-                }
-
-                return Promise.resolve(quoteResponse(600));
-            }),
-        );
+        vi.stubGlobal('fetch', fetchMock);
 
         render(<StoreHome />);
         selectPlatform('PC');
@@ -1544,11 +1200,10 @@ describe('Coins homepage', () => {
             }),
         ).toHaveAttribute('max', '2000000');
 
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByText((text) => text.includes('6.00'))).toBeVisible();
+        expect(
+            screen.getByText((text) => text.includes('500.00')),
+        ).toBeVisible();
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('shows console delivery before amount and exposes the approved limits', () => {
@@ -1635,84 +1290,6 @@ describe('Coins homepage', () => {
         ).toHaveValue('2,000,000');
     });
 
-    it('ignores a stale quote response after aborting the previous request', async () => {
-        const first = deferred<Response>();
-        const second = deferred<Response>();
-        let requestIndex = 0;
-        const signals: AbortSignal[] = [];
-
-        vi.stubGlobal(
-            'fetch',
-            vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
-                requestIndex += 1;
-
-                if (init?.signal instanceof AbortSignal) {
-                    signals.push(init.signal);
-                }
-
-                return requestIndex === 1 ? first.promise : second.promise;
-            }),
-        );
-
-        render(<StoreHome />);
-        selectPlatform('PC');
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        fireEvent.change(
-            screen.getByRole('textbox', { name: store.amount_copy.label }),
-            { target: { value: '100000' } },
-        );
-
-        expect(signals[0]).toBeDefined();
-        expect(signals[0].aborted).toBe(true);
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-            second.resolve(quoteResponse(700, 'pc', 100_000));
-            await Promise.resolve();
-        });
-
-        expect(screen.getByText((text) => text.includes('7.00'))).toBeVisible();
-
-        await act(async () => {
-            first.resolve(quoteResponse(400));
-            await Promise.resolve();
-        });
-
-        expect(
-            screen.queryByText((text) => text.includes('4.00')),
-        ).not.toBeInTheDocument();
-        expect(screen.getByText((text) => text.includes('7.00'))).toBeVisible();
-    });
-
-    it('fails closed when a 200 quote does not match the requested selection', async () => {
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(() =>
-                Promise.resolve(
-                    quoteResponse(600, 'playstation', 50_000, 'normal'),
-                ),
-            ),
-        );
-
-        render(<StoreHome />);
-        selectPlatform('PC');
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
-
-        expect(screen.getByRole('alert')).toHaveTextContent(
-            store.quote.unavailable,
-        );
-        expect(
-            screen.queryByText((text) => text.includes('6.00')),
-        ).not.toBeInTheDocument();
-    });
-
     it('fails closed when homepage pricing is unavailable', () => {
         mockPage.props = {
             ...availableProps(),
@@ -1728,36 +1305,20 @@ describe('Coins homepage', () => {
         expect(screen.queryAllByRole('radio')).toHaveLength(0);
     });
 
-    it('shows the localized unavailable quote state on a fail-closed response', async () => {
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(() =>
-                Promise.resolve(
-                    new Response(
-                        JSON.stringify({
-                            error: {
-                                code: 'coins_pricing_unavailable',
-                                message: 'Unavailable',
-                            },
-                        }),
-                        { status: 503 },
-                    ),
-                ),
-            ),
-        );
+    it('shows the localized unavailable state when schedules are missing', () => {
+        mockPage.props = {
+            ...availableProps(),
+            quoteSchedules: undefined,
+        };
 
         render(<StoreHome />);
         selectPlatform('PC');
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
-        });
 
         expect(screen.getByRole('alert')).toHaveTextContent(
             store.quote.unavailable,
         );
         expect(
-            screen.queryByText((text) => text.includes('6.00')),
+            screen.queryByText((text) => text.includes('500.00')),
         ).not.toBeInTheDocument();
     });
 });

@@ -153,6 +153,56 @@ const platforms = [
     },
 ] as const;
 
+function scheduleTotals(maximum: number): number[] {
+    const length = (maximum - 50_000) / 10_000 + 1;
+
+    return Array.from({ length }, (_, index) => 600 + index * 100);
+}
+
+function quoteSchedules() {
+    const shared = {
+        displayCurrency: 'SAR',
+        increment: 10_000,
+        minimum: 50_000,
+        pricedAt: '2026-08-10T12:00:00Z',
+        priceVersion: 1,
+        productId: '01K00000000000000000000000',
+    };
+
+    return {
+        pc: {
+            ...shared,
+            delivery: null,
+            displayTotalsMinor: scheduleTotals(2_000_000),
+            market: 'pc',
+            maximum: 2_000_000,
+            platform: 'pc',
+            totalsHalalah: scheduleTotals(2_000_000),
+            variantId: '01K00000000000000000000001',
+        },
+        'playstation:fast': {
+            ...shared,
+            delivery: 'fast',
+            displayTotalsMinor: scheduleTotals(20_000_000),
+            market: 'console',
+            maximum: 20_000_000,
+            platform: 'playstation',
+            totalsHalalah: scheduleTotals(20_000_000),
+            variantId: '01K00000000000000000000002',
+        },
+        'playstation:normal': {
+            ...shared,
+            delivery: 'normal',
+            displayTotalsMinor: scheduleTotals(2_000_000),
+            market: 'console',
+            maximum: 2_000_000,
+            platform: 'playstation',
+            totalsHalalah: scheduleTotals(2_000_000),
+            variantId: '01K00000000000000000000003',
+        },
+    };
+}
+
 function pageProps(authenticated = true) {
     return {
         amount: {
@@ -175,6 +225,7 @@ function pageProps(authenticated = true) {
         displayCurrency: 'SAR',
         locale: 'en',
         platforms,
+        quoteSchedules: quoteSchedules(),
         quoteUrl: '/en/coins/quote',
         status: 'available',
         store,
@@ -303,7 +354,7 @@ afterEach(() => {
 });
 
 describe('Coins credentials flow', () => {
-    it('keeps a resumed credentials step gated until its authoritative quote is ready', () => {
+    it('enables a resumed credentials step from its authoritative schedule', () => {
         mockPage.props = {
             ...pageProps(),
             coinsCart: {
@@ -315,14 +366,13 @@ describe('Coins credentials flow', () => {
                 },
             },
         };
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(() => new Promise(() => undefined)),
-        );
+        const fetchMock = vi.fn(() => new Promise(() => undefined));
+        vi.stubGlobal('fetch', fetchMock);
 
         render(<StoreHome />);
 
-        expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('gates guests at the validated resume URL with safe choices only', async () => {

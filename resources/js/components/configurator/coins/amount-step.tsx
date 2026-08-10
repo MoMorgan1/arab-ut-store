@@ -286,7 +286,7 @@ export function AmountStep({
                 state={quoteState}
                 translations={translations}
             />
-            {quoteState.status === 'success' ? (
+            {isValid && quoteState.status === 'success' ? (
                 continueHref === null ? (
                     <button
                         className="coins-primary-action coins-primary-action--full"

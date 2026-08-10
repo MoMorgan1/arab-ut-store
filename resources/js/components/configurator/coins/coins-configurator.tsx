@@ -1,7 +1,8 @@
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
 import { CoinsCartRequestError, submitCoinsCart } from '@/lib/coins-cart-api';
+import { quoteFromSchedule } from '@/lib/coins-quote-schedule';
 import type {
     CoinsAmountRules,
     CoinsCartConfig,
@@ -10,6 +11,8 @@ import type {
     CoinsDeliveryValue,
     CoinsPlatformOption,
     CoinsPlatformValue,
+    CoinsQuoteSchedules,
+    CoinsQuoteViewState,
     CoinsStoreTranslations,
 } from '@/types/coins';
 
@@ -27,7 +30,6 @@ import { PlatformStep } from './platform-step';
 import { ProgressRail } from './progress-rail';
 import type { CoinsStep } from './progress-rail';
 import { SummaryStep } from './summary-step';
-import { useCoinsQuoteRequest } from './use-coins-quote-request';
 
 type CoinsConfiguratorProps = {
     amount: CoinsAmountRules;
@@ -35,7 +37,7 @@ type CoinsConfiguratorProps = {
     cart: CoinsCartConfig;
     locale: 'ar' | 'en';
     platforms: CoinsPlatformOption[];
-    quoteUrl: string;
+    quoteSchedules: CoinsQuoteSchedules;
     translations: CoinsStoreTranslations;
 };
 
@@ -45,10 +47,9 @@ export function CoinsConfigurator({
     cart,
     locale,
     platforms,
-    quoteUrl,
+    quoteSchedules,
     translations,
 }: CoinsConfiguratorProps) {
-    const { displayCurrency } = usePage<{ displayCurrency: string }>().props;
     const [state, dispatch] = useReducer(
         coinsConfiguratorReducer,
         createInitialConfiguratorState(amount.minimum, cart.initialSelection),
@@ -97,19 +98,45 @@ export function CoinsConfigurator({
     const isPc = selectedPlatform?.value === 'pc';
     const deliveryIsValid = isPc || selectedDelivery !== null;
     const requestDelivery = isPc ? null : (selectedDelivery?.value ?? null);
-    const invalidateQuoteRequest = useCoinsQuoteRequest({
-        active:
-            (state.step === 'amount' || state.step === 'credentials') &&
-            selectedPlatform !== null &&
-            deliveryIsValid &&
-            quantityIsValid,
-        delivery: requestDelivery,
-        dispatch,
-        expectedDisplayCurrency: displayCurrency,
-        platform: selectedPlatform?.value ?? null,
+    const selectedSchedule = useMemo(() => {
+        if (selectedPlatform?.value === 'pc') {
+            return quoteSchedules.pc;
+        }
+
+        if (
+            selectedPlatform?.value !== 'playstation' ||
+            requestDelivery === null
+        ) {
+            return null;
+        }
+
+        return quoteSchedules[`playstation:${requestDelivery}`];
+    }, [quoteSchedules, requestDelivery, selectedPlatform?.value]);
+    const quoteState = useMemo<CoinsQuoteViewState>(() => {
+        if (selectedPlatform === null || !deliveryIsValid) {
+            return { status: 'idle' };
+        }
+
+        if (selectedSchedule === null) {
+            return { status: 'unavailable' };
+        }
+
+        const selectedQuantity = quantityIsValid
+            ? quantity
+            : state.lastValidQuantity;
+        const quote = quoteFromSchedule(selectedSchedule, selectedQuantity);
+
+        return quote === null
+            ? { status: 'unavailable' }
+            : { quote, status: 'success' };
+    }, [
+        deliveryIsValid,
         quantity,
-        quoteUrl,
-    });
+        quantityIsValid,
+        selectedPlatform,
+        selectedSchedule,
+        state.lastValidQuantity,
+    ]);
 
     useEffect(() => {
         if (pendingFocus.current !== state.step) {
@@ -146,7 +173,6 @@ export function CoinsConfigurator({
     }
 
     function navigateTo(step: CoinsStep) {
-        invalidateQuoteRequest();
         pendingFocus.current = step;
         dispatch({ step, type: 'navigated' });
     }
@@ -165,7 +191,6 @@ export function CoinsConfigurator({
             return;
         }
 
-        invalidateQuoteRequest();
         beginNewSubmission();
         dispatch({
             clampMessage: translations.amount_copy.clamped,
@@ -187,7 +212,6 @@ export function CoinsConfigurator({
             return;
         }
 
-        invalidateQuoteRequest();
         beginNewSubmission();
         dispatch({
             clampMessage: translations.amount_copy.clamped,
@@ -253,7 +277,6 @@ export function CoinsConfigurator({
             return;
         }
 
-        invalidateQuoteRequest();
         beginNewSubmission();
         dispatch({
             type: 'quantity-changed',
@@ -279,7 +302,6 @@ export function CoinsConfigurator({
             return;
         }
 
-        invalidateQuoteRequest();
         beginNewSubmission();
         dispatch({
             type: 'quantity-committed',
@@ -349,10 +371,7 @@ export function CoinsConfigurator({
     }
 
     async function addToCart() {
-        const quote =
-            state.quoteState.status === 'success'
-                ? state.quoteState.quote
-                : null;
+        const quote = quoteState.status === 'success' ? quoteState.quote : null;
 
         if (
             pendingSubmission.current ||
@@ -478,7 +497,7 @@ export function CoinsConfigurator({
                     onSwitchToFast={switchToFast}
                     quantity={state.lastValidQuantity}
                     quantityInput={state.quantityInput}
-                    quoteState={state.quoteState}
+                    quoteState={quoteState}
                     translations={translations}
                 />
             ) : null}
@@ -492,11 +511,11 @@ export function CoinsConfigurator({
                     onCancel={clearCredentials}
                     onChange={updateCredentials}
                     onContinue={() => {
-                        if (state.quoteState.status === 'success') {
+                        if (quoteState.status === 'success') {
                             navigateTo('summary');
                         }
                     }}
-                    quoteState={state.quoteState}
+                    quoteState={quoteState}
                     rejectedFields={rejectedCredentialFields}
                     translations={translations}
                 />
@@ -504,7 +523,7 @@ export function CoinsConfigurator({
 
             {state.step === 'summary' &&
             selectedPlatform !== null &&
-            state.quoteState.status === 'success' &&
+            quoteState.status === 'success' &&
             redirectUrl === null ? (
                 <SummaryStep
                     delivery={requestDelivery}
@@ -516,7 +535,7 @@ export function CoinsConfigurator({
                     onCancel={clearCredentials}
                     pending={pending}
                     platform={selectedPlatform.value}
-                    quote={state.quoteState.quote}
+                    quote={quoteState.quote}
                     retrying={retrying}
                     translations={translations}
                 />

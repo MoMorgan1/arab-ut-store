@@ -160,6 +160,7 @@ export type CoinsStoreTranslations = {
 export type CoinsQuote = {
     productId: string;
     variantId: string;
+    priceVersion?: number;
     platform: CoinsPlatformValue;
     market: 'console' | 'pc';
     delivery: CoinsDeliveryValue | null;
@@ -174,6 +175,30 @@ export type CoinsQuote = {
     };
     pricedAt: string;
 };
+
+export type CoinsQuoteSchedule = {
+    delivery: CoinsDeliveryValue | null;
+    displayCurrency: string;
+    displayTotalsMinor: number[];
+    increment: number;
+    market: 'console' | 'pc';
+    maximum: number;
+    minimum: number;
+    platform: CoinsPlatformValue;
+    pricedAt: string;
+    priceVersion: number;
+    productId: string;
+    totalsHalalah: number[];
+    variantId: string;
+};
+
+export type CoinsQuoteScheduleKey =
+    'playstation:normal' | 'playstation:fast' | 'pc';
+
+export type CoinsQuoteSchedules = Record<
+    CoinsQuoteScheduleKey,
+    CoinsQuoteSchedule | null
+>;
 
 export type CoinsQuoteViewState =
     | { status: 'idle' }
