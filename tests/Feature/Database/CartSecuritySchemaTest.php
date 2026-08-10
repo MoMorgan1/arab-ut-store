@@ -24,24 +24,77 @@ test('cart secret storage and active cart ownership have database constraints', 
     $user = User::factory()->create();
     Cart::create([
         'user_id' => $user->id,
-        'active_owner_key' => "user:{$user->id}",
         'status' => 'active',
         'currency' => 'SAR',
     ]);
 
     expect(fn () => Cart::create([
         'user_id' => $user->id,
-        'active_owner_key' => "user:{$user->id}",
         'status' => 'active',
         'currency' => 'SAR',
     ]))->toThrow(QueryException::class);
+});
+
+test('the database derives active ownership from user status and SAR currency', function () {
+    $user = User::factory()->create();
+    $now = now();
+
+    DB::table('carts')->insert([
+        'public_id' => (string) str()->ulid(),
+        'user_id' => $user->id,
+        'status' => 'active',
+        'currency' => 'SAR',
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]);
+
+    expect(DB::table('carts')->value('active_owner_key'))->toBe("user:{$user->id}");
+
+    expect(fn () => DB::table('carts')->insert([
+        'public_id' => (string) str()->ulid(),
+        'user_id' => $user->id,
+        'active_owner_key' => 'mismatched-owner',
+        'status' => 'active',
+        'currency' => 'SAR',
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]))->toThrow(QueryException::class);
+
+    DB::table('carts')->where('user_id', $user->id)->update(['status' => 'converted']);
+    expect(DB::table('carts')->value('active_owner_key'))->toBeNull();
+
+    $insertWithMismatchedKey = fn () => DB::table('carts')->insert([
+        'public_id' => (string) str()->ulid(),
+        'user_id' => $user->id,
+        'active_owner_key' => 'ignored-input',
+        'status' => 'active',
+        'currency' => 'SAR',
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]);
+
+    if (DB::connection()->getDriverName() === 'mysql') {
+        expect($insertWithMismatchedKey)->toThrow(QueryException::class);
+        DB::table('carts')->insert([
+            'public_id' => (string) str()->ulid(),
+            'user_id' => $user->id,
+            'status' => 'active',
+            'currency' => 'SAR',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+    } else {
+        $insertWithMismatchedKey();
+    }
+
+    expect(DB::table('carts')->where('status', 'active')->value('active_owner_key'))
+        ->toBe("user:{$user->id}");
 });
 
 test('cart secrets are encrypted hidden guarded and cascade with their item', function () {
     $variant = ProductVariant::factory()->create();
     $cart = Cart::create([
         'user_id' => User::factory()->create()->id,
-        'active_owner_key' => 'user:synthetic-owner',
         'status' => 'active',
         'currency' => 'SAR',
     ]);
@@ -92,7 +145,6 @@ test('purged cart secrets retain only safe nullable state', function () {
     $variant = ProductVariant::factory()->create();
     $cart = Cart::create([
         'user_id' => User::factory()->create()->id,
-        'active_owner_key' => 'user:purge-owner',
         'status' => 'active',
         'currency' => 'SAR',
     ]);

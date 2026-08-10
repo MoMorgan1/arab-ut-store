@@ -7,6 +7,7 @@ use App\Http\Controllers\Store\CoinsQuoteController;
 use App\Http\Controllers\Store\HomeController;
 use App\Http\Controllers\Store\SimpleStorePageController;
 use App\Http\Middleware\NoStore;
+use App\Http\Middleware\RequireCoinsCartJson;
 use App\Http\Middleware\ValidateCoinsCartResume;
 use Illuminate\Support\Facades\Route;
 
@@ -14,7 +15,7 @@ Route::get('/', HomeController::class)->name('home');
 Route::get('/coins/quote', CoinsQuoteController::class)->name('coins.quote');
 Route::get('/cart', CartController::class)->name('store.cart');
 Route::post('/cart/items/coins', CoinsCartController::class)
-    ->middleware([NoStore::class, 'auth', 'throttle:coins-cart'])
+    ->middleware([NoStore::class, RequireCoinsCartJson::class, 'auth', 'throttle:coins-cart'])
     ->name('cart.items.coins.store');
 Route::get('/cart/items/coins/resume', CoinsCartResumeController::class)
     ->middleware([NoStore::class, ValidateCoinsCartResume::class, 'auth'])
@@ -42,7 +43,7 @@ Route::prefix('{locale}')
         Route::get('/coins/quote', CoinsQuoteController::class)->name('localized.coins.quote');
         Route::get('/cart', CartController::class)->name('localized.store.cart');
         Route::post('/cart/items/coins', CoinsCartController::class)
-            ->middleware([NoStore::class, 'auth', 'throttle:coins-cart'])
+            ->middleware([NoStore::class, RequireCoinsCartJson::class, 'auth', 'throttle:coins-cart'])
             ->name('localized.cart.items.coins.store');
         Route::get('/cart/items/coins/resume', CoinsCartResumeController::class)
             ->middleware([NoStore::class, ValidateCoinsCartResume::class, 'auth'])

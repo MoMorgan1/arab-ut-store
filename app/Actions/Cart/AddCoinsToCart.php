@@ -121,18 +121,19 @@ final readonly class AddCoinsToCart
 
     private function activeCart(User $user): Cart
     {
-        $ownerKey = "user:{$user->id}";
         DB::table('carts')->insertOrIgnore([
             'public_id' => (string) Str::ulid(),
             'user_id' => $user->id,
-            'active_owner_key' => $ownerKey,
             'status' => 'active',
             'currency' => 'SAR',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        return Cart::where('active_owner_key', $ownerKey)->lockForUpdate()->sole();
+        return Cart::query()
+            ->activeForUser((int) $user->id)
+            ->lockForUpdate()
+            ->sole();
     }
 
     private function createCartItem(Cart $activeCart, ProductVariant $productVariant, CoinsQuote $quote): CartItem

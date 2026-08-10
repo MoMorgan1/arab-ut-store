@@ -106,6 +106,28 @@ test('guest Coins additions are unauthorized and never cached', function () {
         ->and(Cart::count())->toBe(0);
 });
 
+test('non JSON Coins additions are rejected without reflecting credentials', function (bool $authenticated, string $uri) {
+    if ($authenticated) {
+        $this->actingAs(User::factory()->create());
+    }
+
+    $response = $this->post($uri, coinsCartPayload(), [
+        'Accept' => 'text/html',
+        'Idempotency-Key' => 'non-json-key',
+    ]);
+
+    $response->assertStatus(415)->assertHeader('Content-Type', 'application/json');
+    expect($response->headers->get('Cache-Control'))->toContain('no-store')
+        ->and($response->getContent())->not->toContain('Opaque Cart Password Sentinel')
+        ->and($response->getContent())->not->toContain('81000001')
+        ->and(CartItem::count())->toBe(0);
+})->with([
+    'canonical guest' => [false, '/cart/items/coins'],
+    'canonical authenticated user' => [true, '/cart/items/coins'],
+    'localized guest' => [false, '/en/cart/items/coins'],
+    'localized authenticated user' => [true, '/en/cart/items/coins'],
+]);
+
 test('supported Coins modes create distinct safe lines with encrypted credentials', function (array $selection, int $expectedTotal) {
     $catalog = createCartCatalog();
     $user = User::factory()->create();
@@ -330,6 +352,37 @@ test('a secret write failure rolls back cart item and idempotency state', functi
         ->and(IdempotencyKey::count())->toBe(0);
 });
 
+test('unexpected debug failures return generic JSON without credential leakage', function (string $uri) {
+    if (DB::connection()->getDriverName() !== 'sqlite') {
+        $this->markTestSkipped('The real-handler failure fixture uses SQLite transaction-safe triggers.');
+    }
+
+    config()->set('app.debug', true);
+    createCartCatalog();
+    $this->actingAs(User::factory()->create());
+    DB::statement("CREATE TRIGGER fail_sensitive_route BEFORE INSERT ON cart_item_secrets BEGIN SELECT RAISE(ABORT, 'synthetic failure'); END");
+
+    $payload = json_encode(coinsCartPayload(), JSON_THROW_ON_ERROR);
+    $response = $this->call('POST', $uri, [], [], [], [
+        'CONTENT_TYPE' => 'application/json',
+        'HTTP_ACCEPT' => 'text/html',
+        'HTTP_IDEMPOTENCY_KEY' => 'debug-failure-key',
+    ], $payload);
+
+    $response->assertStatus(500)
+        ->assertHeader('Content-Type', 'application/json')
+        ->assertJsonPath('error.code', 'internal_error')
+        ->assertJsonCount(2, 'error');
+    expect($response->headers->get('Cache-Control'))->toContain('no-store')
+        ->and($response->getContent())->not->toContain('Opaque Cart Password Sentinel')
+        ->and($response->getContent())->not->toContain('81000001')
+        ->and(Cart::count())->toBe(0)
+        ->and(IdempotencyKey::count())->toBe(0);
+})->with([
+    'canonical endpoint' => '/cart/items/coins',
+    'localized endpoint' => '/en/cart/items/coins',
+]);
+
 test('Coins additions are throttled per authenticated user', function () {
     config()->set('coins.cart.rate_limit_per_minute', 1);
     createCartCatalog();
@@ -357,6 +410,28 @@ test('cart reads expose safe lines and credential reentry state only', function 
         ->missing('cart.items.0.secret'));
     expect($response->getContent())->not->toContain('Opaque Cart Password Sentinel')
         ->not->toContain('81000001');
+
+    $cartItem = CartItem::sole();
+    $cartItem->update(['configuration' => [
+        ...$cartItem->configuration,
+        'ea_password' => 'Poison Password Sentinel',
+        'backup_codes' => ['85000001'],
+        'supplier_debug' => ['token' => 'Poison Token Sentinel'],
+    ]]);
+    $poisonedRead = $this->get('/cart');
+    $poisonedRead->assertInertia(fn (Assert $page) => $page
+        ->where('cart.items.0.configuration', [
+            'service_type' => 'coins',
+            'platform' => 'playstation',
+            'market' => 'console',
+            'delivery' => 'normal',
+            'coins_quantity' => 100_000,
+            'quoted_at' => $cartItem->configuration['quoted_at'],
+            'price_version' => 11,
+        ]));
+    expect($poisonedRead->getContent())->not->toContain('Poison Password Sentinel')
+        ->not->toContain('85000001')
+        ->not->toContain('Poison Token Sentinel');
 
     CartItemSecret::sole()->update(['retained_until' => now()->subMinute()]);
     $this->artisan('cart-secrets:purge')->assertSuccessful();

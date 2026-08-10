@@ -11,7 +11,6 @@ function cartSecretForRetention(DateTimeInterface $retainedUntil): CartItemSecre
 {
     $cart = Cart::create([
         'user_id' => User::factory()->create()->id,
-        'active_owner_key' => 'user:retention-'.fake()->unique()->uuid(),
         'status' => 'active',
         'currency' => 'SAR',
     ]);

@@ -6,6 +6,8 @@ return [
         'unknown_fields' => 'The request contains unsupported fields.',
         'idempotency_key' => 'A valid Idempotency-Key header is required.',
         'idempotency_conflict' => 'This request key was already used for different cart details.',
+        'json_required' => 'Coins cart additions require a JSON request.',
+        'internal_error' => 'Unable to add Coins to the cart.',
     ],
     'seo_title' => 'Arab UT | FC 27 Ultimate Team Coins',
     'hero' => [
