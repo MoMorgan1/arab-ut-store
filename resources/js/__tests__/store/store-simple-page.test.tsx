@@ -5,6 +5,7 @@ import SimpleStorePage from '@/pages/store/simple-page';
 
 const mockPage = vi.hoisted(() => ({
     props: {
+        cartCount: 7,
         direction: 'ltr',
         displayCurrency: 'SAR',
         displayCurrencies: ['SAR', 'USD'],
@@ -91,6 +92,9 @@ it('renders a non-transactional branded destination', () => {
         ),
     ).toBeVisible();
     expect(screen.getByRole('banner')).toBeVisible();
+    expect(
+        screen.getByRole('link', { name: 'Cart' }).querySelector('span'),
+    ).toHaveTextContent('7');
     expect(screen.queryByRole('form')).not.toBeInTheDocument();
     expect(
         screen.queryByRole('button', { name: /pay|checkout/i }),

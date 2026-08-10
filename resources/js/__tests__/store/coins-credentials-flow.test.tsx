@@ -491,6 +491,97 @@ describe('Coins credentials flow', () => {
         expect(visitMock).toHaveBeenCalledWith('/en/cart');
     });
 
+    it('returns a rejected 422 submission to localized credential fields without reflecting backend text', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+                void input;
+
+                if (init?.method !== 'POST') {
+                    return Promise.resolve(quoteResponse());
+                }
+
+                return Promise.resolve(
+                    new Response(
+                        JSON.stringify({
+                            errors: {
+                                'credentials.ea_email': [
+                                    'Backend email sentinel player@example..com',
+                                ],
+                                'credentials.ea_password': [
+                                    'Backend password sentinel opaque EA password',
+                                ],
+                                'credentials.backup_codes.2': [
+                                    'Backend code sentinel 10000003',
+                                ],
+                                'credentials.backup_codes.8': [
+                                    'Out-of-range backend sentinel',
+                                ],
+                                request: ['Unknown backend sentinel'],
+                            },
+                            message: 'Hostile backend message sentinel',
+                        }),
+                        {
+                            headers: { 'Content-Type': 'application/json' },
+                            status: 422,
+                        },
+                    ),
+                );
+            }),
+        );
+
+        render(<StoreHome />);
+        await reachCredentials();
+        fillCredentials();
+        fireEvent.change(screen.getByRole('textbox', { name: 'EA email' }), {
+            target: { value: 'player@example..com' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Add to cart' }));
+        await act(async () => Promise.resolve());
+
+        expect(
+            screen.getByRole('heading', { name: 'EA account details' }),
+        ).toBeVisible();
+        expect(screen.getByRole('textbox', { name: 'EA email' })).toHaveFocus();
+        expect(screen.getByText('Enter a valid EA email.')).toBeVisible();
+        expect(screen.getByText('Enter your EA password.')).toBeVisible();
+        expect(screen.getByText('Enter an 8-digit backup code.')).toBeVisible();
+        expect(document.body.textContent).not.toMatch(
+            /Backend|Hostile|Unknown|Out-of-range|opaque EA password|10000003/,
+        );
+        expect(mockPage.url).toBe('/en');
+        expect(window.localStorage).toHaveLength(0);
+        expect(window.sessionStorage).toHaveLength(0);
+    });
+
+    it('keeps Arabic credential labels RTL while only code values are LTR', async () => {
+        mockPage.props = {
+            ...pageProps(),
+            direction: 'rtl',
+            locale: 'ar',
+            store: {
+                ...store,
+                credentials: {
+                    ...store.credentials,
+                    backup_code: 'الكود الاحتياطي :number',
+                    backup_codes: 'أكواد EA الاحتياطية',
+                },
+            },
+        };
+        render(<StoreHome />);
+        await reachCredentials();
+
+        const firstCodeLabel = document.querySelector<HTMLLabelElement>(
+            'label[for="coins-backup-0"]',
+        );
+        const firstCode =
+            document.querySelector<HTMLInputElement>('#coins-backup-0');
+
+        expect(firstCodeLabel?.closest('[dir]')).toHaveAttribute('dir', 'rtl');
+        expect(firstCode).toHaveAttribute('dir', 'ltr');
+    });
+
     it('clears credentials on explicit cancel before returning to the form', async () => {
         render(<StoreHome />);
         await reachCredentials();

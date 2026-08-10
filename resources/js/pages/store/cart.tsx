@@ -79,6 +79,7 @@ function CartLine({
     translations: StoreCartTranslations;
 }) {
     const configuration = cartItem.configuration;
+    const isCoins = configuration.service_type === 'coins';
     const platform =
         configuration.platform === 'pc'
             ? translations.platform_pc
@@ -103,22 +104,26 @@ function CartLine({
     return (
         <li className="store-cart-line">
             <div className="store-cart-line__title">
-                <img
-                    alt=""
-                    aria-hidden="true"
-                    height="42"
-                    src="/images/store/coins/ut-coin-80.webp"
-                    width="42"
-                />
+                {isCoins ? (
+                    <img
+                        alt=""
+                        aria-hidden="true"
+                        height="42"
+                        src="/images/store/coins/ut-coin-80.webp"
+                        width="42"
+                    />
+                ) : null}
                 <div>
                     <span>{translations.service}</span>
-                    <h2>{translations.coins_service}</h2>
+                    <h2>{isCoins ? translations.coins_service : '—'}</h2>
                 </div>
             </div>
             <dl className="store-cart-line__summary">
                 <CartFact label={translations.platform} value={platform} />
                 <CartFact label={translations.delivery} value={delivery} />
-                <CartFact label={translations.quantity} value={quantity} />
+                {isCoins ? (
+                    <CartFact label={translations.quantity} value={quantity} />
+                ) : null}
                 <CartFact
                     emphasized
                     label={translations.total}
@@ -164,11 +169,10 @@ function CredentialState({
         <div className="store-cart-credentials">
             <h3>{translations.credentials}</h3>
             <p>{interpolate(translations.credentials_ready, { expiry })}</p>
-            <p dir="ltr">
-                {interpolate(translations.masked_email, {
-                    email: cartItem.credentials.maskedEmail,
-                })}
-            </p>
+            <MaskedEmail
+                maskedEmail={cartItem.credentials.maskedEmail}
+                template={translations.masked_email}
+            />
             <p>
                 {interpolate(translations.backup_codes, {
                     count: formatInteger(
@@ -178,6 +182,24 @@ function CredentialState({
                 })}
             </p>
         </div>
+    );
+}
+
+function MaskedEmail({
+    maskedEmail,
+    template,
+}: {
+    maskedEmail: string;
+    template: string;
+}) {
+    const [beforeEmail, afterEmail] = template.split(':email');
+
+    return (
+        <p>
+            {beforeEmail}
+            <bdi dir="ltr">{maskedEmail}</bdi>
+            {afterEmail}
+        </p>
     );
 }
 

@@ -221,3 +221,129 @@ Passed: 281 Pest tests, 3 skipped, 2,687 assertions; Pint; PHPStan with zero err
 ## Concerns
 
 No product blocker remains. The only environmental caveats are the Windows PHP CLI-server configuration-cache workaround used for preview and Vite's existing absolute-public-asset build warnings; both were verified not to affect the rendered application, and no workaround artifact remains in the commit.
+
+## Fix round 1 — credential and cart hardening
+
+### Finding 1 — generated masked-email shape
+
+Test file: `tests/Feature/Store/CoinsCartTest.php`.
+
+RED command:
+
+```text
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest tests/Feature/Store/CoinsCartTest.php --filter="cart reads reject plaintext email" --stop-on-failure
+```
+
+RED result: exit 1; one failed test and nine assertions. A valid plaintext sentinel in `masked_summary.email` was projected with `requiresCredentials: false`.
+
+GREEN command: the same focused Pest command.
+
+GREEN result: one passed test and 12 assertions. `CartController` now accepts only one ASCII alphanumeric leading character, the literal `***@`, and a dot-qualified ASCII domain with valid label boundaries; every other stored summary becomes `null`. The plaintext sentinel is absent from both props and response content.
+
+### Finding 2 — safe 422 credential recovery
+
+Test file: `resources/js/__tests__/store/coins-credentials-flow.test.tsx`.
+
+RED command:
+
+```text
+npx vitest run resources/js/__tests__/store/coins-credentials-flow.test.tsx -t "returns a rejected 422"
+```
+
+RED result: exit 1; one failed test and eight skipped. The summary remained mounted after the conclusive 422, so the credential heading and rejected fields were unavailable.
+
+GREEN command: the same focused Vitest command.
+
+GREEN result: one passed test and eight skipped. The JSON helper reads only exact allowlisted validation keys (`credentials`, EA email/password, the backup-code collection, and indices zero through four), maps them to the fixed UI field union, and discards response messages and values. The configurator remounts credentials without invalidating the successful quote, renders only localized field copy, and focuses the first allowlisted rejected field. Unknown, out-of-range, hostile-message, password, and code sentinels never enter visible body text, URL state, or error objects; the regression also verifies empty local and session storage.
+
+### Finding 3 — authoritative cart count on simple pages
+
+Test file: `resources/js/__tests__/store/store-simple-page.test.tsx`.
+
+RED command:
+
+```text
+npx vitest run resources/js/__tests__/store/store-simple-page.test.tsx
+```
+
+RED result: exit 1; one failed test. The shared count was seven while the simple-page header rendered zero.
+
+GREEN command: the same focused Vitest command.
+
+GREEN result: one passed test. `cartCount` is required by `StoreLayout`, `StoreHeader`, and `SimpleStorePageProps`; every direct layout/header test supplies it, and `SimpleStorePage` passes the shared authoritative value through without a silent default.
+
+### Finding 4 — service-derived cart presentation
+
+Test file: `resources/js/__tests__/store/store-cart.test.tsx`.
+
+Initial missing-service RED command:
+
+```text
+npx vitest run resources/js/__tests__/store/store-cart.test.tsx -t "does not invent cart facts"
+```
+
+Initial RED result: exit 1; one failed test and two skipped because the missing service still rendered the FC 27 Coins title.
+
+Unsupported-service RED command:
+
+```text
+npx vitest run resources/js/__tests__/store/store-cart.test.tsx -t "another safe service type"
+```
+
+The first unsupported-service RED failed one test with three skipped because the FC 27 Coins title was invented. The Clean Code Guard boundary check then added the Coins-specific quantity assertion; its RED failed one test with three skipped because `Coins quantity` remained visible.
+
+GREEN command:
+
+```text
+npx vitest run resources/js/__tests__/store/store-cart.test.tsx
+```
+
+GREEN result: four passed tests. Only `configuration.service_type === "coins"` can render the Coins title, official coin asset, or Coins-specific quantity label/value. Missing and other safe service types render an em dash for the service and no invented Coins presentation. `StoreCartConfiguration.service_type` now matches every value in the backend `ServiceType` enum so unsupported UI variants remain explicit rather than erased by TypeScript.
+
+### Finding 5 — narrow LTR isolation
+
+Test files: `resources/js/__tests__/store/coins-credentials-flow.test.tsx` and `resources/js/__tests__/store/store-cart.test.tsx`.
+
+RED commands:
+
+```text
+npx vitest run resources/js/__tests__/store/coins-credentials-flow.test.tsx -t "keeps Arabic credential labels RTL"
+npx vitest run resources/js/__tests__/store/store-cart.test.tsx -t "keeps the Arabic masked-email label RTL"
+```
+
+RED results: the credential command failed one test with eight skipped because a code label inherited `dir="ltr"` from the whole grid. The cart command failed one test with two skipped because no isolated masked-email value element existed and the whole localized sentence was LTR.
+
+GREEN command:
+
+```text
+npx vitest run resources/js/__tests__/store/coins-credentials-flow.test.tsx resources/js/__tests__/store/store-cart.test.tsx -t "Arabic"
+```
+
+GREEN result: two passed tests and 11 skipped. The backup-code container inherits locale direction, individual credential inputs remain LTR, and the cart keeps the localized label/sentence in page direction while rendering only the masked address in `<bdi dir="ltr">`.
+
+### Fix-round browser evidence
+
+The production build was served through the same direct Windows PHP preview harness with explicit SQLite/mbstring/OpenSSL extensions and temporary `config:cache`. A synthetic local account and its cart, idempotency rows, logs, server, and config cache were removed afterward; final counts were zero users for the synthetic email and zero carts, port 8136 had no listener, and `bootstrap/cache/config.php` was absent.
+
+- English 320px home: LTR, meaningful content, no framework overlay, `innerWidth` 320 and `scrollWidth` 305.
+- A real Laravel 422 was produced with `player@example..com`, which passes the intentionally lightweight client precheck but fails Laravel `email:rfc`. The UI returned from summary to credentials, focused `coins-ea-email`, showed only `Enter a valid EA email.`, kept the URL exactly `/en`, and body text contained none of the password, first backup code, or backend validation wording.
+- The corrected submission returned 201 and opened the real English cart. The header count was one, the recognized Coins line had exactly one product asset/title, password inputs were unmounted, body text contained no password/code sentinel, and the 320px page remained overflow-free (`305 <= 320`).
+- English `/en/privacy` preserved the authoritative nonzero header count of one at 320px.
+- Arabic 320px cart: root RTL, `scrollWidth` 305, masked sentence inherited RTL, and only the masked value was a `BDI` with LTR direction.
+- Arabic 320px credentials: code label inherited RTL, EA email/code inputs were LTR, action targets measured 44–50px, and the visual screenshot showed the warm black/gold narrow layout without clipping.
+- Final browser developer logs contained no errors or warnings; the overlay query returned false and body content was non-empty.
+- Storage mutation remains covered by the focused Vitest regression using real `Storage` objects; it asserts zero local/session entries after 422. The browser-control safety contract prohibits inspecting a user's browser storage directly, so the live pass verified the URL and rendered DOM while the automated boundary test verified storage.
+
+### Fix-round final gates and guards
+
+```text
+npm run ci:check
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest --stop-on-failure
+php -d extension=mbstring vendor\bin\pint --parallel --test
+php -d extension=mbstring -d extension=openssl -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\phpstan analyse --no-progress --memory-limit=1G
+php -d extension=openssl -d extension=mbstring C:\Users\hp\Documents\Codex\2026-08-08\hi\work\tools\composer.phar validate --strict --no-check-publish
+```
+
+Final results: frontend CI passed 11 Vitest files and 140 tests, ESLint, Prettier, TypeScript, and the production Vite build. Backend Pest passed 282 tests with three skipped and 2,699 assertions. Pint passed, PHPStan reported zero errors, and Composer validation passed. Vite retained only the previously documented absolute public-asset runtime warnings.
+
+Clean Code Guard found and drove the extra unsupported-service quantity RED described above; the final production diff has intent-revealing names, exact allowlists/unions, no broad error swallowing, no speculative abstraction, and no dead symbols. Test Guard found no violations: network is mocked only at the HTTP boundary, backend persistence uses migrated SQLite, tests assert user-visible behavior/focus/props rather than internal calls, and each regression names a distinct break. Docs Guard verified every fix-round path, command, count, field name, status, enum value, browser metric, and cleanup claim against source or recorded output. `git diff --check` passed.

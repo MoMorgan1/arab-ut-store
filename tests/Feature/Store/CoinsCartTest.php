@@ -454,6 +454,26 @@ test('cart reads expose safe lines and credential reentry state only', function 
         ->where('cart.items.0.credentials', null));
 });
 
+test('cart reads reject plaintext email from the masked credential summary', function () {
+    createCartCatalog();
+    $this->actingAs(User::factory()->create());
+    addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'plaintext-summary-key')->assertCreated();
+
+    $secret = CartItemSecret::sole();
+    $secret->update(['masked_summary' => [
+        'email' => 'plaintext-summary-sentinel@example.test',
+        'has_password' => true,
+        'backup_code_count' => 5,
+    ]]);
+
+    $response = $this->get('/cart');
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('cart.items.0.requiresCredentials', true)
+        ->where('cart.items.0.credentials', null));
+    expect($response->getContent())->not->toContain('plaintext-summary-sentinel@example.test');
+});
+
 test('cart reads omit compound values nested under safe configuration keys', function (string $field, mixed $poison) {
     createCartCatalog();
     $this->actingAs(User::factory()->create());

@@ -3,6 +3,7 @@ import type { Ref } from 'react';
 
 import { formatInteger } from '@/lib/money';
 import type {
+    CoinsCredentialField,
     CoinsCredentials,
     CoinsQuoteViewState,
     CoinsStoreTranslations,
@@ -10,8 +11,7 @@ import type {
 
 import { interpolate } from './configurator-copy';
 
-type CredentialField = 'email' | 'password' | `code-${number}`;
-type CredentialErrors = Partial<Record<CredentialField, string>>;
+type CredentialErrors = Partial<Record<CoinsCredentialField, string>>;
 
 type CredentialsStepProps = {
     credentials: CoinsCredentials;
@@ -22,10 +22,18 @@ type CredentialsStepProps = {
     onChange: (credentials: CoinsCredentials) => void;
     onContinue: () => void;
     quoteState: CoinsQuoteViewState;
+    rejectedFields: CoinsCredentialField[];
     translations: CoinsStoreTranslations;
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const BACKUP_CODE_FIELDS = [
+    'code-0',
+    'code-1',
+    'code-2',
+    'code-3',
+    'code-4',
+] as const satisfies readonly CoinsCredentialField[];
 
 function validateCredentials(
     credentials: CoinsCredentials,
@@ -47,8 +55,8 @@ function validateCredentials(
         errors.password = translations.required_password;
     }
 
-    credentials.backupCodes.forEach((code, index) => {
-        const field = `code-${index}` as const;
+    BACKUP_CODE_FIELDS.forEach((field, index) => {
+        const code = credentials.backupCodes[index];
 
         if (!/^[0-9]{8}$/.test(code)) {
             errors[field] = translations.required_code;
@@ -77,14 +85,16 @@ export function CredentialsStep({
     onChange,
     onContinue,
     quoteState,
+    rejectedFields,
     translations,
 }: CredentialsStepProps) {
-    const [errors, setErrors] = useState<CredentialErrors>({});
+    const [errors, setErrors] = useState<CredentialErrors>(() =>
+        credentialErrors(rejectedFields, translations.credentials),
+    );
     const [passwordVisible, setPasswordVisible] = useState(false);
-    const fieldRefs = useRef<Record<CredentialField, HTMLInputElement | null>>({
-        email: null,
-        password: null,
-    });
+    const fieldRefs = useRef<
+        Partial<Record<CoinsCredentialField, HTMLInputElement | null>>
+    >({ email: null, password: null });
     const quoteMessage = credentialsQuoteMessage(quoteState, translations);
 
     useEffect(() => {
@@ -93,21 +103,35 @@ export function CredentialsStep({
         };
     }, []);
 
+    useEffect(() => {
+        const firstRejectedField = rejectedFields[0];
+
+        if (firstRejectedField === undefined) {
+            return;
+        }
+
+        fieldRefs.current[firstRejectedField]?.focus();
+    }, [rejectedFields]);
+
     function updateField(
         field: 'eaEmail' | 'eaPassword',
         value: string,
-        errorField: CredentialField,
+        errorField: CoinsCredentialField,
     ) {
         setErrors((current) => ({ ...current, [errorField]: undefined }));
         onChange({ ...credentials, [field]: value });
     }
 
-    function updateCode(index: number, rawCode: string) {
+    function updateCode(
+        index: number,
+        rawCode: string,
+        field: CoinsCredentialField,
+    ) {
         const backupCodes = [
             ...credentials.backupCodes,
         ] as CoinsCredentials['backupCodes'];
         backupCodes[index] = rawCode.replace(/[^0-9]/g, '').slice(0, 8);
-        setErrors((current) => ({ ...current, [`code-${index}`]: undefined }));
+        setErrors((current) => ({ ...current, [field]: undefined }));
         onChange({ ...credentials, backupCodes });
     }
 
@@ -117,7 +141,7 @@ export function CredentialsStep({
             translations.credentials,
         );
         const firstError = Object.keys(nextErrors)[0] as
-            CredentialField | undefined;
+            CoinsCredentialField | undefined;
 
         setErrors(nextErrors);
 
@@ -213,9 +237,9 @@ export function CredentialsStep({
                 <fieldset className="coins-backup-codes">
                     <legend>{translations.credentials.backup_codes}</legend>
                     <p>{translations.credentials.backup_help}</p>
-                    <div className="coins-backup-codes__grid" dir="ltr">
-                        {credentials.backupCodes.map((code, index) => {
-                            const field = `code-${index}` as const;
+                    <div className="coins-backup-codes__grid">
+                        {BACKUP_CODE_FIELDS.map((field, index) => {
+                            const code = credentials.backupCodes[index];
                             const label = interpolate(
                                 translations.credentials.backup_code,
                                 { number: formatInteger(index + 1, locale) },
@@ -249,6 +273,7 @@ export function CredentialsStep({
                                             updateCode(
                                                 index,
                                                 event.currentTarget.value,
+                                                field,
                                             )
                                         }
                                         pattern="[0-9]{8}"
@@ -315,6 +340,31 @@ export function CredentialsStep({
                 {translations.credentials.clear}
             </button>
         </section>
+    );
+}
+
+function credentialErrorMessage(
+    field: CoinsCredentialField,
+    translations: CoinsStoreTranslations['credentials'],
+): string {
+    if (field === 'email') {
+        return translations.required_email;
+    }
+
+    return field === 'password'
+        ? translations.required_password
+        : translations.required_code;
+}
+
+function credentialErrors(
+    fields: CoinsCredentialField[],
+    translations: CoinsStoreTranslations['credentials'],
+): CredentialErrors {
+    return Object.fromEntries(
+        fields.map((field) => [
+            field,
+            credentialErrorMessage(field, translations),
+        ]),
     );
 }
 

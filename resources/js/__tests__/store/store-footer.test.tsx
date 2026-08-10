@@ -128,6 +128,7 @@ const translations = {
 function renderFooter() {
     render(
         <StoreLayout
+            cartCount={0}
             currentUrl="/en"
             direction="ltr"
             displayCurrencies={['SAR', 'USD']}

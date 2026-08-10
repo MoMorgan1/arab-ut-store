@@ -5,6 +5,7 @@ import { CoinsCartRequestError, submitCoinsCart } from '@/lib/coins-cart-api';
 import type {
     CoinsAmountRules,
     CoinsCartConfig,
+    CoinsCredentialField,
     CoinsCredentials,
     CoinsDeliveryValue,
     CoinsPlatformOption,
@@ -59,6 +60,9 @@ export function CoinsConfigurator({
     const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
     const [retrying, setRetrying] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const [rejectedCredentialFields, setRejectedCredentialFields] = useState<
+        CoinsCredentialField[]
+    >([]);
     const credentialsRef = useRef(credentials);
     const idempotencyKey = useRef<string | null>(null);
     const pendingSubmission = useRef(false);
@@ -149,6 +153,7 @@ export function CoinsConfigurator({
 
     function beginNewSubmission() {
         idempotencyKey.current = null;
+        setRejectedCredentialFields([]);
         setRetrying(false);
         setSubmitError(null);
     }
@@ -391,6 +396,15 @@ export function CoinsConfigurator({
                 idempotencyKey.current = null;
             }
 
+            if (error.status === 422) {
+                setRejectedCredentialFields(error.validationFields);
+                setRetrying(false);
+                setSubmitError(null);
+                dispatch({ step: 'credentials', type: 'navigated' });
+
+                return;
+            }
+
             setRetrying(!error.conclusive || error.status === 409);
             setSubmitError(submitErrorMessage(error));
         } finally {
@@ -483,6 +497,7 @@ export function CoinsConfigurator({
                         }
                     }}
                     quoteState={state.quoteState}
+                    rejectedFields={rejectedCredentialFields}
                     translations={translations}
                 />
             ) : null}

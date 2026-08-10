@@ -75,6 +75,7 @@ export type StoreShellTranslations = {
 };
 
 export type SimpleStorePageProps = {
+    cartCount: number;
     direction: 'rtl' | 'ltr';
     displayCurrency: string;
     displayCurrencies: string[];
@@ -91,7 +92,7 @@ export type StoreCartConfiguration = Partial<{
     platform: 'playstation' | 'pc';
     price_version: number;
     quoted_at: string;
-    service_type: 'coins';
+    service_type: 'coins' | 'sbc' | 'objectives' | 'rivals' | 'fut_champions';
 }>;
 
 export type StoreCartItem = {

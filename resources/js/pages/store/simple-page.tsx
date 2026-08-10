@@ -6,6 +6,7 @@ import type { SimpleStorePageProps } from '@/types/store-shell';
 export default function SimpleStorePage() {
     const inertia = usePage<SimpleStorePageProps>();
     const {
+        cartCount,
         direction,
         displayCurrencies,
         displayCurrency,
@@ -17,6 +18,7 @@ export default function SimpleStorePage() {
 
     return (
         <StoreLayout
+            cartCount={cartCount}
             currentUrl={inertia.url}
             direction={direction}
             displayCurrency={displayCurrency}

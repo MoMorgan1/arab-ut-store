@@ -90,6 +90,7 @@ const translations = {
 function renderHeader(currentUrl = '/en') {
     return render(
         <StoreHeader
+            cartCount={0}
             currentUrl={currentUrl}
             direction="ltr"
             displayCurrencies={['SAR', 'USD', 'EUR']}

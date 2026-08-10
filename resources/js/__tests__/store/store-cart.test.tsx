@@ -140,6 +140,9 @@ vi.mock('@inertiajs/react', () => ({
 afterEach(cleanup);
 beforeEach(() => {
     mockPage.props.cart.items[0].configuration = validConfiguration;
+    mockPage.props.direction = 'ltr';
+    mockPage.props.locale = 'en';
+    mockPage.props.cartPage.translations.masked_email = 'EA email: :email';
 });
 
 it('renders only the authoritative read-only Coins cart summary', () => {
@@ -151,7 +154,7 @@ it('renders only the authoritative read-only Coins cart summary', () => {
     expect(screen.getByText('Fast')).toBeVisible();
     expect(screen.getByText('500,000 Coins')).toBeVisible();
     expect(screen.getByText(/125\.00/)).toBeVisible();
-    expect(screen.getByText('EA email: p***@example.com')).toBeVisible();
+    expect(screen.getByText('p***@example.com')).toBeVisible();
     expect(screen.getByText('5 backup codes stored')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Back to Coins' })).toHaveAttribute(
         'href',
@@ -173,5 +176,46 @@ it('does not invent cart facts when a safe projected field is absent', () => {
     expect(screen.queryByText('PS / Xbox')).not.toBeInTheDocument();
     expect(screen.queryByText('Not required for PC')).not.toBeInTheDocument();
     expect(screen.queryByText('0 Coins')).not.toBeInTheDocument();
+    expect(screen.queryByText('FC 27 Coins')).not.toBeInTheDocument();
+    expect(screen.queryByText('Coins quantity')).not.toBeInTheDocument();
+    expect(screen.queryByText('500,000 Coins')).not.toBeInTheDocument();
+    expect(
+        document.querySelector(
+            '.store-cart-line__title img[src="/images/store/coins/ut-coin-80.webp"]',
+        ),
+    ).not.toBeInTheDocument();
     expect(screen.getAllByText('—')).toHaveLength(3);
+});
+
+it('does not invent a Coins presentation for another safe service type', () => {
+    mockPage.props.cart.items[0].configuration = {
+        ...validConfiguration,
+        service_type: 'sbc',
+    } as StoreCartConfiguration;
+
+    render(<StoreCart />);
+
+    expect(screen.queryByText('FC 27 Coins')).not.toBeInTheDocument();
+    expect(screen.queryByText('Coins quantity')).not.toBeInTheDocument();
+    expect(screen.queryByText('500,000 Coins')).not.toBeInTheDocument();
+    expect(
+        document.querySelector(
+            '.store-cart-line__title img[src="/images/store/coins/ut-coin-80.webp"]',
+        ),
+    ).not.toBeInTheDocument();
+});
+
+it('keeps the Arabic masked-email label RTL and isolates only its value as LTR', () => {
+    mockPage.props.direction = 'rtl';
+    mockPage.props.locale = 'ar';
+    mockPage.props.cartPage.translations.masked_email = 'بريد EA: :email';
+
+    render(<StoreCart />);
+
+    const maskedEmail = screen.getByText('p***@example.com');
+    const sentence = maskedEmail.closest('p');
+
+    expect(sentence?.closest('[dir]')).toHaveAttribute('dir', 'rtl');
+    expect(maskedEmail.tagName).toBe('BDI');
+    expect(maskedEmail).toHaveAttribute('dir', 'ltr');
 });

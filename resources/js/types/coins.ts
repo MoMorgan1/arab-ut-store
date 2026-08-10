@@ -10,6 +10,9 @@ export type CoinsCredentials = {
     backupCodes: [string, string, string, string, string];
 };
 
+export type CoinsCredentialField =
+    'email' | 'password' | `code-${0 | 1 | 2 | 3 | 4}`;
+
 export type CoinsResumeSelection = {
     platform: CoinsPlatformValue;
     delivery: CoinsDeliveryValue | null;

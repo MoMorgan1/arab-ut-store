@@ -1,4 +1,5 @@
 import type {
+    CoinsCredentialField,
     CoinsCredentials,
     CoinsDeliveryValue,
     CoinsPlatformValue,
@@ -27,15 +28,36 @@ export class CoinsCartRequestError extends Error {
     readonly code: string;
     readonly conclusive: boolean;
     readonly status: number;
+    readonly validationFields: CoinsCredentialField[];
 
-    constructor(code: string, status: number, conclusive: boolean) {
+    constructor(
+        code: string,
+        status: number,
+        conclusive: boolean,
+        validationFields: CoinsCredentialField[] = [],
+    ) {
         super('Coins cart request failed.');
         this.name = 'CoinsCartRequestError';
         this.code = code;
         this.conclusive = conclusive;
         this.status = status;
+        this.validationFields = validationFields;
     }
 }
+
+const CREDENTIAL_VALIDATION_FIELDS: Readonly<
+    Record<string, CoinsCredentialField>
+> = {
+    credentials: 'email',
+    'credentials.backup_codes': 'code-0',
+    'credentials.backup_codes.0': 'code-0',
+    'credentials.backup_codes.1': 'code-1',
+    'credentials.backup_codes.2': 'code-2',
+    'credentials.backup_codes.3': 'code-3',
+    'credentials.backup_codes.4': 'code-4',
+    'credentials.ea_email': 'email',
+    'credentials.ea_password': 'password',
+};
 
 function isRecord(candidate: unknown): candidate is JsonRecord {
     return (
@@ -75,6 +97,22 @@ function responseErrorCode(payload: unknown): string {
     const code = payload.error.code;
 
     return typeof code === 'string' && code !== '' ? code : 'unsafe_response';
+}
+
+function credentialValidationFields(payload: unknown): CoinsCredentialField[] {
+    if (!isRecord(payload) || !isRecord(payload.errors)) {
+        return [];
+    }
+
+    return [
+        ...new Set(
+            Object.keys(payload.errors).flatMap((field) => {
+                const credentialField = CREDENTIAL_VALIDATION_FIELDS[field];
+
+                return credentialField === undefined ? [] : [credentialField];
+            }),
+        ),
+    ];
 }
 
 function safeSuccess(payload: unknown): CoinsCartSuccess | null {
@@ -163,9 +201,12 @@ export async function submitCoinsCart(
 
     if (response.status !== 201) {
         throw new CoinsCartRequestError(
-            responseErrorCode(payload),
+            response.status === 422
+                ? 'validation_error'
+                : responseErrorCode(payload),
             response.status,
             true,
+            response.status === 422 ? credentialValidationFields(payload) : [],
         );
     }
 

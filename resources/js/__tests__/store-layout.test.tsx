@@ -116,6 +116,7 @@ describe('StoreLayout', () => {
     it('links from Arabic to English with query state and language metadata', () => {
         render(
             <StoreLayout
+                cartCount={0}
                 currentUrl="/ar?campaign=spring&currency=EUR#offers"
                 locale="ar"
                 storeShell={{
@@ -157,6 +158,7 @@ describe('StoreLayout', () => {
     it('links from English to the default Arabic route with query state and metadata', () => {
         render(
             <StoreLayout
+                cartCount={0}
                 currentUrl="/en?campaign=spring&currency=USD#offers"
                 locale="en"
                 storeShell={storeShell}
@@ -195,6 +197,7 @@ describe('StoreLayout', () => {
     it('renders only supplied currencies while preserving unrelated URL state', () => {
         render(
             <StoreLayout
+                cartCount={0}
                 currentUrl="/en?campaign=spring&coupon=SAVE&currency=USD#offers"
                 locale="en"
                 storeShell={storeShell}

@@ -9,7 +9,7 @@ import type {
 
 export type StoreHeaderProps = {
     currentUrl: string;
-    cartCount?: number;
+    cartCount: number;
     locale: StoreLocale;
     direction: 'rtl' | 'ltr';
     displayCurrency: string;
@@ -137,7 +137,7 @@ function AccountIcon() {
 export function StoreHeader(props: StoreHeaderProps) {
     const {
         currentUrl,
-        cartCount = 0,
+        cartCount,
         direction,
         displayCurrencies,
         displayCurrency,
