@@ -141,6 +141,8 @@ function concurrentCartProcess(int $userId, string $key): Process
     return new Process([
         PHP_BINARY,
         '-d',
+        'extension_dir='.ini_get('extension_dir'),
+        '-d',
         'extension=openssl',
         '-d',
         'extension=mbstring',
@@ -156,6 +158,8 @@ function concurrentGuestCartProcess(string $guestHmac): Process
 {
     return new Process([
         PHP_BINARY,
+        '-d',
+        'extension_dir='.ini_get('extension_dir'),
         '-d',
         'extension=openssl',
         '-d',

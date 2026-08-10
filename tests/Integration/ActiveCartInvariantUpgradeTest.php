@@ -77,6 +77,54 @@ test('the guest invariant migration rejects duplicate legacy active guest owners
     });
 });
 
+test('the guest invariant migration rejects non-HMAC legacy session keys before changing schema', function (string $invalidSessionKey) {
+    withLegacyCartDatabase(function () use ($invalidSessionKey): void {
+        seedLegacyCart(null, 'active', 'SAR', null, $invalidSessionKey);
+
+        expect(fn () => guestCartInvariantMigration()->up())
+            ->toThrow(RuntimeException::class, 'non-HMAC guest owner keys');
+
+        expect(DB::table('carts')->value('active_owner_key'))->toBeNull()
+            ->and(collect(DB::select("PRAGMA index_list('carts')"))->pluck('name'))
+            ->toContain('carts_session_key_unique')
+            ->not->toContain('carts_one_active_owner');
+    });
+})->with([
+    'raw session identifier' => 'legacy-raw-session-id',
+    'uppercase digest' => str_repeat('A', 64),
+    'short lowercase digest' => str_repeat('a', 63),
+]);
+
+test('the guest invariant allows a session HMAC to be reused after a historical cart', function () {
+    withLegacyCartDatabase(function (): void {
+        $guestHmac = hash('sha256', 'reusable-upgrade-guest-owner');
+        seedLegacyCart(null, 'converted', 'SAR', null, $guestHmac);
+
+        guestCartInvariantMigration()->up();
+        seedLegacyCart(null, 'active', 'SAR', null, $guestHmac);
+
+        expect(DB::table('carts')->where('session_key', $guestHmac)->count())->toBe(2)
+            ->and(DB::table('carts')->where('session_key', $guestHmac)->whereNotNull('active_owner_key')->value('active_owner_key'))
+            ->toBe("guest:{$guestHmac}");
+    });
+});
+
+test('the guest invariant rollback fails closed when session HMACs are reused', function () {
+    withLegacyCartDatabase(function (): void {
+        $guestHmac = hash('sha256', 'rollback-reused-guest-owner');
+        seedLegacyCart(null, 'converted', 'SAR', null, $guestHmac);
+        guestCartInvariantMigration()->up();
+        seedLegacyCart(null, 'active', 'SAR', null, $guestHmac);
+
+        expect(fn () => guestCartInvariantMigration()->down())
+            ->toThrow(RuntimeException::class, 'duplicate guest session owner keys');
+
+        expect(DB::table('carts')->where('session_key', $guestHmac)->count())->toBe(2)
+            ->and(DB::table('carts')->where('session_key', $guestHmac)->where('status', 'active')->value('active_owner_key'))
+            ->toBe("guest:{$guestHmac}");
+    });
+});
+
 test('the guest invariant completes a real MariaDB down up and remigration lifecycle', function () {
     if (! in_array(DB::connection()->getDriverName(), ['mariadb', 'mysql'], true)) {
         $this->markTestSkipped('The generated-column lifecycle requires MariaDB/MySQL.');
@@ -93,8 +141,23 @@ test('the guest invariant completes a real MariaDB down up and remigration lifec
         DB::table('carts')->insert([
             'public_id' => (string) str()->ulid(),
             'user_id' => null,
-            'session_key' => $guestHmac,
+            'session_key' => 'legacy-mariadb-raw-session',
             'status' => 'active',
+            'currency' => 'SAR',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        expect(fn () => $migration->up())
+            ->toThrow(RuntimeException::class, 'non-HMAC guest owner keys');
+        expect(DB::table('carts')->value('active_owner_key'))->toBeNull();
+        DB::table('carts')->delete();
+
+        DB::table('carts')->insert([
+            'public_id' => (string) str()->ulid(),
+            'user_id' => null,
+            'session_key' => $guestHmac,
+            'status' => 'converted',
             'currency' => 'SAR',
             'created_at' => now(),
             'updated_at' => now(),
@@ -104,7 +167,25 @@ test('the guest invariant completes a real MariaDB down up and remigration lifec
 
         $migration->up();
         $guestInvariantInstalled = true;
-        expect(DB::table('carts')->value('active_owner_key'))->toBe("guest:{$guestHmac}");
+        DB::table('carts')->insert([
+            'public_id' => (string) str()->ulid(),
+            'user_id' => null,
+            'session_key' => $guestHmac,
+            'status' => 'active',
+            'currency' => 'SAR',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        expect(DB::table('carts')->where('session_key', $guestHmac)->count())->toBe(2)
+            ->and(DB::table('carts')->where('status', 'active')->value('active_owner_key'))
+            ->toBe("guest:{$guestHmac}");
+
+        expect(fn () => $migration->down())
+            ->toThrow(RuntimeException::class, 'duplicate guest session owner keys');
+        expect(DB::table('carts')->where('status', 'active')->value('active_owner_key'))
+            ->toBe("guest:{$guestHmac}");
+        DB::table('carts')->where('status', 'converted')->delete();
 
         $migration->down();
         $guestInvariantInstalled = false;

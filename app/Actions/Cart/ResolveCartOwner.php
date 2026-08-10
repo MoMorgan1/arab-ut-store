@@ -2,9 +2,11 @@
 
 namespace App\Actions\Cart;
 
+use App\Models\Cart;
 use App\ValueObjects\Cart\CartOwner;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 final class ResolveCartOwner
@@ -26,7 +28,14 @@ final class ResolveCartOwner
             $request->session()->put(self::SESSION_KEY, $rawToken);
         }
 
-        return CartOwner::guest(hash_hmac('sha256', $rawToken, $this->applicationKey()));
+        $currentOwner = CartOwner::guest(hash_hmac('sha256', $rawToken, $this->applicationKey()));
+        $previousOwners = $this->previousOwners($rawToken, $currentOwner);
+
+        if ($previousOwners === []) {
+            return $currentOwner;
+        }
+
+        return $this->rekeyActiveCart($currentOwner, $previousOwners);
     }
 
     private function authenticatedUserId(Authenticatable $user): int
@@ -49,5 +58,90 @@ final class ResolveCartOwner
         }
 
         return $applicationKey;
+    }
+
+    /** @return list<CartOwner> */
+    private function previousOwners(string $rawToken, CartOwner $currentOwner): array
+    {
+        $previousKeys = config('app.previous_keys', []);
+
+        if (! is_array($previousKeys)) {
+            return [];
+        }
+
+        $owners = [];
+
+        foreach ($previousKeys as $previousKey) {
+            if (! is_string($previousKey) || $previousKey === '') {
+                continue;
+            }
+
+            $owner = CartOwner::guest(hash_hmac('sha256', $rawToken, $previousKey));
+
+            if ($owner->databaseKey() !== $currentOwner->databaseKey()) {
+                $owners[$owner->databaseKey()] = $owner;
+            }
+        }
+
+        return array_values($owners);
+    }
+
+    /** @param list<CartOwner> $previousOwners */
+    private function rekeyActiveCart(CartOwner $currentOwner, array $previousOwners): CartOwner
+    {
+        return DB::transaction(function () use ($currentOwner, $previousOwners): CartOwner {
+            $activeCarts = $this->lockedCandidateCarts($currentOwner, $previousOwners);
+
+            if (! isset($activeCarts[$currentOwner->databaseKey()])) {
+                $this->rekeyFirstPreviousCart($activeCarts, $previousOwners, $currentOwner);
+            }
+
+            return $currentOwner;
+        }, attempts: 3);
+    }
+
+    /**
+     * @param  list<CartOwner>  $previousOwners
+     * @return array<string, Cart>
+     */
+    private function lockedCandidateCarts(CartOwner $currentOwner, array $previousOwners): array
+    {
+        $ownerKeys = array_map(
+            fn (CartOwner $owner): string => $owner->databaseKey(),
+            [$currentOwner, ...$previousOwners],
+        );
+        $activeCarts = Cart::query()
+            ->whereNull('user_id')
+            ->where('status', 'active')
+            ->where('currency', 'SAR')
+            ->whereIn('active_owner_key', $ownerKeys)
+            ->orderBy('active_owner_key')
+            ->lockForUpdate()
+            ->get();
+
+        return $activeCarts->keyBy('active_owner_key')->all();
+    }
+
+    /**
+     * @param  array<string, Cart>  $activeCarts
+     * @param  list<CartOwner>  $previousOwners
+     */
+    private function rekeyFirstPreviousCart(
+        array $activeCarts,
+        array $previousOwners,
+        CartOwner $currentOwner,
+    ): void {
+        foreach ($previousOwners as $previousOwner) {
+            $activeCart = $activeCarts[$previousOwner->databaseKey()] ?? null;
+
+            if ($activeCart === null) {
+                continue;
+            }
+
+            $activeCart->session_key = $currentOwner->sessionKey();
+            $activeCart->save();
+
+            return;
+        }
     }
 }

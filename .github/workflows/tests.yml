@@ -96,6 +96,8 @@ jobs:
           php vendor/bin/pest --configuration phpunit.mariadb.xml
           tests/Feature/Database/DomainSchemaTest.php
           tests/Feature/Database/CartSecuritySchemaTest.php
+          tests/Feature/Database/ActiveCartAcquisitionTest.php
+          tests/Feature/Cart/CartOwnerRotationTest.php
           tests/Feature/Auth/RegistrationTest.php
           tests/Feature/Settings/ProfileUpdateTest.php
           tests/Feature/Store/CoinsCartTest.php

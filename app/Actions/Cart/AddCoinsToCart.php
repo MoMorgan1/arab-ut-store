@@ -14,6 +14,7 @@ use App\Models\IdempotencyKey;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Security\CoinsCartFingerprint;
+use App\ValueObjects\Cart\CartOwner;
 use App\ValueObjects\Pricing\CoinsQuote;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -23,7 +24,10 @@ final readonly class AddCoinsToCart
 {
     private const SCOPE = 'coins-cart';
 
-    public function __construct(private QuoteCoins $quoteCoins) {}
+    public function __construct(
+        private QuoteCoins $quoteCoins,
+        private AcquireActiveCart $acquireActiveCart,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $validated
@@ -45,9 +49,10 @@ final readonly class AddCoinsToCart
      */
     private function store(User $user, array $validated, string $idempotencyKey, string $locale): array
     {
-        $idempotencyScope = self::SCOPE.":user:{$user->id}";
+        $owner = CartOwner::user((int) $user->id);
+        $idempotencyScope = self::SCOPE.':'.$owner->idempotencyScope();
         $requestHash = CoinsCartFingerprint::generate(
-            Cart::activeOwnerKey((int) $user->id),
+            $owner->databaseKey(),
             $validated,
             (string) config('app.key'),
         );
@@ -59,7 +64,7 @@ final readonly class AddCoinsToCart
 
         $quote = $this->quote($validated);
         $productVariant = ProductVariant::where('public_id', $quote->variantId)->sole();
-        $activeCart = $this->activeCart($user);
+        $activeCart = $this->acquireActiveCart->execute($owner);
         $cartItem = $this->createCartItem($activeCart, $productVariant, $quote);
         $this->createSecret($cartItem, $validated['credentials']);
         $safeResponseBody = $this->responseBody($activeCart, $cartItem, $quote, $locale);
@@ -117,23 +122,6 @@ final readonly class AddCoinsToCart
             isset($validated['delivery']) ? DeliveryMode::from((string) $validated['delivery']) : null,
             (int) $validated['quantity'],
         );
-    }
-
-    private function activeCart(User $user): Cart
-    {
-        DB::table('carts')->insertOrIgnore([
-            'public_id' => (string) Str::ulid(),
-            'user_id' => $user->id,
-            'status' => 'active',
-            'currency' => 'SAR',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        return Cart::query()
-            ->activeForUser((int) $user->id)
-            ->lockForUpdate()
-            ->sole();
     }
 
     private function createCartItem(Cart $activeCart, ProductVariant $productVariant, CoinsQuote $quote): CartItem
