@@ -2,10 +2,13 @@
 
 use App\Enums\Platform;
 use App\Enums\ServiceType;
+use App\Models\ExchangeRate;
 use App\Models\PriceRule;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /**
@@ -179,6 +182,42 @@ test('the homepage fails closed instead of serializing a partial foreign-currenc
         ->assertInertia(fn (Assert $page) => $page
             ->where('status', 'unavailable')
             ->missing('quoteSchedules'));
+});
+
+test('the foreign-currency homepage builds every schedule from one pricing and rate snapshot', function () {
+    createHomeCatalog();
+    CarbonImmutable::setTestNow('2026-08-10 12:00:00 UTC');
+    ExchangeRate::create([
+        'base_currency' => 'SAR',
+        'quote_currency' => 'USD',
+        'rate' => '0.26666667',
+        'source' => 'exchange-rate-api-open-access',
+        'fetched_at' => now(),
+    ]);
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $startedAt = hrtime(true);
+
+    $response = $this->withSession(['display_currency' => 'USD'])->get('/');
+
+    $durationMilliseconds = intdiv(hrtime(true) - $startedAt, 1_000_000);
+    $queries = DB::getQueryLog();
+    DB::disableQueryLog();
+    $queriesFor = fn (string $table): int => collect($queries)
+        ->filter(fn (array $query): bool => str_contains($query['query'], "from \"{$table}\""))
+        ->count();
+
+    $response->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('status', 'available')
+            ->where('quoteSchedules.playstation:normal.displayCurrency', 'USD')
+            ->where('quoteSchedules.playstation:fast.displayCurrency', 'USD')
+            ->where('quoteSchedules.pc.displayCurrency', 'USD'));
+
+    expect($durationMilliseconds)->toBeLessThan(1_000)
+        ->and(count($queries))->toBeLessThanOrEqual(10)
+        ->and($queriesFor('price_rules'))->toBe(1)
+        ->and($queriesFor('exchange_rates'))->toBe(1);
 });
 
 test('the homepage fails closed when an active Coins pricing rule has an unknown group', function () {

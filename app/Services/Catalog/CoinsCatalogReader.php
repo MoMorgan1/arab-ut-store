@@ -97,7 +97,7 @@ final class CoinsCatalogReader
     public function assertHomepageAvailable(): Product
     {
         $product = $this->product();
-        $this->assertLocalizedNames($product);
+        $this->assertHomepageProduct($product);
 
         foreach ([Platform::PlayStation, Platform::Pc] as $platform) {
             $this->variant($product, $platform);
@@ -107,6 +107,11 @@ final class CoinsCatalogReader
         $this->assertPricingCoverage($rules);
 
         return $product;
+    }
+
+    public function assertHomepageProduct(Product $product): void
+    {
+        $this->assertLocalizedNames($product);
     }
 
     private function assertLocalizedNames(Product $product): void

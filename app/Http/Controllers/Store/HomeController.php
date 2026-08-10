@@ -3,10 +3,8 @@
 namespace App\Http\Controllers\Store;
 
 use App\Actions\Pricing\BuildCoinsQuoteSchedule;
-use App\Enums\DeliveryMode;
 use App\Enums\Platform;
 use App\Http\Controllers\Controller;
-use App\Services\Catalog\CoinsCatalogReader;
 use App\Validation\CoinsSelectionRules;
 use DomainException;
 use Illuminate\Http\Request;
@@ -21,7 +19,6 @@ class HomeController extends Controller
 {
     public function __invoke(
         Request $request,
-        CoinsCatalogReader $catalog,
         CoinsSelectionRules $selectionRules,
         BuildCoinsQuoteSchedule $buildCoinsQuoteSchedule,
     ): Response {
@@ -29,28 +26,8 @@ class HomeController extends Controller
         $quoteSchedules = null;
 
         try {
-            $catalog->assertHomepageAvailable();
             $displayCurrency = (string) $request->session()->get('display_currency');
-            $quoteSchedules = [
-                'playstation:normal' => $buildCoinsQuoteSchedule->execute(
-                    Platform::PlayStation,
-                    DeliveryMode::Normal,
-                    Config::integer('coins.platforms.playstation.deliveries.normal.maximum'),
-                    $displayCurrency,
-                ),
-                'playstation:fast' => $buildCoinsQuoteSchedule->execute(
-                    Platform::PlayStation,
-                    DeliveryMode::Fast,
-                    Config::integer('coins.platforms.playstation.deliveries.fast.maximum'),
-                    $displayCurrency,
-                ),
-                'pc' => $buildCoinsQuoteSchedule->execute(
-                    Platform::Pc,
-                    null,
-                    Config::integer('coins.platforms.pc.maximum'),
-                    $displayCurrency,
-                ),
-            ];
+            $quoteSchedules = $buildCoinsQuoteSchedule->executeHomepage($displayCurrency);
             $status = 'available';
         } catch (DomainException|ValueError) {
             // The public homepage stays available while pricing fails closed.
