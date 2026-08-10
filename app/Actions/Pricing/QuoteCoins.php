@@ -43,6 +43,7 @@ final readonly class QuoteCoins
         return new CoinsQuote(
             productId: $product->public_id,
             variantId: $variant->public_id,
+            priceVersion: $variant->price_version,
             platform: $platform,
             delivery: $delivery,
             quantity: $quantity,

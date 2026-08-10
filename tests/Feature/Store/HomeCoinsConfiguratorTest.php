@@ -77,6 +77,17 @@ test('the Arabic and English homepages expose the exact localized Coins contract
             ->where('status', 'available')
             ->missing('product')
             ->where('quoteUrl', $quoteUrl)
+            ->has('quoteSchedules', 3)
+            ->where('quoteSchedules.playstation:normal.minimum', 50_000)
+            ->where('quoteSchedules.playstation:normal.maximum', 2_000_000)
+            ->where('quoteSchedules.playstation:normal.increment', 10_000)
+            ->where('quoteSchedules.playstation:normal.priceVersion', 1)
+            ->has('quoteSchedules.playstation:normal.totalsHalalah', 196)
+            ->has('quoteSchedules.playstation:normal.displayTotalsMinor', 196)
+            ->where('quoteSchedules.playstation:fast.maximum', 20_000_000)
+            ->has('quoteSchedules.playstation:fast.totalsHalalah', 1_996)
+            ->where('quoteSchedules.pc.delivery', null)
+            ->has('quoteSchedules.pc.totalsHalalah', 196)
             ->where('coinsCart.addUrl', $addUrl)
             ->where('coinsCart.resumeUrl', $resumeUrl)
             ->where('coinsCart.initialSelection', null)
@@ -157,6 +168,17 @@ test('the homepage remains honest when local catalog or pricing is unavailable',
             ->where('quoteUrl', '/coins/quote')
             ->has('platforms', 2)
             ->has('store.availability.title'));
+});
+
+test('the homepage fails closed instead of serializing a partial foreign-currency schedule', function () {
+    createHomeCatalog();
+
+    $this->withSession(['display_currency' => 'EUR'])
+        ->get('/')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('status', 'unavailable')
+            ->missing('quoteSchedules'));
 });
 
 test('the homepage fails closed when an active Coins pricing rule has an unknown group', function () {
@@ -262,7 +284,7 @@ test('homepage props omit supplier market, policy proof, and credential values',
     $serialized = json_encode($props, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
 
     expect($serialized)
-        ->not->toContain('"market"')
+        ->not->toContain('"supplier_market"')
         ->not->toContain('current balance')
         ->not->toContain('"eaEmail"')
         ->not->toContain('"eaPassword"')

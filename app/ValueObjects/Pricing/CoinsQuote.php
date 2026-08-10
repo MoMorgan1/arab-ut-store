@@ -12,6 +12,7 @@ final readonly class CoinsQuote
     public function __construct(
         public string $productId,
         public string $variantId,
+        public int $priceVersion,
         public Platform $platform,
         public ?DeliveryMode $delivery,
         public int $quantity,
@@ -28,6 +29,7 @@ final readonly class CoinsQuote
         return [
             'productId' => $this->productId,
             'variantId' => $this->variantId,
+            'priceVersion' => $this->priceVersion,
             'platform' => $this->platform->value,
             'market' => $this->platform->market()->value,
             'delivery' => $this->delivery?->value,

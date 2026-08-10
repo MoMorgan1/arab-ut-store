@@ -90,6 +90,7 @@ test('PlayStation is the canonical combined PS and Xbox Coins option', function 
     $playStation->assertOk()
         ->assertJsonPath('data.productId', $catalog['product']->public_id)
         ->assertJsonPath('data.variantId', $catalog['variants']['playstation']->public_id)
+        ->assertJsonPath('data.priceVersion', 1)
         ->assertJsonPath('data.platform', 'playstation')
         ->assertJsonPath('data.market', 'console')
         ->assertJsonPath('data.delivery', 'normal')
