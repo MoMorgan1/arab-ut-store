@@ -491,7 +491,7 @@ describe('Coins credentials flow', () => {
         expect(visitMock).toHaveBeenCalledWith('/en/cart');
     });
 
-    it('returns a rejected 422 submission to localized credential fields without reflecting backend text', async () => {
+    it('maps a mixed 422 to credential fields without reflecting backend text', async () => {
         vi.stubGlobal(
             'fetch',
             vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
@@ -553,6 +553,104 @@ describe('Coins credentials flow', () => {
         expect(mockPage.url).toBe('/en');
         expect(window.localStorage).toHaveLength(0);
         expect(window.sessionStorage).toHaveLength(0);
+    });
+
+    it('keeps a non-credential 422 on the summary with a safe localized error', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+                if (init?.method !== 'POST') {
+                    return Promise.resolve(quoteResponse());
+                }
+
+                return Promise.resolve(
+                    new Response(
+                        JSON.stringify({
+                            errors: {
+                                idempotency_key: [
+                                    'Backend idempotency sentinel',
+                                ],
+                                platform: ['Backend platform sentinel'],
+                                quantity: ['Backend quantity sentinel'],
+                                request: ['Backend request sentinel'],
+                            },
+                            message: 'Hostile backend message sentinel',
+                        }),
+                        {
+                            headers: { 'Content-Type': 'application/json' },
+                            status: 422,
+                        },
+                    ),
+                );
+            }),
+        );
+
+        render(<StoreHome />);
+        await reachCredentials();
+        fillCredentials();
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Add to cart' }));
+        await act(async () => Promise.resolve());
+
+        expect(
+            screen.getByRole('heading', { name: 'Review and add' }),
+        ).toBeVisible();
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'Review the highlighted EA details.',
+        );
+        expect(
+            screen.queryByRole('heading', { name: 'EA account details' }),
+        ).not.toBeInTheDocument();
+        expect(document.body.textContent).not.toMatch(
+            /Backend|Hostile|opaque EA password|10000001/,
+        );
+        expect(mockPage.url).toBe('/en');
+        expect(window.localStorage).toHaveLength(0);
+        expect(window.sessionStorage).toHaveLength(0);
+    });
+
+    it('maps a credential-only 422 to the rejected field without reflecting backend text', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+                if (init?.method !== 'POST') {
+                    return Promise.resolve(quoteResponse());
+                }
+
+                return Promise.resolve(
+                    new Response(
+                        JSON.stringify({
+                            errors: {
+                                'credentials.ea_email': [
+                                    'Backend email sentinel',
+                                ],
+                            },
+                            message: 'Hostile backend message sentinel',
+                        }),
+                        {
+                            headers: { 'Content-Type': 'application/json' },
+                            status: 422,
+                        },
+                    ),
+                );
+            }),
+        );
+
+        render(<StoreHome />);
+        await reachCredentials();
+        fillCredentials();
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Add to cart' }));
+        await act(async () => Promise.resolve());
+
+        expect(
+            screen.getByRole('heading', { name: 'EA account details' }),
+        ).toBeVisible();
+        expect(screen.getByRole('textbox', { name: 'EA email' })).toHaveFocus();
+        expect(screen.getByText('Enter a valid EA email.')).toBeVisible();
+        expect(document.body.textContent).not.toMatch(
+            /Backend|Hostile|opaque EA password|10000001/,
+        );
     });
 
     it('keeps Arabic credential labels RTL while only code values are LTR', async () => {

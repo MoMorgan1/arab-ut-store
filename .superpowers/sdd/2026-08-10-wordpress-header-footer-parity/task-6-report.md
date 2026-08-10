@@ -347,3 +347,74 @@ php -d extension=openssl -d extension=mbstring C:\Users\hp\Documents\Codex\2026-
 Final results: frontend CI passed 11 Vitest files and 140 tests, ESLint, Prettier, TypeScript, and the production Vite build. Backend Pest passed 282 tests with three skipped and 2,699 assertions. Pint passed, PHPStan reported zero errors, and Composer validation passed. Vite retained only the previously documented absolute public-asset runtime warnings.
 
 Clean Code Guard found and drove the extra unsupported-service quantity RED described above; the final production diff has intent-revealing names, exact allowlists/unions, no broad error swallowing, no speculative abstraction, and no dead symbols. Test Guard found no violations: network is mocked only at the HTTP boundary, backend persistence uses migrated SQLite, tests assert user-visible behavior/focus/props rather than internal calls, and each regression names a distinct break. Docs Guard verified every fix-round path, command, count, field name, status, enum value, browser metric, and cleanup claim against source or recorded output. `git diff --check` passed.
+
+## Fix round 2 — mask and validation-recovery contracts
+
+### Finding 1 — shared accepted-email mask grammar
+
+Test file: `tests/Feature/Store/CoinsCartTest.php`.
+
+RED command:
+
+```text
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest tests\Feature\Store\CoinsCartTest.php --filter="accepted punctuation initials" --stop-on-failure
+```
+
+RED result: exit 1; the first data set failed (one failed test, nine assertions). An accepted `_player@example.test` submission was written as `_***@example.test`, but the cart reader rejected it and projected `requiresCredentials: true`. The same regression covers `_`, `+`, and `!` initials through a Pest data set.
+
+GREEN command:
+
+```text
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest tests/Feature/Store/CoinsCartTest.php --filter="accepted punctuation initials|plaintext email"
+```
+
+GREEN result: four passed tests and 48 assertions. `App\Security\CoinsMaskedEmail` is now the single writer/reader contract: the writer takes the first character and the domain after the final `@`, while the reader requires exactly one safe leading character, literal `***@`, and a domain accepted by the same Laravel `email:rfc`/length grammar used by `CoinsCartRequest`. It deliberately applies the length rule to a neutral one-character local part so every request-accepted address can still produce the existing one-character mask without exposing more local-part content. The existing plaintext-poison regression remains fail-closed and proves the sentinel is absent from props and response content.
+
+### Finding 2 — mapped-field-gated 422 recovery
+
+Test file: `resources/js/__tests__/store/coins-credentials-flow.test.tsx`.
+
+RED command:
+
+```text
+npx vitest run resources/js/__tests__/store/coins-credentials-flow.test.tsx -t "keeps a non-credential 422"
+```
+
+RED result: exit 1; one failed test and ten skipped. A 422 containing only `platform`, `quantity`, `request`, and `idempotency_key` errors removed the summary and navigated to credentials even though no credential field was mapped.
+
+GREEN command:
+
+```text
+npx vitest run resources/js/__tests__/store/coins-credentials-flow.test.tsx -t "422"
+```
+
+GREEN result: three passed tests and eight skipped. Credential-only and mixed 422 responses still remount credentials, attach only allowlisted localized field errors, and focus the first rejected field. A non-credential-only 422 remains on summary and shows only the safe localized validation error. Backend messages, values, unknown keys, credential values, password, and backup-code sentinels are never rendered.
+
+### Fix-round browser proof
+
+The current production build was served with the direct Windows PHP preview harness at `127.0.0.1:8136`, explicit OpenSSL/mbstring/SQLite extensions, and temporary configuration caching. A synthetic local account submitted only synthetic browser credentials. The tab, server, account, account-owned cart, account-owned idempotency row, server logs, and config cache were removed afterward; port 8136 was closed, the synthetic-user count was zero, cart count was zero, and `bootstrap/cache/config.php` was absent.
+
+- English 320px non-credential 422: the POST boundary returned only synthetic `quantity` and `request` validation fields. The UI retained `Review and add`, displayed only `Review the highlighted EA details.`, kept `/en` unchanged, left credential inputs unmounted, reflected none of the backend/password/code sentinels, and remained overflow-free (`scrollWidth` 305 at `innerWidth` 320).
+- The next submission used the restored real same-origin endpoint and reached `/en/cart`. The stored `_browser@example.test` appeared only as `_***@example.test`; no password input was mounted, neither password nor first backup code appeared in body text, no framework overlay was present, and the 320px cart remained overflow-free (`305 <= 320`).
+- Arabic 320px `/cart`: the document was RTL, the same mask was isolated in `bdi[dir="ltr"]`, no password/code sentinel appeared, no framework overlay was present, and `scrollWidth` remained 305.
+- Browser developer logs contained zero warnings or errors. The narrow Arabic screenshot visually confirmed the warm black/gold cart without clipping.
+
+### Leak checks, gates, and guards
+
+The mixed and non-credential-only Vitest cases use real `Storage` objects and assert zero local/session entries, while all three 422 cases prove credential values and backend text stay out of the rendered DOM. The live pass checked URL and visible DOM; browser-control policy prohibits inspecting a user's browser storage directly. A production-source scan over the configurator, request helper, cart controller, and mask contract found no local/session storage, Inertia remember, console, or credential-query sink. `git diff --check` passed.
+
+```text
+npm run ci:check
+php -d extension=openssl -d extension=mbstring -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\pest --stop-on-failure
+php -d extension=mbstring vendor\bin\pint --parallel --test
+php -d extension=mbstring -d extension=openssl -d extension=pdo_sqlite -d extension=sqlite3 vendor\bin\phpstan analyse --no-progress --memory-limit=1G
+php -d extension=openssl -d extension=mbstring C:\Users\hp\Documents\Codex\2026-08-08\hi\work\tools\composer.phar validate --strict --no-check-publish
+```
+
+Final results: frontend CI passed 11 Vitest files and 142 tests, ESLint, Prettier, TypeScript, and the production Vite build. Backend Pest passed 285 tests with three skipped and 2,735 assertions. Pint passed, PHPStan reported zero errors, and Composer validation passed. Vite retained only the previously documented absolute public-asset runtime warnings.
+
+PHPStan initially reported one `argument.type` error because PHP types `strrchr` as `string|false`; the implementation was corrected to the installed Laravel `Str::afterLast` API, focused tests remained green, and the full backend/static gates were rerun. The official PHPStan explanation consulted was `https://phpstan.org/error-identifiers/argument.type`.
+
+Clean Code Guard found no remaining violation: the shared contract owns one duplicated security rule used by both writer and reader, functions are small, installed APIs were verified in source, and there are no suppressions, broad catches, dead branches, or speculative types. Test Guard found no violation: the punctuation variants are data-driven, the three 422 scenarios have materially different response/UX contracts, HTTP is the only mocked frontend boundary, and backend projection uses the migrated database. Docs Guard verified every round-two path, command, count, test result, URL, browser metric, cleanup statement, and contract claim against source or recorded output.
+
+No product blocker remains. Environmental caveats are unchanged: the Windows preview needs explicit PHP extensions/config caching, and Vite emits informational absolute-public-asset warnings; the rendered assets and tested flows were unaffected, and no preview artifact remains in the commit.

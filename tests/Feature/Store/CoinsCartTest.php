@@ -474,6 +474,29 @@ test('cart reads reject plaintext email from the masked credential summary', fun
     expect($response->getContent())->not->toContain('plaintext-summary-sentinel@example.test');
 });
 
+test('cart reads preserve safe masks for accepted punctuation initials', function (string $initial, string $key) {
+    createCartCatalog();
+    $this->actingAs(User::factory()->create());
+    $email = "{$initial}player@example.test";
+
+    addCoinsToCart(
+        '/cart/items/coins',
+        coinsCartPayload(['credentials' => ['ea_email' => $email]]),
+        $key,
+    )->assertCreated();
+
+    $response = $this->get('/cart');
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('cart.items.0.requiresCredentials', false)
+        ->where('cart.items.0.credentials.maskedEmail', "{$initial}***@example.test"));
+    expect($response->getContent())->not->toContain($email);
+})->with([
+    'underscore initial' => ['_', 'underscore-mask-key'],
+    'plus initial' => ['+', 'plus-mask-key'],
+    'bang initial' => ['!', 'bang-mask-key'],
+]);
+
 test('cart reads omit compound values nested under safe configuration keys', function (string $field, mixed $poison) {
     createCartCatalog();
     $this->actingAs(User::factory()->create());

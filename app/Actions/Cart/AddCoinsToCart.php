@@ -14,6 +14,7 @@ use App\Models\IdempotencyKey;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Security\CoinsCartFingerprint;
+use App\Security\CoinsMaskedEmail;
 use App\ValueObjects\Pricing\CoinsQuote;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -162,7 +163,7 @@ final readonly class AddCoinsToCart
         $cartSecret = new CartItemSecret([
             'cart_item_id' => $cartItem->id,
             'masked_summary' => [
-                'email' => $this->maskEmail($email),
+                'email' => CoinsMaskedEmail::fromValidatedEmail($email),
                 'has_password' => true,
                 'backup_code_count' => count($credentials['backup_codes']),
             ],
@@ -170,13 +171,6 @@ final readonly class AddCoinsToCart
         ]);
         $cartSecret->encrypted_payload = $credentials;
         $cartSecret->save();
-    }
-
-    private function maskEmail(string $email): string
-    {
-        [$local, $domain] = explode('@', $email, 2);
-
-        return Str::substr($local, 0, 1).'***@'.$domain;
     }
 
     /** @return array<string, mixed> */

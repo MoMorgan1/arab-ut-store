@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CartItemSecret;
+use App\Security\CoinsMaskedEmail;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Http\Request;
@@ -81,8 +82,7 @@ final class CartController extends Controller
 
         if (! is_array($summary)
             || ! is_string($summary['email'] ?? null)
-            || strlen($summary['email']) > 254
-            || ! $this->hasSafeMaskedEmail($summary['email'])
+            || ! CoinsMaskedEmail::isSafe($summary['email'])
             || ($summary['has_password'] ?? null) !== true
             || ($summary['backup_code_count'] ?? null) !== 5) {
             return null;
@@ -94,14 +94,6 @@ final class CartController extends Controller
             'backupCodeCount' => 5,
             'retainedUntil' => $retainedUntil->format(DateTimeInterface::ATOM),
         ];
-    }
-
-    private function hasSafeMaskedEmail(string $maskedEmail): bool
-    {
-        return preg_match(
-            '/\A[A-Za-z0-9]\*{3}@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+\z/D',
-            $maskedEmail,
-        ) === 1;
     }
 
     /**

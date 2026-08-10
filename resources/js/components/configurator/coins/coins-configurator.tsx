@@ -396,7 +396,7 @@ export function CoinsConfigurator({
                 idempotencyKey.current = null;
             }
 
-            if (error.status === 422) {
+            if (error.status === 422 && error.validationFields.length > 0) {
                 setRejectedCredentialFields(error.validationFields);
                 setRetrying(false);
                 setSubmitError(null);
