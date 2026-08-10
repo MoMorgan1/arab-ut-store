@@ -804,29 +804,31 @@ Completed in `29d9f72` with hardening fix `c62952e`: focused backend 80/80 and f
 - The server always re-quotes with `QuoteCoins`; it ignores/prohibits client price/product/variant authority and writes the active SAR cart, safe item, encrypted secret, and safe idempotency response in one transaction.
 - Idempotency uses an application-keyed HMAC-SHA-256 fingerprint including user and every request field; same key/payload safely replays, mismatch returns 409, and no secret enters the stored response.
 
-- [ ] **Step 1: Read official Laravel 13 encryption, validation, request normalization, auth, rate-limiting, transaction, and scheduling docs**
+- [x] **Step 1: Read official Laravel 13 encryption, validation, request normalization, auth, rate-limiting, transaction, and scheduling docs**
 
 Confirm encrypted casts require TEXT/LONGTEXT, authenticated encryption/key rotation behavior, JSON 422 behavior without old-input flashing, array key allowlists, and current middleware names.
 
-- [ ] **Step 2: Write and run schema/security RED tests**
+- [x] **Step 2: Write and run schema/security RED tests**
 
 Prove unique/cascading one-to-one secret ownership, ciphertext-at-rest, hidden serialization, guarded mass assignment, nullable payload purge, safe masked summary, one active cart per user under concurrency, idempotency field hiding, and SQLite/MariaDB migration compatibility.
 
-- [ ] **Step 3: Implement the minimal schema and models**
+- [x] **Step 3: Implement the minimal schema and models**
 
 Add the secret table, an honest database invariant for one active authenticated cart, relations, encrypted array cast, retention fields, and safe model boundaries. Do not edit historical migrations.
 
-- [ ] **Step 4: Write and run endpoint RED tests**
+- [x] **Step 4: Write and run endpoint RED tests**
 
 Cover guest 401, valid PS normal/fast/PC, exact five-code validation, unknown fields, password preservation, client-authority rejection, server repricing, one transaction, safe 201 response, 409 replay mismatch, 429, 503, rollback, concurrency, and proof that no secret sentinel appears in response/session/log-facing serialization.
 
-- [ ] **Step 5: Implement authenticated add-to-cart and safe resume/cart reads**
+- [x] **Step 5: Implement authenticated add-to-cart and safe resume/cart reads**
 
 Guests may carry only validated platform/delivery/quantity through an intended login-resume GET. The JSON POST creates a distinct line for every submission (`quantity=1`) because credentials are per item. Configuration stores only safe service/platform/market/delivery/Coins quantity and server quote metadata; cart/item currency remains SAR.
 
-- [ ] **Step 6: Add purge operations and verify**
+- [x] **Step 6: Add purge operations and verify**
 
 Schedule an idempotent hourly purge of due cart-secret ciphertext and masked PII. Do not implement checkout handoff yet. Run focused/full PHP gates, Clean Code Guard, Test Guard, Docs Guard, MariaDB lifecycle, and commit only owned backend files with `feat: add secure Coins cart backend`.
+
+Completed in `e2a3f04` with hardening fixes `8c560ae` and `bb9e7fa`: the final full SQLite run passed 280 tests with 3 expected skips and 2,558 assertions. The preceding cross-database fix gate ran 267 tests on each engine: SQLite passed 264 with 3 expected skips and MariaDB passed 261 with 6 expected skips; both real two-process concurrency contracts also passed. MariaDB 12.3.2 verified fresh migration, rollback, remigration, legacy-key backfill, generated-column enforcement, duplicate-upgrade failure, and same-key replay. Pint, PHPStan, strict Composer validation, leak scans, Clean Code Guard, Test Guard, and Docs Guard passed. Two scoped re-review rounds closed the database-invariant, JSON-exception, typed cart-read, and same-key concurrency findings; the final verdict was SPEC PASS / TASK QUALITY PASS.
 
 ---
 
