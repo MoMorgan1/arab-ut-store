@@ -22,7 +22,7 @@ final class CategoryController extends Controller
         $input = Validator::make($request->query(), [
             'filter' => ['sometimes', 'string', Rule::in($filters)],
             'sort' => ['sometimes', 'string', Rule::in(['recommended', 'newest', 'price_asc', 'price_desc'])],
-            'q' => ['sometimes', 'string', 'max:80'],
+            'q' => ['sometimes', 'nullable', 'string', 'max:80'],
             'page' => ['sometimes', 'integer', 'min:1'],
         ])->validate();
 

@@ -68,7 +68,7 @@ Last updated: 2026-08-09
 - Objectives, Rivals, and FUT Champions are fulfilled manually by human players/operators.
 - The website will send order details to n8n. All four supplied workflow exports have been reviewed; their final replacement payload schemas and endpoint contracts will be locked when each integration slice is implemented.
 - Mohamed needs an admin dashboard for orders, customers, catalog/pricing operations, and other business management functions. Mohamed has full access; a staff role is limited to viewing orders. No player assignment portal is required for v1.
-- The intended production storefront domain is `shop.arab-ut.com`.
+- The intended production storefront domain is `store.arab-ut.com`.
 - Mohamed's existing logo must be retained. Customer-facing pages will be reviewed and redesigned one by one using the approved WordPress-continuous warm near-black, cream, and gold visual system rather than accepting the current UI wholesale.
 - The redesign retains the current WordPress site's warm near-black, cream, and gold gaming direction, refined into a more consistent production design system.
 - The homepage leads with the Coins configurator before the broader service overview.
@@ -89,7 +89,7 @@ Last updated: 2026-08-09
 - The current Whapi account remains the provider for WhatsApp OTP, and the current Google OAuth project/account should be reused. Their secrets must be transferred through protected environment configuration rather than copied into source control or documentation.
 - The public support email is `info@arab-ut.com`.
 - A Google Analytics account already exists. Meta Pixel and TikTok Pixel accounts/identifiers are not yet available and will be supplied later.
-- Development should move quickly without an elaborate release process. Use a minimal separate development/staging target, then switch `shop.arab-ut.com` after acceptance.
+- Development should move quickly without an elaborate release process. Use a minimal separate development/staging target, then switch `store.arab-ut.com` after acceptance.
 
 ## Verified current-system baseline
 
@@ -233,7 +233,7 @@ Reviews, FAQ content, floating WhatsApp support, loyalty levels, the order-track
 
 ### Decision 22: Production domain
 
-The intended storefront domain is `shop.arab-ut.com`.
+The intended storefront domain is `store.arab-ut.com`.
 
 ### Decision 23: Visual redesign approach
 
@@ -297,7 +297,7 @@ Preserve existing routes where sensible and create permanent redirects for chang
 
 ### Decision 36: n8n and release environment
 
-The existing n8n instance remains in use and is outside the website-deployment scope. Use a lightweight development/staging environment and promote the accepted build to `shop.arab-ut.com`; no elaborate multi-environment platform is required for the MVP.
+The existing n8n instance remains in use and is outside the website-deployment scope. Use a lightweight development/staging environment and promote the accepted build to `store.arab-ut.com`; no elaborate multi-environment platform is required for the MVP.
 
 ### Decision 37: Existing authentication providers and support address
 

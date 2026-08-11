@@ -94,6 +94,22 @@ test('category listings expose only public products and active variants', functi
             ->missing('catalog.products.0.configuration'));
 });
 
+test('category filters accept the empty search value sent by the storefront form', function () {
+    createStoreCatalogProduct(ServiceType::Sbc, [
+        'slug' => 'empty-search-icon',
+    ], [
+        'configuration' => ['sbcCategory' => 'icons'],
+    ]);
+
+    $this->get('/sbc?filter=icons&q=&sort=recommended')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('catalog.products', 1)
+            ->where('catalog.products.0.slug', 'empty-search-icon')
+            ->where('catalog.query.filter', 'icons')
+            ->where('catalog.query.q', ''));
+});
+
 test('SBC upgrades includes source challenges and supports localized search and stable price sorting', function () {
     createStoreCatalogProduct(ServiceType::Sbc, [
         'slug' => 'upgrade-expensive',

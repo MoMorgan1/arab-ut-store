@@ -180,7 +180,7 @@ vendor/bin/phpstan analyse app/Actions/Catalog app/Http/Controllers/Automation a
 
 Expected: all tests pass, Pint clean, PHPStan 0 errors.
 
-- [ ] **Step 9: Commit Task 1**
+- [x] **Step 9: Commit Task 1**
 
 ```bash
 git add app/Actions/Catalog app/Http/Controllers/Automation app/Http/Middleware/VerifyN8nCatalogSignature.php app/Http/Requests/Automation/CatalogSnapshotRequest.php bootstrap/app.php config/services.php routes/web.php tests/Feature/Automation tests/Unit/Catalog
@@ -538,7 +538,7 @@ git commit -m "feat: add equal storefront service rail"
 - Consumes: the `StoreCategoryPageProps` and `StoreCatalogProductPageProps` contracts from `store-content.ts`.
 - Produces: URL-driven accessible filters/search/sort, authoritative variant selectors, and real Add to Cart controls.
 
-- [ ] **Step 1: Write failing category behavior tests**
+- [x] **Step 1: Write failing category behavior tests**
 
 ```tsx
 it('submits SBC search filter and sort as locale-preserving GET parameters', async () => {
@@ -558,25 +558,25 @@ it('submits SBC search filter and sort as locale-preserving GET parameters', asy
 
 Add tests for Challenges shown under Upgrades, empty state, image fallback, price missing state, stable pagination links, platform chips, variant selection, add-button loading/error state, and redirect to the returned cart URL after 201.
 
-- [ ] **Step 2: Write failing product detail tests**
+- [x] **Step 2: Write failing product detail tests**
 
 Assert breadcrumb, Serif Display heading class, contained image, platform/variant summaries, localized price, selected-variant Add to Cart, error focus, and absence of checkout/payment controls.
 
-- [ ] **Step 3: Run page tests to verify RED**
+- [x] **Step 3: Run page tests to verify RED**
 
 Run: `npm test -- resources/js/__tests__/store/store-category.test.tsx resources/js/__tests__/store/store-catalog-product.test.tsx`
 
 Expected: FAIL because the components/pages do not exist.
 
-- [ ] **Step 4: Implement category primitives and pages**
+- [x] **Step 4: Implement category primitives and pages**
 
 Use a real GET search form for no-JavaScript behavior. Enhance with Inertia `router.get` after submit/filter/sort. Keep the query in the URL, render a results count live region only after navigation, and use `<nav aria-label>` for pagination.
 
-- [ ] **Step 5: Implement catalog/product visual styling**
+- [x] **Step 5: Implement catalog/product visual styling**
 
 Use WordPress SBC hierarchy with current tokens: editorial hero, compact toolbar, equal cards, contained art, subdued category metadata, gold price, and quiet empty state. At 320px cards are one column; 768px two columns; 1440px three/four based on available width. No horizontal document overflow.
 
-- [ ] **Step 6: Run focused GREEN and frontend gate**
+- [x] **Step 6: Run focused GREEN and frontend gate**
 
 Run:
 
@@ -587,7 +587,7 @@ npm run ci:check
 
 Expected: page tests and the complete frontend gate pass.
 
-- [ ] **Step 7: Commit Task 4**
+- [x] **Step 7: Commit Task 4**
 
 ```bash
 git add resources/js/components/store/catalog resources/js/pages/store/category.tsx resources/js/pages/store/catalog-product.tsx resources/js/types/store-content.ts resources/css/app.css resources/js/__tests__/store
@@ -616,7 +616,7 @@ git commit -m "feat: build service catalog pages"
 - Consumes: the approved existing n8n reviews URL through `RefreshStoreReviews` only.
 - Produces: safe `Review` rows and `StoreReviewReader::homepage()` / `paginate()` public projections.
 
-- [ ] **Step 1: Write failing migration and importer safety tests**
+- [x] **Step 1: Write failing migration and importer safety tests**
 
 ```php
 it('projects only safe review fields and never persists source PII', function () {
@@ -640,21 +640,21 @@ it('projects only safe review fields and never persists source PII', function ()
 
 Add idempotency, all ratings 1-5, public-name allowlist, linked-order verified derivation, malformed response rollback, source deletion/visibility reconciliation, and last-good preservation tests.
 
-- [ ] **Step 2: Run importer tests to verify RED**
+- [x] **Step 2: Run importer tests to verify RED**
 
 Run: `php artisan test tests/Unit/Reviews/ImportStoreReviewsTest.php --compact`
 
 Expected: FAIL because source identity columns and importer do not exist.
 
-- [ ] **Step 3: Add review source identity migration**
+- [x] **Step 3: Add review source identity migration**
 
 Add `source_key`, `external_id`, and `content_hash` columns with unique `(source_key, external_id)`. Do not add raw payload, phone, email, avatar, or external order columns. Make `reviewer_name` hold only an explicitly public name or localized generic label.
 
-- [ ] **Step 4: Implement strict safe projection and atomic import**
+- [x] **Step 4: Implement strict safe projection and atomic import**
 
 Validate exact source shape through a dedicated mapper. Normalize rating to integer 1-5, strip tags, bound review text to 2,000 characters, accept a display name only from a documented public-name field, and otherwise use the generic localized label. Set verified in the public view only when `order_item_id !== null`.
 
-- [ ] **Step 5: Write failing command/schedule tests**
+- [x] **Step 5: Write failing command/schedule tests**
 
 ```php
 Http::fake([
@@ -669,11 +669,11 @@ expect(Review::count())->toBeGreaterThan(0);
 
 Assert connect timeout, response timeout, bounded retries, no request on storefront routes, `withoutOverlapping`, count-only command output, and failed refresh retaining existing reviews.
 
-- [ ] **Step 6: Implement command, schedule, reader, controller, and routes**
+- [x] **Step 6: Implement command, schedule, reader, controller, and routes**
 
 Use the configured existing URL, `acceptJson()`, `connectTimeout(3)`, `timeout(10)`, and `retry([150, 350], throw: false)`. Schedule hourly with `withoutOverlapping(15)->onOneServer()` when the production cache driver supports shared locks. The reviews controller only calls `StoreReviewReader`.
 
-- [ ] **Step 7: Run focused GREEN and cross-engine migration lifecycle**
+- [x] **Step 7: Run focused GREEN and cross-engine migration lifecycle**
 
 Run:
 
@@ -686,7 +686,7 @@ vendor/bin/phpstan analyse app/Actions/Reviews app/Console/Commands/RefreshStore
 
 Expected: all pass. Repeat the migration and focused review tests on the repository's MariaDB test profile before commit.
 
-- [ ] **Step 8: Commit Task 5**
+- [x] **Step 8: Commit Task 5**
 
 ```bash
 git add database/migrations/2026_08_11_000002_add_source_identity_to_reviews.php app/Models/Review.php app/Actions/Reviews app/Console/Commands/RefreshStoreReviews.php app/Services/Reviews app/Http/Controllers/Store/ReviewsController.php config/services.php routes/console.php routes/web.php tests/Feature/Console/RefreshStoreReviewsTest.php tests/Feature/Store/StoreReviewsTest.php tests/Unit/Reviews
@@ -713,11 +713,11 @@ git commit -m "feat: import honest storefront reviews"
 - Consumes: safe review summary/preview and localized FAQ entries from HomeController; paginated safe reviews from ReviewsController.
 - Produces: homepage review/FAQ sections and the full reviews page.
 
-- [ ] **Step 1: Write failing review UI tests**
+- [x] **Step 1: Write failing review UI tests**
 
 Assert rating distribution, all-rating rendering, generic customer fallback, evidence-only verified label, equal cards, no marquee/autoplay, pagination, empty state, and absence of phone/email patterns in rendered DOM.
 
-- [ ] **Step 2: Write failing exact FAQ tests**
+- [x] **Step 2: Write failing exact FAQ tests**
 
 ```tsx
 it('renders the approved FAQ as native disclosures', () => {
@@ -732,25 +732,25 @@ it('renders the approved FAQ as native disclosures', () => {
 
 Assert exact Arabic text, meaning-equivalent English text, one `<summary>` per `<details>`, visible focus classes, and no hidden answer duplication.
 
-- [ ] **Step 3: Run UI tests to verify RED**
+- [x] **Step 3: Run UI tests to verify RED**
 
 Run: `npm test -- resources/js/__tests__/store/store-reviews-section.test.tsx resources/js/__tests__/store/store-faq-section.test.tsx resources/js/__tests__/store/store-reviews-page.test.tsx`
 
 Expected: FAIL because the components/page do not exist.
 
-- [ ] **Step 4: Implement review components and page**
+- [x] **Step 4: Implement review components and page**
 
 Use a semantic list, stars with an accessible numeric label, and the same equal-card rail mechanics without autoplay. Render the distribution as text plus proportional bars, not color alone. Use localized `Intl.DateTimeFormat` and never reconstruct source names.
 
-- [ ] **Step 5: Implement native FAQ and exact content**
+- [x] **Step 5: Implement native FAQ and exact content**
 
 Seed or project the four approved entries from locale/config into HomeController. Use native `<details>` so disclosure remains operable without custom state. Style the marker, border, and open state with existing tokens.
 
-- [ ] **Step 6: Assemble homepage sections**
+- [x] **Step 6: Assemble homepage sections**
 
 Render ServiceRail, ReviewsSection, and FaqSection after Coins in the approved order. HomeController reads a maximum of six reviews and four FAQ items with bounded queries. It performs zero HTTP calls.
 
-- [ ] **Step 7: Run focused and full frontend GREEN**
+- [x] **Step 7: Run focused and full frontend GREEN**
 
 Run:
 
@@ -761,7 +761,7 @@ npm run ci:check
 
 Expected: all Vitest, ESLint, Prettier, TypeScript, and Vite build checks pass.
 
-- [ ] **Step 8: Commit Task 6**
+- [x] **Step 8: Commit Task 6**
 
 ```bash
 git add resources/js/components/store/reviews-section.tsx resources/js/components/store/faq-section.tsx resources/js/pages/store/reviews.tsx resources/js/pages/store/home.tsx resources/js/types/store-content.ts resources/css/app.css resources/js/__tests__/store lang/ar/store.php lang/en/store.php app/Http/Controllers/Store/HomeController.php
@@ -786,7 +786,7 @@ git commit -m "feat: add reviews and FAQ storefront sections"
 - Consumes: the implemented signed catalog endpoint and review refresh command.
 - Produces: the exact secret-free n8n contract, deployment configuration names, scheduler instructions, and final verification evidence.
 
-- [ ] **Step 1: Write the failing documentation/config contract test**
+- [x] **Step 1: Write the failing documentation/config contract test**
 
 ```php
 it('documents store arab ut as the canonical storefront and exposes required config keys', function () {
@@ -798,21 +798,21 @@ it('documents store arab ut as the canonical storefront and exposes required con
 });
 ```
 
-- [ ] **Step 2: Run the documentation test to verify RED**
+- [x] **Step 2: Run the documentation test to verify RED**
 
 Run: `php artisan test tests/Feature/Foundation/StorefrontDocumentationTest.php --compact`
 
 Expected: FAIL because the old hostname remains and the new contract document/config keys are incomplete.
 
-- [ ] **Step 3: Document the exact n8n request contract**
+- [x] **Step 3: Document the exact n8n request contract**
 
 Document header names, signature canonical string, timestamp window, schema version, every exact JSON field/type/bound, example request with fake values, success/error envelopes, idempotent replay behavior, archive semantics, media allowlist, and safe retry instructions. Do not include live URLs containing secrets or real signatures.
 
-- [ ] **Step 4: Correct domain and operational docs**
+- [x] **Step 4: Correct domain and operational docs**
 
 Replace canonical storefront references with `store.arab-ut.com`. Document that Hostinger cron runs Laravel scheduler every minute, catalog comes from signed n8n snapshots, reviews are refreshed hourly, and last-good public data remains available on source failure.
 
-- [ ] **Step 5: Run full automated verification**
+- [x] **Step 5: Run full automated verification**
 
 Run:
 
@@ -825,11 +825,11 @@ php artisan schedule:list
 
 Expected: Composer validation, Pint, PHPStan, full Pest, full Vitest, ESLint, Prettier, TypeScript, and Vite build all pass. Routes and schedules include the new catalog/review contracts exactly once.
 
-- [ ] **Step 6: Run real MariaDB gates**
+- [x] **Step 6: Run real MariaDB gates**
 
 On an isolated repository-approved MariaDB instance: run `migrate:fresh`, the catalog/review/domain schema tests, full rollback, remigrate, then re-run the focused tests. Verify all migrations are Ran and cleanly shut down/remove the disposable instance.
 
-- [ ] **Step 7: Run the browser matrix**
+- [x] **Step 7: Run the browser matrix**
 
 Verify Arabic and English at 320, 390, 768, and 1440 CSS pixels for:
 
@@ -841,11 +841,11 @@ Verify Arabic and English at 320, 390, 768, and 1440 CSS pixels for:
 
 Record equal service-card dimensions, rail drag/scroll and keyboard controls, RTL order, Sell Coins external target, Thmanyah computed fonts, image containment, 44px targets, 200% zoom, reduced motion, no horizontal overflow, no PII in DOM/URL/storage, and zero console warnings/errors.
 
-- [ ] **Step 8: Run guard reviews and write final report**
+- [x] **Step 8: Run guard reviews and write final report**
 
 Run Clean Code Guard over changed production files, Test Guard over changed tests, and Docs Guard over the API/product docs. Record RED/GREEN evidence, source/PII boundary, browser matrix, MariaDB lifecycle, and all concerns in the final report.
 
-- [ ] **Step 9: Commit Task 7**
+- [x] **Step 9: Commit Task 7**
 
 ```bash
 git add docs .env.example README.md tests/Feature/Foundation/StorefrontDocumentationTest.php .superpowers/sdd/2026-08-11-storefront-services-reviews-faq/final-report.md

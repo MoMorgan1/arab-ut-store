@@ -6,7 +6,7 @@ Date: 2026-08-08
 
 ## Outcome
 
-Build a production ecommerce application that fully replaces WordPress and WooCommerce at `shop.arab-ut.com`. It will sell Arab UT's FC 27 services in Arabic and English, support automated and manual fulfillment, and give Mohamed one branded admin dashboard for catalog, pricing, customers, orders, wallet credit, and operations.
+Build a production ecommerce application that fully replaces WordPress and WooCommerce at `store.arab-ut.com`. It will sell Arab UT's FC 27 services in Arabic and English, support automated and manual fulfillment, and give Mohamed one branded admin dashboard for catalog, pricing, customers, orders, wallet credit, and operations.
 
 This is an **Ambitious MVP**, not a simple brochure site. The sensible way to keep it fast is to build one application in visible milestones and exclude features that do not help the first real sale.
 

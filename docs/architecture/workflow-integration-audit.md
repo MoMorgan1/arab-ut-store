@@ -159,3 +159,15 @@ Payment-provider work remains deferred until Mohamed explicitly authorizes it.
 1. The combined Coins `PS / Xbox` choice and automated Xbox SBC jobs use the same internal console market and supplier path as PlayStation. Coins does not expose or save a separate Xbox choice; SBCs may retain the explicit platform required by their order contract.
 2. WhatsApp and email status messages follow the customer's saved Arabic/English language, with Arabic fallback.
 3. Laravel/MariaDB is the operational source of truth. Google Sheets is an optional export and is not an input required for normal operation.
+
+## Storefront catalog and review operations
+
+The canonical storefront is `store.arab-ut.com`. The signed catalog snapshot contract is documented in [`docs/api/n8n-catalog-v1.md`](../api/n8n-catalog-v1.md). Catalog snapshots are pushed by n8n; customer storefront requests read only MariaDB.
+
+Hostinger must execute Laravel's scheduler every minute from the deployed application directory:
+
+```cron
+* * * * php artisan schedule:run >> /dev/null 2>&1
+```
+
+The scheduler runs `reviews:refresh` hourly. That command pulls `N8N_REVIEWS_URL`, discards private customer fields before persistence, and atomically publishes the safe snapshot. A failed or malformed source response retains the last-good reviews. Operators should monitor scheduler failures; they must not replace a failing source with fabricated reviews.
