@@ -582,18 +582,18 @@ git commit -m "feat: integrate authentication with the storefront"
 - `StoreHeader` owns a live client URL state synchronized from the Inertia prop plus `hashchange` and `popstate`.
 - `exchange_rate_attribution` moves from `footer` translations to `preferences` translations and renders once inside the open dialog.
 
-- [ ] **Step 1: Write copy, bidi, hash, decorative, and attribution RED tests**
+- [x] **Step 1: Write copy, bidi, hash, decorative, and attribution RED tests**
 
 Assert the exact approved copy; `<bdi dir="ltr">+30</bdi>` precedes the Arabic unit; decorative images have empty alt, `aria-hidden`, and `draggable=false`; changing from `/` to `#coins` transfers `aria-current` from Home to Coins; footer lacks rate attribution; preferences dialog contains the verified linked attribution.
 
-- [ ] **Step 2: Run polish RED**
+- [x] **Step 2: Run polish RED**
 
 ```powershell
 php vendor/bin/pest tests/Feature/Store/StoreTranslationParityTest.php --compact
 npx vitest run resources/js/__tests__/store/coins-home.test.tsx resources/js/__tests__/store/store-header.test.tsx resources/js/__tests__/store/store-footer.test.tsx
 ```
 
-- [ ] **Step 3: Apply exact copy and stable bidi composition**
+- [x] **Step 3: Apply exact copy and stable bidi composition**
 
 Use:
 
@@ -605,19 +605,19 @@ Use:
 
 Render stat value and unit as separate spans, with the numeric span isolated by `<bdi dir="ltr">`.
 
-- [ ] **Step 4: Add live hash state and relocate attribution**
+- [x] **Step 4: Add live hash state and relocate attribution**
 
 Synchronize a `liveCurrentUrl` state from `currentUrl`; on `hashchange`/`popstate`, use `window.location.pathname + window.location.search + window.location.hash`. Feed this state to `activeState` and `StorePreferences`. Move the existing official link, unchanged, from the footer to the preferences dialog.
 
-- [ ] **Step 5: Add floating coins and typography corrections**
+- [x] **Step 5: Add floating coins and typography corrections**
 
 Reuse the exact WordPress transparent source. Use 160/240 WebP derivatives for elements rendered larger than 40 CSS pixels; never scale the 80px asset above its useful size. Keep decorations behind content and outside hit regions. Add only missing Serif Display selectors and replace synthetic `font-weight: 800` on large auth/wordmark text with available 700 or 900.
 
-- [ ] **Step 6: Run polish GREEN and responsive browser matrix**
+- [x] **Step 6: Run polish GREEN and responsive browser matrix**
 
 Run Step 2 plus AR/EN at 320, 390, 768, and 1440 pixels. Verify direct hash load, same-page click, browser back, computed fonts, bidi order, pointer hit regions, reduced motion, no overflow, link reachability, and zero console errors/warnings.
 
-- [ ] **Step 7: Commit Task 7**
+- [x] **Step 7: Commit Task 7**
 
 ```powershell
 git add lang/ar/store.php lang/en/store.php lang/ar/ui.php lang/en/ui.php resources/js/types/coins.ts resources/js/types/store-shell.ts resources/js/pages/store/home.tsx resources/js/components/store/store-header.tsx resources/js/components/store/store-preferences.tsx resources/js/components/store/store-footer.tsx resources/css/app.css public/images/store/coins tests/Feature/Store/StoreTranslationParityTest.php resources/js/__tests__/store/coins-home.test.tsx resources/js/__tests__/store/store-header.test.tsx resources/js/__tests__/store/store-footer.test.tsx
