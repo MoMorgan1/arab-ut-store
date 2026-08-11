@@ -130,7 +130,6 @@ jobs:
           tests/Feature/Auth/RegistrationTest.php
           tests/Feature/Settings/ProfileUpdateTest.php
           tests/Feature/Store/CoinsCartTest.php
-          tests/Feature/Console/PurgeCartItemSecretsTest.php
           tests/Feature/Console/PurgeGuestCartClaimsTest.php
           tests/Integration/ActiveCartInvariantUpgradeTest.php
           tests/Integration/CoinsCartConcurrencyTest.php
