@@ -21,10 +21,12 @@ final class ResolveCartOwner
             return CartOwner::user($this->authenticatedUserId($authenticatedUser));
         }
 
-        $existingOwner = $this->existingGuestForRequest($request);
+        $existingOwners = $this->existingGuestCandidatesForRequest($request);
 
-        if ($existingOwner !== null) {
-            return $existingOwner;
+        if ($existingOwners !== []) {
+            return count($existingOwners) === 1
+                ? $existingOwners[0]
+                : $this->rekeyActiveCart($existingOwners[0], array_slice($existingOwners, 1));
         }
 
         $rawToken = bin2hex(random_bytes(32));
@@ -33,27 +35,37 @@ final class ResolveCartOwner
         return $this->ownerForRawToken($rawToken);
     }
 
-    public function existingGuestForRequest(Request $request): ?CartOwner
+    /** @return list<CartOwner> */
+    public function existingGuestCandidatesForRequest(Request $request): array
     {
         $rawToken = $request->session()->get(self::SESSION_KEY);
 
         if (! is_string($rawToken) || preg_match('/\A[0-9a-f]{64}\z/D', $rawToken) !== 1) {
-            return null;
+            return [];
         }
 
-        return $this->ownerForRawToken($rawToken);
+        return $this->ownersForRawToken($rawToken);
     }
 
     private function ownerForRawToken(string $rawToken): CartOwner
     {
-        $currentOwner = CartOwner::guest(hash_hmac('sha256', $rawToken, $this->applicationKey()));
-        $previousOwners = $this->previousOwners($rawToken, $currentOwner);
+        $owners = $this->ownersForRawToken($rawToken);
+        $currentOwner = $owners[0];
+        $previousOwners = array_slice($owners, 1);
 
         if ($previousOwners === []) {
             return $currentOwner;
         }
 
         return $this->rekeyActiveCart($currentOwner, $previousOwners);
+    }
+
+    /** @return list<CartOwner> */
+    private function ownersForRawToken(string $rawToken): array
+    {
+        $currentOwner = CartOwner::guest(hash_hmac('sha256', $rawToken, $this->applicationKey()));
+
+        return [$currentOwner, ...$this->previousOwners($rawToken, $currentOwner)];
     }
 
     private function authenticatedUserId(Authenticatable $user): int

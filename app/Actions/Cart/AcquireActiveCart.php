@@ -9,13 +9,17 @@ use Illuminate\Support\Str;
 
 final readonly class AcquireActiveCart
 {
+    public function __construct(private LockGuestCartClaims $lockGuestCartClaims) {}
+
     public function execute(CartOwner $owner): Cart
     {
         return DB::transaction(function () use ($owner): Cart {
+            $effectiveOwner = $this->effectiveOwner($owner);
+
             DB::table('carts')->insertOrIgnore([
                 'public_id' => (string) Str::ulid(),
-                'user_id' => $owner->userId(),
-                'session_key' => $owner->sessionKey(),
+                'user_id' => $effectiveOwner->userId(),
+                'session_key' => $effectiveOwner->sessionKey(),
                 'status' => 'active',
                 'currency' => 'SAR',
                 'created_at' => now(),
@@ -23,9 +27,22 @@ final readonly class AcquireActiveCart
             ]);
 
             return Cart::query()
-                ->activeForOwner($owner)
+                ->activeForOwner($effectiveOwner)
                 ->lockForUpdate()
                 ->sole();
         }, attempts: 3);
+    }
+
+    private function effectiveOwner(CartOwner $owner): CartOwner
+    {
+        $guestSessionHmac = $owner->sessionKey();
+
+        if ($guestSessionHmac === null) {
+            return $owner;
+        }
+
+        $claimedUserId = $this->lockGuestCartClaims->execute([$owner])[$guestSessionHmac];
+
+        return $claimedUserId === null ? $owner : CartOwner::user($claimedUserId);
     }
 }

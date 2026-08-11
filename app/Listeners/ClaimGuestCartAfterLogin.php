@@ -6,13 +6,16 @@ use App\Actions\Cart\ClaimGuestCart;
 use App\Actions\Cart\ResolveCartOwner;
 use App\Models\User;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 final readonly class ClaimGuestCartAfterLogin
 {
     public function __construct(
         private Request $request,
+        private StatefulGuard $guard,
         private ResolveCartOwner $resolveCartOwner,
         private ClaimGuestCart $claimGuestCart,
     ) {}
@@ -23,14 +26,19 @@ final readonly class ClaimGuestCartAfterLogin
             return;
         }
 
-        $guestOwner = $this->resolveCartOwner->existingGuestForRequest($this->request);
-        $guestSessionHmac = $guestOwner?->sessionKey();
+        $guestOwners = $this->resolveCartOwner->existingGuestCandidatesForRequest($this->request);
 
-        if ($guestSessionHmac === null) {
+        if ($guestOwners === []) {
             return;
         }
 
-        $this->claimGuestCart->execute($guestSessionHmac, $event->user);
+        try {
+            $this->claimGuestCart->execute($guestOwners, $event->user);
+        } catch (Throwable $failure) {
+            $this->guard->logout();
+
+            throw $failure;
+        }
         $session = $this->request->session();
 
         DB::afterCommit(

@@ -2,94 +2,82 @@
 
 ## Outcome
 
-Successful sign-in and registration now claim the existing server-session guest cart through one discovered `Illuminate\Auth\Events\Login` listener. A guest-only cart is converted in place. When an active user cart already exists, every guest cart-item row moves to it without changing cart-item IDs or touching the one-to-one encrypted-secret rows, and only the empty guest cart is deleted.
+Successful sign-in and registration claim the server-session guest cart through one auto-discovered `Illuminate\Auth\Events\Login` listener. A guest-only cart is converted in place. Existing user and guest carts are merged without changing cart-item IDs or reading encrypted secret rows.
 
-The action is one idempotent database transaction. It locks the guest and user active carts in deterministic `active_owner_key` order, retries transaction conflicts up to three times, and lets every failure propagate. The listener forgets `coins_guest_owner_token` through `DB::afterCommit`, so an outer rollback retains the token and all original ownership for retry.
+The review fix adds a durable `guest_cart_claims` ownership marker. `AcquireActiveCart` and `ClaimGuestCart` lock the same HMAC marker before touching carts. A request carrying an old guest HMAC after a successful claim is routed to that user's cart and cannot recreate an orphan guest cart.
 
 ## Implemented contracts
 
-- `ClaimGuestCart::execute(string $guestSessionHmac, User $user): void` validates the HMAC through `CartOwner`, derives the user owner through the same value object, and uses only active SAR owner keys.
-- `ResolveCartOwner::existingGuestForRequest()` reads only an already-present valid server-session token. It exposes no raw token and reuses the existing current/previous application-key derivation and rekey boundary.
-- `ClaimGuestCartAfterLogin` returns for non-application users, missing sessions, and missing/invalid guest tokens. Claim failures are not caught or converted into success.
-- Laravel 13 event discovery registers exactly one `ClaimGuestCartAfterLogin@handle` listener. A guard review caught and removed a duplicate manual registration before commit.
-- Guest-only conversion sets `user_id` and clears `session_key`; SQLite triggers or the MariaDB generated column derive `user:<id>`.
-- Merge uses a bulk `cart_items.cart_id` update. It never selects, casts, decrypts, serializes, logs, or mutates `cart_item_secrets.encrypted_payload`.
-- Repeated and concurrent claims leave one active user cart, no active guest cart, and every original item and secret relation exactly once.
-- Canonical and localized login/registration redirects are unchanged; the localized intended `/en/cart` destination remains intact.
-
-No authentication UI, checkout, payment, order, or credential-projection behavior changed.
-
-## Official-framework verification
-
-- Laravel 13 event documentation confirms `Login` listener discovery/registration and the synchronous listener contract.
-- The installed Laravel 13.17 `SessionGuard::login()` updates the session and dispatches `Login`; Fortify 1.37.2 uses that same guard path for both login and registration.
-- The installed database transaction manager confirms `DB::afterCommit` runs immediately with no open transaction and defers to the root commit when a transaction is active.
+- `ResolveCartOwner::existingGuestCandidatesForRequest()` derives current and configured previous-key HMAC owners without writing the database. Anonymous browsing retains the existing transactional rekey behavior; login passes every candidate into the root claim transaction.
+- `ClaimGuestCart::execute(list<CartOwner>, User)` locks claim markers and active cart owner keys in deterministic string order. It converts one guest cart when no user cart exists, moves every other guest cart item into the target, deletes only emptied guest carts, and marks every candidate claimed in the same transaction.
+- `LockGuestCartClaims` performs a locking read before inserting missing markers, then locks the complete sorted marker set. This avoids racing an uncommitted claim insert while retaining root-transaction deadlock retries for simultaneous first acquisition.
+- `AcquireActiveCart` resolves a guest HMAC through the locked durable marker. Unclaimed HMACs remain guest-owned; claimed HMACs acquire the mapped active user cart.
+- A marker already claimed by a different user fails closed with no cart or marker mutation.
+- `ClaimGuestCartAfterLogin` catches a propagated claim failure only to log the just-authenticated guard back out, then rethrows. It retains the guest token and all session state for retry. The token is forgotten only through `DB::afterCommit` after a successful claim.
+- Laravel event discovery registers exactly one listener. Login and registration share this path; there is no second registration implementation.
+- Production claim and marker-lock code never imports or queries `CartItemSecret`, `cart_item_secrets`, `encrypted_payload`, or secret-access logs.
 
 ## TDD evidence
 
-### Genuine SQLite RED
+### Initial RED/GREEN
 
-Before production edits:
+The original Task 5 RED established the absent listener/action behavior. Its final implementation commit was `db39ce9` (`feat: claim guest carts after authentication`).
 
-```text
-10 tests; 0 passed; 5 expected behavior failures; 1 missing-contract error;
-4 MariaDB-only skips; 19 assertions.
-```
+### Review RED
 
-The failures named the absent action/listener: the token remained after login, registration, merge, and the cross-session no-op; the rollback failure path was never reached; and the container could not resolve `ClaimGuestCart`.
+Before review production edits, the focused SQLite regression run produced 5 tests: 3 passed, one expected assertion failure, one missing-contract error, and 34 assertions. The real SQLite `BEFORE DELETE` trigger aborted the claim through the real Fortify login route; the failure showed that the user remained authenticated. The new multi-candidate action contract also failed because it did not yet exist.
 
-### SQLite GREEN
+MariaDB stress then exposed a real intermittent `DeadlockException` in the claim-first test helper. The helper had accidentally wrapped the production add action in an outer transaction merely to signal process start, preventing `AddCoinsToCart` from owning and retrying its root transaction. The corrected helper wraps only the side deliberately held by a barrier.
 
-- Focused claim/concurrency selection: 10 tests, 6 passed, 4 expected MariaDB-only skips, 51 assertions.
-- Full backend: 335 tests, 332 passed, 3 expected skips, 17,705 assertions.
+### Review GREEN
 
-The focused suite covers guest-only conversion, existing-cart merge, ciphertext/ID retention, query-log proof of no secret access, repeat idempotency, outer rollback with token retention, cross-session isolation, localized login, localized registration, and concurrent claims.
+- Focused SQLite auth/rotation/concurrency selection: 18 tests, 10 passed, 8 expected MariaDB-only skips, 78 assertions.
+- Full SQLite backend after final review fixes: 338 tests, 335 passed, 3 expected skips, 17,728 assertions.
+- The injected claim failure proves exception propagation, unauthenticated guard state, retained raw guest token, unchanged carts/items, and a successful retry after removing the trigger.
+- Key-rotation coverage proves current and previous HMAC carts remain unchanged until the root claim transaction and then merge into one user cart.
+- Cross-user coverage proves a claimed HMAC fails closed for a different user.
 
 ## Real MariaDB verification
 
-The isolated official MariaDB 12.3.2 Windows ZIP was checked against the official archive checksum before execution:
+MariaDB 12.3.2 ran locally on isolated `127.0.0.1:3324`.
 
-```text
-67347c129eb9c5923d002ea34fbfa27c60eb95d36dd73b85af2651cdeceecac5
-```
+- Fresh migration plus focused claim/all independent-process races: 16 tests, 15 passed, one expected SQLite-only skip, 109 assertions.
+- Pinned MariaDB CI selection after the final concurrency correction: 171 tests, 166 passed, 5 engine-specific skips, 1,079 assertions.
+- Full rollback, remigration, and status succeeded; migration `2026_08_11_000001_create_guest_cart_claims_table` reported `Ran`.
+- Post-remigration claim/concurrency selection: 17 tests, 16 passed, one expected SQLite-only skip, 114 assertions.
+- Claim-first stress: 15 consecutive two-process runs passed, 105 assertions.
+- Add-first stress: 10 consecutive two-process runs passed, 70 assertions.
 
-Results on MariaDB 12.3.2 bound only to `127.0.0.1:3323`:
+The MariaDB cases directly exercise production `ClaimGuestCart`, `AddCoinsToCart`, and `AcquireActiveCart` boundaries for guest-only conversion, two guest HMAC carts claimed by one user, simultaneous repeated claims, add-before-claim, and claim-before-stale-add.
 
-- Task 5 plus all four independent-process cart races: 10/10 passed, 82 assertions.
-- Extended auth/cart/schema/rotation/upgrade selection: 99 tests, 95 passed, 4 expected engine-specific skips, 806 assertions.
-- Full migration rollback, remigration, and status: every migration through `2026_08_10_000003` reported `Ran`.
-- Post-remigration Task 5/two-process rerun: 10/10 passed, 82 assertions.
+## Lifecycle, static, and security gates
 
-The simultaneous claim processes merged the guest and existing user carts into one active user cart with both original item IDs and both original secret IDs exactly once. The disposable server shut down cleanly, port 3323 closed, and its database, binaries, archive, checksum, logs, and PID file were removed.
+- An isolated SQLite file completed fresh migration, full rollback, remigration, and status, then was removed.
+- MariaDB completed fresh migration, latest-migration down/up, full rollback/remigration, and post-remigration behavior tests.
+- The disposable MariaDB server shut down cleanly, port 3324 closed, and its database, PID, and log directory were removed.
+- Pint passed; PHPStan passed with zero errors; strict Composer validation passed; `git diff --check` passed.
+- Query-log regression found no `encrypted_payload`, `cart_item_secrets`, or `secret_access_logs` access.
+- Production claim/marker sink scan found zero secret-model, decryption, logging, or secret-table matches.
+- Raw-token scan found zero session-token references in `ClaimGuestCart` and `LockGuestCartClaims`.
+- Event listing contains exactly one `ClaimGuestCartAfterLogin@handle` entry.
 
-## Security and leak gates
-
-- The claim query log contains no `encrypted_payload`, `cart_item_secrets`, or `secret_access_logs` query.
-- Raw ciphertext read before and after guest-only conversion and two-cart merge is byte-for-byte identical.
-- Production claim code imports no secret model and has no logging, response, session-write, browser-storage, or serialization path for credentials.
-- The listener receives only a `CartOwner` HMAC from `ResolveCartOwner`; the raw token remains confined to Laravel's server session and is forgotten only after commit.
-- The two-process helper receives only the irreversible guest HMAC and numeric user ID.
-
-## Guard verdicts
-
-- Clean Code: no swallowed production error, speculative abstraction, duplicated HMAC logic, secret access, or dead listener registration. The action was split into lock, convert, and merge operations with deterministic ownership semantics.
-- Test Guard: real migrated SQLite and MariaDB databases, real Fortify login/registration, no application mocks, one scenario per test, and behavior/state assertions rather than internal-call assertions.
-- Docs Guard: every symbol, signature, test count, migration, version, event, and cleanup claim above was checked against current source or fresh command output.
-- Composer strict validation, Pint, PHPStan, and `git diff --check` pass in the final gate.
-
-## Owned files
+## Files changed in the review fix
 
 Created:
 
-- `app/Actions/Cart/ClaimGuestCart.php`
-- `app/Listeners/ClaimGuestCartAfterLogin.php`
-- `tests/Feature/Auth/GuestCartClaimTest.php`
-- `tests/Support/ConcurrentGuestCartClaim.php`
-- this report
+- `app/Actions/Cart/LockGuestCartClaims.php`
+- `database/migrations/2026_08_11_000001_create_guest_cart_claims_table.php`
+- `tests/Support/ConcurrentGuestCoinsCartAdd.php`
 
 Modified:
 
+- `app/Actions/Cart/AcquireActiveCart.php`
+- `app/Actions/Cart/ClaimGuestCart.php`
 - `app/Actions/Cart/ResolveCartOwner.php`
+- `app/Listeners/ClaimGuestCartAfterLogin.php`
+- `tests/Feature/Auth/GuestCartClaimTest.php`
 - `tests/Integration/CoinsCartConcurrencyTest.php`
+- `tests/Support/ConcurrentGuestCartClaim.php`
+- `.github/workflows/tests.yml`
 
-`AppServiceProvider` was deliberately left unchanged because Laravel 13 event discovery already registers the listener; manual registration would execute it twice.
+No authentication UI, checkout, payment, order, or credential-projection behavior changed.

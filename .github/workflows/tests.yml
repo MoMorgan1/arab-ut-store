@@ -98,6 +98,7 @@ jobs:
           tests/Feature/Database/CartSecuritySchemaTest.php
           tests/Feature/Database/ActiveCartAcquisitionTest.php
           tests/Feature/Cart/CartOwnerRotationTest.php
+          tests/Feature/Auth/GuestCartClaimTest.php
           tests/Feature/Auth/RegistrationTest.php
           tests/Feature/Settings/ProfileUpdateTest.php
           tests/Feature/Store/CoinsCartTest.php

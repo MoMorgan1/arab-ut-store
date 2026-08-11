@@ -7,52 +7,85 @@ use App\Models\User;
 use App\ValueObjects\Cart\CartOwner;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
-final class ClaimGuestCart
+final readonly class ClaimGuestCart
 {
-    public function execute(string $guestSessionHmac, User $user): void
+    public function __construct(private LockGuestCartClaims $lockGuestCartClaims) {}
+
+    /** @param list<CartOwner> $guestOwners */
+    public function execute(array $guestOwners, User $user): void
     {
-        $guestOwner = CartOwner::guest($guestSessionHmac);
         $userOwner = CartOwner::user((int) $user->getAuthIdentifier());
 
         DB::transaction(
-            fn () => $this->claim($guestOwner, $userOwner, $user),
+            fn () => $this->claim($guestOwners, $userOwner, $user),
             attempts: 3,
         );
     }
 
-    private function claim(CartOwner $guestOwner, CartOwner $userOwner, User $user): void
+    /** @param list<CartOwner> $guestOwners */
+    private function claim(array $guestOwners, CartOwner $userOwner, User $user): void
     {
-        $activeCarts = $this->lockedActiveCarts($guestOwner, $userOwner);
-        $guestCart = $activeCarts->get($guestOwner->databaseKey());
-
-        if (! $guestCart instanceof Cart) {
-            return;
-        }
-
+        $claims = $this->lockGuestCartClaims->execute($guestOwners);
+        $this->ensureClaimsBelongToUser($claims, (int) $user->getAuthIdentifier());
+        $activeCarts = $this->lockedActiveCarts($guestOwners, $userOwner);
         $userCart = $activeCarts->get($userOwner->databaseKey());
+        $guestCarts = $activeCarts
+            ->filter(fn (Cart $cart): bool => $cart->active_owner_key !== $userOwner->databaseKey())
+            ->values();
+
+        if (! $userCart instanceof Cart) {
+            $userCart = $guestCarts->shift();
+
+            if ($userCart instanceof Cart) {
+                $this->convertGuestCart($userCart, $user);
+            }
+        }
 
         if ($userCart instanceof Cart) {
-            $this->mergeCarts($guestCart, $userCart);
-
-            return;
+            $guestCarts->each(fn (Cart $guestCart) => $this->mergeCarts($guestCart, $userCart));
         }
 
-        $this->convertGuestCart($guestCart, $user);
+        DB::table('guest_cart_claims')
+            ->whereIn('guest_session_hmac', array_keys($claims))
+            ->update([
+                'user_id' => $user->id,
+                'claimed_at' => now(),
+                'updated_at' => now(),
+            ]);
     }
 
-    /** @return Collection<string, Cart> */
-    private function lockedActiveCarts(CartOwner $guestOwner, CartOwner $userOwner): Collection
+    /**
+     * @param  list<CartOwner>  $guestOwners
+     * @return Collection<string, Cart>
+     */
+    private function lockedActiveCarts(array $guestOwners, CartOwner $userOwner): Collection
     {
+        $ownerKeys = array_map(
+            fn (CartOwner $owner): string => $owner->databaseKey(),
+            [...$guestOwners, $userOwner],
+        );
+
         return Cart::query()
             ->select(['id', 'active_owner_key'])
             ->where('status', 'active')
             ->where('currency', 'SAR')
-            ->whereIn('active_owner_key', [$guestOwner->databaseKey(), $userOwner->databaseKey()])
+            ->whereIn('active_owner_key', $ownerKeys)
             ->orderBy('active_owner_key')
             ->lockForUpdate()
             ->get()
             ->keyBy('active_owner_key');
+    }
+
+    /** @param array<string, int|null> $claims */
+    private function ensureClaimsBelongToUser(array $claims, int $userId): void
+    {
+        foreach ($claims as $claimedUserId) {
+            if ($claimedUserId !== null && $claimedUserId !== $userId) {
+                throw new RuntimeException('The guest cart has already been claimed.');
+            }
+        }
     }
 
     private function convertGuestCart(Cart $guestCart, User $user): void
