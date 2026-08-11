@@ -7,6 +7,7 @@ use App\Support\Money;
 use App\ValueObjects\Pricing\PreparedDisplayMoneyConverter;
 use Carbon\CarbonImmutable;
 use DomainException;
+use Illuminate\Support\Exceptions\MathException;
 
 final class ConvertDisplayMoney
 {
@@ -40,6 +41,10 @@ final class ConvertDisplayMoney
             throw new DomainException('A fresh display exchange rate is unavailable.');
         }
 
-        return PreparedDisplayMoneyConverter::fromRate($displayCurrency, $exchangeRate->rate);
+        try {
+            return PreparedDisplayMoneyConverter::fromRate($displayCurrency, $exchangeRate->rate);
+        } catch (MathException $exception) {
+            throw new DomainException('The display exchange rate is invalid.', previous: $exception);
+        }
     }
 }

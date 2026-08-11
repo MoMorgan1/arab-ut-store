@@ -202,9 +202,13 @@ test('the foreign-currency homepage builds every schedule from one pricing and r
     $durationMilliseconds = intdiv(hrtime(true) - $startedAt, 1_000_000);
     $queries = DB::getQueryLog();
     DB::disableQueryLog();
-    $queriesFor = fn (string $table): int => collect($queries)
-        ->filter(fn (array $query): bool => str_contains($query['query'], "from \"{$table}\""))
-        ->count();
+    $queriesFor = function (string $table) use ($queries): int {
+        $wrappedTable = DB::connection()->getQueryGrammar()->wrapTable($table);
+
+        return collect($queries)
+            ->filter(fn (array $query): bool => str_contains($query['query'], "from {$wrappedTable}"))
+            ->count();
+    };
 
     $response->assertOk()
         ->assertInertia(fn (Assert $page) => $page

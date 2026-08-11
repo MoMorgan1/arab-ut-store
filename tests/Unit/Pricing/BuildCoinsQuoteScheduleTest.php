@@ -10,6 +10,7 @@ use App\Models\PriceRule;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -185,13 +186,21 @@ test('it fails closed when a foreign display rate is missing stale or malformed'
     }
 
     if ($failure === 'malformed') {
-        ExchangeRate::create([
+        $createMalformedRate = fn () => ExchangeRate::create([
             'base_currency' => 'SAR',
             'quote_currency' => 'EUR',
             'rate' => 'invalid-rate',
             'source' => 'exchange-rate-api-open-access',
             'fetched_at' => now(),
         ]);
+
+        if (in_array(DB::getDriverName(), ['mariadb', 'mysql'], true)) {
+            expect($createMalformedRate)->toThrow(QueryException::class);
+
+            return;
+        }
+
+        $createMalformedRate();
     }
 
     expect(fn () => app(BuildCoinsQuoteSchedule::class)->execute(Platform::Pc, null, 2_000_000, 'EUR'))
