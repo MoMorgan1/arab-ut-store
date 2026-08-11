@@ -8,7 +8,7 @@
 
 ## Outcome
 
-The storefront at `store.arab-ut.com` expands beyond Coins without changing the approved WordPress-first identity. The homepage gains an equal-card horizontal services rail, an honest reviews section, and the existing FAQ. Every internal service destination has an Arabic and English page. SBCs and Objectives behave as categories; FUT Champions and Rivals behave as products; Sell Coins opens the existing `https://sell.arab-ut.com/` destination.
+The storefront at `store.arab-ut.com` expands beyond Coins without changing the approved WordPress-first identity. The homepage gains an equal-card horizontal services rail, an honest reviews section, and the existing FAQ. Every internal service destination has an Arabic and English page. SBCs and Objectives behave as categories; FUT Champions and Rivals behave as products; Sell Coins opens the existing `https://sell.arab-ut.com/` destination. Every real catalog product can be added to the existing guest cart through a real server-authoritative action.
 
 The existing n8n workflows remain the integration source. Laravel and MariaDB remain the public storefront source of truth. The UI never reads live workflow responses during a customer request and never exposes workflow credentials or source payloads.
 
@@ -109,10 +109,18 @@ The page does not calculate price in the browser. It reads current active varian
 - concise value proposition sourced from the approved content;
 - available platform and variant summary;
 - authoritative display price when available;
-- operational support link;
-- no fake add-to-cart, checkout, delivery promise, or automation status.
+- one selected active variant and a real Add to Cart action;
+- no fake checkout, delivery promise, or automation status.
 
-Their future configurators and cart contracts remain outside this UI/catalog slice. The page is truthful when a product is missing or temporarily hidden.
+The page is truthful when a product is missing or temporarily hidden.
+
+### Catalog add to cart
+
+SBC and Objectives cards, SBC/Objectives detail pages, and FUT Champions/Rivals pages expose a real Add to Cart action. When a product has multiple active variants, the customer selects the platform/variant before submission. The browser submits only the public variant ID plus a one-time idempotency key.
+
+Laravel resolves the guest/authenticated cart owner, locks the authoritative active variant and visible product, reads the current SAR sale price or base price, snapshots service type/platform/market/price version/time, and creates one cart line transactionally. The browser never supplies or calculates the trusted price. A replay returns the same safe result; a mismatched replay returns 409. Hidden, archived, inactive, zero-priced, unknown, or Coins variants fail closed.
+
+The successful action redirects to the real cart. The cart displays the localized product name, service type, selected platform, authoritative SAR total, and a clear `details required` state. This slice does not collect service credentials/configuration for these products and does not expose checkout or payment; those details are completed by the future service-specific configuration step before checkout.
 
 ### Reviews page
 
@@ -167,7 +175,8 @@ Canonical deployment references use `store.arab-ut.com`. Documentation reference
 - Failed review refresh: retain last-good reviews.
 - Missing product image: use the correct local service fallback.
 - Missing product price: show a localized contact/details state, never zero or a guessed amount.
-- No non-Coins cart or checkout control is rendered until its real secure backend contract exists.
+- Add to Cart is disabled when no eligible authoritative variant/price exists.
+- Checkout and payment controls remain absent until their real backend contract exists.
 
 ## Verification contract
 
@@ -177,6 +186,7 @@ Automated coverage must prove:
 - safe review projection, PII rejection, all-rating honesty, evidence-based verification, idempotency, last-good retention, scheduler overlap prevention, and zero customer-request HTTP calls;
 - bilingual routes and correct category/product semantics;
 - SBC search/filter/sort/pagination and Challenges-to-Upgrades mapping;
+- server-authoritative catalog cart addition, ownership isolation, idempotency, stale/hidden variant rejection, safe cart projection, and no browser-trusted price;
 - equal service-card geometry contract, RTL rail order, keyboard navigation, external Sell Coins target, and no autoplay;
 - exact FAQ content and native disclosure accessibility;
 - Thmanyah font contracts, safe image containment, reduced motion, and no overflow.
@@ -189,4 +199,4 @@ Browser verification covers Arabic and English at 320, 390, 768, and 1440 pixels
 - Secrets are configured through the approved environment/credential mechanism and are never pasted into chat or committed.
 - Existing WordPress and `Arab-ut.com` assets/copy may be used only when their licensing and public use are already owned by Arab UT.
 - The review source currently contains customer PII; the strict safe-projection boundary is mandatory.
-- This slice builds working browse/catalog/review pages, not a mockup, but does not invent non-Coins ordering or payment behavior.
+- This slice builds working browse/catalog/review pages and real non-Coins cart addition, but does not invent checkout, payment, credentials, or fulfillment behavior.

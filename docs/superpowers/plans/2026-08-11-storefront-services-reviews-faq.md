@@ -19,7 +19,7 @@
 - n8n credentials stay in environment/credential storage and never enter source, tests, chat, logs, or response bodies.
 - Review PII is rejected before persistence or public projection. Low ratings are not suppressed. Verified requires linked order evidence.
 - Use the existing FAQ content from `Arab-ut.com` without changing its operational meaning.
-- Do not render non-Coins add-to-cart, checkout, payment, or automation controls in this slice.
+- Every eligible non-Coins catalog variant uses a real server-authoritative guest-cart action; do not render checkout, payment, credentials, fulfillment, or automation controls in this slice.
 - All UI controls have visible focus and at least 44 by 44 CSS-pixel targets where interactive.
 - All decorative motion is disabled by `prefers-reduced-motion: reduce`.
 - Use strict RED/GREEN TDD, Clean Code Guard, Test Guard, Docs Guard, and verification-before-completion before each task commit.
@@ -291,7 +291,141 @@ git commit -m "feat: expose bilingual service catalog routes"
 
 ---
 
-### Task 3: Build the equal-card homepage services rail
+### Task 3: Add real catalog products to the existing guest cart
+
+**Files:**
+- Create: `app/Http/Requests/Store/CatalogCartRequest.php`
+- Create: `app/Http/Controllers/Store/CatalogCartController.php`
+- Create: `app/Actions/Cart/AddCatalogItemToCart.php`
+- Create: `app/Security/CatalogCartFingerprint.php`
+- Modify: `app/Http/Middleware/RequireCoinsCartJson.php`
+- Modify: `bootstrap/app.php`
+- Modify: `routes/web.php`
+- Modify: `app/Http/Controllers/Store/CartController.php`
+- Modify: `resources/js/pages/store/cart.tsx`
+- Modify: `resources/js/types/store-shell.ts`
+- Create: `resources/js/lib/catalog-cart-api.ts`
+- Test: `tests/Feature/Store/CatalogCartTest.php`
+- Modify: `tests/Feature/Store/CoinsCartTest.php`
+- Create: `resources/js/__tests__/store/catalog-cart-api.test.ts`
+- Modify: `resources/js/__tests__/store/store-cart.test.tsx`
+
+**Interfaces:**
+- Consumes: `{variantId: string}` JSON plus CSRF and `Idempotency-Key` from the current guest or authenticated owner.
+- Produces: `AddCatalogItemToCart::execute(CartOwner $owner, string $variantPublicId, string $idempotencyKey, string $locale): array{status:int,body:array<string,mixed>}` and a safe cart response/redirect target.
+
+- [ ] **Step 1: Write failing server behavior tests**
+
+```php
+it('adds one eligible authoritative catalog variant to the guest cart', function () {
+    $variant = createCatalogCartVariant(ServiceType::Sbc, Platform::PlayStation, 12_500);
+
+    $this->postJson('/cart/items/catalog', ['variantId' => $variant->public_id], [
+        'Idempotency-Key' => (string) Str::ulid(),
+    ])->assertCreated()
+        ->assertHeader('Cache-Control', 'no-store')
+        ->assertJsonPath('data.cartCount', 1)
+        ->assertJsonPath('data.cartUrl', '/cart');
+
+    expect(CartItem::sole()->unit_price_halalah)->toBe(12_500)
+        ->and(CartItem::sole()->configuration)->toMatchArray([
+            'service_type' => 'sbc',
+            'platform' => 'playstation',
+            'market' => 'console',
+            'price_version' => 1,
+        ]);
+});
+```
+
+Add real database scenarios for sale-price precedence, guest isolation, authenticated owner, replay returning one line, mismatched replay 409, non-JSON/CSRF/no-store behavior, hidden/archived product, inactive/unknown/Coins variant, zero price, and a payload attempting to supply price/configuration being rejected by exact-key validation.
+
+- [ ] **Step 2: Run backend tests to verify RED**
+
+Run: `php artisan test tests/Feature/Store/CatalogCartTest.php --compact`
+
+Expected: FAIL because the catalog cart endpoint/action do not exist.
+
+- [ ] **Step 3: Implement exact request and authoritative action**
+
+```php
+$variant = ProductVariant::query()
+    ->where('public_id', $variantPublicId)
+    ->where('is_active', true)
+    ->where('service_type', '!=', ServiceType::Coins)
+    ->whereHas('product', fn (Builder $query) => $query
+        ->where('is_visible', true)
+        ->whereNull('archived_at'))
+    ->with('product')
+    ->lockForUpdate()
+    ->sole();
+
+$unitPrice = $variant->sale_price_halalah ?? $variant->price_halalah;
+```
+
+Reject non-positive prices. Reuse `AcquireActiveCart`, the current idempotency table, three-attempt root transaction behavior, owner scope, `quoted_at`, and safe response conventions. Generate the request fingerprint from canonical owner plus variant public ID using the app key. Never accept a price, product name, service type, platform, market, or configuration from the browser.
+
+- [ ] **Step 4: Expand JSON/no-store exception handling without weakening Coins**
+
+Rename the middleware only if the resulting name describes both endpoints; otherwise add a focused catalog JSON middleware. Force JSON for both localized/default catalog POST routes and return generic 500/no-store envelopes without reflecting request bodies.
+
+- [ ] **Step 5: Write failing safe cart projection tests**
+
+Assert that a catalog line renders its current localized product name, service type, platform, total, and `requiresCredentials=true`, while poisoned product/configuration values outside the allowlist are absent. Eager-load only `items.productVariant.product.media` and `items.secret`; do not expose source IDs or automation metadata.
+
+- [ ] **Step 6: Implement cart projection and TypeScript contract**
+
+Add a safe `product` object to every cart item:
+
+```ts
+product: {
+    imageUrl: string | null;
+    name: string;
+    serviceType: 'coins' | 'sbc' | 'objectives' | 'rivals' | 'fut_champions';
+};
+```
+
+Use the locale-specific product name and a validated local public media path. Coins retains its existing label/icon. Non-Coins lines show the real product name and the localized details-required state; no secret form or checkout appears.
+
+- [ ] **Step 7: Write failing browser API helper tests**
+
+```ts
+it('posts only the public variant id with CSRF and one idempotency key', async () => {
+    const response = await addCatalogItem('/cart/items/catalog', '01JVARIANT');
+
+    expect(response.cartUrl).toBe('/cart');
+    expect(JSON.parse(fetchBody())).toEqual({ variantId: '01JVARIANT' });
+});
+```
+
+Cover 201 parsing, 409, 422, 503/500 generic errors, invalid success JSON, transport retry-key reuse, and no local/session storage writes.
+
+- [ ] **Step 8: Implement the focused fetch helper**
+
+Use same-origin `fetch`, `Accept: application/json`, `Content-Type: application/json`, the current CSRF meta token, one in-memory ULID per user attempt, strict exact response parsing, and no credential/storage behavior. Page components own loading/error UI and redirect to the returned cart URL only after 201.
+
+- [ ] **Step 9: Run focused GREEN and regression gates**
+
+Run:
+
+```powershell
+php artisan test tests/Feature/Store/CatalogCartTest.php tests/Feature/Store/CoinsCartTest.php --compact
+npm test -- resources/js/__tests__/store/catalog-cart-api.test.ts resources/js/__tests__/store/store-cart.test.tsx
+vendor/bin/phpstan analyse app/Actions/Cart/AddCatalogItemToCart.php app/Http/Controllers/Store/CatalogCartController.php app/Http/Controllers/Store/CartController.php app/Http/Requests/Store/CatalogCartRequest.php app/Security/CatalogCartFingerprint.php
+npm run types
+```
+
+Expected: all pass with zero secret/price trust regressions.
+
+- [ ] **Step 10: Commit Task 3**
+
+```bash
+git add app/Actions/Cart/AddCatalogItemToCart.php app/Http/Controllers/Store app/Http/Requests/Store/CatalogCartRequest.php app/Security/CatalogCartFingerprint.php app/Http/Middleware bootstrap/app.php routes/web.php resources/js/lib/catalog-cart-api.ts resources/js/pages/store/cart.tsx resources/js/types/store-shell.ts tests/Feature/Store resources/js/__tests__/store
+git commit -m "feat: add catalog products to guest cart"
+```
+
+---
+
+### Task 4: Build the equal-card homepage services rail
 
 **Files:**
 - Create: `resources/js/types/store-content.ts`
@@ -387,7 +521,7 @@ git commit -m "feat: add equal storefront service rail"
 
 ---
 
-### Task 4: Build SBC, Objectives, and service product React pages
+### Task 5: Build SBC, Objectives, and service product React pages
 
 **Files:**
 - Create: `resources/js/components/store/catalog/catalog-toolbar.tsx`
@@ -402,7 +536,7 @@ git commit -m "feat: add equal storefront service rail"
 
 **Interfaces:**
 - Consumes: the `StoreCategoryPageProps` and `StoreCatalogProductPageProps` contracts from `store-content.ts`.
-- Produces: URL-driven accessible filters/search/sort and truthful read-only product detail pages.
+- Produces: URL-driven accessible filters/search/sort, authoritative variant selectors, and real Add to Cart controls.
 
 - [ ] **Step 1: Write failing category behavior tests**
 
@@ -422,11 +556,11 @@ it('submits SBC search filter and sort as locale-preserving GET parameters', asy
 });
 ```
 
-Add tests for Challenges shown under Upgrades, empty state, image fallback, price missing state, stable pagination links, platform chips, and no purchase/cart control.
+Add tests for Challenges shown under Upgrades, empty state, image fallback, price missing state, stable pagination links, platform chips, variant selection, add-button loading/error state, and redirect to the returned cart URL after 201.
 
 - [ ] **Step 2: Write failing product detail tests**
 
-Assert breadcrumb, Serif Display heading class, contained image, platform/variant summaries, localized price, WhatsApp support link, and absence of add-to-cart/checkout/payment controls.
+Assert breadcrumb, Serif Display heading class, contained image, platform/variant summaries, localized price, selected-variant Add to Cart, error focus, and absence of checkout/payment controls.
 
 - [ ] **Step 3: Run page tests to verify RED**
 
@@ -462,7 +596,7 @@ git commit -m "feat: build service catalog pages"
 
 ---
 
-### Task 5: Import and expose reviews without PII
+### Task 6: Import and expose reviews without PII
 
 **Files:**
 - Create: `database/migrations/2026_08_11_000002_add_source_identity_to_reviews.php`
@@ -561,7 +695,7 @@ git commit -m "feat: import honest storefront reviews"
 
 ---
 
-### Task 6: Build the homepage reviews preview, reviews page, and FAQ
+### Task 7: Build the homepage reviews preview, reviews page, and FAQ
 
 **Files:**
 - Create: `resources/js/components/store/reviews-section.tsx`
@@ -636,7 +770,7 @@ git commit -m "feat: add reviews and FAQ storefront sections"
 
 ---
 
-### Task 7: Correct documentation, integrate workflow contract, and verify the complete slice
+### Task 8: Correct documentation, integrate workflow contract, and verify the complete slice
 
 **Files:**
 - Create: `docs/api/n8n-catalog-v1.md`
@@ -722,7 +856,7 @@ git commit -m "docs: finalize storefront catalog integration"
 
 ## Self-review record
 
-- **Spec coverage:** Tasks 1-2 cover authenticated n8n catalog data and bilingual server routes; Tasks 3-4 cover equal service cards and every category/product page; Tasks 5-6 cover safe honest reviews and exact FAQ; Task 7 covers domain correction, integration handoff, all automated/browser/cross-engine gates.
+- **Spec coverage:** Tasks 1-2 cover authenticated n8n catalog data and bilingual server routes; Task 3 covers real server-authoritative catalog cart addition; Tasks 4-5 cover equal service cards and every category/product page; Tasks 6-7 cover safe honest reviews and exact FAQ; Task 8 covers domain correction, integration handoff, all automated/browser/cross-engine gates.
 - **No placeholders:** The plan contains concrete paths, commands, public interfaces, payload/security rules, test cases, and commit boundaries. There are no deferred fake controls.
 - **Type consistency:** `HomeServiceCard`, `StoreCategoryPageProps`, `StoreCatalogProductPageProps`, and review projections are created in `store-content.ts` before their consuming pages. Backend service types match `ServiceType` enum values exactly.
-- **Scope boundary:** Non-Coins ordering, checkout, payment, admin catalog UI, and fulfillment adaptation are excluded; customer pages remain truthful and read-only where the backend contract does not yet exist.
+- **Scope boundary:** Catalog products can be added to the real guest cart. Checkout, payment, service credentials/configurators, admin catalog UI, and fulfillment adaptation remain excluded and no control suggests they exist.
