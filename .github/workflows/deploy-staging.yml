@@ -1,0 +1,77 @@
+name: deploy-staging
+
+on:
+  workflow_run:
+    workflows: ['tests']
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: hostinger-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_URL }}
+    env:
+      HOSTINGER_SSH_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
+      HOSTINGER_SSH_PORT: ${{ secrets.HOSTINGER_SSH_PORT }}
+      HOSTINGER_SSH_USER: ${{ secrets.HOSTINGER_SSH_USER }}
+      HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+      HOSTINGER_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+      HOSTINGER_DEPLOY_ROOT: ${{ vars.HOSTINGER_DEPLOY_ROOT }}
+      STAGING_URL: ${{ vars.STAGING_URL }}
+
+    steps:
+      - name: Checkout verified deployment script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Download verified release artifact
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: hostinger-release-${{ github.event.workflow_run.head_sha }}
+          path: ${{ runner.temp }}/hostinger-release
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Configure pinned Hostinger SSH identity
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > ~/.ssh/hostinger
+          chmod 600 ~/.ssh/hostinger
+          printf '%s\n' "$HOSTINGER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Upload verified release
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          archive_path="$HOSTINGER_DEPLOY_ROOT/incoming/$RELEASE_SHA.tar.gz"
+          ssh -i ~/.ssh/hostinger -p "$HOSTINGER_SSH_PORT" \
+            "$HOSTINGER_SSH_USER@$HOSTINGER_SSH_HOST" \
+            "mkdir -p '$HOSTINGER_DEPLOY_ROOT/incoming'"
+          scp -i ~/.ssh/hostinger -P "$HOSTINGER_SSH_PORT" \
+            "${RUNNER_TEMP}/hostinger-release/release.tar.gz" \
+            "$HOSTINGER_SSH_USER@$HOSTINGER_SSH_HOST:$archive_path"
+
+      - name: Activate and verify release
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          archive_path="$HOSTINGER_DEPLOY_ROOT/incoming/$RELEASE_SHA.tar.gz"
+          ssh -i ~/.ssh/hostinger -p "$HOSTINGER_SSH_PORT" \
+            "$HOSTINGER_SSH_USER@$HOSTINGER_SSH_HOST" \
+            "bash -s -- '$HOSTINGER_DEPLOY_ROOT' '$archive_path' '$RELEASE_SHA' '$STAGING_URL'" \
+            < deploy/hostinger-release.sh
