@@ -465,11 +465,11 @@ git commit -m "feat: let guests securely add Coins to cart"
 - The login listener reads the existing `coins_guest_owner_token` from the request session, derives its HMAC through `ResolveCartOwner`, calls the action after successful authentication, and forgets the token only after commit.
 - Registration uses the same successful-login event path; there is no duplicate registration-specific claim implementation.
 
-- [ ] **Step 1: Write claim RED tests**
+- [x] **Step 1: Write claim RED tests**
 
 Cover guest-only cart transfer, merge into an existing user cart, cart-item and encrypted-secret relation retention, no secret decryption/access log, repeated claim no-op, rollback on injected failure, two concurrent claims, locale-preserving login/registration redirects, and no cross-session claim.
 
-- [ ] **Step 2: Run claim RED**
+- [x] **Step 2: Run claim RED**
 
 ```powershell
 php vendor/bin/pest tests/Feature/Auth/GuestCartClaimTest.php tests/Integration/CoinsCartConcurrencyTest.php --compact
@@ -477,19 +477,19 @@ php vendor/bin/pest tests/Feature/Auth/GuestCartClaimTest.php tests/Integration/
 
 Expected: FAIL because no claim action/listener exists.
 
-- [ ] **Step 3: Implement the transactional claim**
+- [x] **Step 3: Implement the transactional claim**
 
 Inside one transaction, lock the guest and user active carts in deterministic owner-key order. If only the guest cart exists, update its `user_id`, clear `session_key`, and let the DB derive `user:<id>`. If both exist, bulk-update guest `cart_items.cart_id` to the user cart, then delete only the empty guest cart. Never load or mutate `CartItemSecret::encrypted_payload`.
 
-- [ ] **Step 4: Wire the successful-auth event**
+- [x] **Step 4: Wire the successful-auth event**
 
 Register one listener for `Illuminate\Auth\Events\Login`. The listener must return without a guest token or non-`User` authenticatable and must not swallow a claim failure. Preserve Fortify's localized intended destination behavior.
 
-- [ ] **Step 5: Run SQLite and MariaDB GREEN**
+- [x] **Step 5: Run SQLite and MariaDB GREEN**
 
 Run Step 2 under SQLite and the isolated MariaDB profile. Verify same-owner parallel login processes result in one active user cart, every original item, every secret relation, and no guest cart.
 
-- [ ] **Step 6: Commit Task 5**
+- [x] **Step 6: Commit Task 5**
 
 ```powershell
 git add app/Actions/Cart/ClaimGuestCart.php app/Listeners/ClaimGuestCartAfterLogin.php app/Providers/AppServiceProvider.php tests/Feature/Auth/GuestCartClaimTest.php tests/Integration/CoinsCartConcurrencyTest.php
