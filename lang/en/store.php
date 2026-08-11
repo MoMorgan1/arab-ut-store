@@ -84,6 +84,10 @@ return [
         'empty' => 'No matching services are available right now.',
         'previous' => 'Previous',
         'next' => 'Next',
+        'add_to_cart' => 'Add to cart',
+        'adding' => 'Adding…',
+        'add_error' => 'Could not add this item. Try again.',
+        'platform' => 'Platform',
     ],
     'product' => [
         'choose_option' => 'Choose an option',
@@ -93,6 +97,7 @@ return [
         'adding' => 'Adding…',
         'back' => 'Back to services',
         'unavailable_price' => 'Price temporarily unavailable',
+        'add_error' => 'Could not add this item. Try again.',
     ],
     'reviews' => [
         'eyebrow' => 'Customer reviews',

@@ -27,6 +27,8 @@ final class CategoryController extends Controller
         ])->validate();
 
         return Inertia::render('store/category', [
+            'catalogCartUrl' => $this->route($request, 'cart.items.catalog.store'),
+            'catalogPageUrl' => $this->route($request, "store.{$service->value}"),
             'catalogPage' => trans('store.catalog'),
             'servicePage' => trans("store.services.{$service->value}"),
             'catalog' => $catalog->category(
@@ -39,5 +41,12 @@ final class CategoryController extends Controller
                 (int) ($input['page'] ?? 1),
             ),
         ]);
+    }
+
+    private function route(Request $request, string $name): string
+    {
+        $localized = $request->route('locale') === 'en';
+
+        return route($localized ? "localized.{$name}" : $name, $localized ? ['locale' => 'en'] : [], absolute: false);
     }
 }

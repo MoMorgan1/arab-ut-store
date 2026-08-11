@@ -65,6 +65,7 @@ export function ServiceRail({
         <section
             aria-labelledby="store-services-title"
             className="store-services"
+            id="services"
         >
             <div className="store-services__inner">
                 <header className="store-section-heading store-services__heading">

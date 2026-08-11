@@ -14,6 +14,8 @@ final class CategoryProductController extends Controller
     public function __invoke(Request $request, StoreCatalogReader $catalog, string $slug): Response
     {
         return Inertia::render('store/catalog-product', [
+            'catalogCartUrl' => $this->route($request, 'cart.items.catalog.store'),
+            'backUrl' => $this->route($request, 'store.'.(string) $request->route('service')),
             'productPage' => trans('store.product'),
             'catalog' => $catalog->productBySlug(
                 ServiceType::from((string) $request->route('service')),
@@ -22,5 +24,12 @@ final class CategoryProductController extends Controller
                 (string) ($request->session()->get('display_currency') ?? config('store.default_display_currency')),
             ),
         ]);
+    }
+
+    private function route(Request $request, string $name): string
+    {
+        $localized = $request->route('locale') === 'en';
+
+        return route($localized ? "localized.{$name}" : $name, $localized ? ['locale' => 'en'] : [], absolute: false);
     }
 }
