@@ -61,5 +61,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute((int) config('coins.cart.rate_limit_per_minute'))
                 ->by('coins-cart:'.$owner->idempotencyScope());
         });
+
+        RateLimiter::for('automation-catalog', function (Request $request): Limit {
+            $identity = (string) ($request->header('X-ArabUT-Key') ?: $request->ip());
+
+            return Limit::perMinute(10)
+                ->by('automation-catalog:'.hash('sha256', $identity));
+        });
     }
 }

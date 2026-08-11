@@ -78,7 +78,7 @@
 - Consumes: raw JSON body, `X-ArabUT-Key`, `X-ArabUT-Timestamp`, `X-ArabUT-Event`, and `X-ArabUT-Signature`.
 - Produces: `SyncCatalogSnapshot::execute(array $snapshot, string $signatureHash): array{runId:string,status:string,applied:int,archived:int}` and committed automation-owned catalog rows.
 
-- [ ] **Step 1: Write the failing signature and request-contract feature tests**
+- [x] **Step 1: Write the failing signature and request-contract feature tests**
 
 ```php
 it('accepts one fresh correctly signed complete catalog snapshot', function () {
@@ -106,13 +106,13 @@ it('rejects stale replayed malformed partial or incorrectly signed snapshots', f
 });
 ```
 
-- [ ] **Step 2: Run the feature test to verify RED**
+- [x] **Step 2: Run the feature test to verify RED**
 
 Run: `php artisan test tests/Feature/Automation/CatalogSnapshotTest.php --compact`
 
 Expected: FAIL because the automation route, middleware, and request do not exist.
 
-- [ ] **Step 3: Write the failing reconciliation unit tests**
+- [x] **Step 3: Write the failing reconciliation unit tests**
 
 ```php
 it('atomically upserts source rows archives missing automation rows and preserves manual rows', function () {
@@ -138,13 +138,13 @@ it('rolls back every catalog row when one item cannot be applied', function () {
 });
 ```
 
-- [ ] **Step 4: Run the reconciliation tests to verify RED**
+- [x] **Step 4: Run the reconciliation tests to verify RED**
 
 Run: `php artisan test tests/Unit/Catalog/SyncCatalogSnapshotTest.php --compact`
 
 Expected: FAIL because `SyncCatalogSnapshot` does not exist.
 
-- [ ] **Step 5: Implement the exact signed request boundary**
+- [x] **Step 5: Implement the exact signed request boundary**
 
 ```php
 $signed = $request->header('X-ArabUT-Timestamp')."\n"
@@ -160,15 +160,15 @@ abort_unless(
 
 Require schema version `1`, a ULID event ID, unique run ID, UTC timestamp within 300 seconds, `completeSnapshot === true`, exact top-level keys, at most 50 categories, 2,000 products, 10 variants per product, and 5 media items per product. Add the endpoint at `/api/automation/v1/catalog/snapshots` with JSON/no-store handling and throttle `automation-catalog`.
 
-- [ ] **Step 6: Implement transactional catalog reconciliation**
+- [x] **Step 6: Implement transactional catalog reconciliation**
 
 Create or find source key `n8n-products`. Upsert categories/products/variants using `(source_id, external_id)`, set `authority=automation`, validate `ServiceType`, `Platform`, derived `Market`, SAR integer minor units, and unique stable slugs/SKUs. Archive missing automation products only after the complete body validates. Record `CatalogSyncRun`, safe `CatalogSyncItem` outcomes, and the integration event claim without secrets.
 
-- [ ] **Step 7: Implement safe media mirroring**
+- [x] **Step 7: Implement safe media mirroring**
 
 Use `Http::accept('image/*')->connectTimeout(3)->timeout(8)->retry([100, 250])`, allow only configured HTTPS hosts, reject redirects to an unapproved host, reject bodies over 5 MB, accept WebP/PNG/JPEG only, write a content-hash filename to the public disk, and update `ProductMedia` only after a successful write. Preserve the previous path on failure.
 
-- [ ] **Step 8: Run focused GREEN and static checks**
+- [x] **Step 8: Run focused GREEN and static checks**
 
 Run:
 
