@@ -37,6 +37,34 @@ jobs:
       - name: Run CI Checks
         run: composer ci:check
 
+      - name: Package verified Hostinger release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          test -f public/build/manifest.json
+          tar \
+            --exclude=.git \
+            --exclude=.github \
+            --exclude=.env \
+            --exclude=database/database.sqlite \
+            --exclude=node_modules \
+            --exclude=tests \
+            --exclude=vendor \
+            --exclude=public/hot \
+            --exclude=storage/logs \
+            --exclude=storage/framework/cache \
+            --exclude=storage/framework/sessions \
+            --exclude=storage/framework/views \
+            -czf "${RUNNER_TEMP}/release.tar.gz" .
+
+      - name: Upload verified Hostinger release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hostinger-release-${{ github.sha }}
+          path: ${{ runner.temp }}/release.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
   mariadb-schema:
     runs-on: ubuntu-latest
     env:
