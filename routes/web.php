@@ -8,6 +8,7 @@ use App\Http\Controllers\Store\CategoryProductController;
 use App\Http\Controllers\Store\CoinsCartController;
 use App\Http\Controllers\Store\CoinsQuoteController;
 use App\Http\Controllers\Store\HomeController;
+use App\Http\Controllers\Store\ReviewsController;
 use App\Http\Controllers\Store\SimpleStorePageController;
 use App\Http\Middleware\NoStore;
 use App\Http\Middleware\RequireCatalogCartJson;
@@ -22,6 +23,7 @@ use Laravel\Fortify\Http\Controllers\RegisteredUserController;
 Route::get('/', HomeController::class)->name('home');
 Route::get('/coins/quote', CoinsQuoteController::class)->name('coins.quote');
 Route::get('/cart', CartController::class)->name('store.cart');
+Route::get('/reviews', ReviewsController::class)->name('store.reviews');
 Route::post('/cart/items/coins', CoinsCartController::class)
     ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])
     ->name('cart.items.coins.store');
@@ -74,6 +76,7 @@ Route::prefix('{locale}')
         Route::get('/', HomeController::class)->name('localized.home');
         Route::get('/coins/quote', CoinsQuoteController::class)->name('localized.coins.quote');
         Route::get('/cart', CartController::class)->name('localized.store.cart');
+        Route::get('/reviews', ReviewsController::class)->name('localized.store.reviews');
         Route::post('/cart/items/coins', CoinsCartController::class)
             ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.coins.store');
