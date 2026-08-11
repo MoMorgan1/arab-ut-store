@@ -13,6 +13,8 @@ class PriceRun extends DomainModel
         return [
             'started_at' => 'immutable_datetime',
             'completed_at' => 'immutable_datetime',
+            'pricing_version' => 'integer',
+            'payload' => 'array',
         ];
     }
 

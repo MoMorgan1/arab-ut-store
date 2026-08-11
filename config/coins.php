@@ -34,7 +34,7 @@ return [
         ],
         'pc' => [
             'icon_urls' => ['/images/store/platforms/pc-logo.svg'],
-            'maximum' => 2_000_000,
+            'maximum' => 20_000_000,
             'deliveries' => [],
         ],
     ],

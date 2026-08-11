@@ -129,7 +129,7 @@ test('it builds compact exact schedules at every legal quantity', function (
 })->with([
     'PlayStation normal' => [Platform::PlayStation, DeliveryMode::Normal, 2_000_000, 196, 300, 10_000],
     'PlayStation fast' => [Platform::PlayStation, DeliveryMode::Fast, 20_000_000, 1_996, 1_200, 300_000],
-    'PC' => [Platform::Pc, null, 2_000_000, 196, 300, 16_000],
+    'PC' => [Platform::Pc, null, 20_000_000, 1_996, 300, 300_000],
 ]);
 
 test('it uses the real fast tier and exact override totals at their indexed quantities', function () {
