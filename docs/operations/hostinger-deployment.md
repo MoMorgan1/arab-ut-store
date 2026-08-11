@@ -8,10 +8,12 @@ Arab UT is deployed as one Laravel application on Hostinger PHP/MariaDB hosting.
 2. Merge the reviewed commit to `main`.
 3. The `tests` workflow runs the complete test, static-analysis, and production-build gate.
 4. Only a successful `main` push produces the SHA-bound `hostinger-release-<sha>` artifact.
-5. `deploy-staging` downloads that exact artifact, connects with the dedicated Hostinger deployment key, and runs `deploy/hostinger-release.sh`.
+5. `deploy-production` downloads that exact artifact, connects with the dedicated Hostinger deployment key, and runs `deploy/hostinger-release.sh`.
 6. The script installs production Composer packages, runs forward migrations, caches Laravel configuration/routes/views, atomically switches `current`, verifies `/up`, and retains the five newest releases.
 
 GitHub environment secrets contain the SSH identity and pinned host key. The environment variables contain only the deploy root and public health-check URL. Application and database secrets stay in Hostinger's `shared/.env`; they are never copied into GitHub artifacts or the repository.
+
+The production environment points at `https://store.arab-ut.com` and deploys under the matching Hostinger domain directory. After changing a Hostinger domain, update both `HOSTINGER_DEPLOY_ROOT` and `PRODUCTION_URL` before the next release.
 
 ## Server layout
 
@@ -63,4 +65,4 @@ GET / -> 200, Arabic/RTL
 GET /en -> 200, English/LTR
 ```
 
-Then exercise PS/Xbox -> Normal -> Amount and confirm the displayed price changes synchronously without a quote request or refreshing message. Check the browser console, asset responses, overflow, auth pages, cart, service routes, and footer links before promoting the domain.
+Then exercise PS/Xbox -> Normal -> Amount and confirm the displayed price changes synchronously without a quote request or refreshing message. Check the browser console, asset responses, overflow, auth pages, cart, service routes, and footer links before completing the release.

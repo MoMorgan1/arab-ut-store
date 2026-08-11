@@ -18,7 +18,7 @@ Do not run `migrate:rollback` as part of an application rollback. Database migra
 
 ## Domain cutover rollback
 
-The legacy Next.js repository remains in GitHub and its Hostinger Web App must not be deleted during the initial cutover. If the Laravel domain verification fails:
+The legacy Next.js repository remains in GitHub, and its Hostinger Web App is retained on a temporary Hostinger domain during the rollback window. If the Laravel domain verification fails:
 
 1. Reassign `store.arab-ut.com` to the prior Web App in hPanel.
 2. Confirm HTTPS and the old homepage before ending the incident.
