@@ -45,4 +45,15 @@ return [
         ))),
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
+    'whapi' => [
+        'base_url' => env('WHAPI_BASE_URL', 'https://gate.whapi.cloud'),
+        'token' => env('WHAPI_TOKEN'),
+    ],
+
 ];

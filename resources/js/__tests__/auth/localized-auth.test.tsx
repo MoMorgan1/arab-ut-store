@@ -1,4 +1,10 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import {
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+} from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 
@@ -41,6 +47,7 @@ vi.mock('@inertiajs/react', () => ({
         </a>
     ),
     usePage: () => page,
+    router: { visit: vi.fn() },
 }));
 
 vi.mock('@/layouts/store-layout', () => ({
@@ -68,6 +75,9 @@ const routes = {
     forgotPasswordUrl: '/forgot-password',
     forgotPasswordStoreUrl: '/forgot-password',
     resetPasswordStoreUrl: '/reset-password',
+    googleLoginUrl: '/auth/google/redirect',
+    whatsappSendUrl: '/auth/whatsapp/code',
+    whatsappVerifyUrl: '/auth/whatsapp/verify',
 };
 
 const arabicUi = {
@@ -103,6 +113,23 @@ const arabicUi = {
         forgot_password: 'نسيت كلمة المرور؟',
         registration_prompt: 'ما عندك حساب؟',
         registration_link: 'أنشئ حسابًا',
+        email_tab: 'البريد الإلكتروني',
+        phone_tab: 'الهاتف',
+        country_code: 'رمز الدولة',
+        phone_number: 'رقم الهاتف',
+        phone_send_code: 'أرسل كود واتساب',
+        phone_code: 'كود واتساب المكوّن من 6 أرقام',
+        phone_verify: 'تحقق وسجّل الدخول',
+        phone_code_sent:
+            'إذا كان الرقم مرتبطًا بحساب، أرسلنا له كودًا على واتساب.',
+        phone_code_invalid: 'الكود غير صحيح أو انتهت صلاحيته.',
+        phone_invalid: 'أدخل رقم هاتف صحيحًا مع رمز الدولة.',
+        phone_unavailable:
+            'تعذر إرسال كود واتساب الآن. حاول مرة أخرى بعد قليل.',
+        phone_change: 'تغيير الرقم',
+        google: 'المتابعة باستخدام Google',
+        google_error: 'تعذر تسجيل الدخول باستخدام Google. حاول مرة أخرى.',
+        or: 'أو',
     },
     register: {
         head_title: 'إنشاء حساب',
@@ -187,7 +214,11 @@ const englishUi = {
     },
 } satisfies AuthUiTranslations;
 
-afterEach(cleanup);
+afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    document.head.innerHTML = '';
+});
 
 class TestResizeObserver {
     observe() {}
@@ -197,7 +228,15 @@ class TestResizeObserver {
 
 vi.stubGlobal('ResizeObserver', TestResizeObserver);
 
-it('renders the Arabic login handoff in RTL with localized links and form action', () => {
+it('renders the Arabic login handoff and sends a normalized WhatsApp code request', async () => {
+    document.head.innerHTML =
+        '<meta name="csrf-token" content="csrf-test-token">';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify({ data: { sent: true } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        }),
+    );
     page.props = {
         authPage: 'login',
         authRoutes: routes,
@@ -225,6 +264,30 @@ it('renders the Arabic login handoff in RTL with localized links and form action
         '/register',
     );
     expect(document.querySelector('.auth-shell')).toHaveAttribute('dir', 'rtl');
+    expect(screen.getByRole('tab', { name: 'الهاتف' })).toBeVisible();
+    expect(
+        screen.getByRole('link', { name: 'المتابعة باستخدام Google' }),
+    ).toHaveAttribute('href', '/auth/google/redirect');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'الهاتف' }));
+    fireEvent.change(screen.getByLabelText('رمز الدولة'), {
+        target: { value: '+20' },
+    });
+    fireEvent.change(screen.getByLabelText('رقم الهاتف'), {
+        target: { value: '0100 123-4567' },
+    });
+    fireEvent.click(
+        screen.getByRole('button', { name: arabicUi.login.phone_send_code }),
+    );
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(fetchMock.mock.calls[0]?.[0].toString()).toBe(
+        'http://localhost:3000/auth/whatsapp/code',
+    );
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+        phone: '+201001234567',
+    });
+    expect(screen.getByLabelText(arabicUi.login.phone_code)).toBeVisible();
 });
 
 it('renders English register forgot and reset forms with the localized route contract', () => {

@@ -21,6 +21,32 @@ test('users can authenticate using the login screen', function () {
     $response->assertRedirect(route('dashboard', absolute: false));
 });
 
+test('phone numbers cannot bypass the one-time-code login flow with a password', function () {
+    $user = User::factory()->create(['phone' => '+201001234567']);
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->phone,
+        'password' => 'password',
+    ]);
+
+    $this->assertGuest();
+    $response->assertSessionHasErrors();
+});
+
+test('inactive users cannot authenticate with email', function () {
+    $user = User::factory()->create([
+        'phone' => '+966501234567',
+        'is_active' => false,
+    ]);
+
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertGuest();
+});
+
 test('users can not authenticate with invalid password', function () {
     $user = User::factory()->create();
 

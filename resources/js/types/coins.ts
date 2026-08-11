@@ -52,6 +52,7 @@ export type CoinsStoreTranslations = {
         accent: string;
         subtitle: string;
         cta: string;
+        services_cta: string;
         proof_label: string;
         stats: Array<{ value: string; unit: string; label: string }>;
     };

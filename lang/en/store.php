@@ -50,6 +50,7 @@ return [
         'accent' => 'At the best prices',
         'subtitle' => 'Fast, secure FIFA 27 Coins delivery to your account — backed by our full guarantee.',
         'cta' => 'Choose your Coins',
+        'services_cta' => 'Explore other services',
         'proof_label' => 'Store proof',
         'stats' => [
             ['value' => '+8,877', 'unit' => '', 'label' => 'Customers served'],

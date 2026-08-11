@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -34,6 +35,7 @@ class FortifyServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureActions();
+        $this->configureAuthentication();
         $this->configureViews();
         $this->configureRateLimiting();
         $this->configurePasswordResetUrls();
@@ -46,6 +48,26 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
+    }
+
+    private function configureAuthentication(): void
+    {
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            $email = Str::lower(trim((string) $request->input(Fortify::username())));
+            $password = (string) $request->input('password');
+
+            if (! str_contains($email, '@')) {
+                return null;
+            }
+
+            $user = User::query()->where('email', $email)->first();
+
+            if ($user === null || ! $user->is_active || $user->password === null) {
+                return null;
+            }
+
+            return Hash::check($password, $user->password) ? $user : null;
+        });
     }
 
     /**
@@ -94,6 +116,11 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($throttleKey);
         });
 
+        RateLimiter::for('whatsapp-login-send', fn (Request $request): Limit => Limit::perMinute(3)
+            ->by(hash('sha256', (string) $request->input('phone').'|'.$request->ip())));
+        RateLimiter::for('whatsapp-login-verify', fn (Request $request): Limit => Limit::perMinute(10)
+            ->by(hash('sha256', (string) $request->input('phone').'|'.$request->ip())));
+
     }
 
     /** @return array<string, mixed> */
@@ -126,6 +153,15 @@ class FortifyServiceProvider extends ServiceProvider
             'forgotPasswordUrl' => $authUrl('password.request'),
             'forgotPasswordStoreUrl' => $authUrl('password.email'),
             'resetPasswordStoreUrl' => $authUrl('password.update'),
+            'googleLoginUrl' => $localized
+                ? route('localized.auth.google.redirect', ['locale' => 'en'], absolute: false)
+                : route('auth.google.redirect', absolute: false),
+            'whatsappSendUrl' => $localized
+                ? route('localized.auth.whatsapp.send', ['locale' => 'en'], absolute: false)
+                : route('auth.whatsapp.send', absolute: false),
+            'whatsappVerifyUrl' => $localized
+                ? route('localized.auth.whatsapp.verify', ['locale' => 'en'], absolute: false)
+                : route('auth.whatsapp.verify', absolute: false),
         ];
     }
 

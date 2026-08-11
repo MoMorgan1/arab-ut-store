@@ -151,9 +151,20 @@ export default function StoreHome() {
                             <p className="store-hero__subtitle">
                                 {store.hero.subtitle}
                             </p>
-                            <a className="store-hero__cta" href="#coins">
-                                {store.hero.cta}
-                            </a>
+                            <div className="store-hero__actions">
+                                <a
+                                    className="store-hero__cta store-hero__cta--primary"
+                                    href="#coins"
+                                >
+                                    {store.hero.cta}
+                                </a>
+                                <a
+                                    className="store-hero__cta store-hero__cta--secondary"
+                                    href="#services"
+                                >
+                                    {store.hero.services_cta}
+                                </a>
+                            </div>
                             <HeroStats
                                 label={store.hero.proof_label}
                                 stats={store.hero.stats}

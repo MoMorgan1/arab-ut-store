@@ -36,6 +36,9 @@ export type AuthRoutes = {
     forgotPasswordUrl: string;
     forgotPasswordStoreUrl: string;
     resetPasswordStoreUrl: string;
+    googleLoginUrl: string;
+    whatsappSendUrl: string;
+    whatsappVerifyUrl: string;
 };
 
 export type AuthUiTranslations = {
@@ -63,6 +66,21 @@ export type AuthUiTranslations = {
         forgot_password: string;
         registration_prompt: string;
         registration_link: string;
+        email_tab: string;
+        phone_tab: string;
+        country_code: string;
+        phone_number: string;
+        phone_send_code: string;
+        phone_code: string;
+        phone_verify: string;
+        phone_code_sent: string;
+        phone_code_invalid: string;
+        phone_invalid: string;
+        phone_unavailable: string;
+        phone_change: string;
+        google: string;
+        google_error: string;
+        or: string;
     };
     register: {
         head_title: string;

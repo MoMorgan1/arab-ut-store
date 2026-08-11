@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Auth\GoogleAuthenticationController;
+use App\Http\Controllers\Auth\WhatsAppLoginController;
 use App\Http\Controllers\Store\CartController;
 use App\Http\Controllers\Store\CartItemCredentialsController;
 use App\Http\Controllers\Store\CatalogCartController;
@@ -37,6 +39,18 @@ Route::post('/cart/items/coins', CoinsCartController::class)
 Route::post('/cart/items/catalog', CatalogCartController::class)
     ->middleware([NoStore::class, RequireCatalogCartJson::class, 'throttle:coins-cart'])
     ->name('cart.items.catalog.store');
+Route::get('/auth/google/redirect', [GoogleAuthenticationController::class, 'redirect'])
+    ->middleware(['guest:'.config('fortify.guard')])
+    ->name('auth.google.redirect');
+Route::get('/auth/google/callback', [GoogleAuthenticationController::class, 'callback'])
+    ->middleware(['guest:'.config('fortify.guard')])
+    ->name('auth.google.callback');
+Route::post('/auth/whatsapp/code', [WhatsAppLoginController::class, 'send'])
+    ->middleware(['guest:'.config('fortify.guard'), 'throttle:whatsapp-login-send'])
+    ->name('auth.whatsapp.send');
+Route::post('/auth/whatsapp/verify', [WhatsAppLoginController::class, 'verify'])
+    ->middleware(['guest:'.config('fortify.guard'), 'throttle:whatsapp-login-verify'])
+    ->name('auth.whatsapp.verify');
 
 $simpleStorePages = [
     'privacy' => '/privacy',
@@ -96,6 +110,18 @@ Route::prefix('{locale}')
         Route::post('/cart/items/catalog', CatalogCartController::class)
             ->middleware([NoStore::class, RequireCatalogCartJson::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.catalog.store');
+        Route::get('/auth/google/redirect', [GoogleAuthenticationController::class, 'redirect'])
+            ->middleware(['guest:'.config('fortify.guard')])
+            ->name('localized.auth.google.redirect');
+        Route::get('/auth/google/callback', [GoogleAuthenticationController::class, 'callback'])
+            ->middleware(['guest:'.config('fortify.guard')])
+            ->name('localized.auth.google.callback');
+        Route::post('/auth/whatsapp/code', [WhatsAppLoginController::class, 'send'])
+            ->middleware(['guest:'.config('fortify.guard'), 'throttle:whatsapp-login-send'])
+            ->name('localized.auth.whatsapp.send');
+        Route::post('/auth/whatsapp/verify', [WhatsAppLoginController::class, 'verify'])
+            ->middleware(['guest:'.config('fortify.guard'), 'throttle:whatsapp-login-verify'])
+            ->name('localized.auth.whatsapp.verify');
 
         Route::get('/login', [AuthenticatedSessionController::class, 'create'])
             ->middleware(['guest:'.config('fortify.guard')])

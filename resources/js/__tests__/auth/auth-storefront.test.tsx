@@ -64,6 +64,9 @@ const routes = {
     forgotPasswordUrl: '/forgot-password',
     forgotPasswordStoreUrl: '/forgot-password',
     resetPasswordStoreUrl: '/reset-password',
+    googleLoginUrl: '/auth/google/redirect',
+    whatsappSendUrl: '/auth/whatsapp/code',
+    whatsappVerifyUrl: '/auth/whatsapp/verify',
 };
 
 const storeShell = {
@@ -169,6 +172,23 @@ const arabicAuthUi = {
         forgot_password: 'نسيت كلمة المرور؟',
         registration_prompt: 'ما عندك حساب؟',
         registration_link: 'أنشئ حسابًا',
+        email_tab: 'البريد الإلكتروني',
+        phone_tab: 'الهاتف',
+        country_code: 'رمز الدولة',
+        phone_number: 'رقم الهاتف',
+        phone_send_code: 'أرسل كود واتساب',
+        phone_code: 'كود واتساب المكوّن من 6 أرقام',
+        phone_verify: 'تحقق وسجّل الدخول',
+        phone_code_sent:
+            'إذا كان الرقم مرتبطًا بحساب، أرسلنا له كودًا على واتساب.',
+        phone_code_invalid: 'الكود غير صحيح أو انتهت صلاحيته.',
+        phone_invalid: 'أدخل رقم هاتف صحيحًا مع رمز الدولة.',
+        phone_unavailable:
+            'تعذر إرسال كود واتساب الآن. حاول مرة أخرى بعد قليل.',
+        phone_change: 'تغيير الرقم',
+        google: 'المتابعة باستخدام Google',
+        google_error: 'تعذر تسجيل الدخول باستخدام Google. حاول مرة أخرى.',
+        or: 'أو',
     },
     register: {
         head_title: 'إنشاء حساب',
@@ -230,6 +250,22 @@ const englishAuthUi = {
         forgot_password: 'Forgot your password?',
         registration_prompt: "Don't have an account?",
         registration_link: 'Create an account',
+        email_tab: 'Email',
+        phone_tab: 'Phone',
+        country_code: 'Country code',
+        phone_number: 'Phone number',
+        phone_send_code: 'Send WhatsApp code',
+        phone_code: '6-digit WhatsApp code',
+        phone_verify: 'Verify and log in',
+        phone_code_sent: 'If linked, a WhatsApp code was sent.',
+        phone_code_invalid: 'The code is invalid or expired.',
+        phone_invalid: 'Enter a valid phone number.',
+        phone_unavailable: 'Could not send a WhatsApp code.',
+        phone_change: 'Change number',
+        google: 'Continue with Google',
+        google_error:
+            'Google sign-in could not be completed. Please try again.',
+        or: 'or',
     },
     register: {
         head_title: 'Create account',
@@ -393,7 +429,10 @@ describe('storefront authentication shell', () => {
             'href',
             '/login',
         );
-        expect(screen.queryByText(/Google/i)).not.toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /Google/i })).toHaveAttribute(
+            'href',
+            '/auth/google/redirect',
+        );
         expect(screen.queryByText(/checkout/i)).not.toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'إظهار كلمة المرور' }),

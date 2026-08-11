@@ -29,6 +29,7 @@ const store = {
         subtitle:
             'Fast, secure FIFA 27 Coins delivery to your account — backed by our full guarantee.',
         cta: 'Choose your Coins',
+        services_cta: 'Explore other services',
         proof_label: 'Store proof',
         stats: [
             { value: '+8,877', unit: '', label: 'Customers served' },
@@ -391,6 +392,9 @@ describe('Coins homepage', () => {
         expect(
             screen.getByRole('link', { name: 'Choose your Coins' }),
         ).toHaveAttribute('href', '#coins');
+        expect(
+            screen.getByRole('link', { name: 'Explore other services' }),
+        ).toHaveAttribute('href', '#services');
         expect(
             screen.getByRole('heading', {
                 level: 2,
