@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Store;
 use App\Actions\Pricing\BuildCoinsQuoteSchedule;
 use App\Enums\Platform;
 use App\Http\Controllers\Controller;
+use App\Services\Reviews\StoreReviewReader;
 use App\Validation\CoinsSelectionRules;
 use DomainException;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class HomeController extends Controller
         Request $request,
         CoinsSelectionRules $selectionRules,
         BuildCoinsQuoteSchedule $buildCoinsQuoteSchedule,
+        StoreReviewReader $reviews,
     ): Response {
         $status = 'unavailable';
         $quoteSchedules = null;
@@ -52,6 +54,14 @@ class HomeController extends Controller
             'homeContent' => [
                 'services' => $this->services($request),
                 'servicesTranslations' => trans('store.services_section'),
+                'reviews' => $reviews->homepage(app()->getLocale()),
+                'reviewsUrl' => $this->storeRoute($request, 'store.reviews'),
+                'reviewsTranslations' => trans('store.reviews'),
+                'faq' => trans('store.faq.entries'),
+                'faqTranslations' => [
+                    'eyebrow' => trans('store.faq.eyebrow'),
+                    'title' => trans('store.faq.title'),
+                ],
             ],
             'store' => trans('store'),
         ]);

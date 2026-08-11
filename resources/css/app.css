@@ -3488,6 +3488,202 @@
     }
 }
 
+.store-reviews,
+.store-faq {
+    border-block-start: 1px solid var(--arabut-line);
+    background: var(--arabut-navy);
+}
+
+.store-reviews__inner,
+.store-faq__inner,
+.store-reviews-page {
+    width: min(100% - 2rem, 74rem);
+    margin-inline: auto;
+    padding-block: clamp(3.5rem, 7vw, 6.5rem);
+}
+
+.store-reviews__heading,
+.store-faq__heading {
+    margin-block-end: 2rem;
+}
+
+.store-reviews-rail {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: clamp(17rem, 29vw, 21rem);
+    gap: 1rem;
+    overflow-x: auto;
+    padding: 0.2rem 0.1rem 1rem;
+    scroll-snap-type: inline mandatory;
+    scrollbar-color: var(--arabut-gold) rgb(255 255 255 / 10%);
+}
+
+.store-review-card {
+    display: grid;
+    grid-template-rows: auto minmax(7rem, 1fr) auto;
+    min-height: 18.5rem;
+    gap: 1rem;
+    padding: 1.35rem;
+    border: 1px solid var(--arabut-line);
+    border-radius: 1.15rem;
+    background: linear-gradient(
+        145deg,
+        rgb(34 31 27 / 98%),
+        rgb(17 16 14 / 98%)
+    );
+    scroll-snap-align: start;
+}
+
+.store-review-card__stars {
+    color: var(--arabut-gold-bright);
+    font-size: 1.05rem;
+    letter-spacing: 0.14em;
+}
+
+.store-review-card__stars-muted {
+    color: rgb(255 255 255 / 18%);
+}
+
+.store-review-card blockquote {
+    color: var(--arabut-ink);
+    font-size: 1.05rem;
+    line-height: 1.75;
+}
+
+.store-review-card footer {
+    display: grid;
+    gap: 0.3rem;
+    color: var(--arabut-muted);
+}
+
+.store-review-card footer strong {
+    color: var(--arabut-ink);
+}
+
+.store-review-card footer > span {
+    width: fit-content;
+    padding: 0.18rem 0.55rem;
+    border: 1px solid rgb(217 171 58 / 35%);
+    border-radius: 999px;
+    color: var(--arabut-gold);
+    font-size: 0.8rem;
+}
+
+.store-reviews__empty {
+    padding: 2rem;
+    border: 1px dashed var(--arabut-line);
+    border-radius: 1rem;
+    color: var(--arabut-muted);
+    text-align: center;
+}
+
+.store-reviews__all {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    margin-block-start: 1rem;
+    color: var(--arabut-gold);
+    font-weight: 700;
+}
+
+.store-faq {
+    background: linear-gradient(
+        180deg,
+        var(--arabut-navy),
+        var(--arabut-navy-deep)
+    );
+}
+
+.store-faq__list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.store-faq details {
+    border: 1px solid var(--arabut-line);
+    border-radius: 1rem;
+    background: rgb(24 22 19 / 94%);
+}
+
+.store-faq details[open] {
+    border-color: rgb(217 171 58 / 52%);
+}
+
+.store-faq summary {
+    min-height: 3.5rem;
+    padding: 1rem 1.1rem;
+    cursor: pointer;
+    color: var(--arabut-ink);
+    font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.store-faq summary:focus-visible,
+.store-reviews__all:focus-visible,
+.store-pagination a:focus-visible {
+    outline: 3px solid var(--arabut-focus);
+    outline-offset: 3px;
+}
+
+.store-faq details p {
+    padding: 0 1.1rem 1.2rem;
+    color: var(--arabut-muted);
+    line-height: 1.8;
+}
+
+.store-reviews-page__title {
+    font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+}
+
+.store-reviews-page__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.store-pagination {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 1rem;
+    margin-block-start: 2rem;
+    color: var(--arabut-muted);
+    text-align: center;
+}
+
+.store-pagination a {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--arabut-line);
+    border-radius: 999px;
+    color: var(--arabut-gold);
+}
+
+@media (max-width: 64rem) {
+    .store-reviews-page__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 40rem) {
+    .store-reviews-rail {
+        grid-auto-columns: min(84vw, 20rem);
+    }
+
+    .store-reviews-page__grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .store-reviews__inner,
+    .store-faq__inner,
+    .store-reviews-page {
+        width: min(100% - 1.5rem, 74rem);
+    }
+}
+
 @keyframes store-hero-sweep {
     0% {
         opacity: 0;

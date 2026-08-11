@@ -1,6 +1,8 @@
 import { Head, usePage } from '@inertiajs/react';
 
 import { CoinsConfigurator } from '@/components/configurator/coins';
+import { FaqSection } from '@/components/store/faq-section';
+import { ReviewsSection } from '@/components/store/reviews-section';
 import { ServiceRail } from '@/components/store/service-rail';
 import StoreLayout from '@/layouts/store-layout';
 import { parseCoinsQuoteSchedules } from '@/lib/coins-quote-schedule';
@@ -200,11 +202,23 @@ export default function StoreHome() {
                     </section>
 
                     {homeContent === undefined ? null : (
-                        <ServiceRail
-                            direction={direction}
-                            services={homeContent.services}
-                            translations={homeContent.servicesTranslations}
-                        />
+                        <>
+                            <ServiceRail
+                                direction={direction}
+                                services={homeContent.services}
+                                translations={homeContent.servicesTranslations}
+                            />
+                            <ReviewsSection
+                                locale={locale}
+                                reviews={homeContent.reviews}
+                                reviewsUrl={homeContent.reviewsUrl}
+                                translations={homeContent.reviewsTranslations}
+                            />
+                            <FaqSection
+                                entries={homeContent.faq}
+                                translations={homeContent.faqTranslations}
+                            />
+                        </>
                     )}
                 </>
             ) : null}

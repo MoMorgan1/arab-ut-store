@@ -18,9 +18,46 @@ export type ServiceRailTranslations = {
 };
 
 export type StoreHomeContent = {
+    faq: FaqEntry[];
+    faqTranslations: FaqTranslations;
+    reviews: ReviewCollection;
+    reviewsTranslations: ReviewTranslations;
+    reviewsUrl: string;
     services: HomeServiceCard[];
     servicesTranslations: ServiceRailTranslations;
 };
+
+export type ReviewItem = {
+    body: string | null;
+    id: string;
+    publishedAt: string | null;
+    rating: number;
+    reviewerName: string;
+    verified: boolean;
+};
+
+export type ReviewCollection = {
+    average: number | null;
+    count: number;
+    items: ReviewItem[];
+};
+
+export type ReviewTranslations = {
+    anonymous_customer: string;
+    empty: string;
+    eyebrow: string;
+    next?: string;
+    pages?: string;
+    previous?: string;
+    rating_label: string;
+    summary: string;
+    title: string;
+    verified: string;
+    view_all: string;
+};
+
+export type FaqEntry = { answer: string; question: string };
+export type FaqTranslations = { eyebrow: string; title: string };
 
 export type CatalogMoney = { amountMinor: number; currency: string };
 export type CatalogVariant = {
@@ -76,7 +113,7 @@ export type ProductTranslations = {
     unavailable_price: string;
 };
 
-type StoreBasePageProps = {
+export type StoreBasePageProps = {
     cartCount: number;
     direction: 'rtl' | 'ltr';
     displayCurrencies: string[];
@@ -114,4 +151,16 @@ export type StoreCatalogProductPageProps = StoreBasePageProps & {
     catalog: { product: CatalogProduct; service: string };
     catalogCartUrl: string;
     productPage: ProductTranslations;
+};
+
+export type StoreReviewsPageProps = StoreBasePageProps & {
+    reviews: ReviewCollection & {
+        pagination: {
+            lastPage: number;
+            page: number;
+            perPage: number;
+            total: number;
+        };
+    };
+    reviewsPage: ReviewTranslations;
 };
