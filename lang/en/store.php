@@ -59,11 +59,13 @@ return [
         'body' => 'Quoting will reopen when the local catalog and pricing data are ready.',
     ],
     'services' => [
-        'sbc' => ['eyebrow' => 'FC 27 services', 'title' => 'SBC Services', 'intro' => 'Choose the challenge you want us to complete, with clear options and an authoritative price.'],
-        'objectives' => ['eyebrow' => 'FC 27 services', 'title' => 'Objectives', 'intro' => 'Browse available Objective services and add the right option directly to your cart.'],
-        'fut_champions' => ['eyebrow' => 'Competitive services', 'title' => 'FUT Champions', 'intro' => 'Choose an available FUT Champions option and add it securely to your cart.'],
-        'rivals' => ['eyebrow' => 'Competitive services', 'title' => 'Division Rivals', 'intro' => 'Choose an available Rivals option and add it securely to your cart.'],
+        'sbc' => ['eyebrow' => 'FC 27 services', 'title' => 'SBC Services', 'intro' => 'Choose the challenge you want us to complete, with clear options and an authoritative price.', 'card_description' => 'Squad Building Challenges completed for you.'],
+        'objectives' => ['eyebrow' => 'FC 27 services', 'title' => 'Objectives', 'intro' => 'Browse available Objective services and add the right option directly to your cart.', 'card_description' => 'Choose the Objective progress that fits your account.'],
+        'fut_champions' => ['eyebrow' => 'Competitive services', 'title' => 'FUT Champions', 'intro' => 'Choose an available FUT Champions option and add it securely to your cart.', 'card_description' => 'Competitive FUT Champions packages.'],
+        'rivals' => ['eyebrow' => 'Competitive services', 'title' => 'Division Rivals', 'intro' => 'Choose an available Rivals option and add it securely to your cart.', 'card_description' => 'Division Rivals progress and rewards.'],
+        'sell_coins' => ['title' => 'Sell Coins', 'card_description' => 'Sell your Coins through the dedicated Arab UT service.'],
     ],
+    'services_section' => ['eyebrow' => 'More Arab UT services', 'title' => 'Choose your next service'],
     'catalog' => [
         'search' => 'Search services',
         'filter' => 'Filter',

@@ -440,7 +440,7 @@ git commit -m "feat: add catalog products to guest cart"
 - Consumes: `HomeServiceCard[]` with `key`, `title`, `description`, `href`, `imageUrl`, and `external`.
 - Produces: one labelled horizontal snap region with five equal cards and optional previous/next buttons.
 
-- [ ] **Step 1: Write the failing service rail tests**
+- [x] **Step 1: Write the failing service rail tests**
 
 ```tsx
 it('renders five equal service links in the approved order', () => {
@@ -470,13 +470,13 @@ it('uses native horizontal scrolling without autoplay', () => {
 
 Also assert safe external `target=_blank rel="noreferrer noopener"`, 44px controls, RTL scroll direction, alt text, keyboard-reachable cards, and no button when the mocked track does not overflow.
 
-- [ ] **Step 2: Run the rail tests to verify RED**
+- [x] **Step 2: Run the rail tests to verify RED**
 
 Run: `npm test -- resources/js/__tests__/store/store-service-rail.test.tsx`
 
 Expected: FAIL because `ServiceRail` does not exist.
 
-- [ ] **Step 3: Implement focused rail behavior**
+- [x] **Step 3: Implement focused rail behavior**
 
 ```tsx
 export type HomeServiceCard = {
@@ -491,15 +491,15 @@ export type HomeServiceCard = {
 
 Use a semantic `<section>` and `<ul>`. The track uses `overflow-x:auto`, `scroll-snap-type:inline mandatory`, equal `grid-auto-columns`, and logical inline properties. Buttons call `scrollBy({left: directionSign * cardStep, behavior: reducedMotion ? 'auto' : 'smooth'})`; they do not run timers.
 
-- [ ] **Step 4: Add service assets and equal geometry CSS**
+- [x] **Step 4: Add service assets and equal geometry CSS**
 
 Use owned WordPress/current-site art or existing navigation marks. Convert to optimized WebP when needed. Keep `object-fit:contain`, a fixed aspect-ratio image stage, identical card min/max block size, two-line title/description clamps, CTA aligned to the bottom, and no per-service spanning selector.
 
-- [ ] **Step 5: Integrate after the Coins section**
+- [x] **Step 5: Integrate after the Coins section**
 
 Pass `homeContent.services` from the controller and render `<ServiceRail>` immediately after the existing Coins section. Preserve the Coins component and quote schedules unchanged.
 
-- [ ] **Step 6: Run focused GREEN and frontend static checks**
+- [x] **Step 6: Run focused GREEN and frontend static checks**
 
 Run:
 
@@ -512,7 +512,7 @@ npm run types
 
 Expected: all pass.
 
-- [ ] **Step 7: Commit Task 3**
+- [x] **Step 7: Commit Task 3**
 
 ```bash
 git add resources/js/types/store-content.ts resources/js/components/store/service-rail.tsx resources/js/pages/store/home.tsx resources/css/app.css resources/js/__tests__/store public/images/store/services

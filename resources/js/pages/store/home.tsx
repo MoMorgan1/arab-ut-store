@@ -1,6 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 
 import { CoinsConfigurator } from '@/components/configurator/coins';
+import { ServiceRail } from '@/components/store/service-rail';
 import StoreLayout from '@/layouts/store-layout';
 import { parseCoinsQuoteSchedules } from '@/lib/coins-quote-schedule';
 import type {
@@ -10,6 +11,7 @@ import type {
     CoinsPlatformOption,
     CoinsStoreTranslations,
 } from '@/types/coins';
+import type { StoreHomeContent } from '@/types/store-content';
 import type {
     StoreShellConfig,
     StoreShellTranslations,
@@ -25,6 +27,7 @@ type StorePageProps = {
     quoteUrl: string;
     amount: CoinsAmountRules;
     cartCount: number;
+    homeContent?: StoreHomeContent;
     coinsCart: CoinsCartConfig;
     platforms: CoinsPlatformOption[];
     store: CoinsStoreTranslations;
@@ -42,6 +45,7 @@ export default function StoreHome() {
         displayCurrencies,
         displayCurrency,
         locale,
+        homeContent,
         platforms,
         quoteSchedules,
         status,
@@ -194,6 +198,14 @@ export default function StoreHome() {
                             )}
                         </div>
                     </section>
+
+                    {homeContent === undefined ? null : (
+                        <ServiceRail
+                            direction={direction}
+                            services={homeContent.services}
+                            translations={homeContent.servicesTranslations}
+                        />
+                    )}
                 </>
             ) : null}
         </StoreLayout>

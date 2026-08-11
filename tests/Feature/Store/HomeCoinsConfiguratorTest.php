@@ -332,6 +332,5 @@ test('homepage props omit supplier market, policy proof, and credential values',
         ->not->toContain('"eaPassword"')
         ->not->toContain('"encrypted_payload"')
         ->not->toContain('"masked_summary"')
-        ->not->toContain('reviews')
         ->not->toContain('checkout currency');
 });

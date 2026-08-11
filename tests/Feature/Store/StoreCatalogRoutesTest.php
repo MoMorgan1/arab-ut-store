@@ -150,3 +150,21 @@ test('category query input is bounded and product routes reject wrong services',
     $this->get('/sbc/objective-one')->assertNotFound();
     $this->get('/objectives/missing')->assertNotFound();
 });
+
+test('homepage service rail contract has equal ordered internal routes and the exact Sell Coins destination', function () {
+    $this->get('/en')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('homeContent.services', 5)
+            ->where('homeContent.services.0.key', 'sbc')
+            ->where('homeContent.services.0.href', '/en/sbc')
+            ->where('homeContent.services.1.key', 'objectives')
+            ->where('homeContent.services.1.href', '/en/objectives')
+            ->where('homeContent.services.2.key', 'fut_champions')
+            ->where('homeContent.services.2.href', '/en/fut-champions')
+            ->where('homeContent.services.3.key', 'rivals')
+            ->where('homeContent.services.3.href', '/en/rivals')
+            ->where('homeContent.services.4.key', 'sell_coins')
+            ->where('homeContent.services.4.href', 'https://sell.arab-ut.com/')
+            ->where('homeContent.services.4.external', true));
+});
