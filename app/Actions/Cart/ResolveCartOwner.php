@@ -21,13 +21,31 @@ final class ResolveCartOwner
             return CartOwner::user($this->authenticatedUserId($authenticatedUser));
         }
 
+        $existingOwner = $this->existingGuestForRequest($request);
+
+        if ($existingOwner !== null) {
+            return $existingOwner;
+        }
+
+        $rawToken = bin2hex(random_bytes(32));
+        $request->session()->put(self::SESSION_KEY, $rawToken);
+
+        return $this->ownerForRawToken($rawToken);
+    }
+
+    public function existingGuestForRequest(Request $request): ?CartOwner
+    {
         $rawToken = $request->session()->get(self::SESSION_KEY);
 
         if (! is_string($rawToken) || preg_match('/\A[0-9a-f]{64}\z/D', $rawToken) !== 1) {
-            $rawToken = bin2hex(random_bytes(32));
-            $request->session()->put(self::SESSION_KEY, $rawToken);
+            return null;
         }
 
+        return $this->ownerForRawToken($rawToken);
+    }
+
+    private function ownerForRawToken(string $rawToken): CartOwner
+    {
         $currentOwner = CartOwner::guest(hash_hmac('sha256', $rawToken, $this->applicationKey()));
         $previousOwners = $this->previousOwners($rawToken, $currentOwner);
 

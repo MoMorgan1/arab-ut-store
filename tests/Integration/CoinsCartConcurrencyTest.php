@@ -3,6 +3,7 @@
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Models\Cart;
+use App\Models\CartItemSecret;
 use App\Models\PriceRule;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -90,6 +91,71 @@ test('concurrent same-guest first cart acquisitions resolve to one active cart',
         ->and(Cart::query()->where('active_owner_key', "guest:{$guestHmac}")->count())->toBe(1);
 });
 
+test('concurrent guest claims merge every item and secret exactly once into one user cart', function () {
+    if (! supportsConcurrentCartLocking()) {
+        $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL row locking.');
+    }
+
+    expect(DB::transactionLevel())->toBe(0);
+    createConcurrentCatalog();
+    $user = User::factory()->create();
+    $guestHmac = hash_hmac('sha256', 'concurrent-guest-claim', 'synthetic-concurrency-key');
+    $guestCart = Cart::query()->create([
+        'user_id' => null,
+        'session_key' => $guestHmac,
+        'status' => 'active',
+        'currency' => 'SAR',
+    ]);
+    $userCart = Cart::query()->create([
+        'user_id' => $user->id,
+        'session_key' => null,
+        'status' => 'active',
+        'currency' => 'SAR',
+    ]);
+    $variant = ProductVariant::query()->firstOrFail();
+
+    foreach ([$guestCart, $userCart] as $index => $cart) {
+        $item = $cart->items()->create([
+            'product_variant_id' => $variant->id,
+            'quantity' => 1,
+            'unit_price_halalah' => 5_000,
+            'total_halalah' => 5_000,
+            'configuration' => ['service_type' => 'coins'],
+        ]);
+        $secret = new CartItemSecret([
+            'cart_item_id' => $item->id,
+            'masked_summary' => ['has_password' => true, 'backup_code_count' => 5],
+            'retained_until' => now()->addHour(),
+        ]);
+        $secret->encrypted_payload = [
+            'ea_email' => "concurrent-claim-{$index}@example.test",
+            'ea_password' => "Concurrent claim secret {$index}",
+            'backup_codes' => ['20000001', '20000002', '20000003', '20000004', '20000005'],
+        ];
+        $secret->save();
+    }
+
+    $itemIds = $guestCart->items()->pluck('id')->merge($userCart->items()->pluck('id'))->sort()->values()->all();
+    $secretIds = CartItemSecret::query()->pluck('id')->sort()->values()->all();
+    $first = concurrentGuestClaimProcess($guestHmac, $user->id);
+    $second = concurrentGuestClaimProcess($guestHmac, $user->id);
+    $first->start();
+    $second->start();
+    $first->wait();
+    $second->wait();
+    refreshConcurrentConnection();
+
+    $claimedCart = Cart::query()->where('active_owner_key', "user:{$user->id}")->sole();
+
+    expect($first->isSuccessful())->toBeTrue($first->getErrorOutput())
+        ->and($second->isSuccessful())->toBeTrue($second->getErrorOutput())
+        ->and(Cart::query()->where('active_owner_key', "guest:{$guestHmac}")->count())->toBe(0)
+        ->and(Cart::query()->where('active_owner_key', "user:{$user->id}")->count())->toBe(1)
+        ->and($claimedCart->items()->pluck('id')->sort()->values()->all())->toBe($itemIds)
+        ->and(CartItemSecret::query()->pluck('id')->sort()->values()->all())->toBe($secretIds)
+        ->and($claimedCart->items()->whereHas('secret')->count())->toBe(2);
+});
+
 function supportsConcurrentCartLocking(): bool
 {
     return in_array(DB::connection()->getDriverName(), ['mariadb', 'mysql'], true);
@@ -168,6 +234,24 @@ function concurrentGuestCartProcess(string $guestHmac): Process
         'extension=pdo_mysql',
         base_path('tests/Support/ConcurrentGuestCartCreate.php'),
         $guestHmac,
+    ], base_path(), concurrentDatabaseEnvironment(), timeout: 30);
+}
+
+function concurrentGuestClaimProcess(string $guestHmac, int $userId): Process
+{
+    return new Process([
+        PHP_BINARY,
+        '-d',
+        'extension_dir='.ini_get('extension_dir'),
+        '-d',
+        'extension=openssl',
+        '-d',
+        'extension=mbstring',
+        '-d',
+        'extension=pdo_mysql',
+        base_path('tests/Support/ConcurrentGuestCartClaim.php'),
+        $guestHmac,
+        (string) $userId,
     ], base_path(), concurrentDatabaseEnvironment(), timeout: 30);
 }
 
