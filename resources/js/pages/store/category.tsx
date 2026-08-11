@@ -85,7 +85,12 @@ export default function StoreCategory() {
 
                 <form
                     action={props.catalogPageUrl}
-                    className="store-catalog-toolbar"
+                    className={[
+                        'store-catalog-toolbar',
+                        isSbc ? 'store-catalog-toolbar--compact' : null,
+                    ]
+                        .filter(Boolean)
+                        .join(' ')}
                     method="get"
                     onSubmit={(event) => {
                         event.preventDefault();
@@ -98,7 +103,7 @@ export default function StoreCategory() {
                             {props.catalogPage.browse_by_type}
                         </h2>
                     ) : null}
-                    <label>
+                    <label className="store-catalog-toolbar__search">
                         <span>{props.catalogPage.search}</span>
                         <input
                             name="q"
@@ -112,7 +117,7 @@ export default function StoreCategory() {
                             value={query.q}
                         />
                     </label>
-                    <fieldset>
+                    <fieldset className="store-catalog-toolbar__filters">
                         <legend>{props.catalogPage.filter}</legend>
                         {filters.map((filter) => (
                             <button
@@ -131,7 +136,7 @@ export default function StoreCategory() {
                             </button>
                         ))}
                     </fieldset>
-                    <label>
+                    <label className="store-catalog-toolbar__sort">
                         <span>{props.catalogPage.sort}</span>
                         <select
                             aria-label={props.catalogPage.sort}
@@ -157,7 +162,12 @@ export default function StoreCategory() {
                             ))}
                         </select>
                     </label>
-                    <button type="submit">{props.catalogPage.search}</button>
+                    <button
+                        className="store-catalog-toolbar__submit"
+                        type="submit"
+                    >
+                        {props.catalogPage.search}
+                    </button>
                 </form>
 
                 {props.catalog.products.length === 0 ? (

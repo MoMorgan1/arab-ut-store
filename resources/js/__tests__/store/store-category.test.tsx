@@ -63,6 +63,18 @@ it('submits locale-preserving search filter and sort parameters', () => {
 it('renders the refined SBC hierarchy and trust strip', () => {
     render(<StoreCategory />);
 
+    expect(screen.getByRole('search')).toHaveClass(
+        'store-catalog-toolbar--compact',
+    );
+    expect(screen.getByRole('searchbox').closest('label')).toHaveClass(
+        'store-catalog-toolbar__search',
+    );
+    expect(screen.getByRole('group', { name: 'Filter' })).toHaveClass(
+        'store-catalog-toolbar__filters',
+    );
+    expect(
+        screen.getByRole('combobox', { name: 'Sort' }).closest('label'),
+    ).toHaveClass('store-catalog-toolbar__sort');
     expect(screen.getAllByRole('main')).toHaveLength(1);
     expect(
         screen.getByRole('heading', {

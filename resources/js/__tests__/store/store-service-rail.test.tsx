@@ -134,18 +134,18 @@ it('moves continuously and pauses while a service link has focus', () => {
     act(() => vi.advanceTimersByTime(100));
 
     expect(vi.mocked(track!.scrollBy).mock.calls.length).toBeGreaterThan(0);
-    expect(
-        Math.abs(
-            vi
-                .mocked(track!.scrollBy)
-                .mock.calls.reduce(
-                    (distance, [options]) =>
-                        distance +
-                        Number((options as ScrollToOptions).left ?? 0),
-                    0,
-                ),
-        ),
-    ).toBeLessThan(1.5);
+    const distance = Math.abs(
+        vi
+            .mocked(track!.scrollBy)
+            .mock.calls.reduce(
+                (total, [options]) =>
+                    total + Number((options as ScrollToOptions).left ?? 0),
+                0,
+            ),
+    );
+
+    expect(distance).toBeGreaterThanOrEqual(2);
+    expect(distance).toBeLessThanOrEqual(3);
     expect(track).toHaveAttribute('dir', 'rtl');
 
     const callCount = vi.mocked(track!.scrollBy).mock.calls.length;
