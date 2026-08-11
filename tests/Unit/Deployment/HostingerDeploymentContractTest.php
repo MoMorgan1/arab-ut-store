@@ -19,8 +19,12 @@ it('publishes one tested sha-bound release artifact from the main CI workflow', 
         ->toContain('if-no-files-found: error');
 });
 
-it('deploys staging only after a successful main push test run', function () {
-    $workflow = deploymentFile('.github/workflows/deploy-staging.yml');
+it('deploys production only after a successful main push test run', function () {
+    $workflowPath = '.github/workflows/deploy-production.yml';
+
+    expect(file_exists(dirname(__DIR__, 3).DIRECTORY_SEPARATOR.$workflowPath))->toBeTrue();
+
+    $workflow = deploymentFile($workflowPath);
 
     expect($workflow)
         ->toContain('workflow_run:')
@@ -29,8 +33,10 @@ it('deploys staging only after a successful main push test run', function () {
         ->toContain("github.event.workflow_run.head_branch == 'main'")
         ->toContain("github.event.workflow_run.event == 'push'")
         ->toContain('environment:')
-        ->toContain('name: staging')
+        ->toContain('name: production')
+        ->toContain('PRODUCTION_URL')
         ->toContain('HOSTINGER_KNOWN_HOSTS')
+        ->not->toContain('STAGING_URL')
         ->not->toContain('StrictHostKeyChecking=no');
 });
 
