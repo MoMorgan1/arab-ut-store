@@ -104,6 +104,7 @@ export default [
     },
     {
         ignores: [
+            '.worktrees',
             'vendor',
             'node_modules',
             'public',

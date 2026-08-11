@@ -95,3 +95,11 @@ The completed range contains Tasks 1-7, review fixes, and final cross-database t
 - Authorized finish: merge locally into `main`.
 - Not performed: push, deployment, checkout, or payment activation.
 - Payment marks remain labeled as methods planned for launch; checkout/payment controls are intentionally absent.
+
+## Local merge verification
+
+`main` fast-forwarded from `7ecbf78` to the completed branch at `0eab6ae`. The merged feature worktree and branch were then removed.
+
+The first root-level frontend run honestly exposed a repository-harness issue: Vitest discovered tests inside a different nested `.worktrees/task-2-domain` worktree and loaded a second React copy. A focused RED reproduced the failure. The permanent fix follows current Vitest guidance by constraining `test.dir` to `resources/js/__tests__`; ESLint likewise ignores `.worktrees` explicitly.
+
+After that fix, the original unmodified aggregate command ran from `main` and exited 0 in 71 seconds: Composer/Pint/PHPStan passed, Pest remained 341 passed plus 3 expected skips (17,813 assertions), Vitest passed 196/196, and ESLint/Prettier/TypeScript/Vite all passed. No push or deployment followed.
