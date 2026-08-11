@@ -400,11 +400,11 @@ git commit -m "feat: enforce secure guest cart ownership"
 - Cart read and shared `cartCount` resolve the same owner.
 - The configurator always advances Amount → Credentials → Summary; `authenticated` no longer gates credentials and `resumeUrl` is removed from `CoinsCartConfig`.
 
-- [ ] **Step 1: Write guest-flow RED tests**
+- [x] **Step 1: Write guest-flow RED tests**
 
 Cover guest 201 add, same-session replay, different-session conflict/isolation, encrypted secret, safe response, cart read/count, CSRF, JSON-only, throttle, validation, rollback, expiry, no URL/session/config/response leakage, guest amount Continue entering credentials, successful redirect to cart, and absence of login/checkout/payment controls.
 
-- [ ] **Step 2: Run guest RED**
+- [x] **Step 2: Run guest RED**
 
 ```powershell
 php vendor/bin/pest tests/Feature/Store/CoinsCartTest.php tests/Feature/Store/HomeCoinsConfiguratorTest.php --compact
@@ -413,23 +413,23 @@ npx vitest run resources/js/__tests__/store/coins-credentials-flow.test.tsx reso
 
 Expected: guest endpoint tests receive 401 and the UI still links to login/resume.
 
-- [ ] **Step 3: Generalize the cart action**
+- [x] **Step 3: Generalize the cart action**
 
 Replace user-specific scope, fingerprint, lookup, and insert values with `CartOwner`. For a guest cart, write `user_id = null`, `session_key = $owner->sessionKey()`, and rely on the DB-generated `active_owner_key`. Preserve the existing transaction, row locks, server re-quote, encrypted payload, safe configuration, and idempotency response.
 
-- [ ] **Step 4: Open only the intended guest boundary**
+- [x] **Step 4: Open only the intended guest boundary**
 
 Remove `auth` only from canonical and localized POST Coins-cart routes. Do not relax JSON, CSRF, throttle, or no-store middleware. Remove the now-dead resume route/controller/prop only after all callers and tests are migrated.
 
-- [ ] **Step 5: Make cart read/count owner-aware**
+- [x] **Step 5: Make cart read/count owner-aware**
 
 Use `ResolveCartOwner` in `CartController` and shared Inertia props. Keep `safeConfiguration()` and `safeCredentials()` as the only projection paths; do not expose owner keys or session hashes.
 
-- [ ] **Step 6: Update the configurator flow**
+- [x] **Step 6: Update the configurator flow**
 
 Remove the guest login link branch from `AmountStep`. Continue always dispatches `step-entered: credentials`; submission uses the same in-memory credentials and UUID idempotency lifecycle for guests and users. Successful 201 clears credential state and navigates to the safe cart URL.
 
-- [ ] **Step 7: Run GREEN, leak scans, and static gates**
+- [x] **Step 7: Run GREEN, leak scans, and static gates**
 
 Run Step 2, then:
 
@@ -442,7 +442,7 @@ npm run ci:check
 
 Expected: focused suites pass, leak scan has no unsafe credential path, PHPStan/Pint/frontend CI pass.
 
-- [ ] **Step 8: Commit Task 4**
+- [x] **Step 8: Commit Task 4**
 
 ```powershell
 git add app/Actions/Cart/AddCoinsToCart.php app/Http/Controllers/Store/CoinsCartController.php app/Http/Controllers/Store/CartController.php app/Http/Middleware/HandleInertiaRequests.php app/Http/Controllers/Store/HomeController.php routes/web.php resources/js/types/coins.ts resources/js/components/configurator/coins/coins-configurator.tsx resources/js/pages/store/cart.tsx tests/Feature/Store/CoinsCartTest.php tests/Feature/Store/HomeCoinsConfiguratorTest.php resources/js/__tests__/store/coins-credentials-flow.test.tsx resources/js/__tests__/store/store-cart.test.tsx
