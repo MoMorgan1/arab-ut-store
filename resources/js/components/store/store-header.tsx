@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { StorePreferences } from '@/components/store/store-preferences';
 
 import type {
@@ -19,6 +19,22 @@ export type StoreHeaderProps = {
 };
 
 type NavigationKey = 'home' | 'coins' | 'sbc' | 'fut_champions';
+
+function subscribeToBrowserNavigation(onStoreChange: () => void) {
+    window.addEventListener('hashchange', onStoreChange);
+    window.addEventListener('popstate', onStoreChange);
+
+    return () => {
+        window.removeEventListener('hashchange', onStoreChange);
+        window.removeEventListener('popstate', onStoreChange);
+    };
+}
+
+function browserUrlFor(currentUrl: string) {
+    const browserUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+    return pathOf(browserUrl) === pathOf(currentUrl) ? browserUrl : currentUrl;
+}
 
 function activeState(
     key: NavigationKey,
@@ -172,31 +188,11 @@ export function StoreHeader(props: StoreHeaderProps) {
         translations,
     } = props;
     const [visibleCartCount, setVisibleCartCount] = useState(cartCount);
-    const [browserNavigation, setBrowserNavigation] = useState({
-        sourceUrl: currentUrl,
-        value: currentUrl,
-    });
-    const liveCurrentUrl =
-        browserNavigation.sourceUrl === currentUrl
-            ? browserNavigation.value
-            : currentUrl;
-
-    useEffect(() => {
-        function syncFromBrowserUrl() {
-            setBrowserNavigation({
-                sourceUrl: currentUrl,
-                value: `${window.location.pathname}${window.location.search}${window.location.hash}`,
-            });
-        }
-
-        window.addEventListener('hashchange', syncFromBrowserUrl);
-        window.addEventListener('popstate', syncFromBrowserUrl);
-
-        return () => {
-            window.removeEventListener('hashchange', syncFromBrowserUrl);
-            window.removeEventListener('popstate', syncFromBrowserUrl);
-        };
-    }, [currentUrl]);
+    const liveCurrentUrl = useSyncExternalStore(
+        subscribeToBrowserNavigation,
+        () => browserUrlFor(currentUrl),
+        () => currentUrl,
+    );
 
     useEffect(() => {
         function updateCartCount(event: Event) {

@@ -283,6 +283,20 @@ describe('StoreHeader', () => {
         expect(coins).not.toHaveAttribute('aria-current');
     });
 
+    it('uses the browser hash on a cold direct coins visit when Inertia omits it', () => {
+        window.history.replaceState({}, '', '/en#coins');
+
+        renderHeader('/en');
+
+        expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute(
+            'aria-current',
+        );
+        expect(screen.getByRole('link', { name: 'Coins' })).toHaveAttribute(
+            'aria-current',
+            'location',
+        );
+    });
+
     it.each([
         ['/login', '/login', 'ar', 'rtl'],
         ['/en/register', '/en/login', 'en', 'ltr'],

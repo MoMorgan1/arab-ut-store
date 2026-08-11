@@ -1053,25 +1053,31 @@
     }
 
     .store-hero__coin--one {
+        --store-hero-coin-angle: -16deg;
+
         inset-block-start: 21%;
         inset-inline-start: 3%;
         width: clamp(5rem, 10vw, 10rem);
-        rotate: -16deg;
+        rotate: var(--store-hero-coin-angle);
     }
 
     .store-hero__coin--two {
+        --store-hero-coin-angle: 12deg;
+
         inset-block-start: 12%;
         inset-inline-end: -2.5rem;
         width: clamp(7rem, 16vw, 15rem);
-        rotate: 12deg;
+        rotate: var(--store-hero-coin-angle);
         animation-delay: -2.3s;
     }
 
     .store-hero__coin--three {
+        --store-hero-coin-angle: 19deg;
+
         inset-block-end: 8%;
         inset-inline-start: 13%;
         width: clamp(4rem, 8vw, 8rem);
-        rotate: 19deg;
+        rotate: var(--store-hero-coin-angle);
         animation-delay: -4.6s;
     }
 
@@ -3071,10 +3077,12 @@
 @keyframes store-hero-coin-float {
     from {
         translate: 0 0;
+        rotate: calc(var(--store-hero-coin-angle) - 1.25deg);
     }
 
     to {
         translate: 0 -0.65rem;
+        rotate: calc(var(--store-hero-coin-angle) + 1.25deg);
     }
 }
 
@@ -3125,6 +3133,7 @@
     .store-hero__coin {
         opacity: 0.2;
         translate: 0 0;
+        rotate: var(--store-hero-coin-angle);
     }
 
     .store-hero__cta:hover,

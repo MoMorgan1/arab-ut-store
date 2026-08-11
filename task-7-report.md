@@ -45,3 +45,11 @@ C:\Users\hp\scoop\apps\php\current\php.exe -S 127.0.0.1:8017 C:\Users\hp\Documen
 - Preferences: attribution link was visible, keyboard-focusable (`tabIndex=0`), pointed to `https://www.exchangerate-api.com`, and no provider link remained in the footer.
 - Reduced motion emulation: all three coin animations and the stats animation computed to `none`.
 - Browser console: 0 warnings and 0 errors.
+
+## Independent review fixes
+
+- Added a cold-load regression for `/en#coins` where the Inertia URL omits the fragment. It failed with Home current, then passed after the header adopted an SSR-safe `useSyncExternalStore` browser URL snapshot; existing `hashchange` and `popstate` updates remain covered.
+- Browser verification confirmed both `/#coins` and `/en#coins` cold loads expose only Coins as `aria-current="location"`, with no horizontal overflow.
+- The floating motion now combines the existing vertical drift with a restrained ±1.25° rotation around the three preserved base angles (`-16deg`, `12deg`, and `19deg`). Browser samples 900ms apart confirmed both translation and rotation changed.
+- Reduced-motion emulation confirmed every coin computed `animation-name: none`, `translate: 0px`, and its exact base rotation. Console verification remained clean.
+- Review-fix gate: focused header tests 20/20; full `npm run ci:check` 195/195 with ESLint, Prettier, TypeScript, and Vite build passing.
