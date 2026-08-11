@@ -296,11 +296,11 @@ git commit -m "feat: show exact Coins prices instantly"
 - `Cart::activeForOwner(CartOwner $owner)` replaces user-only lookup.
 - `CoinsCartFingerprint::generate(string $ownerKey, array $validated)` replaces the user-ID argument.
 
-- [ ] **Step 1: Write owner and invariant RED tests**
+- [x] **Step 1: Write owner and invariant RED tests**
 
 Prove stable owner in one guest session, different owners across sessions, authenticated precedence, no raw token/session ID in DB/loggable arrays, duplicate active guest and user carts rejected, converted carts release the key, invalid supplied keys are derived by DB, upgrade backfills valid user/guest rows, duplicate legacy rows fail migration, and same-guest concurrent first-add creates one cart.
 
-- [ ] **Step 2: Run SQLite RED**
+- [x] **Step 2: Run SQLite RED**
 
 ```powershell
 php vendor/bin/pest tests/Unit/Cart/CartOwnerTest.php tests/Feature/Database/CartSecuritySchemaTest.php tests/Integration/ActiveCartInvariantUpgradeTest.php --compact
@@ -308,7 +308,7 @@ php vendor/bin/pest tests/Unit/Cart/CartOwnerTest.php tests/Feature/Database/Car
 
 Expected: FAIL because guest ownership and the expanded migration do not exist.
 
-- [ ] **Step 3: Implement the owner value and resolver**
+- [x] **Step 3: Implement the owner value and resolver**
 
 Use an opaque token stored only inside Laravel's server-side session:
 
@@ -335,7 +335,7 @@ final readonly class CartOwner
 
 The resolver must validate the token as 64 lowercase hex characters after HMAC and must not serialize or expose the original token.
 
-- [ ] **Step 4: Expand SQLite and MariaDB derivation**
+- [x] **Step 4: Expand SQLite and MariaDB derivation**
 
 SQLite expression index and derivation triggers must derive:
 
@@ -351,7 +351,7 @@ END
 
 MariaDB must use the equivalent `STORED GENERATED` expression and a unique index. The migration must reject duplicate active owner rows before altering the invariant and restore the authenticated-only invariant on `down()`.
 
-- [ ] **Step 5: Run SQLite and MariaDB GREEN**
+- [x] **Step 5: Run SQLite and MariaDB GREEN**
 
 Run Step 2, then start the repository's isolated MariaDB profile and run:
 
@@ -364,11 +364,11 @@ php artisan migrate --force
 
 Expected: SQLite and MariaDB tests pass; fresh, rollback, and re-migrate succeed; no disposable server remains running.
 
-- [ ] **Step 6: Extend the MariaDB CI lane**
+- [x] **Step 6: Extend the MariaDB CI lane**
 
 Keep all existing cart security suites in `.github/workflows/tests.yml` and ensure the same guest-owner concurrency test runs under the pinned MariaDB service.
 
-- [ ] **Step 7: Commit Task 3**
+- [x] **Step 7: Commit Task 3**
 
 ```powershell
 git add app/ValueObjects/Cart/CartOwner.php app/Actions/Cart/ResolveCartOwner.php app/Models/Cart.php app/Security/CoinsCartFingerprint.php database/migrations/2026_08_10_000003_expand_active_cart_invariant_to_guests.php tests/Unit/Cart/CartOwnerTest.php tests/Feature/Database/CartSecuritySchemaTest.php tests/Integration/ActiveCartInvariantUpgradeTest.php tests/Integration/CoinsCartConcurrencyTest.php .github/workflows/tests.yml
