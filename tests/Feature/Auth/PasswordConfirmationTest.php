@@ -11,7 +11,9 @@ test('confirm password screen can be rendered', function () {
     $response->assertOk();
 
     $response->assertInertia(fn (Assert $page) => $page
-        ->component('auth/confirm-password'),
+        ->component('auth/confirm-password')
+        ->where('authPage', 'confirm_password')
+        ->where('authUi.confirm_password.title', 'أكّد كلمة المرور'),
     );
 });
 

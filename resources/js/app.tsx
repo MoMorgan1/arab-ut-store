@@ -5,14 +5,20 @@ import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import {
+    DEFAULT_APPLICATION_NAME,
+    formatDocumentTitle,
+} from '@/lib/document-title';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || DEFAULT_APPLICATION_NAME;
 
 createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
+    title: (title) => formatDocumentTitle(title, appName),
     layout: (name) => {
         switch (true) {
             case name === 'welcome':
+                return null;
+            case name.startsWith('store/'):
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;

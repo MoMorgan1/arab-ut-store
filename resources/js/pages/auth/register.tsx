@@ -6,105 +6,189 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { login } from '@/routes';
-import { store } from '@/routes/register';
+import type { AuthRoutes, AuthUiTranslations } from '@/types/auth';
 
 type Props = {
+    authRoutes: AuthRoutes;
+    authUi: AuthUiTranslations;
     passwordRules: string;
 };
 
-export default function Register({ passwordRules }: Props) {
+export default function Register({ authRoutes, authUi, passwordRules }: Props) {
     return (
         <>
-            <Head title="Register" />
+            <Head title={authUi.register.head_title} />
             <Form
-                {...store.form()}
+                action={authRoutes.registerStoreUrl}
+                method="post"
                 resetOnSuccess={['password', 'password_confirmation']}
                 disableWhileProcessing
-                className="flex flex-col gap-6"
+                className="auth-form"
             >
                 {({ processing, errors }) => (
                     <>
                         <div className="grid gap-6">
-                            <div className="grid gap-2">
-                                <Label htmlFor="name">Name</Label>
-                                <Input
-                                    id="name"
-                                    type="text"
-                                    required
-                                    autoFocus
-                                    tabIndex={1}
-                                    autoComplete="name"
-                                    name="name"
-                                    placeholder="Full name"
-                                />
-                                <InputError
-                                    message={errors.name}
-                                    className="mt-2"
-                                />
+                            <div className="grid gap-2 sm:grid-cols-2">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="first_name">
+                                        {authUi.fields.first_name}
+                                    </Label>
+                                    <Input
+                                        id="first_name"
+                                        type="text"
+                                        required
+                                        autoFocus
+                                        autoComplete="given-name"
+                                        name="first_name"
+                                        placeholder={authUi.fields.first_name}
+                                        className="h-11"
+                                        aria-describedby={
+                                            errors.first_name
+                                                ? 'first-name-error'
+                                                : undefined
+                                        }
+                                        aria-invalid={Boolean(
+                                            errors.first_name,
+                                        )}
+                                    />
+                                    <InputError
+                                        id="first-name-error"
+                                        message={errors.first_name}
+                                        className="mt-2"
+                                        role="alert"
+                                    />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="last_name">
+                                        {authUi.fields.last_name}
+                                    </Label>
+                                    <Input
+                                        id="last_name"
+                                        type="text"
+                                        required
+                                        autoComplete="family-name"
+                                        name="last_name"
+                                        placeholder={authUi.fields.last_name}
+                                        className="h-11"
+                                        aria-describedby={
+                                            errors.last_name
+                                                ? 'last-name-error'
+                                                : undefined
+                                        }
+                                        aria-invalid={Boolean(errors.last_name)}
+                                    />
+                                    <InputError
+                                        id="last-name-error"
+                                        message={errors.last_name}
+                                        className="mt-2"
+                                        role="alert"
+                                    />
+                                </div>
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
+                                <Label htmlFor="email">
+                                    {authUi.fields.email}
+                                </Label>
                                 <Input
                                     id="email"
                                     type="email"
                                     required
-                                    tabIndex={2}
                                     autoComplete="email"
                                     name="email"
                                     placeholder="email@example.com"
+                                    className="h-11"
+                                    aria-describedby={
+                                        errors.email ? 'email-error' : undefined
+                                    }
+                                    aria-invalid={Boolean(errors.email)}
                                 />
-                                <InputError message={errors.email} />
+                                <InputError
+                                    id="email-error"
+                                    message={errors.email}
+                                    role="alert"
+                                />
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="password">Password</Label>
+                                <Label htmlFor="password">
+                                    {authUi.fields.password}
+                                </Label>
                                 <PasswordInput
                                     id="password"
                                     required
-                                    tabIndex={3}
                                     autoComplete="new-password"
                                     name="password"
-                                    placeholder="Password"
+                                    placeholder={authUi.fields.password}
                                     passwordrules={passwordRules}
+                                    className="h-11"
+                                    aria-describedby={
+                                        errors.password
+                                            ? 'password-error'
+                                            : undefined
+                                    }
+                                    aria-invalid={Boolean(errors.password)}
+                                    showLabel={authUi.password_visibility.show}
+                                    hideLabel={authUi.password_visibility.hide}
                                 />
-                                <InputError message={errors.password} />
+                                <InputError
+                                    id="password-error"
+                                    message={errors.password}
+                                    role="alert"
+                                />
                             </div>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="password_confirmation">
-                                    Confirm password
+                                    {authUi.fields.password_confirmation}
                                 </Label>
                                 <PasswordInput
                                     id="password_confirmation"
                                     required
-                                    tabIndex={4}
                                     autoComplete="new-password"
                                     name="password_confirmation"
-                                    placeholder="Confirm password"
+                                    placeholder={
+                                        authUi.fields.password_confirmation
+                                    }
                                     passwordrules={passwordRules}
+                                    className="h-11"
+                                    aria-describedby={
+                                        errors.password_confirmation
+                                            ? 'password-confirmation-error'
+                                            : undefined
+                                    }
+                                    aria-invalid={Boolean(
+                                        errors.password_confirmation,
+                                    )}
+                                    showLabel={authUi.password_visibility.show}
+                                    hideLabel={authUi.password_visibility.hide}
                                 />
                                 <InputError
+                                    id="password-confirmation-error"
                                     message={errors.password_confirmation}
+                                    role="alert"
                                 />
                             </div>
 
                             <Button
                                 type="submit"
-                                className="mt-2 w-full"
-                                tabIndex={5}
+                                className="auth-form__submit mt-2 h-11 w-full"
                                 data-test="register-user-button"
+                                disabled={processing}
                             >
                                 {processing && <Spinner />}
-                                Create account
+                                {authUi.register.submit}
                             </Button>
                         </div>
 
-                        <div className="text-center text-sm text-muted-foreground">
-                            Already have an account?{' '}
-                            <TextLink href={login()} tabIndex={6}>
-                                Log in
+                        <div className="auth-form__switch">
+                            {authUi.register.login_prompt}{' '}
+                            <TextLink
+                                className="auth-inline-link"
+                                href={authRoutes.loginUrl}
+                            >
+                                {authUi.register.login_link}
                             </TextLink>
                         </div>
                     </>
@@ -113,8 +197,3 @@ export default function Register({ passwordRules }: Props) {
         </>
     );
 }
-
-Register.layout = {
-    title: 'Create an account',
-    description: 'Enter your details below to create your account',
-};

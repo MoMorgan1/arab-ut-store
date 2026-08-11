@@ -6,7 +6,7 @@ Date: 2026-08-08
 
 ## Outcome
 
-Build a production ecommerce application that fully replaces WordPress and WooCommerce at `shop.arab-ut.com`. It will sell Arab UT's FC 27 services in Arabic and English, support automated and manual fulfillment, and give Mohamed one branded admin dashboard for catalog, pricing, customers, orders, wallet credit, and operations.
+Build a production ecommerce application that fully replaces WordPress and WooCommerce at `store.arab-ut.com`. It will sell Arab UT's FC 27 services in Arabic and English, support automated and manual fulfillment, and give Mohamed one branded admin dashboard for catalog, pricing, customers, orders, wallet credit, and operations.
 
 This is an **Ambitious MVP**, not a simple brochure site. The sensible way to keep it fast is to build one application in visible milestones and exclude features that do not help the first real sale.
 
@@ -38,7 +38,8 @@ Current official references used for this decision:
 
 - Arabic is the default and every customer flow works RTL; English is available from launch and works LTR.
 - Mobile is the primary customer layout. Desktop receives the same level of polish, not a stretched mobile screen.
-- The current logo and dark navy/gold gaming identity remain, while spacing, typography, hierarchy, forms, loading states, and accessibility are rebuilt consistently.
+- The current logo and WordPress-continuous warm near-black, cream, and gold gaming identity remain, while spacing, typography, hierarchy, forms, loading states, and accessibility are rebuilt consistently.
+- Arabic customer-facing UI calls Coins `كوينز` and uses a light, broadly understood Gulf tone; English uses `Coins`.
 - SAR is the authoritative price and payment currency. Other currencies are display estimates only.
 - Laravel/MariaDB is the source of truth. n8n executes external workflows; Google Sheets is export-only.
 - Automation wins for products deliberately linked through the external SKU/source ID. The admin clearly explains that ownership before saving.
@@ -84,13 +85,13 @@ Current official references used for this decision:
 
 | Service | Customer platforms | Pricing | Fulfillment |
 |---|---|---|---|
-| Coins | PlayStation, Xbox, PC | Automated | Automated through n8n/FFT/UTT |
+| Coins | PS / Xbox combined, PC | Automated | Automated through n8n/FFT/UTT |
 | SBCs, including player rewards | PlayStation, Xbox, PC | Automated | Automated through n8n/FFT/UTT |
 | Objectives | PlayStation, Xbox, PC | Admin-managed | Mohamed handles manually |
 | Rivals | PlayStation, PC | Admin-managed | Mohamed handles manually |
 | FUT Champions | PlayStation, PC | Admin-managed | Mohamed handles manually |
 
-PlayStation and Xbox are separate customer selections but share the internal console market and automated supplier path. The exact customer choice stays on the order item.
+Coins presents one combined `PS / Xbox` choice because both consoles share the same internal market and automated supplier path. Other services may retain an exact PlayStation or Xbox choice when their configurator or fulfillment contract needs it.
 
 Conditional account fields are defined per service/platform rather than hard-coded into one universal checkout form:
 

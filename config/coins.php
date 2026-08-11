@@ -1,0 +1,43 @@
+<?php
+
+return [
+    'cart' => [
+        'secret_retention_hours' => (int) env('COINS_CART_SECRET_RETENTION_HOURS', 24),
+        'guest_claim_retention_hours' => max(
+            24,
+            (int) env('COINS_GUEST_CLAIM_RETENTION_HOURS', 24),
+            (int) env('COINS_CART_SECRET_RETENTION_HOURS', 24),
+            (int) ceil(((int) env('SESSION_LIFETIME', 120)) / 60),
+        ),
+        'rate_limit_per_minute' => (int) env('COINS_CART_RATE_LIMIT_PER_MINUTE', 10),
+    ],
+    'quantity' => [
+        'minimum' => 50_000,
+        'increment' => 10_000,
+        'presets' => [50_000, 100_000, 500_000, 1_000_000, 5_000_000],
+    ],
+    'platforms' => [
+        'playstation' => [
+            'icon_urls' => [
+                '/images/store/platforms/ps-logo-white-80.webp',
+                '/images/store/platforms/xbox-logo-white-80.webp',
+            ],
+            'maximum' => 20_000_000,
+            'deliveries' => [
+                'normal' => [
+                    'maximum' => 2_000_000,
+                    'minutes_per_million' => 150,
+                ],
+                'fast' => [
+                    'maximum' => 20_000_000,
+                    'minutes_per_million' => 45,
+                ],
+            ],
+        ],
+        'pc' => [
+            'icon_urls' => ['/images/store/platforms/pc-logo.svg'],
+            'maximum' => 2_000_000,
+            'deliveries' => [],
+        ],
+    ],
+];

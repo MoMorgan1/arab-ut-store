@@ -1,5 +1,12 @@
+import type {
+    StoreShellConfig,
+    StoreShellTranslations,
+} from '@/types/store-shell';
+
 export type User = {
     id: number;
+    first_name: string;
+    last_name: string;
     name: string;
     email: string;
     avatar?: string;
@@ -11,6 +18,93 @@ export type User = {
 
 export type Auth = {
     user: User;
+};
+
+export type AuthPage =
+    | 'login'
+    | 'register'
+    | 'forgot_password'
+    | 'reset_password'
+    | 'confirm_password';
+
+export type AuthRoutes = {
+    homeUrl: string;
+    loginUrl: string;
+    loginStoreUrl: string;
+    registerUrl: string;
+    registerStoreUrl: string;
+    forgotPasswordUrl: string;
+    forgotPasswordStoreUrl: string;
+    resetPasswordStoreUrl: string;
+};
+
+export type AuthUiTranslations = {
+    brand: string;
+    benefits: {
+        eyebrow: string;
+        title: string;
+        description: string;
+        items: [string, string, string];
+    };
+    fields: {
+        first_name: string;
+        last_name: string;
+        email: string;
+        password: string;
+        password_confirmation: string;
+        remember: string;
+    };
+    password_visibility: { show: string; hide: string };
+    login: {
+        head_title: string;
+        title: string;
+        description: string;
+        submit: string;
+        forgot_password: string;
+        registration_prompt: string;
+        registration_link: string;
+    };
+    register: {
+        head_title: string;
+        title: string;
+        description: string;
+        submit: string;
+        login_prompt: string;
+        login_link: string;
+    };
+    forgot_password: {
+        head_title: string;
+        title: string;
+        description: string;
+        submit: string;
+        return_prompt: string;
+        return_link: string;
+    };
+    reset_password: {
+        head_title: string;
+        title: string;
+        description: string;
+        submit: string;
+    };
+    confirm_password: {
+        head_title: string;
+        title: string;
+        description: string;
+        submit: string;
+    };
+};
+
+export type AuthSharedProps = {
+    authPage: AuthPage;
+    authRoutes: AuthRoutes;
+    authUi: AuthUiTranslations;
+    direction: 'rtl' | 'ltr';
+    cartCount: number;
+    displayCurrency: string;
+    displayCurrencies: string[];
+    locale: 'ar' | 'en';
+    storeShell: StoreShellConfig;
+    ui: StoreShellTranslations;
 };
 
 /* @chisel-passkeys */

@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    'n8n' => [
+        'reviews_url' => env('N8N_REVIEWS_URL'),
+        'catalog_key' => env('N8N_CATALOG_KEY'),
+        'catalog_secret' => env('N8N_CATALOG_SECRET'),
+        'catalog_media_hosts' => array_values(array_filter(array_map(
+            static fn (string $host): string => strtolower(trim($host)),
+            explode(',', (string) env('N8N_CATALOG_MEDIA_HOSTS', '')),
+        ))),
+    ],
+
 ];

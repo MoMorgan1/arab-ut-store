@@ -2,12 +2,12 @@
 
 Status: Discovery complete. The Phase 2 blueprint was approved by Mohamed on 2026-08-09, and Phase 3 implementation is in progress.
 
-Last updated: 2026-08-08
+Last updated: 2026-08-09
 
 ## Confirmed by Mohamed
 
 - Discovery must stay MVP-focused. Ask only high-impact questions needed to define and build v1; defer low-probability incidents, advanced controls, and nonessential edge cases to a later backlog.
-- Primary public brand name: Arab UT. Arab Ultimate may remain as the expanded brand name where context requires it.
+- Exact public brand label in Arabic and English: Arab UT.
 - Primary audience: Arab customers, while allowing customers worldwide rather than restricting the storefront by country.
 - v1 will support both Arabic (RTL) and English (LTR) from the beginning. Arabic is the default storefront language, with a language switch for English.
 - SAR is the authoritative catalog and checkout currency. Customers may switch the storefront display to another supported currency, but checkout and the final payment charge remain in SAR. No special currency warning or banner is required; the normal checkout total still identifies its currency as SAR.
@@ -26,7 +26,7 @@ Last updated: 2026-08-08
 - Credentials are attached per order item, with a convenience control to reuse the same account details for additional eligible items in the same order.
 - Required account identifier by service: Coins, SBCs, and Objectives use the EA email; console Rivals and FUT Champions use the PlayStation email. Exact additional fields will be mapped from Mohamed's workflows without reopening the agreed before-payment collection decision.
 - Player rewards are part of the SBC catalog and are not a separate top-level service named Players.
-- Coins, SBCs, and Objectives are offered on PlayStation, Xbox, and PC. PlayStation and Xbox share one internal console pricing/fulfillment group for those services, but the storefront displays both platform names normally rather than presenting a generic Console option.
+- Coins, SBCs, and Objectives support PlayStation, Xbox, and PC. The Coins storefront presents one combined `PS / Xbox` choice because both consoles share the same market, price, and fulfillment path, plus a separate `PC` choice.
 - Rivals and FUT Champions are offered on PlayStation and PC only. PC customers choose EA app or Steam. Steam orders require the Steam username/password plus the EA credentials and EA backup codes. PlayStation orders require the EA credentials plus PlayStation backup codes.
 - Coins and SBC pricing is automation-managed. Objectives, Rivals, and FUT Champions pricing is managed manually through the admin dashboard.
 - Each service category uses a tailored guided configurator while sharing the common cart, checkout, order, customer, and admin foundations.
@@ -66,11 +66,11 @@ Last updated: 2026-08-08
 - The admin interface must clearly warn an authorized user before saving a SKU that makes a product automation-managed.
 - The existing Salla-targeted n8n workflow will be adapted and improved for the replacement backend rather than copied unchanged.
 - Objectives, Rivals, and FUT Champions are fulfilled manually by human players/operators.
-- The website will send order details to n8n. The workflow definitions and exact integration contracts will be provided later.
+- The website will send order details to n8n. All four supplied workflow exports have been reviewed; their final replacement payload schemas and endpoint contracts will be locked when each integration slice is implemented.
 - Mohamed needs an admin dashboard for orders, customers, catalog/pricing operations, and other business management functions. Mohamed has full access; a staff role is limited to viewing orders. No player assignment portal is required for v1.
-- The intended production storefront domain is `shop.arab-ut.com`.
-- Mohamed's existing logo must be retained. Customer-facing pages will be reviewed and redesigned one by one rather than accepting the current UI wholesale; the broader visual system is still to be decided during page-level design Discovery.
-- The redesign retains the current dark navy/gold gaming direction, refined into a more consistent production design system.
+- The intended production storefront domain is `store.arab-ut.com`.
+- Mohamed's existing logo must be retained. Customer-facing pages will be reviewed and redesigned one by one using the approved WordPress-continuous warm near-black, cream, and gold visual system rather than accepting the current UI wholesale.
+- The redesign retains the current WordPress site's warm near-black, cream, and gold gaming direction, refined into a more consistent production design system.
 - The homepage leads with the Coins configurator before the broader service overview.
 - Customer-facing design is mobile-first while remaining fully polished and responsive on desktop.
 - The SBC catalog includes search alongside the agreed category filters and sorting.
@@ -89,7 +89,7 @@ Last updated: 2026-08-08
 - The current Whapi account remains the provider for WhatsApp OTP, and the current Google OAuth project/account should be reused. Their secrets must be transferred through protected environment configuration rather than copied into source control or documentation.
 - The public support email is `info@arab-ut.com`.
 - A Google Analytics account already exists. Meta Pixel and TikTok Pixel accounts/identifiers are not yet available and will be supplied later.
-- Development should move quickly without an elaborate release process. Use a minimal separate development/staging target, then switch `shop.arab-ut.com` after acceptance.
+- Development should move quickly without an elaborate release process. Use a minimal separate development/staging target, then switch `store.arab-ut.com` after acceptance.
 
 ## Verified current-system baseline
 
@@ -128,7 +128,7 @@ Verified from `Salla Products (3).json` on 2026-08-08:
 - Current source/image lookups contain FC 26-specific paths and must not be assumed valid for FC 27.
 - Current automation can overwrite manual price, category, option, image, visibility, and deletion decisions for automation-owned products. Mohamed has selected automation as the authority for those products; the replacement system must make that ownership visible in the admin interface and audit history.
 - The exported workflow contains a plaintext external API credential. Its value is intentionally excluded from this record and must be rotated before the workflow is reused.
-- The workflow has material reliability risks around incomplete source snapshots, overlapping runs, partial product creation, hard deletion, stale cached metadata, and incomplete observability. These will be detailed in the integration audit after all workflows are supplied.
+- The workflow has material reliability risks around incomplete source snapshots, overlapping runs, partial product creation, hard deletion, stale cached metadata, and incomplete observability. The supplied workflow set and required replacement controls are detailed in the workflow integration audit.
 
 ## Inputs intentionally deferred until their implementation stage
 
@@ -145,11 +145,11 @@ Mohamed selected a full replacement: WordPress and WooCommerce will not remain a
 
 ### Question 1: Business and fulfillment model
 
-Recorded in the "Confirmed by Mohamed" section above. n8n workflow files remain an external dependency to be supplied and reviewed.
+Recorded in the "Confirmed by Mohamed" section above. All four active n8n exports were supplied and reviewed read-only; final replacement schemas and provider field mappings remain implementation-stage work.
 
 ### Clarification 1: SBC players and catalog synchronization
 
-Mohamed confirmed that the catalog includes both player-reward and other eligible SBCs, differentiated automatically by the source API and exposed through storefront filters. Products must be manageable through both n8n/API automation and the admin dashboard. Manual edits must remain possible; the exact conflict and field-ownership rules are not yet decided.
+Mohamed confirmed that the catalog includes both player-reward and other eligible SBCs, differentiated automatically by the source API and exposed through storefront filters. Products must be manageable through both n8n/API automation and the admin dashboard. Automation is authoritative for API-managed products; Task 4 will lock the precise synchronized-field list and conflict-response schema.
 
 ### Decision 2: SBC storefront filters
 
@@ -209,7 +209,7 @@ An authorized admin may choose per refund between the original payment method an
 
 ### Decision 16: EA credential collection
 
-Required service credentials are collected before payment and stored per order item, with an option to reuse the same details across eligible items. Coins, SBCs, and Objectives use the customer's EA email; console Rivals and FUT Champions use the PlayStation email. Exact additional fields will be mapped from each supplied workflow. EA passwords and backup codes must be encrypted in transit and at rest, excluded from routine logs and analytics, masked from unauthorized roles, and removed after fulfillment or another terminal outcome.
+Required service credentials are collected before payment and stored per order item, with an option to reuse the same details across eligible items. Coins, SBCs, and Objectives use the customer's EA email; console Rivals and FUT Champions use the PlayStation email. Exact additional fields will be mapped from the reviewed workflow exports into versioned replacement schemas. EA passwords and backup codes must be encrypted in transit and at rest, excluded from routine logs and analytics, masked from unauthorized roles, and removed after fulfillment or another terminal outcome.
 
 ### Decision 17: Authentication verification
 
@@ -217,7 +217,7 @@ Email/password, Google sign-in, and WhatsApp OTP are retained. WhatsApp OTP sign
 
 ### Decision 18: Service and platform taxonomy
 
-Players are not a standalone service: player rewards belong within the SBC catalog. The top-level services are Coins, SBCs, Objectives, Rivals, and FUT Champions. Coins, SBCs, and Objectives support PlayStation, Xbox, and PC. PlayStation and Xbox share an internal console group for these services, but both names appear explicitly in the customer interface. Rivals and FUT Champions support PlayStation and PC only.
+Players are not a standalone service: player rewards belong within the SBC catalog. The top-level services are Coins, SBCs, Objectives, Rivals, and FUT Champions. Coins, SBCs, and Objectives support PlayStation, Xbox, and PC. Coins presents PlayStation and Xbox as one combined `PS / Xbox` choice and presents PC separately. Rivals and FUT Champions support PlayStation and PC only.
 
 ### Decision 19: Guided service configuration
 
@@ -233,15 +233,15 @@ Reviews, FAQ content, floating WhatsApp support, loyalty levels, the order-track
 
 ### Decision 22: Production domain
 
-The intended storefront domain is `shop.arab-ut.com`.
+The intended storefront domain is `store.arab-ut.com`.
 
 ### Decision 23: Visual redesign approach
 
-The existing Arab UT logo and dark navy/gold gaming direction are retained and refined. Customer-facing pages will be evaluated and redesigned individually with mobile as the primary layout target. The current site is reference material, not an instruction to reproduce every layout or styling choice unchanged. The admin dashboard also uses a dark Arab UT-branded interface.
+The existing Arab UT logo and warm near-black, cream, and gold gaming direction are retained and refined. Customer-facing pages will be evaluated and redesigned individually with mobile as the primary layout target. The current site is the primary visual-continuity reference, while weak UI and UX are rebuilt rather than copied unchanged. The admin dashboard also uses a dark Arab UT-branded interface.
 
 ### Decision 24: Service credential variants
 
-Rivals and FUT Champions use different fields by platform. PC customers choose EA app or Steam. The Steam route collects Steam username/password, EA credentials, and EA backup codes. The PlayStation route collects EA credentials and PlayStation backup codes. Exact payload field names will be taken from the fulfillment workflows when supplied.
+Rivals and FUT Champions use different fields by platform. PC customers choose EA app or Steam. The Steam route collects Steam username/password, EA credentials, and EA backup codes. The PlayStation route collects EA credentials and PlayStation backup codes. Exact replacement payload field names will be derived from the reviewed fulfillment workflow and locked with its integration contract.
 
 ### Decision 25: Pricing authority
 
@@ -269,7 +269,7 @@ Use one Laravel 13 application with MariaDB and a React 19/TypeScript frontend t
 
 ### Decision 29: Brand and homepage priority
 
-The primary public brand label is Arab UT. The homepage opens with the Coins configurator, followed by the broader service presentation.
+The primary public brand label is Arab UT. The homepage opens with the Coins configurator, followed by the broader service presentation. Arabic customer-facing copy calls the service `كوينز`; English uses `Coins`. Arabic uses a light, broadly understandable Gulf tone.
 
 ### Decision 30: SBC discovery and review integrity
 
@@ -297,7 +297,7 @@ Preserve existing routes where sensible and create permanent redirects for chang
 
 ### Decision 36: n8n and release environment
 
-The existing n8n instance remains in use and is outside the website-deployment scope. Use a lightweight development/staging environment and promote the accepted build to `shop.arab-ut.com`; no elaborate multi-environment platform is required for the MVP.
+The existing n8n instance remains in use and is outside the website-deployment scope. Use a lightweight development/staging environment and promote the accepted build to `store.arab-ut.com`; no elaborate multi-environment platform is required for the MVP.
 
 ### Decision 37: Existing authentication providers and support address
 
@@ -307,9 +307,9 @@ Reuse the existing Whapi account for WhatsApp OTP and the existing Google OAuth 
 
 Mohamed already has a Google Analytics account. Meta Pixel and TikTok Pixel accounts are not ready yet; their identifiers and setup can be connected later without blocking the core build.
 
-### Decision 39: Xbox supplier routing
+### Decision 39: Combined Coins console choice and Xbox supplier routing
 
-For Coins, SBCs, and Objectives, PlayStation and Xbox remain separate customer-facing platform choices but share the same internal console market, pricing group, and automated supplier path. The saved order item still retains the customer's exact PlayStation or Xbox selection for display, support, and audit history.
+For Coins, PlayStation and Xbox are one customer-facing `PS / Xbox` choice because they share the same internal console market, pricing group, and automated supplier path; the public Coins flow does not ask customers to distinguish between them. SBCs and Objectives still support both console platforms, and their saved order items retain any exact platform choice required by their later configurators and fulfillment contracts.
 
 ### Decision 40: Notification language
 
@@ -353,6 +353,6 @@ Credential values and private customer/contact details from workflow exports are
 
 ### Workflow decisions now closed
 
-- Automated Xbox Coins and SBC work uses the same internal console supplier path as PlayStation while retaining Xbox as the customer's selected platform.
+- The combined Coins `PS / Xbox` choice and automated Xbox SBC work use the same internal console supplier path as PlayStation; Coins does not expose a separate Xbox selection.
 - Customer WhatsApp and email messages use the saved Arabic/English preference, with Arabic fallback.
 - Laravel/MariaDB is authoritative; Google Sheets is export-only.
