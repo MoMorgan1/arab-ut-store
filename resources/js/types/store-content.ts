@@ -95,9 +95,11 @@ export type CatalogTranslations = {
     foundations: string;
     from: string;
     icons: string;
+    included: string;
     newest: string;
     next: string;
     platform: string;
+    platform_prices: string;
     players: string;
     previous: string;
     price_asc: string;
@@ -149,6 +151,7 @@ export type StoreCategoryPageProps = StoreBasePageProps & {
         card_description: string;
         eyebrow: string;
         intro: string;
+        page_title?: string;
         title: string;
     };
 };

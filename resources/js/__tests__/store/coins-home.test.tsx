@@ -384,6 +384,9 @@ describe('Coins homepage', () => {
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
             'FIFA 27 Coins At the best prices',
         );
+        expect(
+            screen.getByRole('heading', { level: 1 }).querySelector('span'),
+        ).toHaveClass('store-hero__title-primary');
         const proof = screen.getByRole('group', { name: 'Store proof' });
         expect(within(proof).getByText('+8,877')).toBeVisible();
         expect(within(proof).getByText('+29,161')).toBeVisible();

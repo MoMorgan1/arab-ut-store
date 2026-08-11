@@ -6,6 +6,8 @@ import type {
     ServiceRailTranslations,
 } from '@/types/store-content';
 
+const AUTO_SCROLL_PIXELS_PER_SECOND = 14;
+
 export function ServiceRail({
     direction,
     services,
@@ -16,6 +18,7 @@ export function ServiceRail({
     translations: ServiceRailTranslations;
 }) {
     const trackRef = useRef<HTMLUListElement>(null);
+    const autoTravelDirectionRef = useRef<1 | -1>(1);
     const [overflows, setOverflows] = useState(false);
     const [paused, setPaused] = useState(false);
     const [pageVisible, setPageVisible] = useState(!document.hidden);
@@ -98,10 +101,54 @@ export function ServiceRail({
             return;
         }
 
-        const timer = window.setInterval(() => move(true), 2_600);
+        const track = trackRef.current;
 
-        return () => window.clearInterval(timer);
-    }, [move, overflows, pageVisible, paused]);
+        if (track === null) {
+            return;
+        }
+
+        const logicalDirection = direction === 'rtl' ? -1 : 1;
+        let animationFrame = 0;
+        let pendingDistance = 0;
+        let previousTimestamp: number | null = null;
+
+        const advance = (timestamp: number) => {
+            if (previousTimestamp !== null) {
+                const maximumScroll = track.scrollWidth - track.clientWidth;
+
+                const distanceFromStart = Math.abs(track.scrollLeft);
+
+                if (distanceFromStart >= maximumScroll - 1) {
+                    autoTravelDirectionRef.current = -1;
+                } else if (distanceFromStart <= 1) {
+                    autoTravelDirectionRef.current = 1;
+                }
+
+                const elapsed = Math.min(timestamp - previousTimestamp, 50);
+                pendingDistance +=
+                    AUTO_SCROLL_PIXELS_PER_SECOND * (elapsed / 1_000);
+                const wholePixels = Math.floor(pendingDistance);
+
+                if (wholePixels > 0) {
+                    pendingDistance -= wholePixels;
+                    track.scrollBy({
+                        behavior: 'auto',
+                        left:
+                            logicalDirection *
+                            autoTravelDirectionRef.current *
+                            wholePixels,
+                    });
+                }
+            }
+
+            previousTimestamp = timestamp;
+            animationFrame = window.requestAnimationFrame(advance);
+        };
+
+        animationFrame = window.requestAnimationFrame(advance);
+
+        return () => window.cancelAnimationFrame(animationFrame);
+    }, [direction, overflows, pageVisible, paused]);
 
     return (
         <section

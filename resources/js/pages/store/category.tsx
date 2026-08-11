@@ -16,6 +16,10 @@ export default function StoreCategory() {
     const props = page.props;
     const [query, setQuery] = useState(props.catalog.query);
     const isSbc = props.catalog.service === 'sbc';
+    const pageTitle =
+        isSbc && props.servicePage.page_title !== undefined
+            ? props.servicePage.page_title
+            : props.servicePage.title;
     const navigate = (changes: Partial<typeof props.catalog.query>) => {
         const next = { ...query, ...changes, page: 1 };
 
@@ -42,10 +46,15 @@ export default function StoreCategory() {
             storeShell={props.storeShell}
             ui={props.ui}
         >
-            <Head title={props.servicePage.title} />
-            <main
-                className={`store-catalog-page${isSbc ? 'store-catalog-page--sbc' : ''}`}
-                id="store-content"
+            <Head title={pageTitle} />
+            <section
+                aria-labelledby="store-catalog-title"
+                className={[
+                    'store-catalog-page',
+                    isSbc ? 'store-catalog-page--sbc' : null,
+                ]
+                    .filter(Boolean)
+                    .join(' ')}
             >
                 <header className="store-catalog-hero">
                     {isSbc ? (
@@ -55,15 +64,21 @@ export default function StoreCategory() {
                         >
                             <img
                                 alt=""
-                                height="706"
-                                src="/images/store/services/sbc.webp"
-                                width="1280"
+                                height="96"
+                                src="/images/store/navigation/logo-sbc-96.webp"
+                                width="96"
                             />
                         </span>
                     ) : null}
                     <div>
                         <p>{props.servicePage.eyebrow}</p>
-                        <h1>{props.servicePage.title}</h1>
+                        <h1 id="store-catalog-title">
+                            {isSbc ? (
+                                <SbcTitle title={pageTitle} />
+                            ) : (
+                                props.servicePage.title
+                            )}
+                        </h1>
                         <span>{props.servicePage.intro}</span>
                     </div>
                 </header>
@@ -173,7 +188,7 @@ export default function StoreCategory() {
                 )}
 
                 {isSbc ? <Assurances translations={props.catalogPage} /> : null}
-            </main>
+            </section>
         </StoreLayout>
     );
 }
@@ -200,8 +215,18 @@ function CatalogCard({
 
     return (
         <li
-            className={`store-catalog-card${isSbc ? 'store-catalog-card--sbc' : ''}`}
+            className={[
+                'store-catalog-card',
+                isSbc ? 'store-catalog-card--sbc' : null,
+            ]
+                .filter(Boolean)
+                .join(' ')}
         >
+            {isSbc ? (
+                <span className="store-catalog-card__ribbon">
+                    {translations.included}
+                </span>
+            ) : null}
             <a
                 aria-label={product.name}
                 className="store-catalog-card__image"
@@ -214,7 +239,7 @@ function CatalogCard({
                     src={
                         product.image?.url ??
                         (isSbc
-                            ? '/images/store/services/sbc.webp'
+                            ? '/images/store/navigation/logo-sbc-96.webp'
                             : '/images/store/hero/arabut-logo-hero.webp')
                     }
                     width="320"
@@ -223,16 +248,48 @@ function CatalogCard({
             <div className="store-catalog-card__body">
                 <h2>{product.name}</h2>
                 <p>{product.description}</p>
-                <strong>
-                    {selected?.price === null || selected?.price === undefined
-                        ? translations.unavailable_price
-                        : formatMinorUnits(
-                              selected.price.amountMinor,
-                              selected.price.currency,
-                              locale,
-                          )}
-                </strong>
-                {product.variants.length > 1 ? (
+                {isSbc ? (
+                    <ul
+                        aria-label={translations.platform_prices}
+                        className="store-catalog-card__prices"
+                    >
+                        {product.variants.map((variant) => (
+                            <li key={variant.id}>
+                                <button
+                                    aria-pressed={variant.id === variantId}
+                                    onClick={() => setVariantId(variant.id)}
+                                    type="button"
+                                >
+                                    <PlatformMark
+                                        name={variant.name}
+                                        platform={variant.platform}
+                                    />
+                                    <span>
+                                        {variant.price === null
+                                            ? translations.unavailable_price
+                                            : formatMinorUnits(
+                                                  variant.price.amountMinor,
+                                                  variant.price.currency,
+                                                  locale,
+                                              )}
+                                    </span>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <strong>
+                        {selected?.price === null ||
+                        selected?.price === undefined
+                            ? translations.unavailable_price
+                            : formatMinorUnits(
+                                  selected.price.amountMinor,
+                                  selected.price.currency,
+                                  locale,
+                              )}
+                    </strong>
+                )}
+                {!isSbc && product.variants.length > 1 ? (
                     <label>
                         <span>{translations.platform}</span>
                         <select
@@ -262,6 +319,44 @@ function CatalogCard({
                 )}
             </div>
         </li>
+    );
+}
+
+function SbcTitle({ title }: { title: string }) {
+    const suffix = 'SBC';
+    const copy = title.endsWith(suffix)
+        ? title.slice(0, -suffix.length).trimEnd()
+        : title;
+
+    return (
+        <>
+            {copy} <span className="store-catalog-hero__accent">{suffix}</span>
+        </>
+    );
+}
+
+function PlatformMark({ name, platform }: { name: string; platform: string }) {
+    const iconUrls =
+        platform === 'playstation'
+            ? [
+                  '/images/store/platforms/ps-logo-white-80.webp',
+                  '/images/store/platforms/xbox-logo-white-80.webp',
+              ]
+            : platform === 'xbox'
+              ? ['/images/store/platforms/xbox-logo-white-80.webp']
+              : platform === 'pc'
+                ? ['/images/store/platforms/pc-logo.svg']
+                : [];
+
+    return (
+        <span className="store-catalog-card__platform">
+            <span aria-hidden="true">
+                {iconUrls.map((url) => (
+                    <img alt="" height="18" key={url} src={url} width="18" />
+                ))}
+            </span>
+            <span>{name}</span>
+        </span>
     );
 }
 

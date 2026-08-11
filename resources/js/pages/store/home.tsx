@@ -145,7 +145,9 @@ export default function StoreHome() {
                                 {store.hero.badge}
                             </p>
                             <h1 id="store-hero-title">
-                                <span>{store.hero.title}</span>{' '}
+                                <span className="store-hero__title-primary">
+                                    {store.hero.title}
+                                </span>{' '}
                                 <strong>{store.hero.accent}</strong>
                             </h1>
                             <p className="store-hero__subtitle">

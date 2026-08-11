@@ -39,9 +39,15 @@ beforeEach(() => {
         value: vi.fn(),
     });
     vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
+        window.setTimeout(() => callback(performance.now()), 16),
+    );
+    vi.stubGlobal('cancelAnimationFrame', (handle: number) =>
+        window.clearTimeout(handle),
+    );
 });
 
-it('loops back to the first card after reaching the rail end', () => {
+it('reverses smoothly instead of restarting after reaching the rail end', () => {
     vi.useFakeTimers();
     const { container } = render(
         <ServiceRail
@@ -61,12 +67,12 @@ it('loops back to the first card after reaching the rail end', () => {
         configurable: true,
         value: 960,
     });
-    act(() => vi.advanceTimersByTime(3_000));
+    act(() => vi.advanceTimersByTime(100));
 
-    expect(track.scrollTo).toHaveBeenCalledWith({
-        behavior: 'auto',
-        left: 0,
-    });
+    expect(track.scrollTo).not.toHaveBeenCalled();
+    const reverseScroll = vi.mocked(track.scrollBy).mock.calls.at(-1)?.[0] as
+        ScrollToOptions | undefined;
+    expect(reverseScroll?.left).toBeLessThan(0);
 });
 
 afterEach(() => {
@@ -111,7 +117,7 @@ it('renders five equal service links in the approved order', () => {
     );
 });
 
-it('moves automatically and pauses while a service link has focus', () => {
+it('moves continuously and pauses while a service link has focus', () => {
     vi.useFakeTimers();
     const { container } = render(
         <ServiceRail
@@ -125,18 +131,30 @@ it('moves automatically and pauses while a service link has focus', () => {
     );
     const firstService = screen.getByRole('link', { name: /SBC/ });
 
-    act(() => vi.advanceTimersByTime(3_000));
+    act(() => vi.advanceTimersByTime(100));
 
-    expect(track?.scrollBy).toHaveBeenCalled();
+    expect(vi.mocked(track!.scrollBy).mock.calls.length).toBeGreaterThan(0);
+    expect(
+        Math.abs(
+            vi
+                .mocked(track!.scrollBy)
+                .mock.calls.reduce(
+                    (distance, [options]) =>
+                        distance +
+                        Number((options as ScrollToOptions).left ?? 0),
+                    0,
+                ),
+        ),
+    ).toBeLessThan(1.5);
     expect(track).toHaveAttribute('dir', 'rtl');
 
     const callCount = vi.mocked(track!.scrollBy).mock.calls.length;
     fireEvent.focus(firstService);
-    act(() => vi.advanceTimersByTime(6_000));
+    act(() => vi.advanceTimersByTime(100));
     expect(track?.scrollBy).toHaveBeenCalledTimes(callCount);
 
     fireEvent.blur(firstService);
-    act(() => vi.advanceTimersByTime(3_000));
+    act(() => vi.advanceTimersByTime(100));
     expect(vi.mocked(track!.scrollBy).mock.calls.length).toBeGreaterThan(
         callCount,
     );

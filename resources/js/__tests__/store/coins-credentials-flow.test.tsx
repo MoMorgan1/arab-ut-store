@@ -402,9 +402,17 @@ describe('Coins credentials flow', () => {
             const code = screen.getByRole('textbox', {
                 name: `Backup code ${index}`,
             });
+            const compactControl = code.closest('.coins-backup-code');
+
             expect(code).toHaveAttribute('dir', 'ltr');
             expect(code).toHaveAttribute('inputmode', 'numeric');
             expect(code).toHaveAttribute('autocomplete', 'off');
+            expect(code).toHaveAttribute('placeholder', '12345678');
+            expect(compactControl).not.toBeNull();
+            expect(compactControl).toHaveTextContent(String(index));
+            expect(
+                compactControl?.querySelector('[aria-hidden="true"]'),
+            ).toHaveTextContent(String(index));
         }
 
         expect(

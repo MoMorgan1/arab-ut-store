@@ -240,12 +240,21 @@ export function CredentialsStep({
 
                             return (
                                 <div
-                                    className="coins-credential-field"
+                                    className="coins-credential-field coins-backup-code"
                                     key={field}
                                 >
-                                    <label htmlFor={`coins-backup-${index}`}>
+                                    <label
+                                        className="sr-only"
+                                        htmlFor={`coins-backup-${index}`}
+                                    >
                                         {label}
                                     </label>
+                                    <span
+                                        aria-hidden="true"
+                                        className="coins-backup-code__number"
+                                    >
+                                        {formatInteger(index + 1, locale)}
+                                    </span>
                                     <input
                                         aria-describedby={
                                             errors[field] === undefined
@@ -270,6 +279,7 @@ export function CredentialsStep({
                                             )
                                         }
                                         pattern="[0-9]{8}"
+                                        placeholder="12345678"
                                         ref={(node) => {
                                             fieldRefs.current[field] = node;
                                         }}

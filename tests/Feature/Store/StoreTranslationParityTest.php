@@ -152,9 +152,15 @@ test('the catalog exposes the refined SBC hierarchy and add feedback in both loc
     $arabic = require lang_path('ar/store.php');
     $english = require lang_path('en/store.php');
 
-    expect(data_get($arabic, 'catalog.browse_by_type'))->toBe('استكشف حسب النوع')
+    expect(data_get($arabic, 'services.sbc.page_title'))->toBe('حل تحديات بناء التشكيلة SBC')
+        ->and(data_get($english, 'services.sbc.page_title'))->toBe('Complete Squad Building Challenges SBC')
+        ->and(data_get($arabic, 'catalog.browse_by_type'))->toBe('استكشف حسب النوع')
+        ->and(data_get($arabic, 'catalog.included'))->toBe('شامل شحن الكوينز والتنفيذ')
+        ->and(data_get($arabic, 'catalog.platform_prices'))->toBe('أسعار المنصات')
         ->and(data_get($arabic, 'catalog.added'))->toBe('تمت الإضافة إلى السلة')
         ->and(data_get($arabic, 'catalog.assurances'))->toBe('ضمانات الخدمة')
         ->and(data_get($english, 'catalog.browse_by_type'))->toBe('Browse by type')
+        ->and(data_get($english, 'catalog.included'))->toBe('Coins funding and completion included')
+        ->and(data_get($english, 'catalog.platform_prices'))->toBe('Platform prices')
         ->and(data_get($english, 'catalog.added'))->toBe('Added to cart');
 });

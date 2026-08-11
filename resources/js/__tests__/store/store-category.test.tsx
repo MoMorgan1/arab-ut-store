@@ -63,15 +63,33 @@ it('submits locale-preserving search filter and sort parameters', () => {
 it('renders the refined SBC hierarchy and trust strip', () => {
     render(<StoreCategory />);
 
+    expect(screen.getAllByRole('main')).toHaveLength(1);
     expect(
-        screen.getByRole('heading', { name: 'SBC Services', level: 1 }),
+        screen.getByRole('heading', {
+            name: 'Complete Squad Building Challenges SBC',
+            level: 1,
+        }),
     ).toBeVisible();
     expect(
         document.querySelector('.store-catalog-hero__shield img'),
-    ).toHaveAttribute('src', '/images/store/services/sbc.webp');
+    ).toHaveAttribute('src', '/images/store/navigation/logo-sbc-96.webp');
+    expect(document.querySelector('.store-catalog-page')).toHaveClass(
+        'store-catalog-page--sbc',
+    );
+    expect(
+        screen.getByRole('button', { name: 'Add to cart' }).closest('li'),
+    ).toHaveClass('store-catalog-card', 'store-catalog-card--sbc');
     expect(
         screen.getByRole('heading', { name: 'Browse by type', level: 2 }),
     ).toBeVisible();
+    expect(
+        screen.getByText('Coins funding and completion included'),
+    ).toBeVisible();
+    expect(
+        within(
+            screen.getByRole('list', { name: 'Platform prices' }),
+        ).getAllByRole('listitem'),
+    ).toHaveLength(2);
     expect(
         within(
             screen.getByRole('list', { name: 'Store assurances' }),
@@ -120,6 +138,12 @@ function categoryProps() {
                             platform: 'playstation',
                             price: { amountMinor: 12500, currency: 'SAR' },
                         },
+                        {
+                            id: '01K00000000000000000000003',
+                            name: 'PC',
+                            platform: 'pc',
+                            price: { amountMinor: 9900, currency: 'SAR' },
+                        },
                     ],
                 },
             ],
@@ -132,6 +156,7 @@ function categoryProps() {
         servicePage: {
             eyebrow: 'FC 27 services',
             title: 'SBC Services',
+            page_title: 'Complete Squad Building Challenges SBC',
             intro: 'Choose your service.',
             card_description: 'SBC service.',
         },
@@ -163,6 +188,8 @@ function catalogTranslations() {
         adding: 'Adding…',
         add_error: 'Could not add this item.',
         platform: 'Platform',
+        platform_prices: 'Platform prices',
+        included: 'Coins funding and completion included',
         browse_by_type: 'Browse by type',
         assurances: 'Store assurances',
         assurance_no_players: 'No player withdrawal',
