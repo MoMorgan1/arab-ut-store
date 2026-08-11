@@ -126,6 +126,12 @@ const arabicUi = {
         description: 'اختر كلمة مرور جديدة لحسابك.',
         submit: 'حفظ كلمة المرور الجديدة',
     },
+    confirm_password: {
+        head_title: 'تأكيد كلمة المرور',
+        title: 'أكّد كلمة المرور',
+        description: 'هذه منطقة آمنة. أكّد كلمة المرور للمتابعة.',
+        submit: 'تأكيد كلمة المرور',
+    },
 } satisfies AuthUiTranslations;
 
 const englishUi = {
@@ -171,6 +177,13 @@ const englishUi = {
         title: 'Set a new password',
         description: 'Choose a new password for your account.',
         submit: 'Save new password',
+    },
+    confirm_password: {
+        head_title: 'Confirm password',
+        title: 'Confirm your password',
+        description:
+            'This is a secure area. Confirm your password to continue.',
+        submit: 'Confirm password',
     },
 } satisfies AuthUiTranslations;
 

@@ -55,4 +55,10 @@ return [
         'description' => 'Choose a new password for your account.',
         'submit' => 'Save new password',
     ],
+    'confirm_password' => [
+        'head_title' => 'Confirm password',
+        'title' => 'Confirm your password',
+        'description' => 'This is a secure area. Confirm your password to continue.',
+        'submit' => 'Confirm password',
+    ],
 ];

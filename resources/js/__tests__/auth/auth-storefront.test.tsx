@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import AuthLayout from '@/layouts/auth-layout';
+import ConfirmPassword from '@/pages/auth/confirm-password';
 import ForgotPassword from '@/pages/auth/forgot-password';
 import Login from '@/pages/auth/login';
 import Register from '@/pages/auth/register';
@@ -191,6 +192,12 @@ const arabicAuthUi = {
         description: 'اختر كلمة مرور جديدة لحسابك.',
         submit: 'حفظ كلمة المرور الجديدة',
     },
+    confirm_password: {
+        head_title: 'تأكيد كلمة المرور',
+        title: 'أكّد كلمة المرور',
+        description: 'هذه منطقة آمنة. أكّد كلمة المرور للمتابعة.',
+        submit: 'تأكيد كلمة المرور',
+    },
 } satisfies AuthUiTranslations;
 
 const englishAuthUi = {
@@ -245,6 +252,13 @@ const englishAuthUi = {
         title: 'Set a new password',
         description: 'Choose a new password for your account.',
         submit: 'Save new password',
+    },
+    confirm_password: {
+        head_title: 'Confirm password',
+        title: 'Confirm your password',
+        description:
+            'This is a secure area. Confirm your password to continue.',
+        submit: 'Confirm password',
     },
 } satisfies AuthUiTranslations;
 
@@ -320,6 +334,29 @@ function expectFormBeforeBenefits() {
 afterEach(cleanup);
 
 describe('storefront authentication shell', () => {
+    it('renders password confirmation inside the localized focused storefront shell', () => {
+        setPage('login');
+        page.props = {
+            ...page.props,
+            authPage: 'confirm_password',
+            authUi: arabicAuthUi,
+        };
+
+        render(
+            <AuthLayout>
+                <ConfirmPassword authUi={arabicAuthUi} />
+            </AuthLayout>,
+        );
+
+        expect(
+            screen.getByRole('heading', { name: 'أكّد كلمة المرور' }),
+        ).toBeVisible();
+        expect(
+            screen.getByRole('button', { name: 'تأكيد كلمة المرور' }),
+        ).toBeVisible();
+        expect(document.querySelector('.auth-shell__benefits')).toBeNull();
+    });
+
     it('keeps Arabic login inside one complete storefront shell with truthful benefits', () => {
         setPage('login');
 

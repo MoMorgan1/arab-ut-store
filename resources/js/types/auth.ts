@@ -21,7 +21,11 @@ export type Auth = {
 };
 
 export type AuthPage =
-    'login' | 'register' | 'forgot_password' | 'reset_password';
+    | 'login'
+    | 'register'
+    | 'forgot_password'
+    | 'reset_password'
+    | 'confirm_password';
 
 export type AuthRoutes = {
     homeUrl: string;
@@ -77,6 +81,12 @@ export type AuthUiTranslations = {
         return_link: string;
     };
     reset_password: {
+        head_title: string;
+        title: string;
+        description: string;
+        submit: string;
+    };
+    confirm_password: {
         head_title: string;
         title: string;
         description: string;
