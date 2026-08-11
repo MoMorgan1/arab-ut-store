@@ -634,11 +634,11 @@ git commit -m "feat: polish the Arab UT storefront journey"
 **Interfaces:**
 - No new production interface. This task proves the end-to-end contracts and records exact evidence.
 
-- [ ] **Step 1: Run Clean Code, Test, and Docs guard reviews**
+- [x] **Step 1: Run Clean Code, Test, and Docs guard reviews**
 
 Inspect changed production code for duplicated pricing/owner logic, broad controllers, unsafe serialization, hidden side effects, dead compatibility contracts, and synthetic font weights. Inspect tests for implementation-coupled CSS assertions, missing behavior assertions, mocks of code under test, false-positive preconditions, and SQLite-only database claims. Verify the spec, plan, report, routes, and provider attribution claims against current code and official docs.
 
-- [ ] **Step 2: Run the full aggregate gate**
+- [x] **Step 2: Run the full aggregate gate**
 
 ```powershell
 $commonGitDir = (Resolve-Path (git rev-parse --git-common-dir)).Path
@@ -651,18 +651,18 @@ git diff --check
 
 Expected: Composer validate, Pint, PHPStan, full Pest, full Vitest, ESLint, Prettier, TypeScript, and Vite build all exit 0.
 
-- [ ] **Step 3: Run the final MariaDB gate**
+- [x] **Step 3: Run the final MariaDB gate**
 
 On an isolated disposable MariaDB instance: migrate fresh, run all pricing schedule, cart schema, endpoint, purge, claim, upgrade, and concurrency suites, rollback, re-migrate, and confirm no listener/process/data directory remains.
 
-- [ ] **Step 4: Run the full browser contract**
+- [x] **Step 4: Run the full browser contract**
 
 Verify Arabic and English at 320, 390, 768, and 1440 pixels for homepage, all five configurator steps, guest cart, login, and registration. Exercise every amount control and prove the DOM total changes before any network response; prove zero quote requests during amount changes and one server-requoted POST on add. Add as guest, inspect safe cart/count, log in, prove claim/merge, verify direct `#coins`, back/forward, visible focus, 44px controls, reduced motion, exact fonts, no horizontal overflow, no secrets in URL/DOM/storage/network response, and zero console errors/warnings.
 
-- [ ] **Step 5: Request task and whole-branch review**
+- [x] **Step 5: Request task and whole-branch review**
 
 Review every task's exact commit range for both spec compliance and code quality. Resolve all Critical/Important findings through scoped fix/re-review loops. Run one most-capable whole-branch review over the merge base through HEAD. When that review returns findings, run exactly one bounded final fix wave followed by one scoped re-review.
 
-- [ ] **Step 6: Write the final report and finish locally**
+- [x] **Step 6: Write the final report and finish locally**
 
 Record RED/GREEN outputs, MariaDB lifecycle, browser matrix, provider attribution location, security leak scans, guard verdicts, concerns, and commit hashes. Do not push or deploy. Use `superpowers:finishing-a-development-branch` and merge locally into `main` only after the final review is clean.
