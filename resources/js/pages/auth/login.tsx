@@ -371,33 +371,35 @@ export default function Login({
                             </TextLink>
                         </div>
 
-                        <div className="auth-social-login">
-                            <span>{authUi.login.or}</span>
-                            <a
-                                className="auth-google-action"
-                                href={authRoutes.googleLoginUrl}
-                            >
-                                <svg aria-hidden="true" viewBox="0 0 24 24">
-                                    <path
-                                        fill="currentColor"
-                                        d="M21.6 12.23c0-.71-.06-1.23-.2-1.78H12v3.4h5.52a4.72 4.72 0 0 1-2.05 3.1v2.2h3.32c1.94-1.78 2.81-4.4 2.81-6.92Z"
-                                    />
-                                    <path
-                                        fill="currentColor"
-                                        d="M12 22c2.7 0 4.96-.89 6.61-2.42l-3.32-2.2c-.9.6-2.06.96-3.29.96-2.6 0-4.8-1.76-5.6-4.13H2.98v2.27A10 10 0 0 0 12 22Z"
-                                    />
-                                    <path
-                                        fill="currentColor"
-                                        d="M6.4 14.21A6 6 0 0 1 6.08 12c0-.77.13-1.52.34-2.21V7.52H2.98A10 10 0 0 0 2 12c0 1.61.39 3.13 1.08 4.48l3.32-2.27Z"
-                                    />
-                                    <path
-                                        fill="currentColor"
-                                        d="M12 5.66c1.49 0 2.82.51 3.87 1.5l2.8-2.8A9.45 9.45 0 0 0 12 2a10 10 0 0 0-9.02 5.52L6.42 9.8A5.98 5.98 0 0 1 12 5.66Z"
-                                    />
-                                </svg>
-                                {authUi.login.google}
-                            </a>
-                        </div>
+                        {authRoutes.googleLoginUrl && (
+                            <div className="auth-social-login">
+                                <span>{authUi.login.or}</span>
+                                <a
+                                    className="auth-google-action"
+                                    href={authRoutes.googleLoginUrl}
+                                >
+                                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                                        <path
+                                            fill="currentColor"
+                                            d="M21.6 12.23c0-.71-.06-1.23-.2-1.78H12v3.4h5.52a4.72 4.72 0 0 1-2.05 3.1v2.2h3.32c1.94-1.78 2.81-4.4 2.81-6.92Z"
+                                        />
+                                        <path
+                                            fill="currentColor"
+                                            d="M12 22c2.7 0 4.96-.89 6.61-2.42l-3.32-2.2c-.9.6-2.06.96-3.29.96-2.6 0-4.8-1.76-5.6-4.13H2.98v2.27A10 10 0 0 0 12 22Z"
+                                        />
+                                        <path
+                                            fill="currentColor"
+                                            d="M6.4 14.21A6 6 0 0 1 6.08 12c0-.77.13-1.52.34-2.21V7.52H2.98A10 10 0 0 0 2 12c0 1.61.39 3.13 1.08 4.48l3.32-2.27Z"
+                                        />
+                                        <path
+                                            fill="currentColor"
+                                            d="M12 5.66c1.49 0 2.82.51 3.87 1.5l2.8-2.8A9.45 9.45 0 0 0 12 2a10 10 0 0 0-9.02 5.52L6.42 9.8A5.98 5.98 0 0 1 12 5.66Z"
+                                        />
+                                    </svg>
+                                    {authUi.login.google}
+                                </a>
+                            </div>
+                        )}
                     </>
                 )}
             </Form>

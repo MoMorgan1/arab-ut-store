@@ -153,9 +153,11 @@ class FortifyServiceProvider extends ServiceProvider
             'forgotPasswordUrl' => $authUrl('password.request'),
             'forgotPasswordStoreUrl' => $authUrl('password.email'),
             'resetPasswordStoreUrl' => $authUrl('password.update'),
-            'googleLoginUrl' => $localized
-                ? route('localized.auth.google.redirect', ['locale' => 'en'], absolute: false)
-                : route('auth.google.redirect', absolute: false),
+            'googleLoginUrl' => $this->googleConfigured()
+                ? ($localized
+                    ? route('localized.auth.google.redirect', ['locale' => 'en'], absolute: false)
+                    : route('auth.google.redirect', absolute: false))
+                : null,
             'whatsappSendUrl' => $localized
                 ? route('localized.auth.whatsapp.send', ['locale' => 'en'], absolute: false)
                 : route('auth.whatsapp.send', absolute: false),
@@ -163,6 +165,13 @@ class FortifyServiceProvider extends ServiceProvider
                 ? route('localized.auth.whatsapp.verify', ['locale' => 'en'], absolute: false)
                 : route('auth.whatsapp.verify', absolute: false),
         ];
+    }
+
+    private function googleConfigured(): bool
+    {
+        return filled(config('services.google.client_id'))
+            && filled(config('services.google.client_secret'))
+            && filled(config('services.google.redirect'));
     }
 
     private function configurePasswordResetUrls(): void

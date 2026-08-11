@@ -14,6 +14,11 @@ test('auth screens expose localized copy direction and route contracts', functio
     string $direction,
     string $title,
 ) {
+    config()->set('services.google', [
+        'client_id' => 'test-client',
+        'client_secret' => 'test-secret',
+        'redirect' => 'https://store.test/auth/google/callback',
+    ]);
     $localized = $locale === 'en';
     $prefix = $localized ? '/en' : '';
 
@@ -46,6 +51,17 @@ test('auth screens expose localized copy direction and route contracts', functio
     'Arabic reset password' => ['/reset-password/test-token?email=player@example.test', 'auth/reset-password', 'reset_password', 'ar', 'rtl', 'تعيين كلمة مرور جديدة'],
     'English reset password' => ['/en/reset-password/test-token?email=player@example.test', 'auth/reset-password', 'reset_password', 'en', 'ltr', 'Set a new password'],
 ]);
+
+test('login hides the Google control contract while OAuth is not configured', function () {
+    config()->set('services.google', [
+        'client_id' => null,
+        'client_secret' => null,
+        'redirect' => null,
+    ]);
+
+    $this->get('/login')->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('authRoutes.googleLoginUrl', null));
+});
 
 test('auth screens expose the storefront shell and truthful localized account benefits', function (
     string $path,

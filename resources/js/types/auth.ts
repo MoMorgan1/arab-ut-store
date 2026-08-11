@@ -36,7 +36,7 @@ export type AuthRoutes = {
     forgotPasswordUrl: string;
     forgotPasswordStoreUrl: string;
     resetPasswordStoreUrl: string;
-    googleLoginUrl: string;
+    googleLoginUrl: string | null;
     whatsappSendUrl: string;
     whatsappVerifyUrl: string;
 };
