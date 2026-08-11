@@ -12,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * @property Platform $platform
  * @property Market $market
+ * @property array<string, mixed>|null $configuration
+ * @property int $price_halalah
+ * @property int|null $sale_price_halalah
  */
 class ProductVariant extends DomainModel
 {

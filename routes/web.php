@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Store\CartController;
+use App\Http\Controllers\Store\CatalogProductController;
+use App\Http\Controllers\Store\CategoryController;
+use App\Http\Controllers\Store\CategoryProductController;
 use App\Http\Controllers\Store\CoinsCartController;
 use App\Http\Controllers\Store\CoinsQuoteController;
 use App\Http\Controllers\Store\HomeController;
@@ -22,13 +25,19 @@ Route::post('/cart/items/coins', CoinsCartController::class)
     ->name('cart.items.coins.store');
 
 $simpleStorePages = [
-    'sbc' => '/sbc',
-    'fut_champions' => '/fut-champions',
     'privacy' => '/privacy',
     'returns' => '/returns',
     'warranty' => '/warranty',
     'ea_backup_codes' => '/ea-backup-codes',
     'terms' => '/terms',
+];
+$catalogCategories = [
+    'sbc' => ['/sbc', 'sbc'],
+    'objectives' => ['/objectives', 'objectives'],
+];
+$catalogProducts = [
+    'fut_champions' => ['/fut-champions', 'fut_champions'],
+    'rivals' => ['/rivals', 'rivals'],
 ];
 $localizedLoginMiddleware = array_filter([
     'guest:'.config('fortify.guard'),
@@ -42,9 +51,21 @@ foreach ($simpleStorePages as $page => $uri) {
         ->defaults('storePage', $page)->name("store.{$page}");
 }
 
+foreach ($catalogCategories as $name => [$uri, $service]) {
+    Route::get($uri, CategoryController::class)
+        ->defaults('service', $service)->name("store.{$name}");
+    Route::get("{$uri}/{slug}", CategoryProductController::class)
+        ->defaults('service', $service)->name("store.{$name}.show");
+}
+
+foreach ($catalogProducts as $name => [$uri, $service]) {
+    Route::get($uri, CatalogProductController::class)
+        ->defaults('service', $service)->name("store.{$name}");
+}
+
 Route::prefix('{locale}')
     ->whereIn('locale', config('store.locales'))
-    ->group(function () use ($localizedLoginMiddleware, $simpleStorePages): void {
+    ->group(function () use ($catalogCategories, $catalogProducts, $localizedLoginMiddleware, $simpleStorePages): void {
         Route::get('/', HomeController::class)->name('localized.home');
         Route::get('/coins/quote', CoinsQuoteController::class)->name('localized.coins.quote');
         Route::get('/cart', CartController::class)->name('localized.store.cart');
@@ -86,6 +107,18 @@ Route::prefix('{locale}')
         foreach ($simpleStorePages as $page => $uri) {
             Route::get($uri, SimpleStorePageController::class)
                 ->defaults('storePage', $page)->name("localized.store.{$page}");
+        }
+
+        foreach ($catalogCategories as $name => [$uri, $service]) {
+            Route::get($uri, CategoryController::class)
+                ->defaults('service', $service)->name("localized.store.{$name}");
+            Route::get("{$uri}/{slug}", CategoryProductController::class)
+                ->defaults('service', $service)->name("localized.store.{$name}.show");
+        }
+
+        foreach ($catalogProducts as $name => [$uri, $service]) {
+            Route::get($uri, CatalogProductController::class)
+                ->defaults('service', $service)->name("localized.store.{$name}");
         }
     });
 

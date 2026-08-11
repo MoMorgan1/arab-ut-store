@@ -20,7 +20,7 @@ return [
         'instagram' => 'https://www.instagram.com/arabutcoins/',
     ],
     'simple_pages' => [
-        'sbc', 'fut_champions', 'privacy', 'returns', 'warranty',
+        'privacy', 'returns', 'warranty',
         'ea_backup_codes', 'terms',
     ],
     'payments' => [

@@ -35,7 +35,7 @@
 - `app/Http/Controllers/Automation/CatalogSnapshotController.php`: JSON-only endpoint adapter.
 - `app/Actions/Catalog/SyncCatalogSnapshot.php`: one transactional automation-owned reconciliation.
 - `app/Actions/Catalog/MirrorCatalogMedia.php`: allowlisted, bounded image download and last-good preservation.
-- `app/Services/Catalog/StoreCatalogReader.php`: locale-aware, visibility-aware catalog queries and display-money preparation.
+- `app/Actions/Catalog/StoreCatalogReader.php`: locale-aware, visibility-aware catalog queries and display-money preparation.
 - `app/Http/Controllers/Store/CategoryController.php`: SBC/Objectives list pages.
 - `app/Http/Controllers/Store/CatalogProductController.php`: SBC detail and FUT/Rivals product pages.
 
@@ -192,7 +192,7 @@ git commit -m "feat: ingest authenticated catalog snapshots"
 ### Task 2: Build the server-side catalog read model and bilingual routes
 
 **Files:**
-- Create: `app/Services/Catalog/StoreCatalogReader.php`
+- Create: `app/Actions/Catalog/StoreCatalogReader.php`
 - Create: `app/Http/Controllers/Store/CategoryController.php`
 - Create: `app/Http/Controllers/Store/CatalogProductController.php`
 - Modify: `app/Http/Middleware/HandleInertiaRequests.php`
@@ -207,7 +207,7 @@ git commit -m "feat: ingest authenticated catalog snapshots"
 - Consumes: active visible catalog rows and the selected display currency.
 - Produces: exact Inertia props for `store/category` and `store/catalog-product`, including already-converted minor-unit totals.
 
-- [ ] **Step 1: Write failing bilingual route and query tests**
+- [x] **Step 1: Write failing bilingual route and query tests**
 
 ```php
 it('renders SBC and Objectives as categories and FUT and Rivals as products', function (string $uri, string $component, string $service) {
@@ -229,13 +229,13 @@ it('renders SBC and Objectives as categories and FUT and Rivals as products', fu
 
 Add assertions for hidden/archived/inactive exclusion, Challenges-to-Upgrades mapping, localized fallback, stable newest/recommended/price sorting, display-currency conversion, missing-rate price omission, pagination bounds, and 404 for an unknown or wrong-service slug.
 
-- [ ] **Step 2: Run the catalog route tests to verify RED**
+- [x] **Step 2: Run the catalog route tests to verify RED**
 
 Run: `php artisan test tests/Feature/Store/StoreCatalogRoutesTest.php --compact`
 
 Expected: FAIL because the new routes/controllers/read model do not exist.
 
-- [ ] **Step 3: Implement `StoreCatalogReader`**
+- [x] **Step 3: Implement `StoreCatalogReader`**
 
 ```php
 /** @return array{items:list<array<string,mixed>>,meta:array<string,mixed>} */
@@ -258,17 +258,17 @@ public function category(
 
 Use allowlisted query values only: `q` up to 80 characters; SBC filter `all|players|icons|upgrades|foundations`; sort `recommended|newest|price_asc|price_desc`; page 1 or greater. Prepare the exchange-rate converter once per request, never per product.
 
-- [ ] **Step 4: Implement category and product controllers/routes**
+- [x] **Step 4: Implement category and product controllers/routes**
 
-Register Arabic and localized English routes for `/sbc`, `/sbc/{product:slug}`, `/objectives`, `/objectives/{product:slug}`, `/fut-champions`, `/rivals`, and `/reviews`. Replace the old SBC/FUT simple-page entries. Keep legal pages in `SimpleStorePageController`.
+Register Arabic and localized English routes for `/sbc`, `/sbc/{product:slug}`, `/objectives`, `/objectives/{product:slug}`, `/fut-champions`, and `/rivals`. Task 6 owns the reviews reader and `/reviews` route. Replace the old SBC/FUT simple-page entries. Keep legal pages in `SimpleStorePageController`.
 
 Expose route URLs needed by the service rail through a focused `homeContent` prop rather than expanding unrelated header navigation.
 
-- [ ] **Step 5: Add exact Arabic/English catalog copy and types**
+- [x] **Step 5: Add exact Arabic/English catalog copy and types**
 
 Add translation trees for `services`, `catalog`, `product`, `reviews`, and `faq`. Keep customer-facing text in locale files only. Update `SimpleStorePageKey` to remove `sbc` and `fut_champions`; preserve only genuine simple legal pages.
 
-- [ ] **Step 6: Run focused GREEN and route/list checks**
+- [x] **Step 6: Run focused GREEN and route/list checks**
 
 Run:
 
@@ -282,10 +282,10 @@ php artisan route:list --path=rivals
 
 Expected: all tests pass and every internal route has default Arabic plus `/en` coverage.
 
-- [ ] **Step 7: Commit Task 2**
+- [x] **Step 7: Commit Task 2**
 
 ```bash
-git add app/Services/Catalog app/Http/Controllers/Store app/Http/Middleware/HandleInertiaRequests.php routes/web.php lang/ar/store.php lang/en/store.php resources/js/types/store-shell.ts tests/Feature/Store
+git add app/Actions/Catalog app/Http/Controllers/Store app/Http/Middleware/HandleInertiaRequests.php routes/web.php lang/ar/store.php lang/en/store.php resources/js/types/store-shell.ts tests/Feature/Store
 git commit -m "feat: expose bilingual service catalog routes"
 ```
 

@@ -42,10 +42,6 @@ test('every non-transactional storefront destination has the right bilingual pag
             ->missing('storeShell.socials.tiktok')
             ->missing('storeShell.socials.snapchat'));
 })->with([
-    'SBC' => ['/sbc', 'ar', 'sbc', 'خدمات SBC', 'نجهز صفحة SBC وربط المنتجات الآلي. بتلقى كل الخيارات هنا بعد اكتمال الربط.'],
-    'English SBC' => ['/en/sbc', 'en', 'sbc', 'SBC Services', 'We are preparing the SBC catalog and automated product connection. All options will appear here when the connection is complete.'],
-    'FUT Champions' => ['/fut-champions', 'ar', 'fut_champions', 'FUT Champions', 'نجهز صفحة الخدمة وتفاصيل الطلب. تقدر تتواصل معنا لو تحتاج مساعدة الآن.'],
-    'English FUT Champions' => ['/en/fut-champions', 'en', 'fut_champions', 'FUT Champions', 'We are preparing the service page and order details. Contact us if you need help now.'],
     'privacy' => ['/privacy', 'ar', 'privacy', 'سياسة الخصوصية', 'ننقل ونراجع سياسة الخصوصية للمتجر الجديد. ما نجمع أي بيانات من هذه الصفحة.'],
     'English privacy' => ['/en/privacy', 'en', 'privacy', 'Privacy Policy', 'We are migrating and reviewing the policy for the new store. This page does not collect any data.'],
     'returns' => ['/returns', 'ar', 'returns', 'سياسة الاسترجاع', 'ننقل شروط الاسترجاع بصياغة واضحة قبل تفعيل الدفع.'],
