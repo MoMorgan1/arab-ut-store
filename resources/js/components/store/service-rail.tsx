@@ -6,7 +6,7 @@ import type {
     ServiceRailTranslations,
 } from '@/types/store-content';
 
-const AUTO_SCROLL_PIXELS_PER_SECOND = 26;
+const AUTO_SCROLL_PIXELS_PER_SECOND = 50;
 
 export function ServiceRail({
     direction,

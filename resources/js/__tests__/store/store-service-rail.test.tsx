@@ -144,8 +144,8 @@ it('moves continuously and pauses while a service link has focus', () => {
             ),
     );
 
-    expect(distance).toBeGreaterThanOrEqual(2);
-    expect(distance).toBeLessThanOrEqual(3);
+    expect(distance).toBeGreaterThanOrEqual(4);
+    expect(distance).toBeLessThanOrEqual(5);
     expect(track).toHaveAttribute('dir', 'rtl');
 
     const callCount = vi.mocked(track!.scrollBy).mock.calls.length;
