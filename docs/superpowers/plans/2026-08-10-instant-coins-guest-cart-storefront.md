@@ -519,11 +519,11 @@ git commit -m "feat: claim guest carts after authentication"
 - Login/register use a two-panel desktop region: form card plus truthful account-benefits panel; mobile order is form then benefits.
 - Forgot/reset retain a single focused form card inside the same storefront shell.
 
-- [ ] **Step 1: Write auth-shell RED tests**
+- [x] **Step 1: Write auth-shell RED tests**
 
 Assert one banner/navigation/contentinfo, correct active account control, localized AR/EN actions/links, form-first DOM order, exact benefit copy, no Google/payment/checkout controls, Serif Display headings, Sans labels, 44px targets, safe intended selection only, and secret-free URL/props.
 
-- [ ] **Step 2: Run auth RED**
+- [x] **Step 2: Run auth RED**
 
 ```powershell
 npx vitest run resources/js/__tests__/auth/auth-storefront.test.tsx
@@ -532,22 +532,22 @@ php vendor/bin/pest tests/Feature/Auth/LocalizedAuthTest.php --compact
 
 Expected: FAIL because auth uses the standalone simple shell and lacks the value panel.
 
-- [ ] **Step 3: Compose the shared storefront shell**
+- [x] **Step 3: Compose the shared storefront shell**
 
 Use the same shell props already emitted by `HandleInertiaRequests`. Keep form state in each page, not the layout. The value panel uses only these implemented benefits:
 
 - Arabic: `سلتك تكمل معك بعد تسجيل الدخول`، `بيانات EA مشفّرة داخل السلة المؤقتة`، `غيّر اللغة والعملة من نفس المتجر`.
 - English: `Your cart continues after you sign in`, `EA credentials stay encrypted in the temporary cart`, `Change language and currency in the same store`.
 
-- [ ] **Step 4: Apply WordPress-faithful responsive styling**
+- [x] **Step 4: Apply WordPress-faithful responsive styling**
 
 Use existing warm/card/gold tokens; set auth H1 and benefit statement to `Thmanyah Serif Display` at weight 700 or 900, not synthetic 800. At desktop use two balanced panels; at <=768px stack form first. Preserve visible focus, password reveal, error association, and reduced motion.
 
-- [ ] **Step 5: Run auth GREEN and browser build**
+- [x] **Step 5: Run auth GREEN and browser build**
 
 Run Step 2 plus lint, Prettier, TypeScript, and Vite build.
 
-- [ ] **Step 6: Commit Task 6**
+- [x] **Step 6: Commit Task 6**
 
 ```powershell
 git add resources/js/layouts/auth resources/js/layouts/auth-layout.tsx resources/js/pages/auth resources/js/types/auth.ts lang/ar/auth_ui.php lang/en/auth_ui.php resources/css/app.css resources/js/__tests__/auth/auth-storefront.test.tsx tests/Feature/Auth/LocalizedAuthTest.php
