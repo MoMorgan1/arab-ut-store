@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Store\CartController;
+use App\Http\Controllers\Store\CatalogCartController;
 use App\Http\Controllers\Store\CatalogProductController;
 use App\Http\Controllers\Store\CategoryController;
 use App\Http\Controllers\Store\CategoryProductController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Store\CoinsQuoteController;
 use App\Http\Controllers\Store\HomeController;
 use App\Http\Controllers\Store\SimpleStorePageController;
 use App\Http\Middleware\NoStore;
+use App\Http\Middleware\RequireCatalogCartJson;
 use App\Http\Middleware\RequireCoinsCartJson;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
@@ -23,6 +25,9 @@ Route::get('/cart', CartController::class)->name('store.cart');
 Route::post('/cart/items/coins', CoinsCartController::class)
     ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])
     ->name('cart.items.coins.store');
+Route::post('/cart/items/catalog', CatalogCartController::class)
+    ->middleware([NoStore::class, RequireCatalogCartJson::class, 'throttle:coins-cart'])
+    ->name('cart.items.catalog.store');
 
 $simpleStorePages = [
     'privacy' => '/privacy',
@@ -72,6 +77,9 @@ Route::prefix('{locale}')
         Route::post('/cart/items/coins', CoinsCartController::class)
             ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.coins.store');
+        Route::post('/cart/items/catalog', CatalogCartController::class)
+            ->middleware([NoStore::class, RequireCatalogCartJson::class, 'throttle:coins-cart'])
+            ->name('localized.cart.items.catalog.store');
 
         Route::get('/login', [AuthenticatedSessionController::class, 'create'])
             ->middleware(['guest:'.config('fortify.guard')])

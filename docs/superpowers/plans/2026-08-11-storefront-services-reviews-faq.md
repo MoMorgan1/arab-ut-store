@@ -314,7 +314,7 @@ git commit -m "feat: expose bilingual service catalog routes"
 - Consumes: `{variantId: string}` JSON plus CSRF and `Idempotency-Key` from the current guest or authenticated owner.
 - Produces: `AddCatalogItemToCart::execute(CartOwner $owner, string $variantPublicId, string $idempotencyKey, string $locale): array{status:int,body:array<string,mixed>}` and a safe cart response/redirect target.
 
-- [ ] **Step 1: Write failing server behavior tests**
+- [x] **Step 1: Write failing server behavior tests**
 
 ```php
 it('adds one eligible authoritative catalog variant to the guest cart', function () {
@@ -339,13 +339,13 @@ it('adds one eligible authoritative catalog variant to the guest cart', function
 
 Add real database scenarios for sale-price precedence, guest isolation, authenticated owner, replay returning one line, mismatched replay 409, non-JSON/CSRF/no-store behavior, hidden/archived product, inactive/unknown/Coins variant, zero price, and a payload attempting to supply price/configuration being rejected by exact-key validation.
 
-- [ ] **Step 2: Run backend tests to verify RED**
+- [x] **Step 2: Run backend tests to verify RED**
 
 Run: `php artisan test tests/Feature/Store/CatalogCartTest.php --compact`
 
 Expected: FAIL because the catalog cart endpoint/action do not exist.
 
-- [ ] **Step 3: Implement exact request and authoritative action**
+- [x] **Step 3: Implement exact request and authoritative action**
 
 ```php
 $variant = ProductVariant::query()
@@ -364,15 +364,15 @@ $unitPrice = $variant->sale_price_halalah ?? $variant->price_halalah;
 
 Reject non-positive prices. Reuse `AcquireActiveCart`, the current idempotency table, three-attempt root transaction behavior, owner scope, `quoted_at`, and safe response conventions. Generate the request fingerprint from canonical owner plus variant public ID using the app key. Never accept a price, product name, service type, platform, market, or configuration from the browser.
 
-- [ ] **Step 4: Expand JSON/no-store exception handling without weakening Coins**
+- [x] **Step 4: Expand JSON/no-store exception handling without weakening Coins**
 
 Rename the middleware only if the resulting name describes both endpoints; otherwise add a focused catalog JSON middleware. Force JSON for both localized/default catalog POST routes and return generic 500/no-store envelopes without reflecting request bodies.
 
-- [ ] **Step 5: Write failing safe cart projection tests**
+- [x] **Step 5: Write failing safe cart projection tests**
 
 Assert that a catalog line renders its current localized product name, service type, platform, total, and `requiresCredentials=true`, while poisoned product/configuration values outside the allowlist are absent. Eager-load only `items.productVariant.product.media` and `items.secret`; do not expose source IDs or automation metadata.
 
-- [ ] **Step 6: Implement cart projection and TypeScript contract**
+- [x] **Step 6: Implement cart projection and TypeScript contract**
 
 Add a safe `product` object to every cart item:
 
@@ -386,7 +386,7 @@ product: {
 
 Use the locale-specific product name and a validated local public media path. Coins retains its existing label/icon. Non-Coins lines show the real product name and the localized details-required state; no secret form or checkout appears.
 
-- [ ] **Step 7: Write failing browser API helper tests**
+- [x] **Step 7: Write failing browser API helper tests**
 
 ```ts
 it('posts only the public variant id with CSRF and one idempotency key', async () => {
@@ -399,11 +399,11 @@ it('posts only the public variant id with CSRF and one idempotency key', async (
 
 Cover 201 parsing, 409, 422, 503/500 generic errors, invalid success JSON, transport retry-key reuse, and no local/session storage writes.
 
-- [ ] **Step 8: Implement the focused fetch helper**
+- [x] **Step 8: Implement the focused fetch helper**
 
 Use same-origin `fetch`, `Accept: application/json`, `Content-Type: application/json`, the current CSRF meta token, one in-memory ULID per user attempt, strict exact response parsing, and no credential/storage behavior. Page components own loading/error UI and redirect to the returned cart URL only after 201.
 
-- [ ] **Step 9: Run focused GREEN and regression gates**
+- [x] **Step 9: Run focused GREEN and regression gates**
 
 Run:
 
@@ -416,7 +416,7 @@ npm run types
 
 Expected: all pass with zero secret/price trust regressions.
 
-- [ ] **Step 10: Commit Task 3**
+- [x] **Step 10: Commit Task 3**
 
 ```bash
 git add app/Actions/Cart/AddCatalogItemToCart.php app/Http/Controllers/Store app/Http/Requests/Store/CatalogCartRequest.php app/Security/CatalogCartFingerprint.php app/Http/Middleware bootstrap/app.php routes/web.php resources/js/lib/catalog-cart-api.ts resources/js/pages/store/cart.tsx resources/js/types/store-shell.ts tests/Feature/Store resources/js/__tests__/store

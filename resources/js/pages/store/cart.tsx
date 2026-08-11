@@ -79,7 +79,7 @@ function CartLine({
     translations: StoreCartTranslations;
 }) {
     const configuration = cartItem.configuration;
-    const isCoins = configuration.service_type === 'coins';
+    const isCoins = cartItem.product.serviceType === 'coins';
     const platform =
         configuration.platform === 'pc'
             ? translations.platform_pc
@@ -104,24 +104,24 @@ function CartLine({
     return (
         <li className="store-cart-line">
             <div className="store-cart-line__title">
-                {isCoins ? (
+                {cartItem.product.imageUrl !== null ? (
                     <img
-                        alt=""
-                        aria-hidden="true"
+                        alt={isCoins ? '' : cartItem.product.name}
+                        aria-hidden={isCoins ? 'true' : undefined}
                         height="42"
-                        src="/images/store/coins/ut-coin-80.webp"
+                        src={cartItem.product.imageUrl}
                         width="42"
                     />
                 ) : null}
                 <div>
                     <span>{translations.service}</span>
-                    <h2>{isCoins ? translations.coins_service : '—'}</h2>
+                    <h2>{cartItem.product.name}</h2>
                 </div>
             </div>
             <dl className="store-cart-line__summary">
                 <CartFact label={translations.platform} value={platform} />
                 <CartFact label={translations.delivery} value={delivery} />
-                {isCoins ? (
+                {isCoins && configuration.coins_quantity !== undefined ? (
                     <CartFact label={translations.quantity} value={quantity} />
                 ) : null}
                 <CartFact

@@ -77,8 +77,6 @@ const translations = {
     simple_pages: {
         eyebrow: '',
         back_home: '',
-        sbc: { title: '', body: '' },
-        fut_champions: { title: '', body: '' },
         privacy: { title: '', body: '' },
         returns: { title: '', body: '' },
         warranty: { title: '', body: '' },

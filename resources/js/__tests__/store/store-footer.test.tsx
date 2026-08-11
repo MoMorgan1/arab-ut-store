@@ -93,8 +93,6 @@ const translations = {
     simple_pages: {
         eyebrow: 'Arab UT',
         back_home: 'Back to home',
-        sbc: { title: 'SBC', body: '' },
-        fut_champions: { title: 'FUT Champions', body: '' },
         privacy: { title: 'Privacy', body: '' },
         returns: { title: 'Returns', body: '' },
         warranty: { title: 'Warranty', body: '' },

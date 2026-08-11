@@ -11,10 +11,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CartItemSecret;
+use App\Models\Product;
+use App\Models\ProductMedia;
+use App\Models\ProductVariant;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -24,7 +28,7 @@ final class CartController extends Controller
     {
         $activeCart = Cart::query()
             ->activeForOwner($resolveCartOwner->forRequest($request))
-            ->with(['items.secret'])
+            ->with(['items.secret', 'items.productVariant.product.media'])
             ->first();
         $safeCartItems = $activeCart?->items
             ->map(fn (CartItem $cartItem): array => $this->safeCartItem($cartItem))
@@ -60,9 +64,60 @@ final class CartController extends Controller
             'unitPriceHalalah' => $cartItem->unit_price_halalah,
             'totalHalalah' => $cartItem->total_halalah,
             'configuration' => $this->safeConfiguration($cartItem->configuration),
+            'product' => $this->safeProduct($cartItem->productVariant),
             'credentials' => $credentials,
             'requiresCredentials' => $credentials === null,
         ];
+    }
+
+    /** @return array{imageUrl: string|null, name: string, serviceType: string} */
+    private function safeProduct(ProductVariant $variant): array
+    {
+        $product = $variant->product;
+
+        if (! $product instanceof Product) {
+            return ['imageUrl' => null, 'name' => '', 'serviceType' => $variant->service_type->value];
+        }
+
+        $service = $product->service_type;
+
+        if ($service === ServiceType::Coins) {
+            return [
+                'imageUrl' => '/images/store/coins/ut-coin-80.webp',
+                'name' => trans('store.cart_page.coins_service'),
+                'serviceType' => $service->value,
+            ];
+        }
+
+        $locale = app()->getLocale();
+        $name = trim((string) $product->getAttribute("name_{$locale}"));
+
+        if ($name === '') {
+            $fallback = $locale === 'ar' ? 'en' : 'ar';
+            $name = trim((string) $product->getAttribute("name_{$fallback}"));
+        }
+
+        return [
+            'imageUrl' => $this->safeImageUrl($product->media->first()),
+            'name' => $name,
+            'serviceType' => $service->value,
+        ];
+    }
+
+    private function safeImageUrl(?ProductMedia $media): ?string
+    {
+        if (! $media instanceof ProductMedia || $media->disk !== 'public') {
+            return null;
+        }
+
+        $path = (string) $media->path;
+
+        if ($path === '' || str_contains($path, '..')
+            || preg_match('/\A[A-Za-z0-9_\/.\-]+\z/D', $path) !== 1) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($path);
     }
 
     /** @return array{hasPassword: true, backupCodeCount: 5, retainedUntil: string}|null */

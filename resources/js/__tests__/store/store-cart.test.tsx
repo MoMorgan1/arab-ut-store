@@ -27,6 +27,12 @@ const mockPage = vi.hoisted(() => ({
                         retainedUntil: '2026-08-11T12:00:00+00:00',
                     },
                     id: '01K00000000000000000000000',
+                    product: {
+                        imageUrl: '/images/store/coins/ut-coin-80.webp' as
+                            string | null,
+                        name: 'FC 27 Coins',
+                        serviceType: 'coins',
+                    },
                     quantity: 1,
                     requiresCredentials: false,
                     totalHalalah: 12_500,
@@ -139,6 +145,11 @@ vi.mock('@inertiajs/react', () => ({
 afterEach(cleanup);
 beforeEach(() => {
     mockPage.props.cart.items[0].configuration = validConfiguration;
+    mockPage.props.cart.items[0].product = {
+        imageUrl: '/images/store/coins/ut-coin-80.webp',
+        name: 'FC 27 Coins',
+        serviceType: 'coins',
+    };
     mockPage.props.direction = 'ltr';
     mockPage.props.locale = 'en';
 });
@@ -175,15 +186,10 @@ it('does not invent cart facts when a safe projected field is absent', () => {
     expect(screen.queryByText('PS / Xbox')).not.toBeInTheDocument();
     expect(screen.queryByText('Not required for PC')).not.toBeInTheDocument();
     expect(screen.queryByText('0 Coins')).not.toBeInTheDocument();
-    expect(screen.queryByText('FC 27 Coins')).not.toBeInTheDocument();
+    expect(screen.getByText('FC 27 Coins')).toBeVisible();
     expect(screen.queryByText('Coins quantity')).not.toBeInTheDocument();
     expect(screen.queryByText('500,000 Coins')).not.toBeInTheDocument();
-    expect(
-        document.querySelector(
-            '.store-cart-line__title img[src="/images/store/coins/ut-coin-80.webp"]',
-        ),
-    ).not.toBeInTheDocument();
-    expect(screen.getAllByText('—')).toHaveLength(3);
+    expect(screen.getAllByText('—')).toHaveLength(2);
 });
 
 it('does not invent a Coins presentation for another safe service type', () => {
@@ -191,10 +197,16 @@ it('does not invent a Coins presentation for another safe service type', () => {
         ...validConfiguration,
         service_type: 'sbc',
     } as StoreCartConfiguration;
+    mockPage.props.cart.items[0].product = {
+        imageUrl: null,
+        name: 'Safe SBC service',
+        serviceType: 'sbc',
+    };
 
     render(<StoreCart />);
 
     expect(screen.queryByText('FC 27 Coins')).not.toBeInTheDocument();
+    expect(screen.getByText('Safe SBC service')).toBeVisible();
     expect(screen.queryByText('Coins quantity')).not.toBeInTheDocument();
     expect(screen.queryByText('500,000 Coins')).not.toBeInTheDocument();
     expect(

@@ -1,11 +1,7 @@
 export type StoreLocale = 'ar' | 'en';
 
 export type SimpleStorePageKey =
-    | 'privacy'
-    | 'returns'
-    | 'warranty'
-    | 'ea_backup_codes'
-    | 'terms';
+    'privacy' | 'returns' | 'warranty' | 'ea_backup_codes' | 'terms';
 
 export type StoreShellConfig = {
     homeUrl: string;
@@ -101,6 +97,12 @@ export type StoreCartItem = {
         retainedUntil: string;
     } | null;
     id: string;
+    product: {
+        imageUrl: string | null;
+        name: string;
+        serviceType:
+            'coins' | 'sbc' | 'objectives' | 'rivals' | 'fut_champions';
+    };
     quantity: number;
     requiresCredentials: boolean;
     totalHalalah: number;

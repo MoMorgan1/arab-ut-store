@@ -8,6 +8,9 @@ return [
         'idempotency_conflict' => 'This request key was already used for different cart details.',
         'json_required' => 'Coins cart additions require a JSON request.',
         'internal_error' => 'Unable to add Coins to the cart.',
+        'catalog_json_required' => 'Catalog additions require a JSON request.',
+        'catalog_item_unavailable' => 'This option is unavailable. Refresh the page and choose another option.',
+        'catalog_internal_error' => 'Unable to add this item to the cart.',
     ],
     'cart_page' => [
         'title' => 'Your cart',

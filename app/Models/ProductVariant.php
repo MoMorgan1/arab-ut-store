@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property array<string, mixed>|null $configuration
  * @property int $price_halalah
  * @property int|null $sale_price_halalah
+ * @property ServiceType $service_type
  */
 class ProductVariant extends DomainModel
 {

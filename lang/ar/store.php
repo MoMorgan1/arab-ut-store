@@ -8,6 +8,9 @@ return [
         'idempotency_conflict' => 'استُخدم مفتاح الطلب هذا سابقًا مع بيانات سلة مختلفة.',
         'json_required' => 'تتطلب إضافة الكوينز إلى السلة طلب JSON.',
         'internal_error' => 'تعذرت إضافة الكوينز إلى السلة.',
+        'catalog_json_required' => 'تتطلب إضافة المنتج إلى السلة طلب JSON.',
+        'catalog_item_unavailable' => 'هذا الخيار غير متاح. حدّث الصفحة واختر خيارًا آخر.',
+        'catalog_internal_error' => 'تعذرت إضافة هذا المنتج إلى السلة.',
     ],
     'cart_page' => [
         'title' => 'سلتك',
