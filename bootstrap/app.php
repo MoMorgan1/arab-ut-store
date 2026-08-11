@@ -5,7 +5,6 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequireCoinsCartJson;
 use App\Http\Middleware\SetDisplayCurrency;
 use App\Http\Middleware\SetLocale;
-use App\Http\Middleware\ValidateCoinsCartResume;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -27,7 +26,6 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request): bool => $request->is('cart/items/coins')
                 || $request->is('*/cart/items/coins'),
         ]);
-        $middleware->prependToPriorityList(AuthenticatesRequests::class, ValidateCoinsCartResume::class);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, RequireCoinsCartJson::class);
         $middleware->redirectGuestsTo(fn (Request $request): string => $request->route('locale') === 'en'
             ? route('localized.login', ['locale' => 'en'], absolute: false)

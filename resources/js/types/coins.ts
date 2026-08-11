@@ -22,7 +22,6 @@ export type CoinsResumeSelection = {
 export type CoinsCartConfig = {
     addUrl: string;
     initialSelection: CoinsResumeSelection | null;
-    resumeUrl: string;
 };
 
 export type CoinsDeliveryOption = {

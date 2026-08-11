@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Store;
 
 use App\Actions\Cart\AddCoinsToCart;
+use App\Actions\Cart\ResolveCartOwner;
 use App\Exceptions\IdempotencyConflict;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Store\CoinsCartRequest;
@@ -12,11 +13,14 @@ use ValueError;
 
 final class CoinsCartController extends Controller
 {
-    public function __invoke(CoinsCartRequest $request, AddCoinsToCart $addCoins): JsonResponse
-    {
+    public function __invoke(
+        CoinsCartRequest $request,
+        AddCoinsToCart $addCoins,
+        ResolveCartOwner $resolveCartOwner,
+    ): JsonResponse {
         try {
             $cartAddition = $addCoins->execute(
-                $request->user(),
+                $resolveCartOwner->forRequest($request),
                 $request->validated(),
                 $request->idempotencyKey(),
                 (string) app()->getLocale(),

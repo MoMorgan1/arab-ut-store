@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Store;
 
+use App\Actions\Cart\ResolveCartOwner;
 use App\Enums\DeliveryMode;
 use App\Enums\Market;
 use App\Enums\Platform;
@@ -19,10 +20,10 @@ use Inertia\Response;
 
 final class CartController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, ResolveCartOwner $resolveCartOwner): Response
     {
-        $activeCart = $request->user() === null ? null : Cart::query()
-            ->activeForUser((int) $request->user()->id)
+        $activeCart = Cart::query()
+            ->activeForOwner($resolveCartOwner->forRequest($request))
             ->with(['items.secret'])
             ->first();
         $safeCartItems = $activeCart?->items

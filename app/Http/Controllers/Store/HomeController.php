@@ -41,7 +41,6 @@ class HomeController extends Controller
                 : route('coins.quote', absolute: false),
             'coinsCart' => [
                 'addUrl' => $this->storeRoute($request, 'cart.items.coins.store'),
-                'resumeUrl' => $this->storeRoute($request, 'cart.items.coins.resume'),
                 'initialSelection' => $this->initialSelection($request, $selectionRules),
             ],
             'amount' => [

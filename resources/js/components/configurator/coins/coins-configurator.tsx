@@ -33,7 +33,6 @@ import { SummaryStep } from './summary-step';
 
 type CoinsConfiguratorProps = {
     amount: CoinsAmountRules;
-    authenticated: boolean;
     cart: CoinsCartConfig;
     locale: 'ar' | 'en';
     platforms: CoinsPlatformOption[];
@@ -43,7 +42,6 @@ type CoinsConfiguratorProps = {
 
 export function CoinsConfigurator({
     amount,
-    authenticated,
     cart,
     locale,
     platforms,
@@ -319,22 +317,6 @@ export function CoinsConfigurator({
         );
     }
 
-    function resumeUrl(): string | null {
-        if (authenticated || selectedPlatform === null) {
-            return null;
-        }
-
-        const url = new URL(cart.resumeUrl, window.location.origin);
-        url.searchParams.set('platform', selectedPlatform.value);
-        url.searchParams.set('quantity', String(state.lastValidQuantity));
-
-        if (requestDelivery !== null) {
-            url.searchParams.set('delivery', requestDelivery);
-        }
-
-        return `${url.pathname}${url.search}`;
-    }
-
     function updateCredentials(nextCredentials: CoinsCredentials) {
         credentialsRef.current = nextCredentials;
         setCredentials(nextCredentials);
@@ -482,7 +464,6 @@ export function CoinsConfigurator({
             {state.step === 'amount' && selectedPlatform !== null ? (
                 <AmountStep
                     amount={amount}
-                    continueHref={resumeUrl()}
                     delivery={requestDelivery}
                     focusRef={amountHeading}
                     isValid={quantityIsValid}

@@ -12,7 +12,6 @@ use App\Models\CartItem;
 use App\Models\CartItemSecret;
 use App\Models\IdempotencyKey;
 use App\Models\ProductVariant;
-use App\Models\User;
 use App\Security\CoinsCartFingerprint;
 use App\ValueObjects\Cart\CartOwner;
 use App\ValueObjects\Pricing\CoinsQuote;
@@ -33,10 +32,10 @@ final readonly class AddCoinsToCart
      * @param  array<string, mixed>  $validated
      * @return array{status: int, body: array<string, mixed>}
      */
-    public function execute(User $user, array $validated, string $idempotencyKey, string $locale): array
+    public function execute(CartOwner $owner, array $validated, string $idempotencyKey, string $locale): array
     {
         return DB::transaction(fn (): array => $this->store(
-            $user,
+            $owner,
             $validated,
             $idempotencyKey,
             $locale,
@@ -47,9 +46,8 @@ final readonly class AddCoinsToCart
      * @param  array<string, mixed>  $validated
      * @return array{status: int, body: array<string, mixed>}
      */
-    private function store(User $user, array $validated, string $idempotencyKey, string $locale): array
+    private function store(CartOwner $owner, array $validated, string $idempotencyKey, string $locale): array
     {
-        $owner = CartOwner::user((int) $user->id);
         $idempotencyScope = self::SCOPE.':'.$owner->idempotencyScope();
         $requestHash = CoinsCartFingerprint::generate(
             $owner->databaseKey(),

@@ -69,7 +69,6 @@ test('the Arabic and English homepages expose the exact localized Coins contract
     string $path,
     string $quoteUrl,
     string $addUrl,
-    string $resumeUrl,
 ) {
     createHomeCatalog();
 
@@ -92,7 +91,7 @@ test('the Arabic and English homepages expose the exact localized Coins contract
             ->where('quoteSchedules.pc.delivery', null)
             ->has('quoteSchedules.pc.totalsHalalah', 196)
             ->where('coinsCart.addUrl', $addUrl)
-            ->where('coinsCart.resumeUrl', $resumeUrl)
+            ->missing('coinsCart.resumeUrl')
             ->where('coinsCart.initialSelection', null)
             ->where('amount', [
                 'minimum' => 50_000,
@@ -120,8 +119,8 @@ test('the Arabic and English homepages expose the exact localized Coins contract
             ->missing('platforms.0.market')
             ->missing('platforms.1.market'));
 })->with([
-    'Arabic' => ['/', '/coins/quote', '/cart/items/coins', '/cart/items/coins/resume'],
-    'English' => ['/en', '/en/coins/quote', '/en/cart/items/coins', '/en/cart/items/coins/resume'],
+    'Arabic' => ['/', '/coins/quote', '/cart/items/coins'],
+    'English' => ['/en', '/en/coins/quote', '/en/cart/items/coins'],
 ]);
 
 test('an authenticated homepage rehydrates only a validated safe resume selection', function () {

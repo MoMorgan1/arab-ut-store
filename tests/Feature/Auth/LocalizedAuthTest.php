@@ -42,19 +42,6 @@ test('auth screens expose localized copy direction and route contracts', functio
     'English reset password' => ['/en/reset-password/test-token?email=player@example.test', 'auth/reset-password', 'reset_password', 'en', 'ltr', 'Set a new password'],
 ]);
 
-test('English login returns to the safe localized Coins resume destination', function () {
-    $user = User::factory()->create();
-    $resumeUrl = '/en/cart/items/coins/resume?platform=pc&quantity=50000';
-
-    $this->get($resumeUrl)->assertRedirect('/en/login');
-    $this->post('/en/login', [
-        'email' => $user->email,
-        'password' => 'password',
-    ])->assertRedirect($resumeUrl);
-
-    $this->assertAuthenticatedAs($user);
-});
-
 test('English registration records the originating locale', function () {
     $this->post('/en/register', [
         'first_name' => 'English',

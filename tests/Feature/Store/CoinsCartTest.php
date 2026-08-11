@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Cart\ResolveCartOwner;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Models\Cart;
@@ -96,10 +97,77 @@ function addCoinsToCart(string $uri, array $payload, string $key)
     return test()->postJson($uri, $payload, ['Idempotency-Key' => $key]);
 }
 
-test('guest Coins additions are unauthorized and never cached', function () {
-    $response = addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'guest-key');
+test('a guest securely adds and replays one Coins line in the same session', function () {
+    createCartCatalog();
+    $rawOwnerToken = str_repeat('a', 64);
+    $this->withSession([ResolveCartOwner::SESSION_KEY => $rawOwnerToken]);
 
-    $response->assertUnauthorized();
+    $created = addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'guest-key');
+    $replayed = addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'guest-key');
+
+    $created->assertCreated()
+        ->assertJsonPath('data.cartCount', 1)
+        ->assertJsonPath('data.cartUrl', '/cart');
+    $replayed->assertCreated()->assertExactJson($created->json());
+    $guestHmac = hash_hmac('sha256', $rawOwnerToken, (string) config('app.key'));
+    $cart = Cart::sole();
+    expect($created->headers->get('Cache-Control'))->toContain('no-store')
+        ->and($cart->user_id)->toBeNull()
+        ->and($cart->session_key)->toBe($guestHmac)
+        ->and($cart->active_owner_key)->toBe("guest:{$guestHmac}")
+        ->and($cart->items()->count())->toBe(1)
+        ->and(CartItemSecret::count())->toBe(1)
+        ->and(IdempotencyKey::count())->toBe(1)
+        ->and(json_encode(DB::table('carts')->first(), JSON_THROW_ON_ERROR))->not->toContain($rawOwnerToken)
+        ->and(json_encode(session()->all(), JSON_THROW_ON_ERROR))->not->toContain('Opaque Cart Password Sentinel')
+        ->not->toContain('cart-sentinel@example.test')
+        ->not->toContain('81000001')
+        ->and($created->getContent())->not->toContain('Opaque Cart Password Sentinel')
+        ->not->toContain('cart-sentinel@example.test')
+        ->not->toContain('81000001');
+});
+
+test('guest idempotency and cart reads are isolated between sessions', function () {
+    createCartCatalog();
+    $firstToken = str_repeat('b', 64);
+    $secondToken = str_repeat('c', 64);
+    $this->withSession([ResolveCartOwner::SESSION_KEY => $firstToken]);
+
+    addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'shared-guest-key')->assertCreated();
+    $this->get('/cart')->assertInertia(fn (Assert $page) => $page
+        ->where('cartCount', 1)
+        ->where('cart.count', 1)
+        ->where('cart.items.0.configuration.coins_quantity', 100_000));
+    $this->get('/')->assertInertia(fn (Assert $page) => $page->where('cartCount', 1));
+
+    $this->flushSession();
+    $this->withSession([ResolveCartOwner::SESSION_KEY => $secondToken]);
+    addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'shared-guest-key')
+        ->assertStatus(409)
+        ->assertJsonPath('error.code', 'idempotency_conflict');
+    addCoinsToCart(
+        '/cart/items/coins',
+        coinsCartPayload(['quantity' => 110_000]),
+        'second-guest-key',
+    )->assertCreated()->assertJsonPath('data.cartCount', 1);
+
+    $this->get('/cart')->assertInertia(fn (Assert $page) => $page
+        ->where('cartCount', 1)
+        ->where('cart.count', 1)
+        ->where('cart.items.0.configuration.coins_quantity', 110_000));
+    expect(Cart::count())->toBe(2)
+        ->and(CartItem::count())->toBe(2)
+        ->and(Cart::query()->where('session_key', hash_hmac('sha256', $firstToken, (string) config('app.key')))->count())->toBe(1)
+        ->and(Cart::query()->where('session_key', hash_hmac('sha256', $secondToken, (string) config('app.key')))->count())->toBe(1);
+});
+
+test('guest Coins additions still require a valid CSRF token', function () {
+    createCartCatalog();
+    $this->app['env'] = 'local';
+
+    $response = addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'guest-csrf-key');
+
+    $response->assertStatus(419);
     expect($response->headers->get('Cache-Control'))->toContain('no-store')
         ->and($response->getContent())->not->toContain('Opaque Cart Password Sentinel')
         ->and($response->getContent())->not->toContain('81000001')
@@ -195,9 +263,8 @@ test('supported Coins modes create distinct safe lines with encrypted credential
     'PC' => [['platform' => 'pc', 'delivery' => null], 500],
 ]);
 
-test('credential validation requires five distinct eight digit ASCII codes without echoing them', function (array $credentialChanges) {
+test('guest credential validation requires five distinct eight digit ASCII codes without echoing them', function (array $credentialChanges) {
     createCartCatalog();
-    $this->actingAs(User::factory()->create());
     $payload = coinsCartPayload(['credentials' => $credentialChanges]);
 
     $response = addCoinsToCart('/cart/items/coins', $payload, 'validation-key');
@@ -216,9 +283,8 @@ test('credential validation requires five distinct eight digit ASCII codes witho
     'short code' => [['backup_codes' => ['8100001', '81000002', '81000003', '81000004', '81000005']]],
 ]);
 
-test('unknown and client-authoritative fields are rejected', function (array $changes) {
+test('unknown and client-authoritative fields are rejected for guests', function (array $changes) {
     createCartCatalog();
-    $this->actingAs(User::factory()->create());
 
     addCoinsToCart('/cart/items/coins', coinsCartPayload($changes), 'authority-key')
         ->assertUnprocessable();
@@ -258,9 +324,8 @@ test('a whitespace-only EA password remains valid opaque input', function () {
     expect(CartItemSecret::sole()->encrypted_payload['ea_password'])->toBe('   ');
 });
 
-test('a valid idempotency header is mandatory and validation remains non-cacheable', function () {
+test('a valid idempotency header is mandatory for guests and validation remains non-cacheable', function () {
     createCartCatalog();
-    $this->actingAs(User::factory()->create());
 
     $response = $this->postJson('/cart/items/coins', coinsCartPayload());
 
@@ -382,10 +447,15 @@ test('unexpected debug failures return generic JSON without credential leakage',
     'localized endpoint' => '/en/cart/items/coins',
 ]);
 
-test('Coins additions are throttled per authenticated user', function () {
+test('Coins additions are throttled per cart owner', function (bool $authenticated) {
     config()->set('coins.cart.rate_limit_per_minute', 1);
     createCartCatalog();
-    $this->actingAs(User::factory()->create());
+
+    if ($authenticated) {
+        $this->actingAs(User::factory()->create());
+    } else {
+        $this->withSession([ResolveCartOwner::SESSION_KEY => str_repeat('d', 64)]);
+    }
 
     addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'rate-key-1')->assertCreated();
     $limited = addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'rate-key-2');
@@ -393,6 +463,23 @@ test('Coins additions are throttled per authenticated user', function () {
     $limited->assertTooManyRequests();
     expect($limited->headers->get('Cache-Control'))->toContain('no-store')
         ->and(CartItem::count())->toBe(1);
+})->with([
+    'guest owner' => false,
+    'authenticated owner' => true,
+]);
+
+test('one guest session cannot consume another guest session rate limit', function () {
+    config()->set('coins.cart.rate_limit_per_minute', 1);
+    createCartCatalog();
+    $this->withSession([ResolveCartOwner::SESSION_KEY => str_repeat('e', 64)]);
+    addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'first-rate-owner')->assertCreated();
+
+    $this->flushSession();
+    $this->withSession([ResolveCartOwner::SESSION_KEY => str_repeat('f', 64)]);
+
+    addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'second-rate-owner')->assertCreated();
+    expect(Cart::count())->toBe(2)
+        ->and(CartItem::count())->toBe(2);
 });
 
 test('cart reads expose safe lines and credential reentry state only', function () {
@@ -572,55 +659,20 @@ test('cart reads preserve valid nullable summaries on both storefront locales', 
     'English cart' => '/en/cart',
 ]);
 
-test('resume stores only validated safe selection as the intended login destination', function () {
-    $safeUrl = '/cart/items/coins/resume?platform=playstation&delivery=fast&quantity=100000';
-
-    $this->get($safeUrl)
-        ->assertRedirect('/login');
-    $intended = (string) session('url.intended');
-    parse_str((string) parse_url($intended, PHP_URL_QUERY), $intendedQuery);
-    expect(parse_url($intended, PHP_URL_PATH))->toBe('/cart/items/coins/resume')
-        ->and($intendedQuery)->toBe([
-            'delivery' => 'fast',
-            'platform' => 'playstation',
-            'quantity' => '100000',
-        ])
-        ->and(session()->all())->not->toContain('credentials');
-
-    $this->flushSession();
-    $this->get('/cart/items/coins/resume?platform=pc&quantity=50000&ea_password=unsafe-sentinel')
-        ->assertUnprocessable();
-    expect(session()->all())->not->toContain('unsafe-sentinel');
-});
-
-test('guest resume redirects to authentication in the originating storefront locale', function (
-    string $resumeUrl,
-    string $loginUrl,
-) {
-    $this->get($resumeUrl)->assertRedirect($loginUrl);
-
-    $intended = (string) session('url.intended');
-    parse_str((string) parse_url($intended, PHP_URL_QUERY), $intendedQuery);
-
-    expect(parse_url($intended, PHP_URL_PATH))->toBe(parse_url($resumeUrl, PHP_URL_PATH))
-        ->and($intendedQuery)->toBe([
-            'platform' => 'pc',
-            'quantity' => '50000',
-        ])
-        ->and($intended)->not->toContain('password')
-        ->not->toContain('backup_codes');
+test('the obsolete authenticated resume boundary is not routable', function (string $uri) {
+    $this->get($uri)->assertNotFound();
 })->with([
-    'Arabic' => ['/cart/items/coins/resume?platform=pc&quantity=50000', '/login'],
-    'English' => ['/en/cart/items/coins/resume?platform=pc&quantity=50000', '/en/login'],
+    'Arabic' => '/cart/items/coins/resume?platform=pc&quantity=50000',
+    'English' => '/en/cart/items/coins/resume?platform=pc&quantity=50000',
 ]);
 
-test('localized writes and resume returns preserve the English storefront', function () {
+test('localized guest writes preserve the English storefront', function () {
     createCartCatalog();
-    $this->actingAs(User::factory()->create());
 
     addCoinsToCart('/en/cart/items/coins', coinsCartPayload(), 'localized-key')
         ->assertCreated()
         ->assertJsonPath('data.cartUrl', '/en/cart');
-    $this->get('/en/cart/items/coins/resume?platform=pc&quantity=50000')
-        ->assertRedirect('/en/?platform=pc&quantity=50000&step=credentials');
+    $this->get('/en/cart')->assertInertia(fn (Assert $page) => $page
+        ->where('cartCount', 1)
+        ->where('cart.count', 1));
 });

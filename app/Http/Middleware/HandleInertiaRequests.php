@@ -2,12 +2,15 @@
 
 namespace App\Http\Middleware;
 
+use App\Actions\Cart\ResolveCartOwner;
 use App\Models\Cart;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
+    public function __construct(private readonly ResolveCartOwner $resolveCartOwner) {}
+
     /**
      * The root template that's loaded on the first page visit.
      *
@@ -89,12 +92,8 @@ class HandleInertiaRequests extends Middleware
 
     private function cartCount(Request $request): int
     {
-        if ($request->user() === null) {
-            return 0;
-        }
-
         $activeCart = Cart::query()
-            ->activeForUser((int) $request->user()->id)
+            ->activeForOwner($this->resolveCartOwner->forRequest($request))
             ->withCount('items')
             ->first();
 

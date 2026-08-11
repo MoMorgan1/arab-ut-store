@@ -2,13 +2,11 @@
 
 use App\Http\Controllers\Store\CartController;
 use App\Http\Controllers\Store\CoinsCartController;
-use App\Http\Controllers\Store\CoinsCartResumeController;
 use App\Http\Controllers\Store\CoinsQuoteController;
 use App\Http\Controllers\Store\HomeController;
 use App\Http\Controllers\Store\SimpleStorePageController;
 use App\Http\Middleware\NoStore;
 use App\Http\Middleware\RequireCoinsCartJson;
-use App\Http\Middleware\ValidateCoinsCartResume;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
@@ -20,11 +18,8 @@ Route::get('/', HomeController::class)->name('home');
 Route::get('/coins/quote', CoinsQuoteController::class)->name('coins.quote');
 Route::get('/cart', CartController::class)->name('store.cart');
 Route::post('/cart/items/coins', CoinsCartController::class)
-    ->middleware([NoStore::class, RequireCoinsCartJson::class, 'auth', 'throttle:coins-cart'])
+    ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])
     ->name('cart.items.coins.store');
-Route::get('/cart/items/coins/resume', CoinsCartResumeController::class)
-    ->middleware([NoStore::class, ValidateCoinsCartResume::class, 'auth'])
-    ->name('cart.items.coins.resume');
 
 $simpleStorePages = [
     'sbc' => '/sbc',
@@ -54,11 +49,8 @@ Route::prefix('{locale}')
         Route::get('/coins/quote', CoinsQuoteController::class)->name('localized.coins.quote');
         Route::get('/cart', CartController::class)->name('localized.store.cart');
         Route::post('/cart/items/coins', CoinsCartController::class)
-            ->middleware([NoStore::class, RequireCoinsCartJson::class, 'auth', 'throttle:coins-cart'])
+            ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.coins.store');
-        Route::get('/cart/items/coins/resume', CoinsCartResumeController::class)
-            ->middleware([NoStore::class, ValidateCoinsCartResume::class, 'auth'])
-            ->name('localized.cart.items.coins.resume');
 
         Route::get('/login', [AuthenticatedSessionController::class, 'create'])
             ->middleware(['guest:'.config('fortify.guard')])

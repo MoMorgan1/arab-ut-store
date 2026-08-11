@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Actions\Cart\ResolveCartOwner;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -55,8 +56,10 @@ class AppServiceProvider extends ServiceProvider
     private function configureRateLimiting(): void
     {
         RateLimiter::for('coins-cart', function (Request $request): Limit {
+            $owner = app(ResolveCartOwner::class)->forRequest($request);
+
             return Limit::perMinute((int) config('coins.cart.rate_limit_per_minute'))
-                ->by((string) $request->user()?->getAuthIdentifier());
+                ->by('coins-cart:'.$owner->idempotencyScope());
         });
     }
 }

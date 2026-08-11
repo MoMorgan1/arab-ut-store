@@ -254,7 +254,6 @@ function availableProps() {
         coinsCart: {
             addUrl: '/en/cart/items/coins',
             initialSelection: null,
-            resumeUrl: '/en/cart/items/coins/resume',
         },
         checkoutCurrency: 'SAR',
         direction: 'ltr',

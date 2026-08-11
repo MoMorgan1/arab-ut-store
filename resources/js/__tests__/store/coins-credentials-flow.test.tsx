@@ -218,7 +218,6 @@ function pageProps(authenticated = true) {
         coinsCart: {
             addUrl: '/en/cart/items/coins',
             initialSelection: null,
-            resumeUrl: '/en/cart/items/coins/resume',
         },
         direction: 'ltr',
         displayCurrencies: ['SAR'],
@@ -375,21 +374,18 @@ describe('Coins credentials flow', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('gates guests at the validated resume URL with safe choices only', async () => {
+    it('lets guests continue directly to EA details without a login gate', async () => {
         mockPage.props = pageProps(false);
         render(<StoreHome />);
 
         await reachAmount();
 
-        const loginLink = screen.getByRole('link', { name: 'Continue' });
-        expect(loginLink).toHaveAttribute(
-            'href',
-            '/en/cart/items/coins/resume?platform=pc&quantity=50000',
-        );
-        expect(loginLink.getAttribute('href')).not.toMatch(
-            /email|password|backup|credentials/i,
-        );
-        expect(screen.queryByLabelText('EA password')).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Continue' })).toBeNull();
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        expect(
+            screen.getByRole('heading', { name: 'EA account details' }),
+        ).toBeVisible();
+        expect(screen.getByLabelText('EA password')).toBeVisible();
     });
 
     it('shows four PC progress decisions and five accessible backup-code inputs', async () => {
@@ -451,6 +447,7 @@ describe('Coins credentials flow', () => {
     });
 
     it('prevents double-submit, reuses the key for transport retry, then clears and redirects on 201', async () => {
+        mockPage.props = pageProps(false);
         const requests: Array<{
             key: string | null;
             method: string | undefined;

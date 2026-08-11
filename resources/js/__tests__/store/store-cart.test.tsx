@@ -6,7 +6,7 @@ import type { StoreCartConfiguration } from '@/types/store-shell';
 
 const mockPage = vi.hoisted(() => ({
     props: {
-        auth: { user: { id: 7, name: 'Player' } },
+        auth: { user: null },
         cart: {
             count: 1,
             currency: 'SAR',
@@ -159,6 +159,7 @@ it('renders only the authoritative read-only Coins cart summary', () => {
     expect(
         screen.queryByRole('button', { name: /checkout|pay|remove/i }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /checkout|pay/i })).toBeNull();
     expect(document.body.textContent).not.toMatch(
         /10000001|opaque EA password/,
     );

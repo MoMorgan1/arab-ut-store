@@ -2,6 +2,7 @@
 
 use App\Actions\Cart\AddCoinsToCart;
 use App\Models\User;
+use App\ValueObjects\Cart\CartOwner;
 use Illuminate\Contracts\Console\Kernel;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
@@ -10,7 +11,7 @@ $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 $user = User::findOrFail((int) $argv[1]);
 try {
-    $result = $app->make(AddCoinsToCart::class)->execute($user, [
+    $result = $app->make(AddCoinsToCart::class)->execute(CartOwner::user((int) $user->id), [
         'platform' => 'playstation',
         'delivery' => 'normal',
         'quantity' => 100_000,
