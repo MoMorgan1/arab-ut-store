@@ -21,6 +21,9 @@ return [
         'cart' => 'Cart',
         'account' => 'My account',
     ],
+    'preferences' => [
+        'exchange_rate_attribution' => 'Rates By Exchange Rate API',
+    ],
     'footer' => [
         'description' => 'Arab UT specializes in FC 27 services, delivering Coins safely with a full guarantee and competitive prices.',
         'important_links' => 'Important links',
@@ -34,7 +37,6 @@ return [
         'payment_methods' => 'Payment methods at launch',
         'copyright' => 'Copyright © :year Arab UT. All rights reserved.',
         'ea_disclaimer' => 'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
-        'exchange_rate_attribution' => 'Rates By Exchange Rate API',
     ],
     'simple_pages' => [
         'eyebrow' => 'Arab UT',

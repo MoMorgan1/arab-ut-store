@@ -45,6 +45,32 @@ function activeState(
     return /\/fut-champions$/.test(pathname) ? 'page' : undefined;
 }
 
+function pathOf(url: string): string {
+    const pathname = new URL(url, 'https://arab-ut.local').pathname;
+
+    return pathname.replace(/\/+$/, '') || '/';
+}
+
+function isAccountCurrent(currentUrl: string, accountUrl: string): boolean {
+    const currentPath = pathOf(currentUrl);
+    const accountPath = pathOf(accountUrl);
+
+    if (!accountPath.endsWith('/login')) {
+        return currentPath === accountPath;
+    }
+
+    const localeBase = accountPath.slice(0, -'/login'.length);
+
+    return (
+        [
+            `${localeBase}/login`,
+            `${localeBase}/register`,
+            `${localeBase}/forgot-password`,
+        ].includes(currentPath) ||
+        currentPath.startsWith(`${localeBase}/reset-password/`)
+    );
+}
+
 function HomeIcon() {
     return (
         <svg
@@ -146,6 +172,31 @@ export function StoreHeader(props: StoreHeaderProps) {
         translations,
     } = props;
     const [visibleCartCount, setVisibleCartCount] = useState(cartCount);
+    const [browserNavigation, setBrowserNavigation] = useState({
+        sourceUrl: currentUrl,
+        value: currentUrl,
+    });
+    const liveCurrentUrl =
+        browserNavigation.sourceUrl === currentUrl
+            ? browserNavigation.value
+            : currentUrl;
+
+    useEffect(() => {
+        function syncFromBrowserUrl() {
+            setBrowserNavigation({
+                sourceUrl: currentUrl,
+                value: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+            });
+        }
+
+        window.addEventListener('hashchange', syncFromBrowserUrl);
+        window.addEventListener('popstate', syncFromBrowserUrl);
+
+        return () => {
+            window.removeEventListener('hashchange', syncFromBrowserUrl);
+            window.removeEventListener('popstate', syncFromBrowserUrl);
+        };
+    }, [currentUrl]);
 
     useEffect(() => {
         function updateCartCount(event: Event) {
@@ -227,7 +278,7 @@ export function StoreHeader(props: StoreHeaderProps) {
                     </a>
                     <div className="store-header__actions">
                         <StorePreferences
-                            currentUrl={currentUrl}
+                            currentUrl={liveCurrentUrl}
                             displayCurrencies={displayCurrencies}
                             displayCurrency={displayCurrency}
                             locale={locale}
@@ -242,6 +293,14 @@ export function StoreHeader(props: StoreHeaderProps) {
                             <span aria-hidden="true">{visibleCartCount}</span>
                         </a>
                         <a
+                            aria-current={
+                                isAccountCurrent(
+                                    liveCurrentUrl,
+                                    shell.accountUrl,
+                                )
+                                    ? 'page'
+                                    : undefined
+                            }
                             aria-label={translations.header.account}
                             className="store-header__icon-link"
                             href={shell.accountUrl}
@@ -259,7 +318,10 @@ export function StoreHeader(props: StoreHeaderProps) {
                     {navigation.map((item) => (
                         <li key={item.key}>
                             <a
-                                aria-current={activeState(item.key, currentUrl)}
+                                aria-current={activeState(
+                                    item.key,
+                                    liveCurrentUrl,
+                                )}
                                 href={item.href}
                             >
                                 <NavigationIcon item={item.key} />

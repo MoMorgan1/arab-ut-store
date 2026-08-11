@@ -72,6 +72,9 @@ const translations = {
         cart: 'Cart',
         account: 'Account',
     },
+    preferences: {
+        exchange_rate_attribution: 'Rates By Exchange Rate API',
+    },
     footer: {
         description: 'Trusted FC 27 services and secure Coins delivery.',
         important_links: 'Important links',
@@ -86,7 +89,6 @@ const translations = {
         copyright: 'Copyright © :year Arab UT. All rights reserved.',
         ea_disclaimer:
             'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
-        exchange_rate_attribution: 'Rates By Exchange Rate API',
     },
     simple_pages: {
         eyebrow: 'Arab UT',
@@ -187,26 +189,20 @@ describe('StoreFooter', () => {
         ).toHaveAttribute('href', 'mailto:info@arab-ut.com');
     });
 
-    it('keeps one legal navigation and merges the legal copy with provider attribution', () => {
+    it('keeps one legal navigation and omits the relocated provider attribution', () => {
         const footer = renderFooter();
         const bottom = footer.querySelector('.store-footer__bottom');
         const legalLine = footer.querySelector('.store-footer__legal-line');
-        const attribution = within(footer).getByRole('link', {
-            name: 'Rates By Exchange Rate API',
-        });
 
         expect(within(footer).getAllByRole('navigation')).toHaveLength(1);
         expect(bottom?.querySelector('nav')).not.toBeInTheDocument();
         expect(legalLine).toHaveTextContent(translations.footer.ea_disclaimer);
-        expect(legalLine).toContainElement(attribution);
         expect(
             footer.querySelector('.store-footer__disclaimer'),
         ).not.toBeInTheDocument();
-        expect(attribution).toHaveAttribute(
-            'href',
-            'https://www.exchangerate-api.com',
-        );
-        expect(attribution).toHaveAttribute('rel', 'noopener noreferrer');
+        expect(
+            footer.querySelector('a[href="https://www.exchangerate-api.com"]'),
+        ).not.toBeInTheDocument();
     });
 
     it('shows exact payment assets, the current year, and the EA disclaimer', () => {

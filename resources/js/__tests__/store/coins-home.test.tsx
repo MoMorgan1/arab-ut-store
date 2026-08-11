@@ -26,20 +26,20 @@ const store = {
         title: 'FIFA 27 Coins',
         accent: 'At the best prices',
         subtitle:
-            'Fast, secure FIFA 27 Coins delivery to your account — backed by our guarantee or a refund.',
+            'Fast, secure FIFA 27 Coins delivery to your account — backed by our full guarantee.',
         cta: 'Choose your Coins',
         proof_label: 'Store proof',
         stats: [
-            { value: '+8,877', label: 'Customers served' },
-            { value: '+29,161', label: 'Completed orders' },
-            { value: '30B+', label: 'Coins delivered' },
-            { value: '99.9%', label: 'Security rate' },
+            { value: '+8,877', unit: '', label: 'Customers served' },
+            { value: '+29,161', unit: '', label: 'Completed orders' },
+            { value: '30B+', unit: '', label: 'Coins delivered' },
+            { value: '99.9%', unit: '', label: 'Security rate' },
         ],
     },
     coins_section: {
         tag: 'FC 27 Coins',
-        title: 'Choose your Coins package',
-        intro: 'A direct quote for your selection.',
+        title: 'Buy FIFA 27 Coins',
+        intro: 'Choose your platform, delivery type, and amount, then complete your order in minutes — secure delivery with a full guarantee.',
     },
     availability: {
         title: 'Pricing is unavailable',
@@ -303,6 +303,9 @@ function availableProps() {
                 cart: 'Cart',
                 account: 'Account',
             },
+            preferences: {
+                exchange_rate_attribution: 'Rates By Exchange Rate API',
+            },
             footer: {
                 description: 'Trusted FC 27 services.',
                 important_links: 'Important links',
@@ -316,7 +319,6 @@ function availableProps() {
                 payment_methods: 'Payment methods at launch',
                 copyright: 'Copyright © :year Arab UT.',
                 ea_disclaimer: 'Independent from EA Sports.',
-                exchange_rate_attribution: 'Rates By Exchange Rate API',
             },
         },
     };
@@ -388,6 +390,63 @@ describe('Coins homepage', () => {
         expect(
             screen.getByRole('link', { name: 'Choose your Coins' }),
         ).toHaveAttribute('href', '#coins');
+        expect(
+            screen.getByRole('heading', {
+                level: 2,
+                name: 'Buy FIFA 27 Coins',
+            }),
+        ).toBeVisible();
+        expect(
+            screen.getByText(
+                'Choose your platform, delivery type, and amount, then complete your order in minutes — secure delivery with a full guarantee.',
+            ),
+        ).toBeVisible();
+    });
+
+    it('isolates the Arabic billion value and keeps decorative coins inert', () => {
+        mockPage.props = {
+            ...availableProps(),
+            direction: 'rtl',
+            locale: 'ar',
+            store: {
+                ...store,
+                hero: {
+                    ...store.hero,
+                    stats: [
+                        { value: '+8,877', unit: '', label: 'عميل خدمناهم' },
+                        { value: '+29,161', unit: '', label: 'طلب مكتمل' },
+                        {
+                            value: '+30',
+                            unit: 'مليار',
+                            label: 'كوينز تم توصيلها',
+                        },
+                        { value: '99.9%', unit: '', label: 'نسبة الأمان' },
+                    ],
+                },
+            },
+        };
+
+        render(<StoreHome />);
+
+        const billion = screen.getByText('مليار').closest('dd');
+        const isolatedValue = within(billion!).getByText('+30');
+
+        expect(isolatedValue.tagName).toBe('BDI');
+        expect(isolatedValue).toHaveAttribute('dir', 'ltr');
+        expect(
+            isolatedValue.compareDocumentPosition(screen.getByText('مليار')) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+
+        const decorativeCoins = document.querySelectorAll(
+            '.store-hero__coin[aria-hidden="true"]',
+        );
+        expect(decorativeCoins).toHaveLength(3);
+
+        for (const coin of decorativeCoins) {
+            expect(coin).toHaveAttribute('alt', '');
+            expect(coin).toHaveAttribute('draggable', 'false');
+        }
     });
 
     it('renders the available configurator from status while ignoring a legacy product value', () => {

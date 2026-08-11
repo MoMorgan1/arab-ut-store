@@ -105,6 +105,9 @@ const storeUi = {
         cart: 'السلة',
         account: 'الحساب',
     },
+    preferences: {
+        exchange_rate_attribution: 'Rates By Exchange Rate API',
+    },
     footer: {
         description: 'متجر عرب التيميت لخدمات FC 27.',
         important_links: 'روابط تهمك',
@@ -118,7 +121,6 @@ const storeUi = {
         payment_methods: 'طرق الدفع المقبولة',
         copyright: '© :year عرب التيميت. جميع الحقوق محفوظة.',
         ea_disclaimer: 'Arab UT is not affiliated with EA Sports.',
-        exchange_rate_attribution: 'Rates By Exchange Rate API',
     },
     simple_pages: {
         eyebrow: '',

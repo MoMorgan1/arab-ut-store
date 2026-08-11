@@ -80,6 +80,33 @@ export default function StoreHome() {
                         className="store-hero"
                     >
                         <div aria-hidden="true" className="store-hero__glow" />
+                        <img
+                            alt=""
+                            aria-hidden="true"
+                            className="store-hero__coin store-hero__coin--one"
+                            draggable={false}
+                            height="160"
+                            src="/images/store/coins/ut-coin-160.webp"
+                            width="160"
+                        />
+                        <img
+                            alt=""
+                            aria-hidden="true"
+                            className="store-hero__coin store-hero__coin--two"
+                            draggable={false}
+                            height="240"
+                            src="/images/store/coins/ut-coin-240.webp"
+                            width="240"
+                        />
+                        <img
+                            alt=""
+                            aria-hidden="true"
+                            className="store-hero__coin store-hero__coin--three"
+                            draggable={false}
+                            height="160"
+                            src="/images/store/coins/ut-coin-160.webp"
+                            width="160"
+                        />
                         <div className="store-hero__content">
                             <img
                                 alt=""
@@ -112,7 +139,12 @@ export default function StoreHome() {
                                         className="store-hero__stat"
                                         key={`${stat.value}-${stat.label}`}
                                     >
-                                        <dd>{stat.value}</dd>
+                                        <dd>
+                                            <bdi dir="ltr">{stat.value}</bdi>
+                                            {stat.unit === '' ? null : (
+                                                <span>{stat.unit}</span>
+                                            )}
+                                        </dd>
                                         <dt>{stat.label}</dt>
                                     </div>
                                 ))}

@@ -54,7 +54,7 @@ export type CoinsStoreTranslations = {
         subtitle: string;
         cta: string;
         proof_label: string;
-        stats: Array<{ value: string; label: string }>;
+        stats: Array<{ value: string; unit: string; label: string }>;
     };
     coins_section: {
         tag: string;

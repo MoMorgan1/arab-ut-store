@@ -21,6 +21,9 @@ return [
         'cart' => 'السلة',
         'account' => 'حسابي',
     ],
+    'preferences' => [
+        'exchange_rate_attribution' => 'Rates By Exchange Rate API',
+    ],
     'footer' => [
         'description' => 'متجر عرب التيميت، فريق متخصص في خدمات FC 27. نوصل لك الكوينز بأمان وضمان كامل وبأسعار منافسة.',
         'important_links' => 'روابط تهمك',
@@ -34,7 +37,6 @@ return [
         'payment_methods' => 'طرق الدفع عند الإطلاق',
         'copyright' => '© :year Arab UT. جميع الحقوق محفوظة.',
         'ea_disclaimer' => 'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
-        'exchange_rate_attribution' => 'Rates By Exchange Rate API',
     ],
     'simple_pages' => [
         'eyebrow' => 'عرب التيميت',

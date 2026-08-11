@@ -57,6 +57,9 @@ const translations = {
         cart: 'Cart',
         account: 'Account',
     },
+    preferences: {
+        exchange_rate_attribution: 'Rates By Exchange Rate API',
+    },
     footer: {
         description: '',
         important_links: '',
@@ -70,7 +73,6 @@ const translations = {
         payment_methods: '',
         copyright: '',
         ea_disclaimer: '',
-        exchange_rate_attribution: 'Rates By Exchange Rate API',
     },
     simple_pages: {
         eyebrow: '',
@@ -205,6 +207,15 @@ describe('StoreHeader', () => {
                 }),
             ).getByRole('link', { name: 'USD' }),
         ).toHaveAttribute('aria-current', 'page');
+
+        const attribution = within(
+            screen.getByRole('dialog', { name: 'Display preferences' }),
+        ).getByRole('link', { name: 'Rates By Exchange Rate API' });
+        expect(attribution).toHaveAttribute(
+            'href',
+            'https://www.exchangerate-api.com',
+        );
+        expect(attribution).toHaveAttribute('rel', 'noopener noreferrer');
     });
 
     it('uses the exact safe WhatsApp destination and touch-target contract', () => {
@@ -249,6 +260,90 @@ describe('StoreHeader', () => {
             ).toHaveAttribute('aria-current', current);
         },
     );
+
+    it('updates Home and Coins active state from live hash navigation', () => {
+        window.history.replaceState({}, '', '/en');
+        renderHeader('/en');
+        const home = screen.getByRole('link', { name: 'Home' });
+        const coins = screen.getByRole('link', { name: 'Coins' });
+
+        expect(home).toHaveAttribute('aria-current', 'page');
+        expect(coins).not.toHaveAttribute('aria-current');
+
+        window.history.pushState({}, '', '/en#coins');
+        fireEvent(window, new HashChangeEvent('hashchange'));
+
+        expect(home).not.toHaveAttribute('aria-current');
+        expect(coins).toHaveAttribute('aria-current', 'location');
+
+        window.history.replaceState({}, '', '/en');
+        fireEvent(window, new PopStateEvent('popstate'));
+
+        expect(home).toHaveAttribute('aria-current', 'page');
+        expect(coins).not.toHaveAttribute('aria-current');
+    });
+
+    it.each([
+        ['/login', '/login', 'ar', 'rtl'],
+        ['/en/register', '/en/login', 'en', 'ltr'],
+        ['/en/reset-password/example-token', '/en/login', 'en', 'ltr'],
+    ] as const)(
+        'marks the account control current for auth-family path %s',
+        (currentUrl, accountUrl, locale, direction) => {
+            render(
+                <StoreHeader
+                    cartCount={0}
+                    currentUrl={currentUrl}
+                    direction={direction}
+                    displayCurrencies={['SAR']}
+                    displayCurrency="SAR"
+                    locale={locale}
+                    shell={{ ...shell, accountUrl }}
+                    translations={translations}
+                />,
+            );
+
+            expect(
+                screen.getByRole('link', { name: 'Account' }),
+            ).toHaveAttribute('aria-current', 'page');
+        },
+    );
+
+    it('does not mark Account current on storefront pages or unrelated account paths', () => {
+        const { rerender } = render(
+            <StoreHeader
+                cartCount={0}
+                currentUrl="/en/privacy"
+                direction="ltr"
+                displayCurrencies={['SAR']}
+                displayCurrency="SAR"
+                locale="en"
+                shell={{ ...shell, accountUrl: '/en/login' }}
+                translations={translations}
+            />,
+        );
+
+        expect(
+            screen.getByRole('link', { name: 'Account' }),
+        ).not.toHaveAttribute('aria-current');
+
+        rerender(
+            <StoreHeader
+                cartCount={0}
+                currentUrl="/en/register"
+                direction="ltr"
+                displayCurrencies={['SAR']}
+                displayCurrency="SAR"
+                locale="en"
+                shell={{ ...shell, accountUrl: '/en/my-account' }}
+                translations={translations}
+            />,
+        );
+
+        expect(
+            screen.getByRole('link', { name: 'Account' }),
+        ).not.toHaveAttribute('aria-current');
+    });
 
     it('preserves the current route in currency and language links', () => {
         renderHeader('/en/privacy?campaign=spring&currency=USD#details');

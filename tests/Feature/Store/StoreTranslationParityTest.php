@@ -69,6 +69,10 @@ test('Arabic and English shell translation leaves and placeholders stay in parit
 
     expect(data_get($arabic, 'header.fut_champions'))->toBe('فوت تشامبيونز')
         ->and(data_get($english, 'header.fut_champions'))->toBe('FUT Champions')
+        ->and(data_get($arabic, 'preferences.exchange_rate_attribution'))->toBe('Rates By Exchange Rate API')
+        ->and(data_get($english, 'preferences.exchange_rate_attribution'))->toBe('Rates By Exchange Rate API')
+        ->and($arabic['footer'])->not->toHaveKey('exchange_rate_attribution')
+        ->and($english['footer'])->not->toHaveKey('exchange_rate_attribution')
         ->and($arabic['footer'])->not->toHaveKey('legal_navigation')
         ->and($english['footer'])->not->toHaveKey('legal_navigation')
         ->and(data_get($arabic, 'footer.payment_methods'))->toBe('طرق الدفع عند الإطلاق')
@@ -88,7 +92,7 @@ test('Arabic customer copy consistently calls the service كوينز', function 
     $serialized = json_encode($arabic, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
 
     expect(data_get($arabic, 'hero.title'))->toBe('كوينز فيفا 27')
-        ->and(data_get($arabic, 'coins_section.title'))->toBe('اطلب الكوينز')
+        ->and(data_get($arabic, 'coins_section.title'))->toBe('اشتري كوينز فيفا 27')
         ->and(data_get($arabic, 'amount_copy.label'))->toBe('كمية الكوينز')
         ->and($serialized)->not->toContain('عملات')
         ->and($serialized)->not->toContain('العملات');
@@ -119,8 +123,16 @@ test('the hero uses the approved bilingual copy and proof contract', function ()
     expect(data_get($arabic, 'hero.badge'))->toBe('كل اللي تحتاجه في FC 27 بمكان واحد')
         ->and(data_get($arabic, 'hero.title'))->toBe('كوينز فيفا 27')
         ->and(data_get($arabic, 'hero.accent'))->toBe('بأفضل الأسعار')
+        ->and(data_get($arabic, 'hero.subtitle'))->toBe('نوصل كوينز فيفا 27 لحسابك بسرعة وأمان — مع ضمان كامل.')
         ->and(data_get($arabic, 'hero.cta'))->toBe('اختر كوينزك')
         ->and(data_get($english, 'hero.cta'))->toBe('Choose your Coins')
+        ->and(data_get($arabic, 'coins_section.title'))->toBe('اشتري كوينز فيفا 27')
+        ->and(data_get($arabic, 'coins_section.intro'))->toBe('اختر المنصة ونوع التوصيل والكمية، وأكمل طلبك خلال دقائق — توصيل آمن وضمان كامل.')
+        ->and(data_get($arabic, 'hero.stats.2'))->toBe([
+            'value' => '+30',
+            'unit' => 'مليار',
+            'label' => 'كوينز تم توصيلها',
+        ])
         ->and(data_get($arabic, 'hero.stats'))->toHaveCount(4)
         ->and(data_get($english, 'hero.stats'))->toHaveCount(4);
 });

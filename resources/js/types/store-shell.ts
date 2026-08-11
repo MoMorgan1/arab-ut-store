@@ -51,6 +51,9 @@ export type StoreShellTranslations = {
         cart: string;
         account: string;
     };
+    preferences: {
+        exchange_rate_attribution: string;
+    };
     footer: {
         description: string;
         important_links: string;
@@ -64,7 +67,6 @@ export type StoreShellTranslations = {
         payment_methods: string;
         copyright: string;
         ea_disclaimer: string;
-        exchange_rate_attribution: string;
     };
     simple_pages: {
         eyebrow: string;
