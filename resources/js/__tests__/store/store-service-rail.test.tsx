@@ -1,5 +1,11 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import {
+    act,
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+} from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { ServiceRail } from '@/components/store/service-rail';
 import type { HomeServiceCard } from '@/types/store-content';
@@ -19,7 +25,56 @@ const services: HomeServiceCard[] = [
     title,
 }));
 
-afterEach(cleanup);
+beforeEach(() => {
+    Object.defineProperties(HTMLUListElement.prototype, {
+        clientWidth: { configurable: true, get: () => 320 },
+        scrollWidth: { configurable: true, get: () => 1280 },
+    });
+    Object.defineProperty(HTMLElement.prototype, 'scrollBy', {
+        configurable: true,
+        value: vi.fn(),
+    });
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+        configurable: true,
+        value: vi.fn(),
+    });
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+});
+
+it('loops back to the first card after reaching the rail end', () => {
+    vi.useFakeTimers();
+    const { container } = render(
+        <ServiceRail
+            direction="ltr"
+            services={services}
+            translations={{
+                eyebrow: 'More services',
+                title: 'Choose a service',
+            }}
+        />,
+    );
+    const track = container.querySelector<HTMLElement>(
+        '.store-services-rail__track',
+    )!;
+
+    Object.defineProperty(track, 'scrollLeft', {
+        configurable: true,
+        value: 960,
+    });
+    act(() => vi.advanceTimersByTime(3_000));
+
+    expect(track.scrollTo).toHaveBeenCalledWith({
+        behavior: 'auto',
+        left: 0,
+    });
+});
+
+afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+});
 
 it('renders five equal service links in the approved order', () => {
     render(
@@ -56,7 +111,7 @@ it('renders five equal service links in the approved order', () => {
     );
 });
 
-it('uses native horizontal scrolling without autoplay', () => {
+it('moves automatically and pauses while a service link has focus', () => {
     vi.useFakeTimers();
     const { container } = render(
         <ServiceRail
@@ -68,10 +123,21 @@ it('uses native horizontal scrolling without autoplay', () => {
     const track = container.querySelector<HTMLElement>(
         '.store-services-rail__track',
     );
+    const firstService = screen.getByRole('link', { name: /SBC/ });
 
-    vi.advanceTimersByTime(30_000);
-    expect(track?.scrollLeft).toBe(0);
+    act(() => vi.advanceTimersByTime(3_000));
+
+    expect(track?.scrollBy).toHaveBeenCalled();
     expect(track).toHaveAttribute('dir', 'rtl');
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    vi.useRealTimers();
+
+    const callCount = vi.mocked(track!.scrollBy).mock.calls.length;
+    fireEvent.focus(firstService);
+    act(() => vi.advanceTimersByTime(6_000));
+    expect(track?.scrollBy).toHaveBeenCalledTimes(callCount);
+
+    fireEvent.blur(firstService);
+    act(() => vi.advanceTimersByTime(3_000));
+    expect(vi.mocked(track!.scrollBy).mock.calls.length).toBeGreaterThan(
+        callCount,
+    );
 });

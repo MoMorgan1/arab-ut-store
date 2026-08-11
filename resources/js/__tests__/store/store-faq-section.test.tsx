@@ -37,6 +37,11 @@ it('renders the unchanged four FAQs as native disclosures', () => {
     expect(container.querySelectorAll('details')).toHaveLength(4);
     expect(container.querySelectorAll('summary')).toHaveLength(4);
     expect(
+        container.querySelectorAll(
+            'summary svg.store-faq__chevron[aria-hidden="true"]',
+        ),
+    ).toHaveLength(4);
+    expect(
         screen
             .getByText('Ù…Ø§ Ø£ÙˆÙ‚Ø§Øª Ø¹Ù…Ù„ Ø§Ù„Ù…ØªØ¬Ø±ØŸ')
             .closest('details'),

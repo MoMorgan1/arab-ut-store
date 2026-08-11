@@ -37,11 +37,11 @@
 - Service rail keeps the current props and adds no public configuration flags.
 - A focused `StoreHeroStats` component renders the existing translated values and owns one IntersectionObserver lifecycle.
 
-- [ ] Write behavior tests for autoplay/pause/reduced motion, exact card copy, one-row metrics, count completion, SVG FAQ chevron, and mobile navigation parity.
-- [ ] Run focused Vitest and capture failures caused by the missing behaviors.
-- [ ] Implement transform-only rail motion, visibility/focus/pointer pausing, count-up display, decorative coin semantics, and responsive CSS.
-- [ ] Run focused tests, lint, types, and build; verify AR/EN at required widths.
-- [ ] Commit the independently green homepage slice.
+- [x] Write behavior tests for autoplay/pause/reduced motion, exact card copy, one-row metrics, count completion, SVG FAQ chevron, and mobile navigation parity.
+- [x] Run focused Vitest and capture failures caused by the missing behaviors.
+- [x] Implement transform-only rail motion, visibility/focus/pointer pausing, count-up display, decorative coin semantics, and responsive CSS.
+- [x] Run focused tests, lint, types, and build; verify AR/EN at required widths.
+- [x] Commit the independently green homepage slice.
 
 ### Task 2: Refined SBC category and cart feedback
 
@@ -168,4 +168,3 @@
 - [ ] Run SQLite and disposable MariaDB fresh/rollback/remigrate plus critical cart/auth tests.
 - [ ] Browser verify AR/EN at 320/390/768/1075/1440, 200% zoom, reduced motion, keyboard, touch-like rail, currency preservation, OTP/Google boundary flows, credentials edit, and clean console.
 - [ ] Review the whole branch, commit the tracked report/checked plan, then deploy only after all release gates pass.
-

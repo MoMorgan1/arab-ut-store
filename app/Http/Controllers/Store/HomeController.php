@@ -71,16 +71,16 @@ class HomeController extends Controller
     private function services(Request $request): array
     {
         return [
-            $this->serviceCard($request, 'sbc', 'store.sbc', '/images/store/navigation/logo-sbc-96.webp'),
-            $this->serviceCard($request, 'objectives', 'store.objectives', '/images/store/hero/arabut-logo-hero.webp'),
-            $this->serviceCard($request, 'fut_champions', 'store.fut_champions', '/images/store/navigation/logo-champions-80.webp'),
-            $this->serviceCard($request, 'rivals', 'store.rivals', '/images/store/hero/arabut-logo-hero.webp'),
+            $this->serviceCard($request, 'sbc', 'store.sbc', '/images/store/services/sbc.webp'),
+            $this->serviceCard($request, 'objectives', 'store.objectives', '/images/store/services/objectives.webp'),
+            $this->serviceCard($request, 'fut_champions', 'store.fut_champions', '/images/store/services/fut-champions.webp'),
+            $this->serviceCard($request, 'rivals', 'store.rivals', '/images/store/services/rivals.webp'),
             [
                 'key' => 'sell_coins',
                 'title' => $this->translation('store.services.sell_coins.title'),
                 'description' => $this->translation('store.services.sell_coins.card_description'),
                 'href' => 'https://sell.arab-ut.com/',
-                'imageUrl' => '/images/store/coins/ut-coin-160.webp',
+                'imageUrl' => '/images/store/services/sell-coins.webp',
                 'external' => true,
             ],
         ];

@@ -1081,6 +1081,26 @@
         animation-delay: -4.6s;
     }
 
+    .store-hero__coin--four {
+        --store-hero-coin-angle: -9deg;
+
+        inset-block-start: 54%;
+        inset-inline-end: 8%;
+        width: clamp(3.5rem, 7vw, 6.5rem);
+        rotate: var(--store-hero-coin-angle);
+        animation-delay: -1.4s;
+    }
+
+    .store-hero__coin--five {
+        --store-hero-coin-angle: 24deg;
+
+        inset-block-start: 8%;
+        inset-inline-start: 22%;
+        width: clamp(2.5rem, 5vw, 4.5rem);
+        rotate: var(--store-hero-coin-angle);
+        animation-delay: -3.2s;
+    }
+
     .store-hero__logo {
         display: block;
         width: clamp(5.5rem, 11vw, 8.75rem);
@@ -2867,20 +2887,23 @@
 
     .store-hero__stats {
         width: min(100%, 24rem);
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         padding-block: 0;
     }
 
     .store-hero__stat {
-        padding-block: 0.85rem;
+        padding: 0.85rem 0.25rem;
     }
 
-    .store-hero__stat:nth-child(odd) {
-        border-inline-start: 0;
+    .store-hero__stat dd {
+        justify-content: center;
+        gap: 0.16rem;
+        font-size: clamp(0.78rem, 3.2vw, 1.05rem);
     }
 
-    .store-hero__stat:nth-child(n + 3) {
-        border-block-start: 1px solid var(--arabut-line);
+    .store-hero__stat dt {
+        font-size: clamp(0.58rem, 2.5vw, 0.72rem);
+        line-height: 1.35;
     }
 
     .store-coins-section {
@@ -3137,14 +3160,15 @@
 .store-service-card__image {
     display: grid;
     place-items: center;
+    overflow: hidden;
     aspect-ratio: 16 / 9;
     border-radius: 0.9rem;
     background: radial-gradient(circle, rgb(217 171 58 / 14%), transparent 68%);
 }
 
 .store-service-card__image img {
-    width: min(7rem, 70%);
-    height: 7rem;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
 }
 
@@ -3610,13 +3634,32 @@
 }
 
 .store-faq summary {
+    display: flex;
     min-height: 3.5rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
     padding: 1rem 1.1rem;
     cursor: pointer;
     color: var(--arabut-ink);
     font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
     font-size: 1.15rem;
     font-weight: 700;
+    list-style: none;
+}
+
+.store-faq summary::-webkit-details-marker {
+    display: none;
+}
+
+.store-faq__chevron {
+    flex: 0 0 auto;
+    color: var(--arabut-gold);
+    transition: transform 200ms var(--store-ease-out);
+}
+
+.store-faq details[open] .store-faq__chevron {
+    transform: rotate(180deg);
 }
 
 .store-faq summary:focus-visible,
@@ -3768,6 +3811,11 @@
     .store-primary-nav a[aria-current]::after,
     .coins-amount-slider:hover::-webkit-slider-thumb,
     .coins-amount-slider:hover::-moz-range-thumb {
+        transform: none;
+    }
+
+    .store-faq__chevron,
+    .store-faq details[open] .store-faq__chevron {
         transform: none;
     }
 

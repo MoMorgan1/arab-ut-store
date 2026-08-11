@@ -2,6 +2,7 @@ import { Head, usePage } from '@inertiajs/react';
 
 import { CoinsConfigurator } from '@/components/configurator/coins';
 import { FaqSection } from '@/components/store/faq-section';
+import { HeroStats } from '@/components/store/hero-stats';
 import { ReviewsSection } from '@/components/store/reviews-section';
 import { ServiceRail } from '@/components/store/service-rail';
 import StoreLayout from '@/layouts/store-layout';
@@ -113,6 +114,24 @@ export default function StoreHome() {
                             src="/images/store/coins/ut-coin-160.webp"
                             width="160"
                         />
+                        <img
+                            alt=""
+                            aria-hidden="true"
+                            className="store-hero__coin store-hero__coin--four"
+                            draggable={false}
+                            height="160"
+                            src="/images/store/coins/ut-coin-160.webp"
+                            width="160"
+                        />
+                        <img
+                            alt=""
+                            aria-hidden="true"
+                            className="store-hero__coin store-hero__coin--five"
+                            draggable={false}
+                            height="160"
+                            src="/images/store/coins/ut-coin-160.webp"
+                            width="160"
+                        />
                         <div className="store-hero__content">
                             <img
                                 alt=""
@@ -135,26 +154,10 @@ export default function StoreHome() {
                             <a className="store-hero__cta" href="#coins">
                                 {store.hero.cta}
                             </a>
-                            <dl
-                                aria-label={store.hero.proof_label}
-                                className="store-hero__stats"
-                                role="group"
-                            >
-                                {store.hero.stats.map((stat) => (
-                                    <div
-                                        className="store-hero__stat"
-                                        key={`${stat.value}-${stat.label}`}
-                                    >
-                                        <dd>
-                                            <bdi dir="ltr">{stat.value}</bdi>
-                                            {stat.unit === '' ? null : (
-                                                <span>{stat.unit}</span>
-                                            )}
-                                        </dd>
-                                        <dt>{stat.label}</dt>
-                                    </div>
-                                ))}
-                            </dl>
+                            <HeroStats
+                                label={store.hero.proof_label}
+                                stats={store.hero.stats}
+                            />
                         </div>
                     </section>
 

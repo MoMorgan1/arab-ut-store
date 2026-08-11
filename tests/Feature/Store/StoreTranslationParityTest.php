@@ -136,3 +136,12 @@ test('the hero uses the approved bilingual copy and proof contract', function ()
         ->and(data_get($arabic, 'hero.stats'))->toHaveCount(4)
         ->and(data_get($english, 'hero.stats'))->toHaveCount(4);
 });
+
+test('the Arabic service rail uses the approved customer-facing names', function () {
+    /** @var array<string, mixed> $arabic */
+    $arabic = require lang_path('ar/store.php');
+
+    expect(data_get($arabic, 'services.sbc.title'))->toBe('تحديات بناء التشكيلات')
+        ->and(data_get($arabic, 'services.objectives.title'))->toBe('المهام')
+        ->and(data_get($arabic, 'services.rivals.title'))->toBe('الرايفلز');
+});

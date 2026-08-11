@@ -1,4 +1,5 @@
 import {
+    act,
     cleanup,
     fireEvent,
     render,
@@ -403,6 +404,53 @@ describe('Coins homepage', () => {
         ).toBeVisible();
     });
 
+    it('counts hero proof values only after the proof enters the viewport', () => {
+        let reveal: (() => void) | undefined;
+
+        vi.stubGlobal(
+            'IntersectionObserver',
+            class {
+                constructor(callback: IntersectionObserverCallback) {
+                    reveal = () =>
+                        callback(
+                            [
+                                {
+                                    isIntersecting: true,
+                                } as IntersectionObserverEntry,
+                            ],
+                            this as unknown as IntersectionObserver,
+                        );
+                }
+
+                disconnect() {}
+                observe() {}
+                unobserve() {}
+                takeRecords() {
+                    return [];
+                }
+                root = null;
+                rootMargin = '';
+                thresholds = [];
+            },
+        );
+        vi.stubGlobal('matchMedia', () => ({ matches: false }));
+
+        render(<StoreHome />);
+
+        const proof = screen.getByRole('group', { name: 'Store proof' });
+        expect(within(proof).getAllByText('0')).toHaveLength(4);
+
+        act(() => {
+            reveal?.();
+            vi.advanceTimersByTime(1_200);
+        });
+
+        expect(within(proof).getByText('+8,877')).toBeVisible();
+        expect(within(proof).getByText('+29,161')).toBeVisible();
+        expect(within(proof).getByText('30B+')).toBeVisible();
+        expect(within(proof).getByText('99.9%')).toBeVisible();
+    });
+
     it('isolates the Arabic billion value and keeps decorative coins inert', () => {
         mockPage.props = {
             ...availableProps(),
@@ -441,7 +489,7 @@ describe('Coins homepage', () => {
         const decorativeCoins = document.querySelectorAll(
             '.store-hero__coin[aria-hidden="true"]',
         );
-        expect(decorativeCoins).toHaveLength(3);
+        expect(decorativeCoins).toHaveLength(5);
 
         for (const coin of decorativeCoins) {
             expect(coin).toHaveAttribute('alt', '');

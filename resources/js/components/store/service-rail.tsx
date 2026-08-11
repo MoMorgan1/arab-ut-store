@@ -17,6 +17,8 @@ export function ServiceRail({
 }) {
     const trackRef = useRef<HTMLUListElement>(null);
     const [overflows, setOverflows] = useState(false);
+    const [paused, setPaused] = useState(false);
+    const [pageVisible, setPageVisible] = useState(!document.hidden);
     const measure = useCallback(() => {
         const track = trackRef.current;
 
@@ -41,25 +43,65 @@ export function ServiceRail({
         return () => observer.disconnect();
     }, [measure]);
 
-    const move = (forward: boolean) => {
-        const track = trackRef.current;
+    useEffect(() => {
+        const updateVisibility = () => setPageVisible(!document.hidden);
 
-        if (track === null) {
+        document.addEventListener('visibilitychange', updateVisibility);
+
+        return () =>
+            document.removeEventListener('visibilitychange', updateVisibility);
+    }, []);
+
+    const move = useCallback(
+        (forward: boolean) => {
+            const track = trackRef.current;
+
+            if (track === null) {
+                return;
+            }
+
+            const reachedEnd =
+                Math.abs(track.scrollLeft) + track.clientWidth >=
+                track.scrollWidth - 2;
+
+            if (forward && reachedEnd) {
+                track.scrollTo({
+                    behavior: 'auto',
+                    left: 0,
+                });
+
+                return;
+            }
+
+            const logicalDirection = direction === 'rtl' ? -1 : 1;
+            track.scrollBy({
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
+                    .matches
+                    ? 'auto'
+                    : 'smooth',
+                left:
+                    logicalDirection *
+                    (forward ? 1 : -1) *
+                    Math.max(track.clientWidth * 0.82, 280),
+            });
+        },
+        [direction],
+    );
+
+    useEffect(() => {
+        if (
+            !overflows ||
+            paused ||
+            !pageVisible ||
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ) {
             return;
         }
 
-        const logicalDirection = direction === 'rtl' ? -1 : 1;
-        track.scrollBy({
-            behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
-                .matches
-                ? 'auto'
-                : 'smooth',
-            left:
-                logicalDirection *
-                (forward ? 1 : -1) *
-                Math.max(track.clientWidth * 0.82, 280),
-        });
-    };
+        const timer = window.setInterval(() => move(true), 2_600);
+
+        return () => window.clearInterval(timer);
+    }, [move, overflows, pageVisible, paused]);
 
     return (
         <section
@@ -73,7 +115,23 @@ export function ServiceRail({
                     <h2 id="store-services-title">{translations.title}</h2>
                 </header>
 
-                <div className="store-services-rail">
+                <div
+                    className="store-services-rail"
+                    onBlurCapture={(event) => {
+                        if (
+                            !event.currentTarget.contains(
+                                event.relatedTarget as Node | null,
+                            )
+                        ) {
+                            setPaused(false);
+                        }
+                    }}
+                    onFocusCapture={() => setPaused(true)}
+                    onPointerEnter={() => setPaused(true)}
+                    onPointerLeave={() => setPaused(false)}
+                    onTouchEnd={() => setPaused(false)}
+                    onTouchStart={() => setPaused(true)}
+                >
                     <ul
                         className="store-services-rail__track"
                         dir={direction}
@@ -96,10 +154,10 @@ export function ServiceRail({
                                     <span className="store-service-card__image">
                                         <img
                                             alt={service.title}
-                                            height="128"
+                                            height="706"
                                             loading="lazy"
                                             src={service.imageUrl}
-                                            width="128"
+                                            width="1280"
                                         />
                                     </span>
                                     <strong>{service.title}</strong>

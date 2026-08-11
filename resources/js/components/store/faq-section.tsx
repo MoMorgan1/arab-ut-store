@@ -21,7 +21,25 @@ export function FaqSection({
                 <div className="store-faq__list">
                     {entries.map((entry) => (
                         <details key={entry.question}>
-                            <summary>{entry.question}</summary>
+                            <summary>
+                                <span>{entry.question}</span>
+                                <svg
+                                    aria-hidden="true"
+                                    className="store-faq__chevron"
+                                    fill="none"
+                                    height="18"
+                                    viewBox="0 0 18 18"
+                                    width="18"
+                                >
+                                    <path
+                                        d="m5 7 4 4 4-4"
+                                        stroke="currentColor"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="1.75"
+                                    />
+                                </svg>
+                            </summary>
                             <p>{entry.answer}</p>
                         </details>
                     ))}
