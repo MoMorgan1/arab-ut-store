@@ -6,6 +6,8 @@ Successful sign-in and registration claim the server-session guest cart through 
 
 The review fix adds a durable `guest_cart_claims` ownership marker. `AcquireActiveCart` and `ClaimGuestCart` lock the same HMAC marker before touching carts. A request carrying an old guest HMAC after a successful claim is routed to that user's cart and cannot recreate an orphan guest cart.
 
+Claim markers now have a bounded retention lifecycle. The configured window is clamped to at least 24 hours and to the larger of the server-session and cart-secret retention windows. An hourly non-overlapping purge deletes only expired, unlocked marker rows in deterministic chunks; it never deletes carts, items, or encrypted secrets.
+
 ## Implemented contracts
 
 - `ResolveCartOwner::existingGuestCandidatesForRequest()` derives current and configured previous-key HMAC owners without writing the database. Anonymous browsing retains the existing transactional rekey behavior; login passes every candidate into the root claim transaction.
@@ -16,6 +18,8 @@ The review fix adds a durable `guest_cart_claims` ownership marker. `AcquireActi
 - `ClaimGuestCartAfterLogin` catches a propagated claim failure only to log the just-authenticated guard back out, then rethrows. It retains the guest token and all session state for retry. The token is forgotten only through `DB::afterCommit` after a successful claim.
 - Laravel event discovery registers exactly one listener. Login and registration share this path; there is no second registration implementation.
 - Production claim and marker-lock code never imports or queries `CartItemSecret`, `cart_item_secrets`, `encrypted_payload`, or secret-access logs.
+- `PurgeGuestCartClaims` locks up to 100 expired rows in HMAC order per root transaction and uses `FOR UPDATE SKIP LOCKED` where supported. Recently updated or concurrently locked markers remain for a later hourly run.
+- Purging an expired unclaimed marker is recoverable: the next guest add recreates the marker and reuses the existing guest cart. A claimed marker within retention continues routing stale adds to the user cart. After retention, the server session is also expired; a surviving stale identity becomes a new isolated guest and cannot enter the former user cart.
 
 ## TDD evidence
 
@@ -32,17 +36,25 @@ MariaDB stress then exposed a real intermittent `DeadlockException` in the claim
 ### Review GREEN
 
 - Focused SQLite auth/rotation/concurrency selection: 18 tests, 10 passed, 8 expected MariaDB-only skips, 78 assertions.
-- Full SQLite backend after final review fixes: 338 tests, 335 passed, 3 expected skips, 17,728 assertions.
+- Full SQLite backend after final review fixes: 342 tests, 339 passed, 3 expected skips, 17,751 assertions.
 - The injected claim failure proves exception propagation, unauthenticated guard state, retained raw guest token, unchanged carts/items, and a successful retry after removing the trigger.
 - Key-rotation coverage proves current and previous HMAC carts remain unchanged until the root claim transaction and then merge into one user cart.
 - Cross-user coverage proves a claimed HMAC fails closed for a different user.
+
+### Retention RED/GREEN
+
+Before retention production edits, the SQLite selection ran 3 tests with 0 passing and 4 assertions: two missing-command errors and one missing-config failure.
+
+- SQLite retention selection: 5 tests, 4 passed, one expected MariaDB-only skip, 23 assertions.
+- MariaDB retention and locked-row selection: 5 passed, 29 assertions.
+- The MariaDB two-process test holds the marker through production `LockGuestCartClaims`. Purge returns zero while it is locked, then deletes exactly that marker after release while its cart remains.
 
 ## Real MariaDB verification
 
 MariaDB 12.3.2 ran locally on isolated `127.0.0.1:3324`.
 
 - Fresh migration plus focused claim/all independent-process races: 16 tests, 15 passed, one expected SQLite-only skip, 109 assertions.
-- Pinned MariaDB CI selection after the final concurrency correction: 171 tests, 166 passed, 5 engine-specific skips, 1,079 assertions.
+- Pinned MariaDB CI selection after the retention addition: 177 tests, 172 passed, 5 engine-specific skips, 1,113 assertions.
 - Full rollback, remigration, and status succeeded; migration `2026_08_11_000001_create_guest_cart_claims_table` reported `Ran`.
 - Post-remigration claim/concurrency selection: 17 tests, 16 passed, one expected SQLite-only skip, 114 assertions.
 - Claim-first stress: 15 consecutive two-process runs passed, 105 assertions.
@@ -68,6 +80,11 @@ Created:
 - `app/Actions/Cart/LockGuestCartClaims.php`
 - `database/migrations/2026_08_11_000001_create_guest_cart_claims_table.php`
 - `tests/Support/ConcurrentGuestCoinsCartAdd.php`
+- `app/Actions/Cart/PurgeGuestCartClaims.php`
+- `app/Console/Commands/PurgeGuestCartClaims.php`
+- `tests/Feature/Console/PurgeGuestCartClaimsTest.php`
+- `tests/Integration/GuestCartClaimPurgeConcurrencyTest.php`
+- `tests/Support/ConcurrentGuestCartClaimLock.php`
 
 Modified:
 
@@ -79,5 +96,8 @@ Modified:
 - `tests/Integration/CoinsCartConcurrencyTest.php`
 - `tests/Support/ConcurrentGuestCartClaim.php`
 - `.github/workflows/tests.yml`
+- `.env.example`
+- `config/coins.php`
+- `routes/console.php`
 
 No authentication UI, checkout, payment, order, or credential-projection behavior changed.

@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\PurgeCartItemSecrets;
+use App\Console\Commands\PurgeGuestCartClaims;
 use App\Console\Commands\RefreshDisplayExchangeRates;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -12,3 +13,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command(RefreshDisplayExchangeRates::class)->daily();
 Schedule::command(PurgeCartItemSecrets::class)->hourly()->withoutOverlapping();
+Schedule::command(PurgeGuestCartClaims::class)->hourly()->withoutOverlapping();

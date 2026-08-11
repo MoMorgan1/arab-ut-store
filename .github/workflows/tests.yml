@@ -103,8 +103,10 @@ jobs:
           tests/Feature/Settings/ProfileUpdateTest.php
           tests/Feature/Store/CoinsCartTest.php
           tests/Feature/Console/PurgeCartItemSecretsTest.php
+          tests/Feature/Console/PurgeGuestCartClaimsTest.php
           tests/Integration/ActiveCartInvariantUpgradeTest.php
           tests/Integration/CoinsCartConcurrencyTest.php
+          tests/Integration/GuestCartClaimPurgeConcurrencyTest.php
           tests/Unit/Cart/CartOwnerTest.php
           tests/Unit/Enums/OrderItemStatusTest.php
           tests/Unit/Enums/PlatformTest.php
