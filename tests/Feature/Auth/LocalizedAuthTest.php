@@ -42,6 +42,43 @@ test('auth screens expose localized copy direction and route contracts', functio
     'English reset password' => ['/en/reset-password/test-token?email=player@example.test', 'auth/reset-password', 'reset_password', 'en', 'ltr', 'Set a new password'],
 ]);
 
+test('auth screens expose the storefront shell and truthful localized account benefits', function (
+    string $path,
+    string $locale,
+    array $benefits,
+) {
+    $this->get($path)->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('locale', $locale)
+        ->has('storeShell.homeUrl')
+        ->has('storeShell.accountUrl')
+        ->has('ui.header.primary_navigation')
+        ->has('ui.footer.copyright')
+        ->where('authUi.benefits.items', $benefits)
+        ->missing('authUi.google')
+        ->missing('authUi.checkout')
+        ->missing('guestSessionHmac')
+        ->missing('guestToken'));
+})->with([
+    'Arabic' => [
+        '/login',
+        'ar',
+        [
+            'سلتك تكمل معك بعد تسجيل الدخول',
+            'بيانات EA مشفّرة داخل السلة المؤقتة',
+            'غيّر اللغة والعملة من نفس المتجر',
+        ],
+    ],
+    'English' => [
+        '/en/register',
+        'en',
+        [
+            'Your cart continues after you sign in',
+            'EA credentials stay encrypted in the temporary cart',
+            'Change language and currency in the same store',
+        ],
+    ],
+]);
+
 test('English registration records the originating locale', function () {
     $this->post('/en/register', [
         'first_name' => 'English',

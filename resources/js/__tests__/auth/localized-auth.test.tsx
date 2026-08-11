@@ -7,6 +7,7 @@ import ForgotPassword from '@/pages/auth/forgot-password';
 import Login from '@/pages/auth/login';
 import Register from '@/pages/auth/register';
 import ResetPasswordPage from '@/pages/auth/reset-password';
+import type { AuthUiTranslations } from '@/types/auth';
 
 const page = vi.hoisted(() => ({ props: {} as Record<string, unknown> }));
 
@@ -42,6 +43,22 @@ vi.mock('@inertiajs/react', () => ({
     usePage: () => page,
 }));
 
+vi.mock('@/layouts/store-layout', () => ({
+    default: ({
+        children,
+        direction,
+        locale,
+    }: {
+        children: ReactNode;
+        direction: 'rtl' | 'ltr';
+        locale: 'ar' | 'en';
+    }) => (
+        <div className="store-shell" dir={direction} lang={locale}>
+            {children}
+        </div>
+    ),
+}));
+
 const routes = {
     homeUrl: '/',
     loginUrl: '/login',
@@ -55,6 +72,17 @@ const routes = {
 
 const arabicUi = {
     brand: 'عرب التيميت',
+    benefits: {
+        eyebrow: 'حسابك مع عرب التيميت',
+        title: 'كمّل طلبك من نفس المكان',
+        description:
+            'تسجيل الدخول يربط حسابك بسلتك الحالية بدون ما تبدأ من جديد.',
+        items: [
+            'سلتك تكمل معك بعد تسجيل الدخول',
+            'بيانات EA مشفّرة داخل السلة المؤقتة',
+            'غيّر اللغة والعملة من نفس المتجر',
+        ],
+    },
     fields: {
         first_name: 'الاسم الأول',
         last_name: 'اسم العائلة',
@@ -98,7 +126,7 @@ const arabicUi = {
         description: 'اختر كلمة مرور جديدة لحسابك.',
         submit: 'حفظ كلمة المرور الجديدة',
     },
-};
+} satisfies AuthUiTranslations;
 
 const englishUi = {
     ...arabicUi,
@@ -112,6 +140,16 @@ const englishUi = {
         remember: 'Remember me',
     },
     password_visibility: { show: 'Show password', hide: 'Hide password' },
+    benefits: {
+        eyebrow: 'Your Arab UT account',
+        title: 'Continue your order in one place',
+        description: 'Sign in to connect your account to your current cart.',
+        items: [
+            'Your cart continues after you sign in',
+            'EA credentials stay encrypted in the temporary cart',
+            'Change language and currency in the same store',
+        ],
+    },
     register: {
         head_title: 'Create account',
         title: 'Create an account',
@@ -134,7 +172,7 @@ const englishUi = {
         description: 'Choose a new password for your account.',
         submit: 'Save new password',
     },
-};
+} satisfies AuthUiTranslations;
 
 afterEach(cleanup);
 

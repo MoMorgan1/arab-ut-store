@@ -45,12 +45,19 @@ export default function Login({
                                     name="email"
                                     required
                                     autoFocus
-                                    tabIndex={1}
                                     autoComplete="email"
                                     placeholder="email@example.com"
                                     className="h-11"
+                                    aria-describedby={
+                                        errors.email ? 'email-error' : undefined
+                                    }
+                                    aria-invalid={Boolean(errors.email)}
                                 />
-                                <InputError message={errors.email} />
+                                <InputError
+                                    id="email-error"
+                                    message={errors.email}
+                                    role="alert"
+                                />
                             </div>
 
                             <div className="grid gap-2">
@@ -62,7 +69,6 @@ export default function Login({
                                         <TextLink
                                             href={authRoutes.forgotPasswordUrl}
                                             className="auth-inline-link ms-auto"
-                                            tabIndex={5}
                                         >
                                             {authUi.login.forgot_password}
                                         </TextLink>
@@ -72,31 +78,38 @@ export default function Login({
                                     id="password"
                                     name="password"
                                     required
-                                    tabIndex={2}
                                     autoComplete="current-password"
                                     placeholder={authUi.fields.password}
                                     className="h-11"
+                                    aria-describedby={
+                                        errors.password
+                                            ? 'password-error'
+                                            : undefined
+                                    }
+                                    aria-invalid={Boolean(errors.password)}
                                     showLabel={authUi.password_visibility.show}
                                     hideLabel={authUi.password_visibility.hide}
                                 />
-                                <InputError message={errors.password} />
+                                <InputError
+                                    id="password-error"
+                                    message={errors.password}
+                                    role="alert"
+                                />
                             </div>
 
                             <div className="flex min-h-11 items-center gap-3">
-                                <Checkbox
-                                    id="remember"
-                                    name="remember"
-                                    tabIndex={3}
-                                />
-                                <Label htmlFor="remember">
+                                <Checkbox id="remember" name="remember" />
+                                <Label
+                                    className="flex min-h-11 flex-1 cursor-pointer items-center"
+                                    htmlFor="remember"
+                                >
                                     {authUi.fields.remember}
                                 </Label>
                             </div>
 
                             <Button
                                 type="submit"
-                                className="mt-4 h-11 w-full"
-                                tabIndex={4}
+                                className="auth-form__submit mt-4 h-11 w-full"
                                 disabled={processing}
                                 data-test="login-button"
                             >
@@ -110,7 +123,6 @@ export default function Login({
                             <TextLink
                                 className="auth-inline-link"
                                 href={authRoutes.registerUrl}
-                                tabIndex={5}
                             >
                                 {authUi.login.registration_link}
                             </TextLink>
@@ -120,7 +132,11 @@ export default function Login({
             </Form>
 
             {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
+                <div
+                    className="auth-form__status"
+                    role="status"
+                    aria-live="polite"
+                >
                     {status}
                 </div>
             )}

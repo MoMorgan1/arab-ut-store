@@ -45,10 +45,16 @@ export default function ResetPassword({
                                 value={email}
                                 className="mt-1 block h-11 w-full"
                                 readOnly
+                                aria-describedby={
+                                    errors.email ? 'email-error' : undefined
+                                }
+                                aria-invalid={Boolean(errors.email)}
                             />
                             <InputError
+                                id="email-error"
                                 message={errors.email}
                                 className="mt-2"
+                                role="alert"
                             />
                         </div>
 
@@ -62,12 +68,23 @@ export default function ResetPassword({
                                 autoComplete="new-password"
                                 className="mt-1 block h-11 w-full"
                                 autoFocus
+                                required
                                 placeholder={authUi.fields.password}
                                 passwordrules={passwordRules}
                                 showLabel={authUi.password_visibility.show}
                                 hideLabel={authUi.password_visibility.hide}
+                                aria-describedby={
+                                    errors.password
+                                        ? 'password-error'
+                                        : undefined
+                                }
+                                aria-invalid={Boolean(errors.password)}
                             />
-                            <InputError message={errors.password} />
+                            <InputError
+                                id="password-error"
+                                message={errors.password}
+                                role="alert"
+                            />
                         </div>
 
                         <div className="grid gap-2">
@@ -79,22 +96,33 @@ export default function ResetPassword({
                                 name="password_confirmation"
                                 autoComplete="new-password"
                                 className="mt-1 block h-11 w-full"
+                                required
                                 placeholder={
                                     authUi.fields.password_confirmation
                                 }
                                 passwordrules={passwordRules}
                                 showLabel={authUi.password_visibility.show}
                                 hideLabel={authUi.password_visibility.hide}
+                                aria-describedby={
+                                    errors.password_confirmation
+                                        ? 'password-confirmation-error'
+                                        : undefined
+                                }
+                                aria-invalid={Boolean(
+                                    errors.password_confirmation,
+                                )}
                             />
                             <InputError
+                                id="password-confirmation-error"
                                 message={errors.password_confirmation}
                                 className="mt-2"
+                                role="alert"
                             />
                         </div>
 
                         <Button
                             type="submit"
-                            className="mt-4 h-11 w-full"
+                            className="auth-form__submit mt-4 h-11 w-full"
                             disabled={processing}
                             data-test="reset-password-button"
                         >

@@ -2,6 +2,16 @@
 
 return [
     'brand' => 'Arab UT',
+    'benefits' => [
+        'eyebrow' => 'Your Arab UT account',
+        'title' => 'Continue your order in one place',
+        'description' => 'Sign in to connect your account to your current cart.',
+        'items' => [
+            'Your cart continues after you sign in',
+            'EA credentials stay encrypted in the temporary cart',
+            'Change language and currency in the same store',
+        ],
+    ],
     'fields' => [
         'first_name' => 'First name',
         'last_name' => 'Last name',

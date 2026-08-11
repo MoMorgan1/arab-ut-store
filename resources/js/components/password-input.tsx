@@ -30,7 +30,6 @@ export default function PasswordInput({
                 onClick={() => setShowPassword((prev) => !prev)}
                 className="absolute inset-y-0 end-0 flex min-w-11 items-center justify-center rounded-e-md text-muted-foreground hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
                 aria-label={showPassword ? hideLabel : showLabel}
-                tabIndex={-1}
             >
                 {showPassword ? (
                     <EyeOff className="size-4" />

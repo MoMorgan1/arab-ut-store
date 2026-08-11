@@ -21,7 +21,11 @@ export default function ForgotPassword({
             <Head title={authUi.forgot_password.head_title} />
 
             {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
+                <div
+                    className="auth-form__status"
+                    role="status"
+                    aria-live="polite"
+                >
                     {status}
                 </div>
             )}
@@ -42,20 +46,30 @@ export default function ForgotPassword({
                                     id="email"
                                     type="email"
                                     name="email"
-                                    autoComplete="off"
+                                    autoComplete="email"
                                     autoFocus
+                                    required
                                     placeholder="email@example.com"
                                     className="h-11"
+                                    aria-describedby={
+                                        errors.email ? 'email-error' : undefined
+                                    }
+                                    aria-invalid={Boolean(errors.email)}
                                 />
 
-                                <InputError message={errors.email} />
+                                <InputError
+                                    id="email-error"
+                                    message={errors.email}
+                                    role="alert"
+                                />
                             </div>
 
                             <div className="my-6 flex items-center justify-start">
                                 <Button
-                                    className="h-11 w-full"
+                                    className="auth-form__submit h-11 w-full"
                                     disabled={processing}
                                     data-test="email-password-reset-link-button"
+                                    type="submit"
                                 >
                                     {processing && (
                                         <LoaderCircle className="h-4 w-4 animate-spin" />

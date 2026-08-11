@@ -1,3 +1,8 @@
+import type {
+    StoreShellConfig,
+    StoreShellTranslations,
+} from '@/types/store-shell';
+
 export type User = {
     id: number;
     first_name: string;
@@ -31,6 +36,12 @@ export type AuthRoutes = {
 
 export type AuthUiTranslations = {
     brand: string;
+    benefits: {
+        eyebrow: string;
+        title: string;
+        description: string;
+        items: [string, string, string];
+    };
     fields: {
         first_name: string;
         last_name: string;
@@ -78,7 +89,12 @@ export type AuthSharedProps = {
     authRoutes: AuthRoutes;
     authUi: AuthUiTranslations;
     direction: 'rtl' | 'ltr';
+    cartCount: number;
+    displayCurrency: string;
+    displayCurrencies: string[];
     locale: 'ar' | 'en';
+    storeShell: StoreShellConfig;
+    ui: StoreShellTranslations;
 };
 
 /* @chisel-passkeys */

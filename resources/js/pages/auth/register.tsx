@@ -38,15 +38,24 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                         type="text"
                                         required
                                         autoFocus
-                                        tabIndex={1}
                                         autoComplete="given-name"
                                         name="first_name"
                                         placeholder={authUi.fields.first_name}
                                         className="h-11"
+                                        aria-describedby={
+                                            errors.first_name
+                                                ? 'first-name-error'
+                                                : undefined
+                                        }
+                                        aria-invalid={Boolean(
+                                            errors.first_name,
+                                        )}
                                     />
                                     <InputError
+                                        id="first-name-error"
                                         message={errors.first_name}
                                         className="mt-2"
+                                        role="alert"
                                     />
                                 </div>
 
@@ -58,15 +67,22 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                         id="last_name"
                                         type="text"
                                         required
-                                        tabIndex={2}
                                         autoComplete="family-name"
                                         name="last_name"
                                         placeholder={authUi.fields.last_name}
                                         className="h-11"
+                                        aria-describedby={
+                                            errors.last_name
+                                                ? 'last-name-error'
+                                                : undefined
+                                        }
+                                        aria-invalid={Boolean(errors.last_name)}
                                     />
                                     <InputError
+                                        id="last-name-error"
                                         message={errors.last_name}
                                         className="mt-2"
+                                        role="alert"
                                     />
                                 </div>
                             </div>
@@ -79,13 +95,20 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                     id="email"
                                     type="email"
                                     required
-                                    tabIndex={3}
                                     autoComplete="email"
                                     name="email"
                                     placeholder="email@example.com"
                                     className="h-11"
+                                    aria-describedby={
+                                        errors.email ? 'email-error' : undefined
+                                    }
+                                    aria-invalid={Boolean(errors.email)}
                                 />
-                                <InputError message={errors.email} />
+                                <InputError
+                                    id="email-error"
+                                    message={errors.email}
+                                    role="alert"
+                                />
                             </div>
 
                             <div className="grid gap-2">
@@ -95,16 +118,25 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                 <PasswordInput
                                     id="password"
                                     required
-                                    tabIndex={4}
                                     autoComplete="new-password"
                                     name="password"
                                     placeholder={authUi.fields.password}
                                     passwordrules={passwordRules}
                                     className="h-11"
+                                    aria-describedby={
+                                        errors.password
+                                            ? 'password-error'
+                                            : undefined
+                                    }
+                                    aria-invalid={Boolean(errors.password)}
                                     showLabel={authUi.password_visibility.show}
                                     hideLabel={authUi.password_visibility.hide}
                                 />
-                                <InputError message={errors.password} />
+                                <InputError
+                                    id="password-error"
+                                    message={errors.password}
+                                    role="alert"
+                                />
                             </div>
 
                             <div className="grid gap-2">
@@ -114,7 +146,6 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                 <PasswordInput
                                     id="password_confirmation"
                                     required
-                                    tabIndex={5}
                                     autoComplete="new-password"
                                     name="password_confirmation"
                                     placeholder={
@@ -122,19 +153,29 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                     }
                                     passwordrules={passwordRules}
                                     className="h-11"
+                                    aria-describedby={
+                                        errors.password_confirmation
+                                            ? 'password-confirmation-error'
+                                            : undefined
+                                    }
+                                    aria-invalid={Boolean(
+                                        errors.password_confirmation,
+                                    )}
                                     showLabel={authUi.password_visibility.show}
                                     hideLabel={authUi.password_visibility.hide}
                                 />
                                 <InputError
+                                    id="password-confirmation-error"
                                     message={errors.password_confirmation}
+                                    role="alert"
                                 />
                             </div>
 
                             <Button
                                 type="submit"
-                                className="mt-2 h-11 w-full"
-                                tabIndex={6}
+                                className="auth-form__submit mt-2 h-11 w-full"
                                 data-test="register-user-button"
+                                disabled={processing}
                             >
                                 {processing && <Spinner />}
                                 {authUi.register.submit}
@@ -146,7 +187,6 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                             <TextLink
                                 className="auth-inline-link"
                                 href={authRoutes.loginUrl}
-                                tabIndex={7}
                             >
                                 {authUi.register.login_link}
                             </TextLink>

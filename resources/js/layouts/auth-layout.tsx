@@ -1,5 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import AuthLayoutTemplate from '@/layouts/auth/auth-simple-layout';
+import StoreLayout from '@/layouts/store-layout';
 import type { AuthSharedProps } from '@/types/auth';
 
 export default function AuthLayout({
@@ -7,20 +8,41 @@ export default function AuthLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { authPage, authRoutes, authUi, direction, locale } = usePage()
-        .props as unknown as AuthSharedProps;
+    const page = usePage();
+    const {
+        authPage,
+        authUi,
+        cartCount,
+        direction,
+        displayCurrencies,
+        displayCurrency,
+        locale,
+        storeShell,
+        ui,
+    } = page.props as unknown as AuthSharedProps;
     const pageCopy = authUi[authPage];
+    const showsBenefits = authPage === 'login' || authPage === 'register';
 
     return (
-        <AuthLayoutTemplate
-            brand={authUi.brand}
-            description={pageCopy.description}
+        <StoreLayout
+            cartCount={cartCount}
+            currentUrl={page.url}
             direction={direction}
-            homeUrl={authRoutes.homeUrl}
+            displayCurrencies={displayCurrencies}
+            displayCurrency={displayCurrency}
             locale={locale}
-            title={pageCopy.title}
+            storeShell={storeShell}
+            ui={ui}
         >
-            {children}
-        </AuthLayoutTemplate>
+            <AuthLayoutTemplate
+                benefits={authUi.benefits}
+                description={pageCopy.description}
+                direction={direction}
+                showBenefits={showsBenefits}
+                title={pageCopy.title}
+            >
+                {children}
+            </AuthLayoutTemplate>
+        </StoreLayout>
     );
 }
