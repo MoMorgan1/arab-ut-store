@@ -57,6 +57,16 @@ test('a malformed refresh rolls back and retains the last good review set', func
         ->and(Review::sole()->external_id)->toBe('review-1');
 });
 
+test('PII hidden inside public review text or display names is rejected before persistence', function (string $field, string $value) {
+    expect(fn () => app(ImportStoreReviews::class)->execute(reviewPayload([
+        $field => $value,
+    ])))->toThrow(ValidationException::class)
+        ->and(Review::count())->toBe(0);
+})->with([
+    'email in comment' => ['comment', 'Email me at private@example.test'],
+    'phone in public name' => ['public_name', '+966500000000'],
+]);
+
 test('a complete snapshot hides source reviews that disappear without touching manual rows', function () {
     app(ImportStoreReviews::class)->execute(reviewPayload());
     Review::create([

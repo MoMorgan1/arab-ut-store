@@ -105,6 +105,13 @@ final class ImportStoreReviews
         $publicName = isset($validated['public_name'])
             ? trim(strip_tags((string) $validated['public_name']))
             : '';
+
+        if ($this->containsPrivateContact($body) || $this->containsPrivateContact($publicName)) {
+            throw ValidationException::withMessages([
+                "reviews.{$index}" => 'The public review fields contain private contact data.',
+            ]);
+        }
+
         $locale = (string) ($validated['locale'] ?? 'ar');
         $orderItemId = isset($validated['order_item_public_id'])
             ? OrderItem::query()->where('public_id', $validated['order_item_public_id'])->value('id')
@@ -134,5 +141,17 @@ final class ImportStoreReviews
             'is_visible' => (bool) $validated['is_visible'],
             'published_at' => CarbonImmutable::parse($validated['published_at'])->utc(),
         ];
+    }
+
+    private function containsPrivateContact(string $value): bool
+    {
+        if (filter_var($value, FILTER_VALIDATE_EMAIL) !== false
+            || preg_match('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', $value) === 1) {
+            return true;
+        }
+
+        $digits = preg_replace('/\D+/', '', $value);
+
+        return is_string($digits) && strlen($digits) >= 9;
     }
 }
