@@ -300,13 +300,13 @@ function guestClaimItem(Cart $cart, string $secretSentinel): CartItem
     ]);
     $secret = new CartItemSecret([
         'cart_item_id' => $item->id,
-        'masked_summary' => ['has_password' => true, 'backup_code_count' => 5],
-        'retained_until' => now()->addHour(),
+        'masked_summary' => ['has_password' => true, 'backup_code_count' => 3],
+        'retained_until' => null,
     ]);
     $secret->encrypted_payload = [
         'ea_email' => 'claim@example.test',
         'ea_password' => $secretSentinel,
-        'backup_codes' => ['10000001', '10000002', '10000003', '10000004', '10000005'],
+        'backup_codes' => ['10000001', '10000002', '10000003'],
     ];
     $secret->save();
 

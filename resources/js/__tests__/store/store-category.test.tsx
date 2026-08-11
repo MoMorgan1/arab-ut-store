@@ -4,6 +4,7 @@ import {
     render,
     screen,
     waitFor,
+    within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
@@ -59,7 +60,26 @@ it('submits locale-preserving search filter and sort parameters', () => {
     );
 });
 
-it('adds the selected authoritative variant and redirects to the returned cart', async () => {
+it('renders the refined SBC hierarchy and trust strip', () => {
+    render(<StoreCategory />);
+
+    expect(
+        screen.getByRole('heading', { name: 'SBC Services', level: 1 }),
+    ).toBeVisible();
+    expect(
+        document.querySelector('.store-catalog-hero__shield img'),
+    ).toHaveAttribute('src', '/images/store/services/sbc.webp');
+    expect(
+        screen.getByRole('heading', { name: 'Browse by type', level: 2 }),
+    ).toBeVisible();
+    expect(
+        within(
+            screen.getByRole('list', { name: 'Store assurances' }),
+        ).getAllByRole('listitem'),
+    ).toHaveLength(4);
+});
+
+it('adds the selected authoritative variant, updates the cart count, and stays on the listing', async () => {
     render(<StoreCategory />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Add to cart' }));
@@ -69,7 +89,11 @@ it('adds the selected authoritative variant and redirects to the returned cart',
         cartUrl: '/en/cart/items/catalog',
         variantId: '01K00000000000000000000002',
     });
-    expect(mocks.visit).toHaveBeenCalledWith('/en/cart');
+    expect(mocks.visit).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Added to cart' })).toBeVisible();
+    expect(
+        within(screen.getByRole('link', { name: 'Cart' })).getByText('1'),
+    ).toBeVisible();
     expect(
         screen.queryByRole('button', { name: /details|contact/i }),
     ).toBeNull();
@@ -135,9 +159,16 @@ function catalogTranslations() {
         previous: 'Previous',
         next: 'Next',
         add_to_cart: 'Add to cart',
+        added: 'Added to cart',
         adding: 'Adding…',
         add_error: 'Could not add this item.',
         platform: 'Platform',
+        browse_by_type: 'Browse by type',
+        assurances: 'Store assurances',
+        assurance_no_players: 'No player withdrawal',
+        assurance_fast: 'Fast delivery',
+        assurance_support: '24/7 support',
+        assurance_secure: 'Secure service',
     };
 }
 

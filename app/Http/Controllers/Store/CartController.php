@@ -26,16 +26,16 @@ final class CartController extends Controller
 {
     public function __invoke(Request $request, ResolveCartOwner $resolveCartOwner): Response
     {
+        $localized = $request->route('locale') === 'en';
         $activeCart = Cart::query()
             ->activeForOwner($resolveCartOwner->forRequest($request))
             ->with(['items.secret', 'items.productVariant.product.media'])
             ->first();
         $safeCartItems = $activeCart?->items
-            ->map(fn (CartItem $cartItem): array => $this->safeCartItem($cartItem))
+            ->map(fn (CartItem $cartItem): array => $this->safeCartItem($cartItem, $localized))
             ->values()
             ->all() ?? [];
 
-        $localized = $request->route('locale') === 'en';
         $homeUrl = $localized
             ? route('localized.home', ['locale' => 'en'], absolute: false)
             : route('home', absolute: false);
@@ -54,7 +54,7 @@ final class CartController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function safeCartItem(CartItem $cartItem): array
+    private function safeCartItem(CartItem $cartItem, bool $localized): array
     {
         $credentials = $this->safeCredentials($cartItem->secret);
 
@@ -66,6 +66,7 @@ final class CartController extends Controller
             'configuration' => $this->safeConfiguration($cartItem->configuration),
             'product' => $this->safeProduct($cartItem->productVariant),
             'credentials' => $credentials,
+            'credentialsUrl' => $this->credentialsUrl($cartItem, $localized),
             'requiresCredentials' => $credentials === null,
         ];
     }
@@ -120,16 +121,12 @@ final class CartController extends Controller
         return Storage::disk('public')->url($path);
     }
 
-    /** @return array{hasPassword: true, backupCodeCount: 5, retainedUntil: string}|null */
+    /** @return array{hasPassword: true, backupCodeCount: 3}|null */
     private function safeCredentials(?CartItemSecret $secret): ?array
     {
-        $retainedUntil = $secret?->getAttribute('retained_until');
-
         if ($secret === null
             || $secret->getRawOriginal('encrypted_payload') === null
-            || $secret->getAttribute('deleted_at') !== null
-            || ! $retainedUntil instanceof DateTimeInterface
-            || $retainedUntil <= new DateTimeImmutable) {
+            || $secret->getAttribute('deleted_at') !== null) {
             return null;
         }
 
@@ -137,15 +134,26 @@ final class CartController extends Controller
 
         if (! is_array($summary)
             || ($summary['has_password'] ?? null) !== true
-            || ($summary['backup_code_count'] ?? null) !== 5) {
+            || ($summary['backup_code_count'] ?? null) !== 3) {
             return null;
         }
 
         return [
             'hasPassword' => true,
-            'backupCodeCount' => 5,
-            'retainedUntil' => $retainedUntil->format(DateTimeInterface::ATOM),
+            'backupCodeCount' => 3,
         ];
+    }
+
+    private function credentialsUrl(CartItem $cartItem, bool $localized): string
+    {
+        $route = $localized
+            ? 'localized.cart.items.credentials.show'
+            : 'cart.items.credentials.show';
+
+        return route($route, [
+            ...($localized ? ['locale' => 'en'] : []),
+            'cartItem' => $cartItem->public_id,
+        ], absolute: false);
     }
 
     /**

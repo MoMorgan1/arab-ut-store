@@ -6,7 +6,7 @@ import type { CoinsCredentials } from '@/types/coins';
 const credentials: CoinsCredentials = {
     eaEmail: 'player@example.com',
     eaPassword: 'opaque EA password',
-    backupCodes: ['10000001', '10000002', '10000003', '10000004', '10000005'],
+    backupCodes: ['10000001', '10000002', '10000003'],
 };
 
 function request() {

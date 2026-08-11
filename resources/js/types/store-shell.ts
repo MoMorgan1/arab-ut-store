@@ -92,10 +92,10 @@ export type StoreCartConfiguration = Partial<{
 export type StoreCartItem = {
     configuration: StoreCartConfiguration;
     credentials: {
-        backupCodeCount: 5;
+        backupCodeCount: 3;
         hasPassword: true;
-        retainedUntil: string;
     } | null;
+    credentialsUrl: string;
     id: string;
     product: {
         imageUrl: string | null;
@@ -130,6 +130,15 @@ export type StoreCartTranslations = {
     credentials_ready: string;
     credentials_missing: string;
     backup_codes: string;
+    backup_code: string;
+    ea_email: string;
+    ea_password: string;
+    edit_credentials: string;
+    save_credentials: string;
+    cancel_edit: string;
+    credentials_saved: string;
+    credentials_load_error: string;
+    credentials_save_error: string;
 };
 
 export type StoreCartPageProps = {

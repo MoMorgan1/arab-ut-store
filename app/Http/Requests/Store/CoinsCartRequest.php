@@ -23,7 +23,7 @@ final class CoinsCartRequest extends FormRequest
             'credentials' => ['required', 'array:ea_email,ea_password,backup_codes'],
             'credentials.ea_email' => ['required', 'string', 'email:rfc', 'max:254'],
             'credentials.ea_password' => ['present', 'string', 'min:1', 'max:128'],
-            'credentials.backup_codes' => ['required', 'array', 'size:5'],
+            'credentials.backup_codes' => ['required', 'array', 'size:3'],
             'credentials.backup_codes.*' => ['required', 'string', 'regex:/\A[0-9]{8}\z/D', 'distinct:strict'],
         ];
     }

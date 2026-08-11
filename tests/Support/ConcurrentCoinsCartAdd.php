@@ -18,7 +18,7 @@ try {
         'credentials' => [
             'ea_email' => 'concurrency-sentinel@example.test',
             'ea_password' => 'Concurrency Password Sentinel',
-            'backup_codes' => ['83000001', '83000002', '83000003', '83000004', '83000005'],
+            'backup_codes' => ['83000001', '83000002', '83000003'],
         ],
     ], (string) $argv[2], 'ar');
 } catch (Throwable) {

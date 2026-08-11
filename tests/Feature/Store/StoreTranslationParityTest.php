@@ -145,3 +145,14 @@ test('the Arabic service rail uses the approved customer-facing names', function
         ->and(data_get($arabic, 'services.objectives.title'))->toBe('المهام')
         ->and(data_get($arabic, 'services.rivals.title'))->toBe('الرايفلز');
 });
+
+test('the catalog exposes the refined SBC hierarchy and add feedback in both locales', function () {
+    $arabic = require lang_path('ar/store.php');
+    $english = require lang_path('en/store.php');
+
+    expect(data_get($arabic, 'catalog.browse_by_type'))->toBe('استكشف حسب النوع')
+        ->and(data_get($arabic, 'catalog.added'))->toBe('تمت الإضافة إلى السلة')
+        ->and(data_get($arabic, 'catalog.assurances'))->toBe('ضمانات الخدمة')
+        ->and(data_get($english, 'catalog.browse_by_type'))->toBe('Browse by type')
+        ->and(data_get($english, 'catalog.added'))->toBe('Added to cart');
+});

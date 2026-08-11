@@ -4,6 +4,7 @@ import {
     CatalogCartRequestError,
     submitCatalogCart,
 } from '@/lib/catalog-cart-api';
+import type { CatalogCartSuccess } from '@/lib/catalog-cart-api';
 
 function newAttemptKey(): string {
     return typeof crypto.randomUUID === 'function'
@@ -17,23 +18,27 @@ export function CatalogAddControl({
     idleLabel,
     loadingLabel,
     onSuccess,
+    successLabel,
     variantId,
 }: {
     addUrl: string;
     errorLabel: string;
     idleLabel: string;
     loadingLabel: string;
-    onSuccess: (cartUrl: string) => void;
+    onSuccess: (result: CatalogCartSuccess) => void;
+    successLabel?: string;
     variantId: string;
 }) {
     const keyRef = useRef(newAttemptKey());
     const statusRef = useRef<HTMLParagraphElement>(null);
     const [loading, setLoading] = useState(false);
+    const [success, setSuccess] = useState(false);
     const [error, setError] = useState(false);
 
     const add = async () => {
         setLoading(true);
         setError(false);
+        setSuccess(false);
 
         try {
             const result = await submitCatalogCart({
@@ -42,7 +47,8 @@ export function CatalogAddControl({
                 variantId,
             });
             keyRef.current = newAttemptKey();
-            onSuccess(result.cartUrl);
+            setSuccess(true);
+            onSuccess(result);
         } catch (failure) {
             if (
                 failure instanceof CatalogCartRequestError &&
@@ -60,8 +66,17 @@ export function CatalogAddControl({
 
     return (
         <div className="store-catalog-add">
-            <button disabled={loading} onClick={() => void add()} type="button">
-                {loading ? loadingLabel : idleLabel}
+            <button
+                data-state={loading ? 'loading' : success ? 'success' : 'idle'}
+                disabled={loading}
+                onClick={() => void add()}
+                type="button"
+            >
+                {loading
+                    ? loadingLabel
+                    : success
+                      ? (successLabel ?? idleLabel)
+                      : idleLabel}
             </button>
             {error ? (
                 <p ref={statusRef} role="alert" tabIndex={-1}>

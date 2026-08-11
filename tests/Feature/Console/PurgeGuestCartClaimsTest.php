@@ -25,13 +25,13 @@ test('the purge removes only expired claim markers without exposing identities o
     ]);
     $secret = new CartItemSecret([
         'cart_item_id' => $item->id,
-        'masked_summary' => ['has_password' => true, 'backup_code_count' => 5],
-        'retained_until' => now()->addDay(),
+        'masked_summary' => ['has_password' => true, 'backup_code_count' => 3],
+        'retained_until' => null,
     ]);
     $secret->encrypted_payload = [
         'ea_email' => 'claim-retention@example.test',
         'ea_password' => 'Claim Retention Sentinel',
-        'backup_codes' => ['85000001', '85000002', '85000003', '85000004', '85000005'],
+        'backup_codes' => ['85000001', '85000002', '85000003'],
     ];
     $secret->save();
     $ciphertext = (string) DB::table('cart_item_secrets')
@@ -107,11 +107,10 @@ test('a claimed identity within retention still routes stale additions to the us
         ->and(Cart::query()->where('active_owner_key', 'guest:'.$owner->sessionKey())->count())->toBe(0);
 });
 
-test('guest claim retention covers session and cart secret retention and purge is scheduled hourly', function () {
+test('guest claim retention covers the session lifetime and purge is scheduled hourly', function () {
     $minimumHours = max(
         24,
         (int) ceil(((int) config('session.lifetime')) / 60),
-        (int) config('coins.cart.secret_retention_hours'),
     );
 
     expect(config('coins.cart.guest_claim_retention_hours'))->toBeGreaterThanOrEqual($minimumHours);

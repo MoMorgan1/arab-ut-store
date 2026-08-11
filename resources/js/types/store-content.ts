@@ -81,8 +81,15 @@ export type CatalogProduct = {
 export type CatalogTranslations = {
     add_error: string;
     add_to_cart: string;
+    added: string;
     adding: string;
     all: string;
+    assurance_fast: string;
+    assurance_no_players: string;
+    assurance_secure: string;
+    assurance_support: string;
+    assurances: string;
+    browse_by_type: string;
     empty: string;
     filter: string;
     foundations: string;

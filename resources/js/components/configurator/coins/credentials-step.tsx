@@ -31,8 +31,6 @@ const BACKUP_CODE_FIELDS = [
     'code-0',
     'code-1',
     'code-2',
-    'code-3',
-    'code-4',
 ] as const satisfies readonly CoinsCredentialField[];
 
 function validateCredentials(
@@ -70,7 +68,7 @@ function validateCredentials(
 
 export function emptyCoinsCredentials(): CoinsCredentials {
     return {
-        backupCodes: ['', '', '', '', ''],
+        backupCodes: ['', '', ''],
         eaEmail: '',
         eaPassword: '',
     };
@@ -165,11 +163,6 @@ export function CredentialsStep({
             >
                 {translations.credentials.title}
             </h2>
-            <p className="coins-credentials__trust">
-                <span aria-hidden="true" className="coins-security-mark" />
-                {translations.credentials.trust}
-            </p>
-
             <div className="coins-credentials-form">
                 <CredentialInput
                     error={errors.email}

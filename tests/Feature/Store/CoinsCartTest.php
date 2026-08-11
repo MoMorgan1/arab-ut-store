@@ -78,7 +78,7 @@ function coinsCartPayload(array $changes = []): array
         'credentials' => [
             'ea_email' => 'cart-sentinel@example.test',
             'ea_password' => '  Opaque Cart Password Sentinel  ',
-            'backup_codes' => ['81000001', '81000002', '81000003', '81000004', '81000005'],
+            'backup_codes' => ['81000001', '81000002', '81000003'],
         ],
     ];
     $credentialChanges = $changes['credentials'] ?? [];
@@ -240,10 +240,10 @@ test('supported Coins modes create distinct safe lines with encrypted credential
             'price_version' => 11,
         ])
         ->and($secret->encrypted_payload['ea_password'])->toBe('  Opaque Cart Password Sentinel  ')
-        ->and($secret->encrypted_payload['backup_codes'])->toHaveCount(5)
+        ->and($secret->encrypted_payload['backup_codes'])->toHaveCount(3)
         ->and($secret->masked_summary)->toBe([
             'has_password' => true,
-            'backup_code_count' => 5,
+            'backup_code_count' => 3,
         ])
         ->and(json_encode($item->configuration, JSON_THROW_ON_ERROR))->not->toContain('ea_email')
         ->not->toContain('ea_password')
@@ -263,7 +263,7 @@ test('supported Coins modes create distinct safe lines with encrypted credential
     'PC' => [['platform' => 'pc', 'delivery' => null], 500],
 ]);
 
-test('guest credential validation requires five distinct eight digit ASCII codes without echoing them', function (array $credentialChanges) {
+test('guest credential validation requires three distinct eight digit ASCII codes without echoing them', function (array $credentialChanges) {
     createCartCatalog();
     $payload = coinsCartPayload(['credentials' => $credentialChanges]);
 
@@ -277,10 +277,11 @@ test('guest credential validation requires five distinct eight digit ASCII codes
         ->not->toContain('81000001')
         ->and(CartItemSecret::count())->toBe(0);
 })->with([
-    'only four codes' => [['backup_codes' => ['81000001', '81000002', '81000003', '81000004']]],
-    'duplicate codes' => [['backup_codes' => ['81000001', '81000001', '81000003', '81000004', '81000005']]],
-    'non-ASCII digits' => [['backup_codes' => ['٨١٠٠٠٠٠١', '81000002', '81000003', '81000004', '81000005']]],
-    'short code' => [['backup_codes' => ['8100001', '81000002', '81000003', '81000004', '81000005']]],
+    'only two codes' => [['backup_codes' => ['81000001', '81000002']]],
+    'five codes' => [['backup_codes' => ['81000001', '81000002', '81000003', '81000004', '81000005']]],
+    'duplicate codes' => [['backup_codes' => ['81000001', '81000001', '81000003']]],
+    'non-ASCII digits' => [['backup_codes' => ['٨١٠٠٠٠٠١', '81000002', '81000003']]],
+    'short code' => [['backup_codes' => ['8100001', '81000002', '81000003']]],
 ]);
 
 test('unknown and client-authoritative fields are rejected for guests', function (array $changes) {
@@ -301,7 +302,7 @@ test('email and backup codes normalize without changing the opaque EA password',
     $this->actingAs(User::factory()->create());
     $payload = coinsCartPayload(['credentials' => [
         'ea_email' => '  CART-SENTINEL@EXAMPLE.TEST  ',
-        'backup_codes' => [' 81000001 ', '81000002 ', ' 81000003', '81000004', '81000005'],
+        'backup_codes' => [' 81000001 ', '81000002 ', ' 81000003'],
     ]]);
 
     addCoinsToCart('/cart/items/coins', $payload, 'normalization-key')->assertCreated();
@@ -310,8 +311,63 @@ test('email and backup codes normalize without changing the opaque EA password',
     expect($credentials['ea_email'])->toBe('cart-sentinel@example.test')
         ->and($credentials['ea_password'])->toBe('  Opaque Cart Password Sentinel  ')
         ->and($credentials['backup_codes'])->toBe([
-            '81000001', '81000002', '81000003', '81000004', '81000005',
+            '81000001', '81000002', '81000003',
         ]);
+});
+
+test('the cart exposes encrypted EA credentials only through an owner no-store endpoint and allows owner edits', function () {
+    createCartCatalog();
+    $rawOwnerToken = str_repeat('f', 64);
+    $this->withSession([ResolveCartOwner::SESSION_KEY => $rawOwnerToken]);
+
+    addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'credentials-owner-key')->assertCreated();
+    $item = CartItem::sole();
+
+    $cartPage = $this->get('/cart');
+    $cartPage->assertInertia(fn (Assert $page) => $page
+        ->where('cart.items.0.credentials.backupCodeCount', 3)
+        ->where('cart.items.0.credentialsUrl', "/cart/items/{$item->public_id}/credentials"));
+    expect($cartPage->getContent())
+        ->not->toContain('cart-sentinel@example.test')
+        ->not->toContain('Opaque Cart Password Sentinel')
+        ->not->toContain('81000001');
+
+    $read = $this->getJson("/cart/items/{$item->public_id}/credentials");
+    $read->assertOk()->assertExactJson(['data' => [
+        'eaEmail' => 'cart-sentinel@example.test',
+        'eaPassword' => '  Opaque Cart Password Sentinel  ',
+        'backupCodes' => ['81000001', '81000002', '81000003'],
+    ]]);
+    expect($read->headers->get('Cache-Control'))->toContain('no-store');
+
+    $updated = $this->patchJson("/cart/items/{$item->public_id}/credentials", [
+        'ea_email' => 'updated@example.test',
+        'ea_password' => '  Updated opaque password  ',
+        'backup_codes' => ['91000001', '91000002', '91000003'],
+    ]);
+    $updated->assertNoContent();
+    expect(CartItemSecret::sole()->encrypted_payload)->toBe([
+        'ea_email' => 'updated@example.test',
+        'ea_password' => '  Updated opaque password  ',
+        'backup_codes' => ['91000001', '91000002', '91000003'],
+    ]);
+
+    $this->flushSession();
+    $this->withSession([ResolveCartOwner::SESSION_KEY => str_repeat('e', 64)]);
+    $this->getJson("/cart/items/{$item->public_id}/credentials")->assertNotFound();
+    $this->patchJson("/cart/items/{$item->public_id}/credentials", [
+        'ea_email' => 'attacker@example.test',
+        'ea_password' => 'attacker password',
+        'backup_codes' => ['92000001', '92000002', '92000003'],
+    ])->assertNotFound();
+});
+
+test('Coins cart secrets have no automatic retention deadline', function () {
+    createCartCatalog();
+
+    addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'persistent-secret-key')->assertCreated();
+
+    expect(CartItemSecret::sole()->retained_until)->toBeNull();
 });
 
 test('a whitespace-only EA password remains valid opaque input', function () {
@@ -496,8 +552,8 @@ test('cart reads expose safe lines and credential reentry state only', function 
         ->where('cart.count', 1)
         ->where('cart.items.0.requiresCredentials', false)
         ->where('cart.items.0.credentials.hasPassword', true)
-        ->where('cart.items.0.credentials.backupCodeCount', 5)
-        ->has('cart.items.0.credentials.retainedUntil')
+        ->where('cart.items.0.credentials.backupCodeCount', 3)
+        ->where('cart.items.0.credentialsUrl', "/cart/items/{$cartItem->public_id}/credentials")
         ->missing('cart.items.0.credentials.maskedEmail')
         ->where('cart.items.0.configuration', [
             'service_type' => 'coins',
@@ -535,10 +591,9 @@ test('cart reads expose safe lines and credential reentry state only', function 
         ->not->toContain('Poison Token Sentinel');
 
     CartItemSecret::sole()->update(['retained_until' => now()->subMinute()]);
-    $this->artisan('cart-secrets:purge')->assertSuccessful();
     $this->get('/cart')->assertInertia(fn (Assert $page) => $page
-        ->where('cart.items.0.requiresCredentials', true)
-        ->where('cart.items.0.credentials', null));
+        ->where('cart.items.0.requiresCredentials', false)
+        ->where('cart.items.0.credentials.backupCodeCount', 3));
 });
 
 test('cart reads ignore poisoned legacy summary emails without requiring credential reentry', function () {
@@ -550,7 +605,7 @@ test('cart reads ignore poisoned legacy summary emails without requiring credent
     $secret->update(['masked_summary' => [
         'email' => 'plaintext-summary-sentinel@example.test',
         'has_password' => true,
-        'backup_code_count' => 5,
+        'backup_code_count' => 3,
     ]]);
 
     $response = $this->get('/cart');
@@ -558,7 +613,7 @@ test('cart reads ignore poisoned legacy summary emails without requiring credent
     $response->assertInertia(fn (Assert $page) => $page
         ->where('cart.items.0.requiresCredentials', false)
         ->where('cart.items.0.credentials.hasPassword', true)
-        ->where('cart.items.0.credentials.backupCodeCount', 5)
+        ->where('cart.items.0.credentials.backupCodeCount', 3)
         ->missing('cart.items.0.credentials.maskedEmail'));
     expect($response->getContent())->not->toContain('plaintext-summary-sentinel@example.test');
 });
@@ -578,7 +633,7 @@ test('cart reads never project accepted emails that collide with the former mask
     $response->assertInertia(fn (Assert $page) => $page
         ->where('cart.items.0.requiresCredentials', false)
         ->where('cart.items.0.credentials.hasPassword', true)
-        ->where('cart.items.0.credentials.backupCodeCount', 5)
+        ->where('cart.items.0.credentials.backupCodeCount', 3)
         ->missing('cart.items.0.credentials.maskedEmail'));
     expect($response->getContent())->not->toContain($email);
 })->with([

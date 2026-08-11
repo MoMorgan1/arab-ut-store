@@ -124,13 +124,13 @@ test('concurrent guest claims merge every item and secret exactly once into one 
         ]);
         $secret = new CartItemSecret([
             'cart_item_id' => $item->id,
-            'masked_summary' => ['has_password' => true, 'backup_code_count' => 5],
-            'retained_until' => now()->addHour(),
+            'masked_summary' => ['has_password' => true, 'backup_code_count' => 3],
+            'retained_until' => null,
         ]);
         $secret->encrypted_payload = [
             'ea_email' => "concurrent-claim-{$index}@example.test",
             'ea_password' => "Concurrent claim secret {$index}",
-            'backup_codes' => ['20000001', '20000002', '20000003', '20000004', '20000005'],
+            'backup_codes' => ['20000001', '20000002', '20000003'],
         ];
         $secret->save();
     }

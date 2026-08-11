@@ -101,7 +101,7 @@ const store = {
         hide_password: 'Hide password',
         backup_codes: 'EA backup codes',
         backup_code: 'Backup code :number',
-        backup_help: 'Enter five different codes.',
+        backup_help: 'Enter three different codes.',
         required_email: 'Enter a valid EA email.',
         required_password: 'Enter your EA password.',
         required_code: 'Enter an 8-digit backup code.',

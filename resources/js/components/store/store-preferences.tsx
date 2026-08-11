@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
 import type { StoreLocale, StoreShellTranslations } from '@/types/store-shell';
@@ -141,6 +142,26 @@ export function StorePreferences({
                                             currentUrl,
                                             currency,
                                         )}
+                                        onClick={(event) => {
+                                            event.preventDefault();
+
+                                            if (currency === displayCurrency) {
+                                                return;
+                                            }
+
+                                            setIsOpen(false);
+                                            router.visit(
+                                                currencyHref(
+                                                    currentUrl,
+                                                    currency,
+                                                ),
+                                                {
+                                                    preserveScroll: true,
+                                                    preserveState: true,
+                                                    replace: true,
+                                                },
+                                            );
+                                        }}
                                     >
                                         {currency}
                                     </a>

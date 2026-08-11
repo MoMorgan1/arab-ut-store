@@ -1,6 +1,5 @@
 <?php
 
-use App\Console\Commands\PurgeCartItemSecrets;
 use App\Console\Commands\PurgeGuestCartClaims;
 use App\Console\Commands\RefreshDisplayExchangeRates;
 use App\Console\Commands\RefreshStoreReviews;
@@ -14,5 +13,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command(RefreshDisplayExchangeRates::class)->daily();
 Schedule::command(RefreshStoreReviews::class)->hourly()->withoutOverlapping(15)->onOneServer();
-Schedule::command(PurgeCartItemSecrets::class)->hourly()->withoutOverlapping();
 Schedule::command(PurgeGuestCartClaims::class)->hourly()->withoutOverlapping();

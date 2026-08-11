@@ -26,7 +26,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->trimStrings(except: [
             fn (Request $request): bool => $request->is('cart/items/coins')
-                || $request->is('*/cart/items/coins'),
+                || $request->is('*/cart/items/coins')
+                || $request->is('cart/items/*/credentials')
+                || $request->is('*/cart/items/*/credentials'),
         ]);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, RequireCoinsCartJson::class);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, RequireCatalogCartJson::class);
@@ -49,11 +51,16 @@ return Application::configure(basePath: dirname(__DIR__))
                 || ($request->isMethod('POST') && (
                     $request->is('cart/items/coins') || $request->is('*/cart/items/coins')
                     || $request->is('cart/items/catalog') || $request->is('*/cart/items/catalog')
+                ))
+                || ($request->isMethod('PATCH') && (
+                    $request->is('cart/items/*/credentials')
+                    || $request->is('*/cart/items/*/credentials')
                 )),
         );
         $exceptions->respond(function (Response $exceptionResponse, Throwable $_exception, Request $request): Response {
             if ($request->is('cart/items/coins*') || $request->is('*/cart/items/coins*')
-                || $request->is('cart/items/catalog*') || $request->is('*/cart/items/catalog*')) {
+                || $request->is('cart/items/catalog*') || $request->is('*/cart/items/catalog*')
+                || $request->is('cart/items/*/credentials') || $request->is('*/cart/items/*/credentials')) {
                 if ($exceptionResponse->getStatusCode() >= 500) {
                     return response()->json([
                         'error' => [

@@ -1,4 +1,10 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import {
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+} from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import StoreCart from '@/pages/store/cart';
@@ -22,10 +28,11 @@ const mockPage = vi.hoisted(() => ({
                         service_type: 'coins',
                     } as StoreCartConfiguration,
                     credentials: {
-                        backupCodeCount: 5,
+                        backupCodeCount: 3,
                         hasPassword: true,
-                        retainedUntil: '2026-08-11T12:00:00+00:00',
                     },
+                    credentialsUrl:
+                        '/en/cart/items/01K00000000000000000000000/credentials',
                     id: '01K00000000000000000000000',
                     product: {
                         imageUrl: '/images/store/coins/ut-coin-80.webp' as
@@ -60,9 +67,18 @@ const mockPage = vi.hoisted(() => ({
                 coins_unit: 'Coins',
                 total: 'Authoritative total',
                 credentials: 'EA details',
-                credentials_ready: 'Stored securely until :expiry',
+                credentials_ready: 'Stored securely',
                 credentials_missing: 'EA details need to be entered again.',
                 backup_codes: ':count backup codes stored',
+                ea_email: 'EA email',
+                ea_password: 'EA password',
+                edit_credentials: 'Edit EA details',
+                save_credentials: 'Save EA details',
+                cancel_edit: 'Cancel',
+                credentials_saved: 'EA details saved',
+                credentials_load_error: 'EA details could not be loaded.',
+                credentials_save_error: 'EA details could not be saved.',
+                backup_code: 'Backup code :number',
             },
         },
         direction: 'ltr',
@@ -144,6 +160,7 @@ vi.mock('@inertiajs/react', () => ({
 
 afterEach(cleanup);
 beforeEach(() => {
+    document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
     mockPage.props.cart.items[0].configuration = validConfiguration;
     mockPage.props.cart.items[0].product = {
         imageUrl: '/images/store/coins/ut-coin-80.webp',
@@ -152,6 +169,7 @@ beforeEach(() => {
     };
     mockPage.props.direction = 'ltr';
     mockPage.props.locale = 'en';
+    vi.unstubAllGlobals();
 });
 
 it('renders only the authoritative read-only Coins cart summary', () => {
@@ -164,7 +182,7 @@ it('renders only the authoritative read-only Coins cart summary', () => {
     expect(screen.getByText('500,000 Coins')).toBeVisible();
     expect(screen.getByText(/125\.00/)).toBeVisible();
     expect(document.body.textContent).not.toContain('EA email:');
-    expect(screen.getByText('5 backup codes stored')).toBeVisible();
+    expect(screen.getByText('3 backup codes stored')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Back to Coins' })).toHaveAttribute(
         'href',
         '/en#coins',
@@ -176,6 +194,62 @@ it('renders only the authoritative read-only Coins cart summary', () => {
     expect(document.body.textContent).not.toMatch(
         /10000001|opaque EA password/,
     );
+});
+
+it('loads owner-only credentials after render and edits exactly three codes without browser persistence', async () => {
+    const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+            new Response(
+                JSON.stringify({
+                    data: {
+                        backupCodes: ['10000001', '10000002', '10000003'],
+                        eaEmail: 'owner@example.test',
+                        eaPassword: 'opaque EA password',
+                    },
+                }),
+                {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                },
+            ),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const localStorageSpy = vi.spyOn(Storage.prototype, 'setItem');
+
+    render(<StoreCart />);
+
+    expect(document.body.textContent).not.toContain('owner@example.test');
+    expect(await screen.findByText('owner@example.test')).toBeVisible();
+    expect(screen.getByText('opaque EA password')).toBeVisible();
+    expect(screen.getByText('10000003')).toBeVisible();
+    expect(fetchMock).toHaveBeenNthCalledWith(
+        1,
+        '/en/cart/items/01K00000000000000000000000/credentials',
+        expect.objectContaining({
+            cache: 'no-store',
+            credentials: 'same-origin',
+        }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit EA details' }));
+    fireEvent.change(screen.getByLabelText('EA email'), {
+        target: { value: 'edited@example.test' },
+    });
+    fireEvent.change(screen.getByLabelText('Backup code 3'), {
+        target: { value: '20000003' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save EA details' }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+        backup_codes: ['10000001', '10000002', '20000003'],
+        ea_email: 'edited@example.test',
+        ea_password: 'opaque EA password',
+    });
+    expect(screen.getByText('EA details saved')).toBeVisible();
+    expect(localStorageSpy).not.toHaveBeenCalled();
 });
 
 it('does not invent cart facts when a safe projected field is absent', () => {

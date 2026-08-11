@@ -190,14 +190,14 @@ test('cart secrets are encrypted hidden guarded and cascade with their item', fu
     $payload = [
         'ea_email' => 'schema-sentinel@example.test',
         'ea_password' => 'Schema-Password-Sentinel',
-        'backup_codes' => ['10000001', '10000002', '10000003', '10000004', '10000005'],
+        'backup_codes' => ['10000001', '10000002', '10000003'],
     ];
 
     $guarded = CartItemSecret::create([
         'cart_item_id' => $item->id,
         'encrypted_payload' => $payload,
         'masked_summary' => ['email' => 's***@example.test'],
-        'retained_until' => now()->addDay(),
+        'retained_until' => null,
     ]);
     expect($guarded->getRawOriginal('encrypted_payload'))->toBeNull();
 
@@ -215,43 +215,11 @@ test('cart secrets are encrypted hidden guarded and cascade with their item', fu
 
     expect(fn () => CartItemSecret::create([
         'cart_item_id' => $item->id,
-        'retained_until' => now()->addDay(),
+        'retained_until' => null,
     ]))->toThrow(QueryException::class);
 
     $item->delete();
     expect(CartItemSecret::find($guarded->id))->toBeNull();
-});
-
-test('purged cart secrets retain only safe nullable state', function () {
-    $variant = ProductVariant::factory()->create();
-    $cart = Cart::create([
-        'user_id' => User::factory()->create()->id,
-        'status' => 'active',
-        'currency' => 'SAR',
-    ]);
-    $item = CartItem::create([
-        'cart_id' => $cart->id,
-        'product_variant_id' => $variant->id,
-        'quantity' => 1,
-        'unit_price_halalah' => 500,
-        'total_halalah' => 500,
-    ]);
-    $secret = new CartItemSecret([
-        'cart_item_id' => $item->id,
-        'masked_summary' => ['email' => 'p***@example.test', 'backup_code_count' => 5],
-        'retained_until' => now()->subMinute(),
-    ]);
-    $secret->encrypted_payload = ['ea_password' => 'Purge-Sentinel'];
-    $secret->save();
-
-    $secret->encrypted_payload = null;
-    $secret->masked_summary = null;
-    $secret->deleted_at = now();
-    $secret->save();
-
-    expect($secret->fresh()->encrypted_payload)->toBeNull()
-        ->and($secret->fresh()->masked_summary)->toBeNull()
-        ->and($secret->fresh()->deleted_at)->not->toBeNull();
 });
 
 test('idempotency fingerprints and response bodies are hidden', function () {

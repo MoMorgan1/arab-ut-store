@@ -5,7 +5,7 @@ import {
     screen,
     within,
 } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { StoreHeader } from '@/components/store/store-header';
 import {
@@ -16,6 +16,14 @@ import type {
     StoreShellConfig,
     StoreShellTranslations,
 } from '@/types/store-shell';
+
+const inertia = vi.hoisted(() => ({ visit: vi.fn() }));
+
+vi.mock('@inertiajs/react', () => ({
+    router: { visit: inertia.visit },
+}));
+
+beforeEach(() => inertia.visit.mockReset());
 
 const shell: StoreShellConfig = {
     homeUrl: '/en',
@@ -379,6 +387,23 @@ describe('StoreHeader', () => {
         ).toHaveAttribute(
             'href',
             '/privacy?campaign=spring&currency=USD#details',
+        );
+    });
+
+    it('changes currency with Inertia while preserving page state and scroll', () => {
+        renderHeader('/en/privacy?campaign=spring&currency=USD#details');
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Display preferences' }),
+        );
+        fireEvent.click(screen.getByRole('link', { name: 'SAR' }));
+
+        expect(inertia.visit).toHaveBeenCalledWith(
+            '/en/privacy?campaign=spring&currency=SAR#details',
+            expect.objectContaining({
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            }),
         );
     });
 

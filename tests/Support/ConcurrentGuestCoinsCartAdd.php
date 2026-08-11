@@ -28,7 +28,7 @@ try {
             'credentials' => [
                 'ea_email' => 'guest-concurrency@example.test',
                 'ea_password' => 'Guest Concurrency Password Sentinel',
-                'backup_codes' => ['84000001', '84000002', '84000003', '84000004', '84000005'],
+                'backup_codes' => ['84000001', '84000002', '84000003'],
             ],
         ], (string) $argv[2], 'ar');
         $readyPath = $argv[3] ?? null;

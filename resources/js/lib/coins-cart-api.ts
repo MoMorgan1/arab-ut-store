@@ -53,8 +53,6 @@ const CREDENTIAL_VALIDATION_FIELDS: Readonly<
     'credentials.backup_codes.0': 'code-0',
     'credentials.backup_codes.1': 'code-1',
     'credentials.backup_codes.2': 'code-2',
-    'credentials.backup_codes.3': 'code-3',
-    'credentials.backup_codes.4': 'code-4',
     'credentials.ea_email': 'email',
     'credentials.ea_password': 'password',
 };

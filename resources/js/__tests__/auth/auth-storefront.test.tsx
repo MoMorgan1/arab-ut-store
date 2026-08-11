@@ -399,6 +399,10 @@ describe('storefront authentication shell', () => {
             screen.getByRole('button', { name: 'إظهار كلمة المرور' }),
         ).toHaveProperty('tabIndex', 0);
         expect(
+            screen.getByRole('button', { name: 'إظهار كلمة المرور' }),
+        ).toHaveClass('right-0');
+        expect(screen.getByLabelText('كلمة المرور')).toHaveClass('pr-11');
+        expect(
             screen.getByText(arabicAuthUi.fields.remember).closest('label'),
         ).toHaveClass('min-h-11', 'flex-1');
     });

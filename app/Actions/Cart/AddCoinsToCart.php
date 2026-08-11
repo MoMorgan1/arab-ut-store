@@ -150,7 +150,7 @@ final readonly class AddCoinsToCart
                 'has_password' => true,
                 'backup_code_count' => count($credentials['backup_codes']),
             ],
-            'retained_until' => now()->addHours((int) config('coins.cart.secret_retention_hours')),
+            'retained_until' => null,
         ]);
         $cartSecret->encrypted_payload = $credentials;
         $cartSecret->save();

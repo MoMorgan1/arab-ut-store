@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Store\CartController;
+use App\Http\Controllers\Store\CartItemCredentialsController;
 use App\Http\Controllers\Store\CatalogCartController;
 use App\Http\Controllers\Store\CatalogProductController;
 use App\Http\Controllers\Store\CategoryController;
@@ -23,6 +24,12 @@ use Laravel\Fortify\Http\Controllers\RegisteredUserController;
 Route::get('/', HomeController::class)->name('home');
 Route::get('/coins/quote', CoinsQuoteController::class)->name('coins.quote');
 Route::get('/cart', CartController::class)->name('store.cart');
+Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])
+    ->middleware([NoStore::class, 'throttle:coins-cart'])
+    ->name('cart.items.credentials.show');
+Route::patch('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'update'])
+    ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])
+    ->name('cart.items.credentials.update');
 Route::get('/reviews', ReviewsController::class)->name('store.reviews');
 Route::post('/cart/items/coins', CoinsCartController::class)
     ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])
@@ -76,6 +83,12 @@ Route::prefix('{locale}')
         Route::get('/', HomeController::class)->name('localized.home');
         Route::get('/coins/quote', CoinsQuoteController::class)->name('localized.coins.quote');
         Route::get('/cart', CartController::class)->name('localized.store.cart');
+        Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])
+            ->middleware([NoStore::class, 'throttle:coins-cart'])
+            ->name('localized.cart.items.credentials.show');
+        Route::patch('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'update'])
+            ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])
+            ->name('localized.cart.items.credentials.update');
         Route::get('/reviews', ReviewsController::class)->name('localized.store.reviews');
         Route::post('/cart/items/coins', CoinsCartController::class)
             ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])

@@ -2,11 +2,9 @@
 
 return [
     'cart' => [
-        'secret_retention_hours' => (int) env('COINS_CART_SECRET_RETENTION_HOURS', 24),
         'guest_claim_retention_hours' => max(
             24,
             (int) env('COINS_GUEST_CLAIM_RETENTION_HOURS', 24),
-            (int) env('COINS_CART_SECRET_RETENTION_HOURS', 24),
             (int) ceil(((int) env('SESSION_LIFETIME', 120)) / 60),
         ),
         'rate_limit_per_minute' => (int) env('COINS_CART_RATE_LIMIT_PER_MINUTE', 10),

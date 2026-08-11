@@ -80,7 +80,7 @@ const store = {
         hide_password: 'Hide password',
         backup_codes: 'EA backup codes',
         backup_code: 'Backup code :number',
-        backup_help: 'Enter five different 8-digit codes.',
+        backup_help: 'Enter three different 8-digit codes.',
         required_email: 'Enter a valid EA email.',
         required_password: 'Enter your EA password.',
         required_code: 'Enter an 8-digit backup code.',
@@ -325,7 +325,7 @@ function fillCredentials() {
         target: { value: 'opaque EA password' },
     });
 
-    for (let index = 1; index <= 5; index += 1) {
+    for (let index = 1; index <= 3; index += 1) {
         fireEvent.change(
             screen.getByRole('textbox', { name: `Backup code ${index}` }),
             { target: { value: `1000000${index}` } },
@@ -390,7 +390,7 @@ describe('Coins credentials flow', () => {
         expect(screen.getByLabelText('EA password')).toBeVisible();
     });
 
-    it('shows four PC progress decisions and five accessible backup-code inputs', async () => {
+    it('shows four PC progress decisions and three accessible backup-code inputs', async () => {
         render(<StoreHome />);
 
         await reachCredentials();
@@ -398,7 +398,7 @@ describe('Coins credentials flow', () => {
         expect(screen.getByLabelText('Step 3 of 4')).toBeVisible();
         expect(screen.queryByText('Delivery')).not.toBeInTheDocument();
 
-        for (let index = 1; index <= 5; index += 1) {
+        for (let index = 1; index <= 3; index += 1) {
             const code = screen.getByRole('textbox', {
                 name: `Backup code ${index}`,
             });
@@ -406,6 +406,10 @@ describe('Coins credentials flow', () => {
             expect(code).toHaveAttribute('inputmode', 'numeric');
             expect(code).toHaveAttribute('autocomplete', 'off');
         }
+
+        expect(
+            screen.queryByRole('textbox', { name: 'Backup code 4' }),
+        ).not.toBeInTheDocument();
     });
 
     it('toggles the opaque password and focuses the exact first invalid field', async () => {

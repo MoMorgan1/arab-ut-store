@@ -95,7 +95,9 @@ export default function StoreCatalogProduct() {
                                 errorLabel={props.productPage.add_error}
                                 idleLabel={props.productPage.add_to_cart}
                                 loadingLabel={props.productPage.adding}
-                                onSuccess={(cartUrl) => router.visit(cartUrl)}
+                                onSuccess={(result) =>
+                                    router.visit(result.cartUrl)
+                                }
                                 variantId={variantId}
                             />
                         )}

@@ -1,8 +1,10 @@
 import { Head, router, usePage } from '@inertiajs/react';
+import { Headphones, LockKeyhole, ShieldCheck, Zap } from 'lucide-react';
 import { useState } from 'react';
 
 import { CatalogAddControl } from '@/components/store/catalog/catalog-add-control';
 import StoreLayout from '@/layouts/store-layout';
+import type { CatalogCartSuccess } from '@/lib/catalog-cart-api';
 import { formatMinorUnits } from '@/lib/money';
 import type {
     CatalogProduct,
@@ -13,6 +15,7 @@ export default function StoreCategory() {
     const page = usePage<StoreCategoryPageProps>();
     const props = page.props;
     const [query, setQuery] = useState(props.catalog.query);
+    const isSbc = props.catalog.service === 'sbc';
     const navigate = (changes: Partial<typeof props.catalog.query>) => {
         const next = { ...query, ...changes, page: 1 };
 
@@ -40,11 +43,29 @@ export default function StoreCategory() {
             ui={props.ui}
         >
             <Head title={props.servicePage.title} />
-            <main className="store-catalog-page" id="store-content">
+            <main
+                className={`store-catalog-page${isSbc ? 'store-catalog-page--sbc' : ''}`}
+                id="store-content"
+            >
                 <header className="store-catalog-hero">
-                    <p>{props.servicePage.eyebrow}</p>
-                    <h1>{props.servicePage.title}</h1>
-                    <span>{props.servicePage.intro}</span>
+                    {isSbc ? (
+                        <span
+                            aria-hidden="true"
+                            className="store-catalog-hero__shield"
+                        >
+                            <img
+                                alt=""
+                                height="706"
+                                src="/images/store/services/sbc.webp"
+                                width="1280"
+                            />
+                        </span>
+                    ) : null}
+                    <div>
+                        <p>{props.servicePage.eyebrow}</p>
+                        <h1>{props.servicePage.title}</h1>
+                        <span>{props.servicePage.intro}</span>
+                    </div>
                 </header>
 
                 <form
@@ -57,6 +78,11 @@ export default function StoreCategory() {
                     }}
                     role="search"
                 >
+                    {isSbc ? (
+                        <h2 className="store-catalog-toolbar__title">
+                            {props.catalogPage.browse_by_type}
+                        </h2>
+                    ) : null}
                     <label>
                         <span>{props.catalogPage.search}</span>
                         <input
@@ -128,15 +154,25 @@ export default function StoreCategory() {
                         {props.catalog.products.map((product) => (
                             <CatalogCard
                                 addUrl={props.catalogCartUrl}
+                                isSbc={isSbc}
                                 key={product.id}
                                 locale={props.locale}
-                                onSuccess={(cartUrl) => router.visit(cartUrl)}
+                                onSuccess={(result) =>
+                                    window.dispatchEvent(
+                                        new CustomEvent<number>(
+                                            'arabut:cart-count',
+                                            { detail: result.cartCount },
+                                        ),
+                                    )
+                                }
                                 product={product}
                                 translations={props.catalogPage}
                             />
                         ))}
                     </ul>
                 )}
+
+                {isSbc ? <Assurances translations={props.catalogPage} /> : null}
             </main>
         </StoreLayout>
     );
@@ -144,14 +180,16 @@ export default function StoreCategory() {
 
 function CatalogCard({
     addUrl,
+    isSbc,
     locale,
     onSuccess,
     product,
     translations,
 }: {
     addUrl: string;
+    isSbc: boolean;
     locale: 'ar' | 'en';
-    onSuccess: (url: string) => void;
+    onSuccess: (result: CatalogCartSuccess) => void;
     product: CatalogProduct;
     translations: StoreCategoryPageProps['catalogPage'];
 }) {
@@ -161,7 +199,9 @@ function CatalogCard({
     );
 
     return (
-        <li className="store-catalog-card">
+        <li
+            className={`store-catalog-card${isSbc ? 'store-catalog-card--sbc' : ''}`}
+        >
             <a
                 aria-label={product.name}
                 className="store-catalog-card__image"
@@ -173,7 +213,9 @@ function CatalogCard({
                     loading="lazy"
                     src={
                         product.image?.url ??
-                        '/images/store/hero/arabut-logo-hero.webp'
+                        (isSbc
+                            ? '/images/store/services/sbc.webp'
+                            : '/images/store/hero/arabut-logo-hero.webp')
                     }
                     width="320"
                 />
@@ -214,10 +256,38 @@ function CatalogCard({
                         idleLabel={translations.add_to_cart}
                         loadingLabel={translations.adding}
                         onSuccess={onSuccess}
+                        successLabel={translations.added}
                         variantId={variantId}
                     />
                 )}
             </div>
         </li>
+    );
+}
+
+function Assurances({
+    translations,
+}: {
+    translations: StoreCategoryPageProps['catalogPage'];
+}) {
+    const items = [
+        [ShieldCheck, translations.assurance_no_players],
+        [Zap, translations.assurance_fast],
+        [Headphones, translations.assurance_support],
+        [LockKeyhole, translations.assurance_secure],
+    ] as const;
+
+    return (
+        <ul
+            aria-label={translations.assurances}
+            className="store-catalog-assurances"
+        >
+            {items.map(([Icon, label]) => (
+                <li key={label}>
+                    <Icon aria-hidden="true" />
+                    <strong>{label}</strong>
+                </li>
+            ))}
+        </ul>
     );
 }

@@ -7,11 +7,10 @@ export type CoinsAvailability = 'available' | 'unavailable';
 export type CoinsCredentials = {
     eaEmail: string;
     eaPassword: string;
-    backupCodes: [string, string, string, string, string];
+    backupCodes: [string, string, string];
 };
 
-export type CoinsCredentialField =
-    'email' | 'password' | `code-${0 | 1 | 2 | 3 | 4}`;
+export type CoinsCredentialField = 'email' | 'password' | `code-${0 | 1 | 2}`;
 
 export type CoinsResumeSelection = {
     platform: CoinsPlatformValue;
