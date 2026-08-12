@@ -153,6 +153,69 @@ test('approved EasySBC images validate in the restricted n8n Code sandbox', asyn
     assert.equal(validated.valid, true, validated.failureReason);
 });
 
+test('player SBCs publish the approved reward player art instead of the challenge icon', async () => {
+    const records = sourceRecords(20);
+    records[0] = {
+        ...records[0],
+        rewards: [
+            {
+                type: 'player',
+                rewardImgURL:
+                    'https://assets.easysbc.io/fc26/sbcs/sets/rewards/1000_0.png',
+            },
+        ],
+    };
+
+    const prepared = await prepare(records);
+
+    assert.equal(prepared.valid, true, prepared.failureReason);
+    assert.equal(
+        prepared.snapshot.products[0].media[0].url,
+        'https://assets.easysbc.io/fc26/sbcs/sets/rewards/1000_0.png',
+    );
+});
+
+test('non-player SBCs keep the challenge icon even when another reward image exists', async () => {
+    const records = sourceRecords(20);
+    records[0] = {
+        ...records[0],
+        rewards: [
+            {
+                type: 'pack',
+                rewardImgURL:
+                    'https://assets.easysbc.io/fc26/packs/pack-reward.png',
+            },
+        ],
+    };
+
+    const prepared = await prepare(records);
+
+    assert.equal(prepared.valid, true, prepared.failureReason);
+    assert.equal(
+        prepared.snapshot.products[0].media[0].url,
+        records[0].imageURL,
+    );
+});
+
+test('player SBCs fail closed when their declared reward art is not an approved EasySBC asset', async () => {
+    const records = sourceRecords(20);
+    records[0] = {
+        ...records[0],
+        rewards: [
+            {
+                type: 'player',
+                rewardImgURL: 'https://example.com/player.png',
+            },
+        ],
+    };
+
+    const prepared = await prepare(records);
+
+    assert.equal(prepared.valid, false);
+    assert.match(prepared.failureReason, /rewardImgURL/i);
+    assert.equal(prepared.snapshot, undefined);
+});
+
 test('legacy one-completion pricing uses every audited multiplier boundary', async () => {
     const quantities = [49_999, 50_000, 899_999, 900_000, 1_000_000, 1_000_001];
     const expectedPsSar = [70, 67, 1021, 929, 1031, 1057];

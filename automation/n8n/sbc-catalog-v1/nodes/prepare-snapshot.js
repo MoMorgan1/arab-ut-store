@@ -18,6 +18,22 @@ function isApprovedEasySbcImage(url) {
     );
 }
 
+function catalogImage(record) {
+    const playerReward = Array.isArray(record.rewards)
+        ? record.rewards.find(
+              (reward) =>
+                  reward &&
+                  typeof reward === 'object' &&
+                  !Array.isArray(reward) &&
+                  reward.type === 'player' &&
+                  typeof reward.rewardImgURL === 'string' &&
+                  reward.rewardImgURL.length > 0,
+          )
+        : null;
+
+    return playerReward?.rewardImgURL ?? record.imageURL ?? null;
+}
+
 if (!pricingState.valid || !pricingState.pricing) {
     return fail(
         pricingState.failureReason ||
@@ -95,6 +111,22 @@ for (let index = 0; index < records.length; index += 1) {
     if (record.imageURL != null) {
         if (!isApprovedEasySbcImage(record.imageURL))
             return fail(`${label} imageURL is not an approved EasySBC asset`);
+    }
+    if (record.rewards != null && !Array.isArray(record.rewards))
+        return fail(`${label} rewards is invalid`);
+    for (const reward of record.rewards ?? []) {
+        if (
+            reward &&
+            typeof reward === 'object' &&
+            !Array.isArray(reward) &&
+            reward.type === 'player' &&
+            reward.rewardImgURL != null &&
+            !isApprovedEasySbcImage(reward.rewardImgURL)
+        ) {
+            return fail(
+                `${label} player rewardImgURL is not an approved EasySBC asset`,
+            );
+        }
     }
 }
 
@@ -374,6 +406,7 @@ function variant(record, platform) {
 
 const products = eligible.map((record, index) => {
     const nameAr = approvedArabicName(record);
+    const imageUrl = catalogImage(record);
     return {
         externalId: `easysbc-sbc-${record.id}`,
         categoryExternalId: `easysbc-category-${categoryKey[record.categoryId]}`,
@@ -387,10 +420,10 @@ const products = eligible.map((record, index) => {
         sortOrder: index + 1,
         visible: true,
         variants: [variant(record, 'playstation'), variant(record, 'pc')],
-        media: record.imageURL
+        media: imageUrl
             ? [
                   {
-                      url: record.imageURL,
+                      url: imageUrl,
                       alt: { ar: nameAr, en: record.name.trim() },
                       sortOrder: 0,
                   },
