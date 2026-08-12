@@ -2,9 +2,21 @@
 
 The Arab UT storefront at `store.arab-ut.com` accepts complete catalog snapshots from the approved n8n workflow. Laravel and MariaDB remain authoritative after a snapshot is accepted.
 
-## Endpoint and authentication
+## Endpoints, source scope, and authentication
 
 `POST /api/automation/v1/catalog/snapshots`
+
+This backward-compatible generic endpoint reconciles only the catalog source
+`n8n-products`. It accepts the documented catalog service types.
+
+`POST /api/automation/v1/catalog/sbc/snapshots`
+
+This is the production endpoint for the SBC workflow. It accepts only products
+whose `serviceType` is `sbc` and reconciles only the catalog source `n8n-sbc`.
+A complete SBC snapshot can archive omitted `n8n-sbc` rows, but it cannot hide,
+archive, deactivate, or overwrite rows belonging to `n8n-products`, another
+automation source, or the manual catalog. The SBC workflow must never publish
+through the generic endpoint.
 
 Send JSON with these headers:
 
@@ -47,7 +59,7 @@ Each category permits only `externalId` (unique string, max 120), `slug` (unique
 
 Each product permits only:
 
-- `externalId` (unique string, max 120), `categoryExternalId` (nullable and must reference this snapshot), `slug` (unique, max 255), and `serviceType` (`sbc`, `objectives`, `rivals`, or `fut_champions` for this catalog workflow).
+- `externalId` (unique string, max 120), `categoryExternalId` (nullable and must reference this snapshot), `slug` (unique, max 255), and `serviceType` (`sbc`, `objectives`, `rivals`, or `fut_champions` on the generic route; exactly `sbc` on the SBC route).
 - `name.ar` / `name.en` (required, max 255) and nullable `description.ar` / `description.en` (max 5,000).
 - `sortOrder` (integer >= 0), `visible` (boolean), `variants` (1–10), and `media` (0–5).
 
@@ -76,7 +88,7 @@ Success is HTTP 201 with `Cache-Control: no-store`:
 
 For connection loss or 5xx, retry the exact same raw body and headers while the timestamp is fresh. A 201 means it committed. A replay 409 for the same event/run means the earlier attempt already committed and must be treated as idempotent completion, not sent again with invented IDs. For validation/authentication failures, correct the source and submit a new event/run.
 
-Accepted complete snapshots upsert automation-owned categories/products/variants. Missing automation-owned products are hidden and archived; missing variants are deactivated. Manual rows are never overwritten or archived by this source. Validation, media preparation, or transaction failure leaves the last public snapshot intact.
+Accepted complete snapshots upsert automation-owned categories/products/variants inside the endpoint's fixed server-side source. Missing rows are hidden, archived, or deactivated only within that source. The source is selected by the route and cannot be supplied in the request body. Manual rows and rows from another catalog source are never overwritten or archived by this snapshot. Validation, media preparation, or transaction failure leaves the last public snapshot intact.
 
 ## Review refresh
 

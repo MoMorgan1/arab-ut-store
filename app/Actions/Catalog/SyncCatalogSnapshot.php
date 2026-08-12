@@ -22,15 +22,25 @@ final class SyncCatalogSnapshot
      * @param  array<string, mixed>  $snapshot
      * @return array{runId:string,status:string,applied:int,archived:int}
      */
-    public function execute(array $snapshot, string $signatureHash): array
-    {
+    public function execute(
+        array $snapshot,
+        string $signatureHash,
+        string $sourceKey = 'n8n-products',
+        string $sourceName = 'n8n Products',
+    ): array {
         if ($this->eventExists($snapshot)) {
             throw new CatalogSnapshotReplay;
         }
 
         $preparedMedia = $this->mirrorCatalogMedia->prepare($snapshot['products']);
 
-        return DB::transaction(fn (): array => $this->synchronize($snapshot, $signatureHash, $preparedMedia));
+        return DB::transaction(fn (): array => $this->synchronize(
+            $snapshot,
+            $signatureHash,
+            $preparedMedia,
+            $sourceKey,
+            $sourceName,
+        ));
     }
 
     /**
@@ -38,10 +48,15 @@ final class SyncCatalogSnapshot
      * @param  array<string, list<array{path:string,alt_ar:?string,alt_en:?string,sort_order:int}>|null>  $preparedMedia
      * @return array{runId:string,status:string,applied:int,archived:int}
      */
-    private function synchronize(array $snapshot, string $signatureHash, array $preparedMedia): array
-    {
-        $source = $this->source();
-        $this->claimEvent($snapshot, $signatureHash);
+    private function synchronize(
+        array $snapshot,
+        string $signatureHash,
+        array $preparedMedia,
+        string $sourceKey,
+        string $sourceName,
+    ): array {
+        $source = $this->source($sourceKey, $sourceName);
+        $this->claimEvent($source, $snapshot, $signatureHash);
         $run = $this->startRun($source, $snapshot);
         $categories = $this->categories($source, $snapshot['categories']);
         $applied = $this->products($source, $run, $categories, $snapshot['products'], $preparedMedia);
@@ -57,18 +72,19 @@ final class SyncCatalogSnapshot
     }
 
     /** @param array<string, mixed> $snapshot */
-    private function claimEvent(array $snapshot, string $signatureHash): void
+    private function claimEvent(CatalogSource $source, array $snapshot, string $signatureHash): void
     {
         try {
             IntegrationEvent::create([
                 'event_id' => $snapshot['eventId'],
                 'event_type' => 'catalog.snapshot',
                 'aggregate_type' => 'catalog',
-                'aggregate_id' => 'n8n-products',
+                'aggregate_id' => $source->key,
                 'schema_version' => $snapshot['schemaVersion'],
                 'payload' => [
                     'run_id' => $snapshot['runId'],
                     'generated_at' => $snapshot['generatedAt'],
+                    'source_key' => $source->key,
                     'product_count' => count($snapshot['products']),
                 ],
                 'signature_hash' => $signatureHash,
@@ -99,11 +115,11 @@ final class SyncCatalogSnapshot
             ->exists();
     }
 
-    private function source(): CatalogSource
+    private function source(string $key, string $name): CatalogSource
     {
         return CatalogSource::firstOrCreate(
-            ['key' => 'n8n-products'],
-            ['name' => 'n8n Products', 'authority' => ProductAuthority::Automation, 'is_enabled' => true],
+            ['key' => $key],
+            ['name' => $name, 'authority' => ProductAuthority::Automation, 'is_enabled' => true],
         );
     }
 

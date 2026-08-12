@@ -14,10 +14,21 @@ final class CatalogSnapshotController extends Controller
         CatalogSnapshotRequest $request,
         SyncCatalogSnapshot $syncCatalogSnapshot,
     ): JsonResponse {
+        return $this->store($request, $syncCatalogSnapshot);
+    }
+
+    public function store(
+        CatalogSnapshotRequest $request,
+        SyncCatalogSnapshot $syncCatalogSnapshot,
+        string $sourceKey = 'n8n-products',
+        string $sourceName = 'n8n Products',
+    ): JsonResponse {
         try {
             $summary = $syncCatalogSnapshot->execute(
                 $request->validated(),
                 hash('sha256', (string) $request->header('X-ArabUT-Signature')),
+                $sourceKey,
+                $sourceName,
             );
         } catch (CatalogSnapshotReplay) {
             return response()->json([

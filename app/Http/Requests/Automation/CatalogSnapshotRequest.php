@@ -11,7 +11,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
-final class CatalogSnapshotRequest extends FormRequest
+class CatalogSnapshotRequest extends FormRequest
 {
     /** @var list<string> */
     private const TOP_LEVEL_KEYS = [

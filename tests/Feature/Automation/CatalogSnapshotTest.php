@@ -1,6 +1,10 @@
 <?php
 
+use App\Enums\ProductAuthority;
+use App\Enums\ServiceType;
+use App\Models\CatalogSource;
 use App\Models\CatalogSyncRun;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Support\Str;
@@ -54,6 +58,7 @@ function signedCatalogSnapshot(
     ?string $timestamp = null,
     ?string $eventHeader = null,
     bool $configureCredentials = true,
+    string $path = '/api/automation/v1/catalog/snapshots',
 ) {
     $body = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $signedAt = $timestamp ?? (string) now()->timestamp;
@@ -67,7 +72,7 @@ function signedCatalogSnapshot(
 
     return test()->call(
         'POST',
-        '/api/automation/v1/catalog/snapshots',
+        $path,
         server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_ACCEPT' => 'application/json',
@@ -101,7 +106,88 @@ it('commits one fresh signed complete catalog snapshot', function () {
     expect($response->headers->get('Cache-Control'))->toContain('no-store')
         ->and(CatalogSyncRun::sole()->run_id)->toBe($payload['runId'])
         ->and(Product::sole()->external_id)->toBe('sbc-icon-pick')
+        ->and(Product::sole()->source->key)->toBe('n8n-products')
         ->and(ProductVariant::sole()->price_halalah)->toBe(12_500);
+});
+
+it('rejects non SBC products on the SBC scoped snapshot route', function () {
+    $payload = catalogSnapshotPayload();
+    $payload['products'][0]['serviceType'] = ServiceType::Objectives->value;
+
+    signedCatalogSnapshot(
+        $payload,
+        path: '/api/automation/v1/catalog/sbc/snapshots',
+    )->assertUnprocessable()->assertJsonValidationErrors(['products.0.serviceType']);
+
+    expect(Product::count())->toBe(0)
+        ->and(CatalogSource::count())->toBe(0)
+        ->and(CatalogSyncRun::count())->toBe(0);
+});
+
+it('reconciles an SBC complete snapshot only inside the n8n SBC source', function () {
+    $sharedSource = CatalogSource::factory()->create([
+        'key' => 'n8n-products',
+        'name' => 'n8n Products',
+        'authority' => ProductAuthority::Automation,
+    ]);
+    $sharedCategory = Category::factory()->create([
+        'source_id' => $sharedSource->id,
+        'external_id' => 'shared-category',
+        'slug' => 'shared-category',
+    ]);
+    $sharedProduct = Product::factory()->create([
+        'source_id' => $sharedSource->id,
+        'external_id' => 'shared-product',
+        'category_id' => $sharedCategory->id,
+        'slug' => 'shared-product',
+        'authority' => ProductAuthority::Automation,
+    ]);
+    $sharedVariant = ProductVariant::factory()->create([
+        'source_id' => $sharedSource->id,
+        'external_id' => 'shared-variant',
+        'product_id' => $sharedProduct->id,
+        'sku' => 'SHARED_VARIANT',
+        'authority' => ProductAuthority::Automation,
+    ]);
+
+    $sbcSource = CatalogSource::factory()->create([
+        'key' => 'n8n-sbc',
+        'name' => 'n8n SBC',
+        'authority' => ProductAuthority::Automation,
+    ]);
+    $staleSbcCategory = Category::factory()->create([
+        'source_id' => $sbcSource->id,
+        'external_id' => 'stale-sbc-category',
+        'slug' => 'stale-sbc-category',
+    ]);
+    $staleSbcProduct = Product::factory()->create([
+        'source_id' => $sbcSource->id,
+        'external_id' => 'stale-sbc-product',
+        'category_id' => $staleSbcCategory->id,
+        'slug' => 'stale-sbc-product',
+        'authority' => ProductAuthority::Automation,
+    ]);
+    $staleSbcVariant = ProductVariant::factory()->create([
+        'source_id' => $sbcSource->id,
+        'external_id' => 'stale-sbc-variant',
+        'product_id' => $staleSbcProduct->id,
+        'sku' => 'STALE_SBC_VARIANT',
+        'authority' => ProductAuthority::Automation,
+    ]);
+
+    signedCatalogSnapshot(
+        catalogSnapshotPayload(),
+        path: '/api/automation/v1/catalog/sbc/snapshots',
+    )->assertCreated()->assertJsonPath('data.archived', 1);
+
+    expect($sharedCategory->fresh()->is_visible)->toBeTrue()
+        ->and($sharedProduct->fresh()->archived_at)->toBeNull()
+        ->and($sharedProduct->fresh()->is_visible)->toBeTrue()
+        ->and($sharedVariant->fresh()->is_active)->toBeTrue()
+        ->and($staleSbcCategory->fresh()->is_visible)->toBeFalse()
+        ->and($staleSbcProduct->fresh()->archived_at)->not->toBeNull()
+        ->and($staleSbcVariant->fresh()->is_active)->toBeFalse()
+        ->and(Product::query()->where('external_id', 'sbc-icon-pick')->sole()->source->key)->toBe('n8n-sbc');
 });
 
 it('rejects invalid catalog signatures without writing catalog rows', function () {
