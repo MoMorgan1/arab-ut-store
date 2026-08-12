@@ -12,6 +12,33 @@ function fail(reason) {
     });
 }
 
+function normalizeApprovedFcTerms(value) {
+    return value
+        .trim()
+        .replace(/\bFUTTIES\b/gi, '\u0641\u0648\u062a\u064a\u0632')
+        .replace(
+            /\bFOF\b/gi,
+            '\u0645\u0647\u0631\u062c\u0627\u0646 \u0643\u0631\u0629 \u0627\u0644\u0642\u062f\u0645',
+        )
+        .replace(
+            /\bGOTG\b/gi,
+            '\u0639\u0638\u0645\u0627\u0621 \u0627\u0644\u0644\u0639\u0628\u0629',
+        )
+        .replace(
+            /\bTOTW\b/gi,
+            '\u0641\u0631\u064a\u0642 \u0627\u0644\u0623\u0633\u0628\u0648\u0639',
+        )
+        .replace(/\bOVR\b/gi, '\u062a\u0642\u064a\u064a\u0645')
+        .replace(/\bEVO\b/gi, '')
+        .replace(
+            /\bSBCs?\b/gi,
+            '\u062a\u062d\u062f\u064a\u0627\u062a \u0628\u0646\u0627\u0621 \u0627\u0644\u062a\u0634\u0643\u064a\u0644\u0627\u062a',
+        )
+        .replace(/(\d+)\s*x\b/gi, '$1\u00d7')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+}
+
 if (!plan.translationPlanValid || !Array.isArray(plan.missingTranslations)) {
     return fail(plan.failureReason || 'Translation plan is invalid');
 }
@@ -62,12 +89,15 @@ for (const entry of translated) {
     seen.add(id);
     if (entry.sourceName !== expected.get(id))
         return fail(`Gemini source name mismatch for EasySBC id ${id}`);
+    const nameAr =
+        typeof entry.nameAr === 'string'
+            ? normalizeApprovedFcTerms(entry.nameAr)
+            : '';
     if (
-        typeof entry.nameAr !== 'string' ||
-        entry.nameAr.length < 2 ||
-        entry.nameAr.length > 120 ||
-        !/[\u0600-\u06ff]/.test(entry.nameAr) ||
-        /[A-Za-z]/.test(entry.nameAr)
+        nameAr.length < 2 ||
+        nameAr.length > 120 ||
+        !/[\u0600-\u06ff]/.test(nameAr) ||
+        /[A-Za-z]/.test(nameAr)
     ) {
         return fail(
             `Gemini translation for EasySBC id ${id} must be Arabic-only and at most 120 characters`,
@@ -76,7 +106,7 @@ for (const entry of translated) {
     const sourceName = expected.get(id);
     staged[`${id}\u0000${sourceName}`] = {
         sourceName,
-        nameAr: entry.nameAr.trim(),
+        nameAr,
     };
 }
 if (seen.size !== expected.size)
