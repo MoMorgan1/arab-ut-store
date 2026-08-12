@@ -19,9 +19,13 @@ export function ServiceRail({
 }) {
     const trackRef = useRef<HTMLUListElement>(null);
     const autoTravelDirectionRef = useRef<1 | -1>(1);
+    const manualScrollRef = useRef(false);
+    const manualResumeTimerRef = useRef<number | null>(null);
     const [overflows, setOverflows] = useState(false);
-    const [paused, setPaused] = useState(false);
+    const [focusOrHoverPaused, setFocusOrHoverPaused] = useState(false);
+    const [manualPaused, setManualPaused] = useState(false);
     const [pageVisible, setPageVisible] = useState(!document.hidden);
+    const paused = focusOrHoverPaused || manualPaused;
     const measure = useCallback(() => {
         const track = trackRef.current;
 
@@ -54,6 +58,37 @@ export function ServiceRail({
         return () =>
             document.removeEventListener('visibilitychange', updateVisibility);
     }, []);
+
+    const scheduleManualResume = useCallback(() => {
+        if (manualResumeTimerRef.current !== null) {
+            window.clearTimeout(manualResumeTimerRef.current);
+        }
+
+        manualResumeTimerRef.current = window.setTimeout(() => {
+            manualScrollRef.current = false;
+            manualResumeTimerRef.current = null;
+            setManualPaused(false);
+        }, 180);
+    }, []);
+
+    const beginManualScroll = useCallback(() => {
+        manualScrollRef.current = true;
+        setManualPaused(true);
+
+        if (manualResumeTimerRef.current !== null) {
+            window.clearTimeout(manualResumeTimerRef.current);
+            manualResumeTimerRef.current = null;
+        }
+    }, []);
+
+    useEffect(
+        () => () => {
+            if (manualResumeTimerRef.current !== null) {
+                window.clearTimeout(manualResumeTimerRef.current);
+            }
+        },
+        [],
+    );
 
     const move = useCallback(
         (forward: boolean) => {
@@ -170,18 +205,35 @@ export function ServiceRail({
                                 event.relatedTarget as Node | null,
                             )
                         ) {
-                            setPaused(false);
+                            setFocusOrHoverPaused(false);
                         }
                     }}
-                    onFocusCapture={() => setPaused(true)}
-                    onPointerEnter={() => setPaused(true)}
-                    onPointerLeave={() => setPaused(false)}
-                    onTouchEnd={() => setPaused(false)}
-                    onTouchStart={() => setPaused(true)}
+                    onFocusCapture={() => setFocusOrHoverPaused(true)}
+                    onPointerEnter={(event) => {
+                        if (event.pointerType === 'mouse') {
+                            setFocusOrHoverPaused(true);
+                        }
+                    }}
+                    onPointerLeave={(event) => {
+                        if (event.pointerType === 'mouse') {
+                            setFocusOrHoverPaused(false);
+                        }
+                    }}
+                    onTouchEnd={scheduleManualResume}
+                    onTouchStart={beginManualScroll}
+                    onWheel={() => {
+                        beginManualScroll();
+                        scheduleManualResume();
+                    }}
                 >
                     <ul
                         className="store-services-rail__track"
                         dir={direction}
+                        onScroll={() => {
+                            if (manualScrollRef.current) {
+                                scheduleManualResume();
+                            }
+                        }}
                         ref={trackRef}
                     >
                         {services.map((service) => (

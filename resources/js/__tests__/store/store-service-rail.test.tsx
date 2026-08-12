@@ -159,3 +159,41 @@ it('moves continuously and pauses while a service link has focus', () => {
         callCount,
     );
 });
+
+it('waits for mobile scrolling to settle before resuming automatic movement', () => {
+    vi.useFakeTimers();
+    const { container } = render(
+        <ServiceRail
+            direction="rtl"
+            services={services}
+            translations={{
+                eyebrow: 'More services',
+                title: 'Choose a service',
+            }}
+        />,
+    );
+    const rail = container.querySelector<HTMLElement>('.store-services-rail')!;
+    const track = container.querySelector<HTMLElement>(
+        '.store-services-rail__track',
+    )!;
+
+    act(() => vi.advanceTimersByTime(100));
+    const callsBeforeDrag = vi.mocked(track.scrollBy).mock.calls.length;
+
+    fireEvent.touchStart(rail);
+    fireEvent.scroll(track);
+    fireEvent.touchEnd(rail);
+    act(() => vi.advanceTimersByTime(120));
+
+    expect(track.scrollBy).toHaveBeenCalledTimes(callsBeforeDrag);
+
+    fireEvent.scroll(track);
+    act(() => vi.advanceTimersByTime(120));
+    expect(track.scrollBy).toHaveBeenCalledTimes(callsBeforeDrag);
+
+    act(() => vi.advanceTimersByTime(200));
+    act(() => vi.advanceTimersByTime(100));
+    expect(vi.mocked(track.scrollBy).mock.calls.length).toBeGreaterThan(
+        callsBeforeDrag,
+    );
+});

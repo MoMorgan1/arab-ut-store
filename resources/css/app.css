@@ -1240,7 +1240,7 @@
     }
 
     .store-hero h1 .store-hero__title-primary {
-        font-size: clamp(2.45rem, 9.68vw, 6.5rem);
+        font-size: clamp(2.45rem, 12vw, 8.125rem);
         line-height: 1.04;
     }
 
