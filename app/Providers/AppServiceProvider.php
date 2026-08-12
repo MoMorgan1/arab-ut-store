@@ -75,5 +75,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)
                 ->by('automation-pricing:'.hash('sha256', $identity));
         });
+
+        RateLimiter::for('automation-sbc-pricing-read', function (Request $request): Limit {
+            $identity = (string) ($request->header('X-ArabUT-Key') ?: $request->ip());
+
+            return Limit::perMinute(10)
+                ->by('automation-sbc-pricing-read:'.hash('sha256', $identity));
+        });
     }
 }

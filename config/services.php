@@ -43,6 +43,8 @@ return [
         'sbc_catalog_secret' => env('N8N_SBC_CATALOG_SECRET'),
         'pricing_key' => env('N8N_PRICING_KEY'),
         'pricing_secret' => env('N8N_PRICING_SECRET'),
+        'sbc_pricing_read_key' => env('N8N_SBC_PRICING_READ_KEY'),
+        'sbc_pricing_read_secret' => env('N8N_SBC_PRICING_READ_SECRET'),
         'catalog_media_hosts' => array_values(array_filter(array_map(
             static fn (string $host): string => strtolower(trim($host)),
             explode(',', (string) env('N8N_CATALOG_MEDIA_HOSTS', '')),
