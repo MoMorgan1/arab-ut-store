@@ -10,6 +10,7 @@ use App\Models\ProductVariant;
 use App\Support\Money;
 use App\ValueObjects\Pricing\PreparedDisplayMoneyConverter;
 use DomainException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
@@ -36,52 +37,29 @@ final class StoreCatalogReader
         int $page,
     ): array {
         $converter = $this->converter($displayCurrency);
-        $products = $this->publicProducts($service)
-            ->map(fn (Product $product): array => $this->present($product, $locale, $converter));
-
-        $needle = mb_strtolower(trim($search));
-
-        if ($needle !== '') {
-            $products = $products->filter(function (array $product) use ($needle): bool {
-                $haystack = mb_strtolower($product['name'].' '.$product['description']);
-
-                return str_contains($haystack, $needle);
-            });
-        }
-
-        $filterCounts = $this->filterCounts($products);
+        $query = $this->publicProductsQuery($service);
+        $this->applySearch($query, $locale, $search);
+        $filterCounts = $this->filterCounts($query);
 
         if ($filter !== 'all') {
-            $products = $products->filter(
-                fn (array $product): bool => in_array($filter, $product['filters'], true),
-            );
+            $this->applyFilter($query, $filter);
         }
 
-        $products = match ($sort) {
-            'newest' => $products->sortByDesc('createdAt')->sortByDesc('id'),
-            'price_asc' => $products->sortBy([
-                fn (array $left, array $right): int => ($left['price']['amountMinor'] ?? PHP_INT_MAX) <=> ($right['price']['amountMinor'] ?? PHP_INT_MAX),
-                fn (array $left, array $right): int => $left['id'] <=> $right['id'],
-            ]),
-            'price_desc' => $products->sortBy([
-                fn (array $left, array $right): int => ($right['price']['amountMinor'] ?? -1) <=> ($left['price']['amountMinor'] ?? -1),
-                fn (array $left, array $right): int => $left['id'] <=> $right['id'],
-            ]),
-            default => $products->sortBy([
-                ['sortOrder', 'asc'],
-                ['id', 'asc'],
-            ]),
-        };
-        $products = $products->values();
         $perPage = 12;
-        $total = $products->count();
+        $total = (clone $query)->count();
         $lastPage = max(1, (int) ceil($total / $perPage));
         $page = min($page, $lastPage);
+        $this->applySort($query, $sort);
+        $products = $this->withCatalogRelations($query)
+            ->forPage($page, $perPage)
+            ->get();
 
         return [
             'service' => $service->value,
-            'products' => array_values($products->forPage($page, $perPage)
-                ->map(fn (array $product): array => $this->withoutInternalFields($product))
+            'products' => array_values($products
+                ->map(fn (Product $product): array => $this->withoutInternalFields(
+                    $this->present($product, $locale, $converter),
+                ))
                 ->values()
                 ->all()),
             'filterCounts' => $filterCounts,
@@ -130,6 +108,15 @@ final class StoreCatalogReader
     /** @return Collection<int, Product> */
     private function publicProducts(ServiceType $service): Collection
     {
+        return $this->withCatalogRelations($this->publicProductsQuery($service))
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /** @return Builder<Product> */
+    private function publicProductsQuery(ServiceType $service): Builder
+    {
         return Product::query()
             ->where('service_type', $service)
             ->where('is_visible', true)
@@ -138,14 +125,18 @@ final class StoreCatalogReader
             ->where(function ($query): void {
                 $query->whereNull('category_id')
                     ->orWhereHas('category', fn ($category) => $category->where('is_visible', true));
-            })
-            ->with([
-                'media' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
-                'variants' => fn ($query) => $query->where('is_active', true)->orderBy('id'),
-            ])
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
+            });
+    }
+
+    /** @param Builder<Product> $query
+     * @return Builder<Product>
+     */
+    private function withCatalogRelations(Builder $query): Builder
+    {
+        return $query->with([
+            'media' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
+            'variants' => fn ($query) => $query->where('is_active', true)->orderBy('id'),
+        ]);
     }
 
     /** @return array<string, mixed> */
@@ -217,26 +208,91 @@ final class StoreCatalogReader
             ->all());
     }
 
+    /** @param Builder<Product> $query */
+    private function applySearch(Builder $query, string $locale, string $search): void
+    {
+        $needle = trim($search);
+
+        if ($needle === '') {
+            return;
+        }
+
+        $fallback = $locale === 'ar' ? 'en' : 'ar';
+        $columns = ["name_{$locale}", "description_{$locale}", "name_{$fallback}", "description_{$fallback}"];
+
+        $query->where(function (Builder $searchQuery) use ($columns, $needle): void {
+            foreach ($columns as $column) {
+                $searchQuery->orWhereLike($column, "%{$needle}%", caseSensitive: false);
+            }
+        });
+    }
+
+    /** @param Builder<Product> $query */
+    private function applyFilter(Builder $query, string $filter): void
+    {
+        $categories = $filter === 'upgrades' ? ['upgrades', 'challenges'] : [$filter];
+
+        $query->whereHas('variants', function (Builder $variants) use ($categories): void {
+            $variants->where('is_active', true)
+                ->where(function (Builder $categoryQuery) use ($categories): void {
+                    foreach ($categories as $category) {
+                        $categoryQuery->orWhere('configuration->sbcCategory', $category);
+                    }
+                });
+        });
+    }
+
+    /** @param Builder<Product> $query */
+    private function applySort(Builder $query, string $sort): void
+    {
+        if (in_array($sort, ['price_asc', 'price_desc'], true)) {
+            $this->applyPriceSort($query, $sort);
+
+            return;
+        }
+
+        if ($sort === 'newest') {
+            $query->orderByDesc('created_at')->orderByDesc('id');
+
+            return;
+        }
+
+        $query->orderBy('sort_order')->orderBy('id');
+    }
+
+    /** @param Builder<Product> $query */
+    private function applyPriceSort(Builder $query, string $sort): void
+    {
+        $effectivePrice = ProductVariant::query()
+            ->selectRaw('MIN(COALESCE(sale_price_halalah, price_halalah))')
+            ->whereColumn('product_id', 'products.id')
+            ->where('is_active', true)
+            ->whereRaw('COALESCE(sale_price_halalah, price_halalah) > 0');
+
+        $query->addSelect(['effective_price_halalah' => $effectivePrice])
+            ->orderByRaw('CASE WHEN effective_price_halalah IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('effective_price_halalah', $sort === 'price_asc' ? 'asc' : 'desc')
+            ->orderBy('id');
+    }
+
     /**
-     * @param  Collection<int, array<string, mixed>>  $products
+     * @param  Builder<Product>  $query
      * @return array{all: int, players: int, icons: int, upgrades: int, foundations: int}
      */
-    private function filterCounts(Collection $products): array
+    private function filterCounts(Builder $query): array
     {
         $counts = [
-            'all' => $products->count(),
+            'all' => (clone $query)->count(),
             'players' => 0,
             'icons' => 0,
             'upgrades' => 0,
             'foundations' => 0,
         ];
 
-        foreach ($products as $product) {
-            foreach ($product['filters'] as $filter) {
-                if (array_key_exists($filter, $counts)) {
-                    $counts[$filter]++;
-                }
-            }
+        foreach (['players', 'icons', 'upgrades', 'foundations'] as $filter) {
+            $filtered = clone $query;
+            $this->applyFilter($filtered, $filter);
+            $counts[$filter] = $filtered->count();
         }
 
         return $counts;

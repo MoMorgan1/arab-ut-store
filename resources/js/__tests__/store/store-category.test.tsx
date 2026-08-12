@@ -182,6 +182,38 @@ it('adds the selected authoritative variant, updates the cart count, and stays o
     ).toBeNull();
 });
 
+it('suppresses cart actions and announces when the selected platform price is unavailable', () => {
+    const props = categoryProps();
+    const product = props.catalog.products[0];
+
+    page.props = categoryProps({
+        catalog: {
+            ...props.catalog,
+            products: [
+                {
+                    ...product,
+                    price: null,
+                    variants: product.variants.map((variant) => ({
+                        ...variant,
+                        price: null,
+                    })),
+                },
+            ],
+        },
+    });
+
+    render(<StoreCategory />);
+
+    expect(
+        screen.getByRole('status', {
+            name: 'Price temporarily unavailable',
+        }),
+    ).toBeVisible();
+    expect(
+        screen.queryByRole('button', { name: 'Add to cart' }),
+    ).toBeNull();
+});
+
 function categoryProps(overrides: Record<string, unknown> = {}) {
     return {
         catalog: {
@@ -252,7 +284,7 @@ function catalogTranslations() {
         price_asc: 'Price: low to high',
         price_desc: 'Price: high to low',
         from: 'From',
-        unavailable_price: 'Unavailable',
+        unavailable_price: 'Price temporarily unavailable',
         empty: 'No services',
         previous: 'Previous',
         next: 'Next',

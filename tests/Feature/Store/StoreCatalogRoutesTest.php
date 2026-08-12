@@ -6,6 +6,7 @@ use App\Models\ExchangeRate;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /**
@@ -147,6 +148,50 @@ test('SBC listings expose truthful filter counts and every product remains reach
                 'upgrades' => 0,
                 'foundations' => 0,
             ]));
+});
+
+test('newest catalog sorting keeps created time ahead of the id tie breaker', function () {
+    createStoreCatalogProduct(ServiceType::Sbc, [
+        'slug' => 'newer-lower-id',
+        'created_at' => '2026-08-12 12:00:00',
+    ]);
+    createStoreCatalogProduct(ServiceType::Sbc, [
+        'slug' => 'older-higher-id',
+        'created_at' => '2026-08-11 12:00:00',
+    ]);
+
+    $this->get('/en/sbc?sort=newest')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('catalog.products.0.slug', 'newer-lower-id')
+            ->where('catalog.products.1.slug', 'older-higher-id'));
+});
+
+test('catalog pagination retrieves only the requested page within a fixed query budget', function () {
+    foreach (range(1, 60) as $index) {
+        createStoreCatalogProduct(ServiceType::Sbc, [
+            'slug' => "budget-challenge-{$index}",
+            'sort_order' => $index,
+        ], [
+            'configuration' => ['sbcCategory' => $index % 2 === 0 ? 'players' : 'icons'],
+        ]);
+    }
+
+    $retrievedProducts = 0;
+    Product::retrieved(function () use (&$retrievedProducts): void {
+        $retrievedProducts++;
+    });
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    $this->get('/en/sbc?page=3&q=service&filter=all&sort=recommended')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('catalog.products', 12)
+            ->where('catalog.pagination.total', 60));
+
+    expect($retrievedProducts)->toBeLessThanOrEqual(12);
+    expect(count(DB::getQueryLog()))->toBeLessThanOrEqual(12);
 });
 
 test('SBC upgrades includes source challenges and supports localized search and stable price sorting', function () {

@@ -4044,6 +4044,16 @@
     color: #ff9d8d;
 }
 
+.store-catalog-add__unavailable {
+    min-height: 2.75rem;
+    display: grid;
+    place-items: center;
+    border: 1px dashed rgb(255 157 141 / 42%);
+    border-radius: 0.7rem;
+    padding: 0.6rem 0.8rem;
+    text-align: center;
+}
+
 .store-catalog-toolbar :focus-visible,
 .store-catalog-card :focus-visible,
 .store-catalog-product :focus-visible {

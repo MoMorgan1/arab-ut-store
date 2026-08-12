@@ -348,7 +348,7 @@ function CatalogCard({
                         </select>
                     </label>
                 ) : null}
-                {variantId === '' ? null : (
+                {variantId !== '' && selected !== undefined && selected.price !== null ? (
                     <CatalogAddControl
                         addUrl={addUrl}
                         errorLabel={translations.add_error}
@@ -358,6 +358,14 @@ function CatalogCard({
                         successLabel={translations.added}
                         variantId={variantId}
                     />
+                ) : (
+                    <p
+                        aria-label={translations.unavailable_price}
+                        className="store-catalog-add__unavailable"
+                        role="status"
+                    >
+                        {translations.unavailable_price}
+                    </p>
                 )}
             </div>
         </li>
