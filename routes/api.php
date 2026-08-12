@@ -23,5 +23,5 @@ Route::post('/automation/v1/pricing/coins/runs', CoinsPricingRunController::clas
     ->name('automation.pricing.coins.runs.store');
 
 Route::get('/automation/v1/pricing/coins/sbc-bases', SbcCoinsPricingReadController::class)
-    ->middleware(['throttle:automation-sbc-pricing-read', VerifyN8nSbcPricingReadSignature::class])
+    ->middleware([VerifyN8nSbcPricingReadSignature::class, 'throttle:automation-sbc-pricing-read'])
     ->name('automation.pricing.coins.sbc-bases.show');

@@ -77,19 +77,22 @@ function signedSbcPricingRead(
     ?string $timestamp = null,
     string $path = SBC_PRICING_READ_PATH,
     string $body = '',
+    string $method = 'GET',
+    string $key = 'sbc-pricing-read-test-key',
+    ?string $configuredKey = null,
 ) {
     $timestamp ??= (string) now()->timestamp;
     $secret = 'sbc-pricing-read-test-secret';
 
-    config()->set('services.n8n.sbc_pricing_read_key', 'sbc-pricing-read-test-key');
+    config()->set('services.n8n.sbc_pricing_read_key', $configuredKey ?? $key);
     config()->set('services.n8n.sbc_pricing_read_secret', $secret);
 
     return test()->call(
-        'GET',
+        $method,
         $path,
         server: [
             'HTTP_ACCEPT' => 'application/json',
-            'HTTP_X_ARABUT_KEY' => 'sbc-pricing-read-test-key',
+            'HTTP_X_ARABUT_KEY' => $key,
             'HTTP_X_ARABUT_TIMESTAMP' => $timestamp,
             'HTTP_X_ARABUT_SIGNATURE' => $signature ?? hash_hmac(
                 'sha256',
@@ -186,11 +189,49 @@ it('fails closed when the current Coins catalog or required rule state is unavai
 
 it('rate limits the signed machine-readable pricing boundary', function () {
     createSbcPricingReadCatalog();
+    $key = 'sbc-pricing-rate-limit-test-key';
 
     foreach (range(1, 10) as $attempt) {
-        signedSbcPricingRead()->assertOk();
+        signedSbcPricingRead(key: $key)->assertOk();
     }
 
-    signedSbcPricingRead()
+    $response = signedSbcPricingRead(key: $key)
         ->assertTooManyRequests();
+
+    expect($response->headers->get('Cache-Control'))->toContain('no-store');
+});
+
+it('accepts only the exact GET method', function (string $method) {
+    createSbcPricingReadCatalog();
+
+    signedSbcPricingRead(method: $method)
+        ->assertMethodNotAllowed();
+})->with(['HEAD', 'POST']);
+
+it('authenticates before charging the trusted credential rate-limit bucket', function () {
+    createSbcPricingReadCatalog();
+    $key = 'sbc-pricing-auth-order-test-key';
+
+    foreach (range(1, 10) as $attempt) {
+        signedSbcPricingRead(signature: str_repeat((string) ($attempt % 10), 64), key: $key)
+            ->assertUnauthorized();
+    }
+
+    foreach (range(1, 10) as $attempt) {
+        signedSbcPricingRead(key: $key)->assertOk();
+    }
+
+    $limited = signedSbcPricingRead(key: $key)
+        ->assertTooManyRequests();
+    $invalidAfterLimit = signedSbcPricingRead(signature: str_repeat('f', 64), key: $key)
+        ->assertUnauthorized();
+    $rotatedInvalidAfterLimit = signedSbcPricingRead(
+        signature: str_repeat('e', 64),
+        key: 'rotated-invalid-key',
+        configuredKey: $key,
+    )->assertUnauthorized();
+
+    expect($limited->headers->get('Cache-Control'))->toContain('no-store')
+        ->and($invalidAfterLimit->headers->get('Cache-Control'))->toContain('no-store')
+        ->and($rotatedInvalidAfterLimit->headers->get('Cache-Control'))->toContain('no-store');
 });

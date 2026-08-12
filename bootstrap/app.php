@@ -6,12 +6,14 @@ use App\Http\Middleware\RequireCatalogCartJson;
 use App\Http\Middleware\RequireCoinsCartJson;
 use App\Http\Middleware\SetDisplayCurrency;
 use App\Http\Middleware\SetLocale;
+use App\Http\Middleware\VerifyN8nSbcPricingReadSignature;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -32,6 +34,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, RequireCoinsCartJson::class);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, RequireCatalogCartJson::class);
+        $middleware->prependToPriorityList(
+            ThrottleRequests::class,
+            VerifyN8nSbcPricingReadSignature::class,
+        );
         $middleware->redirectGuestsTo(fn (Request $request): string => $request->route('locale') === 'en'
             ? route('localized.login', ['locale' => 'en'], absolute: false)
             : route('login', absolute: false));

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
@@ -14,6 +15,14 @@ final class VerifyN8nSbcPricingReadSignature
 
     public function handle(Request $request, Closure $next): Response
     {
+        if ($request->method() !== 'GET') {
+            return $this->error(
+                405,
+                'invalid_sbc_pricing_read_method',
+                'The SBC pricing read endpoint accepts GET only.',
+            )->header('Allow', 'GET');
+        }
+
         if (! $this->signatureMatches($request)) {
             return $this->error(
                 401,
@@ -38,7 +47,17 @@ final class VerifyN8nSbcPricingReadSignature
             );
         }
 
-        $response = $next($request);
+        try {
+            $response = $next($request);
+        } catch (ThrottleRequestsException $exception) {
+            $response = response()->json([
+                'error' => [
+                    'code' => 'sbc_pricing_read_rate_limited',
+                    'message' => 'Too many SBC pricing read requests.',
+                ],
+            ], 429, $exception->getHeaders());
+        }
+
         $response->headers->set('Cache-Control', 'no-store');
 
         return $response;
