@@ -161,11 +161,11 @@ class ValidateStoreInformationPage
             $this->requireExactKeys($part, ['text'], ['strong', 'url']);
             $this->nonEmptyString($part['text'], 'inline text', false);
 
-            if (isset($part['strong']) && ! is_bool($part['strong'])) {
+            if (array_key_exists('strong', $part) && ! is_bool($part['strong'])) {
                 throw new LogicException('Inline emphasis must be boolean.');
             }
 
-            if (isset($part['url'])) {
+            if (array_key_exists('url', $part)) {
                 $this->approvedUrl($part['url'], ['help.ea.com']);
             }
         }

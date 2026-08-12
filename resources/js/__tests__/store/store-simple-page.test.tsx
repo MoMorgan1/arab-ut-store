@@ -26,6 +26,11 @@ const mockPage = vi.hoisted(() => ({
                     type: 'heading',
                 },
                 {
+                    level: 3,
+                    text: 'Account information',
+                    type: 'heading',
+                },
+                {
                     items: [
                         [{ text: 'Contact information.' }],
                         [{ text: 'Order details.' }],
@@ -36,6 +41,25 @@ const mockPage = vi.hoisted(() => ({
                 {
                     content: [{ text: 'Keep account details secure.' }],
                     tone: 'info',
+                    type: 'notice',
+                },
+                {
+                    items: [
+                        [{ text: 'Open Security & Privacy.' }],
+                        [{ text: 'Choose View backup codes.' }],
+                    ],
+                    ordered: true,
+                    type: 'list',
+                },
+                { type: 'divider' },
+                {
+                    content: [{ text: 'Your details are encrypted.' }],
+                    tone: 'shield',
+                    type: 'notice',
+                },
+                {
+                    content: [{ text: 'Never publish backup codes.' }],
+                    tone: 'warning',
                     type: 'notice',
                 },
                 {
@@ -138,16 +162,32 @@ it('renders the structured WordPress policy hierarchy without transactional cont
     expect(
         screen.getByRole('heading', { name: '1. Information We Collect' }),
     ).toBeVisible();
+    expect(
+        screen.getByRole('heading', {
+            level: 3,
+            name: 'Account information',
+        }),
+    ).toBeVisible();
     expect(screen.getByText('privacy').tagName).toBe('STRONG');
     const prose = document.querySelector('.store-info-page__prose');
 
     expect(prose).not.toBeNull();
-    expect(within(prose as HTMLElement).getByRole('list')).toHaveTextContent(
-        'Order details.',
-    );
-    expect(screen.getByRole('note')).toHaveTextContent(
-        'Keep account details secure.',
-    );
+    const lists = within(prose as HTMLElement).getAllByRole('list');
+
+    expect(lists[0].tagName).toBe('UL');
+    expect(lists[0]).toHaveTextContent('Order details.');
+    expect(lists[1].tagName).toBe('OL');
+    expect(lists[1]).toHaveTextContent('Choose View backup codes.');
+    expect(prose?.querySelector('hr')).not.toBeNull();
+
+    const notices = within(prose as HTMLElement).getAllByRole('note');
+
+    expect(notices).toHaveLength(3);
+    expect(notices[0]).toHaveTextContent('Keep account details secure.');
+    expect(notices[1]).toHaveClass('store-info-page__notice--shield');
+    expect(notices[1]).toHaveTextContent('Your details are encrypted.');
+    expect(notices[2]).toHaveClass('store-info-page__notice--warning');
+    expect(notices[2]).toHaveTextContent('Never publish backup codes.');
     expect(
         screen.getByRole('navigation', { name: 'Breadcrumb' }),
     ).toHaveTextContent('Home');

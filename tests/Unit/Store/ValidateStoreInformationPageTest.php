@@ -77,6 +77,8 @@ test('it rejects malformed information page contracts', function (Closure $mutat
     'non-boolean ordered flag' => fn ($page, $meta, $url) => [[...$page, 'blocks' => [['type' => 'list', 'ordered' => 1, 'items' => [[['text' => 'Invalid']]]]]], $meta, $url],
     'empty content' => fn ($page, $meta, $url) => [[...$page, 'blocks' => [['type' => 'paragraph', 'content' => []]]], $meta, $url],
     'unexpected inline key' => fn ($page, $meta, $url) => [[...$page, 'blocks' => [['type' => 'paragraph', 'content' => [['text' => 'Invalid', 'html' => '<b>bad</b>']]]]], $meta, $url],
+    'null inline emphasis' => fn ($page, $meta, $url) => [[...$page, 'blocks' => [['type' => 'paragraph', 'content' => [['text' => 'Invalid', 'strong' => null]]]]], $meta, $url],
+    'null inline URL' => fn ($page, $meta, $url) => [[...$page, 'blocks' => [['type' => 'paragraph', 'content' => [['text' => 'Invalid', 'url' => null]]]]], $meta, $url],
     'insecure link' => fn ($page, $meta, $url) => [
         [...$page, 'blocks' => [['type' => 'paragraph', 'content' => [['text' => 'Invalid', 'url' => 'http://help.ea.com/example']]]]],
         $meta,
