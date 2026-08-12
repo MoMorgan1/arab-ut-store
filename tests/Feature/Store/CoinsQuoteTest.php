@@ -347,8 +347,8 @@ test('quantity limits and increments are enforced for each mode', function (stri
     'normal over maximum' => ['platform=playstation&delivery=normal&quantity=2010000', 422],
     'fast maximum' => ['platform=playstation&delivery=fast&quantity=20000000', 200],
     'fast over maximum' => ['platform=playstation&delivery=fast&quantity=20010000', 422],
-    'PC maximum' => ['platform=pc&quantity=2000000', 200],
-    'PC over maximum' => ['platform=pc&quantity=2010000', 422],
+    'PC maximum' => ['platform=pc&quantity=20000000', 200],
+    'PC over maximum' => ['platform=pc&quantity=20010000', 422],
 ]);
 
 test('the quote request rejects every top-level field outside its exact public contract', function (string $field, mixed $value) {

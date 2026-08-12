@@ -15,7 +15,10 @@ final class ApplyCoinsPricingRun
     /** @var list<string> */
     private const GROUPS = ['console_normal', 'console_fast', 'pc'];
 
-    /** @param array<string, mixed> $payload */
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{runId: string, status: string, pricingVersion: int, groups: list<string>}
+     */
     public function execute(array $payload): array
     {
         $runId = (string) $payload['runId'];
@@ -94,7 +97,10 @@ final class ApplyCoinsPricingRun
         });
     }
 
-    /** @param array<string, mixed> $payload */
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
     private function safePayload(array $payload): array
     {
         $safe = [

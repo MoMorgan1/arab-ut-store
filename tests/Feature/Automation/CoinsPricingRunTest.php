@@ -1,10 +1,10 @@
 <?php
 
+use App\Enums\Platform;
+use App\Enums\ServiceType;
 use App\Models\PriceRule;
 use App\Models\PriceRun;
 use App\Models\ProductVariant;
-use App\Enums\Platform;
-use App\Enums\ServiceType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 
