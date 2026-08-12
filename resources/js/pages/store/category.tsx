@@ -289,7 +289,7 @@ function CatalogCard({
             </a>
             <div className="store-catalog-card__body">
                 <h2>{product.name}</h2>
-                <p>{product.description}</p>
+                {isSbc ? null : <p>{product.description}</p>}
                 {isSbc ? (
                     <ul
                         aria-label={translations.platform_prices}

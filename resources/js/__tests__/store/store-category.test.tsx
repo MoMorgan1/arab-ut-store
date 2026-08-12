@@ -113,6 +113,28 @@ it('renders the refined SBC hierarchy and trust strip', () => {
     ).toBeVisible();
 });
 
+it('keeps SBC listing cards compact without removing descriptions from other catalogs', () => {
+    render(<StoreCategory />);
+
+    expect(screen.queryByText('Complete the Icon challenge.')).toBeNull();
+
+    cleanup();
+    const props = categoryProps();
+    page.props = categoryProps({
+        catalog: { ...props.catalog, service: 'objectives' },
+        catalogPageUrl: '/en/objectives',
+        servicePage: {
+            ...props.servicePage,
+            page_title: undefined,
+            title: 'Objectives',
+        },
+    });
+
+    render(<StoreCategory />);
+
+    expect(screen.getByText('Complete the Icon challenge.')).toBeVisible();
+});
+
 it('shows truthful category counts and disables categories with no products', () => {
     render(<StoreCategory />);
 
