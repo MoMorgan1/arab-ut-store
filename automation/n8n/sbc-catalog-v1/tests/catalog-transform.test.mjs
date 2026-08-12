@@ -123,6 +123,35 @@ test('a complete EasySBC source maps to an exact, stable PS and PC catalog snaps
     ]);
 });
 
+test('approved EasySBC images validate in the restricted n8n Code sandbox', async () => {
+    const records = sourceRecords(20);
+    const prepared = (
+        await runNode('prepare-snapshot', {
+            named: {
+                Config: config({ approvedBaseline: approvedBaseline(records) }),
+                'Evaluate Pricing Read': {
+                    valid: true,
+                    pricing: pricingRead(),
+                },
+            },
+            items: records,
+            staticData: {
+                sbcCatalogV1: { translations: translations(records) },
+            },
+            urlConstructor: null,
+        })
+    )[0].json;
+
+    assert.equal(prepared.valid, true, prepared.failureReason);
+    const validated = (
+        await runNode('validate-snapshot', {
+            items: [prepared],
+            urlConstructor: null,
+        })
+    )[0].json;
+    assert.equal(validated.valid, true, validated.failureReason);
+});
+
 test('legacy one-completion pricing uses every audited multiplier boundary', async () => {
     const quantities = [49_999, 50_000, 899_999, 900_000, 1_000_000, 1_000_001];
     const expectedPsSar = [70, 67, 1021, 929, 1031, 1057];

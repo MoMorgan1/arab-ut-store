@@ -6,6 +6,18 @@ function fail(reason) {
     return [{ json: { ...config, valid: false, failureReason: reason } }];
 }
 
+function isApprovedEasySbcImage(url) {
+    const prefix = 'https://assets.easysbc.io/';
+
+    return (
+        typeof url === 'string' &&
+        url.length > prefix.length &&
+        url.length <= 2048 &&
+        url.startsWith(prefix) &&
+        !/[\s\\]/.test(url)
+    );
+}
+
 if (!pricingState.valid || !pricingState.pricing) {
     return fail(
         pricingState.failureReason ||
@@ -81,18 +93,8 @@ for (let index = 0; index < records.length; index += 1) {
     )
         return fail(`${label} repeats is invalid`);
     if (record.imageURL != null) {
-        try {
-            const image = new URL(record.imageURL);
-            if (
-                image.protocol !== 'https:' ||
-                image.hostname !== 'assets.easysbc.io'
-            )
-                return fail(
-                    `${label} imageURL is not an approved EasySBC asset`,
-                );
-        } catch {
-            return fail(`${label} imageURL is invalid`);
-        }
+        if (!isApprovedEasySbcImage(record.imageURL))
+            return fail(`${label} imageURL is not an approved EasySBC asset`);
     }
 }
 

@@ -14,6 +14,7 @@ export async function runNode(
         env = {},
         staticData = {},
         now = '2026-08-12T12:00:00.000Z',
+        urlConstructor = globalThis.URL,
     } = {},
 ) {
     const source = await nodeSource(name);
@@ -42,6 +43,7 @@ export async function runNode(
         '$getWorkflowStaticData',
         'require',
         'Date',
+        'URL',
         source,
     );
 
@@ -54,6 +56,7 @@ export async function runNode(
             createRequire(import.meta.url),
         ),
         FixedDate,
+        urlConstructor,
     );
 }
 

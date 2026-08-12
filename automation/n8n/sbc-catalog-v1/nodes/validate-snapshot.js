@@ -6,6 +6,18 @@ function fail(reason) {
     return [{ json: { ...item, valid: false, failureReason: reason } }];
 }
 
+function isApprovedEasySbcImage(url) {
+    const prefix = 'https://assets.easysbc.io/';
+
+    return (
+        typeof url === 'string' &&
+        url.length > prefix.length &&
+        url.length <= 2048 &&
+        url.startsWith(prefix) &&
+        !/[\s\\]/.test(url)
+    );
+}
+
 function exactKeys(value, expected) {
     return (
         value &&
@@ -196,17 +208,7 @@ for (const product of snapshot.products) {
             !exactKeys(media.alt, ['ar', 'en'])
         )
             return fail('Media keys are not exact');
-        let image;
-        try {
-            image = new URL(media.url);
-        } catch {
-            return fail('Media URL is invalid');
-        }
-        if (
-            image.protocol !== 'https:' ||
-            image.hostname !== 'assets.easysbc.io' ||
-            media.sortOrder !== 0
-        )
+        if (!isApprovedEasySbcImage(media.url) || media.sortOrder !== 0)
             return fail('Media URL is not an approved EasySBC asset');
     }
 }
