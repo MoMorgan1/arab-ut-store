@@ -11,7 +11,7 @@ use Inertia\Response;
 
 final class CategoryProductController extends Controller
 {
-    public function __invoke(Request $request, StoreCatalogReader $catalog, string $slug): Response
+    public function __invoke(Request $request, StoreCatalogReader $catalog): Response
     {
         return Inertia::render('store/catalog-product', [
             'catalogCartUrl' => $this->route($request, 'cart.items.catalog.store'),
@@ -20,7 +20,7 @@ final class CategoryProductController extends Controller
             'productPage' => trans('store.product'),
             'catalog' => $catalog->productBySlug(
                 ServiceType::from((string) $request->route('service')),
-                $slug,
+                (string) $request->route('slug'),
                 app()->getLocale(),
                 (string) ($request->session()->get('display_currency') ?? config('store.default_display_currency')),
             ),

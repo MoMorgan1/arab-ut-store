@@ -251,6 +251,30 @@ test('category query input is bounded and product routes reject wrong services',
     $this->get('/objectives/missing')->assertNotFound();
 });
 
+test('category product pages resolve the slug in both storefront locales', function () {
+    createStoreCatalogProduct(ServiceType::Sbc, [
+        'slug' => 'localized-sbc-product',
+        'name_ar' => 'ØªØ­Ø¯ÙŠ Ù…Ø­Ù„ÙŠ',
+        'name_en' => 'Localized challenge',
+    ], [
+        'configuration' => ['sbcCategory' => 'players'],
+    ]);
+
+    $this->get('/sbc/localized-sbc-product')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('store/catalog-product', false)
+            ->where('locale', 'ar')
+            ->where('catalog.product.slug', 'localized-sbc-product'));
+
+    $this->get('/en/sbc/localized-sbc-product')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('store/catalog-product', false)
+            ->where('locale', 'en')
+            ->where('catalog.product.slug', 'localized-sbc-product'));
+});
+
 test('homepage service rail contract has equal ordered internal routes and the exact Sell Coins destination', function () {
     $this->get('/en')
         ->assertOk()
