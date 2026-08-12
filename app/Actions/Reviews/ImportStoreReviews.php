@@ -134,6 +134,10 @@ final class ImportStoreReviews
      */
     public function projectSallaSource(array $payload): array
     {
+        if (array_keys($payload) === ['reviews'] && is_array($payload['reviews'])) {
+            return $this->projectNormalizedReviewSource($payload['reviews']);
+        }
+
         if (array_keys($payload) !== ['data'] || ! is_array($payload['data'])) {
             throw ValidationException::withMessages([
                 'source' => 'The Salla review source is malformed.',
@@ -201,6 +205,95 @@ final class ImportStoreReviews
         if ($reviews === []) {
             throw ValidationException::withMessages([
                 'source' => 'The Salla source contains no safe published ratings.',
+            ]);
+        }
+
+        return ['schemaVersion' => 1, 'reviews' => $reviews];
+    }
+
+    /**
+     * Project the storefront's existing safe review endpoint into the immutable archive shape.
+     *
+     * The endpoint may still contain display names or order-link metadata used by the old
+     * refresh path. The historical archive intentionally discards those fields and retains
+     * only anonymous public review content.
+     *
+     * @param  array<int, mixed>  $inputs
+     * @return array{schemaVersion: 1, reviews: list<array<string, mixed>>}
+     */
+    private function projectNormalizedReviewSource(array $inputs): array
+    {
+        if ($inputs === [] || count($inputs) > 5000) {
+            throw ValidationException::withMessages([
+                'source' => 'The normalized review source size is invalid.',
+            ]);
+        }
+
+        $reviews = [];
+
+        foreach ($inputs as $index => $input) {
+            if (! is_array($input)) {
+                throw ValidationException::withMessages([
+                    "reviews.{$index}" => 'Each normalized review must be an object.',
+                ]);
+            }
+
+            if (($input['is_visible'] ?? null) !== true) {
+                continue;
+            }
+
+            $rating = filter_var($input['rating'] ?? null, FILTER_VALIDATE_INT);
+            $id = $input['id'] ?? null;
+            $content = $input['comment'] ?? null;
+            $publishedAt = $input['published_at'] ?? null;
+
+            if (! is_int($rating)
+                || $rating < 1
+                || $rating > 5
+                || (! is_int($id) && ! is_string($id))
+                || trim((string) $id) === ''
+                || strlen((string) $id) > 180
+                || ! is_string($content)
+                || ! is_string($publishedAt)) {
+                throw ValidationException::withMessages([
+                    "reviews.{$index}" => 'The normalized published review is incomplete.',
+                ]);
+            }
+
+            $body = trim(strip_tags($content));
+
+            if ($body === '' || $this->containsPrivateContact($body)) {
+                continue;
+            }
+
+            try {
+                $date = CarbonImmutable::parse($publishedAt)->utc();
+            } catch (Throwable) {
+                throw ValidationException::withMessages([
+                    "reviews.{$index}.published_at" => 'The normalized review date is invalid.',
+                ]);
+            }
+
+            $locale = $input['locale'] ?? null;
+
+            if (! is_string($locale) || ! in_array($locale, ['ar', 'en'], true)) {
+                $locale = preg_match('/[\\x{0600}-\\x{06FF}]/u', $body) === 1 ? 'ar' : 'en';
+            }
+
+            $reviews[] = [
+                'id' => 'salla:'.trim((string) $id),
+                'rating' => $rating,
+                'comment' => $body,
+                'locale' => $locale,
+                'public_name' => null,
+                'published_at' => $date->format('Y-m-d\\TH:i:s\\Z'),
+                'is_visible' => true,
+            ];
+        }
+
+        if ($reviews === []) {
+            throw ValidationException::withMessages([
+                'source' => 'The normalized source contains no safe visible ratings.',
             ]);
         }
 

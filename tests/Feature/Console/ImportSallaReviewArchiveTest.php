@@ -107,3 +107,45 @@ test('the archive command projects the configured Salla source without customer 
             '123456789',
         );
 });
+
+test('the archive command accepts the existing normalized review endpoint without retaining its public name or private fields', function () {
+    config()->set('services.n8n.reviews_url', 'https://reviews.example.test/archive');
+    Http::fake([
+        'https://reviews.example.test/archive' => Http::response(['reviews' => [
+            [
+                'id' => 'existing-source-1',
+                'rating' => 4,
+                'comment' => 'Fast delivery from the existing endpoint.',
+                'locale' => 'en',
+                'public_name' => 'Existing Public Name',
+                'order_item_public_id' => '01JPRIVATEORDERIDENTITY',
+                'published_at' => '2026-08-12T12:00:00Z',
+                'is_visible' => true,
+                'email' => 'private@example.test',
+            ],
+            [
+                'id' => 'existing-source-hidden',
+                'rating' => 1,
+                'comment' => 'Hidden source review.',
+                'locale' => 'en',
+                'published_at' => '2026-08-12T12:01:00Z',
+                'is_visible' => false,
+            ],
+        ]]),
+    ]);
+
+    $this->artisan('reviews:import-salla-archive', [
+        '--from-config' => true,
+        '--apply' => true,
+    ])->expectsOutputToContain('count=1')->assertSuccessful();
+
+    $attributes = json_encode(Review::sole()->getAttributes(), JSON_THROW_ON_ERROR);
+
+    expect(Review::sole()->reviewer_name)->toBe(trans('store.reviews.anonymous_customer'))
+        ->and(Review::sole()->external_id)->toBe('salla:existing-source-1')
+        ->and($attributes)->not->toContain(
+            'Existing Public Name',
+            '01JPRIVATEORDERIDENTITY',
+            'private@example.test',
+        );
+});
