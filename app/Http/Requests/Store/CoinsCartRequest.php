@@ -7,6 +7,7 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 final class CoinsCartRequest extends FormRequest
 {
@@ -20,11 +21,20 @@ final class CoinsCartRequest extends FormRequest
     {
         return [
             ...app(CoinsSelectionRules::class)->for($this->input('platform'), $this->input('delivery')),
-            'credentials' => ['required', 'array:ea_email,ea_password,backup_codes'],
+            'credentials' => ['required', 'array:ea_email,ea_password,backup_codes,current_balance,companion_market_open,policy_accepted'],
             'credentials.ea_email' => ['required', 'string', 'email:rfc', 'max:254'],
             'credentials.ea_password' => ['present', 'string', 'min:1', 'max:128'],
             'credentials.backup_codes' => ['required', 'array', 'size:3'],
             'credentials.backup_codes.*' => ['required', 'string', 'regex:/\A[0-9]{8}\z/D', 'distinct:strict'],
+            'credentials.current_balance' => [
+                Rule::requiredIf($this->requiresCurrentBalance()),
+                Rule::prohibitedIf(! $this->requiresCurrentBalance()),
+                'integer',
+                'min:0',
+                'max:100000000',
+            ],
+            'credentials.companion_market_open' => ['required', 'boolean', 'accepted'],
+            'credentials.policy_accepted' => ['required', 'boolean', 'accepted'],
         ];
     }
 
@@ -70,6 +80,12 @@ final class CoinsCartRequest extends FormRequest
         }
 
         $this->merge(['credentials' => $credentials]);
+    }
+
+    private function requiresCurrentBalance(): bool
+    {
+        return $this->input('platform') === 'playstation'
+            && $this->input('delivery') === 'fast';
     }
 
     protected function failedValidation(Validator $validator): never

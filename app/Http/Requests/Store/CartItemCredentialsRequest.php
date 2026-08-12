@@ -22,6 +22,9 @@ final class CartItemCredentialsRequest extends FormRequest
             'ea_password' => ['present', 'string', 'min:1', 'max:128'],
             'backup_codes' => ['required', 'array', 'size:3'],
             'backup_codes.*' => ['required', 'string', 'regex:/\A[0-9]{8}\z/D', 'distinct:strict'],
+            'current_balance' => ['sometimes', 'integer', 'min:0', 'max:100000000'],
+            'companion_market_open' => ['sometimes', 'boolean'],
+            'policy_accepted' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -29,7 +32,14 @@ final class CartItemCredentialsRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator): void {
-            if (array_diff(array_keys($this->all()), ['ea_email', 'ea_password', 'backup_codes']) !== []) {
+            if (array_diff(array_keys($this->all()), [
+                'ea_email',
+                'ea_password',
+                'backup_codes',
+                'current_balance',
+                'companion_market_open',
+                'policy_accepted',
+            ]) !== []) {
                 $validator->errors()->add('request', trans('store.cart.unknown_fields'));
             }
         }];

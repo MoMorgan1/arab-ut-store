@@ -18,6 +18,9 @@ final class CoinsCartFingerprint
                 'ea_email' => $validated['credentials']['ea_email'],
                 'ea_password' => $validated['credentials']['ea_password'],
                 'backup_codes' => array_values($validated['credentials']['backup_codes']),
+                'current_balance' => $validated['credentials']['current_balance'] ?? null,
+                'companion_market_open' => (bool) $validated['credentials']['companion_market_open'],
+                'policy_accepted' => (bool) $validated['credentials']['policy_accepted'],
             ],
         ];
 

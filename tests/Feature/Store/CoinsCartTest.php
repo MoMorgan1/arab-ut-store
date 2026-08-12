@@ -71,6 +71,7 @@ function createCartCatalog(): array
 /** @return array<string, mixed> */
 function coinsCartPayload(array $changes = []): array
 {
+    $credentialsWereChanged = array_key_exists('credentials', $changes);
     $payload = [
         'platform' => 'playstation',
         'delivery' => 'normal',
@@ -79,6 +80,8 @@ function coinsCartPayload(array $changes = []): array
             'ea_email' => 'cart-sentinel@example.test',
             'ea_password' => '  Opaque Cart Password Sentinel  ',
             'backup_codes' => ['81000001', '81000002', '81000003'],
+            'companion_market_open' => true,
+            'policy_accepted' => true,
         ],
     ];
     $credentialChanges = $changes['credentials'] ?? [];
@@ -87,6 +90,12 @@ function coinsCartPayload(array $changes = []): array
 
     if (is_array($credentialChanges)) {
         $payload['credentials'] = array_replace($payload['credentials'], $credentialChanges);
+    }
+
+    if (($payload['platform'] ?? null) === 'playstation'
+        && ($payload['delivery'] ?? null) === 'fast'
+        && ! $credentialsWereChanged) {
+        $payload['credentials']['current_balance'] = 500_000;
     }
 
     return $payload;
@@ -315,6 +324,82 @@ test('email and backup codes normalize without changing the opaque EA password',
         ]);
 });
 
+test('fast console stores the complete WordPress fulfillment contract only in the encrypted owner boundary', function () {
+    createCartCatalog();
+    $rawOwnerToken = str_repeat('9', 64);
+    $this->withSession([ResolveCartOwner::SESSION_KEY => $rawOwnerToken]);
+    $payload = coinsCartPayload([
+        'delivery' => 'fast',
+        'credentials' => [
+            'current_balance' => 500_000,
+            'companion_market_open' => true,
+            'policy_accepted' => true,
+        ],
+    ]);
+
+    $created = addCoinsToCart('/cart/items/coins', $payload, 'wp-fulfillment-key');
+
+    $created->assertCreated();
+    $item = CartItem::sole();
+    $secretPayload = CartItemSecret::sole()->encrypted_payload;
+    expect($secretPayload)->toMatchArray([
+        'ea_email' => 'cart-sentinel@example.test',
+        'ea_password' => '  Opaque Cart Password Sentinel  ',
+        'backup_codes' => ['81000001', '81000002', '81000003'],
+        'current_balance' => 500_000,
+        'companion_market_open' => true,
+        'policy_version' => 'store-fulfillment-2026-08-12',
+    ])->and($secretPayload['policy_accepted_at'])->toBeString();
+
+    $read = $this->getJson("/cart/items/{$item->public_id}/credentials");
+    $read->assertOk()->assertJsonPath('data.currentBalance', 500_000)
+        ->assertJsonPath('data.companionMarketOpen', true)
+        ->assertJsonPath('data.policyAccepted', true);
+
+    $raw = DB::table('cart_item_secrets')->where('id', CartItemSecret::sole()->id)->value('encrypted_payload');
+    expect($created->getContent())->not->toContain('500000')
+        ->not->toContain('companion_market_open')
+        ->and($raw)->not->toContain('500000')
+        ->not->toContain('cart-sentinel@example.test');
+});
+
+test('Coins fulfillment confirmations and conditional balance fail closed', function (array $changes) {
+    createCartCatalog();
+    $payload = coinsCartPayload($changes);
+
+    addCoinsToCart('/cart/items/coins', $payload, 'wp-validation-'.md5(serialize($changes)))
+        ->assertUnprocessable();
+
+    expect(CartItem::count())->toBe(0);
+})->with([
+    'fast console missing balance' => [[
+        'delivery' => 'fast',
+        'credentials' => [
+            'companion_market_open' => true,
+            'policy_accepted' => true,
+        ],
+    ]],
+    'normal console rejects balance' => [[
+        'credentials' => [
+            'current_balance' => 500_000,
+            'companion_market_open' => true,
+            'policy_accepted' => true,
+        ],
+    ]],
+    'companion confirmation is mandatory' => [[
+        'credentials' => [
+            'companion_market_open' => false,
+            'policy_accepted' => true,
+        ],
+    ]],
+    'policy confirmation is mandatory' => [[
+        'credentials' => [
+            'companion_market_open' => true,
+            'policy_accepted' => false,
+        ],
+    ]],
+]);
+
 test('the cart exposes encrypted EA credentials only through an owner no-store endpoint and allows owner edits', function () {
     createCartCatalog();
     $rawOwnerToken = str_repeat('f', 64);
@@ -337,6 +422,9 @@ test('the cart exposes encrypted EA credentials only through an owner no-store e
         'eaEmail' => 'cart-sentinel@example.test',
         'eaPassword' => '  Opaque Cart Password Sentinel  ',
         'backupCodes' => ['81000001', '81000002', '81000003'],
+        'currentBalance' => null,
+        'companionMarketOpen' => true,
+        'policyAccepted' => true,
     ]]);
     expect($read->headers->get('Cache-Control'))->toContain('no-store');
 
@@ -344,13 +432,17 @@ test('the cart exposes encrypted EA credentials only through an owner no-store e
         'ea_email' => 'updated@example.test',
         'ea_password' => '  Updated opaque password  ',
         'backup_codes' => ['91000001', '91000002', '91000003'],
+        'companion_market_open' => true,
+        'policy_accepted' => true,
     ]);
     $updated->assertNoContent();
-    expect(CartItemSecret::sole()->encrypted_payload)->toBe([
+    expect(CartItemSecret::sole()->encrypted_payload)->toMatchArray([
         'ea_email' => 'updated@example.test',
         'ea_password' => '  Updated opaque password  ',
         'backup_codes' => ['91000001', '91000002', '91000003'],
-    ]);
+        'companion_market_open' => true,
+        'policy_version' => 'store-fulfillment-2026-08-12',
+    ])->and(CartItemSecret::sole()->encrypted_payload['policy_accepted_at'])->toBeString();
 
     $this->flushSession();
     $this->withSession([ResolveCartOwner::SESSION_KEY => str_repeat('e', 64)]);
