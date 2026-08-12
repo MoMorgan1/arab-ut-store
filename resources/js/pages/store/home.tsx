@@ -195,7 +195,9 @@ export default function StoreHome() {
                                     locale={locale}
                                     platforms={platforms}
                                     quoteSchedules={schedules}
+                                    termsUrl={storeShell.termsUrl}
                                     translations={store}
+                                    warrantyUrl={storeShell.warrantyUrl}
                                 />
                             ) : (
                                 <section

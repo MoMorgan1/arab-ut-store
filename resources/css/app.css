@@ -2334,6 +2334,58 @@
         letter-spacing: 0.08em;
     }
 
+    .coins-current-balance > p,
+    .coins-confirmation-field > p {
+        margin: 0;
+        color: var(--arabut-muted);
+        font-size: 0.85rem;
+        line-height: 1.55;
+    }
+
+    .coins-fulfillment-confirmations {
+        display: grid;
+        gap: 0.75rem;
+    }
+
+    .coins-confirmation-field {
+        border: 1px solid rgb(217 171 58 / 20%);
+        border-radius: 0.7rem;
+        background: linear-gradient(
+            135deg,
+            rgb(217 171 58 / 8%),
+            rgb(7 9 12 / 34%)
+        );
+        padding: 0.75rem 0.85rem;
+    }
+
+    .coins-confirmation-field > label {
+        display: flex;
+        min-height: 2.75rem;
+        align-items: center;
+        gap: 0.75rem;
+        color: var(--arabut-ink);
+        font-weight: 750;
+        cursor: pointer;
+    }
+
+    .coins-confirmation-field input[type='checkbox'] {
+        width: 1.25rem;
+        height: 1.25rem;
+        flex: 0 0 auto;
+        accent-color: var(--arabut-gold);
+    }
+
+    .coins-confirmation-field input[type='checkbox']:focus-visible {
+        outline: 2px solid var(--arabut-focus);
+        outline-offset: 3px;
+    }
+
+    .coins-confirmation-field a {
+        color: var(--arabut-gold-bright);
+        font-weight: 700;
+        text-underline-offset: 0.2rem;
+    }
+
     .coins-field-error,
     .coins-submit-error {
         margin: 0;
@@ -2560,6 +2612,22 @@
         background: rgb(9 12 16 / 92%);
         padding-inline: 0.75rem;
         color: var(--arabut-ink);
+    }
+
+    .store-cart-credentials__form .store-cart-credentials__check {
+        display: flex;
+        min-height: 2.75rem;
+        align-items: center;
+        grid-template-columns: none;
+        gap: 0.7rem;
+        cursor: pointer;
+    }
+
+    .store-cart-credentials__check input[type='checkbox'] {
+        width: 1.2rem;
+        min-height: 1.2rem;
+        flex: 0 0 auto;
+        accent-color: var(--arabut-gold);
     }
 
     .store-cart-credentials__actions {

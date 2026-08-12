@@ -172,6 +172,9 @@ export type StoreCartTranslations = {
     backup_code: string;
     ea_email: string;
     ea_password: string;
+    current_balance: string;
+    companion_market_open: string;
+    policy_accepted: string;
     edit_credentials: string;
     save_credentials: string;
     cancel_edit: string;

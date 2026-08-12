@@ -8,9 +8,18 @@ export type CoinsCredentials = {
     eaEmail: string;
     eaPassword: string;
     backupCodes: [string, string, string];
+    currentBalance?: string;
+    companionMarketOpen?: boolean;
+    policyAccepted?: boolean;
 };
 
-export type CoinsCredentialField = 'email' | 'password' | `code-${0 | 1 | 2}`;
+export type CoinsCredentialField =
+    | 'email'
+    | 'password'
+    | 'current-balance'
+    | 'companion'
+    | 'policy'
+    | `code-${0 | 1 | 2}`;
 
 export type CoinsResumeSelection = {
     platform: CoinsPlatformValue;
@@ -108,10 +117,21 @@ export type CoinsStoreTranslations = {
         backup_codes: string;
         backup_code: string;
         backup_help: string;
+        current_balance: string;
+        current_balance_help: string;
+        companion_market_open: string;
+        companion_help: string;
+        policy_accepted: string;
+        policy_help: string;
+        terms_link: string;
+        warranty_link: string;
         required_email: string;
         required_password: string;
         required_code: string;
         duplicate_code: string;
+        required_balance: string;
+        required_companion: string;
+        required_policy: string;
         clear: string;
     };
     summary: {

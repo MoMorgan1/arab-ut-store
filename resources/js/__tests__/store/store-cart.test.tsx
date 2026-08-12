@@ -72,6 +72,9 @@ const mockPage = vi.hoisted(() => ({
                 backup_codes: ':count backup codes stored',
                 ea_email: 'EA email',
                 ea_password: 'EA password',
+                current_balance: 'Current Coins balance',
+                companion_market_open: 'Transfer Market is open',
+                policy_accepted: 'Policies accepted',
                 edit_credentials: 'Edit EA details',
                 save_credentials: 'Save EA details',
                 cancel_edit: 'Cancel',
@@ -206,6 +209,9 @@ it('loads owner-only credentials after render and edits exactly three codes with
                         backupCodes: ['10000001', '10000002', '10000003'],
                         eaEmail: 'owner@example.test',
                         eaPassword: 'opaque EA password',
+                        currentBalance: 500000,
+                        companionMarketOpen: true,
+                        policyAccepted: true,
                     },
                 }),
                 {
@@ -224,6 +230,9 @@ it('loads owner-only credentials after render and edits exactly three codes with
     expect(await screen.findByText('owner@example.test')).toBeVisible();
     expect(screen.getByText('opaque EA password')).toBeVisible();
     expect(screen.getByText('10000003')).toBeVisible();
+    expect(screen.getByText('500,000')).toBeVisible();
+    expect(screen.getByText('Transfer Market is open')).toBeVisible();
+    expect(screen.getByText('Policies accepted')).toBeVisible();
     expect(fetchMock).toHaveBeenNthCalledWith(
         1,
         '/en/cart/items/01K00000000000000000000000/credentials',
@@ -245,8 +254,11 @@ it('loads owner-only credentials after render and edits exactly three codes with
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
         backup_codes: ['10000001', '10000002', '20000003'],
+        companion_market_open: true,
+        current_balance: 500000,
         ea_email: 'edited@example.test',
         ea_password: 'opaque EA password',
+        policy_accepted: true,
     });
     expect(screen.getByText('EA details saved')).toBeVisible();
     expect(localStorageSpy).not.toHaveBeenCalled();

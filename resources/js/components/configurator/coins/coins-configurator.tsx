@@ -37,7 +37,9 @@ type CoinsConfiguratorProps = {
     locale: 'ar' | 'en';
     platforms: CoinsPlatformOption[];
     quoteSchedules: CoinsQuoteSchedules;
+    termsUrl: string;
     translations: CoinsStoreTranslations;
+    warrantyUrl: string;
 };
 
 export function CoinsConfigurator({
@@ -46,7 +48,9 @@ export function CoinsConfigurator({
     locale,
     platforms,
     quoteSchedules,
+    termsUrl,
     translations,
+    warrantyUrl,
 }: CoinsConfiguratorProps) {
     const [state, dispatch] = useReducer(
         coinsConfiguratorReducer,
@@ -486,6 +490,7 @@ export function CoinsConfigurator({
             {state.step === 'credentials' && selectedPlatform !== null ? (
                 <CredentialsStep
                     credentials={credentials}
+                    delivery={requestDelivery}
                     focusRef={credentialsHeading}
                     locale={locale}
                     onBack={goBack}
@@ -498,7 +503,10 @@ export function CoinsConfigurator({
                     }}
                     quoteState={quoteState}
                     rejectedFields={rejectedCredentialFields}
+                    platform={selectedPlatform.value}
+                    termsUrl={termsUrl}
                     translations={translations}
+                    warrantyUrl={warrantyUrl}
                 />
             ) : null}
 

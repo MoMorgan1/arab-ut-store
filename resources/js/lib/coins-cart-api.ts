@@ -55,6 +55,9 @@ const CREDENTIAL_VALIDATION_FIELDS: Readonly<
     'credentials.backup_codes.2': 'code-2',
     'credentials.ea_email': 'email',
     'credentials.ea_password': 'password',
+    'credentials.current_balance': 'current-balance',
+    'credentials.companion_market_open': 'companion',
+    'credentials.policy_accepted': 'policy',
 };
 
 function isRecord(candidate: unknown): candidate is JsonRecord {
@@ -143,8 +146,17 @@ function requestBody(input: SubmitCoinsCartInput) {
     return {
         credentials: {
             backup_codes: input.credentials.backupCodes,
+            companion_market_open:
+                input.credentials.companionMarketOpen === true,
+            ...(input.credentials.currentBalance === undefined ||
+            input.credentials.currentBalance === ''
+                ? {}
+                : {
+                      current_balance: Number(input.credentials.currentBalance),
+                  }),
             ea_email: input.credentials.eaEmail,
             ea_password: input.credentials.eaPassword,
+            policy_accepted: input.credentials.policyAccepted === true,
         },
         ...(input.delivery === null ? {} : { delivery: input.delivery }),
         platform: input.platform,

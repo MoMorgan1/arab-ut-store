@@ -81,10 +81,22 @@ const store = {
         backup_codes: 'EA backup codes',
         backup_code: 'Backup code :number',
         backup_help: 'Enter three different 8-digit codes.',
+        current_balance: 'Current Coins balance',
+        current_balance_help: 'Required for Fast console delivery.',
+        companion_market_open: 'Transfer Market is open in EA Companion',
+        companion_help:
+            'Open EA Companion and confirm the Transfer Market is available.',
+        policy_accepted: 'I confirm the details and accept the policies.',
+        policy_help: 'Review the refund and warranty policies.',
+        terms_link: 'Terms',
+        warranty_link: 'Warranty',
         required_email: 'Enter a valid EA email.',
         required_password: 'Enter your EA password.',
         required_code: 'Enter an 8-digit backup code.',
         duplicate_code: 'Each backup code must be different.',
+        required_balance: 'Enter your current Coins balance.',
+        required_companion: 'Confirm that the Transfer Market is open.',
+        required_policy: 'Accept the policies to continue.',
         clear: 'Cancel and clear details',
     },
     summary: {
@@ -317,6 +329,17 @@ async function reachCredentials() {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 }
 
+async function reachFastConsoleCredentials() {
+    fireEvent.click(screen.getByRole('radio', { name: 'PS / Xbox' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Fast' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+}
+
 function fillCredentials() {
     fireEvent.change(screen.getByRole('textbox', { name: 'EA email' }), {
         target: { value: 'player@example.com' },
@@ -331,6 +354,17 @@ function fillCredentials() {
             { target: { value: `1000000${index}` } },
         );
     }
+
+    fireEvent.click(
+        screen.getByRole('checkbox', {
+            name: 'Transfer Market is open in EA Companion',
+        }),
+    );
+    fireEvent.click(
+        screen.getByRole('checkbox', {
+            name: 'I confirm the details and accept the policies.',
+        }),
+    );
 }
 
 beforeEach(() => {
@@ -355,6 +389,45 @@ afterEach(() => {
 });
 
 describe('Coins credentials flow', () => {
+    it('matches the WordPress fulfillment fields and requires balance only for Fast console', async () => {
+        render(<StoreHome />);
+        await reachCredentials();
+
+        expect(
+            screen.queryByRole('textbox', { name: 'Current Coins balance' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('checkbox', {
+                name: 'Transfer Market is open in EA Companion',
+            }),
+        ).toBeVisible();
+        expect(
+            screen.getByRole('checkbox', {
+                name: 'I confirm the details and accept the policies.',
+            }),
+        ).toBeVisible();
+
+        cleanup();
+        render(<StoreHome />);
+        await reachFastConsoleCredentials();
+        fillCredentials();
+
+        const balance = screen.getByRole('textbox', {
+            name: 'Current Coins balance',
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        expect(balance).toHaveFocus();
+        expect(
+            screen.getByText('Enter your current Coins balance.'),
+        ).toHaveAttribute('role', 'alert');
+
+        fireEvent.change(balance, { target: { value: '500000' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        expect(
+            screen.getByRole('heading', { name: 'Review and add' }),
+        ).toBeVisible();
+    });
+
     it('enables a resumed credentials step from its authoritative schedule', () => {
         mockPage.props = {
             ...pageProps(),

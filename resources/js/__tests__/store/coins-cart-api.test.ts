@@ -7,6 +7,9 @@ const credentials: CoinsCredentials = {
     eaEmail: 'player@example.com',
     eaPassword: 'opaque EA password',
     backupCodes: ['10000001', '10000002', '10000003'],
+    currentBalance: '',
+    companionMarketOpen: true,
+    policyAccepted: true,
 };
 
 function request() {
@@ -86,6 +89,8 @@ describe('secure Coins cart API', () => {
                 ea_email: credentials.eaEmail,
                 ea_password: credentials.eaPassword,
                 backup_codes: credentials.backupCodes,
+                companion_market_open: true,
+                policy_accepted: true,
             },
             platform: 'pc',
             quantity: 50_000,

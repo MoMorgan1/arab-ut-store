@@ -1,7 +1,10 @@
 export type StoredCartCredentials = {
     backupCodes: [string, string, string];
+    companionMarketOpen: boolean;
+    currentBalance: number | null;
     eaEmail: string;
     eaPassword: string;
+    policyAccepted: boolean;
 };
 
 function endpoint(path: string): string {
@@ -36,9 +39,15 @@ function isStoredCredentials(value: unknown): value is StoredCartCredentials {
 
     return (
         Object.keys(candidate).sort().join(',') ===
-            'backupCodes,eaEmail,eaPassword' &&
+            'backupCodes,companionMarketOpen,currentBalance,eaEmail,eaPassword,policyAccepted' &&
         typeof candidate.eaEmail === 'string' &&
         typeof candidate.eaPassword === 'string' &&
+        (candidate.currentBalance === null ||
+            (Number.isSafeInteger(candidate.currentBalance) &&
+                Number(candidate.currentBalance) >= 0 &&
+                Number(candidate.currentBalance) <= 100_000_000)) &&
+        typeof candidate.companionMarketOpen === 'boolean' &&
+        typeof candidate.policyAccepted === 'boolean' &&
         Array.isArray(codes) &&
         codes.length === 3 &&
         codes.every(
@@ -79,6 +88,15 @@ export async function updateCartCredentials(
     const response = await fetch(endpoint(path), {
         body: JSON.stringify({
             backup_codes: credentials.backupCodes,
+            ...(credentials.companionMarketOpen && credentials.policyAccepted
+                ? {
+                      companion_market_open: true,
+                      ...(credentials.currentBalance === null
+                          ? {}
+                          : { current_balance: credentials.currentBalance }),
+                      policy_accepted: true,
+                  }
+                : {}),
             ea_email: credentials.eaEmail,
             ea_password: credentials.eaPassword,
         }),

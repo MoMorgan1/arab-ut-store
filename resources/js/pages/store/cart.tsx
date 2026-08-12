@@ -230,13 +230,23 @@ function CredentialState({
         );
     }
 
+    const isCoins = cartItem.product.serviceType === 'coins';
+    const requiresBalance =
+        isCoins &&
+        cartItem.configuration.platform === 'playstation' &&
+        cartItem.configuration.delivery === 'fast';
+
     const draftIsValid =
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.eaEmail) &&
         draft.eaEmail.length <= 254 &&
         draft.eaPassword.length >= 1 &&
         draft.eaPassword.length <= 128 &&
         draft.backupCodes.every((code) => /^[0-9]{8}$/.test(code)) &&
-        new Set(draft.backupCodes).size === 3;
+        new Set(draft.backupCodes).size === 3 &&
+        (!isCoins ||
+            (draft.companionMarketOpen &&
+                draft.policyAccepted &&
+                (!requiresBalance || draft.currentBalance !== null)));
 
     function updateDraft<Key extends keyof StoredCartCredentials>(
         key: Key,
@@ -323,6 +333,28 @@ function CredentialState({
                             value={draft.eaPassword}
                         />
                     </label>
+                    {requiresBalance ? (
+                        <label>
+                            <span>{translations.current_balance}</span>
+                            <input
+                                dir="ltr"
+                                inputMode="numeric"
+                                maxLength={9}
+                                onChange={(event) => {
+                                    const digits = event.currentTarget.value
+                                        .replace(/[^0-9]/g, '')
+                                        .slice(0, 9);
+                                    updateDraft(
+                                        'currentBalance',
+                                        digits === '' ? null : Number(digits),
+                                    );
+                                }}
+                                required
+                                type="text"
+                                value={draft.currentBalance ?? ''}
+                            />
+                        </label>
+                    ) : null}
                     {draft.backupCodes.map((code, index) => (
                         <label key={index}>
                             <span>
@@ -347,6 +379,38 @@ function CredentialState({
                             />
                         </label>
                     ))}
+                    {isCoins ? (
+                        <>
+                            <label className="store-cart-credentials__check">
+                                <input
+                                    checked={draft.companionMarketOpen}
+                                    onChange={(event) =>
+                                        updateDraft(
+                                            'companionMarketOpen',
+                                            event.currentTarget.checked,
+                                        )
+                                    }
+                                    type="checkbox"
+                                />
+                                <span>
+                                    {translations.companion_market_open}
+                                </span>
+                            </label>
+                            <label className="store-cart-credentials__check">
+                                <input
+                                    checked={draft.policyAccepted}
+                                    onChange={(event) =>
+                                        updateDraft(
+                                            'policyAccepted',
+                                            event.currentTarget.checked,
+                                        )
+                                    }
+                                    type="checkbox"
+                                />
+                                <span>{translations.policy_accepted}</span>
+                            </label>
+                        </>
+                    ) : null}
                     <div className="store-cart-credentials__actions">
                         <button
                             disabled={saving || !draftIsValid}
@@ -391,6 +455,37 @@ function CredentialState({
                                 <dd>{code}</dd>
                             </div>
                         ))}
+                        {isCoins && credentials.currentBalance !== null ? (
+                            <div>
+                                <dt>{translations.current_balance}</dt>
+                                <dd>
+                                    {formatInteger(
+                                        credentials.currentBalance,
+                                        locale,
+                                    )}
+                                </dd>
+                            </div>
+                        ) : null}
+                        {isCoins && credentials.companionMarketOpen ? (
+                            <div>
+                                <dt>{translations.companion_market_open}</dt>
+                                <dd
+                                    aria-label={
+                                        translations.companion_market_open
+                                    }
+                                >
+                                    ✓
+                                </dd>
+                            </div>
+                        ) : null}
+                        {isCoins && credentials.policyAccepted ? (
+                            <div>
+                                <dt>{translations.policy_accepted}</dt>
+                                <dd aria-label={translations.policy_accepted}>
+                                    ✓
+                                </dd>
+                            </div>
+                        ) : null}
                     </dl>
                     <button
                         className="store-cart-credentials__edit"

@@ -5,6 +5,8 @@ import { formatInteger } from '@/lib/money';
 import type {
     CoinsCredentialField,
     CoinsCredentials,
+    CoinsDeliveryValue,
+    CoinsPlatformValue,
     CoinsQuoteViewState,
     CoinsStoreTranslations,
 } from '@/types/coins';
@@ -15,15 +17,19 @@ type CredentialErrors = Partial<Record<CoinsCredentialField, string>>;
 
 type CredentialsStepProps = {
     credentials: CoinsCredentials;
+    delivery: CoinsDeliveryValue | null;
     focusRef: Ref<HTMLHeadingElement>;
     locale: 'ar' | 'en';
     onBack: () => void;
     onCancel: () => void;
     onChange: (credentials: CoinsCredentials) => void;
     onContinue: () => void;
+    platform: CoinsPlatformValue;
     quoteState: CoinsQuoteViewState;
     rejectedFields: CoinsCredentialField[];
+    termsUrl: string;
     translations: CoinsStoreTranslations;
+    warrantyUrl: string;
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -35,6 +41,7 @@ const BACKUP_CODE_FIELDS = [
 
 function validateCredentials(
     credentials: CoinsCredentials,
+    requiresBalance: boolean,
     translations: CoinsStoreTranslations['credentials'],
 ): CredentialErrors {
     const errors: CredentialErrors = {};
@@ -63,6 +70,22 @@ function validateCredentials(
         }
     });
 
+    if (
+        requiresBalance &&
+        (!/^[0-9]+$/.test(credentials.currentBalance ?? '') ||
+            Number(credentials.currentBalance) > 100_000_000)
+    ) {
+        errors['current-balance'] = translations.required_balance;
+    }
+
+    if (credentials.companionMarketOpen !== true) {
+        errors.companion = translations.required_companion;
+    }
+
+    if (credentials.policyAccepted !== true) {
+        errors.policy = translations.required_policy;
+    }
+
     return errors;
 }
 
@@ -71,20 +94,27 @@ export function emptyCoinsCredentials(): CoinsCredentials {
         backupCodes: ['', '', ''],
         eaEmail: '',
         eaPassword: '',
+        currentBalance: '',
+        companionMarketOpen: false,
+        policyAccepted: false,
     };
 }
 
 export function CredentialsStep({
     credentials,
+    delivery,
     focusRef,
     locale,
     onBack,
     onCancel,
     onChange,
     onContinue,
+    platform,
     quoteState,
     rejectedFields,
+    termsUrl,
     translations,
+    warrantyUrl,
 }: CredentialsStepProps) {
     const [errors, setErrors] = useState<CredentialErrors>(() =>
         credentialErrors(rejectedFields, translations.credentials),
@@ -94,6 +124,7 @@ export function CredentialsStep({
         Partial<Record<CoinsCredentialField, HTMLInputElement | null>>
     >({ email: null, password: null });
     const quoteMessage = credentialsQuoteMessage(quoteState, translations);
+    const requiresBalance = platform === 'playstation' && delivery === 'fast';
 
     useEffect(() => {
         return () => {
@@ -133,9 +164,30 @@ export function CredentialsStep({
         onChange({ ...credentials, backupCodes });
     }
 
+    function updateBalance(rawBalance: string) {
+        setErrors((current) => ({
+            ...current,
+            'current-balance': undefined,
+        }));
+        onChange({
+            ...credentials,
+            currentBalance: rawBalance.replace(/[^0-9]/g, '').slice(0, 9),
+        });
+    }
+
+    function updateConfirmation(
+        key: 'companionMarketOpen' | 'policyAccepted',
+        field: 'companion' | 'policy',
+        checked: boolean,
+    ) {
+        setErrors((current) => ({ ...current, [field]: undefined }));
+        onChange({ ...credentials, [key]: checked });
+    }
+
     function submitCredentials() {
         const nextErrors = validateCredentials(
             credentials,
+            requiresBalance,
             translations.credentials,
         );
         const firstError = Object.keys(nextErrors)[0] as
@@ -296,6 +348,125 @@ export function CredentialsStep({
                         })}
                     </div>
                 </fieldset>
+
+                {requiresBalance ? (
+                    <div className="coins-credential-field coins-current-balance">
+                        <label htmlFor="coins-current-balance">
+                            {translations.credentials.current_balance}
+                        </label>
+                        <p id="coins-current-balance-help">
+                            {translations.credentials.current_balance_help}
+                        </p>
+                        <input
+                            aria-describedby={`coins-current-balance-help${
+                                errors['current-balance'] === undefined
+                                    ? ''
+                                    : ' coins-current-balance-error'
+                            }`}
+                            aria-invalid={
+                                errors['current-balance'] !== undefined
+                            }
+                            dir="ltr"
+                            id="coins-current-balance"
+                            inputMode="numeric"
+                            maxLength={9}
+                            onChange={(event) =>
+                                updateBalance(event.currentTarget.value)
+                            }
+                            ref={(node) => {
+                                fieldRefs.current['current-balance'] = node;
+                            }}
+                            type="text"
+                            value={credentials.currentBalance ?? ''}
+                        />
+                        <FieldError
+                            error={errors['current-balance']}
+                            id="coins-current-balance-error"
+                        />
+                    </div>
+                ) : null}
+
+                <div className="coins-fulfillment-confirmations">
+                    <div className="coins-confirmation-field">
+                        <label htmlFor="coins-companion-market">
+                            <input
+                                aria-describedby={`coins-companion-help${
+                                    errors.companion === undefined
+                                        ? ''
+                                        : ' coins-companion-error'
+                                }`}
+                                aria-invalid={errors.companion !== undefined}
+                                checked={
+                                    credentials.companionMarketOpen === true
+                                }
+                                id="coins-companion-market"
+                                onChange={(event) =>
+                                    updateConfirmation(
+                                        'companionMarketOpen',
+                                        'companion',
+                                        event.currentTarget.checked,
+                                    )
+                                }
+                                ref={(node) => {
+                                    fieldRefs.current.companion = node;
+                                }}
+                                type="checkbox"
+                            />
+                            <span>
+                                {translations.credentials.companion_market_open}
+                            </span>
+                        </label>
+                        <p id="coins-companion-help">
+                            {translations.credentials.companion_help}
+                        </p>
+                        <FieldError
+                            error={errors.companion}
+                            id="coins-companion-error"
+                        />
+                    </div>
+
+                    <div className="coins-confirmation-field">
+                        <label htmlFor="coins-policy-accepted">
+                            <input
+                                aria-describedby={`coins-policy-help${
+                                    errors.policy === undefined
+                                        ? ''
+                                        : ' coins-policy-error'
+                                }`}
+                                aria-invalid={errors.policy !== undefined}
+                                checked={credentials.policyAccepted === true}
+                                id="coins-policy-accepted"
+                                onChange={(event) =>
+                                    updateConfirmation(
+                                        'policyAccepted',
+                                        'policy',
+                                        event.currentTarget.checked,
+                                    )
+                                }
+                                ref={(node) => {
+                                    fieldRefs.current.policy = node;
+                                }}
+                                type="checkbox"
+                            />
+                            <span>
+                                {translations.credentials.policy_accepted}
+                            </span>
+                        </label>
+                        <p id="coins-policy-help">
+                            {translations.credentials.policy_help}{' '}
+                            <a href={termsUrl}>
+                                {translations.credentials.terms_link}
+                            </a>{' '}
+                            <a href={warrantyUrl}>
+                                {translations.credentials.warranty_link}
+                            </a>
+                        </p>
+                        <FieldError
+                            error={errors.policy}
+                            id="coins-policy-error"
+                        />
+                    </div>
+                </div>
             </div>
 
             {quoteMessage === null ? null : (
@@ -354,8 +525,20 @@ function credentialErrorMessage(
         return translations.required_email;
     }
 
-    return field === 'password'
-        ? translations.required_password
+    if (field === 'password') {
+        return translations.required_password;
+    }
+
+    if (field === 'current-balance') {
+        return translations.required_balance;
+    }
+
+    if (field === 'companion') {
+        return translations.required_companion;
+    }
+
+    return field === 'policy'
+        ? translations.required_policy
         : translations.required_code;
 }
 
