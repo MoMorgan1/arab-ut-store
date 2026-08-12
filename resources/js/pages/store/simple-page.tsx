@@ -1,5 +1,6 @@
 import { Head, usePage } from '@inertiajs/react';
 
+import StoreInformationPageContent from '@/components/store/store-information-page';
 import StoreLayout from '@/layouts/store-layout';
 import type { SimpleStorePageProps } from '@/types/store-shell';
 
@@ -28,15 +29,10 @@ export default function SimpleStorePage() {
             ui={ui}
         >
             <Head title={page.title} />
-            <section
-                aria-labelledby="simple-page-title"
-                className="store-simple-page"
-            >
-                <p>{ui.simple_pages.eyebrow}</p>
-                <h1 id="simple-page-title">{page.title}</h1>
-                <p>{page.body}</p>
-                <a href={storeShell.homeUrl}>{ui.simple_pages.back_home}</a>
-            </section>
+            <StoreInformationPageContent
+                homeUrl={storeShell.homeUrl}
+                page={page}
+            />
         </StoreLayout>
     );
 }

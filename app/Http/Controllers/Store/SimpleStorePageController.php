@@ -20,21 +20,57 @@ class SimpleStorePageController extends Controller
             throw new LogicException('A simple storefront page must be an allowlisted route default.');
         }
 
-        $translations = trans("ui.simple_pages.{$page}");
+        $translations = trans("store_pages.pages.{$page}");
+        $meta = trans('store_pages.meta');
 
         if (! is_array($translations)
-            || ! isset($translations['title'], $translations['body'])
+            || ! isset($translations['title'], $translations['blocks'])
             || ! is_string($translations['title'])
-            || ! is_string($translations['body'])) {
+            || ! is_array($translations['blocks'])
+            || $translations['blocks'] === []) {
             throw new LogicException("The simple storefront page translation [{$page}] is invalid.");
+        }
+
+        if (! is_array($meta) || ! $this->hasStringMeta($meta)) {
+            throw new LogicException('The simple storefront page metadata translation is invalid.');
         }
 
         return Inertia::render('store/simple-page', [
             'page' => [
                 'key' => $page,
                 'title' => $translations['title'],
-                'body' => $translations['body'],
+                'subtitle' => $translations['subtitle'] ?? null,
+                'breadcrumb' => [
+                    'label' => $meta['breadcrumb_label'],
+                    'home' => $meta['home'],
+                    'current' => $translations['title'],
+                ],
+                'updated' => [
+                    'label' => $meta['updated_label'],
+                    'value' => $meta['updated_value'],
+                ],
+                'blocks' => $translations['blocks'],
+                'support' => [
+                    'title' => $meta['support_title'],
+                    'subtitle' => $meta['support_subtitle'],
+                    'action' => $meta['support_action'],
+                    'url' => config('store.support.whatsapp_url'),
+                ],
             ],
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     */
+    private function hasStringMeta(array $meta): bool
+    {
+        foreach (['home', 'breadcrumb_label', 'updated_label', 'updated_value', 'support_title', 'support_subtitle', 'support_action'] as $key) {
+            if (! isset($meta[$key]) || ! is_string($meta[$key])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

@@ -74,9 +74,52 @@ export type SimpleStorePageProps = {
     displayCurrency: string;
     displayCurrencies: string[];
     locale: StoreLocale;
-    page: { key: SimpleStorePageKey; title: string; body: string };
+    page: StoreInformationPage;
     storeShell: StoreShellConfig;
     ui: StoreShellTranslations;
+};
+
+export type StorePageInlineContent = {
+    strong?: boolean;
+    text: string;
+    url?: string;
+};
+
+export type StorePageBlock =
+    | {
+          content: StorePageInlineContent[];
+          type: 'paragraph';
+      }
+    | {
+          level: 2 | 3;
+          text: string;
+          type: 'heading';
+      }
+    | {
+          items: StorePageInlineContent[][];
+          ordered: boolean;
+          type: 'list';
+      }
+    | {
+          content: StorePageInlineContent[];
+          tone: 'info' | 'shield' | 'warning';
+          type: 'notice';
+      }
+    | { type: 'divider' };
+
+export type StoreInformationPage = {
+    blocks: StorePageBlock[];
+    breadcrumb: { current: string; home: string; label: string };
+    key: SimpleStorePageKey;
+    subtitle: string | null;
+    support: {
+        action: string;
+        subtitle: string;
+        title: string;
+        url: string;
+    };
+    title: string;
+    updated: { label: string; value: string };
 };
 
 export type StoreCartConfiguration = Partial<{

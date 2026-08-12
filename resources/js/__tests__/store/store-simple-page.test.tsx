@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 
 import SimpleStorePage from '@/pages/store/simple-page';
@@ -11,9 +11,59 @@ const mockPage = vi.hoisted(() => ({
         displayCurrencies: ['SAR', 'USD'],
         locale: 'en',
         page: {
-            body: 'We are preparing the SBC catalog and automated product connection.',
-            key: 'sbc',
-            title: 'SBC Services',
+            blocks: [
+                {
+                    content: [
+                        { text: 'Arab UT respects your ' },
+                        { strong: true, text: 'privacy' },
+                        { text: '.' },
+                    ],
+                    type: 'paragraph',
+                },
+                {
+                    level: 2,
+                    text: '1. Information We Collect',
+                    type: 'heading',
+                },
+                {
+                    items: [
+                        [{ text: 'Contact information.' }],
+                        [{ text: 'Order details.' }],
+                    ],
+                    ordered: false,
+                    type: 'list',
+                },
+                {
+                    content: [{ text: 'Keep account details secure.' }],
+                    tone: 'info',
+                    type: 'notice',
+                },
+                {
+                    content: [
+                        { text: 'Read the ' },
+                        {
+                            text: 'official guide',
+                            url: 'https://help.ea.com/en/articles/security-and-rules/two-factor-authentication/',
+                        },
+                        { text: '.' },
+                    ],
+                    type: 'paragraph',
+                },
+            ],
+            breadcrumb: {
+                current: 'Privacy Policy',
+                home: 'Home',
+                label: 'Breadcrumb',
+            },
+            key: 'privacy',
+            support: {
+                action: 'Contact us on WhatsApp',
+                subtitle: 'Our team is ready to help around the clock',
+                title: 'Have a question?',
+                url: 'https://wa.me/966537998099',
+            },
+            title: 'Privacy Policy',
+            updated: { label: 'Last updated', value: '12 August 2026' },
         },
         storeShell: {
             homeUrl: '/en',
@@ -73,7 +123,7 @@ const mockPage = vi.hoisted(() => ({
             },
         },
     },
-    url: '/en/sbc',
+    url: '/en/privacy',
 }));
 
 vi.mock('@inertiajs/react', () => ({
@@ -83,15 +133,30 @@ vi.mock('@inertiajs/react', () => ({
 
 afterEach(cleanup);
 
-it('renders a non-transactional branded destination', () => {
+it('renders the structured WordPress policy hierarchy without transactional controls', () => {
     render(<SimpleStorePage />);
 
-    expect(screen.getByRole('heading', { name: 'SBC Services' })).toBeVisible();
     expect(
-        screen.getByText(
-            'We are preparing the SBC catalog and automated product connection.',
-        ),
+        screen.getByRole('heading', { name: 'Privacy Policy' }),
     ).toBeVisible();
+    expect(
+        screen.getByRole('heading', { name: '1. Information We Collect' }),
+    ).toBeVisible();
+    expect(screen.getByText('privacy').tagName).toBe('STRONG');
+    const prose = document.querySelector('.store-info-page__prose');
+
+    expect(prose).not.toBeNull();
+    expect(within(prose as HTMLElement).getByRole('list')).toHaveTextContent(
+        'Order details.',
+    );
+    expect(screen.getByRole('note')).toHaveTextContent(
+        'Keep account details secure.',
+    );
+    expect(
+        screen.getByRole('navigation', { name: 'Breadcrumb' }),
+    ).toHaveTextContent('Home');
+    expect(screen.getByText('Last updated:')).toBeVisible();
+    expect(screen.getByText('12 August 2026')).toBeVisible();
     expect(screen.getByRole('banner')).toBeVisible();
     expect(
         screen.getByRole('link', { name: 'Cart' }).querySelector('span'),
@@ -103,7 +168,7 @@ it('renders a non-transactional branded destination', () => {
     expect(document.querySelector('a[href="#"]')).not.toBeInTheDocument();
 });
 
-it('keeps the complete shell semantic order, active nav, and safe external links', () => {
+it('keeps the complete shell semantic order and safe external support links', () => {
     render(<SimpleStorePage />);
 
     const banner = screen.getByRole('banner');
@@ -113,9 +178,14 @@ it('keeps the complete shell semantic order, active nav, and safe external links
     expect([...document.body.querySelectorAll('header, main, footer')]).toEqual(
         [banner, main, contentinfo],
     );
-    expect(screen.getByRole('link', { name: /^SBC/ })).toHaveAttribute(
-        'aria-current',
-        'page',
+    expect(
+        screen.getByRole('link', { name: 'Contact us on WhatsApp' }),
+    ).toHaveAttribute('href', 'https://wa.me/966537998099');
+    expect(
+        screen.getByRole('link', { name: 'official guide' }),
+    ).toHaveAttribute(
+        'href',
+        'https://help.ea.com/en/articles/security-and-rules/two-factor-authentication/',
     );
 
     for (const link of document.querySelectorAll<HTMLAnchorElement>('a')) {

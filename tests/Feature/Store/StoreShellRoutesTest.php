@@ -8,7 +8,8 @@ test('every non-transactional storefront destination has the right bilingual pag
     string $locale,
     string $page,
     string $title,
-    string $body,
+    string $breadcrumb,
+    string $firstSection,
 ) {
     $this->get($path)
         ->assertOk()
@@ -17,7 +18,14 @@ test('every non-transactional storefront destination has the right bilingual pag
             ->where('locale', $locale)
             ->where('page.key', $page)
             ->where('page.title', $title)
-            ->where('page.body', $body)
+            ->where('page.breadcrumb.home', $locale === 'en' ? 'Home' : 'الرئيسية')
+            ->where('page.breadcrumb.current', $breadcrumb)
+            ->where('page.updated.label', $locale === 'en' ? 'Last updated' : 'آخر تحديث')
+            ->where('page.blocks.1.type', 'heading')
+            ->where('page.blocks.1.text', $firstSection)
+            ->where('page.support.title', $locale === 'en' ? 'Have a question?' : 'هل لديك سؤال؟')
+            ->where('page.support.url', 'https://wa.me/966537998099')
+            ->missing('page.body')
             ->where('storeShell.homeUrl', $locale === 'en' ? '/en' : '/')
             ->where('storeShell.coinsUrl', $locale === 'en' ? '/en#coins' : '/#coins')
             ->where('storeShell.cartUrl', $locale === 'en' ? '/en/cart' : '/cart')
@@ -42,16 +50,16 @@ test('every non-transactional storefront destination has the right bilingual pag
             ->missing('storeShell.socials.tiktok')
             ->missing('storeShell.socials.snapchat'));
 })->with([
-    'privacy' => ['/privacy', 'ar', 'privacy', 'سياسة الخصوصية', 'ننقل ونراجع سياسة الخصوصية للمتجر الجديد. ما نجمع أي بيانات من هذه الصفحة.'],
-    'English privacy' => ['/en/privacy', 'en', 'privacy', 'Privacy Policy', 'We are migrating and reviewing the policy for the new store. This page does not collect any data.'],
-    'returns' => ['/returns', 'ar', 'returns', 'سياسة الاسترجاع', 'ننقل شروط الاسترجاع بصياغة واضحة قبل تفعيل الدفع.'],
-    'English returns' => ['/en/returns', 'en', 'returns', 'Returns Policy', 'We are migrating the return terms in clear language before payments are enabled.'],
-    'warranty' => ['/warranty', 'ar', 'warranty', 'سياسة الضمان والتعويض', 'ننقل تفاصيل الضمان والتعويض قبل تفعيل الطلبات.'],
-    'English warranty' => ['/en/warranty', 'en', 'warranty', 'Warranty and Compensation', 'We are migrating the warranty and compensation details before orders are enabled.'],
-    'EA codes' => ['/ea-backup-codes', 'ar', 'ea_backup_codes', 'أكواد EA الاحتياطية', 'نجهز شرح بسيط وآمن لطريقة استخراج الأكواد.'],
-    'English EA codes' => ['/en/ea-backup-codes', 'en', 'ea_backup_codes', 'EA Backup Codes', 'We are preparing a simple, secure guide for obtaining backup codes.'],
-    'terms' => ['/terms', 'ar', 'terms', 'شروط الخدمة', 'ننقل ونراجع شروط الخدمة قبل إطلاق الطلب والدفع.'],
-    'English terms' => ['/en/terms', 'en', 'terms', 'Terms of Service', 'We are migrating and reviewing the terms before ordering and payments launch.'],
+    'privacy' => ['/privacy', 'ar', 'privacy', 'سياسة الخصوصية', 'سياسة الخصوصية', 'أولاً: المعلومات التي يحصل عليها المتجر ويحتفظ بها'],
+    'English privacy' => ['/en/privacy', 'en', 'privacy', 'Privacy Policy', 'Privacy Policy', '1. Information We Collect'],
+    'returns' => ['/returns', 'ar', 'returns', 'سياسة الاسترجاع', 'سياسة الاسترجاع', '١. طبيعة المنتج الرقمي'],
+    'English returns' => ['/en/returns', 'en', 'returns', 'Returns Policy', 'Returns Policy', '1. Before Fulfillment Starts'],
+    'warranty' => ['/warranty', 'ar', 'warranty', 'سياسة الضمان والتعويض', 'سياسة الضمان والتعويض', '١. شروط سريان الضمان'],
+    'English warranty' => ['/en/warranty', 'en', 'warranty', 'Warranty and Compensation', 'Warranty and Compensation', '1. When the Warranty Applies'],
+    'EA codes' => ['/ea-backup-codes', 'ar', 'ea_backup_codes', 'أكواد EA الاحتياطية', 'أكواد EA الاحتياطية', 'طريقة عرض الأكواد'],
+    'English EA codes' => ['/en/ea-backup-codes', 'en', 'ea_backup_codes', 'EA Backup Codes', 'EA Backup Codes', 'How to view your codes'],
+    'terms' => ['/terms', 'ar', 'terms', 'شروط الخدمة', 'شروط الخدمة', '١. قبول الشروط'],
+    'English terms' => ['/en/terms', 'en', 'terms', 'Terms of Service', 'Terms of Service', '1. Service Nature'],
 ]);
 
 test('the cart destinations render the real safe cart page', function (string $path, string $locale) {
