@@ -9,7 +9,6 @@ use App\Enums\ServiceType;
 use App\Exceptions\IdempotencyConflict;
 use App\Models\Cart;
 use App\Models\CartItem;
-use App\Models\CartItemSecret;
 use App\Models\IdempotencyKey;
 use App\Models\ProductVariant;
 use App\Security\CoinsCartFingerprint;
@@ -26,6 +25,7 @@ final readonly class AddCoinsToCart
     public function __construct(
         private QuoteCoins $quoteCoins,
         private AcquireActiveCart $acquireActiveCart,
+        private PersistCartItemCredentials $persistCredentials,
     ) {}
 
     /**
@@ -64,7 +64,7 @@ final readonly class AddCoinsToCart
         $productVariant = ProductVariant::where('public_id', $quote->variantId)->sole();
         $activeCart = $this->acquireActiveCart->execute($owner);
         $cartItem = $this->createCartItem($activeCart, $productVariant, $quote);
-        $this->createSecret($cartItem, $validated['credentials']);
+        $this->persistCredentials->execute($cartItem, $validated['credentials']);
         $safeResponseBody = $this->responseBody($activeCart, $cartItem, $quote, $locale);
         $this->completeClaim($idempotencyClaim, $safeResponseBody);
 
@@ -139,21 +139,6 @@ final readonly class AddCoinsToCart
                 'price_version' => (int) $productVariant->price_version,
             ],
         ]);
-    }
-
-    /** @param array<string, mixed> $credentials */
-    private function createSecret(CartItem $cartItem, array $credentials): void
-    {
-        $cartSecret = new CartItemSecret([
-            'cart_item_id' => $cartItem->id,
-            'masked_summary' => [
-                'has_password' => true,
-                'backup_code_count' => count($credentials['backup_codes']),
-            ],
-            'retained_until' => null,
-        ]);
-        $cartSecret->encrypted_payload = $credentials;
-        $cartSecret->save();
     }
 
     /** @return array<string, mixed> */

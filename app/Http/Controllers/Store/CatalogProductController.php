@@ -15,6 +15,7 @@ final class CatalogProductController extends Controller
     {
         return Inertia::render('store/catalog-product', [
             'catalogCartUrl' => $this->route($request, 'cart.items.catalog.store'),
+            'sbcCartUrl' => $this->route($request, 'cart.items.sbc.store'),
             'backUrl' => $this->route($request, 'home').'#services',
             'productPage' => trans('store.product'),
             'catalog' => $catalog->featuredProduct(

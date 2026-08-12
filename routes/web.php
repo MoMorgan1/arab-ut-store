@@ -12,6 +12,7 @@ use App\Http\Controllers\Store\CoinsCartController;
 use App\Http\Controllers\Store\CoinsQuoteController;
 use App\Http\Controllers\Store\HomeController;
 use App\Http\Controllers\Store\ReviewsController;
+use App\Http\Controllers\Store\SbcCartController;
 use App\Http\Controllers\Store\SimpleStorePageController;
 use App\Http\Middleware\NoStore;
 use App\Http\Middleware\RequireCatalogCartJson;
@@ -39,6 +40,9 @@ Route::post('/cart/items/coins', CoinsCartController::class)
 Route::post('/cart/items/catalog', CatalogCartController::class)
     ->middleware([NoStore::class, RequireCatalogCartJson::class, 'throttle:coins-cart'])
     ->name('cart.items.catalog.store');
+Route::post('/cart/items/sbc', SbcCartController::class)
+    ->middleware([NoStore::class, RequireCatalogCartJson::class, 'throttle:coins-cart'])
+    ->name('cart.items.sbc.store');
 Route::get('/auth/google/redirect', [GoogleAuthenticationController::class, 'redirect'])
     ->middleware(['guest:'.config('fortify.guard')])
     ->name('auth.google.redirect');
@@ -110,6 +114,9 @@ Route::prefix('{locale}')
         Route::post('/cart/items/catalog', CatalogCartController::class)
             ->middleware([NoStore::class, RequireCatalogCartJson::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.catalog.store');
+        Route::post('/cart/items/sbc', SbcCartController::class)
+            ->middleware([NoStore::class, RequireCatalogCartJson::class, 'throttle:coins-cart'])
+            ->name('localized.cart.items.sbc.store');
         Route::get('/auth/google/redirect', [GoogleAuthenticationController::class, 'redirect'])
             ->middleware(['guest:'.config('fortify.guard')])
             ->name('localized.auth.google.redirect');

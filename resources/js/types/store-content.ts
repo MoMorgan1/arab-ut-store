@@ -126,6 +126,24 @@ export type ProductTranslations = {
     platform: string;
     price: string;
     unavailable_price: string;
+    sbc: {
+        backup_code: string;
+        backup_codes: string;
+        backup_help: string;
+        credentials_title: string;
+        duplicate_code: string;
+        email: string;
+        hide_password: string;
+        password: string;
+        platform_legend: string;
+        required_code: string;
+        required_email: string;
+        required_password: string;
+        selected: string;
+        show_password: string;
+        success: string;
+        total: string;
+    };
 };
 
 export type StoreBasePageProps = {
@@ -171,6 +189,7 @@ export type StoreCatalogProductPageProps = StoreBasePageProps & {
     catalog: { product: CatalogProduct; service: string };
     catalogCartUrl: string;
     productPage: ProductTranslations;
+    sbcCartUrl: string;
 };
 
 export type StoreReviewsPageProps = StoreBasePageProps & {

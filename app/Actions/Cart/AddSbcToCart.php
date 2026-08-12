@@ -9,53 +9,51 @@ use App\Models\CartItem;
 use App\Models\IdempotencyKey;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Security\CatalogCartFingerprint;
+use App\Security\SbcCartFingerprint;
 use App\ValueObjects\Cart\CartOwner;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use JsonException;
 
-final readonly class AddCatalogItemToCart
+final readonly class AddSbcToCart
 {
-    private const SCOPE = 'catalog-cart';
+    private const SCOPE = 'sbc-cart';
 
-    public function __construct(private AcquireActiveCart $acquireActiveCart) {}
+    public function __construct(
+        private AcquireActiveCart $acquireActiveCart,
+        private PersistCartItemCredentials $persistCredentials,
+    ) {}
 
-    /** @return array{status: int, body: array<string, mixed>} */
-    public function execute(
-        CartOwner $owner,
-        string $variantPublicId,
-        string $idempotencyKey,
-        string $locale,
-    ): array {
-        return DB::transaction(fn (): array => $this->store(
-            $owner,
-            $variantPublicId,
-            $idempotencyKey,
-            $locale,
-        ), attempts: 3);
+    /** @param array<string, mixed> $validated
+     * @return array{status: int, body: array<string, mixed>}
+     */
+    public function execute(CartOwner $owner, array $validated, string $key, string $locale): array
+    {
+        return DB::transaction(
+            fn (): array => $this->store($owner, $validated, $key, $locale),
+            attempts: 3,
+        );
     }
 
-    /** @return array{status: int, body: array<string, mixed>} */
-    private function store(
-        CartOwner $owner,
-        string $variantPublicId,
-        string $idempotencyKey,
-        string $locale,
-    ): array {
+    /** @param array<string, mixed> $validated
+     * @return array{status: int, body: array<string, mixed>}
+     */
+    private function store(CartOwner $owner, array $validated, string $key, string $locale): array
+    {
         $scope = self::SCOPE.':'.$owner->idempotencyScope();
-        $hash = CatalogCartFingerprint::generate($owner->databaseKey(), $variantPublicId, (string) config('app.key'));
-        $claim = $this->claim($idempotencyKey, $scope, $hash);
+        $hash = SbcCartFingerprint::generate($owner->databaseKey(), $validated, (string) config('app.key'));
+        $claim = $this->claim($key, $scope, $hash);
 
         if ($claim->response_status !== null && $claim->response_body !== null) {
             return $this->replay($claim);
         }
 
-        $variant = $this->eligibleVariant($variantPublicId);
+        $variant = $this->eligibleVariant((string) $validated['variantId']);
         $price = $this->effectivePrice($variant);
         $cart = $this->acquireActiveCart->execute($owner);
         $item = $this->createItem($cart, $variant, $price);
+        $this->persistCredentials->execute($item, $validated['credentials']);
         $body = $this->responseBody($cart, $item, $locale);
         $this->completeClaim($claim, $body);
 
@@ -66,19 +64,26 @@ final readonly class AddCatalogItemToCart
     {
         $variant = ProductVariant::query()
             ->where('public_id', $publicId)
+            ->where('service_type', ServiceType::Sbc)
             ->where('is_active', true)
-            ->whereNotIn('service_type', [ServiceType::Coins, ServiceType::Sbc])
             ->whereHas('product', fn ($query) => $query
+                ->where('service_type', ServiceType::Sbc)
                 ->where('is_visible', true)
-                ->whereNull('archived_at'))
+                ->whereNull('archived_at')
+                ->where(function ($product): void {
+                    $product->whereNull('category_id')
+                        ->orWhereHas('category', fn ($category) => $category->where('is_visible', true));
+                }))
             ->with('product')
             ->lockForUpdate()
             ->first();
 
-        if (! $variant instanceof ProductVariant || ! $variant->product instanceof Product
-            || in_array($variant->product->service_type, [ServiceType::Coins, ServiceType::Sbc], true)
-            || $variant->product->service_type !== $variant->service_type) {
-            throw new DomainException('The catalog variant is unavailable.');
+        if (! $variant instanceof ProductVariant || ! $variant->product instanceof Product) {
+            throw new DomainException('The SBC variant is unavailable.');
+        }
+
+        if ((int) $variant->getAttribute('price_version') < 1) {
+            throw new DomainException('The SBC variant price version is unavailable.');
         }
 
         return $variant;
@@ -90,7 +95,7 @@ final readonly class AddCatalogItemToCart
         $price = is_int($salePrice) ? $salePrice : (int) $variant->getAttribute('price_halalah');
 
         if ($price <= 0) {
-            throw new DomainException('The catalog variant price is unavailable.');
+            throw new DomainException('The SBC variant price is unavailable.');
         }
 
         return $price;
@@ -104,7 +109,7 @@ final readonly class AddCatalogItemToCart
             'unit_price_halalah' => $price,
             'total_halalah' => $price,
             'configuration' => [
-                'service_type' => $variant->service_type->value,
+                'service_type' => ServiceType::Sbc->value,
                 'platform' => $variant->platform->value,
                 'market' => $variant->market->value,
                 'quoted_at' => now()->utc()->toIso8601String(),
@@ -123,7 +128,6 @@ final readonly class AddCatalogItemToCart
             'expires_at' => now()->addDay(),
             'created_at' => now(),
         ]);
-
         $claim = IdempotencyKey::where('key', $key)->lockForUpdate()->firstOrFail();
 
         if ($claim->scope !== $scope || ! hash_equals((string) $claim->request_hash, $hash)) {

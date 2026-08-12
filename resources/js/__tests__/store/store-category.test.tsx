@@ -3,7 +3,6 @@ import {
     fireEvent,
     render,
     screen,
-    waitFor,
     within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -89,7 +88,7 @@ it('renders the refined SBC hierarchy and trust strip', () => {
         'store-catalog-page--sbc',
     );
     expect(
-        screen.getByRole('button', { name: 'Add to cart' }).closest('li'),
+        screen.getByRole('link', { name: 'Add to cart' }).closest('li'),
     ).toHaveClass('store-catalog-card', 'store-catalog-card--sbc');
     expect(
         screen.getByRole('heading', { name: 'Browse by type', level: 2 }),
@@ -162,21 +161,15 @@ it('keeps the current search, filter, and sort while navigating every result pag
     );
 });
 
-it('adds the selected authoritative variant, updates the cart count, and stays on the listing', async () => {
+it('sends an SBC selection to its credential page without creating an incomplete cart line', () => {
     render(<StoreCategory />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add to cart' }));
-
-    await waitFor(() => expect(mocks.submit).toHaveBeenCalled());
-    expect(mocks.submit.mock.calls[0][0]).toMatchObject({
-        cartUrl: '/en/cart/items/catalog',
-        variantId: '01K00000000000000000000002',
-    });
-    expect(mocks.visit).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Added to cart' })).toBeVisible();
-    expect(
-        within(screen.getByRole('link', { name: 'Cart' })).getByText('1'),
-    ).toBeVisible();
+    const add = screen.getByRole('link', { name: 'Add to cart' });
+    expect(add).toHaveAttribute(
+        'href',
+        '/en/sbc/icon-service?variant=01K00000000000000000000002',
+    );
+    expect(mocks.submit).not.toHaveBeenCalled();
     expect(
         screen.queryByRole('button', { name: /details|contact/i }),
     ).toBeNull();
@@ -209,9 +202,7 @@ it('suppresses cart actions and announces when the selected platform price is un
             name: 'Price temporarily unavailable',
         }),
     ).toBeVisible();
-    expect(
-        screen.queryByRole('button', { name: 'Add to cart' }),
-    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add to cart' })).toBeNull();
 });
 
 function categoryProps(overrides: Record<string, unknown> = {}) {

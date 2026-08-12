@@ -162,5 +162,11 @@ test('the catalog exposes the refined SBC hierarchy and add feedback in both loc
         ->and(data_get($english, 'catalog.browse_by_type'))->toBe('Browse by type')
         ->and(data_get($english, 'catalog.included'))->toBe('Coins funding and completion included')
         ->and(data_get($english, 'catalog.platform_prices'))->toBe('Platform prices')
-        ->and(data_get($english, 'catalog.added'))->toBe('Added to cart');
+        ->and(data_get($english, 'catalog.added'))->toBe('Added to cart')
+        ->and(data_get($arabic, 'product.sbc.backup_codes'))->toBe('الأكواد الاحتياطية من EA')
+        ->and(data_get($english, 'product.sbc.backup_codes'))->toBe('EA backup codes')
+        ->and(data_get($arabic, 'product.sbc.backup_help'))->toContain('ثلاثة أكواد')
+        ->and(data_get($english, 'product.sbc.backup_help'))->toContain('three different')
+        ->and($arabic['catalog'])->not->toHaveKey('sbc')
+        ->and($english['catalog'])->not->toHaveKey('sbc');
 });

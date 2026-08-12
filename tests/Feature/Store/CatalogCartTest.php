@@ -13,7 +13,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 function createCatalogCartVariant(array $product = [], array $variant = []): ProductVariant
 {
-    $service = $product['service_type'] ?? ServiceType::Sbc;
+    $service = $product['service_type'] ?? ServiceType::Objectives;
     $model = Product::factory()->create([
         'service_type' => $service,
         'slug' => $product['slug'] ?? fake()->unique()->slug(),
@@ -52,7 +52,7 @@ test('a guest adds one eligible authoritative catalog variant to the cart', func
     expect($item->unit_price_halalah)->toBe(12_500)
         ->and($item->total_halalah)->toBe(12_500)
         ->and($item->configuration)->toMatchArray([
-            'service_type' => 'sbc',
+            'service_type' => 'objectives',
             'platform' => 'playstation',
             'market' => 'console',
             'price_version' => 1,
@@ -99,12 +99,13 @@ test('catalog cart rejects untrusted fields and ineligible variants', function (
     'archived product' => [['archived_at' => '2026-08-11 00:00:00'], []],
     'inactive variant' => [[], ['is_active' => false]],
     'Coins variant' => [['service_type' => ServiceType::Coins], []],
+    'SBC variant' => [['service_type' => ServiceType::Sbc], []],
     'zero price' => [[], ['price_halalah' => 0]],
 ]);
 
 test('catalog cart rejects a variant whose service disagrees with its product', function () {
-    $variant = createCatalogCartVariant(['service_type' => ServiceType::Sbc]);
-    $variant->update(['service_type' => ServiceType::Objectives]);
+    $variant = createCatalogCartVariant(['service_type' => ServiceType::Objectives]);
+    $variant->update(['service_type' => ServiceType::Rivals]);
 
     postCatalogVariant('/cart/items/catalog', $variant, (string) Str::ulid())
         ->assertUnprocessable();
@@ -118,7 +119,7 @@ test('catalog cart accepts JSON with exactly one public variant id', function ()
     $this->postJson('/cart/items/catalog', [
         'variantId' => $variant->public_id,
         'price' => 1,
-        'configuration' => ['service_type' => 'sbc'],
+        'configuration' => ['service_type' => 'objectives'],
     ], ['Idempotency-Key' => $key])->assertUnprocessable();
 
     $response = $this->post('/cart/items/catalog', ['variantId' => $variant->public_id], [
@@ -139,7 +140,7 @@ test('cart projection contains only safe localized product data for catalog line
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('cart.items.0.product.name', 'خدمة أيكون آمنة')
-            ->where('cart.items.0.product.serviceType', 'sbc')
+            ->where('cart.items.0.product.serviceType', 'objectives')
             ->where('cart.items.0.product.imageUrl', null)
             ->where('cart.items.0.configuration.platform', 'xbox')
             ->where('cart.items.0.requiresCredentials', true)

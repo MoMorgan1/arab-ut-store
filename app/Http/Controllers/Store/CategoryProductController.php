@@ -15,6 +15,7 @@ final class CategoryProductController extends Controller
     {
         return Inertia::render('store/catalog-product', [
             'catalogCartUrl' => $this->route($request, 'cart.items.catalog.store'),
+            'sbcCartUrl' => $this->route($request, 'cart.items.sbc.store'),
             'backUrl' => $this->route($request, 'store.'.(string) $request->route('service')),
             'productPage' => trans('store.product'),
             'catalog' => $catalog->productBySlug(

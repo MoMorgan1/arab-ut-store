@@ -4019,14 +4019,18 @@
     color: var(--arabut-ink);
 }
 
-.store-catalog-add button {
+.store-catalog-add button,
+.store-catalog-add__link {
+    display: grid;
     width: 100%;
     min-height: 2.75rem;
+    place-items: center;
     border: 1px solid var(--arabut-gold);
     border-radius: 0.7rem;
     background: var(--arabut-gold);
     color: var(--arabut-navy-deep);
     font-weight: 900;
+    text-decoration: none;
 }
 
 .store-catalog-add button:disabled {
@@ -4451,6 +4455,187 @@
     font-weight: 700;
 }
 
+.sbc-product-configurator {
+    display: grid;
+    gap: 1rem;
+}
+
+.sbc-product-platforms,
+.sbc-backup-codes {
+    min-width: 0;
+    margin: 0;
+    border: 0;
+    padding: 0;
+}
+
+.sbc-product-platforms > legend,
+.sbc-backup-codes > legend {
+    margin-block-end: 0.65rem;
+    color: var(--arabut-ink);
+    font-weight: 800;
+}
+
+.sbc-product-platforms > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+}
+
+.sbc-product-platforms label {
+    position: relative;
+    display: grid;
+    min-height: 4.75rem;
+    align-content: center;
+    gap: 0.2rem;
+    border: 1px solid var(--arabut-line);
+    border-radius: 0.85rem;
+    padding: 0.8rem 1rem;
+    background: rgb(10 11 13 / 72%);
+    cursor: pointer;
+}
+
+.sbc-product-platforms label:has(input:checked) {
+    border-color: var(--arabut-gold);
+    background: linear-gradient(
+        145deg,
+        rgb(217 171 58 / 16%),
+        rgb(10 11 13 / 78%)
+    );
+    box-shadow: inset 0 0 0 1px rgb(217 171 58 / 16%);
+}
+
+.sbc-product-platforms input {
+    position: absolute;
+    inset-block-start: 0.7rem;
+    inset-inline-end: 0.7rem;
+    accent-color: var(--arabut-gold);
+}
+
+.sbc-product-platforms strong {
+    color: var(--arabut-gold-bright);
+}
+
+.sbc-product-credentials {
+    display: grid;
+    gap: 0.9rem;
+    border: 1px solid var(--arabut-line);
+    border-radius: 1rem;
+    padding: clamp(1rem, 3vw, 1.35rem);
+    background: rgb(8 10 13 / 58%);
+}
+
+.sbc-product-credentials h2 {
+    margin: 0;
+    font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+}
+
+.sbc-credential-field {
+    display: grid;
+    gap: 0.38rem;
+}
+
+.sbc-credential-field > label {
+    color: var(--arabut-ink);
+    font-weight: 800;
+}
+
+.sbc-credential-field input,
+.sbc-password-control input {
+    width: 100%;
+    min-height: 2.9rem;
+    border: 1px solid rgb(237 225 198 / 24%);
+    border-radius: 0.65rem;
+    padding: 0.65rem 0.8rem;
+    background: rgb(3 6 10 / 86%);
+    color: var(--arabut-ink);
+}
+
+.sbc-credential-field input[aria-invalid='true'],
+.sbc-password-control input[aria-invalid='true'] {
+    border-color: #ff9d8d;
+}
+
+.sbc-credential-field > p {
+    margin: 0;
+    color: #ff9d8d;
+    font-size: 0.82rem;
+}
+
+.sbc-password-control {
+    position: relative;
+}
+
+.sbc-password-control input {
+    padding-inline-end: 3.2rem;
+}
+
+.sbc-password-control button {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    display: grid;
+    width: 2.9rem;
+    min-height: 2.9rem;
+    place-items: center;
+    border: 0;
+    background: transparent;
+    color: var(--arabut-muted);
+}
+
+.sbc-backup-codes > p {
+    margin: -0.35rem 0 0.7rem;
+    color: var(--arabut-muted);
+    font-size: 0.9rem;
+}
+
+.sbc-backup-codes > div {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+}
+
+.sbc-product-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin: 0;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--arabut-line);
+    border-radius: 0.85rem;
+    background: rgb(217 171 58 / 6%);
+}
+
+.sbc-product-summary > div {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.sbc-product-add {
+    width: 100%;
+    min-height: 3rem;
+    border: 1px solid var(--arabut-gold);
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, #efcf72, var(--arabut-gold));
+    color: var(--arabut-navy-deep);
+    font-weight: 900;
+}
+
+.sbc-product-add[data-state='success'] {
+    animation: store-catalog-added 420ms var(--store-ease-out);
+}
+
+.sbc-product-add:disabled {
+    cursor: progress;
+    opacity: 0.68;
+}
+
+.sbc-product-status {
+    margin: 0;
+    color: var(--arabut-gold-bright);
+    text-align: center;
+}
+
 @media (max-width: 64rem) {
     .store-catalog-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4485,6 +4670,10 @@
 
     .store-catalog-product__image {
         min-height: 16rem;
+    }
+
+    .sbc-backup-codes > div {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .store-catalog-page--sbc .store-catalog-hero {
@@ -4555,6 +4744,11 @@
     }
 
     .store-catalog-assurances {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .sbc-product-platforms > div,
+    .sbc-product-summary {
         grid-template-columns: minmax(0, 1fr);
     }
 

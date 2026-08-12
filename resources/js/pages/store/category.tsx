@@ -348,16 +348,30 @@ function CatalogCard({
                         </select>
                     </label>
                 ) : null}
-                {variantId !== '' && selected !== undefined && selected.price !== null ? (
-                    <CatalogAddControl
-                        addUrl={addUrl}
-                        errorLabel={translations.add_error}
-                        idleLabel={translations.add_to_cart}
-                        loadingLabel={translations.adding}
-                        onSuccess={onSuccess}
-                        successLabel={translations.added}
-                        variantId={variantId}
-                    />
+                {variantId !== '' &&
+                selected !== undefined &&
+                selected.price !== null &&
+                product.url !== null ? (
+                    isSbc ? (
+                        <div className="store-catalog-add">
+                            <a
+                                className="store-catalog-add__link"
+                                href={`${product.url}?variant=${encodeURIComponent(variantId)}`}
+                            >
+                                {translations.add_to_cart}
+                            </a>
+                        </div>
+                    ) : (
+                        <CatalogAddControl
+                            addUrl={addUrl}
+                            errorLabel={translations.add_error}
+                            idleLabel={translations.add_to_cart}
+                            loadingLabel={translations.adding}
+                            onSuccess={onSuccess}
+                            successLabel={translations.added}
+                            variantId={variantId}
+                        />
+                    )
                 ) : (
                     <p
                         aria-label={translations.unavailable_price}
