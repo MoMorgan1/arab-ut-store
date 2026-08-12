@@ -42,3 +42,32 @@ test('guest fingerprints use an explicit opaque-owner canonical branch', functio
             'synthetic-application-key',
         ))->toThrow(InvalidArgumentException::class);
 });
+
+test('fulfillment confirmations and conditional balance are covered by new fingerprints', function () {
+    $validated = [
+        'platform' => 'playstation',
+        'delivery' => 'fast',
+        'quantity' => 100_000,
+        'credentials' => [
+            'ea_email' => 'fingerprint-sentinel@example.test',
+            'ea_password' => 'Fingerprint Password Sentinel',
+            'backup_codes' => ['84000001', '84000002', '84000003'],
+            'current_balance' => 500_000,
+            'companion_market_open' => true,
+            'policy_accepted' => true,
+        ],
+    ];
+    $original = CoinsCartFingerprint::generate(
+        'user:17',
+        $validated,
+        'synthetic-application-key',
+    );
+
+    $validated['credentials']['current_balance'] = 600_000;
+
+    expect(CoinsCartFingerprint::generate(
+        'user:17',
+        $validated,
+        'synthetic-application-key',
+    ))->not->toBe($original);
+});

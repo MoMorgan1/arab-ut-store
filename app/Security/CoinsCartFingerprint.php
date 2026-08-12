@@ -9,19 +9,31 @@ final class CoinsCartFingerprint
     /** @param array<string, mixed> $validated */
     public static function generate(string $ownerKey, array $validated, string $applicationKey): string
     {
+        /** @var array<string, mixed> $credentials */
+        $credentials = $validated['credentials'];
+        $canonicalCredentials = [
+            'ea_email' => $credentials['ea_email'],
+            'ea_password' => $credentials['ea_password'],
+            'backup_codes' => array_values($credentials['backup_codes']),
+        ];
+
+        if (array_key_exists('companion_market_open', $credentials)
+            || array_key_exists('policy_accepted', $credentials)
+            || array_key_exists('current_balance', $credentials)) {
+            $canonicalCredentials = [
+                ...$canonicalCredentials,
+                'current_balance' => $credentials['current_balance'] ?? null,
+                'companion_market_open' => (bool) ($credentials['companion_market_open'] ?? false),
+                'policy_accepted' => (bool) ($credentials['policy_accepted'] ?? false),
+            ];
+        }
+
         $canonicalRequest = [
             ...self::canonicalOwner($ownerKey),
             'platform' => $validated['platform'],
             'delivery' => $validated['delivery'] ?? null,
             'quantity' => (int) $validated['quantity'],
-            'credentials' => [
-                'ea_email' => $validated['credentials']['ea_email'],
-                'ea_password' => $validated['credentials']['ea_password'],
-                'backup_codes' => array_values($validated['credentials']['backup_codes']),
-                'current_balance' => $validated['credentials']['current_balance'] ?? null,
-                'companion_market_open' => (bool) $validated['credentials']['companion_market_open'],
-                'policy_accepted' => (bool) $validated['credentials']['policy_accepted'],
-            ],
+            'credentials' => $canonicalCredentials,
         ];
 
         return hash_hmac(
