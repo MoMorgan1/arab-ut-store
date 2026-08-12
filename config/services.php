@@ -39,6 +39,8 @@ return [
         'reviews_url' => env('N8N_REVIEWS_URL'),
         'catalog_key' => env('N8N_CATALOG_KEY'),
         'catalog_secret' => env('N8N_CATALOG_SECRET'),
+        'sbc_catalog_key' => env('N8N_SBC_CATALOG_KEY'),
+        'sbc_catalog_secret' => env('N8N_SBC_CATALOG_SECRET'),
         'pricing_key' => env('N8N_PRICING_KEY'),
         'pricing_secret' => env('N8N_PRICING_SECRET'),
         'catalog_media_hosts' => array_values(array_filter(array_map(

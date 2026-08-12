@@ -5,6 +5,7 @@ use App\Enums\ServiceType;
 use App\Models\CatalogSource;
 use App\Models\CatalogSyncRun;
 use App\Models\Category;
+use App\Models\IntegrationEvent;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Support\Str;
@@ -59,16 +60,26 @@ function signedCatalogSnapshot(
     ?string $eventHeader = null,
     bool $configureCredentials = true,
     string $path = '/api/automation/v1/catalog/snapshots',
+    string $credentialScope = 'catalog',
 ) {
     $body = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $signedAt = $timestamp ?? (string) now()->timestamp;
     $signedEvent = $eventHeader ?? $payload['eventId'];
-    $secret = 'catalog-test-secret';
+    $secret = $credentialScope === 'sbc_catalog'
+        ? 'sbc-catalog-test-secret'
+        : 'catalog-test-secret';
+    $key = $credentialScope === 'sbc_catalog'
+        ? 'sbc-catalog-test-key'
+        : 'catalog-test-key';
 
     if ($configureCredentials) {
-        config()->set('services.n8n.catalog_key', 'catalog-test-key');
-        config()->set('services.n8n.catalog_secret', $secret);
+        config()->set("services.n8n.{$credentialScope}_key", $key);
+        config()->set("services.n8n.{$credentialScope}_secret", $secret);
     }
+
+    $canonical = $credentialScope === 'sbc_catalog'
+        ? $signedAt."\n".$signedEvent."\n".'n8n-sbc'."\n".$body
+        : $signedAt."\n".$signedEvent."\n".$body;
 
     return test()->call(
         'POST',
@@ -76,12 +87,12 @@ function signedCatalogSnapshot(
         server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_ACCEPT' => 'application/json',
-            'HTTP_X_ARABUT_KEY' => 'catalog-test-key',
+            'HTTP_X_ARABUT_KEY' => $key,
             'HTTP_X_ARABUT_TIMESTAMP' => $signedAt,
             'HTTP_X_ARABUT_EVENT' => $signedEvent,
             'HTTP_X_ARABUT_SIGNATURE' => $signature ?? hash_hmac(
                 'sha256',
-                $signedAt."\n".$signedEvent."\n".$body,
+                $canonical,
                 $secret,
             ),
         ],
@@ -117,6 +128,7 @@ it('rejects non SBC products on the SBC scoped snapshot route', function () {
     signedCatalogSnapshot(
         $payload,
         path: '/api/automation/v1/catalog/sbc/snapshots',
+        credentialScope: 'sbc_catalog',
     )->assertUnprocessable()->assertJsonValidationErrors(['products.0.serviceType']);
 
     expect(Product::count())->toBe(0)
@@ -132,23 +144,32 @@ it('reconciles an SBC complete snapshot only inside the n8n SBC source', functio
     ]);
     $sharedCategory = Category::factory()->create([
         'source_id' => $sharedSource->id,
-        'external_id' => 'shared-category',
+        'external_id' => 'sbc',
         'slug' => 'shared-category',
     ]);
     $sharedProduct = Product::factory()->create([
         'source_id' => $sharedSource->id,
-        'external_id' => 'shared-product',
+        'external_id' => 'sbc-icon-pick',
         'category_id' => $sharedCategory->id,
         'slug' => 'shared-product',
         'authority' => ProductAuthority::Automation,
     ]);
     $sharedVariant = ProductVariant::factory()->create([
         'source_id' => $sharedSource->id,
-        'external_id' => 'shared-variant',
+        'external_id' => 'sbc-icon-pick-playstation',
         'product_id' => $sharedProduct->id,
         'sku' => 'SHARED_VARIANT',
         'authority' => ProductAuthority::Automation,
     ]);
+    $sharedCategory->timestamps = false;
+    $sharedCategory->forceFill(['updated_at' => now()->subDays(3)])->save();
+    $sharedProduct->timestamps = false;
+    $sharedProduct->forceFill(['updated_at' => now()->subDays(3)])->save();
+    $sharedVariant->timestamps = false;
+    $sharedVariant->forceFill(['updated_at' => now()->subDays(3)])->save();
+    $sharedCategoryBefore = $sharedCategory->fresh()->getRawOriginal();
+    $sharedProductBefore = $sharedProduct->fresh()->getRawOriginal();
+    $sharedVariantBefore = $sharedVariant->fresh()->getRawOriginal();
 
     $sbcSource = CatalogSource::factory()->create([
         'key' => 'n8n-sbc',
@@ -178,17 +199,174 @@ it('reconciles an SBC complete snapshot only inside the n8n SBC source', functio
     signedCatalogSnapshot(
         catalogSnapshotPayload(),
         path: '/api/automation/v1/catalog/sbc/snapshots',
+        credentialScope: 'sbc_catalog',
     )->assertCreated()->assertJsonPath('data.archived', 1);
 
-    expect($sharedCategory->fresh()->is_visible)->toBeTrue()
+    expect($sharedCategory->fresh()->getRawOriginal())->toBe($sharedCategoryBefore)
+        ->and($sharedProduct->fresh()->getRawOriginal())->toBe($sharedProductBefore)
+        ->and($sharedVariant->fresh()->getRawOriginal())->toBe($sharedVariantBefore)
+        ->and($sharedCategory->fresh()->is_visible)->toBeTrue()
         ->and($sharedProduct->fresh()->archived_at)->toBeNull()
         ->and($sharedProduct->fresh()->is_visible)->toBeTrue()
         ->and($sharedVariant->fresh()->is_active)->toBeTrue()
         ->and($staleSbcCategory->fresh()->is_visible)->toBeFalse()
         ->and($staleSbcProduct->fresh()->archived_at)->not->toBeNull()
         ->and($staleSbcVariant->fresh()->is_active)->toBeFalse()
-        ->and(Product::query()->where('external_id', 'sbc-icon-pick')->sole()->source->key)->toBe('n8n-sbc');
+        ->and(Product::query()
+            ->where('source_id', $sbcSource->id)
+            ->where('external_id', 'sbc-icon-pick')
+            ->sole()->source->key)->toBe('n8n-sbc');
 });
+
+it('rejects a generic catalog signature at the SBC snapshot route', function () {
+    config()->set('services.n8n.sbc_catalog_key', 'sbc-catalog-test-key');
+    config()->set('services.n8n.sbc_catalog_secret', 'sbc-catalog-test-secret');
+
+    signedCatalogSnapshot(
+        catalogSnapshotPayload(),
+        path: '/api/automation/v1/catalog/sbc/snapshots',
+    )->assertUnauthorized()->assertJsonPath('error.code', 'invalid_signature');
+
+    expect(Product::count())->toBe(0)
+        ->and(CatalogSyncRun::count())->toBe(0);
+});
+
+it('rejects an SBC catalog signature at the generic snapshot route', function () {
+    config()->set('services.n8n.catalog_key', 'catalog-test-key');
+    config()->set('services.n8n.catalog_secret', 'catalog-test-secret');
+
+    signedCatalogSnapshot(
+        catalogSnapshotPayload(),
+        credentialScope: 'sbc_catalog',
+    )->assertUnauthorized()->assertJsonPath('error.code', 'invalid_signature');
+
+    expect(Product::count())->toBe(0)
+        ->and(CatalogSyncRun::count())->toBe(0);
+});
+
+it('domain separates the SBC signature even when both routes are misconfigured with the same credentials', function () {
+    config()->set('services.n8n.sbc_catalog_key', 'catalog-test-key');
+    config()->set('services.n8n.sbc_catalog_secret', 'catalog-test-secret');
+
+    signedCatalogSnapshot(
+        catalogSnapshotPayload(),
+        path: '/api/automation/v1/catalog/sbc/snapshots',
+    )->assertUnauthorized()->assertJsonPath('error.code', 'invalid_signature');
+
+    expect(Product::count())->toBe(0);
+});
+
+it('fails closed when SBC catalog signing credentials are not configured', function () {
+    config()->set('services.n8n.sbc_catalog_key');
+    config()->set('services.n8n.sbc_catalog_secret');
+
+    signedCatalogSnapshot(
+        catalogSnapshotPayload(),
+        configureCredentials: false,
+        path: '/api/automation/v1/catalog/sbc/snapshots',
+        credentialScope: 'sbc_catalog',
+    )->assertUnauthorized()->assertJsonPath('error.code', 'invalid_signature');
+
+    expect(Product::count())->toBe(0);
+});
+
+it('rejects replay on the SBC route without applying a second snapshot', function () {
+    $payload = catalogSnapshotPayload();
+
+    signedCatalogSnapshot(
+        $payload,
+        path: '/api/automation/v1/catalog/sbc/snapshots',
+        credentialScope: 'sbc_catalog',
+    )->assertCreated();
+
+    signedCatalogSnapshot(
+        $payload,
+        path: '/api/automation/v1/catalog/sbc/snapshots',
+        credentialScope: 'sbc_catalog',
+    )->assertConflict()->assertJsonPath('error.code', 'catalog_snapshot_replayed');
+
+    expect(CatalogSyncRun::count())->toBe(1)
+        ->and(IntegrationEvent::sole()->aggregate_id)->toBe('n8n-sbc');
+});
+
+it('rejects a committed generic event when it is replayed with valid SBC credentials', function () {
+    $payload = catalogSnapshotPayload();
+
+    signedCatalogSnapshot($payload)->assertCreated();
+
+    signedCatalogSnapshot(
+        $payload,
+        path: '/api/automation/v1/catalog/sbc/snapshots',
+        credentialScope: 'sbc_catalog',
+    )->assertConflict()->assertJsonPath('error.code', 'catalog_snapshot_replayed');
+
+    expect(CatalogSyncRun::count())->toBe(1)
+        ->and(IntegrationEvent::sole()->aggregate_id)->toBe('n8n-products')
+        ->and(CatalogSource::query()->where('key', 'n8n-sbc')->exists())->toBeFalse();
+});
+
+it('rejects a committed SBC event when it is replayed with valid generic credentials', function () {
+    $payload = catalogSnapshotPayload();
+
+    signedCatalogSnapshot(
+        $payload,
+        path: '/api/automation/v1/catalog/sbc/snapshots',
+        credentialScope: 'sbc_catalog',
+    )->assertCreated();
+
+    signedCatalogSnapshot($payload)
+        ->assertConflict()->assertJsonPath('error.code', 'catalog_snapshot_replayed');
+
+    expect(CatalogSyncRun::count())->toBe(1)
+        ->and(IntegrationEvent::sole()->aggregate_id)->toBe('n8n-sbc')
+        ->and(CatalogSource::query()->where('key', 'n8n-products')->exists())->toBeFalse();
+});
+
+it('keeps price versions server authoritative across catalog routes', function (
+    string $path,
+    string $credentialScope,
+    int $initialProducerVersion,
+    int $nextProducerVersion,
+    int $nextPrice,
+    ?int $nextSalePrice,
+    int $expectedVersion,
+) {
+    $initial = catalogSnapshotPayload();
+    $initial['products'][0]['variants'][0]['priceVersion'] = $initialProducerVersion;
+
+    signedCatalogSnapshot(
+        $initial,
+        path: $path,
+        credentialScope: $credentialScope,
+    )->assertCreated();
+
+    expect(ProductVariant::sole()->price_version)->toBe(1);
+
+    $next = catalogSnapshotPayload();
+    $next['products'][0]['variants'][0]['priceVersion'] = $nextProducerVersion;
+    $next['products'][0]['variants'][0]['priceMinor'] = $nextPrice;
+    $next['products'][0]['variants'][0]['salePriceMinor'] = $nextSalePrice;
+    $next['products'][0]['variants'][0]['name']['en'] = 'Updated name';
+
+    signedCatalogSnapshot(
+        $next,
+        path: $path,
+        credentialScope: $credentialScope,
+    )->assertCreated();
+
+    $variant = ProductVariant::sole();
+
+    expect($variant->price_version)->toBe($expectedVersion)
+        ->and($variant->name_en)->toBe('Updated name');
+})->with([
+    'generic unchanged producer jump' => ['/api/automation/v1/catalog/snapshots', 'catalog', 900, 9_999, 12_500, null, 1],
+    'generic price change producer regression' => ['/api/automation/v1/catalog/snapshots', 'catalog', 900, 1, 13_000, null, 2],
+    'generic sale change producer jump' => ['/api/automation/v1/catalog/snapshots', 'catalog', 1, 9_999, 12_500, 11_500, 2],
+    'SBC unchanged producer regression' => ['/api/automation/v1/catalog/sbc/snapshots', 'sbc_catalog', 900, 1, 12_500, null, 1],
+    'SBC price change producer jump' => ['/api/automation/v1/catalog/sbc/snapshots', 'sbc_catalog', 1, 9_999, 13_000, null, 2],
+    'SBC sale change producer regression' => ['/api/automation/v1/catalog/sbc/snapshots', 'sbc_catalog', 900, 1, 12_500, 11_500, 2],
+    'SBC regular and sale change increment only once' => ['/api/automation/v1/catalog/sbc/snapshots', 'sbc_catalog', 1, 9_999, 13_000, 11_500, 2],
+]);
 
 it('rejects invalid catalog signatures without writing catalog rows', function () {
     $response = signedCatalogSnapshot(catalogSnapshotPayload(), str_repeat('0', 64))

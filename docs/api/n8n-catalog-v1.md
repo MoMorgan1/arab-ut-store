@@ -16,20 +16,35 @@ whose `serviceType` is `sbc` and reconciles only the catalog source `n8n-sbc`.
 A complete SBC snapshot can archive omitted `n8n-sbc` rows, but it cannot hide,
 archive, deactivate, or overwrite rows belonging to `n8n-products`, another
 automation source, or the manual catalog. The SBC workflow must never publish
-through the generic endpoint.
+through the generic endpoint. It uses the dedicated `N8N_SBC_CATALOG_KEY` and
+`N8N_SBC_CATALOG_SECRET`; generic catalog credentials are not accepted here.
 
 Send JSON with these headers:
 
 - `Content-Type: application/json`
 - `Accept: application/json`
-- `X-ArabUT-Key`: the scoped `N8N_CATALOG_KEY` value.
+- `X-ArabUT-Key`: `N8N_CATALOG_KEY` on the generic route or the separately
+  scoped `N8N_SBC_CATALOG_KEY` on the SBC route.
 - `X-ArabUT-Timestamp`: exactly 10 Unix timestamp digits, within 300 seconds of the server.
 - `X-ArabUT-Event`: the same ULID supplied as `eventId` in the JSON body.
-- `X-ArabUT-Signature`: lowercase hex HMAC-SHA256 of the canonical string below, using `N8N_CATALOG_SECRET`.
+- `X-ArabUT-Signature`: lowercase hex HMAC-SHA256 of the route's canonical
+  string, using `N8N_CATALOG_SECRET` on the generic route or
+  `N8N_SBC_CATALOG_SECRET` on the SBC route.
+
+The generic endpoint retains its v1 canonical string unchanged:
 
 ```text
 {X-ArabUT-Timestamp}\n{X-ArabUT-Event}\n{exact raw request body}
 ```
+
+The SBC endpoint domain-separates its signature with the fixed server source:
+
+```text
+{X-ArabUT-Timestamp}\n{X-ArabUT-Event}\nn8n-sbc\n{exact raw request body}
+```
+
+Even if operators accidentally assign the same credential values to both
+routes, a signature generated for one route is invalid on the other.
 
 Do not reformat or re-encode the JSON after calculating the signature. Secrets belong in n8n credentials/environment configuration, never a workflow export or query string.
 
@@ -69,6 +84,12 @@ Each variant permits only:
 - `currency` exactly `SAR`; `priceMinor` integer >= 0; nullable `salePriceMinor` integer >= 0; `priceVersion` integer >= 1.
 - nullable localized `name.ar` / `name.en` (max 255), `active` boolean, and `configuration` object.
 
+`priceVersion` remains required for v1 request compatibility, but it is not
+authoritative. Laravel stores version `1` for a newly imported variant,
+preserves the stored version when both effective price fields are unchanged,
+and increments the stored version exactly once when `priceMinor` or
+`salePriceMinor` changes. Producer regressions or jumps are ignored.
+
 Each media entry permits only `url` (HTTPS, max 2,048), nullable `alt.ar` / `alt.en` (max 255), and `sortOrder` integer >= 0. The final host and every redirect host must be in `N8N_CATALOG_MEDIA_HOSTS`. Laravel accepts JPEG, PNG, or WebP up to 5 MiB, verifies the declared/detected MIME type, and mirrors the file locally. A failed media refresh keeps the previous product media.
 
 ## Responses and retry behavior
@@ -89,6 +110,11 @@ Success is HTTP 201 with `Cache-Control: no-store`:
 For connection loss or 5xx, retry the exact same raw body and headers while the timestamp is fresh. A 201 means it committed. A replay 409 for the same event/run means the earlier attempt already committed and must be treated as idempotent completion, not sent again with invented IDs. For validation/authentication failures, correct the source and submit a new event/run.
 
 Accepted complete snapshots upsert automation-owned categories/products/variants inside the endpoint's fixed server-side source. Missing rows are hidden, archived, or deactivated only within that source. The source is selected by the route and cannot be supplied in the request body. Manual rows and rows from another catalog source are never overwritten or archived by this snapshot. Validation, media preparation, or transaction failure leaves the last public snapshot intact.
+
+External IDs are source-scoped, so identical category, product, and variant
+external IDs may exist in `n8n-products` and `n8n-sbc`. Public slugs and SKUs
+remain globally unique; each producer must therefore assign route-appropriate
+slugs/SKUs without relying on external-ID uniqueness outside its source.
 
 ## Review refresh
 

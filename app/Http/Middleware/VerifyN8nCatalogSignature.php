@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Symfony\Component\HttpFoundation\Response;
 
-final class VerifyN8nCatalogSignature
+class VerifyN8nCatalogSignature
 {
     public function handle(Request $request, Closure $next): Response
     {
@@ -30,8 +30,8 @@ final class VerifyN8nCatalogSignature
     {
         $providedKey = (string) $request->header('X-ArabUT-Key');
         $providedSignature = (string) $request->header('X-ArabUT-Signature');
-        $configuredKey = Config::get('services.n8n.catalog_key');
-        $configuredSecret = Config::get('services.n8n.catalog_secret');
+        $configuredKey = Config::get($this->keyConfigPath());
+        $configuredSecret = Config::get($this->secretConfigPath());
 
         if (! is_string($configuredKey)
             || $configuredKey === ''
@@ -48,10 +48,32 @@ final class VerifyN8nCatalogSignature
     private function expectedSignature(Request $request, string $secret): string
     {
         $signedPayload = (string) $request->header('X-ArabUT-Timestamp')."\n"
-            .(string) $request->header('X-ArabUT-Event')."\n"
-            .$request->getContent();
+            .(string) $request->header('X-ArabUT-Event')."\n";
+
+        $signatureScope = $this->signatureScope();
+
+        if ($signatureScope !== null) {
+            $signedPayload .= $signatureScope."\n";
+        }
+
+        $signedPayload .= $request->getContent();
 
         return hash_hmac('sha256', $signedPayload, $secret);
+    }
+
+    protected function keyConfigPath(): string
+    {
+        return 'services.n8n.catalog_key';
+    }
+
+    protected function secretConfigPath(): string
+    {
+        return 'services.n8n.catalog_secret';
+    }
+
+    protected function signatureScope(): ?string
+    {
+        return null;
     }
 
     private function timestampIsFresh(Request $request): bool

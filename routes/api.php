@@ -5,6 +5,7 @@ use App\Http\Controllers\Automation\CoinsPricingRunController;
 use App\Http\Controllers\Automation\SbcCatalogSnapshotController;
 use App\Http\Middleware\VerifyN8nCatalogSignature;
 use App\Http\Middleware\VerifyN8nPricingSignature;
+use App\Http\Middleware\VerifyN8nSbcCatalogSignature;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/automation/v1/catalog/snapshots', CatalogSnapshotController::class)
@@ -12,7 +13,7 @@ Route::post('/automation/v1/catalog/snapshots', CatalogSnapshotController::class
     ->name('automation.catalog.snapshots.store');
 
 Route::post('/automation/v1/catalog/sbc/snapshots', SbcCatalogSnapshotController::class)
-    ->middleware(['throttle:automation-catalog', VerifyN8nCatalogSignature::class])
+    ->middleware(['throttle:automation-catalog', VerifyN8nSbcCatalogSignature::class])
     ->name('automation.catalog.sbc.snapshots.store');
 
 Route::post('/automation/v1/pricing/coins/runs', CoinsPricingRunController::class)

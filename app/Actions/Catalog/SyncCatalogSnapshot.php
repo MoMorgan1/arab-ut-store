@@ -233,23 +233,36 @@ final class SyncCatalogSnapshot
     private function variants(CatalogSource $source, Product $product, array $variantPayloads): void
     {
         foreach ($variantPayloads as $variantPayload) {
-            ProductVariant::updateOrCreate(
-                ['source_id' => $source->id, 'external_id' => $variantPayload['externalId']],
-                [
-                    'product_id' => $product->id,
-                    'sku' => $variantPayload['sku'],
-                    'service_type' => $product->service_type,
-                    'platform' => $variantPayload['platform'],
-                    'authority' => ProductAuthority::Automation,
-                    'name_ar' => $variantPayload['name']['ar'],
-                    'name_en' => $variantPayload['name']['en'],
-                    'price_halalah' => $variantPayload['priceMinor'],
-                    'sale_price_halalah' => $variantPayload['salePriceMinor'],
-                    'price_version' => $variantPayload['priceVersion'],
-                    'configuration' => $variantPayload['configuration'],
-                    'is_active' => $variantPayload['active'],
-                ],
+            $variant = ProductVariant::firstOrNew([
+                'source_id' => $source->id,
+                'external_id' => $variantPayload['externalId'],
+            ]);
+            $priceMinor = (int) $variantPayload['priceMinor'];
+            $salePriceMinor = $variantPayload['salePriceMinor'] === null
+                ? null
+                : (int) $variantPayload['salePriceMinor'];
+            $priceChanged = $variant->exists && (
+                (int) $variant->price_halalah !== $priceMinor
+                || $variant->sale_price_halalah !== $salePriceMinor
             );
+            $priceVersion = $variant->exists
+                ? ((int) $variant->price_version) + ($priceChanged ? 1 : 0)
+                : 1;
+
+            $variant->fill([
+                'product_id' => $product->id,
+                'sku' => $variantPayload['sku'],
+                'service_type' => $product->service_type,
+                'platform' => $variantPayload['platform'],
+                'authority' => ProductAuthority::Automation,
+                'name_ar' => $variantPayload['name']['ar'],
+                'name_en' => $variantPayload['name']['en'],
+                'price_halalah' => $priceMinor,
+                'sale_price_halalah' => $salePriceMinor,
+                'price_version' => $priceVersion,
+                'configuration' => $variantPayload['configuration'],
+                'is_active' => $variantPayload['active'],
+            ])->save();
         }
     }
 
