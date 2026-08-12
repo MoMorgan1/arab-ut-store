@@ -1240,13 +1240,15 @@
     }
 
     .store-hero h1 .store-hero__title-primary {
-        font-size: clamp(2.45rem, 12vw, 8.125rem);
-        line-height: 1.04;
+        font-size: clamp(2.45rem, 12vw, 6.5rem);
+        line-height: 1.348;
     }
 
     .store-hero h1 strong {
         color: var(--arabut-gold);
+        font-size: clamp(2.15rem, 7.16vw, 4.8125rem);
         font-weight: inherit;
+        line-height: 1.174;
         text-shadow: 0 0.75rem 2rem rgb(212 168 67 / 14%);
     }
 
