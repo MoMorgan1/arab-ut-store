@@ -98,6 +98,7 @@ test('a complete EasySBC source maps to an exact, stable PS and PC catalog snaps
     assert.deepEqual(first.variants[0].configuration, {
         source: 'easysbc',
         sourceId: '1000',
+        sbcCategory: 'players',
         sourceCategoryId: 1,
         sourceSlug: 'player-challenge-0',
         challengeCount: 3,
@@ -467,6 +468,14 @@ test('snapshot validator rejects any undeclared key, duplicate identity, or non-
                 snapshot.products[0].variants.pop();
             },
             /two variants/i,
+        ],
+        [
+            'variant category does not match its product category',
+            (snapshot) => {
+                snapshot.products[0].variants[0].configuration.sbcCategory =
+                    'icons';
+            },
+            /SBC category/i,
         ],
     ];
 

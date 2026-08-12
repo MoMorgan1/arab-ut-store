@@ -193,6 +193,14 @@ for (const product of snapshot.products) {
             Array.isArray(variant.configuration)
         )
             return fail('Variant configuration is invalid');
+        if (
+            !['players', 'upgrades', 'icons', 'foundations'].includes(
+                variant.configuration.sbcCategory,
+            ) ||
+            product.categoryExternalId !==
+                `easysbc-category-${variant.configuration.sbcCategory}`
+        )
+            return fail('Variant SBC category is invalid');
         platforms.push(variant.platform);
         variantIds.push(variant.externalId);
         skus.push(variant.sku);

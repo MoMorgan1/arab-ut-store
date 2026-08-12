@@ -352,6 +352,7 @@ function variant(record, platform) {
         configuration: {
             source: 'easysbc',
             sourceId: String(record.id),
+            sbcCategory: categoryKey[record.categoryId],
             sourceCategoryId: record.categoryId,
             sourceSlug:
                 typeof record.slug === 'string' && record.slug.trim()
