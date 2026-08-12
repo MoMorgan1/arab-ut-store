@@ -21,6 +21,7 @@ final class StoreCatalogReader
      * @return array{
      *   service: string,
      *   products: list<array<string, mixed>>,
+     *   filterCounts: array{all: int, players: int, icons: int, upgrades: int, foundations: int},
      *   query: array{filter: string, sort: string, q: string, page: int},
      *   pagination: array{page: int, perPage: int, total: int, lastPage: int}
      * }
@@ -38,12 +39,6 @@ final class StoreCatalogReader
         $products = $this->publicProducts($service)
             ->map(fn (Product $product): array => $this->present($product, $locale, $converter));
 
-        if ($filter !== 'all') {
-            $products = $products->filter(
-                fn (array $product): bool => in_array($filter, $product['filters'], true),
-            );
-        }
-
         $needle = mb_strtolower(trim($search));
 
         if ($needle !== '') {
@@ -52,6 +47,14 @@ final class StoreCatalogReader
 
                 return str_contains($haystack, $needle);
             });
+        }
+
+        $filterCounts = $this->filterCounts($products);
+
+        if ($filter !== 'all') {
+            $products = $products->filter(
+                fn (array $product): bool => in_array($filter, $product['filters'], true),
+            );
         }
 
         $products = match ($sort) {
@@ -81,6 +84,7 @@ final class StoreCatalogReader
                 ->map(fn (array $product): array => $this->withoutInternalFields($product))
                 ->values()
                 ->all()),
+            'filterCounts' => $filterCounts,
             'query' => ['filter' => $filter, 'sort' => $sort, 'q' => $search, 'page' => $page],
             'pagination' => compact('page', 'perPage', 'total', 'lastPage'),
         ];
@@ -211,6 +215,31 @@ final class StoreCatalogReader
             ->unique()
             ->values()
             ->all());
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $products
+     * @return array{all: int, players: int, icons: int, upgrades: int, foundations: int}
+     */
+    private function filterCounts(Collection $products): array
+    {
+        $counts = [
+            'all' => $products->count(),
+            'players' => 0,
+            'icons' => 0,
+            'upgrades' => 0,
+            'foundations' => 0,
+        ];
+
+        foreach ($products as $product) {
+            foreach ($product['filters'] as $filter) {
+                if (array_key_exists($filter, $counts)) {
+                    $counts[$filter]++;
+                }
+            }
+        }
+
+        return $counts;
     }
 
     private function effectivePrice(ProductVariant $variant): int

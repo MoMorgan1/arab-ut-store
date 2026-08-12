@@ -48,7 +48,7 @@ it('submits locale-preserving search filter and sort parameters', () => {
     fireEvent.change(screen.getByRole('searchbox'), {
         target: { value: 'icon' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Icons' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Icons/ }));
     fireEvent.change(screen.getByRole('combobox', { name: 'Sort' }), {
         target: { value: 'price_asc' },
     });
@@ -107,6 +107,59 @@ it('renders the refined SBC hierarchy and trust strip', () => {
             screen.getByRole('list', { name: 'Store assurances' }),
         ).getAllByRole('listitem'),
     ).toHaveLength(4);
+    expect(
+        screen.getByText(
+            'We fund and complete the SBC without taking players.',
+        ),
+    ).toBeVisible();
+});
+
+it('shows truthful category counts and disables categories with no products', () => {
+    render(<StoreCategory />);
+
+    expect(screen.getByRole('button', { name: 'All: 1' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Icons: 1' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Players: 0' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Upgrades: 0' })).toBeDisabled();
+    expect(
+        screen.getByRole('button', { name: 'Foundations: 0' }),
+    ).toBeDisabled();
+});
+
+it('keeps the current search, filter, and sort while navigating every result page', () => {
+    page.props = categoryProps({
+        catalog: {
+            ...categoryProps().catalog,
+            query: {
+                filter: 'icons',
+                q: 'icon',
+                sort: 'price_asc',
+                page: 2,
+            },
+            pagination: { page: 2, perPage: 12, total: 30, lastPage: 3 },
+        },
+    });
+
+    render(<StoreCategory />);
+
+    const pagination = screen.getByRole('navigation', {
+        name: 'Catalog pages',
+    });
+    expect(within(pagination).getByText('Page 2 of 3')).toBeVisible();
+    expect(
+        within(pagination).getByRole('button', { name: 'Previous' }),
+    ).toBeEnabled();
+    expect(
+        within(pagination).getByRole('button', { name: 'Next' }),
+    ).toBeEnabled();
+
+    fireEvent.click(within(pagination).getByRole('button', { name: 'Next' }));
+
+    expect(mocks.get).toHaveBeenLastCalledWith(
+        '/en/sbc',
+        { filter: 'icons', page: 3, q: 'icon', sort: 'price_asc' },
+        expect.objectContaining({ preserveScroll: true, replace: true }),
+    );
 });
 
 it('adds the selected authoritative variant, updates the cart count, and stays on the listing', async () => {
@@ -129,7 +182,7 @@ it('adds the selected authoritative variant, updates the cart count, and stays o
     ).toBeNull();
 });
 
-function categoryProps() {
+function categoryProps(overrides: Record<string, unknown> = {}) {
     return {
         catalog: {
             service: 'sbc',
@@ -161,6 +214,13 @@ function categoryProps() {
             ],
             query: { filter: 'all', q: '', sort: 'recommended', page: 1 },
             pagination: { page: 1, perPage: 12, total: 1, lastPage: 1 },
+            filterCounts: {
+                all: 1,
+                players: 0,
+                icons: 1,
+                upgrades: 0,
+                foundations: 0,
+            },
         },
         catalogCartUrl: '/en/cart/items/catalog',
         catalogPageUrl: '/en/sbc',
@@ -173,6 +233,7 @@ function categoryProps() {
             card_description: 'SBC service.',
         },
         ...shellProps(),
+        ...overrides,
     };
 }
 
@@ -195,6 +256,8 @@ function catalogTranslations() {
         empty: 'No services',
         previous: 'Previous',
         next: 'Next',
+        pagination: 'Catalog pages',
+        page_status: 'Page :current of :total',
         add_to_cart: 'Add to cart',
         added: 'Added to cart',
         adding: 'Adding…',
@@ -205,9 +268,14 @@ function catalogTranslations() {
         browse_by_type: 'Browse by type',
         assurances: 'Store assurances',
         assurance_no_players: 'No player withdrawal',
+        assurance_no_players_detail:
+            'We fund and complete the SBC without taking players.',
         assurance_fast: 'Fast delivery',
+        assurance_fast_detail: 'Fast delivery of your challenge rewards.',
         assurance_support: '24/7 support',
+        assurance_support_detail: 'Our team is available whenever you need it.',
         assurance_secure: 'Secure service',
+        assurance_secure_detail: 'Your account details stay protected.',
     };
 }
 

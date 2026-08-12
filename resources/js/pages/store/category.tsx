@@ -35,6 +35,16 @@ export default function StoreCategory() {
             ? ['all', 'players', 'icons', 'upgrades', 'foundations']
             : ['all'];
 
+    const navigatePage = (nextPage: number) => {
+        const next = { ...query, page: nextPage };
+
+        setQuery(next);
+        router.get(props.catalogPageUrl, next, {
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+
     return (
         <StoreLayout
             cartCount={props.cartCount}
@@ -119,22 +129,32 @@ export default function StoreCategory() {
                     </label>
                     <fieldset className="store-catalog-toolbar__filters">
                         <legend>{props.catalogPage.filter}</legend>
-                        {filters.map((filter) => (
-                            <button
-                                aria-pressed={query.filter === filter}
-                                key={filter}
-                                name="filter"
-                                onClick={() => navigate({ filter })}
-                                type="button"
-                                value={filter}
-                            >
-                                {
-                                    props.catalogPage[
-                                        filter as keyof typeof props.catalogPage
-                                    ]
-                                }
-                            </button>
-                        ))}
+                        {filters.map((filter) => {
+                            const label = props.catalogPage[
+                                filter as keyof typeof props.catalogPage
+                            ] as string;
+                            const count =
+                                props.catalog.filterCounts[
+                                    filter as keyof typeof props.catalog.filterCounts
+                                ] ?? 0;
+                            const unavailable = filter !== 'all' && count === 0;
+
+                            return (
+                                <button
+                                    aria-label={`${label}: ${count}`}
+                                    aria-pressed={query.filter === filter}
+                                    disabled={unavailable}
+                                    key={filter}
+                                    name="filter"
+                                    onClick={() => navigate({ filter })}
+                                    type="button"
+                                    value={filter}
+                                >
+                                    <span>{label}</span>
+                                    <small aria-hidden="true">{count}</small>
+                                </button>
+                            );
+                        })}
                     </fieldset>
                     <label className="store-catalog-toolbar__sort">
                         <span>{props.catalogPage.sort}</span>
@@ -171,7 +191,7 @@ export default function StoreCategory() {
                 </form>
 
                 {props.catalog.products.length === 0 ? (
-                    <p className="store-catalog-empty">
+                    <p className="store-catalog-empty" role="status">
                         {props.catalogPage.empty}
                     </p>
                 ) : (
@@ -196,6 +216,14 @@ export default function StoreCategory() {
                         ))}
                     </ul>
                 )}
+
+                {props.catalog.pagination.lastPage > 1 ? (
+                    <CatalogPagination
+                        onNavigate={navigatePage}
+                        pagination={props.catalog.pagination}
+                        translations={props.catalogPage}
+                    />
+                ) : null}
 
                 {isSbc ? <Assurances translations={props.catalogPage} /> : null}
             </section>
@@ -243,7 +271,11 @@ function CatalogCard({
                 href={product.url ?? undefined}
             >
                 <img
-                    alt={product.image?.alt ?? ''}
+                    alt={
+                        product.image === null
+                            ? ''
+                            : product.image.alt || product.name
+                    }
                     height="240"
                     loading="lazy"
                     src={
@@ -376,10 +408,22 @@ function Assurances({
     translations: StoreCategoryPageProps['catalogPage'];
 }) {
     const items = [
-        [ShieldCheck, translations.assurance_no_players],
-        [Zap, translations.assurance_fast],
-        [Headphones, translations.assurance_support],
-        [LockKeyhole, translations.assurance_secure],
+        [
+            ShieldCheck,
+            translations.assurance_no_players,
+            translations.assurance_no_players_detail,
+        ],
+        [Zap, translations.assurance_fast, translations.assurance_fast_detail],
+        [
+            Headphones,
+            translations.assurance_support,
+            translations.assurance_support_detail,
+        ],
+        [
+            LockKeyhole,
+            translations.assurance_secure,
+            translations.assurance_secure_detail,
+        ],
     ] as const;
 
     return (
@@ -387,12 +431,72 @@ function Assurances({
             aria-label={translations.assurances}
             className="store-catalog-assurances"
         >
-            {items.map(([Icon, label]) => (
+            {items.map(([Icon, label, detail]) => (
                 <li key={label}>
                     <Icon aria-hidden="true" />
-                    <strong>{label}</strong>
+                    <span>
+                        <strong>{label}</strong>
+                        <small>{detail}</small>
+                    </span>
                 </li>
             ))}
         </ul>
+    );
+}
+
+function CatalogPagination({
+    onNavigate,
+    pagination,
+    translations,
+}: {
+    onNavigate: (page: number) => void;
+    pagination: StoreCategoryPageProps['catalog']['pagination'];
+    translations: StoreCategoryPageProps['catalogPage'];
+}) {
+    const pages = Array.from(
+        { length: pagination.lastPage },
+        (_, index) => index + 1,
+    );
+    const status = translations.page_status
+        .replace(':current', String(pagination.page))
+        .replace(':total', String(pagination.lastPage));
+
+    return (
+        <nav
+            aria-label={translations.pagination}
+            className="store-catalog-pagination"
+        >
+            <button
+                disabled={pagination.page <= 1}
+                onClick={() => onNavigate(pagination.page - 1)}
+                type="button"
+            >
+                {translations.previous}
+            </button>
+            <ol>
+                {pages.map((page) => (
+                    <li key={page}>
+                        <button
+                            aria-current={
+                                page === pagination.page ? 'page' : undefined
+                            }
+                            aria-label={`${translations.pagination} ${page}`}
+                            onClick={() => onNavigate(page)}
+                            type="button"
+                        >
+                            {page}
+                        </button>
+                    </li>
+                ))}
+            </ol>
+            <span>{status}</span>
+            <button
+                disabled={pagination.page >= pagination.lastPage}
+                onClick={() => onNavigate(pagination.page + 1)}
+                type="button"
+            >
+                {translations.next}
+            </button>
+        </nav>
     );
 }

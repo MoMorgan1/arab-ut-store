@@ -110,6 +110,45 @@ test('category filters accept the empty search value sent by the storefront form
             ->where('catalog.query.q', ''));
 });
 
+test('SBC listings expose truthful filter counts and every product remains reachable through pagination', function () {
+    foreach (range(1, 13) as $index) {
+        createStoreCatalogProduct(ServiceType::Sbc, [
+            'slug' => "player-challenge-{$index}",
+            'sort_order' => $index,
+        ], [
+            'configuration' => ['sbcCategory' => 'players'],
+        ]);
+    }
+
+    createStoreCatalogProduct(ServiceType::Sbc, [
+        'slug' => 'icon-challenge',
+        'sort_order' => 14,
+    ], [
+        'configuration' => ['sbcCategory' => 'icons'],
+    ]);
+
+    $this->get('/en/sbc?page=2&q=&sort=recommended')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('catalog.products', 2)
+            ->where('catalog.products.0.slug', 'player-challenge-13')
+            ->where('catalog.products.1.slug', 'icon-challenge')
+            ->where('catalog.query.page', 2)
+            ->where('catalog.pagination', [
+                'page' => 2,
+                'perPage' => 12,
+                'total' => 14,
+                'lastPage' => 2,
+            ])
+            ->where('catalog.filterCounts', [
+                'all' => 14,
+                'players' => 13,
+                'icons' => 1,
+                'upgrades' => 0,
+                'foundations' => 0,
+            ]));
+});
+
 test('SBC upgrades includes source challenges and supports localized search and stable price sorting', function () {
     createStoreCatalogProduct(ServiceType::Sbc, [
         'slug' => 'upgrade-expensive',

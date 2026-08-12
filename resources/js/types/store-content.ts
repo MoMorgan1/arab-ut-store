@@ -85,9 +85,13 @@ export type CatalogTranslations = {
     adding: string;
     all: string;
     assurance_fast: string;
+    assurance_fast_detail: string;
     assurance_no_players: string;
+    assurance_no_players_detail: string;
     assurance_secure: string;
+    assurance_secure_detail: string;
     assurance_support: string;
+    assurance_support_detail: string;
     assurances: string;
     browse_by_type: string;
     empty: string;
@@ -98,6 +102,8 @@ export type CatalogTranslations = {
     included: string;
     newest: string;
     next: string;
+    page_status: string;
+    pagination: string;
     platform: string;
     platform_prices: string;
     players: string;
@@ -134,6 +140,10 @@ export type StoreBasePageProps = {
 
 export type StoreCategoryPageProps = StoreBasePageProps & {
     catalog: {
+        filterCounts: Record<
+            'all' | 'players' | 'icons' | 'upgrades' | 'foundations',
+            number
+        >;
         pagination: {
             lastPage: number;
             page: number;
