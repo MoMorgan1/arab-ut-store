@@ -62,10 +62,6 @@ export type StoreShellTranslations = {
         copyright: string;
         ea_disclaimer: string;
     };
-    simple_pages: {
-        eyebrow: string;
-        back_home: string;
-    } & Record<SimpleStorePageKey, { title: string; body: string }>;
 };
 
 export type SimpleStorePageProps = {

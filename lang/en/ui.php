@@ -38,36 +38,4 @@ return [
         'copyright' => 'Copyright © :year Arab UT. All rights reserved.',
         'ea_disclaimer' => 'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
     ],
-    'simple_pages' => [
-        'eyebrow' => 'Arab UT',
-        'back_home' => 'Back to home',
-        'sbc' => [
-            'title' => 'SBC Services',
-            'body' => 'We are preparing the SBC catalog and automated product connection. All options will appear here when the connection is complete.',
-        ],
-        'fut_champions' => [
-            'title' => 'FUT Champions',
-            'body' => 'We are preparing the service page and order details. Contact us if you need help now.',
-        ],
-        'privacy' => [
-            'title' => 'Privacy Policy',
-            'body' => 'We are migrating and reviewing the policy for the new store. This page does not collect any data.',
-        ],
-        'returns' => [
-            'title' => 'Returns Policy',
-            'body' => 'We are migrating the return terms in clear language before payments are enabled.',
-        ],
-        'warranty' => [
-            'title' => 'Warranty and Compensation',
-            'body' => 'We are migrating the warranty and compensation details before orders are enabled.',
-        ],
-        'ea_backup_codes' => [
-            'title' => 'EA Backup Codes',
-            'body' => 'We are preparing a simple, secure guide for obtaining backup codes.',
-        ],
-        'terms' => [
-            'title' => 'Terms of Service',
-            'body' => 'We are migrating and reviewing the terms before ordering and payments launch.',
-        ],
-    ],
 ];

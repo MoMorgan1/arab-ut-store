@@ -82,15 +82,6 @@ const translations = {
         copyright: '',
         ea_disclaimer: '',
     },
-    simple_pages: {
-        eyebrow: '',
-        back_home: '',
-        privacy: { title: '', body: '' },
-        returns: { title: '', body: '' },
-        warranty: { title: '', body: '' },
-        ea_backup_codes: { title: '', body: '' },
-        terms: { title: '', body: '' },
-    },
 } satisfies StoreShellTranslations;
 
 function renderHeader(currentUrl = '/en') {

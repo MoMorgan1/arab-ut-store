@@ -90,15 +90,6 @@ const translations = {
         ea_disclaimer:
             'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
     },
-    simple_pages: {
-        eyebrow: 'Arab UT',
-        back_home: 'Back to home',
-        privacy: { title: 'Privacy', body: '' },
-        returns: { title: 'Returns', body: '' },
-        warranty: { title: 'Warranty', body: '' },
-        ea_backup_codes: { title: 'EA Backup Codes', body: '' },
-        terms: { title: 'Terms', body: '' },
-    },
 } satisfies StoreShellTranslations;
 
 function renderFooter() {

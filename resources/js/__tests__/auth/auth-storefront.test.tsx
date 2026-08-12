@@ -126,17 +126,6 @@ const storeUi = {
         copyright: '© :year عرب التيميت. جميع الحقوق محفوظة.',
         ea_disclaimer: 'Arab UT is not affiliated with EA Sports.',
     },
-    simple_pages: {
-        eyebrow: '',
-        back_home: '',
-        sbc: { title: '', body: '' },
-        fut_champions: { title: '', body: '' },
-        privacy: { title: '', body: '' },
-        returns: { title: '', body: '' },
-        warranty: { title: '', body: '' },
-        ea_backup_codes: { title: '', body: '' },
-        terms: { title: '', body: '' },
-    },
 };
 
 const arabicAuthUi = {

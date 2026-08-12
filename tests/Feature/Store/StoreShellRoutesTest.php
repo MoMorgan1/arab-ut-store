@@ -16,6 +16,7 @@ test('every non-transactional storefront destination has the right bilingual pag
         ->assertInertia(fn (Assert $inertia) => $inertia
             ->component('store/simple-page')
             ->where('locale', $locale)
+            ->where('direction', $locale === 'en' ? 'ltr' : 'rtl')
             ->where('page.key', $page)
             ->where('page.title', $title)
             ->where('page.breadcrumb.home', $locale === 'en' ? 'Home' : 'الرئيسية')
@@ -51,15 +52,15 @@ test('every non-transactional storefront destination has the right bilingual pag
             ->missing('storeShell.socials.snapchat'));
 })->with([
     'privacy' => ['/privacy', 'ar', 'privacy', 'سياسة الخصوصية', 'سياسة الخصوصية', 'أولاً: المعلومات التي يحصل عليها المتجر ويحتفظ بها'],
-    'English privacy' => ['/en/privacy', 'en', 'privacy', 'Privacy Policy', 'Privacy Policy', '1. Information We Collect'],
+    'English privacy' => ['/en/privacy', 'en', 'privacy', 'Privacy Policy', 'Privacy Policy', '1. Information We Collect and Retain'],
     'returns' => ['/returns', 'ar', 'returns', 'سياسة الاسترجاع', 'سياسة الاسترجاع', '١. طبيعة المنتج الرقمي'],
-    'English returns' => ['/en/returns', 'en', 'returns', 'Returns Policy', 'Returns Policy', '1. Before Fulfillment Starts'],
+    'English returns' => ['/en/returns', 'en', 'returns', 'Returns Policy', 'Returns Policy', '1. Nature of the Digital Product'],
     'warranty' => ['/warranty', 'ar', 'warranty', 'سياسة الضمان والتعويض', 'سياسة الضمان والتعويض', '١. شروط سريان الضمان'],
-    'English warranty' => ['/en/warranty', 'en', 'warranty', 'Warranty and Compensation', 'Warranty and Compensation', '1. When the Warranty Applies'],
+    'English warranty' => ['/en/warranty', 'en', 'warranty', 'Warranty and Compensation', 'Warranty and Compensation', '1. Warranty Conditions'],
     'EA codes' => ['/ea-backup-codes', 'ar', 'ea_backup_codes', 'أكواد EA الاحتياطية', 'أكواد EA الاحتياطية', 'طريقة عرض الأكواد'],
     'English EA codes' => ['/en/ea-backup-codes', 'en', 'ea_backup_codes', 'EA Backup Codes', 'EA Backup Codes', 'How to view your codes'],
     'terms' => ['/terms', 'ar', 'terms', 'شروط الخدمة', 'شروط الخدمة', '١. قبول الشروط'],
-    'English terms' => ['/en/terms', 'en', 'terms', 'Terms of Service', 'Terms of Service', '1. Service Nature'],
+    'English terms' => ['/en/terms', 'en', 'terms', 'Terms of Service', 'Terms of Service', '1. Acceptance of Terms'],
 ]);
 
 test('the cart destinations render the real safe cart page', function (string $path, string $locale) {
@@ -87,4 +88,19 @@ test('the account destination changes from login to the authenticated dashboard'
         ->assertOk()
         ->assertInertia(fn (Assert $inertia) => $inertia
             ->where('storeShell.accountUrl', '/dashboard'));
+});
+
+test('structured information pages expose headings dividers and ordered lists through the route contract', function () {
+    $this->get('/warranty')
+        ->assertOk()
+        ->assertInertia(fn (Assert $inertia) => $inertia
+            ->where('page.blocks', fn ($blocks): bool => collect($blocks)
+                ->contains(fn (array $block): bool => ($block['type'] ?? null) === 'heading' && ($block['level'] ?? null) === 3)
+                && collect($blocks)->contains(fn (array $block): bool => ($block['type'] ?? null) === 'divider')));
+
+    $this->get('/en/ea-backup-codes')
+        ->assertOk()
+        ->assertInertia(fn (Assert $inertia) => $inertia
+            ->where('page.blocks', fn ($blocks): bool => collect($blocks)
+                ->contains(fn (array $block): bool => ($block['type'] ?? null) === 'list' && ($block['ordered'] ?? null) === true)));
 });

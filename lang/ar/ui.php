@@ -38,36 +38,4 @@ return [
         'copyright' => '© :year Arab UT. جميع الحقوق محفوظة.',
         'ea_disclaimer' => 'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
     ],
-    'simple_pages' => [
-        'eyebrow' => 'عرب التيميت',
-        'back_home' => 'ارجع للرئيسية',
-        'sbc' => [
-            'title' => 'خدمات SBC',
-            'body' => 'نجهز صفحة SBC وربط المنتجات الآلي. بتلقى كل الخيارات هنا بعد اكتمال الربط.',
-        ],
-        'fut_champions' => [
-            'title' => 'FUT Champions',
-            'body' => 'نجهز صفحة الخدمة وتفاصيل الطلب. تقدر تتواصل معنا لو تحتاج مساعدة الآن.',
-        ],
-        'privacy' => [
-            'title' => 'سياسة الخصوصية',
-            'body' => 'ننقل ونراجع سياسة الخصوصية للمتجر الجديد. ما نجمع أي بيانات من هذه الصفحة.',
-        ],
-        'returns' => [
-            'title' => 'سياسة الاسترجاع',
-            'body' => 'ننقل شروط الاسترجاع بصياغة واضحة قبل تفعيل الدفع.',
-        ],
-        'warranty' => [
-            'title' => 'سياسة الضمان والتعويض',
-            'body' => 'ننقل تفاصيل الضمان والتعويض قبل تفعيل الطلبات.',
-        ],
-        'ea_backup_codes' => [
-            'title' => 'أكواد EA الاحتياطية',
-            'body' => 'نجهز شرح بسيط وآمن لطريقة استخراج الأكواد.',
-        ],
-        'terms' => [
-            'title' => 'شروط الخدمة',
-            'body' => 'ننقل ونراجع شروط الخدمة قبل إطلاق الطلب والدفع.',
-        ],
-    ],
 ];

@@ -77,8 +77,8 @@ test('Arabic and English shell translation leaves and placeholders stay in parit
         ->and($english['footer'])->not->toHaveKey('legal_navigation')
         ->and(data_get($arabic, 'footer.payment_methods'))->toBe('طرق الدفع عند الإطلاق')
         ->and(data_get($english, 'footer.payment_methods'))->toBe('Payment methods at launch')
-        ->and($arabic['simple_pages'])->not->toHaveKey('cart')
-        ->and($english['simple_pages'])->not->toHaveKey('cart')
+        ->and($arabic)->not->toHaveKey('simple_pages')
+        ->and($english)->not->toHaveKey('simple_pages')
         ->and(translationTokens(data_get($arabic, 'footer.copyright')))->toBe(['year']);
 });
 
