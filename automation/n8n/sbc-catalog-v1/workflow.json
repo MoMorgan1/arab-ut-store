@@ -34,18 +34,129 @@
     },
     {
       "parameters": {
+        "httpMethod": "POST",
+        "path": "arabut-sbc-catalog-v1/run",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-sbc-catalog-v1",
+      "name": "SBC Catalog Production Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        180,
+        600
+      ],
+      "webhookId": "07b2a529-b860-4517-a03c-c72854a423ca",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_ARABUT_SBC_BOOTSTRAP_TRIGGER_CREDENTIAL_ID",
+          "name": "ArabUT SBC Bootstrap Trigger"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "manual-context-sbc-catalog-v1-source",
+              "name": "triggerSource",
+              "value": "manual",
+              "type": "string"
+            },
+            {
+              "id": "manual-context-sbc-catalog-v1-mode",
+              "name": "requestedMode",
+              "value": "dry_run",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "manual-context-sbc-catalog-v1",
+      "name": "Manual Dry Run Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        420,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "schedule-context-sbc-catalog-v1-source",
+              "name": "triggerSource",
+              "value": "schedule",
+              "type": "string"
+            },
+            {
+              "id": "schedule-context-sbc-catalog-v1-mode",
+              "name": "requestedMode",
+              "value": "apply",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "schedule-context-sbc-catalog-v1",
+      "name": "Scheduled Apply Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        420,
+        440
+      ]
+    },
+    {
+      "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\n// SBC Catalog v1 settings. Secrets remain in n8n environment and Credentials.\n\nconst alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';\n\nfunction ulid() {\n    let time = Date.now();\n    let timestamp = '';\n    for (let index = 0; index < 10; index += 1) {\n        timestamp = alphabet[time % 32] + timestamp;\n        time = Math.floor(time / 32);\n    }\n\n    let random = '';\n    for (let index = 0; index < 16; index += 1) {\n        random += alphabet[Math.floor(Math.random() * alphabet.length)];\n    }\n\n    return timestamp + random;\n}\n\nfunction generatedAt() {\n    return new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n}\n\nconst approvedEligibleItems = [\n    ['1340', 'Ayden Heaven', '2026-08-18T17:00:00.000Z'],\n    ['1351', '1 of 3 85+ Player Pick', '2026-08-17T17:00:00.000Z'],\n    [\n        '1348',\n        '1 of 4 95+ FOF or FUTTIES T1-T3 Player Pick',\n        '2026-08-18T17:00:00.000Z',\n    ],\n    ['1344', '7x 87+ Upgrade', '2026-08-18T17:00:00.000Z'],\n    ['1339', 'Patrick Kluivert', '2026-08-24T17:00:00.000Z'],\n    ['1337', '4 of 10 84+ Player Pick', '2026-08-17T17:00:00.000Z'],\n    ['1338', 'Marcos Llorente', '2026-08-23T17:00:00.000Z'],\n    [\n        '1328',\n        '94+ GOTG & FUTTIES Team 1 & 2 (Icons & Heroes) Upgrade',\n        '2026-08-23T17:00:00.000Z',\n    ],\n    ['1327', 'Striker Instinct EVO', '2026-08-16T17:00:00.000Z'],\n    ['1335', 'Antonio Rüdiger', '2026-08-22T17:00:00.000Z'],\n    ['1329', 'Debinha', '2026-08-15T17:00:00.000Z'],\n    ['1333', '10x 85+ Upgrade', '2026-08-15T17:00:00.000Z'],\n    ['1325', 'Jérémy Doku', '2026-08-28T17:00:00.000Z'],\n    [\n        '1326',\n        '1 of 3 95+ FOF or FUTTIES T1 & T2 Player Pick',\n        '2026-08-14T17:00:00.000Z',\n    ],\n    ['1332', '2x 85+ Upgrade', '2026-08-21T17:00:00.000Z'],\n    ['1324', 'Saeed Al-Owairan', '2026-08-14T17:00:00.000Z'],\n    ['1334', '2 of 3 86+ Player Pick', '2026-08-14T17:00:00.000Z'],\n    ['1309', 'Moussa Sissoko', '2026-08-13T17:00:00.000Z'],\n    [\n        '1321',\n        'Repeatable FUTTIES Provisions Upgrade',\n        '2026-08-13T17:00:00.000Z',\n    ],\n    ['1320', '3x 87-90 Upgrade', '2026-08-13T17:00:00.000Z'],\n    ['1316', '1 of 3 FUTTIES Team 2 Player Pick', '2026-08-12T17:00:00.000Z'],\n    ['1319', 'Eusébio', '2026-08-23T17:00:00.000Z'],\n    [\n        '1298',\n        '1 of 3 94+ GOTG or FUTTIES Icon or Hero Player Pick',\n        '2026-08-16T17:00:00.000Z',\n    ],\n    ['1302', 'Fernando Torres', '2026-08-21T17:00:00.000Z'],\n    ['1306', 'Frenkie de Jong', '2026-08-21T17:00:00.000Z'],\n    ['1310', '10x 84+ Upgrade', '2026-08-14T17:00:00.000Z'],\n    ['1274', 'Antonio Di Natale', '2026-08-14T17:00:00.000Z'],\n    ['1261', '5x 80+ Upgrade', '2026-08-21T17:00:00.000Z'],\n    ['1248', 'Johan Cruyff', '2026-08-13T17:00:00.000Z'],\n    ['1237', '89 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1236', '88 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1231', '83 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1235', '87 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1238', '90 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1234', '86 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1232', '84 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1233', '85 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1239', '91 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['7', 'Gold Upgrade', '2035-07-30T17:00:00.000Z'],\n].map(([sourceId, sourceName, expiresAt]) => ({\n    sourceId,\n    sourceName,\n    expiresAt,\n}));\n\nreturn [\n    {\n        json: {\n            settings: {\n                mode: 'dry_run',\n                pricingEndpoint:\n                    'https://store.arab-ut.com/api/automation/v1/pricing/coins/sbc-bases',\n                pricingPath: '/api/automation/v1/pricing/coins/sbc-bases',\n                sourceEndpoint:\n                    'https://api-fc26.easysbc.io/sbc-sets?page=1&limit=200',\n                catalogEndpoint:\n                    'https://store.arab-ut.com/api/automation/v1/catalog/sbc/snapshots',\n                catalogSource: 'n8n-sbc',\n                sourceMinCount: 20,\n                sourceLimit: 200,\n                minimumExpiryLeadSeconds: 7200,\n                approvedBaseline: {\n                    sourceCount: 56,\n                    eligibleCount: 39,\n                    observedAt: '2026-08-12T05:46:36.701Z',\n                    approvedAt: '2026-08-12T05:46:36.701Z',\n                    approvedBy: 'operator',\n                    eligibleItems: approvedEligibleItems,\n                },\n            },\n            eventId: ulid(),\n            runId: ulid(),\n            generatedAt: generatedAt(),\n        },\n    },\n];\n"
+        "jsCode": "/* eslint-disable */\n// SBC Catalog v1 settings. Secrets remain in n8n environment and Credentials.\n\nconst alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';\n\nfunction ulid() {\n    let time = Date.now();\n    let timestamp = '';\n    for (let index = 0; index < 10; index += 1) {\n        timestamp = alphabet[time % 32] + timestamp;\n        time = Math.floor(time / 32);\n    }\n\n    let random = '';\n    for (let index = 0; index < 16; index += 1) {\n        random += alphabet[Math.floor(Math.random() * alphabet.length)];\n    }\n\n    return timestamp + random;\n}\n\nfunction generatedAt() {\n    return new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n}\n\nconst approvedEligibleItems = [\n    ['1340', 'Ayden Heaven', '2026-08-18T17:00:00.000Z'],\n    ['1351', '1 of 3 85+ Player Pick', '2026-08-17T17:00:00.000Z'],\n    [\n        '1348',\n        '1 of 4 95+ FOF or FUTTIES T1-T3 Player Pick',\n        '2026-08-18T17:00:00.000Z',\n    ],\n    ['1344', '7x 87+ Upgrade', '2026-08-18T17:00:00.000Z'],\n    ['1339', 'Patrick Kluivert', '2026-08-24T17:00:00.000Z'],\n    ['1337', '4 of 10 84+ Player Pick', '2026-08-17T17:00:00.000Z'],\n    ['1338', 'Marcos Llorente', '2026-08-23T17:00:00.000Z'],\n    [\n        '1328',\n        '94+ GOTG & FUTTIES Team 1 & 2 (Icons & Heroes) Upgrade',\n        '2026-08-23T17:00:00.000Z',\n    ],\n    ['1327', 'Striker Instinct EVO', '2026-08-16T17:00:00.000Z'],\n    ['1335', 'Antonio Rüdiger', '2026-08-22T17:00:00.000Z'],\n    ['1329', 'Debinha', '2026-08-15T17:00:00.000Z'],\n    ['1333', '10x 85+ Upgrade', '2026-08-15T17:00:00.000Z'],\n    ['1325', 'Jérémy Doku', '2026-08-28T17:00:00.000Z'],\n    [\n        '1326',\n        '1 of 3 95+ FOF or FUTTIES T1 & T2 Player Pick',\n        '2026-08-14T17:00:00.000Z',\n    ],\n    ['1332', '2x 85+ Upgrade', '2026-08-21T17:00:00.000Z'],\n    ['1324', 'Saeed Al-Owairan', '2026-08-14T17:00:00.000Z'],\n    ['1334', '2 of 3 86+ Player Pick', '2026-08-14T17:00:00.000Z'],\n    ['1309', 'Moussa Sissoko', '2026-08-13T17:00:00.000Z'],\n    [\n        '1321',\n        'Repeatable FUTTIES Provisions Upgrade',\n        '2026-08-13T17:00:00.000Z',\n    ],\n    ['1320', '3x 87-90 Upgrade', '2026-08-13T17:00:00.000Z'],\n    ['1316', '1 of 3 FUTTIES Team 2 Player Pick', '2026-08-12T17:00:00.000Z'],\n    ['1319', 'Eusébio', '2026-08-23T17:00:00.000Z'],\n    [\n        '1298',\n        '1 of 3 94+ GOTG or FUTTIES Icon or Hero Player Pick',\n        '2026-08-16T17:00:00.000Z',\n    ],\n    ['1302', 'Fernando Torres', '2026-08-21T17:00:00.000Z'],\n    ['1306', 'Frenkie de Jong', '2026-08-21T17:00:00.000Z'],\n    ['1310', '10x 84+ Upgrade', '2026-08-14T17:00:00.000Z'],\n    ['1274', 'Antonio Di Natale', '2026-08-14T17:00:00.000Z'],\n    ['1261', '5x 80+ Upgrade', '2026-08-21T17:00:00.000Z'],\n    ['1248', 'Johan Cruyff', '2026-08-13T17:00:00.000Z'],\n    ['1237', '89 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1236', '88 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1231', '83 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1235', '87 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1238', '90 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1234', '86 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1232', '84 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1233', '85 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1239', '91 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['7', 'Gold Upgrade', '2035-07-30T17:00:00.000Z'],\n].map(([sourceId, sourceName, expiresAt]) => ({\n    sourceId,\n    sourceName,\n    expiresAt,\n}));\n\nconst triggerInput = $input.first().json;\nconst workflowState = $getWorkflowStaticData('global').sbcCatalogV1 ?? {};\nlet configValid = true;\nlet failureReason = null;\nlet triggerSource = null;\nlet mode = 'dry_run';\n\nif (\n    triggerInput?.triggerSource === 'manual' &&\n    triggerInput?.requestedMode === 'dry_run'\n) {\n    triggerSource = 'manual';\n} else if (\n    triggerInput?.triggerSource === 'schedule' &&\n    triggerInput?.requestedMode === 'apply'\n) {\n    triggerSource = 'schedule';\n    mode = 'apply';\n    if (\n        !Array.isArray(workflowState.lastSuccessfulItems) ||\n        workflowState.lastSuccessfulItems.length === 0\n    ) {\n        configValid = false;\n        failureReason =\n            'Scheduled apply is blocked until a production webhook bootstrap completes with fresh HTTP 201';\n    }\n} else if (\n    triggerInput?.body &&\n    typeof triggerInput.body === 'object' &&\n    !Array.isArray(triggerInput.body) &&\n    Object.keys(triggerInput.body).length === 1 &&\n    ['dry_run', 'apply'].includes(triggerInput.body.mode)\n) {\n    triggerSource = 'webhook';\n    mode = triggerInput.body.mode;\n} else {\n    configValid = false;\n    failureReason =\n        'Trigger contract is invalid; use manual dry-run, scheduled apply, or exact webhook body {\"mode\":\"dry_run|apply\"}';\n}\n\nreturn [\n    {\n        json: {\n            settings: {\n                mode,\n                pricingEndpoint:\n                    'https://store.arab-ut.com/api/automation/v1/pricing/coins/sbc-bases',\n                pricingPath: '/api/automation/v1/pricing/coins/sbc-bases',\n                sourceEndpoint:\n                    'https://api-fc26.easysbc.io/sbc-sets?page=1&limit=200',\n                catalogEndpoint:\n                    'https://store.arab-ut.com/api/automation/v1/catalog/sbc/snapshots',\n                catalogSource: 'n8n-sbc',\n                sourceMinCount: 20,\n                sourceLimit: 200,\n                minimumExpiryLeadSeconds: 7200,\n                approvedBaseline: {\n                    sourceCount: 56,\n                    eligibleCount: 39,\n                    observedAt: '2026-08-12T05:46:36.701Z',\n                    approvedAt: '2026-08-12T05:46:36.701Z',\n                    approvedBy: 'operator',\n                    eligibleItems: approvedEligibleItems,\n                },\n            },\n            eventId: ulid(),\n            runId: ulid(),\n            generatedAt: generatedAt(),\n            configValid,\n            failureReason,\n            triggerSource,\n        },\n    },\n];\n"
       },
       "id": "config-sbc-catalog-v1",
       "name": "Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        420,
-        360
+        660,
+        440
       ],
       "notes": "Source: nodes/config.js"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.configValid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "config-valid-sbc-v1",
+      "name": "Config Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        900,
+        440
+      ]
     },
     {
       "parameters": {
@@ -57,7 +168,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        660,
+        1140,
         360
       ],
       "notes": "Source: nodes/sign-pricing-read.js"
@@ -737,6 +848,17 @@
       "main": [
         [
           {
+            "node": "Manual Dry Run Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Dry Run Context": {
+      "main": [
+        [
+          {
             "node": "Config",
             "type": "main",
             "index": 0
@@ -745,6 +867,28 @@
       ]
     },
     "Every 2 Hours": {
+      "main": [
+        [
+          {
+            "node": "Scheduled Apply Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scheduled Apply Context": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SBC Catalog Production Trigger": {
       "main": [
         [
           {
@@ -759,7 +903,25 @@
       "main": [
         [
           {
+            "node": "Config Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config Valid?": {
+      "main": [
+        [
+          {
             "node": "Sign Pricing Read",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure Alert",
             "type": "main",
             "index": 0
           }

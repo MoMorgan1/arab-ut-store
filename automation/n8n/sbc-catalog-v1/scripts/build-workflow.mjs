@@ -50,6 +50,35 @@ function edge(node, index = 0) {
     return { node, type: 'main', index };
 }
 
+function triggerContextNode(name, id, triggerSource, requestedMode, position) {
+    return {
+        parameters: {
+            assignments: {
+                assignments: [
+                    {
+                        id: `${id}-source`,
+                        name: 'triggerSource',
+                        value: triggerSource,
+                        type: 'string',
+                    },
+                    {
+                        id: `${id}-mode`,
+                        name: 'requestedMode',
+                        value: requestedMode,
+                        type: 'string',
+                    },
+                ],
+            },
+            options: {},
+        },
+        id,
+        name,
+        type: 'n8n-nodes-base.set',
+        typeVersion: 3.4,
+        position,
+    };
+}
+
 const nodes = [
     {
         parameters: {},
@@ -69,12 +98,55 @@ const nodes = [
         typeVersion: 1.2,
         position: [180, 440],
     },
-    await codeNode('Config', 'config-sbc-catalog-v1', 'config.js', [420, 360]),
+    {
+        parameters: {
+            httpMethod: 'POST',
+            path: 'arabut-sbc-catalog-v1/run',
+            authentication: 'headerAuth',
+            responseMode: 'lastNode',
+            options: {},
+        },
+        id: 'webhook-sbc-catalog-v1',
+        name: 'SBC Catalog Production Trigger',
+        type: 'n8n-nodes-base.webhook',
+        typeVersion: 2.1,
+        position: [180, 600],
+        webhookId: '07b2a529-b860-4517-a03c-c72854a423ca',
+        credentials: {
+            httpHeaderAuth: {
+                id: 'CONFIGURE_ARABUT_SBC_BOOTSTRAP_TRIGGER_CREDENTIAL_ID',
+                name: 'ArabUT SBC Bootstrap Trigger',
+            },
+        },
+    },
+    triggerContextNode(
+        'Manual Dry Run Context',
+        'manual-context-sbc-catalog-v1',
+        'manual',
+        'dry_run',
+        [420, 280],
+    ),
+    triggerContextNode(
+        'Scheduled Apply Context',
+        'schedule-context-sbc-catalog-v1',
+        'schedule',
+        'apply',
+        [420, 440],
+    ),
+    await codeNode('Config', 'config-sbc-catalog-v1', 'config.js', [660, 440]),
+    ifNode(
+        'Config Valid?',
+        'config-valid-sbc-v1',
+        '={{ $json.configValid }}',
+        true,
+        'boolean',
+        [900, 440],
+    ),
     await codeNode(
         'Sign Pricing Read',
         'sign-pricing-read-sbc-v1',
         'sign-pricing-read.js',
-        [660, 360],
+        [1140, 360],
     ),
     ifNode(
         'Pricing Read Signed?',
@@ -405,9 +477,15 @@ const nodes = [
 ];
 
 const connections = {
-    'Run SBC Catalog Now': { main: [[edge('Config')]] },
-    'Every 2 Hours': { main: [[edge('Config')]] },
-    Config: { main: [[edge('Sign Pricing Read')]] },
+    'Run SBC Catalog Now': { main: [[edge('Manual Dry Run Context')]] },
+    'Manual Dry Run Context': { main: [[edge('Config')]] },
+    'Every 2 Hours': { main: [[edge('Scheduled Apply Context')]] },
+    'Scheduled Apply Context': { main: [[edge('Config')]] },
+    'SBC Catalog Production Trigger': { main: [[edge('Config')]] },
+    Config: { main: [[edge('Config Valid?')]] },
+    'Config Valid?': {
+        main: [[edge('Sign Pricing Read')], [edge('Prepare Failure Alert')]],
+    },
     'Sign Pricing Read': { main: [[edge('Pricing Read Signed?')]] },
     'Pricing Read Signed?': {
         main: [[edge('Read Coins Bases')], [edge('Prepare Failure Alert')]],

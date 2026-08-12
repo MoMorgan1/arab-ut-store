@@ -6,8 +6,8 @@ It has no external storefront mutation or product-platform dependency. Laravel a
 
 ## v1 behavior
 
-- Manual Trigger plus a two-hour Schedule Trigger.
-- Default `Config.settings.mode` is `dry_run`; dry runs have no graph path to the catalog POST.
+- Inspection-only Manual Trigger, authenticated production Webhook Trigger, and a two-hour Schedule Trigger.
+- Manual runs are always `dry_run`. The production webhook accepts only the exact JSON body `{ "mode": "dry_run" }` or `{ "mode": "apply" }`. The schedule uses `apply` only after a production webhook bootstrap has persisted `lastSuccessfulItems`; before that it fails closed. Dry runs have no graph path to the catalog POST.
 - EasySBC request: `GET https://api-fc26.easysbc.io/sbc-sets?page=1&limit=200`.
 - Bootstrap is pinned to the manually reviewed 56-source/39-eligible observation captured at `2026-08-12T05:46:36.701Z`, including every eligible source ID, exact source name, and expiry.
 - After an exact fresh HTTP 201 completion, workflow static data replaces that bootstrap with the accepted snapshot's public source IDs, names, expiries, and counts. Dry runs, failures, and replay responses never mutate this durable safety state; no credentials or customer data are stored there.
@@ -45,6 +45,7 @@ Create these credentials with the exact exported names:
 2. `ArabUT SBC Catalog API` — adds `X-ArabUT-Key` with the separately scoped SBC catalog public key.
 3. `Whapi Alerts` — adds the Whapi authorization header; alerts run only when `OPS_WHATSAPP_TARGET` is configured.
 4. `Google Gemini(PaLM) Api account 2` — existing Google PaLM/Gemini credential used only for missing Arabic-name enrichment.
+5. `ArabUT SBC Bootstrap Trigger` — HTTP Header Auth on the production webhook. Generate a dedicated high-entropy value in n8n; never place it in this package or chat.
 
 Set secrets only on the n8n host:
 
@@ -76,18 +77,19 @@ npm test
 ## Safe rollout
 
 1. Deploy and verify the signed Laravel pricing-read and SBC snapshot endpoints.
-2. Import `workflow.json`; keep it inactive and keep `mode: 'dry_run'`.
-3. Attach the four credentials and set the host environment values. On Hostinger, set `N8N_CATALOG_MEDIA_HOSTS=assets.easysbc.io` before any apply.
-4. Run manually in dry-run. Confirm the source still matches the versioned bootstrap observation: 56 source records and the exact 39 eligible IDs, names, and expiries captured at `2026-08-12T05:46:36.701Z`. Review products/variants, prices, translation cache results, expected departures/new IDs, and the explicit `publishAttempted: false` summary. Update `Config.settings.approvedBaseline` only after manually reviewing a new complete source observation.
-5. Change the versioned `Config` mode to `apply`, rebuild/re-import, then run one controlled apply.
-6. Require a fresh HTTP 201 with the same `runId` and `status: completed` before advancing the durable identity/count state. An exact replay 409 is treated as the already-committed request but does not mutate state. HTTP 422 or 5xx fails closed and keeps the last accepted catalog and guard state.
-7. Verify the Laravel catalog and storefront, and verify mirrored media counts match products with supplied EasySBC images. Only then activate the two-hour schedule.
+2. Import `workflow.json` inactive. Attach all five credentials and set the host environment values. On Hostinger, set `N8N_CATALOG_MEDIA_HOSTS=assets.easysbc.io` before any apply.
+3. A Manual Trigger run is allowed for inspection only. It is forced to `dry_run`, and n8n does not persist workflow static data from manual/test executions; do not use it for bootstrap or apply.
+4. Publish and activate the workflow so its production webhook is registered. The scheduled branch fails closed without publishing until a durable bootstrap exists.
+5. Call the authenticated production webhook with `Content-Type: application/json` and the exact body `{ "mode": "dry_run" }`. Confirm the source still matches the versioned bootstrap observation: 56 source records and the exact 39 eligible IDs, names, and expiries captured at `2026-08-12T05:46:36.701Z`. Review products/variants, prices, persisted translation cache results, expected departures/new IDs, and `publishAttempted: false`.
+6. After approving that production dry run, call the same production webhook with the exact body `{ "mode": "apply" }`. Require a fresh HTTP 201 with the same `runId` and `status: completed`, then verify workflow static data contains `lastSuccessfulItems` and the accepted counts. An exact replay 409 does not mutate state; HTTP 422 or 5xx fails closed and retains the previous catalog and guard state.
+7. Verify the Laravel catalog and storefront, and verify mirrored media counts match products with supplied EasySBC images. Leave the published workflow active; subsequent two-hour scheduled executions may now apply under the durable identity/expiry guard.
 
-The current dry-run cannot calculate an absolute `wouldArchive` count because there is no authenticated Laravel read endpoint for the current `n8n-sbc` snapshot. Keep the workflow inactive until the approved baseline, translation cache, and mirrored-media checks are complete. Adding that read endpoint is the follow-up needed for exact create/update/archive previews.
+The current dry-run cannot calculate an absolute `wouldArchive` count because there is no authenticated Laravel read endpoint for the current `n8n-sbc` snapshot. The production webhook sequence above is required because n8n saves workflow static data only for active production-triggered executions, not manual/test runs. Adding a Laravel snapshot-read endpoint remains the follow-up needed for exact create/update/archive previews.
 
 ## Official n8n references checked
 
 - [Schedule Trigger](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/)
+- [Webhook](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/)
 - [HTTP Request](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/)
 - [Code node cookbook](https://docs.n8n.io/code/cookbook/code-node/)
 - [Workflow static data](https://docs.n8n.io/code/cookbook/builtin/get-workflow-static-data/)

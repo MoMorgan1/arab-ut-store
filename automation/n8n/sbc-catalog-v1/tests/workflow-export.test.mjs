@@ -23,6 +23,7 @@ test('export is inactive, secret-free, two-hourly, and references only approved 
         /N8N_SBC_(?:CATALOG|PRICING_READ)_SECRET\s*[:=]\s*['"][^$]/i,
     );
     assert.deepEqual([...new Set(credentials)].sort(), [
+        'ArabUT SBC Bootstrap Trigger',
         'ArabUT SBC Catalog API',
         'ArabUT SBC Pricing Read API',
         'Google Gemini(PaLM) Api account 2',
@@ -33,6 +34,35 @@ test('export is inactive, secret-free, two-hourly, and references only approved 
     assert.equal(schedule.parameters.rule.interval[0].field, 'hours');
     assert.equal(schedule.parameters.rule.interval[0].hoursInterval, 2);
     assert.ok(nodes.some(({ name }) => name === 'Run SBC Catalog Now'));
+
+    const webhook = nodes.find(
+        ({ name }) => name === 'SBC Catalog Production Trigger',
+    );
+    assert.equal(webhook.type, 'n8n-nodes-base.webhook');
+    assert.equal(webhook.parameters.httpMethod, 'POST');
+    assert.equal(webhook.parameters.path, 'arabut-sbc-catalog-v1/run');
+    assert.equal(webhook.parameters.authentication, 'headerAuth');
+    assert.equal(webhook.parameters.responseMode, 'lastNode');
+    assert.deepEqual(webhook.credentials.httpHeaderAuth, {
+        id: 'CONFIGURE_ARABUT_SBC_BOOTSTRAP_TRIGGER_CREDENTIAL_ID',
+        name: 'ArabUT SBC Bootstrap Trigger',
+    });
+    assert.deepEqual(exported.connections['Run SBC Catalog Now'].main[0], [
+        { node: 'Manual Dry Run Context', type: 'main', index: 0 },
+    ]);
+    assert.deepEqual(exported.connections['Every 2 Hours'].main[0], [
+        { node: 'Scheduled Apply Context', type: 'main', index: 0 },
+    ]);
+    assert.deepEqual(
+        exported.connections['SBC Catalog Production Trigger'].main[0],
+        [{ node: 'Config', type: 'main', index: 0 }],
+    );
+    assert.deepEqual(exported.connections.Config.main[0], [
+        { node: 'Config Valid?', type: 'main', index: 0 },
+    ]);
+    assert.deepEqual(exported.connections['Config Valid?'].main[1], [
+        { node: 'Prepare Failure Alert', type: 'main', index: 0 },
+    ]);
 });
 
 test('dry-run graph cannot reach the catalog POST and every invalid branch terminates with an error', async () => {
@@ -45,6 +75,7 @@ test('dry-run graph cannot reach the catalog POST and every invalid branch termi
     assert.equal(connections['Dry Run Summary'], undefined);
 
     for (const guard of [
+        'Config Valid?',
         'Pricing Read Signed?',
         'Pricing Ready?',
         'Translation Plan Valid?',
@@ -183,4 +214,29 @@ test('rollout requires the EasySBC media allowlist and mirrored-media verificati
 
     assert.match(readme, /N8N_CATALOG_MEDIA_HOSTS=assets\.easysbc\.io/);
     assert.match(readme, /verify mirrored media counts/i);
+});
+
+test('rollout uses active production webhook executions for durable bootstrap state', async () => {
+    const readme = await readFile(new URL('README.md', root), 'utf8');
+
+    assert.doesNotMatch(
+        readme,
+        /inactive[^\n]{0,120}(?:apply|controlled apply)/i,
+    );
+    assert.doesNotMatch(
+        readme,
+        /(?:apply|controlled apply)[^\n]{0,120}manually/i,
+    );
+    assert.match(
+        readme,
+        /manual[^\n]{0,120}inspection[^\n]{0,120}not persist/i,
+    );
+    assert.match(readme, /publish and activate/i);
+    assert.match(readme, /production webhook[^\n]{0,160}dry_run/i);
+    assert.match(readme, /production webhook[^\n]{0,160}apply/i);
+    assert.match(readme, /fresh HTTP 201[^\n]{0,160}lastSuccessfulItems/i);
+    assert.match(
+        readme,
+        /schedule[^\n]{0,160}fails closed[^\n]{0,160}bootstrap/i,
+    );
 });

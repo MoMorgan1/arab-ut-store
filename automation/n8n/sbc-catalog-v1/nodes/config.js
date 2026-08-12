@@ -89,11 +89,52 @@ const approvedEligibleItems = [
     expiresAt,
 }));
 
+const triggerInput = $input.first().json;
+const workflowState = $getWorkflowStaticData('global').sbcCatalogV1 ?? {};
+let configValid = true;
+let failureReason = null;
+let triggerSource = null;
+let mode = 'dry_run';
+
+if (
+    triggerInput?.triggerSource === 'manual' &&
+    triggerInput?.requestedMode === 'dry_run'
+) {
+    triggerSource = 'manual';
+} else if (
+    triggerInput?.triggerSource === 'schedule' &&
+    triggerInput?.requestedMode === 'apply'
+) {
+    triggerSource = 'schedule';
+    mode = 'apply';
+    if (
+        !Array.isArray(workflowState.lastSuccessfulItems) ||
+        workflowState.lastSuccessfulItems.length === 0
+    ) {
+        configValid = false;
+        failureReason =
+            'Scheduled apply is blocked until a production webhook bootstrap completes with fresh HTTP 201';
+    }
+} else if (
+    triggerInput?.body &&
+    typeof triggerInput.body === 'object' &&
+    !Array.isArray(triggerInput.body) &&
+    Object.keys(triggerInput.body).length === 1 &&
+    ['dry_run', 'apply'].includes(triggerInput.body.mode)
+) {
+    triggerSource = 'webhook';
+    mode = triggerInput.body.mode;
+} else {
+    configValid = false;
+    failureReason =
+        'Trigger contract is invalid; use manual dry-run, scheduled apply, or exact webhook body {"mode":"dry_run|apply"}';
+}
+
 return [
     {
         json: {
             settings: {
-                mode: 'dry_run',
+                mode,
                 pricingEndpoint:
                     'https://store.arab-ut.com/api/automation/v1/pricing/coins/sbc-bases',
                 pricingPath: '/api/automation/v1/pricing/coins/sbc-bases',
@@ -117,6 +158,9 @@ return [
             eventId: ulid(),
             runId: ulid(),
             generatedAt: generatedAt(),
+            configValid,
+            failureReason,
+            triggerSource,
         },
     },
 ];
