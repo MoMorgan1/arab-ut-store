@@ -1,0 +1,10 @@
+{
+    "name": "arab-ut-sbc-catalog-v1",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "node scripts/build-workflow.mjs",
+        "build:check": "node scripts/build-workflow.mjs --check",
+        "test": "npm run build:check && node --test"
+    }
+}

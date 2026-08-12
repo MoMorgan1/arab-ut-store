@@ -1,0 +1,864 @@
+{
+  "name": "SBC Catalog v1 - Signed Laravel Snapshot",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-sbc-catalog-v1",
+      "name": "Run SBC Catalog Now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        180,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "schedule-sbc-catalog-v1",
+      "name": "Every 2 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        180,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// SBC Catalog v1 settings. Secrets remain in n8n environment and Credentials.\n\nconst alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';\n\nfunction ulid() {\n    let time = Date.now();\n    let timestamp = '';\n    for (let index = 0; index < 10; index += 1) {\n        timestamp = alphabet[time % 32] + timestamp;\n        time = Math.floor(time / 32);\n    }\n\n    let random = '';\n    for (let index = 0; index < 16; index += 1) {\n        random += alphabet[Math.floor(Math.random() * alphabet.length)];\n    }\n\n    return timestamp + random;\n}\n\nfunction generatedAt() {\n    return new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n}\n\nreturn [\n    {\n        json: {\n            settings: {\n                mode: 'dry_run',\n                pricingEndpoint:\n                    'https://store.arab-ut.com/api/automation/v1/pricing/coins/sbc-bases',\n                pricingPath: '/api/automation/v1/pricing/coins/sbc-bases',\n                sourceEndpoint:\n                    'https://api-fc26.easysbc.io/sbc-sets?page=1&limit=200',\n                catalogEndpoint:\n                    'https://store.arab-ut.com/api/automation/v1/catalog/sbc/snapshots',\n                catalogSource: 'n8n-sbc',\n                sourceMinCount: 20,\n                sourceLimit: 200,\n                minimumExpiryLeadSeconds: 7200,\n            },\n            eventId: ulid(),\n            runId: ulid(),\n            generatedAt: generatedAt(),\n        },\n    },\n];\n"
+      },
+      "id": "config-sbc-catalog-v1",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        360
+      ],
+      "notes": "Source: nodes/config.js"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst secret = $env.N8N_SBC_PRICING_READ_SECRET;\n\nif (!secret) {\n    return [\n        {\n            json: {\n                ...item,\n                pricingReadSigned: false,\n                failureReason:\n                    'N8N_SBC_PRICING_READ_SECRET is not configured on the n8n host',\n            },\n        },\n    ];\n}\n\nconst crypto = require('crypto');\nconst timestamp = String(Math.floor(Date.now() / 1000));\nconst canonical = `${timestamp}\\nGET\\n${item.settings.pricingPath}\\n`;\nconst signature = crypto\n    .createHmac('sha256', secret)\n    .update(canonical)\n    .digest('hex');\n\nreturn [{ json: { ...item, pricingReadSigned: true, timestamp, signature } }];\n"
+      },
+      "id": "sign-pricing-read-sbc-v1",
+      "name": "Sign Pricing Read",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        360
+      ],
+      "notes": "Source: nodes/sign-pricing-read.js"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.pricingReadSigned }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "pricing-read-signed-sbc-v1",
+      "name": "Pricing Read Signed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        900,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $(\"Config\").first().json.settings.pricingEndpoint }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "X-ArabUT-Timestamp",
+              "value": "={{ $(\"Sign Pricing Read\").first().json.timestamp }}"
+            },
+            {
+              "name": "X-ArabUT-Signature",
+              "value": "={{ $(\"Sign Pricing Read\").first().json.signature }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "read-coins-bases-sbc-v1",
+      "name": "Read Coins Bases",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1140,
+        280
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "CONFIGURE_ARABUT_SBC_PRICING_READ_CREDENTIAL_ID",
+          "name": "ArabUT SBC Pricing Read API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\nconst response = $input.first().json;\nconst statusCode = Number(response.statusCode || 200);\nlet body = response.body ?? response;\n\nif (typeof body === 'string') {\n    try {\n        body = JSON.parse(body);\n    } catch {}\n}\n\nfunction failure(reason) {\n    return [{ json: { valid: false, failureReason: reason } }];\n}\n\nif (\n    response.error ||\n    response.errorMessage ||\n    statusCode !== 200 ||\n    !body ||\n    typeof body !== 'object' ||\n    Array.isArray(body)\n) {\n    return failure(`Laravel SBC pricing read failed with HTTP ${statusCode}`);\n}\n\nif (\n    JSON.stringify(Object.keys(body)) !==\n    JSON.stringify(['schemaVersion', 'pricingVersion', 'pricedAt', 'quotes'])\n) {\n    return failure('SBC pricing response has an unexpected top-level shape');\n}\n\nif (\n    body.schemaVersion !== 1 ||\n    !Number.isInteger(body.pricingVersion) ||\n    body.pricingVersion < 1 ||\n    typeof body.pricedAt !== 'string'\n) {\n    return failure('SBC pricing response metadata is invalid');\n}\n\nif (\n    !body.quotes ||\n    JSON.stringify(Object.keys(body.quotes)) !==\n        JSON.stringify(['playstation_fast', 'pc'])\n) {\n    return failure(\n        'SBC pricing response must contain exactly the PlayStation fast and PC quotes',\n    );\n}\n\nconst expected = {\n    playstation_fast: { platform: 'playstation', delivery: 'fast' },\n    pc: { platform: 'pc', delivery: null },\n};\n\nfor (const [key, identity] of Object.entries(expected)) {\n    const quote = body.quotes[key];\n    if (\n        !quote ||\n        JSON.stringify(Object.keys(quote)) !==\n            JSON.stringify(['platform', 'delivery', 'quantity', 'totalHalalah'])\n    ) {\n        return failure(`${key} quote has an unexpected shape`);\n    }\n    if (\n        quote.platform !== identity.platform ||\n        quote.delivery !== identity.delivery ||\n        quote.quantity !== 1_000_000\n    ) {\n        return failure(`${key} is not the authoritative one-million quote`);\n    }\n    if (!Number.isInteger(quote.totalHalalah) || quote.totalHalalah <= 0) {\n        return failure(`${key} totalHalalah is invalid`);\n    }\n}\n\nreturn [{ json: { valid: true, failureReason: null, pricing: body } }];\n"
+      },
+      "id": "evaluate-pricing-read-sbc-v1",
+      "name": "Evaluate Pricing Read",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1380,
+        280
+      ],
+      "notes": "Source: nodes/evaluate-pricing-read.js"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "pricing-ready-sbc-v1",
+      "name": "Pricing Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1620,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $(\"Config\").first().json.settings.sourceEndpoint }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "User-Agent",
+              "value": "ArabUT-SBC-Catalog/1.0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "fetch-easysbc-sets-v1",
+      "name": "Fetch EasySBC Sets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1860,
+        200
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\nconst config = $('Config').first().json;\nconst pricingState = $('Evaluate Pricing Read').first().json;\n\nfunction fail(reason) {\n    return [{ json: { ...config, valid: false, failureReason: reason } }];\n}\n\nif (!pricingState.valid || !pricingState.pricing) {\n    return fail(\n        pricingState.failureReason ||\n            'Authoritative SBC pricing bases are unavailable',\n    );\n}\n\nlet records = $input.all().map((item) => item.json);\nif (records.length === 1 && Array.isArray(records[0]?.body))\n    records = records[0].body;\nif (records.length === 1 && Array.isArray(records[0]?.data))\n    records = records[0].data;\n\nconst settings = config.settings;\nif (records.length < settings.sourceMinCount) {\n    return fail(\n        `EasySBC source is below the minimum complete record count of ${settings.sourceMinCount}`,\n    );\n}\nif (records.length >= settings.sourceLimit) {\n    return fail(\n        `EasySBC pagination is ambiguous at the configured limit of ${settings.sourceLimit}`,\n    );\n}\n\nconst allowedCategories = new Set([1, 2, 3, 4, 5, 6]);\nconst allowedModes = new Set(['NON_REPEATABLE', 'UNLIMITED', 'REFRESH']);\nconst ids = new Set();\n\nfor (let index = 0; index < records.length; index += 1) {\n    const record = records[index];\n    const label = `EasySBC record ${index}`;\n    if (!record || typeof record !== 'object' || Array.isArray(record))\n        return fail(`${label} is not an object`);\n    if (!Number.isInteger(record.id) || record.id <= 0)\n        return fail(`${label} id is invalid`);\n    if (ids.has(record.id))\n        return fail(`EasySBC source contains duplicate id ${record.id}`);\n    ids.add(record.id);\n    if (\n        typeof record.name !== 'string' ||\n        !record.name.trim() ||\n        record.name.length > 220\n    )\n        return fail(`${label} name is invalid`);\n    if (!allowedCategories.has(record.categoryId))\n        return fail(`${label} categoryId is invalid`);\n    if (\n        record.description != null &&\n        (typeof record.description !== 'string' ||\n            record.description.length > 4800)\n    )\n        return fail(`${label} description is invalid`);\n    if (!Number.isInteger(record.sbcsCount) || record.sbcsCount <= 0)\n        return fail(`${label} sbcsCount is invalid`);\n    if (typeof record.repeatable !== 'boolean')\n        return fail(`${label} repeatable is invalid`);\n    if (!allowedModes.has(record.repeatabilityMode))\n        return fail(`${label} repeatabilityMode is invalid`);\n    if (!Number.isInteger(record.endTime) || record.endTime <= 0)\n        return fail(`${label} endTime is invalid`);\n    if (typeof record.active !== 'boolean')\n        return fail(`${label} active is invalid`);\n    if (!Number.isFinite(Number(record.psPrice)) || Number(record.psPrice) <= 0)\n        return fail(`${label} psPrice is invalid`);\n    if (!Number.isFinite(Number(record.pcPrice)) || Number(record.pcPrice) <= 0)\n        return fail(`${label} pcPrice is invalid`);\n    if (\n        record.repeats != null &&\n        (!Number.isInteger(record.repeats) || record.repeats <= 0)\n    )\n        return fail(`${label} repeats is invalid`);\n    if (record.imageURL != null) {\n        try {\n            const image = new URL(record.imageURL);\n            if (\n                image.protocol !== 'https:' ||\n                image.hostname !== 'assets.easysbc.io'\n            )\n                return fail(\n                    `${label} imageURL is not an approved EasySBC asset`,\n                );\n        } catch {\n            return fail(`${label} imageURL is invalid`);\n        }\n    }\n}\n\nconst now = Math.floor(new Date(config.generatedAt).getTime() / 1000);\nconst eligible = records.filter((record) => {\n    if (!record.active) return false;\n    if (record.endTime <= now + settings.minimumExpiryLeadSeconds) return false;\n    if (/\\b(?:bronze|silver)\\b/i.test(record.name)) return false;\n    if (Number(record.psPrice) < 1500) return false;\n    if (!record.repeatable && Number(record.psPrice) < 20_000) return false;\n    return Number(record.pcPrice) > 0;\n});\n\nif (eligible.length === 0)\n    return fail('EasySBC source produced no eligible challenges');\n\nconst categoryKey = {\n    1: 'players',\n    2: 'upgrades',\n    3: 'upgrades',\n    4: 'icons',\n    5: 'foundations',\n    6: 'upgrades',\n};\nconst categories = [\n    ['players', 'اللاعبون', 'Players', 10],\n    ['upgrades', 'التطويرات', 'Upgrades', 20],\n    ['icons', 'الأيكونز', 'Icons', 30],\n    ['foundations', 'الأساسيات', 'Foundations', 40],\n].map(([key, ar, en, sortOrder]) => ({\n    externalId: `easysbc-category-${key}`,\n    slug: `sbc-${key}`,\n    name: { ar, en },\n    description: {\n        ar: `تحديات بناء التشكيلات: ${ar}`,\n        en: `${en} squad-building challenges`,\n    },\n    sortOrder,\n    visible: true,\n}));\n\nfunction safeSlug(record) {\n    const raw =\n        typeof record.slug === 'string' && record.slug.trim()\n            ? record.slug\n            : record.name;\n    const base =\n        raw\n            .normalize('NFKD')\n            .replace(/[\\u0300-\\u036f]/g, '')\n            .toLowerCase()\n            .replace(/[^a-z0-9]+/g, '-')\n            .replace(/^-+|-+$/g, '')\n            .slice(0, 220) || 'challenge';\n    return `sbc-${base}-${record.id}`;\n}\n\nfunction multiplier(coins) {\n    if (coins < 50_000) return 1.15;\n    if (coins < 900_000) return 1.1;\n    if (coins <= 1_000_000) return 1.0;\n    return 1.025;\n}\n\nfunction priceMinor(coins, challengeCount, quote) {\n    const baseSar = quote.totalHalalah / 100;\n    const sar =\n        Math.round(\n            challengeCount * 2 +\n                coins * multiplier(coins) * 1.02 * (baseSar / 1_000_000) +\n                2,\n        ) + 3;\n    return sar * 100;\n}\n\nfunction localizedName(record) {\n    return /[\\u0600-\\u06ff]/.test(record.name)\n        ? record.name\n        : `تحدي SBC: ${record.name}`;\n}\n\nfunction variant(record, platform) {\n    const isPs = platform === 'playstation';\n    const quoteKey = isPs ? 'playstation_fast' : 'pc';\n    const coins = Number(isPs ? record.psPrice : record.pcPrice);\n    return {\n        externalId: `easysbc-sbc-${record.id}-${isPs ? 'ps' : 'pc'}`,\n        sku: `SBC-EASYSBC-${record.id}-${isPs ? 'PS' : 'PC'}`,\n        platform,\n        market: isPs ? 'console' : 'pc',\n        currency: 'SAR',\n        name: {\n            ar: isPs ? 'بلايستيشن' : 'كمبيوتر',\n            en: isPs ? 'PlayStation / Xbox' : 'PC',\n        },\n        priceMinor: priceMinor(\n            coins,\n            record.sbcsCount,\n            pricingState.pricing.quotes[quoteKey],\n        ),\n        salePriceMinor: null,\n        priceVersion: 1,\n        active: true,\n        configuration: {\n            source: 'easysbc',\n            sourceId: String(record.id),\n            sourceCategoryId: record.categoryId,\n            sourceSlug:\n                typeof record.slug === 'string' && record.slug.trim()\n                    ? record.slug\n                    : safeSlug(record),\n            challengeCount: record.sbcsCount,\n            completionCount: 1,\n            repeatable: record.repeatable,\n            repeatabilityMode: record.repeatabilityMode,\n            maxRepeats: record.repeatable ? (record.repeats ?? null) : 1,\n            sourceCoins: coins,\n            expiresAt: new Date(record.endTime * 1000).toISOString(),\n            pricingVersion: pricingState.pricing.pricingVersion,\n            pricingBase: quoteKey,\n            formulaVersion: 'legacy-sbc-one-completion-v1',\n        },\n    };\n}\n\nconst products = eligible.map((record, index) => {\n    const nameAr = localizedName(record);\n    return {\n        externalId: `easysbc-sbc-${record.id}`,\n        categoryExternalId: `easysbc-category-${categoryKey[record.categoryId]}`,\n        slug: safeSlug(record),\n        serviceType: 'sbc',\n        name: { ar: nameAr, en: record.name.trim() },\n        description: {\n            ar: /[\\u0600-\\u06ff]/.test(record.description || '')\n                ? record.description\n                : `إكمال تحدي SBC: ${record.name}.`,\n            en: record.description?.trim() || `Complete ${record.name}.`,\n        },\n        sortOrder: index + 1,\n        visible: true,\n        variants: [variant(record, 'playstation'), variant(record, 'pc')],\n        media: record.imageURL\n            ? [\n                  {\n                      url: record.imageURL,\n                      alt: { ar: nameAr, en: record.name.trim() },\n                      sortOrder: 0,\n                  },\n              ]\n            : [],\n    };\n});\n\nreturn [\n    {\n        json: {\n            ...config,\n            valid: true,\n            failureReason: null,\n            sourceCount: records.length,\n            eligibleCount: products.length,\n            snapshot: {\n                schemaVersion: 1,\n                eventId: config.eventId,\n                runId: config.runId,\n                generatedAt: config.generatedAt,\n                completeSnapshot: true,\n                categories,\n                products,\n            },\n        },\n    },\n];\n"
+      },
+      "id": "prepare-sbc-snapshot-v1",
+      "name": "Prepare SBC Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        200
+      ],
+      "notes": "Source: nodes/prepare-snapshot.js"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst snapshot = item.snapshot;\n\nfunction fail(reason) {\n    return [{ json: { ...item, valid: false, failureReason: reason } }];\n}\n\nfunction exactKeys(value, expected) {\n    return (\n        value &&\n        typeof value === 'object' &&\n        !Array.isArray(value) &&\n        JSON.stringify(Object.keys(value)) === JSON.stringify(expected)\n    );\n}\n\nfunction unique(values) {\n    return new Set(values).size === values.length;\n}\n\nif (!item.valid || !snapshot)\n    return fail(item.failureReason || 'Catalog snapshot was not built');\nif (\n    !exactKeys(snapshot, [\n        'schemaVersion',\n        'eventId',\n        'runId',\n        'generatedAt',\n        'completeSnapshot',\n        'categories',\n        'products',\n    ])\n) {\n    return fail('Catalog snapshot top-level keys are not exact');\n}\nif (\n    snapshot.schemaVersion !== 1 ||\n    snapshot.completeSnapshot !== true ||\n    snapshot.eventId === snapshot.runId\n) {\n    return fail('Catalog snapshot metadata is invalid');\n}\nif (\n    !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}Z$/.test(snapshot.generatedAt)\n) {\n    return fail('Catalog snapshot generatedAt is invalid');\n}\nif (!Array.isArray(snapshot.categories) || snapshot.categories.length !== 4) {\n    return fail('Catalog snapshot must contain exactly four SBC categories');\n}\nif (\n    !Array.isArray(snapshot.products) ||\n    snapshot.products.length < 1 ||\n    snapshot.products.length > 2000\n) {\n    return fail('Catalog snapshot product count is invalid');\n}\n\nconst categoryIds = [];\nconst categorySlugs = [];\nfor (const category of snapshot.categories) {\n    if (\n        !exactKeys(category, [\n            'externalId',\n            'slug',\n            'name',\n            'description',\n            'sortOrder',\n            'visible',\n        ])\n    )\n        return fail('Category keys are not exact');\n    if (\n        !exactKeys(category.name, ['ar', 'en']) ||\n        !exactKeys(category.description, ['ar', 'en'])\n    )\n        return fail('Category localization is invalid');\n    if (\n        !category.externalId ||\n        !category.slug ||\n        !category.name.ar ||\n        !category.name.en ||\n        category.visible !== true\n    )\n        return fail('Category fields are invalid');\n    categoryIds.push(category.externalId);\n    categorySlugs.push(category.slug);\n}\nif (!unique(categoryIds) || !unique(categorySlugs))\n    return fail('Category identity is duplicated');\n\nconst productIds = [];\nconst productSlugs = [];\nconst variantIds = [];\nconst skus = [];\nfor (const product of snapshot.products) {\n    if (\n        !exactKeys(product, [\n            'externalId',\n            'categoryExternalId',\n            'slug',\n            'serviceType',\n            'name',\n            'description',\n            'sortOrder',\n            'visible',\n            'variants',\n            'media',\n        ])\n    )\n        return fail('Product keys are not exact');\n    if (product.serviceType !== 'sbc')\n        return fail('Product serviceType must be sbc');\n    if (!categoryIds.includes(product.categoryExternalId))\n        return fail('Product category relationship is invalid');\n    if (\n        !exactKeys(product.name, ['ar', 'en']) ||\n        !exactKeys(product.description, ['ar', 'en'])\n    )\n        return fail('Product localization is invalid');\n    if (\n        !product.externalId ||\n        !product.slug ||\n        !product.name.ar ||\n        !product.name.en ||\n        product.visible !== true\n    )\n        return fail('Product fields are invalid');\n    if (!Array.isArray(product.variants) || product.variants.length !== 2)\n        return fail('Every SBC product must contain exactly two variants');\n    if (!Array.isArray(product.media) || product.media.length > 1)\n        return fail('Product media is invalid');\n    productIds.push(product.externalId);\n    productSlugs.push(product.slug);\n\n    const platforms = [];\n    for (const variant of product.variants) {\n        if (\n            !exactKeys(variant, [\n                'externalId',\n                'sku',\n                'platform',\n                'market',\n                'currency',\n                'name',\n                'priceMinor',\n                'salePriceMinor',\n                'priceVersion',\n                'active',\n                'configuration',\n            ])\n        )\n            return fail('Variant keys are not exact');\n        if (!exactKeys(variant.name, ['ar', 'en']))\n            return fail('Variant localization is invalid');\n        if (\n            !variant.externalId ||\n            !variant.sku ||\n            !Number.isInteger(variant.priceMinor) ||\n            variant.priceMinor <= 0 ||\n            variant.salePriceMinor !== null ||\n            variant.priceVersion !== 1 ||\n            variant.active !== true\n        )\n            return fail('Variant fields are invalid');\n        if (\n            (variant.platform === 'playstation' &&\n                variant.market !== 'console') ||\n            (variant.platform === 'pc' && variant.market !== 'pc')\n        )\n            return fail('Variant platform and market do not match');\n        if (\n            !['playstation', 'pc'].includes(variant.platform) ||\n            variant.currency !== 'SAR'\n        )\n            return fail('Variant platform or currency is invalid');\n        if (\n            !variant.configuration ||\n            typeof variant.configuration !== 'object' ||\n            Array.isArray(variant.configuration)\n        )\n            return fail('Variant configuration is invalid');\n        platforms.push(variant.platform);\n        variantIds.push(variant.externalId);\n        skus.push(variant.sku);\n    }\n    if (JSON.stringify(platforms) !== JSON.stringify(['playstation', 'pc']))\n        return fail(\n            'Every SBC product must contain ordered PS and PC variants',\n        );\n\n    for (const media of product.media) {\n        if (\n            !exactKeys(media, ['url', 'alt', 'sortOrder']) ||\n            !exactKeys(media.alt, ['ar', 'en'])\n        )\n            return fail('Media keys are not exact');\n        let image;\n        try {\n            image = new URL(media.url);\n        } catch {\n            return fail('Media URL is invalid');\n        }\n        if (\n            image.protocol !== 'https:' ||\n            image.hostname !== 'assets.easysbc.io' ||\n            media.sortOrder !== 0\n        )\n            return fail('Media URL is not an approved EasySBC asset');\n    }\n}\n\nif (!unique(productIds)) return fail('Product externalId is duplicated');\nif (!unique(productSlugs)) return fail('Product slug is duplicated');\nif (!unique(variantIds)) return fail('Variant externalId is duplicated');\nif (!unique(skus)) return fail('Variant SKU is duplicated');\n\nreturn [\n    {\n        json: {\n            ...item,\n            valid: true,\n            failureReason: null,\n            catalogSnapshot: snapshot,\n        },\n    },\n];\n"
+      },
+      "id": "validate-sbc-snapshot-v1",
+      "name": "Validate SBC Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2340,
+        200
+      ],
+      "notes": "Source: nodes/validate-snapshot.js"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "snapshot-valid-sbc-v1",
+      "name": "Snapshot Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2580,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $(\"Config\").first().json.settings.mode }}",
+              "rightValue": "apply",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "apply-mode-sbc-v1",
+      "name": "Apply Mode?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2820,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst snapshot = item.catalogSnapshot;\n\nreturn [\n    {\n        json: {\n            status: 'dry_run',\n            publishAttempted: false,\n            categories: snapshot.categories.length,\n            products: snapshot.products.length,\n            variants: snapshot.products.reduce(\n                (total, product) => total + product.variants.length,\n                0,\n            ),\n        },\n    },\n];\n"
+      },
+      "id": "dry-run-summary-sbc-v1",
+      "name": "Dry Run Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3060,
+        360
+      ],
+      "notes": "Source: nodes/dry-run-summary.js"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\n\nif (!item.valid || !item.catalogSnapshot) {\n    return [\n        {\n            json: {\n                ...item,\n                catalogSigned: false,\n                failureReason:\n                    item.failureReason ||\n                    'Cannot sign an invalid catalog snapshot',\n            },\n        },\n    ];\n}\n\nconst secret = $env.N8N_SBC_CATALOG_SECRET;\nif (!secret) {\n    return [\n        {\n            json: {\n                ...item,\n                catalogSigned: false,\n                failureReason:\n                    'N8N_SBC_CATALOG_SECRET is not configured on the n8n host',\n            },\n        },\n    ];\n}\n\nconst crypto = require('crypto');\nconst timestamp = String(Math.floor(Date.now() / 1000));\nconst event = item.catalogSnapshot.eventId;\nconst rawBody = JSON.stringify(item.catalogSnapshot);\nconst canonical = `${timestamp}\\n${event}\\nn8n-sbc\\n${rawBody}`;\nconst signature = crypto\n    .createHmac('sha256', secret)\n    .update(canonical)\n    .digest('hex');\n\nreturn [\n    {\n        json: {\n            ...item,\n            catalogSigned: true,\n            timestamp,\n            event,\n            rawBody,\n            signature,\n        },\n    },\n];\n"
+      },
+      "id": "sign-catalog-sbc-v1",
+      "name": "Sign Catalog Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3060,
+        120
+      ],
+      "notes": "Source: nodes/sign-catalog.js"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.catalogSigned }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "catalog-signed-sbc-v1",
+      "name": "Catalog Signed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3300,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $(\"Config\").first().json.settings.catalogEndpoint }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-ArabUT-Timestamp",
+              "value": "={{ $(\"Sign Catalog Snapshot\").first().json.timestamp }}"
+            },
+            {
+              "name": "X-ArabUT-Event",
+              "value": "={{ $(\"Sign Catalog Snapshot\").first().json.event }}"
+            },
+            {
+              "name": "X-ArabUT-Signature",
+              "value": "={{ $(\"Sign Catalog Snapshot\").first().json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $(\"Sign Catalog Snapshot\").first().json.rawBody }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "publish-sbc-catalog-v1",
+      "name": "Publish SBC Catalog",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3540,
+        40
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "CONFIGURE_ARABUT_SBC_CATALOG_CREDENTIAL_ID",
+          "name": "ArabUT SBC Catalog API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\nconst response = $input.first().json;\nconst submitted = $('Sign Catalog Snapshot').first().json.catalogSnapshot;\nconst statusCode = Number(response.statusCode || 0);\nlet body = response.body ?? response;\n\nif (typeof body === 'string') {\n    try {\n        body = JSON.parse(body);\n    } catch {}\n}\n\nconst completed =\n    statusCode === 201 &&\n    body?.data?.runId === submitted.runId &&\n    body?.data?.status === 'completed' &&\n    Number.isInteger(body?.data?.applied) &&\n    Number.isInteger(body?.data?.archived);\nconst replayed =\n    statusCode === 409 && body?.error?.code === 'catalog_snapshot_replayed';\nconst publishOk = completed || replayed;\n\nreturn [\n    {\n        json: {\n            publishOk,\n            replayed,\n            failureReason: publishOk\n                ? null\n                : `Laravel did not confirm the SBC catalog snapshot (HTTP ${statusCode || 'unknown'})`,\n            publishResponse: body,\n            catalogSnapshot: submitted,\n        },\n    },\n];\n"
+      },
+      "id": "evaluate-publish-sbc-v1",
+      "name": "Evaluate Publish Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3780,
+        40
+      ],
+      "notes": "Source: nodes/evaluate-publish.js"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.publishOk }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "publish-ok-sbc-v1",
+      "name": "Publish OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        4020,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst snapshot = item.catalogSnapshot;\n\nreturn [\n    {\n        json: {\n            status: item.replayed ? 'replayed' : 'published',\n            publishAttempted: true,\n            runId: snapshot.runId,\n            products: snapshot.products.length,\n            variants: snapshot.products.reduce(\n                (total, product) => total + product.variants.length,\n                0,\n            ),\n            publishResponse: item.publishResponse,\n        },\n    },\n];\n"
+      },
+      "id": "success-summary-sbc-v1",
+      "name": "Success Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4260,
+        -40
+      ],
+      "notes": "Source: nodes/success-summary.js"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst reason = item.failureReason || 'SBC catalog workflow failed closed';\nconst to = $env.OPS_WHATSAPP_TARGET || '';\n\nreturn [\n    {\n        json: {\n            alertEnabled: Boolean(to),\n            to,\n            body: `SBC catalog failed closed. The last accepted catalog remains active. Reason: ${reason}`,\n            failureReason: reason,\n        },\n    },\n];\n"
+      },
+      "id": "failure-alert-sbc-v1",
+      "name": "Prepare Failure Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2820,
+        600
+      ],
+      "notes": "Source: nodes/failure-alert.js"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.alertEnabled }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "alert-configured-sbc-v1",
+      "name": "Alert Configured?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3060,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gate.whapi.cloud/messages/text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ to: $json.to, body: $json.body }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "whapi-failure-alert-sbc-v1",
+      "name": "Whapi Failure Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3300,
+        520
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "CONFIGURE_WHAPI_CREDENTIAL_ID",
+          "name": "Whapi Alerts"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\n\nreturn [\n    {\n        json: {\n            status: 'failed_closed',\n            alerted: false,\n            failureReason: item.failureReason,\n        },\n    },\n];\n"
+      },
+      "id": "failure-summary-sbc-v1",
+      "name": "Failure Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3300,
+        680
+      ],
+      "notes": "Source: nodes/failure-summary.js"
+    }
+  ],
+  "connections": {
+    "Run SBC Catalog Now": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 2 Hours": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Sign Pricing Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign Pricing Read": {
+      "main": [
+        [
+          {
+            "node": "Pricing Read Signed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pricing Read Signed?": {
+      "main": [
+        [
+          {
+            "node": "Read Coins Bases",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Coins Bases": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Pricing Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Pricing Read": {
+      "main": [
+        [
+          {
+            "node": "Pricing Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pricing Ready?": {
+      "main": [
+        [
+          {
+            "node": "Fetch EasySBC Sets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch EasySBC Sets": {
+      "main": [
+        [
+          {
+            "node": "Prepare SBC Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare SBC Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Validate SBC Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate SBC Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Snapshot Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Snapshot Valid?": {
+      "main": [
+        [
+          {
+            "node": "Apply Mode?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Mode?": {
+      "main": [
+        [
+          {
+            "node": "Sign Catalog Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Dry Run Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign Catalog Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Catalog Signed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catalog Signed?": {
+      "main": [
+        [
+          {
+            "node": "Publish SBC Catalog",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish SBC Catalog": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Publish Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Publish Result": {
+      "main": [
+        [
+          {
+            "node": "Publish OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish OK?": {
+      "main": [
+        [
+          {
+            "node": "Success Summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Failure Alert": {
+      "main": [
+        [
+          {
+            "node": "Alert Configured?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Configured?": {
+      "main": [
+        [
+          {
+            "node": "Whapi Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failure Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "SBC_CATALOG_V1_VERSION",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
