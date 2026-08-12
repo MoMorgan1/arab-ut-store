@@ -50,7 +50,7 @@ php artisan schedule:run
 
 - Coins pricing was initialized from the verified live Next.js production configuration so the replacement preserves the current formula.
 - SBC, Objectives, FUT Champions, and Rivals remain automation-owned and arrive through the signed n8n catalog snapshot endpoint documented in `docs/api/n8n-catalog-v1.md`.
-- Reviews are pulled by the scheduled `reviews:refresh` command.
+- Historical Salla reviews are archived once with the production maintenance workflow documented in `docs/operations/storefront-runbook.md`. Customer pages read only the local database.
 - n8n credentials must be supplied through the approved secure access channel and placed only in Hostinger/n8n secret storage. Never paste them into issues, pull requests, logs, or chat.
 
 Until the n8n handoff is configured, category pages honestly show an empty catalog and reviews show their existing empty state; the storefront never fabricates products or testimonials.

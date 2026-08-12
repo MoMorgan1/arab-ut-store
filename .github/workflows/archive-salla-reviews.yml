@@ -1,0 +1,54 @@
+name: archive-salla-reviews
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Preview counts or apply the complete historical archive
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - apply
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hostinger-production-maintenance
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+    env:
+      HOSTINGER_SSH_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
+      HOSTINGER_SSH_PORT: ${{ secrets.HOSTINGER_SSH_PORT }}
+      HOSTINGER_SSH_USER: ${{ secrets.HOSTINGER_SSH_USER }}
+      HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+      HOSTINGER_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+      HOSTINGER_DEPLOY_ROOT: ${{ vars.HOSTINGER_DEPLOY_ROOT }}
+      ARCHIVE_MODE: ${{ inputs.mode }}
+
+    steps:
+      - name: Configure pinned Hostinger SSH identity
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > ~/.ssh/hostinger
+          chmod 600 ~/.ssh/hostinger
+          printf '%s\n' "$HOSTINGER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Preview or apply the PII-free archive
+        run: |
+          apply_flag=''
+          if [ "$ARCHIVE_MODE" = 'apply' ]; then
+            apply_flag='--apply'
+          fi
+
+          ssh -i ~/.ssh/hostinger -p "$HOSTINGER_SSH_PORT" \
+            "$HOSTINGER_SSH_USER@$HOSTINGER_SSH_HOST" \
+            "cd '$HOSTINGER_DEPLOY_ROOT/current' && php artisan reviews:import-salla-archive --from-config $apply_flag"
