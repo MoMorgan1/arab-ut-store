@@ -9,20 +9,19 @@ if (
 ) {
     const globalData = $getWorkflowStaticData('global');
     const state = globalData.sbcCatalogV1 ?? {};
-    const previous = state.lastSuccessfulCounts ?? {};
+    const lastSuccessfulItems = snapshot.products.map((product) => ({
+        sourceId: String(product.variants[0].configuration.sourceId),
+        sourceName: product.name.en,
+        expiresAt: product.variants[0].configuration.expiresAt,
+    }));
     globalData.sbcCatalogV1 = {
         ...state,
         lastSuccessfulCounts: {
-            sourceCount: Math.max(
-                Number(previous.sourceCount) || 0,
-                Number(item.sourceCount) || 0,
-            ),
-            eligibleCount: Math.max(
-                Number(previous.eligibleCount) || 0,
-                Number(item.eligibleCount) || 0,
-            ),
+            sourceCount: Number(item.sourceCount),
+            eligibleCount: Number(item.eligibleCount),
             completedAt: new Date().toISOString(),
         },
+        lastSuccessfulItems,
     };
 }
 

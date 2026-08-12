@@ -9,12 +9,15 @@ It has no external storefront mutation or product-platform dependency. Laravel a
 - Manual Trigger plus a two-hour Schedule Trigger.
 - Default `Config.settings.mode` is `dry_run`; dry runs have no graph path to the catalog POST.
 - EasySBC request: `GET https://api-fc26.easysbc.io/sbc-sets?page=1&limit=200`.
-- Fails closed below the manually approved 56-source/39-eligible bootstrap baseline, below 85%/80% of the last successful counts, at 200 records (pagination ambiguity), on duplicate IDs, or on any malformed complete source record. Successful counts can advance but never decrease automatically.
+- Bootstrap is pinned to the manually reviewed 56-source/39-eligible observation captured at `2026-08-12T05:46:36.701Z`, including every eligible source ID, exact source name, and expiry.
+- After an exact fresh HTTP 201 completion, workflow static data replaces that bootstrap with the accepted snapshot's public source IDs, names, expiries, and counts. Dry runs, failures, and replay responses never mutate this durable safety state; no credentials or customer data are stored there.
+- Every later run fails closed when the source falls below 85% of the last successful source count or when a previously accepted ID disappears unexpectedly. A prior item may leave only when its stored expiry is inside the configured lead window or its current source record is present and deterministically ineligible. New IDs are allowed, while same-count replacement/churn and source-name changes are rejected. After permitted departures, the remaining eligible count must retain at least 80% of the adjusted prior set.
+- Also fails closed at 200 records (pagination ambiguity), on duplicate IDs, or on any malformed complete source record.
 - Categories: `players`, `upgrades` (source categories 2, 3, and 6), `icons`, and `foundations`.
 - Eligibility: active, more than two hours before expiry, no Bronze/Silver names, PlayStation coins at least 1,500, non-repeatable PlayStation coins at least 20,000, and a positive PC coin value.
 - Exactly one PlayStation and one PC variant per product. v1 prices one completion even when the source challenge is repeatable; repeatability metadata is retained in `configuration`, but there is no repeat selector.
 - Images are optional. A supplied image must be HTTPS on `assets.easysbc.io`.
-- English names remain byte-for-byte exact. Missing Arabic names are sent in one exact ID/name batch through `Google Gemini(PaLM) Api account 2`; output must contain the same IDs, count, order-independent source names, Arabic script, no Latin letters, and at most 120 characters. Validation is atomic: any missing, extra, mismatched, mixed-language, or malformed entry fails the run and leaves the cache unchanged.
+- English names remain byte-for-byte exact. Missing Arabic names are sent in one exact ID/name batch through `Google Gemini(PaLM) Api account 2` with temperature `0` and `maxOutputTokens: 8192`; output must contain the same IDs, count, order-independent source names, Arabic script, no Latin letters, and at most 120 characters. Validation is atomic: any missing, extra, mismatched, mixed-language, or malformed entry fails the run and leaves the cache unchanged.
 - Every invalid branch ends in `Stop And Error` after the optional Whapi attempt, so a failed scheduled execution is visibly nonzero.
 - Dry-run reports source/eligible safety counts. It reports create/update/archive as unavailable—not fabricated—because Laravel does not yet expose an authenticated current `n8n-sbc` snapshot-read endpoint.
 
@@ -75,9 +78,9 @@ npm test
 1. Deploy and verify the signed Laravel pricing-read and SBC snapshot endpoints.
 2. Import `workflow.json`; keep it inactive and keep `mode: 'dry_run'`.
 3. Attach the four credentials and set the host environment values. On Hostinger, set `N8N_CATALOG_MEDIA_HOSTS=assets.easysbc.io` before any apply.
-4. Run manually in dry-run. Review the observed 56 source / 39 eligible bootstrap counts, exact products/variants, prices, translation cache results, and the explicit `publishAttempted: false` summary. Operator approval is represented by the versioned `Config.settings.approvedBaseline`; update it only after reviewing a complete dry-run.
+4. Run manually in dry-run. Confirm the source still matches the versioned bootstrap observation: 56 source records and the exact 39 eligible IDs, names, and expiries captured at `2026-08-12T05:46:36.701Z`. Review products/variants, prices, translation cache results, expected departures/new IDs, and the explicit `publishAttempted: false` summary. Update `Config.settings.approvedBaseline` only after manually reviewing a new complete source observation.
 5. Change the versioned `Config` mode to `apply`, rebuild/re-import, then run one controlled apply.
-6. Require HTTP 201 with the same `runId` and `status: completed`; an exact replay 409 is treated as the already-committed request. HTTP 422 or 5xx fails closed and keeps the last accepted catalog.
+6. Require a fresh HTTP 201 with the same `runId` and `status: completed` before advancing the durable identity/count state. An exact replay 409 is treated as the already-committed request but does not mutate state. HTTP 422 or 5xx fails closed and keeps the last accepted catalog and guard state.
 7. Verify the Laravel catalog and storefront, and verify mirrored media counts match products with supplied EasySBC images. Only then activate the two-hour schedule.
 
 The current dry-run cannot calculate an absolute `wouldArchive` count because there is no authenticated Laravel read endpoint for the current `n8n-sbc` snapshot. Keep the workflow inactive until the approved baseline, translation cache, and mirrored-media checks are complete. Adding that read endpoint is the follow-up needed for exact create/update/archive previews.

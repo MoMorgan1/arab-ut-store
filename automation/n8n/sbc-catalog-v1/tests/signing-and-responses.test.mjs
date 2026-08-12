@@ -202,11 +202,26 @@ test('dry run summary explicitly records that no publish was attempted', async (
     });
 });
 
-test('only an exact fresh 201 completion advances durable safety counts and counts never decrease', async () => {
+test('only exact fresh 201 completions replace durable public identity and count state', async () => {
     const staticData = {};
+    const publishedAt = '2026-08-12T12:00:00.000Z';
     const snapshot = {
         runId: '01K2EXAMPLE000000000000002',
-        products: [{ variants: [{}, {}] }],
+        products: [
+            {
+                externalId: 'easysbc-sbc-1000',
+                name: { en: 'Player Challenge 0' },
+                variants: [
+                    {
+                        configuration: {
+                            sourceId: '1000',
+                            expiresAt: '2026-08-19T04:00:00.000Z',
+                        },
+                    },
+                    {},
+                ],
+            },
+        ],
     };
 
     await runNode('success-summary', {
@@ -228,6 +243,17 @@ test('only an exact fresh 201 completion advances durable safety counts and coun
         eligibleCount: 39,
         completedAt: '2026-08-12T12:00:00.000Z',
     });
+    assert.deepEqual(staticData.sbcCatalogV1.lastSuccessfulItems, [
+        {
+            sourceId: '1000',
+            sourceName: 'Player Challenge 0',
+            expiresAt: '2026-08-19T04:00:00.000Z',
+        },
+    ]);
+
+    const firstItems = structuredClone(
+        staticData.sbcCatalogV1.lastSuccessfulItems,
+    );
 
     await runNode('success-summary', {
         items: [
@@ -243,11 +269,12 @@ test('only an exact fresh 201 completion advances durable safety counts and coun
         ],
         staticData,
     });
-    assert.equal(staticData.sbcCatalogV1.lastSuccessfulCounts.sourceCount, 56);
+    assert.equal(staticData.sbcCatalogV1.lastSuccessfulCounts.sourceCount, 50);
     assert.equal(
         staticData.sbcCatalogV1.lastSuccessfulCounts.eligibleCount,
-        39,
+        30,
     );
+    assert.deepEqual(staticData.sbcCatalogV1.lastSuccessfulItems, firstItems);
 
     await runNode('success-summary', {
         items: [
@@ -263,9 +290,14 @@ test('only an exact fresh 201 completion advances durable safety counts and coun
         ],
         staticData,
     });
-    assert.equal(staticData.sbcCatalogV1.lastSuccessfulCounts.sourceCount, 56);
+    assert.equal(staticData.sbcCatalogV1.lastSuccessfulCounts.sourceCount, 50);
     assert.equal(
         staticData.sbcCatalogV1.lastSuccessfulCounts.eligibleCount,
-        39,
+        30,
+    );
+    assert.deepEqual(staticData.sbcCatalogV1.lastSuccessfulItems, firstItems);
+    assert.equal(
+        staticData.sbcCatalogV1.lastSuccessfulCounts.completedAt,
+        publishedAt,
     );
 });

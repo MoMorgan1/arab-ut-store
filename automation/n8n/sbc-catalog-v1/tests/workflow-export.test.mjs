@@ -150,6 +150,8 @@ test('translation enrichment uses the approved Gemini credential and exact cache
         id: 'WgUWtkjmfC1iEIMi',
         name: 'Google Gemini(PaLM) Api account 2',
     });
+    assert.equal(model.parameters.options.temperature, 0);
+    assert.equal(model.parameters.options.maxOutputTokens, 8192);
     assert.deepEqual(
         exported.connections['Gemini Translation Model'].ai_languageModel[0],
         [{ node: 'Translate SBC Names', type: 'ai_languageModel', index: 0 }],
@@ -169,6 +171,10 @@ test('production config contains the approved 56/39 bootstrap baseline', async (
 
     assert.match(configSource, /sourceCount:\s*56/);
     assert.match(configSource, /eligibleCount:\s*39/);
+    assert.match(configSource, /observedAt:\s*'2026-08-12T05:46:36\.701Z'/);
+    assert.match(configSource, /const approvedEligibleItems = \[/);
+    assert.match(configSource, /eligibleItems:\s*approvedEligibleItems/);
+    assert.doesNotMatch(configSource, /approvedAt:\s*'2026-08-12T12:/);
     assert.match(configSource, /approvedBy:\s*'operator'/);
 });
 

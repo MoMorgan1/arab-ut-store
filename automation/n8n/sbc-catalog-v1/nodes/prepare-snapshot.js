@@ -97,14 +97,19 @@ for (let index = 0; index < records.length; index += 1) {
 }
 
 const now = Math.floor(new Date(config.generatedAt).getTime() / 1000);
-const eligible = records.filter((record) => {
-    if (!record.active) return false;
-    if (record.endTime <= now + settings.minimumExpiryLeadSeconds) return false;
-    if (/\b(?:bronze|silver)\b/i.test(record.name)) return false;
-    if (Number(record.psPrice) < 1500) return false;
-    if (!record.repeatable && Number(record.psPrice) < 20_000) return false;
-    return Number(record.pcPrice) > 0;
-});
+const expiryCutoff = now + settings.minimumExpiryLeadSeconds;
+function ineligibilityReason(record) {
+    if (!record.active) return 'inactive';
+    if (record.endTime <= expiryCutoff) return 'inside_expiry_lead';
+    if (/\b(?:bronze|silver)\b/i.test(record.name)) return 'excluded_name';
+    if (Number(record.psPrice) < 1500) return 'ps_below_minimum';
+    if (!record.repeatable && Number(record.psPrice) < 20_000)
+        return 'nonrepeatable_ps_below_minimum';
+    if (Number(record.pcPrice) <= 0) return 'pc_not_positive';
+    return null;
+}
+
+const eligible = records.filter((record) => !ineligibilityReason(record));
 
 if (eligible.length === 0)
     return fail('EasySBC source produced no eligible challenges');
@@ -117,8 +122,12 @@ if (
     !Number.isInteger(baseline.eligibleCount) ||
     baseline.eligibleCount <= 0 ||
     baseline.approvedBy !== 'operator' ||
+    typeof baseline.observedAt !== 'string' ||
+    !baseline.observedAt ||
     typeof baseline.approvedAt !== 'string' ||
-    !baseline.approvedAt
+    !baseline.approvedAt ||
+    !Array.isArray(baseline.eligibleItems) ||
+    baseline.eligibleItems.length !== baseline.eligibleCount
 ) {
     return fail(
         'A manually approved operator bootstrap baseline is required before SBC catalog apply',
@@ -128,30 +137,100 @@ if (
 const globalData = $getWorkflowStaticData('global');
 const workflowState = globalData.sbcCatalogV1 ?? {};
 const lastCounts = workflowState.lastSuccessfulCounts;
+const previousItems = Array.isArray(workflowState.lastSuccessfulItems)
+    ? workflowState.lastSuccessfulItems
+    : baseline.eligibleItems;
 const sourceSafetyFloor = Math.max(
     settings.sourceMinCount,
-    baseline.sourceCount,
     lastCounts?.sourceCount
         ? Math.floor(Number(lastCounts.sourceCount) * 0.85)
-        : 0,
-);
-const eligibleSafetyFloor = Math.max(
-    1,
-    baseline.eligibleCount,
-    lastCounts?.eligibleCount
-        ? Math.floor(Number(lastCounts.eligibleCount) * 0.8)
-        : 0,
+        : baseline.sourceCount,
 );
 if (records.length < sourceSafetyFloor) {
     return fail(
         `EasySBC source count ${records.length} is below source safety floor of ${sourceSafetyFloor}`,
     );
 }
-if (eligible.length < eligibleSafetyFloor) {
+
+const sourceById = new Map(
+    records.map((record) => [String(record.id), record]),
+);
+const eligibleById = new Map(
+    eligible.map((record) => [String(record.id), record]),
+);
+const previousIds = new Set();
+const expectedDepartures = [];
+const unexpectedMissing = [];
+for (const previous of previousItems) {
+    if (
+        !previous ||
+        typeof previous.sourceId !== 'string' ||
+        !previous.sourceId ||
+        typeof previous.sourceName !== 'string' ||
+        !previous.sourceName ||
+        typeof previous.expiresAt !== 'string' ||
+        !previous.expiresAt ||
+        previousIds.has(previous.sourceId)
+    ) {
+        return fail('SBC safety baseline contains an invalid prior item');
+    }
+    previousIds.add(previous.sourceId);
+    const eligibleRecord = eligibleById.get(previous.sourceId);
+    if (eligibleRecord) {
+        if (eligibleRecord.name.trim() !== previous.sourceName) {
+            return fail(
+                `EasySBC source name changed for prior id ${previous.sourceId}`,
+            );
+        }
+        continue;
+    }
+
+    const sourceRecord = sourceById.get(previous.sourceId);
+    if (sourceRecord) {
+        const reason = ineligibilityReason(sourceRecord);
+        if (!reason) {
+            unexpectedMissing.push(previous.sourceId);
+        } else {
+            expectedDepartures.push({ sourceId: previous.sourceId, reason });
+        }
+        continue;
+    }
+
+    const previousExpiry = Date.parse(previous.expiresAt);
+    if (
+        Number.isFinite(previousExpiry) &&
+        previousExpiry <= expiryCutoff * 1000
+    ) {
+        expectedDepartures.push({
+            sourceId: previous.sourceId,
+            reason: 'expired_or_inside_expiry_lead',
+        });
+    } else {
+        unexpectedMissing.push(previous.sourceId);
+    }
+}
+if (unexpectedMissing.length) {
     return fail(
-        `EasySBC eligible count ${eligible.length} is below eligible safety floor of ${eligibleSafetyFloor}`,
+        `EasySBC has unexpected missing prior IDs: ${unexpectedMissing.join(', ')}`,
     );
 }
+
+const priorEligibleAfterExpectedDepartures = Math.max(
+    0,
+    previousItems.length - expectedDepartures.length,
+);
+const eligibleSafetyFloor = Math.max(
+    1,
+    Math.floor(priorEligibleAfterExpectedDepartures * 0.8),
+);
+if (eligible.length < eligibleSafetyFloor) {
+    return fail(
+        `EasySBC eligible count ${eligible.length} is below identity-adjusted safety floor of ${eligibleSafetyFloor}`,
+    );
+}
+const newSourceIds = eligible
+    .map((record) => String(record.id))
+    .filter((sourceId) => !previousIds.has(sourceId));
 
 const translationCache = workflowState.translations ?? {};
 function approvedArabicName(record) {
@@ -327,6 +406,9 @@ return [
             eligibleCount: products.length,
             sourceSafetyFloor,
             eligibleSafetyFloor,
+            expectedDepartures,
+            unexpectedMissing: [],
+            newSourceIds,
             snapshot: {
                 schemaVersion: 1,
                 eventId: config.eventId,

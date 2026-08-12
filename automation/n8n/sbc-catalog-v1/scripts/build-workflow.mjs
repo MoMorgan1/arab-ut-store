@@ -200,7 +200,9 @@ const nodes = [
         onError: 'continueRegularOutput',
     },
     {
-        parameters: { options: {} },
+        parameters: {
+            options: { temperature: 0, maxOutputTokens: 8192 },
+        },
         id: 'gemini-translation-model-sbc-v1',
         name: 'Gemini Translation Model',
         type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',

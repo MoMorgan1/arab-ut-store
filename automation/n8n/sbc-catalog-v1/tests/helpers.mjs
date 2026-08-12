@@ -72,12 +72,7 @@ export function config(overrides = {}) {
             sourceMinCount: 20,
             sourceLimit: 200,
             minimumExpiryLeadSeconds: 7200,
-            approvedBaseline: {
-                sourceCount: 20,
-                eligibleCount: 1,
-                approvedAt: '2026-08-12T12:00:00.000Z',
-                approvedBy: 'operator',
-            },
+            approvedBaseline: approvedBaseline(sourceRecords(20)),
             ...overrides,
         },
         eventId: '01K2EXAMPLE000000000000001',
@@ -147,4 +142,24 @@ export function translations(records) {
             },
         ]),
     );
+}
+
+export function publishedItems(records) {
+    return records.map((record) => ({
+        sourceId: String(record.id),
+        sourceName: record.name,
+        expiresAt: new Date(record.endTime * 1000).toISOString(),
+    }));
+}
+
+export function approvedBaseline(records, overrides = {}) {
+    return {
+        sourceCount: records.length,
+        eligibleCount: records.length,
+        observedAt: '2026-08-12T05:46:36.701Z',
+        approvedAt: '2026-08-12T05:46:36.701Z',
+        approvedBy: 'operator',
+        eligibleItems: publishedItems(records),
+        ...overrides,
+    };
 }

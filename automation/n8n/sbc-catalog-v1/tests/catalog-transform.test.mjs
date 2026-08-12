@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+    approvedBaseline,
     config,
     pricingRead,
+    publishedItems,
     runNode,
     sourceRecord,
     sourceRecords,
@@ -20,10 +22,15 @@ async function prepare(
         },
     } = {},
 ) {
+    const configSettings = {
+        approvedBaseline: approvedBaseline(records),
+        ...settings,
+    };
+
     return (
         await runNode('prepare-snapshot', {
             named: {
-                Config: config(settings),
+                Config: config(configSettings),
                 'Evaluate Pricing Read': { valid: true, pricing },
             },
             items: records,
@@ -131,12 +138,7 @@ test('legacy one-completion pricing uses every audited multiplier boundary', asy
     const prepared = await prepare(records, {
         settings: {
             sourceMinCount: 1,
-            approvedBaseline: {
-                sourceCount: 1,
-                eligibleCount: 1,
-                approvedAt: '2026-08-12T12:00:00.000Z',
-                approvedBy: 'operator',
-            },
+            approvedBaseline: approvedBaseline(records),
         },
     });
     assert.equal(prepared.valid, true, prepared.failureReason);
@@ -217,7 +219,7 @@ test('eligibility is deterministic and keeps image omission non-fatal', async ()
     assert.deepEqual(prepared.snapshot.products[0].media, []);
 });
 
-test('approved and durable baselines reject a partial source before a snapshot can be published', async (t) => {
+test('approved and durable baselines reject partial or replacement sources before publish', async (t) => {
     await t.test(
         'source count cannot fall below 85% of the last successful count',
         async () => {
@@ -228,12 +230,7 @@ test('approved and durable baselines reject a partial source before a snapshot c
             const prepared = await prepare(records, {
                 settings: {
                     sourceMinCount: 1,
-                    approvedBaseline: {
-                        sourceCount: 1,
-                        eligibleCount: 1,
-                        approvedAt: '2026-08-12T12:00:00.000Z',
-                        approvedBy: 'operator',
-                    },
+                    approvedBaseline: approvedBaseline(records),
                 },
                 staticData: {
                     sbcCatalogV1: {
@@ -242,6 +239,7 @@ test('approved and durable baselines reject a partial source before a snapshot c
                             sourceCount: 100,
                             eligibleCount: 20,
                         },
+                        lastSuccessfulItems: publishedItems(records),
                     },
                 },
             });
@@ -253,43 +251,117 @@ test('approved and durable baselines reject a partial source before a snapshot c
     );
 
     await t.test(
-        'eligible count cannot fall below 80% of the last successful count',
+        'same-count entire replacement fails identity validation',
         async () => {
-            const records = sourceRecords(80, {
-                repeatable: true,
-                repeatabilityMode: 'UNLIMITED',
-            }).map((record, index) =>
-                index < 17 ? { ...record, active: false } : record,
+            const previous = sourceRecords(20);
+            const replacement = Array.from({ length: 20 }, (_, index) =>
+                sourceRecord(index + 100),
             );
-            const prepared = await prepare(records, {
+            const prepared = await prepare(replacement, {
                 settings: {
                     sourceMinCount: 1,
-                    approvedBaseline: {
-                        sourceCount: 1,
-                        eligibleCount: 1,
-                        approvedAt: '2026-08-12T12:00:00.000Z',
-                        approvedBy: 'operator',
-                    },
+                    approvedBaseline: approvedBaseline(previous),
                 },
                 staticData: {
-                    sbcCatalogV1: {
-                        translations: translations(records),
-                        lastSuccessfulCounts: {
-                            sourceCount: 80,
-                            eligibleCount: 80,
-                        },
-                    },
+                    sbcCatalogV1: { translations: translations(replacement) },
                 },
             });
 
             assert.equal(prepared.valid, false);
-            assert.match(
-                prepared.failureReason,
-                /eligible safety floor of 64/i,
-            );
+            assert.match(prepared.failureReason, /unexpected missing.*1000/i);
             assert.equal(prepared.snapshot, undefined);
         },
     );
+});
+
+test('identity-aware safety permits only expected catalog departures and new arrivals', async (t) => {
+    const previous = sourceRecords(20);
+    const stateFor = (current) => ({
+        sbcCatalogV1: {
+            translations: translations(current),
+            lastSuccessfulCounts: { sourceCount: 20, eligibleCount: 20 },
+            lastSuccessfulItems: publishedItems(previous),
+        },
+    });
+    const settings = {
+        sourceMinCount: 1,
+        approvedBaseline: approvedBaseline(previous),
+    };
+
+    await t.test(
+        'an omitted prior item inside the expiry lead passes',
+        async () => {
+            const expiring = {
+                ...previous[0],
+                endTime: Math.floor(
+                    new Date('2026-08-12T13:00:00.000Z') / 1000,
+                ),
+            };
+            const previousWithExpiry = [expiring, ...previous.slice(1)];
+            const current = previousWithExpiry.slice(1);
+            const staticData = {
+                sbcCatalogV1: {
+                    translations: translations(current),
+                    lastSuccessfulCounts: {
+                        sourceCount: 20,
+                        eligibleCount: 20,
+                    },
+                    lastSuccessfulItems: publishedItems(previousWithExpiry),
+                },
+            };
+            const prepared = await prepare(current, {
+                settings: {
+                    ...settings,
+                    approvedBaseline: approvedBaseline(previousWithExpiry),
+                },
+                staticData,
+            });
+
+            assert.equal(prepared.valid, true, prepared.failureReason);
+            assert.equal(prepared.expectedDepartures.length, 1);
+            assert.equal(prepared.expectedDepartures[0].sourceId, '1000');
+        },
+    );
+
+    await t.test(
+        'a present but deterministically ineligible prior item can leave',
+        async () => {
+            const current = previous.map((record, index) =>
+                index === 0 ? { ...record, active: false } : record,
+            );
+            const prepared = await prepare(current, {
+                settings,
+                staticData: stateFor(current),
+            });
+
+            assert.equal(prepared.valid, true, prepared.failureReason);
+            assert.equal(prepared.snapshot.products.length, 19);
+            assert.equal(prepared.expectedDepartures[0].reason, 'inactive');
+        },
+    );
+
+    await t.test('an unexpired omitted prior item fails closed', async () => {
+        const current = previous.slice(1);
+        const prepared = await prepare(current, {
+            settings,
+            staticData: stateFor(current),
+        });
+
+        assert.equal(prepared.valid, false);
+        assert.match(prepared.failureReason, /unexpected missing.*1000/i);
+    });
+
+    await t.test('a new eligible source ID is allowed', async () => {
+        const current = [...previous, sourceRecord(20)];
+        const prepared = await prepare(current, {
+            settings,
+            staticData: stateFor(current),
+        });
+
+        assert.equal(prepared.valid, true, prepared.failureReason);
+        assert.equal(prepared.snapshot.products.length, 21);
+        assert.deepEqual(prepared.newSourceIds, ['1020']);
+    });
 });
 
 test('eligible source names require an exact reviewed Arabic-only cached translation', async (t) => {
