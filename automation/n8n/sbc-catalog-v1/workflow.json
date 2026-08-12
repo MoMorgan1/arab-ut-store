@@ -35,7 +35,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\n// SBC Catalog v1 settings. Secrets remain in n8n environment and Credentials.\n\nconst alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';\n\nfunction ulid() {\n    let time = Date.now();\n    let timestamp = '';\n    for (let index = 0; index < 10; index += 1) {\n        timestamp = alphabet[time % 32] + timestamp;\n        time = Math.floor(time / 32);\n    }\n\n    let random = '';\n    for (let index = 0; index < 16; index += 1) {\n        random += alphabet[Math.floor(Math.random() * alphabet.length)];\n    }\n\n    return timestamp + random;\n}\n\nfunction generatedAt() {\n    return new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n}\n\nreturn [\n    {\n        json: {\n            settings: {\n                mode: 'dry_run',\n                pricingEndpoint:\n                    'https://store.arab-ut.com/api/automation/v1/pricing/coins/sbc-bases',\n                pricingPath: '/api/automation/v1/pricing/coins/sbc-bases',\n                sourceEndpoint:\n                    'https://api-fc26.easysbc.io/sbc-sets?page=1&limit=200',\n                catalogEndpoint:\n                    'https://store.arab-ut.com/api/automation/v1/catalog/sbc/snapshots',\n                catalogSource: 'n8n-sbc',\n                sourceMinCount: 20,\n                sourceLimit: 200,\n                minimumExpiryLeadSeconds: 7200,\n            },\n            eventId: ulid(),\n            runId: ulid(),\n            generatedAt: generatedAt(),\n        },\n    },\n];\n"
+        "jsCode": "/* eslint-disable */\n// SBC Catalog v1 settings. Secrets remain in n8n environment and Credentials.\n\nconst alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';\n\nfunction ulid() {\n    let time = Date.now();\n    let timestamp = '';\n    for (let index = 0; index < 10; index += 1) {\n        timestamp = alphabet[time % 32] + timestamp;\n        time = Math.floor(time / 32);\n    }\n\n    let random = '';\n    for (let index = 0; index < 16; index += 1) {\n        random += alphabet[Math.floor(Math.random() * alphabet.length)];\n    }\n\n    return timestamp + random;\n}\n\nfunction generatedAt() {\n    return new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n}\n\nreturn [\n    {\n        json: {\n            settings: {\n                mode: 'dry_run',\n                pricingEndpoint:\n                    'https://store.arab-ut.com/api/automation/v1/pricing/coins/sbc-bases',\n                pricingPath: '/api/automation/v1/pricing/coins/sbc-bases',\n                sourceEndpoint:\n                    'https://api-fc26.easysbc.io/sbc-sets?page=1&limit=200',\n                catalogEndpoint:\n                    'https://store.arab-ut.com/api/automation/v1/catalog/sbc/snapshots',\n                catalogSource: 'n8n-sbc',\n                sourceMinCount: 20,\n                sourceLimit: 200,\n                minimumExpiryLeadSeconds: 7200,\n                approvedBaseline: {\n                    sourceCount: 56,\n                    eligibleCount: 39,\n                    approvedAt: '2026-08-12T12:00:00.000Z',\n                    approvedBy: 'operator',\n                },\n            },\n            eventId: ulid(),\n            runId: ulid(),\n            generatedAt: generatedAt(),\n        },\n    },\n];\n"
       },
       "id": "config-sbc-catalog-v1",
       "name": "Config",
@@ -223,14 +223,165 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst config = $('Config').first().json;\nconst pricingState = $('Evaluate Pricing Read').first().json;\n\nfunction fail(reason) {\n    return [{ json: { ...config, valid: false, failureReason: reason } }];\n}\n\nif (!pricingState.valid || !pricingState.pricing) {\n    return fail(\n        pricingState.failureReason ||\n            'Authoritative SBC pricing bases are unavailable',\n    );\n}\n\nlet records = $input.all().map((item) => item.json);\nif (records.length === 1 && Array.isArray(records[0]?.body))\n    records = records[0].body;\nif (records.length === 1 && Array.isArray(records[0]?.data))\n    records = records[0].data;\n\nconst settings = config.settings;\nif (records.length < settings.sourceMinCount) {\n    return fail(\n        `EasySBC source is below the minimum complete record count of ${settings.sourceMinCount}`,\n    );\n}\nif (records.length >= settings.sourceLimit) {\n    return fail(\n        `EasySBC pagination is ambiguous at the configured limit of ${settings.sourceLimit}`,\n    );\n}\n\nconst allowedCategories = new Set([1, 2, 3, 4, 5, 6]);\nconst allowedModes = new Set(['NON_REPEATABLE', 'UNLIMITED', 'REFRESH']);\nconst ids = new Set();\n\nfor (let index = 0; index < records.length; index += 1) {\n    const record = records[index];\n    const label = `EasySBC record ${index}`;\n    if (!record || typeof record !== 'object' || Array.isArray(record))\n        return fail(`${label} is not an object`);\n    if (!Number.isInteger(record.id) || record.id <= 0)\n        return fail(`${label} id is invalid`);\n    if (ids.has(record.id))\n        return fail(`EasySBC source contains duplicate id ${record.id}`);\n    ids.add(record.id);\n    if (\n        typeof record.name !== 'string' ||\n        !record.name.trim() ||\n        record.name.length > 220\n    )\n        return fail(`${label} name is invalid`);\n    if (!allowedCategories.has(record.categoryId))\n        return fail(`${label} categoryId is invalid`);\n    if (\n        record.description != null &&\n        (typeof record.description !== 'string' ||\n            record.description.length > 4800)\n    )\n        return fail(`${label} description is invalid`);\n    if (!Number.isInteger(record.sbcsCount) || record.sbcsCount <= 0)\n        return fail(`${label} sbcsCount is invalid`);\n    if (typeof record.repeatable !== 'boolean')\n        return fail(`${label} repeatable is invalid`);\n    if (!allowedModes.has(record.repeatabilityMode))\n        return fail(`${label} repeatabilityMode is invalid`);\n    if (!Number.isInteger(record.endTime) || record.endTime <= 0)\n        return fail(`${label} endTime is invalid`);\n    if (typeof record.active !== 'boolean')\n        return fail(`${label} active is invalid`);\n    if (!Number.isFinite(Number(record.psPrice)) || Number(record.psPrice) <= 0)\n        return fail(`${label} psPrice is invalid`);\n    if (!Number.isFinite(Number(record.pcPrice)) || Number(record.pcPrice) <= 0)\n        return fail(`${label} pcPrice is invalid`);\n    if (\n        record.repeats != null &&\n        (!Number.isInteger(record.repeats) || record.repeats <= 0)\n    )\n        return fail(`${label} repeats is invalid`);\n    if (record.imageURL != null) {\n        try {\n            const image = new URL(record.imageURL);\n            if (\n                image.protocol !== 'https:' ||\n                image.hostname !== 'assets.easysbc.io'\n            )\n                return fail(\n                    `${label} imageURL is not an approved EasySBC asset`,\n                );\n        } catch {\n            return fail(`${label} imageURL is invalid`);\n        }\n    }\n}\n\nconst now = Math.floor(new Date(config.generatedAt).getTime() / 1000);\nconst eligible = records.filter((record) => {\n    if (!record.active) return false;\n    if (record.endTime <= now + settings.minimumExpiryLeadSeconds) return false;\n    if (/\\b(?:bronze|silver)\\b/i.test(record.name)) return false;\n    if (Number(record.psPrice) < 1500) return false;\n    if (!record.repeatable && Number(record.psPrice) < 20_000) return false;\n    return Number(record.pcPrice) > 0;\n});\n\nif (eligible.length === 0)\n    return fail('EasySBC source produced no eligible challenges');\n\nconst categoryKey = {\n    1: 'players',\n    2: 'upgrades',\n    3: 'upgrades',\n    4: 'icons',\n    5: 'foundations',\n    6: 'upgrades',\n};\nconst categories = [\n    ['players', 'اللاعبون', 'Players', 10],\n    ['upgrades', 'التطويرات', 'Upgrades', 20],\n    ['icons', 'الأيكونز', 'Icons', 30],\n    ['foundations', 'الأساسيات', 'Foundations', 40],\n].map(([key, ar, en, sortOrder]) => ({\n    externalId: `easysbc-category-${key}`,\n    slug: `sbc-${key}`,\n    name: { ar, en },\n    description: {\n        ar: `تحديات بناء التشكيلات: ${ar}`,\n        en: `${en} squad-building challenges`,\n    },\n    sortOrder,\n    visible: true,\n}));\n\nfunction safeSlug(record) {\n    const raw =\n        typeof record.slug === 'string' && record.slug.trim()\n            ? record.slug\n            : record.name;\n    const base =\n        raw\n            .normalize('NFKD')\n            .replace(/[\\u0300-\\u036f]/g, '')\n            .toLowerCase()\n            .replace(/[^a-z0-9]+/g, '-')\n            .replace(/^-+|-+$/g, '')\n            .slice(0, 220) || 'challenge';\n    return `sbc-${base}-${record.id}`;\n}\n\nfunction multiplier(coins) {\n    if (coins < 50_000) return 1.15;\n    if (coins < 900_000) return 1.1;\n    if (coins <= 1_000_000) return 1.0;\n    return 1.025;\n}\n\nfunction priceMinor(coins, challengeCount, quote) {\n    const baseSar = quote.totalHalalah / 100;\n    const sar =\n        Math.round(\n            challengeCount * 2 +\n                coins * multiplier(coins) * 1.02 * (baseSar / 1_000_000) +\n                2,\n        ) + 3;\n    return sar * 100;\n}\n\nfunction localizedName(record) {\n    return /[\\u0600-\\u06ff]/.test(record.name)\n        ? record.name\n        : `تحدي SBC: ${record.name}`;\n}\n\nfunction variant(record, platform) {\n    const isPs = platform === 'playstation';\n    const quoteKey = isPs ? 'playstation_fast' : 'pc';\n    const coins = Number(isPs ? record.psPrice : record.pcPrice);\n    return {\n        externalId: `easysbc-sbc-${record.id}-${isPs ? 'ps' : 'pc'}`,\n        sku: `SBC-EASYSBC-${record.id}-${isPs ? 'PS' : 'PC'}`,\n        platform,\n        market: isPs ? 'console' : 'pc',\n        currency: 'SAR',\n        name: {\n            ar: isPs ? 'بلايستيشن' : 'كمبيوتر',\n            en: isPs ? 'PlayStation / Xbox' : 'PC',\n        },\n        priceMinor: priceMinor(\n            coins,\n            record.sbcsCount,\n            pricingState.pricing.quotes[quoteKey],\n        ),\n        salePriceMinor: null,\n        priceVersion: 1,\n        active: true,\n        configuration: {\n            source: 'easysbc',\n            sourceId: String(record.id),\n            sourceCategoryId: record.categoryId,\n            sourceSlug:\n                typeof record.slug === 'string' && record.slug.trim()\n                    ? record.slug\n                    : safeSlug(record),\n            challengeCount: record.sbcsCount,\n            completionCount: 1,\n            repeatable: record.repeatable,\n            repeatabilityMode: record.repeatabilityMode,\n            maxRepeats: record.repeatable ? (record.repeats ?? null) : 1,\n            sourceCoins: coins,\n            expiresAt: new Date(record.endTime * 1000).toISOString(),\n            pricingVersion: pricingState.pricing.pricingVersion,\n            pricingBase: quoteKey,\n            formulaVersion: 'legacy-sbc-one-completion-v1',\n        },\n    };\n}\n\nconst products = eligible.map((record, index) => {\n    const nameAr = localizedName(record);\n    return {\n        externalId: `easysbc-sbc-${record.id}`,\n        categoryExternalId: `easysbc-category-${categoryKey[record.categoryId]}`,\n        slug: safeSlug(record),\n        serviceType: 'sbc',\n        name: { ar: nameAr, en: record.name.trim() },\n        description: {\n            ar: /[\\u0600-\\u06ff]/.test(record.description || '')\n                ? record.description\n                : `إكمال تحدي SBC: ${record.name}.`,\n            en: record.description?.trim() || `Complete ${record.name}.`,\n        },\n        sortOrder: index + 1,\n        visible: true,\n        variants: [variant(record, 'playstation'), variant(record, 'pc')],\n        media: record.imageURL\n            ? [\n                  {\n                      url: record.imageURL,\n                      alt: { ar: nameAr, en: record.name.trim() },\n                      sortOrder: 0,\n                  },\n              ]\n            : [],\n    };\n});\n\nreturn [\n    {\n        json: {\n            ...config,\n            valid: true,\n            failureReason: null,\n            sourceCount: records.length,\n            eligibleCount: products.length,\n            snapshot: {\n                schemaVersion: 1,\n                eventId: config.eventId,\n                runId: config.runId,\n                generatedAt: config.generatedAt,\n                completeSnapshot: true,\n                categories,\n                products,\n            },\n        },\n    },\n];\n"
+        "jsCode": "/* eslint-disable */\nconst config = $('Config').first().json;\n\nfunction result(fields) {\n    return [{ json: { ...config, ...fields } }];\n}\n\nfunction fail(reason, records = []) {\n    return result({\n        translationPlanValid: false,\n        translationReady: false,\n        failureReason: reason,\n        sourceRecords: records,\n        missingTranslations: [],\n        prompt: null,\n    });\n}\n\nlet records = $input.all().map((item) => item.json);\nif (records.length === 1 && Array.isArray(records[0]?.body))\n    records = records[0].body;\nif (records.length === 1 && Array.isArray(records[0]?.data))\n    records = records[0].data;\n\nconst settings = config.settings;\nif (records.length < settings.sourceMinCount) {\n    return fail(\n        `EasySBC source is below the minimum complete record count of ${settings.sourceMinCount}`,\n        records,\n    );\n}\nif (records.length >= settings.sourceLimit) {\n    return fail(\n        `EasySBC pagination is ambiguous at the configured limit of ${settings.sourceLimit}`,\n        records,\n    );\n}\n\nconst allowedCategories = new Set([1, 2, 3, 4, 5, 6]);\nconst allowedModes = new Set(['NON_REPEATABLE', 'UNLIMITED', 'REFRESH']);\nconst ids = new Set();\nfor (let index = 0; index < records.length; index += 1) {\n    const record = records[index];\n    const label = `EasySBC record ${index}`;\n    if (!record || typeof record !== 'object' || Array.isArray(record))\n        return fail(`${label} is not an object`, records);\n    if (!Number.isInteger(record.id) || record.id <= 0)\n        return fail(`${label} id is invalid`, records);\n    if (ids.has(record.id))\n        return fail(\n            `EasySBC source contains duplicate id ${record.id}`,\n            records,\n        );\n    ids.add(record.id);\n    if (\n        typeof record.name !== 'string' ||\n        !record.name.trim() ||\n        record.name.length > 220\n    )\n        return fail(`${label} name is invalid`, records);\n    if (!allowedCategories.has(record.categoryId))\n        return fail(`${label} categoryId is invalid`, records);\n    if (!Number.isInteger(record.sbcsCount) || record.sbcsCount <= 0)\n        return fail(`${label} sbcsCount is invalid`, records);\n    if (typeof record.repeatable !== 'boolean')\n        return fail(`${label} repeatable is invalid`, records);\n    if (!allowedModes.has(record.repeatabilityMode))\n        return fail(`${label} repeatabilityMode is invalid`, records);\n    if (!Number.isInteger(record.endTime) || record.endTime <= 0)\n        return fail(`${label} endTime is invalid`, records);\n    if (typeof record.active !== 'boolean')\n        return fail(`${label} active is invalid`, records);\n    if (!Number.isFinite(Number(record.psPrice)) || Number(record.psPrice) <= 0)\n        return fail(`${label} psPrice is invalid`, records);\n    if (!Number.isFinite(Number(record.pcPrice)) || Number(record.pcPrice) <= 0)\n        return fail(`${label} pcPrice is invalid`, records);\n}\n\nconst now = Math.floor(new Date(config.generatedAt).getTime() / 1000);\nconst eligible = records.filter((record) => {\n    if (!record.active) return false;\n    if (record.endTime <= now + settings.minimumExpiryLeadSeconds) return false;\n    if (/\\b(?:bronze|silver)\\b/i.test(record.name)) return false;\n    if (Number(record.psPrice) < 1500) return false;\n    if (!record.repeatable && Number(record.psPrice) < 20_000) return false;\n    return Number(record.pcPrice) > 0;\n});\nif (eligible.length === 0)\n    return fail('EasySBC source produced no eligible challenges', records);\n\nconst globalData = $getWorkflowStaticData('global');\nconst cache = globalData.sbcCatalogV1?.translations ?? {};\nconst missingTranslations = [];\n\nfor (const record of eligible) {\n    const sourceName = record.name.trim();\n    const key = `${record.id}\\u0000${sourceName}`;\n    const cached = cache[key];\n    if (!cached) {\n        missingTranslations.push({ id: String(record.id), sourceName });\n        continue;\n    }\n    if (cached.sourceName !== sourceName) {\n        return fail(\n            `Cached translation source name mismatch for EasySBC id ${record.id}`,\n            records,\n        );\n    }\n    if (\n        typeof cached.nameAr !== 'string' ||\n        cached.nameAr.length < 2 ||\n        cached.nameAr.length > 120 ||\n        !/[\\u0600-\\u06ff]/.test(cached.nameAr) ||\n        /[A-Za-z]/.test(cached.nameAr)\n    ) {\n        return fail(\n            `Cached translation for EasySBC id ${record.id} must be Arabic-only and at most 120 characters`,\n            records,\n        );\n    }\n}\n\nconst prompt = missingTranslations.length\n    ? [\n          'Translate these exact EA FC Squad Building Challenge names into concise natural Gulf gaming Arabic.',\n          'Preserve meaning and transliterate player names. Translate pack, pick, upgrade, token, icon, hero, and evolution terms.',\n          'Arabic script and digits only: no Latin letters, no generic prefix, no commentary.',\n          'Keep every id and sourceName byte-for-byte exact. Do not add, remove, or reorder entries.',\n          'Return only a JSON array with exactly these keys: id, sourceName, nameAr.',\n          `INPUT:${JSON.stringify(missingTranslations)}`,\n      ].join('\\n')\n    : null;\n\nreturn result({\n    translationPlanValid: true,\n    translationReady: missingTranslations.length === 0,\n    failureReason: null,\n    sourceRecords: records,\n    missingTranslations,\n    prompt,\n});\n"
+      },
+      "id": "prepare-translations-sbc-v1",
+      "name": "Prepare Translations",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        200
+      ],
+      "notes": "Source: nodes/prepare-translations.js"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.translationPlanValid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "translation-plan-valid-sbc-v1",
+      "name": "Translation Plan Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2340,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.translationReady }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "translation-ready-sbc-v1",
+      "name": "Translation Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2580,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}"
+      },
+      "id": "translate-sbc-names-v1",
+      "name": "Translate SBC Names",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        2820,
+        320
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "gemini-translation-model-sbc-v1",
+      "name": "Gemini Translation Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2820,
+        520
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "WgUWtkjmfC1iEIMi",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\nconst plan = $('Prepare Translations').first().json;\n\nfunction result(fields) {\n    return [{ json: { ...plan, ...fields } }];\n}\n\nfunction fail(reason) {\n    return result({\n        translationReady: false,\n        failureReason: reason,\n    });\n}\n\nif (!plan.translationPlanValid || !Array.isArray(plan.missingTranslations)) {\n    return fail(plan.failureReason || 'Translation plan is invalid');\n}\nif (plan.missingTranslations.length === 0) {\n    return result({ translationReady: true, failureReason: null });\n}\n\nconst response = $input.first().json;\nlet raw = response.text ?? response.output ?? response.response ?? response;\nif (typeof raw === 'object' && raw !== null) raw = JSON.stringify(raw);\nif (typeof raw !== 'string')\n    return fail('Gemini translation response is missing');\nraw = raw\n    .trim()\n    .replace(/^```(?:json)?\\s*/i, '')\n    .replace(/\\s*```$/, '');\n\nlet translated;\ntry {\n    translated = JSON.parse(raw);\n} catch {\n    return fail('Gemini translation response is not valid JSON');\n}\nif (!Array.isArray(translated))\n    return fail('Gemini translation response must be a JSON array');\nif (translated.length !== plan.missingTranslations.length) {\n    return fail(\n        `Gemini translation count ${translated.length} does not match requested count ${plan.missingTranslations.length}`,\n    );\n}\n\nconst expected = new Map(\n    plan.missingTranslations.map((pair) => [String(pair.id), pair.sourceName]),\n);\nconst staged = {};\nconst seen = new Set();\nfor (const entry of translated) {\n    if (!entry || typeof entry !== 'object' || Array.isArray(entry))\n        return fail('Gemini translation entry is invalid');\n    if (!Object.hasOwn(entry, 'id') || !Object.hasOwn(entry, 'sourceName'))\n        return fail(\n            'Gemini translation entry is missing exact identity fields',\n        );\n    const id = String(entry.id);\n    if (!expected.has(id))\n        return fail(`Gemini returned unexpected EasySBC id ${id}`);\n    if (seen.has(id)) return fail(`Gemini returned duplicate EasySBC id ${id}`);\n    seen.add(id);\n    if (entry.sourceName !== expected.get(id))\n        return fail(`Gemini source name mismatch for EasySBC id ${id}`);\n    if (\n        typeof entry.nameAr !== 'string' ||\n        entry.nameAr.length < 2 ||\n        entry.nameAr.length > 120 ||\n        !/[\\u0600-\\u06ff]/.test(entry.nameAr) ||\n        /[A-Za-z]/.test(entry.nameAr)\n    ) {\n        return fail(\n            `Gemini translation for EasySBC id ${id} must be Arabic-only and at most 120 characters`,\n        );\n    }\n    const sourceName = expected.get(id);\n    staged[`${id}\\u0000${sourceName}`] = {\n        sourceName,\n        nameAr: entry.nameAr.trim(),\n    };\n}\nif (seen.size !== expected.size)\n    return fail('Gemini translation response is incomplete');\n\nconst globalData = $getWorkflowStaticData('global');\nconst state = globalData.sbcCatalogV1 ?? {};\nglobalData.sbcCatalogV1 = {\n    ...state,\n    translations: { ...(state.translations ?? {}), ...staged },\n};\n\nreturn result({\n    translationReady: true,\n    failureReason: null,\n    missingTranslations: [],\n});\n"
+      },
+      "id": "validate-translations-sbc-v1",
+      "name": "Validate Translations",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3060,
+        320
+      ],
+      "notes": "Source: nodes/validate-translations.js"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.translationReady }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "translation-valid-sbc-v1",
+      "name": "Translation Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3300,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\nconst config = $('Config').first().json;\nconst pricingState = $('Evaluate Pricing Read').first().json;\n\nfunction fail(reason) {\n    return [{ json: { ...config, valid: false, failureReason: reason } }];\n}\n\nif (!pricingState.valid || !pricingState.pricing) {\n    return fail(\n        pricingState.failureReason ||\n            'Authoritative SBC pricing bases are unavailable',\n    );\n}\n\nlet records = $input.all().map((item) => item.json);\nif (records.length === 1 && Array.isArray(records[0]?.sourceRecords))\n    records = records[0].sourceRecords;\nif (records.length === 1 && Array.isArray(records[0]?.body))\n    records = records[0].body;\nif (records.length === 1 && Array.isArray(records[0]?.data))\n    records = records[0].data;\n\nconst settings = config.settings;\nif (records.length < settings.sourceMinCount) {\n    return fail(\n        `EasySBC source is below the minimum complete record count of ${settings.sourceMinCount}`,\n    );\n}\nif (records.length >= settings.sourceLimit) {\n    return fail(\n        `EasySBC pagination is ambiguous at the configured limit of ${settings.sourceLimit}`,\n    );\n}\n\nconst allowedCategories = new Set([1, 2, 3, 4, 5, 6]);\nconst allowedModes = new Set(['NON_REPEATABLE', 'UNLIMITED', 'REFRESH']);\nconst ids = new Set();\n\nfor (let index = 0; index < records.length; index += 1) {\n    const record = records[index];\n    const label = `EasySBC record ${index}`;\n    if (!record || typeof record !== 'object' || Array.isArray(record))\n        return fail(`${label} is not an object`);\n    if (!Number.isInteger(record.id) || record.id <= 0)\n        return fail(`${label} id is invalid`);\n    if (ids.has(record.id))\n        return fail(`EasySBC source contains duplicate id ${record.id}`);\n    ids.add(record.id);\n    if (\n        typeof record.name !== 'string' ||\n        !record.name.trim() ||\n        record.name.length > 220\n    )\n        return fail(`${label} name is invalid`);\n    if (!allowedCategories.has(record.categoryId))\n        return fail(`${label} categoryId is invalid`);\n    if (\n        record.description != null &&\n        (typeof record.description !== 'string' ||\n            record.description.length > 4800)\n    )\n        return fail(`${label} description is invalid`);\n    if (!Number.isInteger(record.sbcsCount) || record.sbcsCount <= 0)\n        return fail(`${label} sbcsCount is invalid`);\n    if (typeof record.repeatable !== 'boolean')\n        return fail(`${label} repeatable is invalid`);\n    if (!allowedModes.has(record.repeatabilityMode))\n        return fail(`${label} repeatabilityMode is invalid`);\n    if (!Number.isInteger(record.endTime) || record.endTime <= 0)\n        return fail(`${label} endTime is invalid`);\n    if (typeof record.active !== 'boolean')\n        return fail(`${label} active is invalid`);\n    if (!Number.isFinite(Number(record.psPrice)) || Number(record.psPrice) <= 0)\n        return fail(`${label} psPrice is invalid`);\n    if (!Number.isFinite(Number(record.pcPrice)) || Number(record.pcPrice) <= 0)\n        return fail(`${label} pcPrice is invalid`);\n    if (\n        record.repeats != null &&\n        (!Number.isInteger(record.repeats) || record.repeats <= 0)\n    )\n        return fail(`${label} repeats is invalid`);\n    if (record.imageURL != null) {\n        try {\n            const image = new URL(record.imageURL);\n            if (\n                image.protocol !== 'https:' ||\n                image.hostname !== 'assets.easysbc.io'\n            )\n                return fail(\n                    `${label} imageURL is not an approved EasySBC asset`,\n                );\n        } catch {\n            return fail(`${label} imageURL is invalid`);\n        }\n    }\n}\n\nconst now = Math.floor(new Date(config.generatedAt).getTime() / 1000);\nconst eligible = records.filter((record) => {\n    if (!record.active) return false;\n    if (record.endTime <= now + settings.minimumExpiryLeadSeconds) return false;\n    if (/\\b(?:bronze|silver)\\b/i.test(record.name)) return false;\n    if (Number(record.psPrice) < 1500) return false;\n    if (!record.repeatable && Number(record.psPrice) < 20_000) return false;\n    return Number(record.pcPrice) > 0;\n});\n\nif (eligible.length === 0)\n    return fail('EasySBC source produced no eligible challenges');\n\nconst baseline = settings.approvedBaseline;\nif (\n    !baseline ||\n    !Number.isInteger(baseline.sourceCount) ||\n    baseline.sourceCount <= 0 ||\n    !Number.isInteger(baseline.eligibleCount) ||\n    baseline.eligibleCount <= 0 ||\n    baseline.approvedBy !== 'operator' ||\n    typeof baseline.approvedAt !== 'string' ||\n    !baseline.approvedAt\n) {\n    return fail(\n        'A manually approved operator bootstrap baseline is required before SBC catalog apply',\n    );\n}\n\nconst globalData = $getWorkflowStaticData('global');\nconst workflowState = globalData.sbcCatalogV1 ?? {};\nconst lastCounts = workflowState.lastSuccessfulCounts;\nconst sourceSafetyFloor = Math.max(\n    settings.sourceMinCount,\n    baseline.sourceCount,\n    lastCounts?.sourceCount\n        ? Math.floor(Number(lastCounts.sourceCount) * 0.85)\n        : 0,\n);\nconst eligibleSafetyFloor = Math.max(\n    1,\n    baseline.eligibleCount,\n    lastCounts?.eligibleCount\n        ? Math.floor(Number(lastCounts.eligibleCount) * 0.8)\n        : 0,\n);\nif (records.length < sourceSafetyFloor) {\n    return fail(\n        `EasySBC source count ${records.length} is below source safety floor of ${sourceSafetyFloor}`,\n    );\n}\nif (eligible.length < eligibleSafetyFloor) {\n    return fail(\n        `EasySBC eligible count ${eligible.length} is below eligible safety floor of ${eligibleSafetyFloor}`,\n    );\n}\n\nconst translationCache = workflowState.translations ?? {};\nfunction approvedArabicName(record) {\n    const sourceName = record.name.trim();\n    const cached = translationCache[`${record.id}\\u0000${sourceName}`];\n    if (!cached)\n        throw new Error(\n            `Approved Arabic translation is missing for EasySBC id ${record.id}`,\n        );\n    if (cached.sourceName !== sourceName)\n        throw new Error(\n            `Approved Arabic translation source name mismatch for EasySBC id ${record.id}`,\n        );\n    if (\n        typeof cached.nameAr !== 'string' ||\n        cached.nameAr.length < 2 ||\n        cached.nameAr.length > 120 ||\n        !/[\\u0600-\\u06ff]/.test(cached.nameAr) ||\n        /[A-Za-z]/.test(cached.nameAr)\n    ) {\n        throw new Error(\n            `Approved translation for EasySBC id ${record.id} must be Arabic-only and at most 120 characters`,\n        );\n    }\n    return cached.nameAr.trim();\n}\n\nfor (const record of eligible) {\n    try {\n        approvedArabicName(record);\n    } catch (error) {\n        return fail(error.message);\n    }\n}\n\nconst categoryKey = {\n    1: 'players',\n    2: 'upgrades',\n    3: 'upgrades',\n    4: 'icons',\n    5: 'foundations',\n    6: 'upgrades',\n};\nconst categories = [\n    ['players', 'اللاعبون', 'Players', 10],\n    ['upgrades', 'التطويرات', 'Upgrades', 20],\n    ['icons', 'الأيكونز', 'Icons', 30],\n    ['foundations', 'الأساسيات', 'Foundations', 40],\n].map(([key, ar, en, sortOrder]) => ({\n    externalId: `easysbc-category-${key}`,\n    slug: `sbc-${key}`,\n    name: { ar, en },\n    description: {\n        ar: `تحديات بناء التشكيلات: ${ar}`,\n        en: `${en} squad-building challenges`,\n    },\n    sortOrder,\n    visible: true,\n}));\n\nfunction safeSlug(record) {\n    const raw =\n        typeof record.slug === 'string' && record.slug.trim()\n            ? record.slug\n            : record.name;\n    const base =\n        raw\n            .normalize('NFKD')\n            .replace(/[\\u0300-\\u036f]/g, '')\n            .toLowerCase()\n            .replace(/[^a-z0-9]+/g, '-')\n            .replace(/^-+|-+$/g, '')\n            .slice(0, 220) || 'challenge';\n    return `sbc-${base}-${record.id}`;\n}\n\nfunction multiplier(coins) {\n    if (coins < 50_000) return 1.15;\n    if (coins < 900_000) return 1.1;\n    if (coins <= 1_000_000) return 1.0;\n    return 1.025;\n}\n\nfunction priceMinor(coins, challengeCount, quote) {\n    const baseSar = quote.totalHalalah / 100;\n    const sar =\n        Math.round(\n            challengeCount * 2 +\n                coins * multiplier(coins) * 1.02 * (baseSar / 1_000_000) +\n                2,\n        ) + 3;\n    return sar * 100;\n}\n\nfunction variant(record, platform) {\n    const isPs = platform === 'playstation';\n    const quoteKey = isPs ? 'playstation_fast' : 'pc';\n    const coins = Number(isPs ? record.psPrice : record.pcPrice);\n    return {\n        externalId: `easysbc-sbc-${record.id}-${isPs ? 'ps' : 'pc'}`,\n        sku: `SBC-EASYSBC-${record.id}-${isPs ? 'PS' : 'PC'}`,\n        platform,\n        market: isPs ? 'console' : 'pc',\n        currency: 'SAR',\n        name: {\n            ar: isPs ? 'بلايستيشن' : 'كمبيوتر',\n            en: isPs ? 'PlayStation / Xbox' : 'PC',\n        },\n        priceMinor: priceMinor(\n            coins,\n            record.sbcsCount,\n            pricingState.pricing.quotes[quoteKey],\n        ),\n        salePriceMinor: null,\n        priceVersion: 1,\n        active: true,\n        configuration: {\n            source: 'easysbc',\n            sourceId: String(record.id),\n            sourceCategoryId: record.categoryId,\n            sourceSlug:\n                typeof record.slug === 'string' && record.slug.trim()\n                    ? record.slug\n                    : safeSlug(record),\n            challengeCount: record.sbcsCount,\n            completionCount: 1,\n            repeatable: record.repeatable,\n            repeatabilityMode: record.repeatabilityMode,\n            maxRepeats: record.repeatable ? (record.repeats ?? null) : 1,\n            sourceCoins: coins,\n            expiresAt: new Date(record.endTime * 1000).toISOString(),\n            pricingVersion: pricingState.pricing.pricingVersion,\n            pricingBase: quoteKey,\n            formulaVersion: 'legacy-sbc-one-completion-v1',\n        },\n    };\n}\n\nconst products = eligible.map((record, index) => {\n    const nameAr = approvedArabicName(record);\n    return {\n        externalId: `easysbc-sbc-${record.id}`,\n        categoryExternalId: `easysbc-category-${categoryKey[record.categoryId]}`,\n        slug: safeSlug(record),\n        serviceType: 'sbc',\n        name: { ar: nameAr, en: record.name.trim() },\n        description: {\n            ar: `أكمل تحدي بناء التشكيلة واحصل على المكافأة داخل حسابك.`,\n            en: record.description?.trim() || `Complete ${record.name}.`,\n        },\n        sortOrder: index + 1,\n        visible: true,\n        variants: [variant(record, 'playstation'), variant(record, 'pc')],\n        media: record.imageURL\n            ? [\n                  {\n                      url: record.imageURL,\n                      alt: { ar: nameAr, en: record.name.trim() },\n                      sortOrder: 0,\n                  },\n              ]\n            : [],\n    };\n});\n\nreturn [\n    {\n        json: {\n            ...config,\n            valid: true,\n            failureReason: null,\n            sourceCount: records.length,\n            eligibleCount: products.length,\n            sourceSafetyFloor,\n            eligibleSafetyFloor,\n            snapshot: {\n                schemaVersion: 1,\n                eventId: config.eventId,\n                runId: config.runId,\n                generatedAt: config.generatedAt,\n                completeSnapshot: true,\n                categories,\n                products,\n            },\n        },\n    },\n];\n"
       },
       "id": "prepare-sbc-snapshot-v1",
       "name": "Prepare SBC Snapshot",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2100,
+        3540,
         200
       ],
       "notes": "Source: nodes/prepare-snapshot.js"
@@ -311,7 +462,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst snapshot = item.catalogSnapshot;\n\nreturn [\n    {\n        json: {\n            status: 'dry_run',\n            publishAttempted: false,\n            categories: snapshot.categories.length,\n            products: snapshot.products.length,\n            variants: snapshot.products.reduce(\n                (total, product) => total + product.variants.length,\n                0,\n            ),\n        },\n    },\n];\n"
+        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst snapshot = item.catalogSnapshot;\n\nreturn [\n    {\n        json: {\n            status: 'dry_run',\n            publishAttempted: false,\n            categories: snapshot.categories.length,\n            products: snapshot.products.length,\n            variants: snapshot.products.reduce(\n                (total, product) => total + product.variants.length,\n                0,\n            ),\n            sourceCount: item.sourceCount,\n            eligibleCount: item.eligibleCount,\n            sourceSafetyFloor: item.sourceSafetyFloor,\n            eligibleSafetyFloor: item.eligibleSafetyFloor,\n            wouldCreate: null,\n            wouldUpdate: null,\n            wouldArchive: null,\n            previewAvailable: false,\n            previewReason:\n                'Laravel has no authenticated n8n-sbc snapshot read endpoint',\n        },\n    },\n];\n"
       },
       "id": "dry-run-summary-sbc-v1",
       "name": "Dry Run Summary",
@@ -430,7 +581,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst response = $input.first().json;\nconst submitted = $('Sign Catalog Snapshot').first().json.catalogSnapshot;\nconst statusCode = Number(response.statusCode || 0);\nlet body = response.body ?? response;\n\nif (typeof body === 'string') {\n    try {\n        body = JSON.parse(body);\n    } catch {}\n}\n\nconst completed =\n    statusCode === 201 &&\n    body?.data?.runId === submitted.runId &&\n    body?.data?.status === 'completed' &&\n    Number.isInteger(body?.data?.applied) &&\n    Number.isInteger(body?.data?.archived);\nconst replayed =\n    statusCode === 409 && body?.error?.code === 'catalog_snapshot_replayed';\nconst publishOk = completed || replayed;\n\nreturn [\n    {\n        json: {\n            publishOk,\n            replayed,\n            failureReason: publishOk\n                ? null\n                : `Laravel did not confirm the SBC catalog snapshot (HTTP ${statusCode || 'unknown'})`,\n            publishResponse: body,\n            catalogSnapshot: submitted,\n        },\n    },\n];\n"
+        "jsCode": "/* eslint-disable */\nconst response = $input.first().json;\nconst signed = $('Sign Catalog Snapshot').first().json;\nconst submitted = signed.catalogSnapshot;\nconst statusCode = Number(response.statusCode || 0);\nlet body = response.body ?? response;\n\nif (typeof body === 'string') {\n    try {\n        body = JSON.parse(body);\n    } catch {}\n}\n\nconst completed =\n    statusCode === 201 &&\n    body?.data?.runId === submitted.runId &&\n    body?.data?.status === 'completed' &&\n    Number.isInteger(body?.data?.applied) &&\n    Number.isInteger(body?.data?.archived);\nconst replayed =\n    statusCode === 409 && body?.error?.code === 'catalog_snapshot_replayed';\nconst publishOk = completed || replayed;\n\nreturn [\n    {\n        json: {\n            publishOk,\n            replayed,\n            failureReason: publishOk\n                ? null\n                : `Laravel did not confirm the SBC catalog snapshot (HTTP ${statusCode || 'unknown'})`,\n            publishResponse: body,\n            catalogSnapshot: submitted,\n            sourceCount: signed.sourceCount,\n            eligibleCount: signed.eligibleCount,\n        },\n    },\n];\n"
       },
       "id": "evaluate-publish-sbc-v1",
       "name": "Evaluate Publish Result",
@@ -474,7 +625,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst snapshot = item.catalogSnapshot;\n\nreturn [\n    {\n        json: {\n            status: item.replayed ? 'replayed' : 'published',\n            publishAttempted: true,\n            runId: snapshot.runId,\n            products: snapshot.products.length,\n            variants: snapshot.products.reduce(\n                (total, product) => total + product.variants.length,\n                0,\n            ),\n            publishResponse: item.publishResponse,\n        },\n    },\n];\n"
+        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst snapshot = item.catalogSnapshot;\n\nif (\n    !item.replayed &&\n    item.publishResponse?.data?.runId === snapshot.runId &&\n    item.publishResponse?.data?.status === 'completed'\n) {\n    const globalData = $getWorkflowStaticData('global');\n    const state = globalData.sbcCatalogV1 ?? {};\n    const previous = state.lastSuccessfulCounts ?? {};\n    globalData.sbcCatalogV1 = {\n        ...state,\n        lastSuccessfulCounts: {\n            sourceCount: Math.max(\n                Number(previous.sourceCount) || 0,\n                Number(item.sourceCount) || 0,\n            ),\n            eligibleCount: Math.max(\n                Number(previous.eligibleCount) || 0,\n                Number(item.eligibleCount) || 0,\n            ),\n            completedAt: new Date().toISOString(),\n        },\n    };\n}\n\nreturn [\n    {\n        json: {\n            status: item.replayed ? 'replayed' : 'published',\n            publishAttempted: true,\n            runId: snapshot.runId,\n            products: snapshot.products.length,\n            variants: snapshot.products.reduce(\n                (total, product) => total + product.variants.length,\n                0,\n            ),\n            publishResponse: item.publishResponse,\n        },\n    },\n];\n"
       },
       "id": "success-summary-sbc-v1",
       "name": "Success Summary",
@@ -566,18 +717,16 @@
     },
     {
       "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\n\nreturn [\n    {\n        json: {\n            status: 'failed_closed',\n            alerted: false,\n            failureReason: item.failureReason,\n        },\n    },\n];\n"
+        "errorMessage": "={{ $(\"Prepare Failure Alert\").first().json.failureReason || \"SBC catalog workflow failed closed\" }}"
       },
-      "id": "failure-summary-sbc-v1",
-      "name": "Failure Summary",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "id": "stop-workflow-error-sbc-v1",
+      "name": "Stop Workflow With Error",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
       "position": [
-        3300,
+        3540,
         680
-      ],
-      "notes": "Source: nodes/failure-summary.js"
+      ]
     }
   ],
   "connections": {
@@ -687,7 +836,105 @@
       "main": [
         [
           {
+            "node": "Prepare Translations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Translations": {
+      "main": [
+        [
+          {
+            "node": "Translation Plan Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Translation Plan Valid?": {
+      "main": [
+        [
+          {
+            "node": "Translation Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Translation Ready?": {
+      "main": [
+        [
+          {
             "node": "Prepare SBC Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Translate SBC Names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Translate SBC Names": {
+      "main": [
+        [
+          {
+            "node": "Validate Translations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Translation Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Translate SBC Names",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Translations": {
+      "main": [
+        [
+          {
+            "node": "Translation Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Translation Valid?": {
+      "main": [
+        [
+          {
+            "node": "Prepare SBC Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure Alert",
             "type": "main",
             "index": 0
           }
@@ -843,7 +1090,18 @@
         ],
         [
           {
-            "node": "Failure Summary",
+            "node": "Stop Workflow With Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Whapi Failure Alert": {
+      "main": [
+        [
+          {
+            "node": "Stop Workflow With Error",
             "type": "main",
             "index": 0
           }

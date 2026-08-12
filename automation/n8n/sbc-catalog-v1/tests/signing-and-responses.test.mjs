@@ -170,6 +170,10 @@ test('dry run summary explicitly records that no publish was attempted', async (
         await runNode('dry-run-summary', {
             items: [
                 {
+                    sourceCount: 56,
+                    eligibleCount: 39,
+                    sourceSafetyFloor: 56,
+                    eligibleSafetyFloor: 39,
                     catalogSnapshot: {
                         categories: [{}, {}],
                         products: [{ variants: [{}, {}] }],
@@ -185,5 +189,83 @@ test('dry run summary explicitly records that no publish was attempted', async (
         categories: 2,
         products: 1,
         variants: 2,
+        sourceCount: 56,
+        eligibleCount: 39,
+        sourceSafetyFloor: 56,
+        eligibleSafetyFloor: 39,
+        wouldCreate: null,
+        wouldUpdate: null,
+        wouldArchive: null,
+        previewAvailable: false,
+        previewReason:
+            'Laravel has no authenticated n8n-sbc snapshot read endpoint',
     });
+});
+
+test('only an exact fresh 201 completion advances durable safety counts and counts never decrease', async () => {
+    const staticData = {};
+    const snapshot = {
+        runId: '01K2EXAMPLE000000000000002',
+        products: [{ variants: [{}, {}] }],
+    };
+
+    await runNode('success-summary', {
+        items: [
+            {
+                replayed: false,
+                sourceCount: 56,
+                eligibleCount: 39,
+                catalogSnapshot: snapshot,
+                publishResponse: {
+                    data: { runId: snapshot.runId, status: 'completed' },
+                },
+            },
+        ],
+        staticData,
+    });
+    assert.deepEqual(staticData.sbcCatalogV1.lastSuccessfulCounts, {
+        sourceCount: 56,
+        eligibleCount: 39,
+        completedAt: '2026-08-12T12:00:00.000Z',
+    });
+
+    await runNode('success-summary', {
+        items: [
+            {
+                replayed: false,
+                sourceCount: 50,
+                eligibleCount: 30,
+                catalogSnapshot: snapshot,
+                publishResponse: {
+                    data: { runId: snapshot.runId, status: 'completed' },
+                },
+            },
+        ],
+        staticData,
+    });
+    assert.equal(staticData.sbcCatalogV1.lastSuccessfulCounts.sourceCount, 56);
+    assert.equal(
+        staticData.sbcCatalogV1.lastSuccessfulCounts.eligibleCount,
+        39,
+    );
+
+    await runNode('success-summary', {
+        items: [
+            {
+                replayed: true,
+                sourceCount: 80,
+                eligibleCount: 60,
+                catalogSnapshot: snapshot,
+                publishResponse: {
+                    error: { code: 'catalog_snapshot_replayed' },
+                },
+            },
+        ],
+        staticData,
+    });
+    assert.equal(staticData.sbcCatalogV1.lastSuccessfulCounts.sourceCount, 56);
+    assert.equal(
+        staticData.sbcCatalogV1.lastSuccessfulCounts.eligibleCount,
+        39,
+    );
 });

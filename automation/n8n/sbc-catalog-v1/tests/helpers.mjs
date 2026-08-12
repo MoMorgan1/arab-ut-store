@@ -8,7 +8,13 @@ export async function nodeSource(name) {
 
 export async function runNode(
     name,
-    { named = {}, items = [], env = {}, now = '2026-08-12T12:00:00.000Z' } = {},
+    {
+        named = {},
+        items = [],
+        env = {},
+        staticData = {},
+        now = '2026-08-12T12:00:00.000Z',
+    } = {},
 ) {
     const source = await nodeSource(name);
     const lookup = (nodeName) => ({
@@ -33,6 +39,7 @@ export async function runNode(
         '$',
         '$input',
         '$env',
+        '$getWorkflowStaticData',
         'require',
         'Date',
         source,
@@ -42,6 +49,7 @@ export async function runNode(
         lookup,
         input,
         env,
+        () => staticData,
         await import('node:module').then(({ createRequire }) =>
             createRequire(import.meta.url),
         ),
@@ -64,6 +72,12 @@ export function config(overrides = {}) {
             sourceMinCount: 20,
             sourceLimit: 200,
             minimumExpiryLeadSeconds: 7200,
+            approvedBaseline: {
+                sourceCount: 20,
+                eligibleCount: 1,
+                approvedAt: '2026-08-12T12:00:00.000Z',
+                approvedBy: 'operator',
+            },
             ...overrides,
         },
         eventId: '01K2EXAMPLE000000000000001',
@@ -120,5 +134,17 @@ export function sourceRecord(index, overrides = {}) {
 export function sourceRecords(count = 20, recordOverrides = {}) {
     return Array.from({ length: count }, (_, index) =>
         sourceRecord(index, recordOverrides),
+    );
+}
+
+export function translations(records) {
+    return Object.fromEntries(
+        records.map((record, index) => [
+            `${record.id}\u0000${record.name}`,
+            {
+                sourceName: record.name,
+                nameAr: `تحدي اللاعب ${index + 1}`,
+            },
+        ]),
     );
 }

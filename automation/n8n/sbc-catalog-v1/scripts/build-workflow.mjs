@@ -166,10 +166,72 @@ const nodes = [
         onError: 'continueRegularOutput',
     },
     await codeNode(
+        'Prepare Translations',
+        'prepare-translations-sbc-v1',
+        'prepare-translations.js',
+        [2100, 200],
+    ),
+    ifNode(
+        'Translation Plan Valid?',
+        'translation-plan-valid-sbc-v1',
+        '={{ $json.translationPlanValid }}',
+        true,
+        'boolean',
+        [2340, 200],
+    ),
+    ifNode(
+        'Translation Ready?',
+        'translation-ready-sbc-v1',
+        '={{ $json.translationReady }}',
+        true,
+        'boolean',
+        [2580, 200],
+    ),
+    {
+        parameters: {
+            promptType: 'define',
+            text: '={{ $json.prompt }}',
+        },
+        id: 'translate-sbc-names-v1',
+        name: 'Translate SBC Names',
+        type: '@n8n/n8n-nodes-langchain.chainLlm',
+        typeVersion: 1.5,
+        position: [2820, 320],
+        onError: 'continueRegularOutput',
+    },
+    {
+        parameters: { options: {} },
+        id: 'gemini-translation-model-sbc-v1',
+        name: 'Gemini Translation Model',
+        type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+        typeVersion: 1,
+        position: [2820, 520],
+        credentials: {
+            googlePalmApi: {
+                id: 'WgUWtkjmfC1iEIMi',
+                name: 'Google Gemini(PaLM) Api account 2',
+            },
+        },
+    },
+    await codeNode(
+        'Validate Translations',
+        'validate-translations-sbc-v1',
+        'validate-translations.js',
+        [3060, 320],
+    ),
+    ifNode(
+        'Translation Valid?',
+        'translation-valid-sbc-v1',
+        '={{ $json.translationReady }}',
+        true,
+        'boolean',
+        [3300, 320],
+    ),
+    await codeNode(
         'Prepare SBC Snapshot',
         'prepare-sbc-snapshot-v1',
         'prepare-snapshot.js',
-        [2100, 200],
+        [3540, 200],
     ),
     await codeNode(
         'Validate SBC Snapshot',
@@ -327,12 +389,17 @@ const nodes = [
         },
         onError: 'continueRegularOutput',
     },
-    await codeNode(
-        'Failure Summary',
-        'failure-summary-sbc-v1',
-        'failure-summary.js',
-        [3300, 680],
-    ),
+    {
+        parameters: {
+            errorMessage:
+                '={{ $("Prepare Failure Alert").first().json.failureReason || "SBC catalog workflow failed closed" }}',
+        },
+        id: 'stop-workflow-error-sbc-v1',
+        name: 'Stop Workflow With Error',
+        type: 'n8n-nodes-base.stopAndError',
+        typeVersion: 1,
+        position: [3540, 680],
+    },
 ];
 
 const connections = {
@@ -348,7 +415,30 @@ const connections = {
     'Pricing Ready?': {
         main: [[edge('Fetch EasySBC Sets')], [edge('Prepare Failure Alert')]],
     },
-    'Fetch EasySBC Sets': { main: [[edge('Prepare SBC Snapshot')]] },
+    'Fetch EasySBC Sets': { main: [[edge('Prepare Translations')]] },
+    'Prepare Translations': { main: [[edge('Translation Plan Valid?')]] },
+    'Translation Plan Valid?': {
+        main: [[edge('Translation Ready?')], [edge('Prepare Failure Alert')]],
+    },
+    'Translation Ready?': {
+        main: [[edge('Prepare SBC Snapshot')], [edge('Translate SBC Names')]],
+    },
+    'Translate SBC Names': { main: [[edge('Validate Translations')]] },
+    'Gemini Translation Model': {
+        ai_languageModel: [
+            [
+                {
+                    node: 'Translate SBC Names',
+                    type: 'ai_languageModel',
+                    index: 0,
+                },
+            ],
+        ],
+    },
+    'Validate Translations': { main: [[edge('Translation Valid?')]] },
+    'Translation Valid?': {
+        main: [[edge('Prepare SBC Snapshot')], [edge('Prepare Failure Alert')]],
+    },
     'Prepare SBC Snapshot': { main: [[edge('Validate SBC Snapshot')]] },
     'Validate SBC Snapshot': { main: [[edge('Snapshot Valid?')]] },
     'Snapshot Valid?': {
@@ -368,8 +458,12 @@ const connections = {
     },
     'Prepare Failure Alert': { main: [[edge('Alert Configured?')]] },
     'Alert Configured?': {
-        main: [[edge('Whapi Failure Alert')], [edge('Failure Summary')]],
+        main: [
+            [edge('Whapi Failure Alert')],
+            [edge('Stop Workflow With Error')],
+        ],
     },
+    'Whapi Failure Alert': { main: [[edge('Stop Workflow With Error')]] },
 };
 
 const workflow = {

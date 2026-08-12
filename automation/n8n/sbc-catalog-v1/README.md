@@ -2,19 +2,21 @@
 
 This package is the versioned source and inactive n8n export for the Arab UT SBC catalog. It reads the two authoritative one-million Coins quotes from Laravel, reads one bounded EasySBC page, validates every source record, maps eligible challenges into a complete `n8n-sbc` catalog snapshot, and either reports a dry run or publishes one signed snapshot back to Laravel.
 
-It has no external storefront mutation, translation model, or product-platform dependency. Laravel and MariaDB remain authoritative after an accepted snapshot.
+It has no external storefront mutation or product-platform dependency. Laravel and MariaDB remain authoritative after an accepted snapshot. The approved Gemini credential is used only to enrich missing Arabic SBC names; exact validated translations are cached in workflow static data.
 
 ## v1 behavior
 
 - Manual Trigger plus a two-hour Schedule Trigger.
 - Default `Config.settings.mode` is `dry_run`; dry runs have no graph path to the catalog POST.
 - EasySBC request: `GET https://api-fc26.easysbc.io/sbc-sets?page=1&limit=200`.
-- Fails closed below 20 source records, at 200 records (pagination ambiguity), on duplicate IDs, or on any malformed complete source record.
+- Fails closed below the manually approved 56-source/39-eligible bootstrap baseline, below 85%/80% of the last successful counts, at 200 records (pagination ambiguity), on duplicate IDs, or on any malformed complete source record. Successful counts can advance but never decrease automatically.
 - Categories: `players`, `upgrades` (source categories 2, 3, and 6), `icons`, and `foundations`.
 - Eligibility: active, more than two hours before expiry, no Bronze/Silver names, PlayStation coins at least 1,500, non-repeatable PlayStation coins at least 20,000, and a positive PC coin value.
 - Exactly one PlayStation and one PC variant per product. v1 prices one completion even when the source challenge is repeatable; repeatability metadata is retained in `configuration`, but there is no repeat selector.
 - Images are optional. A supplied image must be HTTPS on `assets.easysbc.io`.
-- Source names remain exact in English. Until an approved translation source exists, Arabic fields use the honest deterministic form `تحدي SBC: {source name}` rather than fabricated translations.
+- English names remain byte-for-byte exact. Missing Arabic names are sent in one exact ID/name batch through `Google Gemini(PaLM) Api account 2`; output must contain the same IDs, count, order-independent source names, Arabic script, no Latin letters, and at most 120 characters. Validation is atomic: any missing, extra, mismatched, mixed-language, or malformed entry fails the run and leaves the cache unchanged.
+- Every invalid branch ends in `Stop And Error` after the optional Whapi attempt, so a failed scheduled execution is visibly nonzero.
+- Dry-run reports source/eligible safety counts. It reports create/update/archive as unavailable—not fabricated—because Laravel does not yet expose an authenticated current `n8n-sbc` snapshot-read endpoint.
 
 ## Audited pricing formula
 
@@ -34,11 +36,12 @@ The workflow sends `priceVersion: 1` for contract compatibility. Laravel owns st
 
 ## Credentials and host environment
 
-Create these HTTP Custom Auth credentials with the exact exported names:
+Create these credentials with the exact exported names:
 
 1. `ArabUT SBC Pricing Read API` — adds `X-ArabUT-Key` with the pricing-read public key.
 2. `ArabUT SBC Catalog API` — adds `X-ArabUT-Key` with the separately scoped SBC catalog public key.
 3. `Whapi Alerts` — adds the Whapi authorization header; alerts run only when `OPS_WHATSAPP_TARGET` is configured.
+4. `Google Gemini(PaLM) Api account 2` — existing Google PaLM/Gemini credential used only for missing Arabic-name enrichment.
 
 Set secrets only on the n8n host:
 
@@ -48,6 +51,14 @@ Set secrets only on the n8n host:
 - `NODE_FUNCTION_ALLOW_BUILTIN=crypto`
 
 The exported JSON contains placeholder credential IDs/names and no secret values.
+
+Before apply, set this Laravel/Hostinger environment value and refresh configuration cache:
+
+```text
+N8N_CATALOG_MEDIA_HOSTS=assets.easysbc.io
+```
+
+This is required so the catalog endpoint can mirror the approved EasySBC image host instead of rejecting the snapshot.
 
 ## Build and test
 
@@ -63,16 +74,21 @@ npm test
 
 1. Deploy and verify the signed Laravel pricing-read and SBC snapshot endpoints.
 2. Import `workflow.json`; keep it inactive and keep `mode: 'dry_run'`.
-3. Attach the three credentials and set the host environment values.
-4. Run manually. Review source count, eligible count, exact products/variants, prices, and the explicit `publishAttempted: false` summary.
+3. Attach the four credentials and set the host environment values. On Hostinger, set `N8N_CATALOG_MEDIA_HOSTS=assets.easysbc.io` before any apply.
+4. Run manually in dry-run. Review the observed 56 source / 39 eligible bootstrap counts, exact products/variants, prices, translation cache results, and the explicit `publishAttempted: false` summary. Operator approval is represented by the versioned `Config.settings.approvedBaseline`; update it only after reviewing a complete dry-run.
 5. Change the versioned `Config` mode to `apply`, rebuild/re-import, then run one controlled apply.
 6. Require HTTP 201 with the same `runId` and `status: completed`; an exact replay 409 is treated as the already-committed request. HTTP 422 or 5xx fails closed and keeps the last accepted catalog.
-7. Verify the Laravel catalog and storefront, then activate the two-hour schedule.
+7. Verify the Laravel catalog and storefront, and verify mirrored media counts match products with supplied EasySBC images. Only then activate the two-hour schedule.
+
+The current dry-run cannot calculate an absolute `wouldArchive` count because there is no authenticated Laravel read endpoint for the current `n8n-sbc` snapshot. Keep the workflow inactive until the approved baseline, translation cache, and mirrored-media checks are complete. Adding that read endpoint is the follow-up needed for exact create/update/archive previews.
 
 ## Official n8n references checked
 
 - [Schedule Trigger](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/)
 - [HTTP Request](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/)
 - [Code node cookbook](https://docs.n8n.io/code/cookbook/code-node/)
+- [Workflow static data](https://docs.n8n.io/code/cookbook/builtin/get-workflow-static-data/)
+- [Google Gemini Chat Model](https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglegemini/)
+- [Stop And Error](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.stopanderror/)
 - [HTTP Request credentials](https://docs.n8n.io/integrations/builtin/credentials/httprequest/)
 - [Security audit](https://docs.n8n.io/hosting/securing/security-audit/)

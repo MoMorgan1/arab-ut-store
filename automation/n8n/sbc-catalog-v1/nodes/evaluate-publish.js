@@ -1,6 +1,7 @@
 /* eslint-disable */
 const response = $input.first().json;
-const submitted = $('Sign Catalog Snapshot').first().json.catalogSnapshot;
+const signed = $('Sign Catalog Snapshot').first().json;
+const submitted = signed.catalogSnapshot;
 const statusCode = Number(response.statusCode || 0);
 let body = response.body ?? response;
 
@@ -30,6 +31,8 @@ return [
                 : `Laravel did not confirm the SBC catalog snapshot (HTTP ${statusCode || 'unknown'})`,
             publishResponse: body,
             catalogSnapshot: submitted,
+            sourceCount: signed.sourceCount,
+            eligibleCount: signed.eligibleCount,
         },
     },
 ];

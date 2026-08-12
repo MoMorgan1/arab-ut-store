@@ -7,11 +7,18 @@ import {
     runNode,
     sourceRecord,
     sourceRecords,
+    translations,
 } from './helpers.mjs';
 
 async function prepare(
     records,
-    { settings = {}, pricing = pricingRead() } = {},
+    {
+        settings = {},
+        pricing = pricingRead(),
+        staticData = {
+            sbcCatalogV1: { translations: translations(records) },
+        },
+    } = {},
 ) {
     return (
         await runNode('prepare-snapshot', {
@@ -20,6 +27,7 @@ async function prepare(
                 'Evaluate Pricing Read': { valid: true, pricing },
             },
             items: records,
+            staticData,
         })
     )[0].json;
 }
@@ -67,7 +75,7 @@ test('a complete EasySBC source maps to an exact, stable PS and PC catalog snaps
     const first = prepared.snapshot.products[0];
     assert.equal(first.externalId, 'easysbc-sbc-1000');
     assert.equal(first.slug, 'sbc-player-challenge-0-1000');
-    assert.equal(first.name.ar, 'تحدي SBC: Player Challenge 0');
+    assert.equal(first.name.ar, 'تحدي اللاعب 1');
     assert.equal(first.name.en, 'Player Challenge 0');
     assert.deepEqual(
         first.variants.map(({ platform, market }) => ({ platform, market })),
@@ -100,7 +108,7 @@ test('a complete EasySBC source maps to an exact, stable PS and PC catalog snaps
         {
             url: 'https://assets.easysbc.io/fc26/sbcs/sets/icons/1000.png',
             alt: {
-                ar: 'تحدي SBC: Player Challenge 0',
+                ar: 'تحدي اللاعب 1',
                 en: 'Player Challenge 0',
             },
             sortOrder: 0,
@@ -121,7 +129,15 @@ test('legacy one-completion pricing uses every audited multiplier boundary', asy
     );
 
     const prepared = await prepare(records, {
-        settings: { sourceMinCount: 1 },
+        settings: {
+            sourceMinCount: 1,
+            approvedBaseline: {
+                sourceCount: 1,
+                eligibleCount: 1,
+                approvedAt: '2026-08-12T12:00:00.000Z',
+                approvedBy: 'operator',
+            },
+        },
     });
     assert.equal(prepared.valid, true, prepared.failureReason);
     assert.deepEqual(
@@ -199,6 +215,123 @@ test('eligibility is deterministic and keeps image omission non-fatal', async ()
     assert.equal(prepared.valid, true, prepared.failureReason);
     assert.equal(prepared.snapshot.products.length, 15);
     assert.deepEqual(prepared.snapshot.products[0].media, []);
+});
+
+test('approved and durable baselines reject a partial source before a snapshot can be published', async (t) => {
+    await t.test(
+        'source count cannot fall below 85% of the last successful count',
+        async () => {
+            const records = sourceRecords(84, {
+                repeatable: true,
+                repeatabilityMode: 'UNLIMITED',
+            });
+            const prepared = await prepare(records, {
+                settings: {
+                    sourceMinCount: 1,
+                    approvedBaseline: {
+                        sourceCount: 1,
+                        eligibleCount: 1,
+                        approvedAt: '2026-08-12T12:00:00.000Z',
+                        approvedBy: 'operator',
+                    },
+                },
+                staticData: {
+                    sbcCatalogV1: {
+                        translations: translations(records),
+                        lastSuccessfulCounts: {
+                            sourceCount: 100,
+                            eligibleCount: 20,
+                        },
+                    },
+                },
+            });
+
+            assert.equal(prepared.valid, false);
+            assert.match(prepared.failureReason, /source safety floor of 85/i);
+            assert.equal(prepared.snapshot, undefined);
+        },
+    );
+
+    await t.test(
+        'eligible count cannot fall below 80% of the last successful count',
+        async () => {
+            const records = sourceRecords(80, {
+                repeatable: true,
+                repeatabilityMode: 'UNLIMITED',
+            }).map((record, index) =>
+                index < 17 ? { ...record, active: false } : record,
+            );
+            const prepared = await prepare(records, {
+                settings: {
+                    sourceMinCount: 1,
+                    approvedBaseline: {
+                        sourceCount: 1,
+                        eligibleCount: 1,
+                        approvedAt: '2026-08-12T12:00:00.000Z',
+                        approvedBy: 'operator',
+                    },
+                },
+                staticData: {
+                    sbcCatalogV1: {
+                        translations: translations(records),
+                        lastSuccessfulCounts: {
+                            sourceCount: 80,
+                            eligibleCount: 80,
+                        },
+                    },
+                },
+            });
+
+            assert.equal(prepared.valid, false);
+            assert.match(
+                prepared.failureReason,
+                /eligible safety floor of 64/i,
+            );
+            assert.equal(prepared.snapshot, undefined);
+        },
+    );
+});
+
+test('eligible source names require an exact reviewed Arabic-only cached translation', async (t) => {
+    const records = sourceRecords(20);
+
+    await t.test('missing translation fails closed', async () => {
+        const cache = translations(records);
+        delete cache[`${records[0].id}\u0000${records[0].name}`];
+        const prepared = await prepare(records, {
+            staticData: { sbcCatalogV1: { translations: cache } },
+        });
+
+        assert.equal(prepared.valid, false);
+        assert.match(prepared.failureReason, /translation is missing/i);
+    });
+
+    await t.test('source-name mismatch fails closed', async () => {
+        const cache = translations(records);
+        cache[`${records[0].id}\u0000${records[0].name}`].sourceName =
+            'Different source name';
+        const prepared = await prepare(records, {
+            staticData: { sbcCatalogV1: { translations: cache } },
+        });
+
+        assert.equal(prepared.valid, false);
+        assert.match(prepared.failureReason, /source name mismatch/i);
+    });
+
+    await t.test(
+        'mixed Arabic and English translation fails closed',
+        async () => {
+            const cache = translations(records);
+            cache[`${records[0].id}\u0000${records[0].name}`].nameAr =
+                'تحدي Player';
+            const prepared = await prepare(records, {
+                staticData: { sbcCatalogV1: { translations: cache } },
+            });
+
+            assert.equal(prepared.valid, false);
+            assert.match(prepared.failureReason, /Arabic-only/i);
+        },
+    );
 });
 
 test('snapshot validator rejects any undeclared key, duplicate identity, or non-SBC/PS-PC shape', async (t) => {

@@ -14,6 +14,8 @@ if (!pricingState.valid || !pricingState.pricing) {
 }
 
 let records = $input.all().map((item) => item.json);
+if (records.length === 1 && Array.isArray(records[0]?.sourceRecords))
+    records = records[0].sourceRecords;
 if (records.length === 1 && Array.isArray(records[0]?.body))
     records = records[0].body;
 if (records.length === 1 && Array.isArray(records[0]?.data))
@@ -107,6 +109,84 @@ const eligible = records.filter((record) => {
 if (eligible.length === 0)
     return fail('EasySBC source produced no eligible challenges');
 
+const baseline = settings.approvedBaseline;
+if (
+    !baseline ||
+    !Number.isInteger(baseline.sourceCount) ||
+    baseline.sourceCount <= 0 ||
+    !Number.isInteger(baseline.eligibleCount) ||
+    baseline.eligibleCount <= 0 ||
+    baseline.approvedBy !== 'operator' ||
+    typeof baseline.approvedAt !== 'string' ||
+    !baseline.approvedAt
+) {
+    return fail(
+        'A manually approved operator bootstrap baseline is required before SBC catalog apply',
+    );
+}
+
+const globalData = $getWorkflowStaticData('global');
+const workflowState = globalData.sbcCatalogV1 ?? {};
+const lastCounts = workflowState.lastSuccessfulCounts;
+const sourceSafetyFloor = Math.max(
+    settings.sourceMinCount,
+    baseline.sourceCount,
+    lastCounts?.sourceCount
+        ? Math.floor(Number(lastCounts.sourceCount) * 0.85)
+        : 0,
+);
+const eligibleSafetyFloor = Math.max(
+    1,
+    baseline.eligibleCount,
+    lastCounts?.eligibleCount
+        ? Math.floor(Number(lastCounts.eligibleCount) * 0.8)
+        : 0,
+);
+if (records.length < sourceSafetyFloor) {
+    return fail(
+        `EasySBC source count ${records.length} is below source safety floor of ${sourceSafetyFloor}`,
+    );
+}
+if (eligible.length < eligibleSafetyFloor) {
+    return fail(
+        `EasySBC eligible count ${eligible.length} is below eligible safety floor of ${eligibleSafetyFloor}`,
+    );
+}
+
+const translationCache = workflowState.translations ?? {};
+function approvedArabicName(record) {
+    const sourceName = record.name.trim();
+    const cached = translationCache[`${record.id}\u0000${sourceName}`];
+    if (!cached)
+        throw new Error(
+            `Approved Arabic translation is missing for EasySBC id ${record.id}`,
+        );
+    if (cached.sourceName !== sourceName)
+        throw new Error(
+            `Approved Arabic translation source name mismatch for EasySBC id ${record.id}`,
+        );
+    if (
+        typeof cached.nameAr !== 'string' ||
+        cached.nameAr.length < 2 ||
+        cached.nameAr.length > 120 ||
+        !/[\u0600-\u06ff]/.test(cached.nameAr) ||
+        /[A-Za-z]/.test(cached.nameAr)
+    ) {
+        throw new Error(
+            `Approved translation for EasySBC id ${record.id} must be Arabic-only and at most 120 characters`,
+        );
+    }
+    return cached.nameAr.trim();
+}
+
+for (const record of eligible) {
+    try {
+        approvedArabicName(record);
+    } catch (error) {
+        return fail(error.message);
+    }
+}
+
 const categoryKey = {
     1: 'players',
     2: 'upgrades',
@@ -166,12 +246,6 @@ function priceMinor(coins, challengeCount, quote) {
     return sar * 100;
 }
 
-function localizedName(record) {
-    return /[\u0600-\u06ff]/.test(record.name)
-        ? record.name
-        : `تحدي SBC: ${record.name}`;
-}
-
 function variant(record, platform) {
     const isPs = platform === 'playstation';
     const quoteKey = isPs ? 'playstation_fast' : 'pc';
@@ -217,7 +291,7 @@ function variant(record, platform) {
 }
 
 const products = eligible.map((record, index) => {
-    const nameAr = localizedName(record);
+    const nameAr = approvedArabicName(record);
     return {
         externalId: `easysbc-sbc-${record.id}`,
         categoryExternalId: `easysbc-category-${categoryKey[record.categoryId]}`,
@@ -225,9 +299,7 @@ const products = eligible.map((record, index) => {
         serviceType: 'sbc',
         name: { ar: nameAr, en: record.name.trim() },
         description: {
-            ar: /[\u0600-\u06ff]/.test(record.description || '')
-                ? record.description
-                : `إكمال تحدي SBC: ${record.name}.`,
+            ar: `أكمل تحدي بناء التشكيلة واحصل على المكافأة داخل حسابك.`,
             en: record.description?.trim() || `Complete ${record.name}.`,
         },
         sortOrder: index + 1,
@@ -253,6 +325,8 @@ return [
             failureReason: null,
             sourceCount: records.length,
             eligibleCount: products.length,
+            sourceSafetyFloor,
+            eligibleSafetyFloor,
             snapshot: {
                 schemaVersion: 1,
                 eventId: config.eventId,

@@ -39,6 +39,12 @@ return [
                 sourceMinCount: 20,
                 sourceLimit: 200,
                 minimumExpiryLeadSeconds: 7200,
+                approvedBaseline: {
+                    sourceCount: 56,
+                    eligibleCount: 39,
+                    approvedAt: '2026-08-12T12:00:00.000Z',
+                    approvedBy: 'operator',
+                },
             },
             eventId: ulid(),
             runId: ulid(),
