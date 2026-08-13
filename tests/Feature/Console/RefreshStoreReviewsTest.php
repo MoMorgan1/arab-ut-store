@@ -48,11 +48,9 @@ test('an unavailable source fails without deleting the last good data', function
     expect(Review::count())->toBe(1);
 });
 
-test('the review refresh is hourly and cannot overlap', function () {
+test('the legacy review refresh is not scheduled after the Salla archive migration', function () {
     $event = collect(app(Schedule::class)->events())
         ->first(fn ($event) => str_contains($event->command, 'reviews:refresh'));
 
-    expect($event)->not->toBeNull()
-        ->and($event->expression)->toBe('0 * * * *')
-        ->and($event->withoutOverlapping)->toBeTrue();
+    expect($event)->toBeNull();
 });
