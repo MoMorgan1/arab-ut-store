@@ -116,6 +116,43 @@ it('renders the refined SBC hierarchy and trust strip', () => {
     ).toBeVisible();
 });
 
+it('keeps the SBC inclusion ribbon in a reserved row above the artwork', () => {
+    render(<StoreCategory />);
+
+    const card = screen
+        .getByRole('list', { name: 'Platform prices' })
+        .closest('.store-catalog-card--sbc');
+    const media = card?.querySelector('.store-catalog-card__media');
+    const ribbon = screen.getByText('Includes coins and Submitting');
+    const artwork = card?.querySelector('.store-catalog-card__image');
+
+    expect(media).not.toBeNull();
+    expect(media?.children[0]).toBe(ribbon);
+    expect(media?.children[1]).toBe(artwork);
+});
+
+it('applies a visible lift while an SBC card is held on touch', () => {
+    render(<StoreCategory />);
+
+    const card = screen
+        .getByRole('list', { name: 'Platform prices' })
+        .closest('.store-catalog-card--sbc');
+
+    expect(card).not.toHaveStyle({
+        transform: 'translateY(-0.35rem) scale(0.99)',
+    });
+
+    fireEvent.pointerDown(card as Element, { pointerType: 'touch' });
+    expect(card).toHaveStyle({
+        transform: 'translateY(-0.35rem) scale(0.99)',
+    });
+
+    fireEvent.pointerCancel(card as Element, { pointerType: 'touch' });
+    expect(card).not.toHaveStyle({
+        transform: 'translateY(-0.35rem) scale(0.99)',
+    });
+});
+
 it('keeps SBC listing cards compact without removing descriptions from other catalogs', () => {
     render(<StoreCategory />);
 

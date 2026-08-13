@@ -249,8 +249,33 @@ function CatalogCard({
     const [variantId, setVariantId] = useState(
         isSbc ? '' : (product.variants[0]?.id ?? ''),
     );
+    const [isPressed, setIsPressed] = useState(false);
     const selected = product.variants.find(
         (variant) => variant.id === variantId,
+    );
+    const productArtwork = (
+        <a
+            aria-label={product.name}
+            className="store-catalog-card__image"
+            href={product.url ?? undefined}
+        >
+            <img
+                alt={
+                    product.image === null
+                        ? ''
+                        : product.image.alt || product.name
+                }
+                height={isSbc ? '288' : '240'}
+                loading="lazy"
+                src={
+                    product.image?.url ??
+                    (isSbc
+                        ? '/images/store/navigation/logo-sbc-96.webp'
+                        : '/images/store/hero/arabut-logo-hero.webp')
+                }
+                width={isSbc ? '384' : '320'}
+            />
+        </a>
     );
 
     return (
@@ -261,34 +286,30 @@ function CatalogCard({
             ]
                 .filter(Boolean)
                 .join(' ')}
+            onPointerCancel={isSbc ? () => setIsPressed(false) : undefined}
+            onPointerDown={isSbc ? () => setIsPressed(true) : undefined}
+            onPointerLeave={isSbc ? () => setIsPressed(false) : undefined}
+            onPointerUp={isSbc ? () => setIsPressed(false) : undefined}
+            style={
+                isSbc && isPressed
+                    ? {
+                          boxShadow:
+                              '0 0 0 0.22rem rgb(217 171 58 / 18%), 0 1.3rem 3.2rem rgb(0 0 0 / 38%), 0 0 2.35rem rgb(217 171 58 / 24%)',
+                          transform: 'translateY(-0.35rem) scale(0.99)',
+                      }
+                    : undefined
+            }
         >
             {isSbc ? (
-                <span className="store-catalog-card__ribbon">
-                    {translations.included}
-                </span>
-            ) : null}
-            <a
-                aria-label={product.name}
-                className="store-catalog-card__image"
-                href={product.url ?? undefined}
-            >
-                <img
-                    alt={
-                        product.image === null
-                            ? ''
-                            : product.image.alt || product.name
-                    }
-                    height={isSbc ? '288' : '240'}
-                    loading="lazy"
-                    src={
-                        product.image?.url ??
-                        (isSbc
-                            ? '/images/store/navigation/logo-sbc-96.webp'
-                            : '/images/store/hero/arabut-logo-hero.webp')
-                    }
-                    width={isSbc ? '384' : '320'}
-                />
-            </a>
+                <div className="store-catalog-card__media">
+                    <span className="store-catalog-card__ribbon">
+                        {translations.included}
+                    </span>
+                    {productArtwork}
+                </div>
+            ) : (
+                productArtwork
+            )}
             <div className="store-catalog-card__body">
                 <h2>{product.name}</h2>
                 {isSbc ? null : <p>{product.description}</p>}
