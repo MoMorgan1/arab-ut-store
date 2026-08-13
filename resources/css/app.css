@@ -5871,6 +5871,7 @@
     .store-catalog-card--sbc.is-pressed .store-catalog-card__artwork-glow,
     .store-catalog-card--sbc:hover .store-catalog-card__artwork-glow,
     .store-catalog-related a:hover,
+    .store-catalog-card--sbc.is-pressed .store-catalog-card__image img,
     .store-catalog-card--sbc:hover .store-catalog-card__image img,
     .store-catalog-product--sbc .store-catalog-product__image img {
         transform: none !important;
