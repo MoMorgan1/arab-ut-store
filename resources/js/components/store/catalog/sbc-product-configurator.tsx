@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
+import { catalogPlatformName } from '@/lib/catalog-platform-name';
 import { formatMinorUnits } from '@/lib/money';
 import { SbcCartRequestError, submitSbcCart } from '@/lib/sbc-cart-api';
 import type { CoinsCredentialField, CoinsCredentials } from '@/types/coins';
@@ -225,7 +226,13 @@ export function SbcProductConfigurator({
                                 type="radio"
                                 value={option.id}
                             />
-                            <span>{option.name}</span>
+                            <span>
+                                {catalogPlatformName(
+                                    option.platform,
+                                    option.name,
+                                    locale,
+                                )}
+                            </span>
                             <strong>
                                 {option.price === null
                                     ? translations.unavailable_price
@@ -377,7 +384,13 @@ export function SbcProductConfigurator({
                 <div>
                     <dt>{translations.sbc.selected}</dt>
                     <dd className="sbc-product-summary__platform">
-                        {variant?.name ?? '—'}
+                        {variant === undefined
+                            ? '—'
+                            : catalogPlatformName(
+                                  variant.platform,
+                                  variant.name,
+                                  locale,
+                              )}
                     </dd>
                 </div>
                 <div>

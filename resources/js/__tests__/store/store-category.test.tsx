@@ -105,7 +105,7 @@ it('renders the refined SBC hierarchy and trust strip', () => {
     expect(
         screen.getByRole('group', { name: 'Filter' }).parentElement,
     ).toHaveClass('store-catalog-toolbar__filter-shell');
-    expect(screen.getByText('Includes coins and Submitting')).toBeVisible();
+    expect(screen.getByText('Coins + completion')).toBeVisible();
     expect(
         within(
             screen.getByRole('list', { name: 'Platform prices' }),
@@ -130,13 +130,11 @@ it('uses the WordPress ribbon artwork without consuming an artwork row', () => {
         .getByRole('list', { name: 'Platform prices' })
         .closest('.store-catalog-card--sbc');
     const media = card?.querySelector('.store-catalog-card__media');
-    const ribbon = screen.getByText('Includes coins and Submitting');
+    const ribbon = screen.getByText('Coins + completion');
     const artwork = card?.querySelector('.store-catalog-card__image');
 
     expect(media).not.toBeNull();
-    expect(ribbon.closest('.store-catalog-card__ribbon')).toHaveStyle({
-        backgroundImage: 'url(/images/store/catalog/sbc-ribbon.svg)',
-    });
+    expect(ribbon).toHaveClass('store-catalog-card__included');
     expect(media).toContainElement(artwork as HTMLElement);
 });
 
@@ -420,7 +418,7 @@ function catalogTranslations() {
         add_error: 'Could not add this item.',
         platform: 'Platform',
         platform_prices: 'Platform prices',
-        included: 'Includes coins and Submitting',
+        included: 'Coins + completion',
         browse_by_type: 'Browse by type',
         assurances: 'Store assurances',
         assurance_no_players: 'your club is safe',

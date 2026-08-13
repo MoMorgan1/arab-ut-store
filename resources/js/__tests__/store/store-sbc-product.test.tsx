@@ -52,11 +52,13 @@ it('defaults an SBC product to the available PlayStation and Xbox variant', () =
     render(<StoreCatalogProduct />);
 
     expect(
-        screen.getByRole('radio', { name: /PS \/ Xbox.*SAR.*125.00/ }),
+        screen.getByRole('radio', {
+            name: /PlayStation \/ Xbox.*SAR.*125.00/,
+        }),
     ).toBeChecked();
     expect(
         document.querySelector('.sbc-product-summary__platform'),
-    ).toHaveTextContent('PS / Xbox');
+    ).toHaveTextContent('PlayStation / Xbox');
     expect(screen.getByRole('button', { name: 'Add to cart' })).toBeEnabled();
 });
 
@@ -93,6 +95,12 @@ it('matches the compact SBC platform and three-code credential hierarchy', () =>
     expect(
         screen.getByRole('link', { name: /Related challenge/ }),
     ).toHaveAttribute('href', '/en/sbc/related-challenge');
+    expect(
+        document.querySelector('.store-catalog-related__rail'),
+    ).toContainElement(screen.getByRole('link', { name: /Related challenge/ }));
+    expect(
+        screen.getByRole('link', { name: /Related challenge/ }).closest('li'),
+    ).toHaveClass('store-catalog-card--sbc');
 });
 
 it('places the SBC identity above its image on a direct visit', () => {
@@ -111,7 +119,9 @@ it('places the SBC identity above its image on a direct visit', () => {
         document.querySelector('.store-catalog-product__media-column'),
     ).toContainElement(document.querySelector('.store-catalog-product__image'));
     expect(
-        screen.getByRole('radio', { name: /PS \/ Xbox.*SAR.*125.00/ }),
+        screen.getByRole('radio', {
+            name: /PlayStation \/ Xbox.*SAR.*125.00/,
+        }),
     ).toBeChecked();
     expect(screen.getByRole('button', { name: 'Add to cart' })).toBeEnabled();
 });
@@ -322,6 +332,7 @@ function sbcProductProps() {
                 password: 'EA password',
                 show_password: 'Show password',
                 hide_password: 'Hide password',
+                included_compact: 'Coins + completion',
                 backup_codes: 'EA backup codes',
                 backup_help: 'Enter three different eight-digit codes.',
                 backup_code: 'Backup code :number',
@@ -329,6 +340,7 @@ function sbcProductProps() {
                 required_password: 'Enter your EA password.',
                 required_code: 'Enter an eight-digit code.',
                 duplicate_code: 'Use a different code.',
+                platform_prices: 'Platform prices',
                 selected: 'platform',
                 total: 'Total',
                 success: 'Added securely',

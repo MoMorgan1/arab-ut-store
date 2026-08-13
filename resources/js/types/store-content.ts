@@ -135,7 +135,9 @@ export type ProductTranslations = {
         duplicate_code: string;
         email: string;
         hide_password: string;
+        included_compact: string;
         password: string;
+        platform_prices: string;
         platform_legend: string;
         required_code: string;
         required_email: string;

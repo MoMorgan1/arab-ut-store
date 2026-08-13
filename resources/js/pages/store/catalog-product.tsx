@@ -2,6 +2,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { CatalogAddControl } from '@/components/store/catalog/catalog-add-control';
+import { SbcCatalogCard } from '@/components/store/catalog/sbc-catalog-card';
 import { SbcProductConfigurator } from '@/components/store/catalog/sbc-product-configurator';
 import StoreLayout from '@/layouts/store-layout';
 import { formatMinorUnits } from '@/lib/money';
@@ -161,37 +162,23 @@ export default function StoreCatalogProduct() {
                                 {props.productPage.sbc.related_title}
                             </h2>
                         </header>
-                        <ul>
+                        <ul className="store-catalog-related__rail">
                             {props.catalog.suggestions.map((suggestion) => (
-                                <li key={suggestion.id}>
-                                    <a href={suggestion.url ?? undefined}>
-                                        <img
-                                            alt={suggestion.image?.alt ?? ''}
-                                            height="180"
-                                            loading="lazy"
-                                            src={
-                                                suggestion.image?.url ??
-                                                '/images/store/navigation/logo-sbc-96.webp'
-                                            }
-                                            width="220"
-                                        />
-                                        <strong>{suggestion.name}</strong>
-                                        <span>
-                                            {suggestion.price === null
-                                                ? props.productPage
-                                                      .unavailable_price
-                                                : formatMinorUnits(
-                                                      suggestion.price
-                                                          .amountMinor,
-                                                      suggestion.price.currency,
-                                                      props.locale,
-                                                  )}
-                                        </span>
-                                        <small>
-                                            {props.productPage.sbc.related_link}
-                                        </small>
-                                    </a>
-                                </li>
+                                <SbcCatalogCard
+                                    key={suggestion.id}
+                                    locale={props.locale}
+                                    product={suggestion}
+                                    translations={{
+                                        included:
+                                            props.productPage.sbc
+                                                .included_compact,
+                                        platform_prices:
+                                            props.productPage.sbc
+                                                .platform_prices,
+                                        unavailable_price:
+                                            props.productPage.unavailable_price,
+                                    }}
+                                />
                             ))}
                         </ul>
                     </section>

@@ -256,7 +256,7 @@ export function StoreHeader(props: StoreHeaderProps) {
                         />
                         <span
                             aria-hidden="true"
-                            className="store-wordmark__text"
+                            className="store-wordmark__text store-display-type"
                             dir={direction}
                         >
                             <span className="store-wordmark__name">

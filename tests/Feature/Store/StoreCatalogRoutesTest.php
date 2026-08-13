@@ -259,7 +259,7 @@ test('category product pages resolve the slug in both storefront locales', funct
     ], [
         'configuration' => ['sbcCategory' => 'players'],
     ]);
-    foreach (range(1, 5) as $index) {
+    foreach (range(1, 9) as $index) {
         createStoreCatalogProduct(ServiceType::Sbc, [
             'slug' => "related-sbc-{$index}",
             'sort_order' => $index,
@@ -272,7 +272,7 @@ test('category product pages resolve the slug in both storefront locales', funct
             ->component('store/catalog-product', false)
             ->where('locale', 'ar')
             ->where('catalog.product.slug', 'localized-sbc-product')
-            ->has('catalog.suggestions', 4)
+            ->has('catalog.suggestions', 8)
             ->where('catalog.suggestions', fn ($suggestions): bool => $suggestions
                 ->doesntContain(fn (array $product): bool => $product['id'] === $current->public_id)));
 
@@ -282,7 +282,7 @@ test('category product pages resolve the slug in both storefront locales', funct
             ->component('store/catalog-product', false)
             ->where('locale', 'en')
             ->where('catalog.product.slug', 'localized-sbc-product')
-            ->has('catalog.suggestions', 4));
+            ->has('catalog.suggestions', 8));
 });
 
 test('homepage service rail contract has equal ordered internal routes and the exact Sell Coins destination', function () {

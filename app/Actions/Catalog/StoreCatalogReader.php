@@ -87,7 +87,7 @@ final class StoreCatalogReader
         )
             ->orderBy('sort_order')
             ->orderBy('id')
-            ->limit(4)
+            ->limit(8)
             ->get();
 
         return [

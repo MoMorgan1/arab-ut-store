@@ -497,10 +497,16 @@ export function CredentialsStep({
                         <p id="coins-policy-help">
                             <span>{translations.credentials.policy_help}</span>
                             <span className="coins-policy-links">
-                                <a href={termsUrl}>
+                                <a
+                                    className="coins-policy-link"
+                                    href={termsUrl}
+                                >
                                     {translations.credentials.terms_link}
                                 </a>
-                                <a href={warrantyUrl}>
+                                <a
+                                    className="coins-policy-link"
+                                    href={warrantyUrl}
+                                >
                                     {translations.credentials.warranty_link}
                                 </a>
                             </span>

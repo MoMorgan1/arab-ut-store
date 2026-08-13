@@ -49,7 +49,7 @@ const store = {
         title: 'Choose your platform',
         help: 'Choose PS / Xbox or PC.',
         options: { playstation: 'PS / Xbox', pc: 'PC' },
-        descriptions: { playstation: 'PlayStation and Xbox', pc: 'Computer' },
+        descriptions: { playstation: 'PlayStation and Xbox', pc: 'PC' },
     },
     delivery: {
         title: 'Choose delivery',
@@ -442,6 +442,8 @@ describe('Coins credentials flow', () => {
         expect(termsLink.closest('.coins-policy-links')).toBe(
             warrantyLink.closest('.coins-policy-links'),
         );
+        expect(termsLink).toHaveClass('coins-policy-link');
+        expect(warrantyLink).toHaveClass('coins-policy-link');
 
         cleanup();
         render(<StoreHome />);

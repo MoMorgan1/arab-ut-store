@@ -105,7 +105,7 @@ return [
         'add_error' => 'Could not add this item. Try again.',
         'platform' => 'Platform',
         'platform_prices' => 'Platform prices',
-        'included' => 'Includes coins and Submitting',
+        'included' => 'Coins + completion',
         'browse_by_type' => 'Browse by type',
         'assurances' => 'Store assurances',
         'assurance_no_players' => 'your club is safe',
@@ -133,6 +133,7 @@ return [
             'password' => 'EA password',
             'show_password' => 'Show password',
             'hide_password' => 'Hide password',
+            'included_compact' => 'Coins + completion',
             'backup_codes' => 'EA backup codes',
             'backup_help' => 'Enter three different eight-digit backup codes.',
             'backup_code' => 'Backup code :number',
@@ -140,6 +141,7 @@ return [
             'required_password' => 'Enter your EA password.',
             'required_code' => 'Enter an eight-digit backup code.',
             'duplicate_code' => 'Use a different backup code.',
+            'platform_prices' => 'Platform prices',
             'selected' => 'platform',
             'total' => 'Total',
             'success' => 'Added securely',
@@ -188,7 +190,7 @@ return [
         ],
         'descriptions' => [
             'playstation' => 'PlayStation and Xbox',
-            'pc' => 'Computer',
+            'pc' => 'PC',
         ],
     ],
     'delivery' => [

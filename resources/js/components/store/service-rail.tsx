@@ -55,7 +55,9 @@ export function ServiceRail({
                                             width="1280"
                                         />
                                     </span>
-                                    <strong>{service.title}</strong>
+                                    <strong className="store-display-type">
+                                        {service.title}
+                                    </strong>
                                     <span>{service.description}</span>
                                 </a>
                             </li>

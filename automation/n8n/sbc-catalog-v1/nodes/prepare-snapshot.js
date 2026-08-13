@@ -370,7 +370,7 @@ function variant(record, platform) {
         market: isPs ? 'console' : 'pc',
         currency: 'SAR',
         name: {
-            ar: isPs ? 'بلايستيشن' : 'كمبيوتر',
+            ar: isPs ? 'سوني / إكس بوكس' : 'بي سي',
             en: isPs ? 'PlayStation / Xbox' : 'PC',
         },
         priceMinor: priceMinor(

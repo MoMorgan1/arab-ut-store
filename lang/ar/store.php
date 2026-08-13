@@ -105,7 +105,7 @@ return [
         'add_error' => 'تعذرت إضافة المنتج. حاول مرة أخرى.',
         'platform' => 'المنصة',
         'platform_prices' => 'أسعار المنصات',
-        'included' => 'شامل شحن الكوينز والتنفيذ',
+        'included' => 'كوينز + تنفيذ',
         'browse_by_type' => 'استكشف حسب النوع',
         'assurances' => 'ضمانات الخدمة',
         'assurance_no_players' => 'بدون سحب لاعبين',
@@ -133,6 +133,7 @@ return [
             'password' => 'كلمة مرور EA',
             'show_password' => 'إظهار كلمة المرور',
             'hide_password' => 'إخفاء كلمة المرور',
+            'included_compact' => 'كوينز + تنفيذ',
             'backup_codes' => 'الأكواد الاحتياطية من EA',
             'backup_help' => 'أدخل ثلاثة أكواد مختلفة، كل كود 8 أرقام.',
             'backup_code' => 'الكود الاحتياطي :number',
@@ -140,6 +141,7 @@ return [
             'required_password' => 'أدخل كلمة مرور EA.',
             'required_code' => 'أدخل كودًا احتياطيًا من 8 أرقام.',
             'duplicate_code' => 'استخدم كودًا مختلفًا.',
+            'platform_prices' => 'أسعار المنصات',
             'selected' => 'المنصة',
             'total' => 'الإجمالي',
             'success' => 'تمت الإضافة بأمان',
@@ -188,7 +190,7 @@ return [
         ],
         'descriptions' => [
             'playstation' => 'بلايستيشن وإكسبوكس',
-            'pc' => 'الكمبيوتر',
+            'pc' => 'بي سي',
         ],
     ],
     'delivery' => [

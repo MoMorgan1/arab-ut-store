@@ -63,7 +63,7 @@ const store = {
         },
         descriptions: {
             playstation: 'PlayStation and Xbox',
-            pc: 'Computer',
+            pc: 'PC',
         },
     },
     delivery: {

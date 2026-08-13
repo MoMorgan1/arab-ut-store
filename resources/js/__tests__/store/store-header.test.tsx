@@ -183,6 +183,9 @@ describe('StoreHeader', () => {
         const crest = wordmark.querySelector('img');
 
         expect(wordmark).toHaveClass('store-wordmark');
+        expect(wordmark.querySelector('.store-wordmark__text')).toHaveClass(
+            'store-display-type',
+        );
         expect(wordmark).toHaveAccessibleName('Arab UT');
         expect(crest).toHaveAttribute('width', '48');
         expect(crest).toHaveAttribute('height', '48');
