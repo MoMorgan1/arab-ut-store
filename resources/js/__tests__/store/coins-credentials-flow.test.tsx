@@ -434,6 +434,14 @@ describe('Coins credentials flow', () => {
                 name: 'I confirm the details and accept the policies.',
             }),
         ).toBeVisible();
+        const termsLink = screen.getByRole('link', { name: 'Terms' });
+        const warrantyLink = screen.getByRole('link', { name: 'Warranty' });
+
+        expect(termsLink).toHaveAttribute('href', '/en/terms');
+        expect(warrantyLink).toHaveAttribute('href', '/en/warranty');
+        expect(termsLink.closest('.coins-policy-links')).toBe(
+            warrantyLink.closest('.coins-policy-links'),
+        );
 
         cleanup();
         render(<StoreHome />);

@@ -5,7 +5,7 @@ return [
     'locales' => ['ar', 'en'],
     'checkout_currency' => 'SAR',
     'default_display_currency' => 'SAR',
-    'display_currencies' => ['SAR', 'USD', 'EUR', 'GBP'],
+    'display_currencies' => ['SAR', 'AED', 'KWD', 'BHD', 'OMR', 'QAR', 'USD', 'EUR', 'GBP'],
     'display_exchange_rates' => [
         'provider_url' => 'https://open.er-api.com/v6/latest/SAR',
         'source' => 'exchange-rate-api-open-access',

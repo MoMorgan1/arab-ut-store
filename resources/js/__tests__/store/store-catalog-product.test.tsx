@@ -120,6 +120,7 @@ function productProps() {
         catalogCartUrl: '/en/cart/items/catalog',
         catalog: {
             service: 'fut_champions',
+            suggestions: [],
             product: {
                 id: '01K00000000000000000000003',
                 slug: 'fut',

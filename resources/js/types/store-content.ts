@@ -140,6 +140,9 @@ export type ProductTranslations = {
         required_code: string;
         required_email: string;
         required_password: string;
+        related_eyebrow: string;
+        related_link: string;
+        related_title: string;
         selected: string;
         show_password: string;
         success: string;
@@ -187,7 +190,11 @@ export type StoreCategoryPageProps = StoreBasePageProps & {
 
 export type StoreCatalogProductPageProps = StoreBasePageProps & {
     backUrl: string;
-    catalog: { product: CatalogProduct; service: string };
+    catalog: {
+        product: CatalogProduct;
+        service: string;
+        suggestions: CatalogProduct[];
+    };
     catalogCartUrl: string;
     productPage: ProductTranslations;
     sbcCartUrl: string;

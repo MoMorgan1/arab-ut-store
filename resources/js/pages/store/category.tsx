@@ -390,9 +390,13 @@ function CatalogCard({
 
 function SbcTitle({ title }: { title: string }) {
     const suffix = 'SBC';
-    const copy = title.endsWith(suffix)
-        ? title.slice(0, -suffix.length).trimEnd()
-        : title;
+    const hasSuffix = title.endsWith(suffix);
+
+    if (!hasSuffix) {
+        return title;
+    }
+
+    const copy = title.slice(0, -suffix.length).trimEnd();
 
     return (
         <>

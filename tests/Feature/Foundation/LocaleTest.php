@@ -43,6 +43,12 @@ test('the storefront shares the configured display currency list', function () {
             ->where('displayCurrencies', ['SAR', 'CAD']));
 });
 
+test('the default storefront currency list includes the Gulf currencies', function () {
+    expect(config('store.display_currencies'))->toBe([
+        'SAR', 'AED', 'KWD', 'BHD', 'OMR', 'QAR', 'USD', 'EUR', 'GBP',
+    ]);
+});
+
 test('unsupported locale prefixes return not found', function () {
     $this->get('/fr')->assertNotFound();
 });

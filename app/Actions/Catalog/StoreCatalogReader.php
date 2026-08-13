@@ -68,22 +68,38 @@ final class StoreCatalogReader
         ];
     }
 
-    /** @return array{service: string, product: array<string, mixed>} */
+    /** @return array{service: string, product: array<string, mixed>, suggestions: list<array<string, mixed>>} */
     public function productBySlug(
         ServiceType $service,
         string $slug,
         string $locale,
         string $displayCurrency,
     ): array {
-        $product = $this->publicProducts($service)->firstWhere('slug', $slug);
+        $converter = $this->converter($displayCurrency);
+        $product = $this->withCatalogRelations(
+            $this->publicProductsQuery($service)->where('slug', $slug),
+        )->first();
 
         abort_unless($product instanceof Product, 404);
+
+        $suggestions = $this->withCatalogRelations(
+            $this->publicProductsQuery($service)->whereKeyNot($product->getKey()),
+        )
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->limit(4)
+            ->get();
 
         return [
             'service' => $service->value,
             'product' => $this->withoutInternalFields(
-                $this->present($product, $locale, $this->converter($displayCurrency)),
+                $this->present($product, $locale, $converter),
             ),
+            'suggestions' => array_values($suggestions
+                ->map(fn (Product $suggestion): array => $this->withoutInternalFields(
+                    $this->present($suggestion, $locale, $converter),
+                ))
+                ->all()),
         ];
     }
 

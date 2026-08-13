@@ -140,9 +140,12 @@ return [
             'required_password' => 'أدخل كلمة مرور EA.',
             'required_code' => 'أدخل كودًا احتياطيًا من 8 أرقام.',
             'duplicate_code' => 'استخدم كودًا مختلفًا.',
-            'selected' => 'الخدمة المحددة',
+            'selected' => 'المنصة',
             'total' => 'الإجمالي',
             'success' => 'تمت الإضافة بأمان',
+            'related_eyebrow' => 'خدمات SBC أخرى',
+            'related_title' => 'قد يعجبك أيضًا',
+            'related_link' => 'افتح الخدمة',
         ],
     ],
     'reviews' => [

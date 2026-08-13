@@ -77,7 +77,7 @@ it('renders the refined SBC hierarchy and trust strip', () => {
     expect(screen.getAllByRole('main')).toHaveLength(1);
     expect(
         screen.getByRole('heading', {
-            name: 'Complete Squad Building Challenges SBC',
+            name: 'Complete Squad Building Challenges',
             level: 1,
         }),
     ).toBeVisible();
@@ -98,9 +98,7 @@ it('renders the refined SBC hierarchy and trust strip', () => {
     expect(
         screen.getByRole('heading', { name: 'Browse by type', level: 2 }),
     ).toBeVisible();
-    expect(
-        screen.getByText('Coins funding and completion included'),
-    ).toBeVisible();
+    expect(screen.getByText('Includes coins and Submitting')).toBeVisible();
     expect(
         within(
             screen.getByRole('list', { name: 'Platform prices' }),
@@ -294,7 +292,7 @@ function categoryProps(overrides: Record<string, unknown> = {}) {
         servicePage: {
             eyebrow: 'FC 27 services',
             title: 'SBC Services',
-            page_title: 'Complete Squad Building Challenges SBC',
+            page_title: 'Complete Squad Building Challenges',
             intro: 'Choose your service.',
             card_description: 'SBC service.',
         },
@@ -330,10 +328,10 @@ function catalogTranslations() {
         add_error: 'Could not add this item.',
         platform: 'Platform',
         platform_prices: 'Platform prices',
-        included: 'Coins funding and completion included',
+        included: 'Includes coins and Submitting',
         browse_by_type: 'Browse by type',
         assurances: 'Store assurances',
-        assurance_no_players: 'No player withdrawal',
+        assurance_no_players: 'your club is safe',
         assurance_no_players_detail:
             'We fund and complete the SBC without taking players.',
         assurance_fast: 'Fast delivery',

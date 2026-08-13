@@ -40,38 +40,46 @@ export default function StoreCatalogProduct() {
                     {props.productPage.back}
                 </a>
                 <div className="store-catalog-product__grid">
-                    <div className="store-catalog-product__image">
-                        <img
-                            alt={product.image?.alt ?? ''}
-                            height="520"
-                            src={
-                                product.image?.url ??
-                                '/images/store/hero/arabut-logo-hero.webp'
-                            }
-                            width="640"
-                        />
+                    <div className="store-catalog-product__media-column">
+                        {isSbc ? (
+                            <header className="store-catalog-product__identity">
+                                <p>{props.catalog.service.replace('_', ' ')}</p>
+                                <h1 id="catalog-product-title">
+                                    {product.name}
+                                </h1>
+                                <p>{product.description}</p>
+                            </header>
+                        ) : null}
+                        <div className="store-catalog-product__image">
+                            <img
+                                alt={product.image?.alt ?? ''}
+                                height="520"
+                                src={
+                                    product.image?.url ??
+                                    '/images/store/hero/arabut-logo-hero.webp'
+                                }
+                                width="640"
+                            />
+                        </div>
                     </div>
                     <section
                         aria-labelledby="catalog-product-title"
                         className="store-catalog-product__content"
                     >
-                        <p>{props.catalog.service.replace('_', ' ')}</p>
-                        <h1
-                            className={[
-                                'store-catalog-product__title',
-                                isSbc
-                                    ? 'store-catalog-product__title--centered'
-                                    : null,
-                            ]
-                                .filter(Boolean)
-                                .join(' ')}
-                            id="catalog-product-title"
-                        >
-                            {product.name}
-                        </h1>
-                        <div className="store-catalog-product__description">
-                            {product.description}
-                        </div>
+                        {!isSbc ? (
+                            <>
+                                <p>{props.catalog.service.replace('_', ' ')}</p>
+                                <h1
+                                    className="store-catalog-product__title"
+                                    id="catalog-product-title"
+                                >
+                                    {product.name}
+                                </h1>
+                                <div className="store-catalog-product__description">
+                                    {product.description}
+                                </div>
+                            </>
+                        ) : null}
                         {isSbc ? (
                             <SbcProductConfigurator
                                 addUrl={props.sbcCartUrl}
@@ -142,6 +150,52 @@ export default function StoreCatalogProduct() {
                         )}
                     </section>
                 </div>
+                {isSbc && props.catalog.suggestions.length > 0 ? (
+                    <section
+                        aria-labelledby="sbc-related-title"
+                        className="store-catalog-related"
+                    >
+                        <header>
+                            <p>{props.productPage.sbc.related_eyebrow}</p>
+                            <h2 id="sbc-related-title">
+                                {props.productPage.sbc.related_title}
+                            </h2>
+                        </header>
+                        <ul>
+                            {props.catalog.suggestions.map((suggestion) => (
+                                <li key={suggestion.id}>
+                                    <a href={suggestion.url ?? undefined}>
+                                        <img
+                                            alt={suggestion.image?.alt ?? ''}
+                                            height="180"
+                                            loading="lazy"
+                                            src={
+                                                suggestion.image?.url ??
+                                                '/images/store/navigation/logo-sbc-96.webp'
+                                            }
+                                            width="220"
+                                        />
+                                        <strong>{suggestion.name}</strong>
+                                        <span>
+                                            {suggestion.price === null
+                                                ? props.productPage
+                                                      .unavailable_price
+                                                : formatMinorUnits(
+                                                      suggestion.price
+                                                          .amountMinor,
+                                                      suggestion.price.currency,
+                                                      props.locale,
+                                                  )}
+                                        </span>
+                                        <small>
+                                            {props.productPage.sbc.related_link}
+                                        </small>
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                ) : null}
             </main>
         </StoreLayout>
     );

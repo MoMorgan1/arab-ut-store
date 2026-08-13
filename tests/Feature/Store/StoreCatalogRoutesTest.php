@@ -252,27 +252,37 @@ test('category query input is bounded and product routes reject wrong services',
 });
 
 test('category product pages resolve the slug in both storefront locales', function () {
-    createStoreCatalogProduct(ServiceType::Sbc, [
+    $current = createStoreCatalogProduct(ServiceType::Sbc, [
         'slug' => 'localized-sbc-product',
         'name_ar' => 'ØªØ­Ø¯ÙŠ Ù…Ø­Ù„ÙŠ',
         'name_en' => 'Localized challenge',
     ], [
         'configuration' => ['sbcCategory' => 'players'],
     ]);
+    foreach (range(1, 5) as $index) {
+        createStoreCatalogProduct(ServiceType::Sbc, [
+            'slug' => "related-sbc-{$index}",
+            'sort_order' => $index,
+        ]);
+    }
 
     $this->get('/sbc/localized-sbc-product')
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('store/catalog-product', false)
             ->where('locale', 'ar')
-            ->where('catalog.product.slug', 'localized-sbc-product'));
+            ->where('catalog.product.slug', 'localized-sbc-product')
+            ->has('catalog.suggestions', 4)
+            ->where('catalog.suggestions', fn ($suggestions): bool => $suggestions
+                ->doesntContain(fn (array $product): bool => $product['id'] === $current->public_id)));
 
     $this->get('/en/sbc/localized-sbc-product')
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('store/catalog-product', false)
             ->where('locale', 'en')
-            ->where('catalog.product.slug', 'localized-sbc-product'));
+            ->where('catalog.product.slug', 'localized-sbc-product')
+            ->has('catalog.suggestions', 4));
 });
 
 test('homepage service rail contract has equal ordered internal routes and the exact Sell Coins destination', function () {

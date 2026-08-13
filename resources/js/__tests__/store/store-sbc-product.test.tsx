@@ -69,18 +69,33 @@ it('matches the compact SBC platform and three-code credential hierarchy', () =>
     expect(screen.getAllByLabelText(/Backup code [123]/)).toHaveLength(3);
     expect(screen.queryByText(/automatically deleted|24 hours/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /checkout|pay/i })).toBeNull();
+    expect(screen.getByText('platform')).toBeVisible();
+    expect(
+        document.querySelector('.sbc-product-summary__platform'),
+    ).toHaveTextContent('PC');
+    expect(
+        screen.getByRole('heading', { name: 'You may also like' }),
+    ).toBeVisible();
+    expect(
+        screen.getByRole('link', { name: /Related challenge/ }),
+    ).toHaveAttribute('href', '/en/sbc/related-challenge');
 });
 
-it('keeps a direct SBC visit unselected and centers its identity until a platform is chosen', () => {
+it('keeps a direct SBC visit unselected and places its identity above the product image', () => {
     page.url = '/en/sbc/icon-challenge';
     render(<StoreCatalogProduct />);
 
     expect(document.querySelector('.store-catalog-product')).toHaveClass(
         'store-catalog-product--sbc',
     );
-    expect(screen.getByRole('heading', { name: 'Icon Challenge' })).toHaveClass(
-        'store-catalog-product__title--centered',
-    );
+    expect(
+        screen
+            .getByRole('heading', { name: 'Icon Challenge' })
+            .closest('header'),
+    ).toHaveClass('store-catalog-product__identity');
+    expect(
+        document.querySelector('.store-catalog-product__media-column'),
+    ).toContainElement(document.querySelector('.store-catalog-product__image'));
     screen
         .getAllByRole('radio')
         .forEach((radio) => expect(radio).not.toBeChecked());
@@ -263,6 +278,19 @@ function sbcProductProps() {
                     },
                 ],
             },
+            suggestions: [
+                {
+                    id: '01K00000000000000000000009',
+                    slug: 'related-challenge',
+                    url: '/en/sbc/related-challenge',
+                    name: 'Related challenge',
+                    description: 'Another SBC.',
+                    image: null,
+                    price: { amountMinor: 9900, currency: 'SAR' },
+                    platforms: ['pc'],
+                    variants: [],
+                },
+            ],
         },
         productPage: {
             choose_option: 'Choose an option',
@@ -287,9 +315,12 @@ function sbcProductProps() {
                 required_password: 'Enter your EA password.',
                 required_code: 'Enter an eight-digit code.',
                 duplicate_code: 'Use a different code.',
-                selected: 'Selected service',
+                selected: 'platform',
                 total: 'Total',
                 success: 'Added securely',
+                related_eyebrow: 'More SBC services',
+                related_title: 'You may also like',
+                related_link: 'Open service',
             },
         },
         storeShell: {

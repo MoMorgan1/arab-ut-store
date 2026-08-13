@@ -495,13 +495,15 @@ export function CredentialsStep({
                             </span>
                         </label>
                         <p id="coins-policy-help">
-                            {translations.credentials.policy_help}{' '}
-                            <a href={termsUrl}>
-                                {translations.credentials.terms_link}
-                            </a>{' '}
-                            <a href={warrantyUrl}>
-                                {translations.credentials.warranty_link}
-                            </a>
+                            <span>{translations.credentials.policy_help}</span>
+                            <span className="coins-policy-links">
+                                <a href={termsUrl}>
+                                    {translations.credentials.terms_link}
+                                </a>
+                                <a href={warrantyUrl}>
+                                    {translations.credentials.warranty_link}
+                                </a>
+                            </span>
                         </p>
                         <FieldError
                             error={errors.policy}

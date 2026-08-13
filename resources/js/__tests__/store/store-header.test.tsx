@@ -90,7 +90,17 @@ function renderHeader(currentUrl = '/en') {
             cartCount={0}
             currentUrl={currentUrl}
             direction="ltr"
-            displayCurrencies={['SAR', 'USD', 'EUR']}
+            displayCurrencies={[
+                'SAR',
+                'AED',
+                'KWD',
+                'BHD',
+                'OMR',
+                'QAR',
+                'USD',
+                'EUR',
+                'GBP',
+            ]}
             displayCurrency="USD"
             locale="en"
             shell={shell}
@@ -204,6 +214,27 @@ describe('StoreHeader', () => {
                 }),
             ).getByRole('link', { name: 'USD' }),
         ).toHaveAttribute('aria-current', 'page');
+
+        expect(
+            within(
+                screen.getByRole('dialog', {
+                    name: 'Display preferences',
+                }),
+            )
+                .getAllByRole('link')
+                .filter((link) => /^[A-Z]{3}$/.test(link.textContent ?? ''))
+                .map((link) => link.textContent),
+        ).toEqual([
+            'SAR',
+            'AED',
+            'KWD',
+            'BHD',
+            'OMR',
+            'QAR',
+            'USD',
+            'EUR',
+            'GBP',
+        ]);
 
         const attribution = within(
             screen.getByRole('dialog', { name: 'Display preferences' }),

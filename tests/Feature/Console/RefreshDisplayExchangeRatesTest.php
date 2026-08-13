@@ -25,6 +25,11 @@ test('the refresh command atomically stores every configured foreign display rat
         'https://open.er-api.com/v6/latest/SAR' => Http::response(
             openAccessPayload([
                 'SAR' => '1',
+                'AED' => '0.9792',
+                'KWD' => '0.0817',
+                'BHD' => '0.1005',
+                'OMR' => '0.1026',
+                'QAR' => '0.9707',
                 'USD' => '0.266666666',
                 'EUR' => '0.228123455',
                 'GBP' => '0.196',
@@ -39,8 +44,13 @@ test('the refresh command atomically stores every configured foreign display rat
     expect(ExchangeRate::query()->orderBy('quote_currency')->get()->mapWithKeys(
         fn (ExchangeRate $rate): array => [$rate->quote_currency => $rate->rate],
     )->all())->toBe([
+        'AED' => '0.97920000',
+        'BHD' => '0.10050000',
         'EUR' => '0.22812346',
         'GBP' => '0.19600000',
+        'KWD' => '0.08170000',
+        'OMR' => '0.10260000',
+        'QAR' => '0.97070000',
         'USD' => '0.26666667',
     ]);
 });
@@ -80,7 +90,7 @@ test('duplicate configured currency keys leave every prior rate unchanged', func
 
     Http::fake([
         'https://open.er-api.com/v6/latest/SAR' => Http::response(
-            '{"result":"success","base_code":"SAR","rates":{"SAR":1,"USD":0.26,"USD":0.27,"EUR":0.23,"GBP":0.20}}',
+            '{"result":"success","base_code":"SAR","rates":{"SAR":1,"AED":0.98,"KWD":0.08,"BHD":0.10,"OMR":0.10,"QAR":0.97,"USD":0.26,"USD":0.27,"EUR":0.23,"GBP":0.20}}',
         ),
     ]);
 
@@ -110,7 +120,17 @@ test('provider transport and contract failures return failure without writing ra
     'HTTP failure' => [503, '{"result":"error","error-type":"unavailable"}'],
     'provider error' => [200, '{"result":"error","error-type":"unknown-code"}'],
     'wrong base' => [200, openAccessPayload(['USD' => '1', 'EUR' => '0.9', 'GBP' => '0.8'], 'USD')],
-    'malformed decimal' => [200, openAccessPayload(['SAR' => '1', 'USD' => '2e-1', 'EUR' => '0.2', 'GBP' => '0.1'])],
+    'malformed decimal' => [200, openAccessPayload([
+        'SAR' => '1',
+        'AED' => '0.98',
+        'KWD' => '0.08',
+        'BHD' => '0.10',
+        'OMR' => '0.10',
+        'QAR' => '0.97',
+        'USD' => '2e-1',
+        'EUR' => '0.2',
+        'GBP' => '0.1',
+    ])],
 ]);
 
 test('the display rate refresh command is registered on one daily schedule', function () {

@@ -365,7 +365,9 @@ export function SbcProductConfigurator({
             <dl className="sbc-product-summary">
                 <div>
                     <dt>{translations.sbc.selected}</dt>
-                    <dd>{variant?.name ?? '—'}</dd>
+                    <dd className="sbc-product-summary__platform">
+                        {variant?.name ?? '—'}
+                    </dd>
                 </div>
                 <div>
                     <dt>{translations.sbc.total}</dt>
