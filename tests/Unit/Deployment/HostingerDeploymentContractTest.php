@@ -61,3 +61,12 @@ it('avoids the PHP exec fallback disabled by Hostinger when linking public stora
         ->toContain('ln -sfn "$shared/storage/app/public" "$release/public/storage"')
         ->not->toContain('artisan storage:link');
 });
+
+it('refreshes every configured display currency before activating a release', function () {
+    $script = deploymentFile('deploy/hostinger-release.sh');
+    $refresh = 'php artisan currency:refresh-display-rates';
+
+    expect($script)
+        ->toContain($refresh)
+        ->and(strpos($script, $refresh))->toBeLessThan(strpos($script, 'mv -Tf "$next_link" "$current"'));
+});

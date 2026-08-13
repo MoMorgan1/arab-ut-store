@@ -48,6 +48,7 @@ ln -sfn "$shared/storage/app/public" "$release/public/storage"
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+php artisan currency:refresh-display-rates
 
 previous_release="$(readlink -f "$current" 2>/dev/null || true)"
 next_link="$deploy_root/.current-$release_id"
