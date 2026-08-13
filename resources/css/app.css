@@ -4552,6 +4552,7 @@
 }
 
 .store-catalog-card__media {
+    position: relative;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     min-height: 0;
@@ -4560,7 +4561,38 @@
     padding: 0.75rem 0.75rem 0;
 }
 
+.store-catalog-card__artwork-glow {
+    position: absolute;
+    z-index: 0;
+    top: 3.35rem;
+    left: 50%;
+    width: min(78%, 12.5rem);
+    aspect-ratio: 1;
+    pointer-events: none;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle, rgb(245 204 92 / 30%) 0 12%, transparent 54%),
+        conic-gradient(
+            from 35deg,
+            transparent,
+            rgb(217 171 58 / 28%),
+            transparent 36%,
+            rgb(244 204 92 / 18%),
+            transparent 72%
+        );
+    opacity: 0.62;
+    filter: blur(0.7rem);
+    transform: translateX(-50%) scale(0.86) rotate(-8deg);
+    transition:
+        opacity 320ms var(--store-ease-out),
+        transform 420ms var(--store-ease-out),
+        filter 320ms var(--store-ease-out);
+    animation: store-sbc-artwork-glow 5.2s ease-in-out infinite alternate;
+}
+
 .store-catalog-card--sbc .store-catalog-card__image {
+    position: relative;
+    z-index: 1;
     min-height: 0;
     animation: store-sbc-card-image-float 4.6s ease-in-out infinite alternate;
 }
@@ -4595,17 +4627,35 @@
 
 @keyframes store-sbc-card-image-float {
     from {
-        transform: translateY(0.15rem);
+        transform: translateY(0.3rem) rotate(-0.35deg);
     }
 
     to {
-        transform: translateY(-0.4rem);
+        transform: translateY(-0.65rem) rotate(0.45deg);
+    }
+}
+
+@keyframes store-sbc-artwork-glow {
+    from {
+        opacity: 0.48;
+        transform: translateX(-50%) scale(0.78) rotate(-10deg);
+    }
+
+    to {
+        opacity: 0.82;
+        transform: translateX(-50%) scale(1.08) rotate(12deg);
     }
 }
 
 .store-catalog-card--sbc:focus-within {
     border-color: rgb(234 190 77 / 72%);
     box-shadow: 0 0 0 0.18rem rgb(217 171 58 / 18%);
+}
+
+.store-catalog-card--sbc.is-pressed .store-catalog-card__artwork-glow {
+    opacity: 1;
+    filter: blur(0.45rem);
+    transform: translateX(-50%) scale(1.15) rotate(15deg);
 }
 
 .store-catalog-card__ribbon {
@@ -4628,8 +4678,11 @@
     height: 13rem;
     padding: 0.35rem 0.65rem 0.65rem;
     object-fit: contain;
-    filter: drop-shadow(0 0.8rem 1rem rgb(0 0 0 / 46%));
-    transition: transform 260ms var(--store-ease-out);
+    filter: drop-shadow(0 0.8rem 1rem rgb(0 0 0 / 46%))
+        drop-shadow(0 0 1rem rgb(217 171 58 / 13%));
+    transition:
+        transform 320ms var(--store-ease-out),
+        filter 320ms var(--store-ease-out);
 }
 
 .store-catalog-card--sbc .store-catalog-card__body {
@@ -4664,7 +4717,15 @@
     }
 
     .store-catalog-card--sbc:hover .store-catalog-card__image img {
-        transform: translateY(-0.35rem) scale(1.065) rotate(0.6deg);
+        transform: translateY(-0.75rem) scale(1.105) rotate(1deg);
+        filter: drop-shadow(0 1.1rem 1.2rem rgb(0 0 0 / 48%))
+            drop-shadow(0 0 1.5rem rgb(244 204 92 / 32%));
+    }
+
+    .store-catalog-card--sbc:hover .store-catalog-card__artwork-glow {
+        opacity: 1;
+        filter: blur(0.45rem);
+        transform: translateX(-50%) scale(1.18) rotate(18deg);
     }
 }
 
@@ -5747,6 +5808,7 @@
     .market-modal-overlay.is-open,
     .market-modal,
     .store-catalog-card--sbc,
+    .store-catalog-card__artwork-glow,
     .store-catalog-card--sbc .store-catalog-card__image,
     .store-catalog-product--sbc .store-catalog-product__image img,
     .store-review-card {
@@ -5806,6 +5868,8 @@
 
     .store-catalog-card--sbc,
     .store-catalog-card--sbc:hover,
+    .store-catalog-card--sbc.is-pressed .store-catalog-card__artwork-glow,
+    .store-catalog-card--sbc:hover .store-catalog-card__artwork-glow,
     .store-catalog-related a:hover,
     .store-catalog-card--sbc:hover .store-catalog-card__image img,
     .store-catalog-product--sbc .store-catalog-product__image img {
@@ -5813,6 +5877,7 @@
     }
 
     .store-catalog-card--sbc,
+    .store-catalog-card__artwork-glow,
     .store-catalog-product--sbc .store-catalog-product__image img,
     .store-catalog-related a {
         animation: none;

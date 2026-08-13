@@ -273,6 +273,14 @@ function CatalogCard({
                         ? '/images/store/navigation/logo-sbc-96.webp'
                         : '/images/store/hero/arabut-logo-hero.webp')
                 }
+                style={
+                    isSbc && isPressed
+                        ? {
+                              transform:
+                                  'translateY(-0.7rem) scale(1.095) rotate(0.8deg)',
+                          }
+                        : undefined
+                }
                 width={isSbc ? '384' : '320'}
             />
         </a>
@@ -283,6 +291,7 @@ function CatalogCard({
             className={[
                 'store-catalog-card',
                 isSbc ? 'store-catalog-card--sbc' : null,
+                isSbc && isPressed ? 'is-pressed' : null,
             ]
                 .filter(Boolean)
                 .join(' ')}
@@ -305,6 +314,10 @@ function CatalogCard({
                     <span className="store-catalog-card__ribbon">
                         {translations.included}
                     </span>
+                    <span
+                        aria-hidden="true"
+                        className="store-catalog-card__artwork-glow"
+                    />
                     {productArtwork}
                 </div>
             ) : (

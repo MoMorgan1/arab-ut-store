@@ -128,7 +128,7 @@ it('keeps the SBC inclusion ribbon in a reserved row above the artwork', () => {
 
     expect(media).not.toBeNull();
     expect(media?.children[0]).toBe(ribbon);
-    expect(media?.children[1]).toBe(artwork);
+    expect(media?.lastElementChild).toBe(artwork);
 });
 
 it('applies a visible lift while an SBC card is held on touch', () => {
@@ -143,14 +143,37 @@ it('applies a visible lift while an SBC card is held on touch', () => {
     });
 
     fireEvent.pointerDown(card as Element, { pointerType: 'touch' });
+    expect(card).toHaveClass('is-pressed');
     expect(card).toHaveStyle({
         transform: 'translateY(-0.35rem) scale(0.99)',
     });
+    expect(card?.querySelector('.store-catalog-card__image img')).toHaveStyle({
+        transform: 'translateY(-0.7rem) scale(1.095) rotate(0.8deg)',
+    });
 
     fireEvent.pointerCancel(card as Element, { pointerType: 'touch' });
+    expect(card).not.toHaveClass('is-pressed');
     expect(card).not.toHaveStyle({
         transform: 'translateY(-0.35rem) scale(0.99)',
     });
+    expect(
+        card?.querySelector('.store-catalog-card__image img'),
+    ).not.toHaveStyle({
+        transform: 'translateY(-0.7rem) scale(1.095) rotate(0.8deg)',
+    });
+});
+
+it('renders a decorative glow layer behind SBC artwork', () => {
+    render(<StoreCategory />);
+
+    const card = screen
+        .getByRole('list', { name: 'Platform prices' })
+        .closest('.store-catalog-card--sbc');
+    const media = card?.querySelector('.store-catalog-card__media');
+    const glow = media?.querySelector('.store-catalog-card__artwork-glow');
+
+    expect(glow).toHaveAttribute('aria-hidden', 'true');
+    expect(glow?.nextElementSibling).toHaveClass('store-catalog-card__image');
 });
 
 it('keeps SBC listing cards compact without removing descriptions from other catalogs', () => {
