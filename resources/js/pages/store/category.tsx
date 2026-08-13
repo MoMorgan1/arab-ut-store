@@ -120,28 +120,30 @@ export default function StoreCategory() {
                             translations={props.catalogPage}
                         />
                     </div>
-                    <div className="store-catalog-toolbar__search-row">
-                        <label className="store-catalog-toolbar__search">
-                            <span>{props.catalogPage.search}</span>
-                            <input
-                                name="q"
-                                onChange={(event) =>
-                                    setQuery((current) => ({
-                                        ...current,
-                                        q: event.target.value,
-                                    }))
-                                }
-                                type="search"
-                                value={query.q}
-                            />
-                        </label>
-                        <button
-                            className="store-catalog-toolbar__submit"
-                            type="submit"
-                        >
-                            {props.catalogPage.search}
-                        </button>
-                    </div>
+                    {!isSbc ? (
+                        <div className="store-catalog-toolbar__search-row">
+                            <label className="store-catalog-toolbar__search">
+                                <span>{props.catalogPage.search}</span>
+                                <input
+                                    name="q"
+                                    onChange={(event) =>
+                                        setQuery((current) => ({
+                                            ...current,
+                                            q: event.target.value,
+                                        }))
+                                    }
+                                    type="search"
+                                    value={query.q}
+                                />
+                            </label>
+                            <button
+                                className="store-catalog-toolbar__submit"
+                                type="submit"
+                            >
+                                {props.catalogPage.search}
+                            </button>
+                        </div>
+                    ) : null}
                     <div className="store-catalog-toolbar__filter-shell">
                         <fieldset className="store-catalog-toolbar__filters">
                             <legend>{props.catalogPage.filter}</legend>

@@ -42,12 +42,10 @@ beforeEach(() => {
     page.props = categoryProps();
 });
 
-it('submits locale-preserving search filter and sort parameters', () => {
+it('keeps SBC discovery focused on filter and sort without a search field', () => {
     render(<StoreCategory />);
 
-    fireEvent.change(screen.getByRole('searchbox'), {
-        target: { value: 'icon' },
-    });
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^Icons/ }));
     fireEvent.change(screen.getByRole('combobox', { name: 'Sort' }), {
         target: { value: 'price_asc' },
@@ -55,7 +53,7 @@ it('submits locale-preserving search filter and sort parameters', () => {
 
     expect(mocks.get).toHaveBeenLastCalledWith(
         '/en/sbc',
-        { filter: 'icons', q: 'icon', sort: 'price_asc' },
+        { filter: 'icons', q: '', sort: 'price_asc' },
         expect.objectContaining({ preserveScroll: true, replace: true }),
     );
 });
@@ -66,9 +64,7 @@ it('renders the refined SBC hierarchy and trust strip', () => {
     expect(screen.getByRole('search')).toHaveClass(
         'store-catalog-toolbar--compact',
     );
-    expect(screen.getByRole('searchbox').closest('label')).toHaveClass(
-        'store-catalog-toolbar__search',
-    );
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Filter' })).toHaveClass(
         'store-catalog-toolbar__filters',
     );
@@ -104,8 +100,8 @@ it('renders the refined SBC hierarchy and trust strip', () => {
             .parentElement,
     ).toHaveClass('store-catalog-toolbar__heading-row');
     expect(
-        screen.getByRole('searchbox').closest('label')?.parentElement,
-    ).toHaveClass('store-catalog-toolbar__search-row');
+        document.querySelector('.store-catalog-toolbar__search-row'),
+    ).toBeNull();
     expect(
         screen.getByRole('group', { name: 'Filter' }).parentElement,
     ).toHaveClass('store-catalog-toolbar__filter-shell');
