@@ -4653,6 +4653,7 @@
 }
 
 .store-catalog-card--sbc.is-pressed .store-catalog-card__artwork-glow {
+    animation: none;
     opacity: 1;
     filter: blur(0.45rem);
     transform: translateX(-50%) scale(1.15) rotate(15deg);
@@ -4723,6 +4724,7 @@
     }
 
     .store-catalog-card--sbc:hover .store-catalog-card__artwork-glow {
+        animation: none;
         opacity: 1;
         filter: blur(0.45rem);
         transform: translateX(-50%) scale(1.18) rotate(18deg);
