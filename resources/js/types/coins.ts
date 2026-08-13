@@ -124,6 +124,18 @@ export type CoinsStoreTranslations = {
         market_guide: string;
         market_open_label: string;
         market_closed_label: string;
+        market_modal: {
+            close: string;
+            badge: string;
+            title: string;
+            subtitle: string;
+            steps: Array<{ title: string; body: string }>;
+            open_badge: string;
+            open_description: string;
+            closed_badge: string;
+            closed_description: string;
+            note: string;
+        };
         policy_accepted: string;
         policy_help: string;
         terms_link: string;

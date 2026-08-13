@@ -111,7 +111,7 @@ test('a complete Salla archive supports more than five hundred reviews and is id
         ->and(Review::whereNotNull('order_item_id')->count())->toBe(0);
 });
 
-test('raw Salla rating-only records are archived without inventing customer data', function () {
+test('raw Salla records retain only the public review name and city', function () {
     $projected = app(ImportStoreReviews::class)->projectSallaSource([
         'data' => [[
             'id' => 8821,
@@ -120,8 +120,10 @@ test('raw Salla rating-only records are archived without inventing customer data
             'created_at' => '2026-08-12T12:00:00Z',
             'is_published' => true,
             'customer' => [
-                'name' => 'Private Customer',
+                'name' => 'Public Customer',
+                'city' => 'Riyadh',
                 'mobile' => '+966500000000',
+                'email' => 'private@example.test',
             ],
         ]],
     ]);
@@ -130,8 +132,31 @@ test('raw Salla rating-only records are archived without inventing customer data
         ->and($projected['reviews'][0]['id'])->toBe('salla:8821')
         ->and($projected['reviews'][0]['rating'])->toBe(4)
         ->and($projected['reviews'][0]['comment'])->toBe('تقييم بدون تعليق.')
+        ->and($projected['reviews'][0]['public_name'])->toBe('Public Customer')
+        ->and($projected['reviews'][0]['public_location'])->toBe('Riyadh')
         ->and(json_encode($projected, JSON_UNESCAPED_UNICODE))
-        ->not->toContain('Private Customer', '+966500000000');
+        ->not->toContain('+966500000000', 'private@example.test');
+});
+
+test('the normalized source retains explicit public display name and location only', function () {
+    $projected = app(ImportStoreReviews::class)->projectSallaSource([
+        'reviews' => [[
+            'id' => 'public-review',
+            'rating' => 5,
+            'comment' => 'Excellent service.',
+            'locale' => 'en',
+            'public_name' => 'Mohamed A.',
+            'public_location' => 'Cairo',
+            'published_at' => '2026-08-12T12:00:00Z',
+            'is_visible' => true,
+            'email' => 'private@example.test',
+        ]],
+    ]);
+
+    expect($projected['reviews'][0]['public_name'])->toBe('Mohamed A.')
+        ->and($projected['reviews'][0]['public_location'])->toBe('Cairo')
+        ->and(json_encode($projected, JSON_UNESCAPED_UNICODE))
+        ->not->toContain('private@example.test');
 });
 
 test('the Salla archive rejects private or duplicate records before changing the last good archive', function () {

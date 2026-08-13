@@ -22,7 +22,8 @@ it('renders the complete paginated safe review list', () => {
     expect(
         screen.getByRole('heading', { name: 'All customer reviews' }),
     ).toHaveClass('store-reviews-page__title');
-    expect(screen.getByText('A real two-star review')).toBeInTheDocument();
+    expect(screen.getByText(/A real four-star review/)).toBeInTheDocument();
+    expect(screen.getByText('Cairo')).toBeInTheDocument();
     expect(
         screen.getByRole('navigation', { name: 'Reviews pages' }),
     ).toBeInTheDocument();
@@ -37,14 +38,15 @@ function props() {
         displayCurrencies: ['SAR'],
         locale: 'en',
         reviews: {
-            average: 2,
+            average: 4,
             count: 1,
             items: [
                 {
                     id: 'one',
                     reviewerName: 'Customer',
-                    rating: 2,
-                    body: 'A real two-star review',
+                    reviewerLocation: 'Cairo',
+                    rating: 4,
+                    body: 'A real four-star review',
                     verified: false,
                     publishedAt: '2026-08-10T12:00:00+00:00',
                 },

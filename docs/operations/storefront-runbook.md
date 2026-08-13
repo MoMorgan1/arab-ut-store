@@ -2,9 +2,9 @@
 
 ## One-time Salla review archive
 
-The storefront reads reviews only from the local `reviews` table. The one-time archive command consumes the already configured n8n review source, projects only the public rating, public text, timestamp, and stable source identity, and assigns the localized anonymous customer label. It never persists the Salla customer object, phone, email, avatar, raw order identity, or raw response.
+The storefront reads reviews only from the local `reviews` table. The one-time archive command consumes the already configured n8n review source and projects only the public rating, public text, public display name, public city, timestamp, and stable source identity. It never persists the Salla customer object, phone, email, avatar, raw order identity, street address, or raw response. The public storefront keeps the complete archive internally but renders only published four- and five-star reviews; its displayed average and count use the same public subset.
 
-Salla's current feedback contract documents the relevant public fields (`id`, `rating`, `content`, `is_published`, and `created_at`) under [List Feedbacks](https://docs.salla.dev/5394279e0). The archive deliberately ignores all nested customer fields.
+Salla's current feedback contract documents the imported review fields and the customer's public display `name` and `city` under [List Feedbacks](https://docs.salla.dev/5394279e0). The archive reads only those two allowlisted customer values and deliberately ignores the remaining nested customer object.
 
 Run the production GitHub workflow `archive-salla-reviews` in this order:
 

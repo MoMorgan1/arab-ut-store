@@ -50,6 +50,7 @@ final class StoreReviewReader
     {
         return Review::query()
             ->where('is_visible', true)
+            ->where('rating', '>=', 4)
             ->whereNotNull('published_at')
             ->latest('published_at')
             ->latest('id');
@@ -70,6 +71,7 @@ final class StoreReviewReader
         return [
             'id' => $review->public_id,
             'reviewerName' => $name,
+            'reviewerLocation' => $review->reviewer_location,
             'rating' => $review->rating,
             'body' => $locale === 'ar'
                 ? ($review->body_ar ?? $review->body_en)

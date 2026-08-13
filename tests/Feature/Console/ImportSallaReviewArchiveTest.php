@@ -75,7 +75,8 @@ test('the archive command projects the configured Salla source without customer 
                 'is_published' => true,
                 'created_at' => '2026-08-12 12:00:00',
                 'customer' => [
-                    'name' => 'Private Person',
+                    'name' => 'Public Person',
+                    'city' => 'Riyadh',
                     'mobile' => '+966500000000',
                     'email' => 'private@example.test',
                 ],
@@ -99,16 +100,16 @@ test('the archive command projects the configured Salla source without customer 
     $attributes = json_encode(Review::sole()->getAttributes(), JSON_THROW_ON_ERROR);
 
     expect(Review::sole()->rating)->toBe(1)
-        ->and(Review::sole()->reviewer_name)->toBe(trans('store.reviews.anonymous_customer'))
+        ->and(Review::sole()->reviewer_name)->toBe('Public Person')
+        ->and(Review::sole()->reviewer_location)->toBe('Riyadh')
         ->and($attributes)->not->toContain(
-            'Private Person',
             '+966500000000',
             'private@example.test',
             '123456789',
         );
 });
 
-test('the archive command accepts the existing normalized review endpoint without retaining its public name or private fields', function () {
+test('the archive command retains normalized public display fields without private fields', function () {
     config()->set('services.n8n.reviews_url', 'https://reviews.example.test/archive');
     Http::fake([
         'https://reviews.example.test/archive' => Http::response(['reviews' => [
@@ -118,6 +119,7 @@ test('the archive command accepts the existing normalized review endpoint withou
                 'comment' => 'Fast delivery from the existing endpoint.',
                 'locale' => 'en',
                 'public_name' => 'Existing Public Name',
+                'public_location' => 'Cairo',
                 'order_item_public_id' => '01JPRIVATEORDERIDENTITY',
                 'published_at' => '2026-08-12T12:00:00Z',
                 'is_visible' => true,
@@ -141,10 +143,10 @@ test('the archive command accepts the existing normalized review endpoint withou
 
     $attributes = json_encode(Review::sole()->getAttributes(), JSON_THROW_ON_ERROR);
 
-    expect(Review::sole()->reviewer_name)->toBe(trans('store.reviews.anonymous_customer'))
+    expect(Review::sole()->reviewer_name)->toBe('Existing Public Name')
+        ->and(Review::sole()->reviewer_location)->toBe('Cairo')
         ->and(Review::sole()->external_id)->toBe('salla:existing-source-1')
         ->and($attributes)->not->toContain(
-            'Existing Public Name',
             '01JPRIVATEORDERIDENTITY',
             'private@example.test',
         );

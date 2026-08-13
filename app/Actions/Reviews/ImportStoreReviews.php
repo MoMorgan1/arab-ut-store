@@ -191,12 +191,26 @@ final class ImportStoreReviews
                 ]);
             }
 
+            $customer = $input['customer'] ?? [];
+            $customer = is_array($customer) ? $customer : [];
+            $publicName = $this->publicDisplayValue(
+                $customer['name'] ?? null,
+                80,
+                "data.{$index}.customer.name",
+            );
+            $publicLocation = $this->publicDisplayValue(
+                $customer['city'] ?? null,
+                120,
+                "data.{$index}.customer.city",
+            );
+
             $reviews[] = [
                 'id' => 'salla:'.trim((string) $id),
                 'rating' => $rating,
                 'comment' => $body,
                 'locale' => preg_match('/[\\x{0600}-\\x{06FF}]/u', $body) === 1 ? 'ar' : 'en',
-                'public_name' => null,
+                'public_name' => $publicName,
+                'public_location' => $publicLocation,
                 'published_at' => $date->format('Y-m-d\\TH:i:s\\Z'),
                 'is_visible' => true,
             ];
@@ -280,12 +294,24 @@ final class ImportStoreReviews
                 $locale = preg_match('/[\\x{0600}-\\x{06FF}]/u', $body) === 1 ? 'ar' : 'en';
             }
 
+            $publicName = $this->publicDisplayValue(
+                $input['public_name'] ?? null,
+                80,
+                "reviews.{$index}.public_name",
+            );
+            $publicLocation = $this->publicDisplayValue(
+                $input['public_location'] ?? null,
+                120,
+                "reviews.{$index}.public_location",
+            );
+
             $reviews[] = [
                 'id' => 'salla:'.trim((string) $id),
                 'rating' => $rating,
                 'comment' => $body,
                 'locale' => $locale,
-                'public_name' => null,
+                'public_name' => $publicName,
+                'public_location' => $publicLocation,
                 'published_at' => $date->format('Y-m-d\\TH:i:s\\Z'),
                 'is_visible' => true,
             ];
@@ -308,6 +334,7 @@ final class ImportStoreReviews
     {
         $allowed = [
             'id', 'rating', 'comment', 'locale', 'public_name',
+            'public_location',
             'order_item_public_id', 'published_at', 'is_visible',
             'phone', 'email', 'customer_name',
         ];
@@ -325,6 +352,7 @@ final class ImportStoreReviews
             'comment' => ['required', 'string', 'max:5000'],
             'locale' => ['sometimes', 'string', 'in:ar,en'],
             'public_name' => ['nullable', 'string', 'max:80'],
+            'public_location' => ['nullable', 'string', 'max:120'],
             'order_item_public_id' => ['nullable', 'string', 'max:26'],
             'published_at' => [
                 'required',
@@ -348,8 +376,13 @@ final class ImportStoreReviews
         $publicName = isset($validated['public_name'])
             ? trim(strip_tags((string) $validated['public_name']))
             : '';
+        $publicLocation = isset($validated['public_location'])
+            ? trim(strip_tags((string) $validated['public_location']))
+            : '';
 
-        if ($this->containsPrivateContact($body) || $this->containsPrivateContact($publicName)) {
+        if ($this->containsPrivateContact($body)
+            || $this->containsPrivateContact($publicName)
+            || $this->containsPrivateContact($publicLocation)) {
             throw ValidationException::withMessages([
                 "reviews.{$index}" => 'The public review fields contain private contact data.',
             ]);
@@ -363,6 +396,7 @@ final class ImportStoreReviews
             'body' => $body,
             'locale' => $locale,
             'name' => $publicName,
+            'location' => $publicLocation,
             'orderItemId' => $orderItemId,
             'publishedAt' => $validated['published_at'],
             'rating' => $validated['rating'],
@@ -373,6 +407,7 @@ final class ImportStoreReviews
             'reviewer_name' => $publicName !== ''
                 ? $publicName
                 : trans('store.reviews.anonymous_customer'),
+            'reviewer_location' => $publicLocation !== '' ? $publicLocation : null,
             'rating' => (int) $validated['rating'],
             'body_ar' => $locale === 'ar' ? $body : null,
             'body_en' => $locale === 'en' ? $body : null,
@@ -398,6 +433,31 @@ final class ImportStoreReviews
         return is_string($digits) && strlen($digits) >= 9;
     }
 
+    private function publicDisplayValue(mixed $value, int $maxLength, string $path): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (! is_string($value)) {
+            throw ValidationException::withMessages([
+                $path => 'The public review display field is invalid.',
+            ]);
+        }
+
+        $publicValue = trim(strip_tags($value));
+
+        if ($publicValue === ''
+            || mb_strlen($publicValue) > $maxLength
+            || $this->containsPrivateContact($publicValue)) {
+            throw ValidationException::withMessages([
+                $path => 'The public review display field is invalid.',
+            ]);
+        }
+
+        return $publicValue;
+    }
+
     /**
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
@@ -410,6 +470,7 @@ final class ImportStoreReviews
             'comment',
             'locale',
             'public_name',
+            'public_location',
             'published_at',
             'is_visible',
         ];
@@ -426,6 +487,7 @@ final class ImportStoreReviews
             'comment' => ['required', 'string', 'max:5000'],
             'locale' => ['required', 'string', 'in:ar,en'],
             'public_name' => ['present', 'nullable', 'string', 'max:80'],
+            'public_location' => ['sometimes', 'nullable', 'string', 'max:120'],
             'published_at' => [
                 'required',
                 'string',
@@ -437,11 +499,15 @@ final class ImportStoreReviews
         $publicName = isset($validated['public_name'])
             ? trim(strip_tags((string) $validated['public_name']))
             : '';
+        $publicLocation = isset($validated['public_location'])
+            ? trim(strip_tags((string) $validated['public_location']))
+            : '';
 
         if ($body === ''
             || mb_strlen($body) > 2000
             || $this->containsPrivateContact($body)
-            || $this->containsPrivateContact($publicName)) {
+            || $this->containsPrivateContact($publicName)
+            || $this->containsPrivateContact($publicLocation)) {
             throw ValidationException::withMessages([
                 "reviews.{$index}" => 'The public review fields are invalid.',
             ]);
@@ -452,6 +518,7 @@ final class ImportStoreReviews
             'body' => $body,
             'locale' => $locale,
             'name' => $publicName,
+            'location' => $publicLocation,
             'publishedAt' => $validated['published_at'],
             'rating' => $validated['rating'],
         ];
@@ -460,6 +527,7 @@ final class ImportStoreReviews
             'reviewer_name' => $publicName !== ''
                 ? $publicName
                 : trans('store.reviews.anonymous_customer'),
+            'reviewer_location' => $publicLocation !== '' ? $publicLocation : null,
             'rating' => (int) $validated['rating'],
             'body_ar' => $locale === 'ar' ? $body : null,
             'body_en' => $locale === 'en' ? $body : null,

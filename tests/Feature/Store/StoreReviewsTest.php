@@ -7,6 +7,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 test('the bilingual review pages expose only safe visible database projections', function (string $path, string $locale) {
     Review::create([
         'reviewer_name' => 'Public name',
+        'reviewer_location' => 'Cairo',
         'rating' => 4,
         'body_ar' => 'ØªØ¬Ø±Ø¨Ø© Ù…Ù…ØªØ§Ø²Ø©',
         'body_en' => 'Excellent experience',
@@ -28,6 +29,17 @@ test('the bilingual review pages expose only safe visible database projections',
         'is_visible' => false,
         'published_at' => now(),
     ]);
+    Review::create([
+        'reviewer_name' => 'Published low rating',
+        'rating' => 3,
+        'body_en' => 'This row stays archived but must not be public.',
+        'source' => 'salla-import',
+        'source_key' => 'salla-import',
+        'external_id' => 'review-published-low',
+        'content_hash' => hash('sha256', 'published-low'),
+        'is_visible' => true,
+        'published_at' => now()->addSecond(),
+    ]);
     Http::fake();
 
     $this->get($path)
@@ -37,7 +49,10 @@ test('the bilingual review pages expose only safe visible database projections',
             ->where('locale', $locale)
             ->has('reviews.items', 1)
             ->where('reviews.items.0.reviewerName', 'Public name')
+            ->where('reviews.items.0.reviewerLocation', 'Cairo')
             ->where('reviews.items.0.rating', 4)
+            ->where('reviews.average', 4)
+            ->where('reviews.count', 1)
             ->missing('reviews.items.0.source')
             ->missing('reviews.items.0.email'));
 

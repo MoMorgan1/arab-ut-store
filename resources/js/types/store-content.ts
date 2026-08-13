@@ -33,6 +33,7 @@ export type ReviewItem = {
     publishedAt: string | null;
     rating: number;
     reviewerName: string;
+    reviewerLocation: string | null;
     verified: boolean;
 };
 

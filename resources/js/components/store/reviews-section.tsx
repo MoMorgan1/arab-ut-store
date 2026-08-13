@@ -76,21 +76,37 @@ export function ReviewCard({
               timeZone: 'UTC',
           }).format(new Date(review.publishedAt))
         : null;
+    const initial = Array.from(review.reviewerName.trim())[0] ?? 'A';
 
     return (
-        <li className="store-review-card" data-testid="review-card">
-            <div aria-label={ratingLabel} className="store-review-card__stars">
-                <span aria-hidden="true">{'★'.repeat(review.rating)}</span>
-                <span
-                    aria-hidden="true"
-                    className="store-review-card__stars-muted"
-                >
-                    {'★'.repeat(5 - review.rating)}
+        <li
+            className={`store-review-card${review.rating === 5 ? 'store-review-card--gold' : ''}`}
+            data-testid="review-card"
+        >
+            <div className="store-review-card__top">
+                <span aria-hidden="true" className="store-review-card__avatar">
+                    {initial}
                 </span>
+                <div className="store-review-card__customer">
+                    <strong>{review.reviewerName}</strong>
+                    {review.reviewerLocation ? (
+                        <span className="store-review-card__location">
+                            <LocationIcon />
+                            {review.reviewerLocation}
+                        </span>
+                    ) : null}
+                </div>
+                <div
+                    aria-label={ratingLabel}
+                    className="store-review-card__stars"
+                >
+                    {Array.from({ length: 5 }, (_, index) => (
+                        <StarIcon filled={index < review.rating} key={index} />
+                    ))}
+                </div>
             </div>
-            <blockquote>{review.body}</blockquote>
+            <blockquote>“{review.body}”</blockquote>
             <footer>
-                <strong>{review.reviewerName}</strong>
                 {review.verified ? <span>{translations.verified}</span> : null}
                 {published === null ? null : (
                     <time dateTime={review.publishedAt ?? undefined}>
@@ -99,6 +115,34 @@ export function ReviewCard({
                 )}
             </footer>
         </li>
+    );
+}
+
+function StarIcon({ filled }: { filled: boolean }) {
+    return (
+        <svg
+            aria-hidden="true"
+            className={filled ? undefined : 'store-review-card__star-muted'}
+            height="15"
+            viewBox="0 0 24 24"
+            width="15"
+        >
+            <path d="m12 2 3.09 6.26 6.91 1.01-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
+        </svg>
+    );
+}
+
+function LocationIcon() {
+    return (
+        <svg aria-hidden="true" height="12" viewBox="0 0 24 24" width="12">
+            <path
+                d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+            />
+            <circle cx="12" cy="10" fill="currentColor" r="2.25" />
+        </svg>
     );
 }
 

@@ -89,6 +89,31 @@ const store = {
         market_guide: 'How to check the Transfer Market',
         market_open_label: 'Open Transfer Market example',
         market_closed_label: 'Closed Transfer Market example',
+        market_modal: {
+            close: 'Close',
+            badge: 'How do I check the market?',
+            title: 'Check your Transfer Market status',
+            subtitle: 'Follow these steps before completing your order.',
+            steps: [
+                {
+                    title: 'Download the EA FC Companion app',
+                    body: 'Sign in with your game account.',
+                },
+                {
+                    title: 'Open the Transfer Market',
+                    body: 'Choose Transfers from the bottom menu.',
+                },
+                {
+                    title: 'Check the market status',
+                    body: 'Compare it with the examples.',
+                },
+            ],
+            open_badge: 'Open',
+            open_description: 'Open market example.',
+            closed_badge: 'Locked',
+            closed_description: 'Locked market example.',
+            note: 'Play for several days if the market is locked.',
+        },
         policy_accepted: 'I confirm the details and accept the policies.',
         policy_help: 'Review the refund and warranty policies.',
         terms_link: 'Terms',
@@ -516,7 +541,7 @@ describe('Coins credentials flow', () => {
         );
     });
 
-    it('marks every missing fulfillment field and shows the open and closed market guide', async () => {
+    it('marks every missing fulfillment field and opens the WordPress-style market dialog', async () => {
         render(<StoreHome />);
         await reachFastConsoleCredentials();
 
@@ -549,7 +574,18 @@ describe('Coins credentials flow', () => {
             }),
         ).toHaveAttribute('aria-invalid', 'true');
 
-        fireEvent.click(screen.getByText('How to check the Transfer Market'));
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+        const marketGuideTrigger = screen.getByRole('button', {
+            name: 'How to check the Transfer Market',
+        });
+        fireEvent.click(marketGuideTrigger);
+
+        expect(
+            screen.getByRole('dialog', {
+                name: 'Check your Transfer Market status',
+            }),
+        ).toBeVisible();
         expect(
             screen.getByRole('img', { name: 'Open Transfer Market example' }),
         ).toHaveAttribute('src', '/images/store/coins/market-open.webp');
@@ -558,6 +594,10 @@ describe('Coins credentials flow', () => {
                 name: 'Closed Transfer Market example',
             }),
         ).toHaveAttribute('src', '/images/store/coins/market-closed.webp');
+
+        fireEvent.keyDown(document, { key: 'Escape' });
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(marketGuideTrigger).toHaveFocus();
     });
 
     it('keeps secrets out of the summary, URL, and browser storage', async () => {

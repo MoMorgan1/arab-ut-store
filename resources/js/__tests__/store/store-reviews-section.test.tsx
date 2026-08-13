@@ -5,18 +5,19 @@ import { ReviewsSection } from '@/components/store/reviews-section';
 
 afterEach(cleanup);
 
-it('renders every honest rating in equal cards without autoplay or private contact data', () => {
+it('renders premium public 4–5 star cards with customer names and locations', () => {
     vi.useFakeTimers();
     const { container } = render(
         <ReviewsSection
             locale="en"
             reviews={{
-                average: 3.5,
+                average: 4.5,
                 count: 2,
                 items: [
                     {
                         id: 'one',
                         reviewerName: 'Customer',
+                        reviewerLocation: 'Riyadh',
                         rating: 5,
                         body: 'Excellent.',
                         verified: true,
@@ -25,8 +26,9 @@ it('renders every honest rating in equal cards without autoplay or private conta
                     {
                         id: 'two',
                         reviewerName: 'Another customer',
-                        rating: 2,
-                        body: 'It was late.',
+                        reviewerLocation: 'Cairo',
+                        rating: 4,
+                        body: 'Fast service.',
                         verified: false,
                         publishedAt: '2026-08-09T12:00:00+00:00',
                     },
@@ -39,7 +41,9 @@ it('renders every honest rating in equal cards without autoplay or private conta
 
     expect(screen.getAllByTestId('review-card')).toHaveLength(2);
     expect(screen.getByLabelText('5 out of 5')).toBeInTheDocument();
-    expect(screen.getByLabelText('2 out of 5')).toBeInTheDocument();
+    expect(screen.getByLabelText('4 out of 5')).toBeInTheDocument();
+    expect(screen.getByText('Riyadh')).toBeInTheDocument();
+    expect(screen.getByText('Cairo')).toBeInTheDocument();
     expect(screen.getAllByText('Verified order')).toHaveLength(1);
     expect(container.textContent).not.toMatch(/[\w.+-]+@[\w.-]+|\+?\d{9,}/);
     vi.advanceTimersByTime(30_000);

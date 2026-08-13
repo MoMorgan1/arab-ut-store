@@ -120,6 +120,9 @@ export function CredentialsStep({
         credentialErrors(rejectedFields, translations.credentials),
     );
     const [passwordVisible, setPasswordVisible] = useState(false);
+    const [marketModalOpen, setMarketModalOpen] = useState(false);
+    const marketGuideTriggerRef = useRef<HTMLButtonElement | null>(null);
+    const marketModalCloseRef = useRef<HTMLButtonElement | null>(null);
     const fieldRefs = useRef<
         Partial<Record<CoinsCredentialField, HTMLInputElement | null>>
     >({ email: null, password: null });
@@ -131,6 +134,34 @@ export function CredentialsStep({
             fieldRefs.current = { email: null, password: null };
         };
     }, []);
+
+    useEffect(() => {
+        if (!marketModalOpen) {
+            return;
+        }
+
+        const previousOverflow = document.body.style.overflow;
+
+        function closeMarketModal() {
+            marketGuideTriggerRef.current?.focus();
+            setMarketModalOpen(false);
+        }
+
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === 'Escape') {
+                closeMarketModal();
+            }
+        }
+
+        document.body.style.overflow = 'hidden';
+        document.addEventListener('keydown', handleKeyDown);
+        marketModalCloseRef.current?.focus();
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [marketModalOpen]);
 
     useEffect(() => {
         const firstRejectedField = rejectedFields[0];
@@ -423,49 +454,16 @@ export function CredentialsStep({
                             error={errors.companion}
                             id="coins-companion-error"
                         />
-                        <details className="coins-market-guide">
-                            <summary>
-                                {translations.credentials.market_guide}
-                            </summary>
-                            <div className="coins-market-guide__comparison">
-                                <figure>
-                                    <img
-                                        alt={
-                                            translations.credentials
-                                                .market_open_label
-                                        }
-                                        height="280"
-                                        loading="lazy"
-                                        src="/images/store/coins/market-open.webp"
-                                        width="520"
-                                    />
-                                    <figcaption>
-                                        {
-                                            translations.credentials
-                                                .market_open_label
-                                        }
-                                    </figcaption>
-                                </figure>
-                                <figure>
-                                    <img
-                                        alt={
-                                            translations.credentials
-                                                .market_closed_label
-                                        }
-                                        height="280"
-                                        loading="lazy"
-                                        src="/images/store/coins/market-closed.webp"
-                                        width="520"
-                                    />
-                                    <figcaption>
-                                        {
-                                            translations.credentials
-                                                .market_closed_label
-                                        }
-                                    </figcaption>
-                                </figure>
-                            </div>
-                        </details>
+                        <button
+                            aria-expanded={marketModalOpen}
+                            aria-haspopup="dialog"
+                            className="market-help-hint"
+                            onClick={() => setMarketModalOpen(true)}
+                            ref={marketGuideTriggerRef}
+                            type="button"
+                        >
+                            {translations.credentials.market_guide}
+                        </button>
                     </div>
 
                     <div className="coins-confirmation-field">
@@ -511,6 +509,116 @@ export function CredentialsStep({
                     </div>
                 </div>
             </div>
+
+            {marketModalOpen ? (
+                <div
+                    className="market-modal-overlay is-open"
+                    onMouseDown={(event) => {
+                        if (event.currentTarget === event.target) {
+                            marketGuideTriggerRef.current?.focus();
+                            setMarketModalOpen(false);
+                        }
+                    }}
+                >
+                    <div
+                        aria-labelledby="coins-market-modal-title"
+                        aria-modal="true"
+                        className="market-modal"
+                        dir={locale === 'ar' ? 'rtl' : 'ltr'}
+                        role="dialog"
+                    >
+                        <button
+                            aria-label={
+                                translations.credentials.market_modal.close
+                            }
+                            className="market-modal-close"
+                            onClick={() => {
+                                marketGuideTriggerRef.current?.focus();
+                                setMarketModalOpen(false);
+                            }}
+                            ref={marketModalCloseRef}
+                            type="button"
+                        >
+                            &times;
+                        </button>
+
+                        <header className="market-modal-header">
+                            <span className="market-modal-badge">
+                                <HelpIcon />
+                                {translations.credentials.market_modal.badge}
+                            </span>
+                            <h2
+                                className="market-modal-title"
+                                id="coins-market-modal-title"
+                            >
+                                {translations.credentials.market_modal.title}
+                            </h2>
+                            <p className="market-modal-subtitle">
+                                {translations.credentials.market_modal.subtitle}
+                            </p>
+                        </header>
+
+                        <ol className="market-steps">
+                            {translations.credentials.market_modal.steps.map(
+                                (step, index) => (
+                                    <li
+                                        className="market-step"
+                                        key={step.title}
+                                    >
+                                        <span className="market-step-num">
+                                            {formatInteger(index + 1, locale)}
+                                        </span>
+                                        <span className="market-step-body">
+                                            <strong>{step.title}</strong>
+                                            <span>{step.body}</span>
+                                        </span>
+                                    </li>
+                                ),
+                            )}
+                        </ol>
+
+                        <div className="market-compare">
+                            <MarketCompareCard
+                                badge={
+                                    translations.credentials.market_modal
+                                        .open_badge
+                                }
+                                description={
+                                    translations.credentials.market_modal
+                                        .open_description
+                                }
+                                imageAlt={
+                                    translations.credentials.market_open_label
+                                }
+                                imageSrc="/images/store/coins/market-open.webp"
+                                variant="open"
+                            />
+                            <MarketCompareCard
+                                badge={
+                                    translations.credentials.market_modal
+                                        .closed_badge
+                                }
+                                description={
+                                    translations.credentials.market_modal
+                                        .closed_description
+                                }
+                                imageAlt={
+                                    translations.credentials.market_closed_label
+                                }
+                                imageSrc="/images/store/coins/market-closed.webp"
+                                variant="closed"
+                            />
+                        </div>
+
+                        <p className="market-modal-note">
+                            <WarningIcon />
+                            <span>
+                                {translations.credentials.market_modal.note}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            ) : null}
 
             {quoteMessage === null ? null : (
                 <p
@@ -680,6 +788,131 @@ function EyeIcon({ hidden }: { hidden: boolean }) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth="1.7"
+            />
+        </svg>
+    );
+}
+
+function MarketCompareCard({
+    badge,
+    description,
+    imageAlt,
+    imageSrc,
+    variant,
+}: {
+    badge: string;
+    description: string;
+    imageAlt: string;
+    imageSrc: string;
+    variant: 'open' | 'closed';
+}) {
+    return (
+        <figure className={`market-compare-card market-${variant}`}>
+            <figcaption
+                className={`market-compare-badge market-badge-${variant}`}
+            >
+                {variant === 'open' ? <CheckIcon /> : <CloseIcon />}
+                {badge}
+            </figcaption>
+            <span className="market-compare-img-wrap">
+                <img
+                    alt={imageAlt}
+                    className="market-compare-img"
+                    height="840"
+                    loading="lazy"
+                    src={imageSrc}
+                    width="472"
+                />
+            </span>
+            <span className="market-compare-label">{description}</span>
+        </figure>
+    );
+}
+
+function HelpIcon() {
+    return (
+        <svg
+            aria-hidden="true"
+            fill="none"
+            height="13"
+            viewBox="0 0 24 24"
+            width="13"
+        >
+            <circle
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="2.5"
+            />
+            <path
+                d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeWidth="2.5"
+            />
+        </svg>
+    );
+}
+
+function CheckIcon() {
+    return (
+        <svg
+            aria-hidden="true"
+            fill="none"
+            height="13"
+            viewBox="0 0 24 24"
+            width="13"
+        >
+            <path
+                d="m4 12 5 5L20 6"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+            />
+        </svg>
+    );
+}
+
+function CloseIcon() {
+    return (
+        <svg
+            aria-hidden="true"
+            fill="none"
+            height="13"
+            viewBox="0 0 24 24"
+            width="13"
+        >
+            <path
+                d="m6 6 12 12M18 6 6 18"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeWidth="2.5"
+            />
+        </svg>
+    );
+}
+
+function WarningIcon() {
+    return (
+        <svg
+            aria-hidden="true"
+            fill="none"
+            height="14"
+            viewBox="0 0 24 24"
+            width="14"
+        >
+            <path
+                d="M10.29 3.86 1.82 18A2 2 0 0 0 3.53 21h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+                stroke="currentColor"
+                strokeWidth="2"
+            />
+            <path
+                d="M12 9v4m0 4h.01"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeWidth="2"
             />
         </svg>
     );
