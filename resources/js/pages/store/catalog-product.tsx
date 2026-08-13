@@ -11,6 +11,7 @@ export default function StoreCatalogProduct() {
     const page = usePage<StoreCatalogProductPageProps>();
     const props = page.props;
     const product = props.catalog.product;
+    const isSbc = props.catalog.service === 'sbc';
     const [variantId, setVariantId] = useState(product.variants[0]?.id ?? '');
     const variant = product.variants.find((option) => option.id === variantId);
 
@@ -26,7 +27,15 @@ export default function StoreCatalogProduct() {
             ui={props.ui}
         >
             <Head title={product.name} />
-            <main className="store-catalog-product" id="store-content">
+            <main
+                className={[
+                    'store-catalog-product',
+                    isSbc ? 'store-catalog-product--sbc' : null,
+                ]
+                    .filter(Boolean)
+                    .join(' ')}
+                id="store-content"
+            >
                 <a className="store-catalog-product__back" href={props.backUrl}>
                     {props.productPage.back}
                 </a>
@@ -48,7 +57,14 @@ export default function StoreCatalogProduct() {
                     >
                         <p>{props.catalog.service.replace('_', ' ')}</p>
                         <h1
-                            className="store-catalog-product__title"
+                            className={[
+                                'store-catalog-product__title',
+                                isSbc
+                                    ? 'store-catalog-product__title--centered'
+                                    : null,
+                            ]
+                                .filter(Boolean)
+                                .join(' ')}
                             id="catalog-product-title"
                         >
                             {product.name}
@@ -56,7 +72,7 @@ export default function StoreCatalogProduct() {
                         <div className="store-catalog-product__description">
                             {product.description}
                         </div>
-                        {props.catalog.service === 'sbc' ? (
+                        {isSbc ? (
                             <SbcProductConfigurator
                                 addUrl={props.sbcCartUrl}
                                 currentUrl={page.url}

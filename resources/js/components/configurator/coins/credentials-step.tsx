@@ -423,6 +423,49 @@ export function CredentialsStep({
                             error={errors.companion}
                             id="coins-companion-error"
                         />
+                        <details className="coins-market-guide">
+                            <summary>
+                                {translations.credentials.market_guide}
+                            </summary>
+                            <div className="coins-market-guide__comparison">
+                                <figure>
+                                    <img
+                                        alt={
+                                            translations.credentials
+                                                .market_open_label
+                                        }
+                                        height="280"
+                                        loading="lazy"
+                                        src="/images/store/coins/market-open.webp"
+                                        width="520"
+                                    />
+                                    <figcaption>
+                                        {
+                                            translations.credentials
+                                                .market_open_label
+                                        }
+                                    </figcaption>
+                                </figure>
+                                <figure>
+                                    <img
+                                        alt={
+                                            translations.credentials
+                                                .market_closed_label
+                                        }
+                                        height="280"
+                                        loading="lazy"
+                                        src="/images/store/coins/market-closed.webp"
+                                        width="520"
+                                    />
+                                    <figcaption>
+                                        {
+                                            translations.credentials
+                                                .market_closed_label
+                                        }
+                                    </figcaption>
+                                </figure>
+                            </div>
+                        </details>
                     </div>
 
                     <div className="coins-confirmation-field">

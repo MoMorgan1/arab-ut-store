@@ -88,7 +88,7 @@ it('renders the refined SBC hierarchy and trust strip', () => {
         'store-catalog-page--sbc',
     );
     expect(
-        screen.getByRole('link', { name: 'Add to cart' }).closest('li'),
+        screen.getByRole('list', { name: 'Platform prices' }).closest('li'),
     ).toHaveClass('store-catalog-card', 'store-catalog-card--sbc');
     expect(
         screen.getByRole('heading', { name: 'Browse by type', level: 2 }),
@@ -183,13 +183,23 @@ it('keeps the current search, filter, and sort while navigating every result pag
     );
 });
 
-it('sends an SBC selection to its credential page without creating an incomplete cart line', () => {
+it('requires an explicit SBC platform before linking to its credential page', () => {
     render(<StoreCategory />);
+
+    const prices = screen.getByRole('list', { name: 'Platform prices' });
+    const platformButtons = within(prices).getAllByRole('button');
+
+    platformButtons.forEach((button) =>
+        expect(button).toHaveAttribute('aria-pressed', 'false'),
+    );
+    expect(screen.queryByRole('link', { name: 'Add to cart' })).toBeNull();
+
+    fireEvent.click(platformButtons[1]);
 
     const add = screen.getByRole('link', { name: 'Add to cart' });
     expect(add).toHaveAttribute(
         'href',
-        '/en/sbc/icon-service?variant=01K00000000000000000000002',
+        '/en/sbc/icon-service?variant=01K00000000000000000000003',
     );
     expect(mocks.submit).not.toHaveBeenCalled();
     expect(
@@ -218,6 +228,12 @@ it('suppresses cart actions and announces when the selected platform price is un
     });
 
     render(<StoreCategory />);
+
+    fireEvent.click(
+        within(
+            screen.getByRole('list', { name: 'Platform prices' }),
+        ).getAllByRole('button')[0],
+    );
 
     expect(
         screen.getByRole('status', {

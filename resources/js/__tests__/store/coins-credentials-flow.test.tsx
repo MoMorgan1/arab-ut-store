@@ -86,6 +86,9 @@ const store = {
         companion_market_open: 'Transfer Market is open in EA Companion',
         companion_help:
             'Open EA Companion and confirm the Transfer Market is available.',
+        market_guide: 'How to check the Transfer Market',
+        market_open_label: 'Open Transfer Market example',
+        market_closed_label: 'Closed Transfer Market example',
         policy_accepted: 'I confirm the details and accept the policies.',
         policy_help: 'Review the refund and warranty policies.',
         terms_link: 'Terms',
@@ -511,6 +514,50 @@ describe('Coins credentials flow', () => {
             'role',
             'alert',
         );
+    });
+
+    it('marks every missing fulfillment field and shows the open and closed market guide', async () => {
+        render(<StoreHome />);
+        await reachFastConsoleCredentials();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        expect(screen.getByLabelText('EA email')).toHaveAttribute(
+            'aria-invalid',
+            'true',
+        );
+        expect(screen.getByLabelText('EA password')).toHaveAttribute(
+            'aria-invalid',
+            'true',
+        );
+        screen
+            .getAllByRole('textbox', { name: /Backup code/ })
+            .forEach((input) =>
+                expect(input).toHaveAttribute('aria-invalid', 'true'),
+            );
+        expect(
+            screen.getByRole('textbox', { name: 'Current Coins balance' }),
+        ).toHaveAttribute('aria-invalid', 'true');
+        expect(
+            screen.getByRole('checkbox', {
+                name: 'Transfer Market is open in EA Companion',
+            }),
+        ).toHaveAttribute('aria-invalid', 'true');
+        expect(
+            screen.getByRole('checkbox', {
+                name: 'I confirm the details and accept the policies.',
+            }),
+        ).toHaveAttribute('aria-invalid', 'true');
+
+        fireEvent.click(screen.getByText('How to check the Transfer Market'));
+        expect(
+            screen.getByRole('img', { name: 'Open Transfer Market example' }),
+        ).toHaveAttribute('src', '/images/store/coins/market-open.webp');
+        expect(
+            screen.getByRole('img', {
+                name: 'Closed Transfer Market example',
+            }),
+        ).toHaveAttribute('src', '/images/store/coins/market-closed.webp');
     });
 
     it('keeps secrets out of the summary, URL, and browser storage', async () => {

@@ -121,6 +121,9 @@ export type CoinsStoreTranslations = {
         current_balance_help: string;
         companion_market_open: string;
         companion_help: string;
+        market_guide: string;
+        market_open_label: string;
+        market_closed_label: string;
         policy_accepted: string;
         policy_help: string;
         terms_link: string;

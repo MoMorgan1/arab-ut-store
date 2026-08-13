@@ -170,17 +170,17 @@ final class ImportStoreReviews
             if ((! is_int($id) && ! is_string($id))
                 || trim((string) $id) === ''
                 || strlen((string) $id) > 180
-                || ! is_string($content)
+                || (! is_string($content) && $content !== null)
                 || ! is_string($publishedAt)) {
                 throw ValidationException::withMessages([
                     "data.{$index}" => 'The published Salla review is incomplete.',
                 ]);
             }
 
-            $body = trim(strip_tags($content));
+            $body = is_string($content) ? trim(strip_tags($content)) : '';
 
             if ($body === '' || $this->containsPrivateContact($body)) {
-                continue;
+                $body = (string) trans('store.reviews.rating_without_comment', [], 'ar');
             }
 
             try {

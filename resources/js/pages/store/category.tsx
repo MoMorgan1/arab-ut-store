@@ -246,7 +246,9 @@ function CatalogCard({
     product: CatalogProduct;
     translations: StoreCategoryPageProps['catalogPage'];
 }) {
-    const [variantId, setVariantId] = useState(product.variants[0]?.id ?? '');
+    const [variantId, setVariantId] = useState(
+        isSbc ? '' : (product.variants[0]?.id ?? ''),
+    );
     const selected = product.variants.find(
         (variant) => variant.id === variantId,
     );
@@ -372,7 +374,7 @@ function CatalogCard({
                             variantId={variantId}
                         />
                     )
-                ) : (
+                ) : variantId !== '' ? (
                     <p
                         aria-label={translations.unavailable_price}
                         className="store-catalog-add__unavailable"
@@ -380,7 +382,7 @@ function CatalogCard({
                     >
                         {translations.unavailable_price}
                     </p>
-                )}
+                ) : null}
             </div>
         </li>
     );

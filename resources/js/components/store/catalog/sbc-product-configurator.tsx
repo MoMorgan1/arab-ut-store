@@ -32,9 +32,7 @@ function initialVariant(product: CatalogProduct, currentUrl: string): string {
     return (
         product.variants.find(
             (variant) => variant.id === requested && variant.price !== null,
-        )?.id ??
-        product.variants.find((variant) => variant.price !== null)?.id ??
-        ''
+        )?.id ?? ''
     );
 }
 

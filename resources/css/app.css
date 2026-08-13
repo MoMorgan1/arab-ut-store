@@ -2233,12 +2233,15 @@
         width: 100%;
         min-width: 0;
         min-height: 3rem;
-        border: 0;
-        background: transparent;
         padding: 0.7rem 0.8rem;
         color: var(--arabut-ink);
         font: inherit;
         outline: 0;
+    }
+
+    .coins-password-control input {
+        border: 0;
+        background: transparent;
     }
 
     .coins-credential-field > input:focus-visible,
@@ -2356,6 +2359,74 @@
             rgb(7 9 12 / 34%)
         );
         padding: 0.75rem 0.85rem;
+    }
+
+    .coins-market-guide {
+        margin-block-start: 0.75rem;
+        border-block-start: 1px solid rgb(217 171 58 / 18%);
+        padding-block-start: 0.65rem;
+    }
+
+    .coins-market-guide summary {
+        display: flex;
+        min-height: 2.75rem;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        color: var(--arabut-gold-bright);
+        cursor: pointer;
+        font-weight: 800;
+        list-style: none;
+    }
+
+    .coins-market-guide summary::after {
+        content: '+';
+        font-size: 1.25rem;
+        line-height: 1;
+    }
+
+    .coins-market-guide[open] summary::after {
+        content: '−';
+    }
+
+    .coins-market-guide summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .coins-market-guide summary:focus-visible {
+        border-radius: 0.4rem;
+        outline: 2px solid var(--arabut-focus);
+        outline-offset: 2px;
+    }
+
+    .coins-market-guide__comparison {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+        padding-block-start: 0.75rem;
+    }
+
+    .coins-market-guide figure {
+        overflow: hidden;
+        margin: 0;
+        border: 1px solid rgb(255 255 255 / 13%);
+        border-radius: 0.75rem;
+        background: rgb(4 6 9 / 72%);
+    }
+
+    .coins-market-guide img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 13 / 7;
+        object-fit: cover;
+    }
+
+    .coins-market-guide figcaption {
+        padding: 0.6rem 0.7rem;
+        color: var(--arabut-muted);
+        font-size: 0.78rem;
+        text-align: center;
     }
 
     .coins-confirmation-field > label {
@@ -4230,6 +4301,27 @@
         border-color 220ms var(--store-ease-out),
         transform 220ms var(--store-ease-out),
         box-shadow 220ms var(--store-ease-out);
+    animation: store-sbc-card-reveal 520ms var(--store-ease-out) both;
+}
+
+.store-catalog-card--sbc:nth-child(2n) {
+    animation-delay: 55ms;
+}
+
+.store-catalog-card--sbc:nth-child(3n) {
+    animation-delay: 110ms;
+}
+
+@keyframes store-sbc-card-reveal {
+    from {
+        opacity: 0;
+        transform: translateY(0.85rem) scale(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 .store-catalog-card--sbc:focus-within {
@@ -4276,8 +4368,13 @@
     overflow: hidden;
     font-size: 1.2rem;
     line-height: 1.34;
+    text-align: center;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+}
+
+.store-catalog-card--sbc:active {
+    transform: scale(0.985);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -4495,10 +4592,30 @@
     object-fit: contain;
 }
 
+.store-catalog-product--sbc .store-catalog-product__image img {
+    animation: store-sbc-product-float 4.8s ease-in-out infinite;
+    filter: drop-shadow(0 1.1rem 1.4rem rgb(0 0 0 / 38%));
+}
+
+@keyframes store-sbc-product-float {
+    0%,
+    100% {
+        transform: translateY(0) rotate(-0.35deg);
+    }
+
+    50% {
+        transform: translateY(-0.45rem) rotate(0.35deg);
+    }
+}
+
 .store-catalog-product__content {
     display: grid;
     align-content: center;
     gap: 1.15rem;
+}
+
+.store-catalog-product__title--centered {
+    text-align: center;
 }
 
 .store-catalog-product__content dl {
@@ -4790,8 +4907,15 @@
     }
 
     .store-catalog-toolbar--compact .store-catalog-toolbar__filters {
-        flex-wrap: wrap;
-        overflow-x: visible;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scroll-snap-type: inline proximity;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .store-catalog-toolbar--compact .store-catalog-toolbar__filters button {
+        scroll-snap-align: start;
     }
 
     .store-catalog-toolbar--compact .store-catalog-toolbar__sort {
@@ -4817,6 +4941,10 @@
 
     .sbc-product-platforms > div,
     .sbc-product-summary {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .coins-market-guide__comparison {
         grid-template-columns: minmax(0, 1fr);
     }
 }
@@ -5159,8 +5287,15 @@
     }
 
     .store-catalog-card--sbc:hover,
-    .store-catalog-card--sbc:hover .store-catalog-card__image img {
+    .store-catalog-card--sbc:hover .store-catalog-card__image img,
+    .store-catalog-card--sbc:active,
+    .store-catalog-product--sbc .store-catalog-product__image img {
         transform: none;
+    }
+
+    .store-catalog-card--sbc,
+    .store-catalog-product--sbc .store-catalog-product__image img {
+        animation: none;
     }
 
     .store-shell *,

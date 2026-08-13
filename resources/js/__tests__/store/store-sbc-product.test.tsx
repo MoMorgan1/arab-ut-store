@@ -42,6 +42,7 @@ beforeEach(() => {
         cartItemId: '01K00000000000000000000005',
         cartUrl: '/en/cart',
     });
+    page.url = '/en/sbc/icon-challenge?variant=01K00000000000000000000004';
     page.props = sbcProductProps();
 });
 
@@ -68,6 +69,22 @@ it('matches the compact SBC platform and three-code credential hierarchy', () =>
     expect(screen.getAllByLabelText(/Backup code [123]/)).toHaveLength(3);
     expect(screen.queryByText(/automatically deleted|24 hours/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /checkout|pay/i })).toBeNull();
+});
+
+it('keeps a direct SBC visit unselected and centers its identity until a platform is chosen', () => {
+    page.url = '/en/sbc/icon-challenge';
+    render(<StoreCatalogProduct />);
+
+    expect(document.querySelector('.store-catalog-product')).toHaveClass(
+        'store-catalog-product--sbc',
+    );
+    expect(screen.getByRole('heading', { name: 'Icon Challenge' })).toHaveClass(
+        'store-catalog-product__title--centered',
+    );
+    screen
+        .getAllByRole('radio')
+        .forEach((radio) => expect(radio).not.toBeChecked());
+    expect(screen.getByRole('button', { name: 'Add to cart' })).toBeDisabled();
 });
 
 it('focuses the first invalid field and submits exactly three credentials in memory', async () => {

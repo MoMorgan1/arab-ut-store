@@ -111,6 +111,29 @@ test('a complete Salla archive supports more than five hundred reviews and is id
         ->and(Review::whereNotNull('order_item_id')->count())->toBe(0);
 });
 
+test('raw Salla rating-only records are archived without inventing customer data', function () {
+    $projected = app(ImportStoreReviews::class)->projectSallaSource([
+        'data' => [[
+            'id' => 8821,
+            'rating' => 4,
+            'content' => null,
+            'created_at' => '2026-08-12T12:00:00Z',
+            'is_published' => true,
+            'customer' => [
+                'name' => 'Private Customer',
+                'mobile' => '+966500000000',
+            ],
+        ]],
+    ]);
+
+    expect($projected['reviews'])->toHaveCount(1)
+        ->and($projected['reviews'][0]['id'])->toBe('salla:8821')
+        ->and($projected['reviews'][0]['rating'])->toBe(4)
+        ->and($projected['reviews'][0]['comment'])->toBe('تقييم بدون تعليق.')
+        ->and(json_encode($projected, JSON_UNESCAPED_UNICODE))
+        ->not->toContain('Private Customer', '+966500000000');
+});
+
 test('the Salla archive rejects private or duplicate records before changing the last good archive', function () {
     $valid = [
         'schemaVersion' => 1,
