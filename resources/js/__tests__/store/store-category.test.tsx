@@ -3,6 +3,7 @@ import {
     fireEvent,
     render,
     screen,
+    waitFor,
     within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -98,6 +99,16 @@ it('renders the refined SBC hierarchy and trust strip', () => {
     expect(
         screen.getByRole('heading', { name: 'Browse by type', level: 2 }),
     ).toBeVisible();
+    expect(
+        screen.getByRole('heading', { name: 'Browse by type', level: 2 })
+            .parentElement,
+    ).toHaveClass('store-catalog-toolbar__heading-row');
+    expect(
+        screen.getByRole('searchbox').closest('label')?.parentElement,
+    ).toHaveClass('store-catalog-toolbar__search-row');
+    expect(
+        screen.getByRole('group', { name: 'Filter' }).parentElement,
+    ).toHaveClass('store-catalog-toolbar__filter-shell');
     expect(screen.getByText('Includes coins and Submitting')).toBeVisible();
     expect(
         within(
@@ -116,7 +127,7 @@ it('renders the refined SBC hierarchy and trust strip', () => {
     ).toBeVisible();
 });
 
-it('keeps the SBC inclusion ribbon in a reserved row above the artwork', () => {
+it('uses the WordPress ribbon artwork without consuming an artwork row', () => {
     render(<StoreCategory />);
 
     const card = screen
@@ -127,40 +138,78 @@ it('keeps the SBC inclusion ribbon in a reserved row above the artwork', () => {
     const artwork = card?.querySelector('.store-catalog-card__image');
 
     expect(media).not.toBeNull();
-    expect(media?.children[0]).toBe(ribbon);
-    expect(media?.lastElementChild).toBe(artwork);
+    expect(ribbon.closest('.store-catalog-card__ribbon')).toHaveStyle({
+        backgroundImage: 'url(/images/store/catalog/sbc-ribbon.svg)',
+    });
+    expect(media).toContainElement(artwork as HTMLElement);
 });
 
-it('applies a visible lift while an SBC card is held on touch', () => {
+it('cancels touch feedback once the gesture becomes a scroll', () => {
     render(<StoreCategory />);
 
     const card = screen
         .getByRole('list', { name: 'Platform prices' })
         .closest('.store-catalog-card--sbc');
 
-    expect(card).not.toHaveStyle({
-        transform: 'translateY(-0.35rem) scale(0.99)',
+    fireEvent.pointerDown(card as Element, {
+        clientX: 24,
+        clientY: 40,
+        pointerId: 7,
+        pointerType: 'touch',
     });
-
-    fireEvent.pointerDown(card as Element, { pointerType: 'touch' });
     expect(card).toHaveClass('is-pressed');
-    expect(card).toHaveStyle({
-        transform: 'translateY(-0.35rem) scale(0.99)',
+
+    fireEvent.pointerMove(card as Element, {
+        clientX: 27,
+        clientY: 46,
+        pointerId: 7,
+        pointerType: 'touch',
     });
-    expect(card?.querySelector('.store-catalog-card__image img')).toHaveStyle({
-        transform: 'translateY(-0.7rem) scale(1.095) rotate(0.8deg)',
+    expect(card).toHaveClass('is-pressed');
+
+    fireEvent.pointerMove(card as Element, {
+        clientX: 26,
+        clientY: 58,
+        pointerId: 7,
+        pointerType: 'touch',
+    });
+    expect(card).not.toHaveClass('is-pressed');
+});
+
+it('tilts SBC artwork toward a fine pointer and resets on exit', async () => {
+    render(<StoreCategory />);
+
+    const card = screen
+        .getByRole('list', { name: 'Platform prices' })
+        .closest('.store-catalog-card--sbc') as HTMLElement;
+
+    vi.spyOn(card, 'getBoundingClientRect').mockReturnValue({
+        bottom: 400,
+        height: 200,
+        left: 100,
+        right: 300,
+        toJSON: () => ({}),
+        top: 200,
+        width: 200,
+        x: 100,
+        y: 200,
     });
 
-    fireEvent.pointerCancel(card as Element, { pointerType: 'touch' });
-    expect(card).not.toHaveClass('is-pressed');
-    expect(card).not.toHaveStyle({
-        transform: 'translateY(-0.35rem) scale(0.99)',
+    fireEvent.pointerMove(card, {
+        clientX: 290,
+        clientY: 210,
+        pointerType: 'mouse',
     });
-    expect(
-        card?.querySelector('.store-catalog-card__image img'),
-    ).not.toHaveStyle({
-        transform: 'translateY(-0.7rem) scale(1.095) rotate(0.8deg)',
+
+    await waitFor(() => {
+        expect(card.style.getPropertyValue('--sbc-tilt-x')).toBe('5.4deg');
+        expect(card.style.getPropertyValue('--sbc-tilt-y')).toBe('5.4deg');
     });
+
+    fireEvent.pointerLeave(card, { pointerType: 'mouse' });
+
+    expect(card.style.getPropertyValue('--sbc-tilt-x')).toBe('0deg');
+    expect(card.style.getPropertyValue('--sbc-tilt-y')).toBe('0deg');
 });
 
 it('renders a decorative glow layer behind SBC artwork', () => {
@@ -246,31 +295,21 @@ it('keeps the current search, filter, and sort while navigating every result pag
     );
 });
 
-it('requires an explicit SBC platform before linking to its credential page', () => {
+it('makes the complete SBC card a product link with informational prices', () => {
     render(<StoreCategory />);
 
     const prices = screen.getByRole('list', { name: 'Platform prices' });
-    const platformButtons = within(prices).getAllByRole('button');
+    const cardLink = screen.getByRole('link', { name: /Icon Service/i });
 
-    platformButtons.forEach((button) =>
-        expect(button).toHaveAttribute('aria-pressed', 'false'),
-    );
-    expect(screen.queryByRole('link', { name: 'Add to cart' })).toBeNull();
-
-    fireEvent.click(platformButtons[1]);
-
-    const add = screen.getByRole('link', { name: 'Add to cart' });
-    expect(add).toHaveAttribute(
-        'href',
-        '/en/sbc/icon-service?variant=01K00000000000000000000003',
-    );
+    expect(within(prices).queryAllByRole('button')).toHaveLength(0);
+    expect(within(prices).getByText(/125\.00/)).toBeVisible();
+    expect(within(prices).getByText(/99\.00/)).toBeVisible();
+    expect(cardLink).toHaveAttribute('href', '/en/sbc/icon-service');
+    expect(cardLink).toHaveClass('store-catalog-card__target');
     expect(mocks.submit).not.toHaveBeenCalled();
-    expect(
-        screen.queryByRole('button', { name: /details|contact/i }),
-    ).toBeNull();
 });
 
-it('suppresses cart actions and announces when the selected platform price is unavailable', () => {
+it('keeps unavailable SBC platform prices informational and linkable', () => {
     const props = categoryProps();
     const product = props.catalog.products[0];
 
@@ -292,18 +331,15 @@ it('suppresses cart actions and announces when the selected platform price is un
 
     render(<StoreCategory />);
 
-    fireEvent.click(
+    expect(
         within(
             screen.getByRole('list', { name: 'Platform prices' }),
-        ).getAllByRole('button')[0],
+        ).getAllByText('Price temporarily unavailable'),
+    ).toHaveLength(2);
+    expect(screen.getByRole('link', { name: /Icon Service/i })).toHaveAttribute(
+        'href',
+        '/en/sbc/icon-service',
     );
-
-    expect(
-        screen.getByRole('status', {
-            name: 'Price temporarily unavailable',
-        }),
-    ).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'Add to cart' })).toBeNull();
 });
 
 function categoryProps(overrides: Record<string, unknown> = {}) {

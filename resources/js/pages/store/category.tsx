@@ -1,6 +1,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { Headphones, LockKeyhole, ShieldCheck, Zap } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { CatalogAddControl } from '@/components/store/catalog/catalog-add-control';
 import StoreLayout from '@/layouts/store-layout';
@@ -108,86 +108,74 @@ export default function StoreCategory() {
                     }}
                     role="search"
                 >
-                    {isSbc ? (
-                        <h2 className="store-catalog-toolbar__title">
-                            {props.catalogPage.browse_by_type}
-                        </h2>
-                    ) : null}
-                    <label className="store-catalog-toolbar__search">
-                        <span>{props.catalogPage.search}</span>
-                        <input
-                            name="q"
-                            onChange={(event) =>
-                                setQuery((current) => ({
-                                    ...current,
-                                    q: event.target.value,
-                                }))
-                            }
-                            type="search"
-                            value={query.q}
+                    <div className="store-catalog-toolbar__heading-row">
+                        {isSbc ? (
+                            <h2 className="store-catalog-toolbar__title">
+                                {props.catalogPage.browse_by_type}
+                            </h2>
+                        ) : null}
+                        <SortControl
+                            navigate={navigate}
+                            query={query}
+                            translations={props.catalogPage}
                         />
-                    </label>
-                    <fieldset className="store-catalog-toolbar__filters">
-                        <legend>{props.catalogPage.filter}</legend>
-                        {filters.map((filter) => {
-                            const label = props.catalogPage[
-                                filter as keyof typeof props.catalogPage
-                            ] as string;
-                            const count =
-                                props.catalog.filterCounts[
-                                    filter as keyof typeof props.catalog.filterCounts
-                                ] ?? 0;
-                            const unavailable = filter !== 'all' && count === 0;
-
-                            return (
-                                <button
-                                    aria-label={`${label}: ${count}`}
-                                    aria-pressed={query.filter === filter}
-                                    disabled={unavailable}
-                                    key={filter}
-                                    name="filter"
-                                    onClick={() => navigate({ filter })}
-                                    type="button"
-                                    value={filter}
-                                >
-                                    <span>{label}</span>
-                                    <small aria-hidden="true">{count}</small>
-                                </button>
-                            );
-                        })}
-                    </fieldset>
-                    <label className="store-catalog-toolbar__sort">
-                        <span>{props.catalogPage.sort}</span>
-                        <select
-                            aria-label={props.catalogPage.sort}
-                            name="sort"
-                            onChange={(event) =>
-                                navigate({ sort: event.target.value })
-                            }
-                            value={query.sort}
+                    </div>
+                    <div className="store-catalog-toolbar__search-row">
+                        <label className="store-catalog-toolbar__search">
+                            <span>{props.catalogPage.search}</span>
+                            <input
+                                name="q"
+                                onChange={(event) =>
+                                    setQuery((current) => ({
+                                        ...current,
+                                        q: event.target.value,
+                                    }))
+                                }
+                                type="search"
+                                value={query.q}
+                            />
+                        </label>
+                        <button
+                            className="store-catalog-toolbar__submit"
+                            type="submit"
                         >
-                            {[
-                                'recommended',
-                                'newest',
-                                'price_asc',
-                                'price_desc',
-                            ].map((sort) => (
-                                <option key={sort} value={sort}>
-                                    {
-                                        props.catalogPage[
-                                            sort as keyof typeof props.catalogPage
-                                        ]
-                                    }
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                    <button
-                        className="store-catalog-toolbar__submit"
-                        type="submit"
-                    >
-                        {props.catalogPage.search}
-                    </button>
+                            {props.catalogPage.search}
+                        </button>
+                    </div>
+                    <div className="store-catalog-toolbar__filter-shell">
+                        <fieldset className="store-catalog-toolbar__filters">
+                            <legend>{props.catalogPage.filter}</legend>
+                            {filters.map((filter) => {
+                                const label = props.catalogPage[
+                                    filter as keyof typeof props.catalogPage
+                                ] as string;
+                                const count =
+                                    props.catalog.filterCounts[
+                                        filter as keyof typeof props.catalog.filterCounts
+                                    ] ?? 0;
+                                const unavailable =
+                                    filter !== 'all' && count === 0;
+
+                                return (
+                                    <button
+                                        aria-label={`${label}: ${count}`}
+                                        aria-pressed={query.filter === filter}
+                                        disabled={unavailable}
+                                        key={filter}
+                                        name="filter"
+                                        onClick={() => navigate({ filter })}
+                                        type="button"
+                                        value={filter}
+                                    >
+                                        <span>{label}</span>
+                                        <small aria-hidden="true">
+                                            {count}
+                                        </small>
+                                    </button>
+                                );
+                            })}
+                        </fieldset>
+                    </div>
                 </form>
 
                 {props.catalog.products.length === 0 ? (
@@ -246,13 +234,21 @@ function CatalogCard({
     product: CatalogProduct;
     translations: StoreCategoryPageProps['catalogPage'];
 }) {
-    const [variantId, setVariantId] = useState(
-        isSbc ? '' : (product.variants[0]?.id ?? ''),
-    );
-    const [isPressed, setIsPressed] = useState(false);
+    const [variantId, setVariantId] = useState(product.variants[0]?.id ?? '');
     const selected = product.variants.find(
         (variant) => variant.id === variantId,
     );
+
+    if (isSbc) {
+        return (
+            <SbcCatalogCard
+                locale={locale}
+                product={product}
+                translations={translations}
+            />
+        );
+    }
+
     const productArtwork = (
         <a
             aria-label={product.name}
@@ -265,109 +261,33 @@ function CatalogCard({
                         ? ''
                         : product.image.alt || product.name
                 }
-                height={isSbc ? '288' : '240'}
+                height="240"
                 loading="lazy"
                 src={
                     product.image?.url ??
-                    (isSbc
-                        ? '/images/store/navigation/logo-sbc-96.webp'
-                        : '/images/store/hero/arabut-logo-hero.webp')
+                    '/images/store/hero/arabut-logo-hero.webp'
                 }
-                style={
-                    isSbc && isPressed
-                        ? {
-                              transform:
-                                  'translateY(-0.7rem) scale(1.095) rotate(0.8deg)',
-                          }
-                        : undefined
-                }
-                width={isSbc ? '384' : '320'}
+                width="320"
             />
         </a>
     );
 
     return (
-        <li
-            className={[
-                'store-catalog-card',
-                isSbc ? 'store-catalog-card--sbc' : null,
-                isSbc && isPressed ? 'is-pressed' : null,
-            ]
-                .filter(Boolean)
-                .join(' ')}
-            onPointerCancel={isSbc ? () => setIsPressed(false) : undefined}
-            onPointerDown={isSbc ? () => setIsPressed(true) : undefined}
-            onPointerLeave={isSbc ? () => setIsPressed(false) : undefined}
-            onPointerUp={isSbc ? () => setIsPressed(false) : undefined}
-            style={
-                isSbc && isPressed
-                    ? {
-                          boxShadow:
-                              '0 0 0 0.22rem rgb(217 171 58 / 18%), 0 1.3rem 3.2rem rgb(0 0 0 / 38%), 0 0 2.35rem rgb(217 171 58 / 24%)',
-                          transform: 'translateY(-0.35rem) scale(0.99)',
-                      }
-                    : undefined
-            }
-        >
-            {isSbc ? (
-                <div className="store-catalog-card__media">
-                    <span className="store-catalog-card__ribbon">
-                        {translations.included}
-                    </span>
-                    <span
-                        aria-hidden="true"
-                        className="store-catalog-card__artwork-glow"
-                    />
-                    {productArtwork}
-                </div>
-            ) : (
-                productArtwork
-            )}
+        <li className={['store-catalog-card'].filter(Boolean).join(' ')}>
+            {productArtwork}
             <div className="store-catalog-card__body">
                 <h2>{product.name}</h2>
-                {isSbc ? null : <p>{product.description}</p>}
-                {isSbc ? (
-                    <ul
-                        aria-label={translations.platform_prices}
-                        className="store-catalog-card__prices"
-                    >
-                        {product.variants.map((variant) => (
-                            <li key={variant.id}>
-                                <button
-                                    aria-pressed={variant.id === variantId}
-                                    onClick={() => setVariantId(variant.id)}
-                                    type="button"
-                                >
-                                    <PlatformMark
-                                        name={variant.name}
-                                        platform={variant.platform}
-                                    />
-                                    <span>
-                                        {variant.price === null
-                                            ? translations.unavailable_price
-                                            : formatMinorUnits(
-                                                  variant.price.amountMinor,
-                                                  variant.price.currency,
-                                                  locale,
-                                              )}
-                                    </span>
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <strong>
-                        {selected?.price === null ||
-                        selected?.price === undefined
-                            ? translations.unavailable_price
-                            : formatMinorUnits(
-                                  selected.price.amountMinor,
-                                  selected.price.currency,
-                                  locale,
-                              )}
-                    </strong>
-                )}
-                {!isSbc && product.variants.length > 1 ? (
+                <p>{product.description}</p>
+                <strong>
+                    {selected?.price === null || selected?.price === undefined
+                        ? translations.unavailable_price
+                        : formatMinorUnits(
+                              selected.price.amountMinor,
+                              selected.price.currency,
+                              locale,
+                          )}
+                </strong>
+                {product.variants.length > 1 ? (
                     <label>
                         <span>{translations.platform}</span>
                         <select
@@ -388,26 +308,15 @@ function CatalogCard({
                 selected !== undefined &&
                 selected.price !== null &&
                 product.url !== null ? (
-                    isSbc ? (
-                        <div className="store-catalog-add">
-                            <a
-                                className="store-catalog-add__link"
-                                href={`${product.url}?variant=${encodeURIComponent(variantId)}`}
-                            >
-                                {translations.add_to_cart}
-                            </a>
-                        </div>
-                    ) : (
-                        <CatalogAddControl
-                            addUrl={addUrl}
-                            errorLabel={translations.add_error}
-                            idleLabel={translations.add_to_cart}
-                            loadingLabel={translations.adding}
-                            onSuccess={onSuccess}
-                            successLabel={translations.added}
-                            variantId={variantId}
-                        />
-                    )
+                    <CatalogAddControl
+                        addUrl={addUrl}
+                        errorLabel={translations.add_error}
+                        idleLabel={translations.add_to_cart}
+                        loadingLabel={translations.adding}
+                        onSuccess={onSuccess}
+                        successLabel={translations.added}
+                        variantId={variantId}
+                    />
                 ) : variantId !== '' ? (
                     <p
                         aria-label={translations.unavailable_price}
@@ -419,6 +328,193 @@ function CatalogCard({
                 ) : null}
             </div>
         </li>
+    );
+}
+
+function SbcCatalogCard({
+    locale,
+    product,
+    translations,
+}: {
+    locale: 'ar' | 'en';
+    product: CatalogProduct;
+    translations: StoreCategoryPageProps['catalogPage'];
+}) {
+    const [isPressed, setIsPressed] = useState(false);
+    const touchStart = useRef<{
+        pointerId: number;
+        x: number;
+        y: number;
+    } | null>(null);
+    const cancelPress = () => {
+        touchStart.current = null;
+        setIsPressed(false);
+    };
+    const resetTilt = (card: HTMLElement) => {
+        card.style.setProperty('--sbc-tilt-x', '0deg');
+        card.style.setProperty('--sbc-tilt-y', '0deg');
+    };
+
+    return (
+        <li
+            className={[
+                'store-catalog-card',
+                'store-catalog-card--sbc',
+                isPressed ? 'is-pressed' : null,
+            ]
+                .filter(Boolean)
+                .join(' ')}
+            onPointerCancel={cancelPress}
+            onPointerDown={(event) => {
+                if (event.pointerType === 'mouse') {
+                    return;
+                }
+
+                touchStart.current = {
+                    pointerId: event.pointerId,
+                    x: event.clientX,
+                    y: event.clientY,
+                };
+                setIsPressed(true);
+            }}
+            onPointerLeave={(event) => {
+                cancelPress();
+
+                if (event.pointerType === 'mouse') {
+                    resetTilt(event.currentTarget);
+                }
+            }}
+            onPointerMove={(event) => {
+                if (event.pointerType === 'mouse') {
+                    const bounds = event.currentTarget.getBoundingClientRect();
+                    const horizontal =
+                        (event.clientX - bounds.left) / bounds.width - 0.5;
+                    const vertical =
+                        (event.clientY - bounds.top) / bounds.height - 0.5;
+
+                    event.currentTarget.style.setProperty(
+                        '--sbc-tilt-x',
+                        `${(-vertical * 12).toFixed(1)}deg`,
+                    );
+                    event.currentTarget.style.setProperty(
+                        '--sbc-tilt-y',
+                        `${(horizontal * 12).toFixed(1)}deg`,
+                    );
+
+                    return;
+                }
+
+                const start = touchStart.current;
+
+                if (start === null || start.pointerId !== event.pointerId) {
+                    return;
+                }
+
+                if (
+                    Math.hypot(
+                        event.clientX - start.x,
+                        event.clientY - start.y,
+                    ) > 10
+                ) {
+                    cancelPress();
+                }
+            }}
+            onPointerUp={cancelPress}
+        >
+            <a
+                className="store-catalog-card__target"
+                href={product.url ?? undefined}
+            >
+                <div className="store-catalog-card__media">
+                    <span
+                        className="store-catalog-card__ribbon"
+                        style={{
+                            backgroundImage:
+                                'url(/images/store/catalog/sbc-ribbon.svg)',
+                        }}
+                    >
+                        <span>{translations.included}</span>
+                    </span>
+                    <span
+                        aria-hidden="true"
+                        className="store-catalog-card__artwork-glow"
+                    />
+                    <span className="store-catalog-card__image">
+                        <img
+                            alt={
+                                product.image === null
+                                    ? ''
+                                    : product.image.alt || product.name
+                            }
+                            height="288"
+                            loading="lazy"
+                            src={
+                                product.image?.url ??
+                                '/images/store/navigation/logo-sbc-96.webp'
+                            }
+                            width="384"
+                        />
+                    </span>
+                </div>
+                <div className="store-catalog-card__body">
+                    <h2>{product.name}</h2>
+                    <ul
+                        aria-label={translations.platform_prices}
+                        className="store-catalog-card__prices"
+                    >
+                        {product.variants.map((variant) => (
+                            <li key={variant.id}>
+                                <PlatformMark
+                                    name={variant.name}
+                                    platform={variant.platform}
+                                />
+                                <span>
+                                    {variant.price === null
+                                        ? translations.unavailable_price
+                                        : formatMinorUnits(
+                                              variant.price.amountMinor,
+                                              variant.price.currency,
+                                              locale,
+                                          )}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </a>
+        </li>
+    );
+}
+
+function SortControl({
+    navigate,
+    query,
+    translations,
+}: {
+    navigate: (
+        changes: Partial<StoreCategoryPageProps['catalog']['query']>,
+    ) => void;
+    query: StoreCategoryPageProps['catalog']['query'];
+    translations: StoreCategoryPageProps['catalogPage'];
+}) {
+    return (
+        <label className="store-catalog-toolbar__sort">
+            <span>{translations.sort}</span>
+            <select
+                aria-label={translations.sort}
+                name="sort"
+                onChange={(event) => navigate({ sort: event.target.value })}
+                value={query.sort}
+            >
+                {['recommended', 'newest', 'price_asc', 'price_desc'].map(
+                    (sort) => (
+                        <option key={sort} value={sort}>
+                            {translations[sort as keyof typeof translations]}
+                        </option>
+                    ),
+                )}
+            </select>
+        </label>
     );
 }
 
