@@ -29,10 +29,21 @@ function initialVariant(product: CatalogProduct, currentUrl: string): string {
         'https://store.arab-ut.com',
     ).searchParams.get('variant');
 
+    const requestedVariant = product.variants.find(
+        (variant) => variant.id === requested && variant.price !== null,
+    );
+
+    if (requestedVariant !== undefined) {
+        return requestedVariant.id;
+    }
+
     return (
         product.variants.find(
-            (variant) => variant.id === requested && variant.price !== null,
-        )?.id ?? ''
+            (variant) =>
+                variant.platform === 'playstation' && variant.price !== null,
+        )?.id ??
+        product.variants.find((variant) => variant.price !== null)?.id ??
+        ''
     );
 }
 

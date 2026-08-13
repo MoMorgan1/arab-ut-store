@@ -46,6 +46,20 @@ beforeEach(() => {
     page.props = sbcProductProps();
 });
 
+it('defaults an SBC product to the available PlayStation and Xbox variant', () => {
+    page.url = '/en/sbc/icon-challenge';
+
+    render(<StoreCatalogProduct />);
+
+    expect(
+        screen.getByRole('radio', { name: /PS \/ Xbox.*SAR.*125.00/ }),
+    ).toBeChecked();
+    expect(
+        document.querySelector('.sbc-product-summary__platform'),
+    ).toHaveTextContent('PS / Xbox');
+    expect(screen.getByRole('button', { name: 'Add to cart' })).toBeEnabled();
+});
+
 it('matches the compact SBC platform and three-code credential hierarchy', () => {
     render(<StoreCatalogProduct />);
 
@@ -81,7 +95,7 @@ it('matches the compact SBC platform and three-code credential hierarchy', () =>
     ).toHaveAttribute('href', '/en/sbc/related-challenge');
 });
 
-it('keeps a direct SBC visit unselected and places its identity above the product image', () => {
+it('places the SBC identity above its image on a direct visit', () => {
     page.url = '/en/sbc/icon-challenge';
     render(<StoreCatalogProduct />);
 
@@ -96,10 +110,10 @@ it('keeps a direct SBC visit unselected and places its identity above the produc
     expect(
         document.querySelector('.store-catalog-product__media-column'),
     ).toContainElement(document.querySelector('.store-catalog-product__image'));
-    screen
-        .getAllByRole('radio')
-        .forEach((radio) => expect(radio).not.toBeChecked());
-    expect(screen.getByRole('button', { name: 'Add to cart' })).toBeDisabled();
+    expect(
+        screen.getByRole('radio', { name: /PS \/ Xbox.*SAR.*125.00/ }),
+    ).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Add to cart' })).toBeEnabled();
 });
 
 it('focuses the first invalid field and submits exactly three credentials in memory', async () => {
