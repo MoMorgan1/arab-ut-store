@@ -191,7 +191,11 @@ it('waits for mobile scrolling to settle before resuming automatic movement', ()
     act(() => vi.advanceTimersByTime(120));
     expect(track.scrollBy).toHaveBeenCalledTimes(callsBeforeDrag);
 
-    act(() => vi.advanceTimersByTime(200));
+    act(() => vi.advanceTimersByTime(650));
+    act(() => vi.advanceTimersByTime(100));
+    expect(track.scrollBy).toHaveBeenCalledTimes(callsBeforeDrag);
+
+    act(() => vi.advanceTimersByTime(250));
     act(() => vi.advanceTimersByTime(100));
     expect(vi.mocked(track.scrollBy).mock.calls.length).toBeGreaterThan(
         callsBeforeDrag,

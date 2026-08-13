@@ -1,9 +1,38 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import {
+    act,
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+} from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { ReviewsSection } from '@/components/store/reviews-section';
 
-afterEach(cleanup);
+beforeEach(() => {
+    Object.defineProperties(HTMLUListElement.prototype, {
+        clientWidth: { configurable: true, get: () => 320 },
+        scrollWidth: { configurable: true, get: () => 1280 },
+    });
+    Object.defineProperty(HTMLElement.prototype, 'scrollBy', {
+        configurable: true,
+        value: vi.fn(),
+    });
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
+        window.setTimeout(() => callback(performance.now()), 16),
+    );
+    vi.stubGlobal('cancelAnimationFrame', (handle: number) =>
+        window.clearTimeout(handle),
+    );
+});
+
+afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+});
 
 it('renders premium public 4–5 star cards with customer names and locations', () => {
     vi.useFakeTimers();
@@ -52,9 +81,27 @@ it('renders premium public 4–5 star cards with customer names and locations', 
     expect(screen.getByText('Cairo')).toBeInTheDocument();
     expect(screen.getAllByText('Verified order')).toHaveLength(1);
     expect(container.textContent).not.toMatch(/[\w.+-]+@[\w.-]+|\+?\d{9,}/);
-    vi.advanceTimersByTime(30_000);
-    expect(container.querySelector('.store-reviews-rail')?.scrollLeft).toBe(0);
-    vi.useRealTimers();
+    const track = container.querySelector<HTMLElement>('.store-reviews-rail')!;
+
+    act(() => vi.advanceTimersByTime(160));
+    expect(vi.mocked(track.scrollBy).mock.calls.length).toBeGreaterThan(0);
+
+    const callsBeforeDrag = vi.mocked(track.scrollBy).mock.calls.length;
+    fireEvent.touchStart(track);
+    fireEvent.scroll(track);
+    fireEvent.touchEnd(track);
+    act(() => vi.advanceTimersByTime(120));
+    expect(track.scrollBy).toHaveBeenCalledTimes(callsBeforeDrag);
+
+    act(() => vi.advanceTimersByTime(650));
+    act(() => vi.advanceTimersByTime(100));
+    expect(track.scrollBy).toHaveBeenCalledTimes(callsBeforeDrag);
+
+    act(() => vi.advanceTimersByTime(250));
+    act(() => vi.advanceTimersByTime(100));
+    expect(vi.mocked(track.scrollBy).mock.calls.length).toBeGreaterThan(
+        callsBeforeDrag,
+    );
 });
 
 function translations() {

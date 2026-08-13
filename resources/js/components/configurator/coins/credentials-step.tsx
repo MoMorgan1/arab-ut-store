@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Ref } from 'react';
+import { createPortal } from 'react-dom';
 
 import { formatInteger } from '@/lib/money';
 import type {
@@ -510,115 +511,136 @@ export function CredentialsStep({
                 </div>
             </div>
 
-            {marketModalOpen ? (
-                <div
-                    className="market-modal-overlay is-open"
-                    onMouseDown={(event) => {
-                        if (event.currentTarget === event.target) {
-                            marketGuideTriggerRef.current?.focus();
-                            setMarketModalOpen(false);
-                        }
-                    }}
-                >
-                    <div
-                        aria-labelledby="coins-market-modal-title"
-                        aria-modal="true"
-                        className="market-modal"
-                        dir={locale === 'ar' ? 'rtl' : 'ltr'}
-                        role="dialog"
-                    >
-                        <button
-                            aria-label={
-                                translations.credentials.market_modal.close
-                            }
-                            className="market-modal-close"
-                            onClick={() => {
-                                marketGuideTriggerRef.current?.focus();
-                                setMarketModalOpen(false);
-                            }}
-                            ref={marketModalCloseRef}
-                            type="button"
-                        >
-                            &times;
-                        </button>
+            {marketModalOpen
+                ? createPortal(
+                      <div
+                          className="market-modal-overlay is-open"
+                          onMouseDown={(event) => {
+                              if (event.currentTarget === event.target) {
+                                  marketGuideTriggerRef.current?.focus();
+                                  setMarketModalOpen(false);
+                              }
+                          }}
+                      >
+                          <div
+                              aria-labelledby="coins-market-modal-title"
+                              aria-modal="true"
+                              className="market-modal"
+                              dir={locale === 'ar' ? 'rtl' : 'ltr'}
+                              role="dialog"
+                          >
+                              <button
+                                  aria-label={
+                                      translations.credentials.market_modal
+                                          .close
+                                  }
+                                  className="market-modal-close"
+                                  onClick={() => {
+                                      marketGuideTriggerRef.current?.focus();
+                                      setMarketModalOpen(false);
+                                  }}
+                                  ref={marketModalCloseRef}
+                                  type="button"
+                              >
+                                  &times;
+                              </button>
 
-                        <header className="market-modal-header">
-                            <span className="market-modal-badge">
-                                <HelpIcon />
-                                {translations.credentials.market_modal.badge}
-                            </span>
-                            <h2
-                                className="market-modal-title"
-                                id="coins-market-modal-title"
-                            >
-                                {translations.credentials.market_modal.title}
-                            </h2>
-                            <p className="market-modal-subtitle">
-                                {translations.credentials.market_modal.subtitle}
-                            </p>
-                        </header>
+                              <header className="market-modal-header">
+                                  <span className="market-modal-badge">
+                                      <HelpIcon />
+                                      {
+                                          translations.credentials.market_modal
+                                              .badge
+                                      }
+                                  </span>
+                                  <h2
+                                      className="market-modal-title"
+                                      id="coins-market-modal-title"
+                                  >
+                                      {
+                                          translations.credentials.market_modal
+                                              .title
+                                      }
+                                  </h2>
+                                  <p className="market-modal-subtitle">
+                                      {
+                                          translations.credentials.market_modal
+                                              .subtitle
+                                      }
+                                  </p>
+                              </header>
 
-                        <ol className="market-steps">
-                            {translations.credentials.market_modal.steps.map(
-                                (step, index) => (
-                                    <li
-                                        className="market-step"
-                                        key={step.title}
-                                    >
-                                        <span className="market-step-num">
-                                            {formatInteger(index + 1, locale)}
-                                        </span>
-                                        <span className="market-step-body">
-                                            <strong>{step.title}</strong>
-                                            <span>{step.body}</span>
-                                        </span>
-                                    </li>
-                                ),
-                            )}
-                        </ol>
+                              <ol className="market-steps">
+                                  {translations.credentials.market_modal.steps.map(
+                                      (step, index) => (
+                                          <li
+                                              className="market-step"
+                                              key={step.title}
+                                          >
+                                              <span className="market-step-num">
+                                                  {formatInteger(
+                                                      index + 1,
+                                                      locale,
+                                                  )}
+                                              </span>
+                                              <span className="market-step-body">
+                                                  <strong>{step.title}</strong>
+                                                  <span>{step.body}</span>
+                                              </span>
+                                          </li>
+                                      ),
+                                  )}
+                              </ol>
 
-                        <div className="market-compare">
-                            <MarketCompareCard
-                                badge={
-                                    translations.credentials.market_modal
-                                        .open_badge
-                                }
-                                description={
-                                    translations.credentials.market_modal
-                                        .open_description
-                                }
-                                imageAlt={
-                                    translations.credentials.market_open_label
-                                }
-                                imageSrc="/images/store/coins/market-open.webp"
-                                variant="open"
-                            />
-                            <MarketCompareCard
-                                badge={
-                                    translations.credentials.market_modal
-                                        .closed_badge
-                                }
-                                description={
-                                    translations.credentials.market_modal
-                                        .closed_description
-                                }
-                                imageAlt={
-                                    translations.credentials.market_closed_label
-                                }
-                                imageSrc="/images/store/coins/market-closed.webp"
-                                variant="closed"
-                            />
-                        </div>
+                              <div className="market-compare">
+                                  <MarketCompareCard
+                                      badge={
+                                          translations.credentials.market_modal
+                                              .open_badge
+                                      }
+                                      description={
+                                          translations.credentials.market_modal
+                                              .open_description
+                                      }
+                                      imageAlt={
+                                          translations.credentials
+                                              .market_open_label
+                                      }
+                                      imageSrc="/images/store/coins/market-open.webp"
+                                      variant="open"
+                                  />
+                                  <MarketCompareCard
+                                      badge={
+                                          translations.credentials.market_modal
+                                              .closed_badge
+                                      }
+                                      description={
+                                          translations.credentials.market_modal
+                                              .closed_description
+                                      }
+                                      imageAlt={
+                                          translations.credentials
+                                              .market_closed_label
+                                      }
+                                      imageSrc="/images/store/coins/market-closed.webp"
+                                      variant="closed"
+                                  />
+                              </div>
 
-                        <p className="market-modal-note">
-                            <WarningIcon />
-                            <span>
-                                {translations.credentials.market_modal.note}
-                            </span>
-                        </p>
-                    </div>
-                </div>
-            ) : null}
+                              <p className="market-modal-note">
+                                  <WarningIcon />
+                                  <span>
+                                      {
+                                          translations.credentials.market_modal
+                                              .note
+                                      }
+                                  </span>
+                              </p>
+                          </div>
+                      </div>,
+                      document.body,
+                  )
+                : null}
 
             {quoteMessage === null ? null : (
                 <p

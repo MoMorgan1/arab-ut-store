@@ -178,7 +178,7 @@ const sourceSafetyFloor = Math.max(
     settings.sourceMinCount,
     lastCounts?.sourceCount
         ? Math.floor(Number(lastCounts.sourceCount) * 0.85)
-        : baseline.sourceCount,
+        : Math.floor(baseline.sourceCount * 0.85),
 );
 if (records.length < sourceSafetyFloor) {
     return fail(

@@ -581,11 +581,13 @@ describe('Coins credentials flow', () => {
         });
         fireEvent.click(marketGuideTrigger);
 
-        expect(
-            screen.getByRole('dialog', {
-                name: 'Check your Transfer Market status',
-            }),
-        ).toBeVisible();
+        const marketDialog = screen.getByRole('dialog', {
+            name: 'Check your Transfer Market status',
+        });
+
+        expect(marketDialog).toBeVisible();
+        expect(marketDialog.parentElement).toHaveClass('market-modal-overlay');
+        expect(marketDialog.parentElement?.parentElement).toBe(document.body);
         expect(
             screen.getByRole('img', { name: 'Open Transfer Market example' }),
         ).toHaveAttribute('src', '/images/store/coins/market-open.webp');

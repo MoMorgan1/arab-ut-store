@@ -1,3 +1,4 @@
+import { useBouncingHorizontalRail } from '@/hooks/use-bouncing-horizontal-rail';
 import type {
     ReviewCollection,
     ReviewItem,
@@ -15,6 +16,11 @@ export function ReviewsSection({
     reviewsUrl: string;
     translations: ReviewTranslations;
 }) {
+    const direction = locale === 'ar' ? 'rtl' : 'ltr';
+    const { containerProps, trackProps } = useBouncingHorizontalRail({
+        direction,
+    });
+
     return (
         <section
             aria-labelledby="store-reviews-title"
@@ -38,7 +44,11 @@ export function ReviewsSection({
                 {reviews.items.length === 0 ? (
                     <p className="store-reviews__empty">{translations.empty}</p>
                 ) : (
-                    <ul className="store-reviews-rail">
+                    <ul
+                        className="store-reviews-rail"
+                        {...containerProps}
+                        {...trackProps}
+                    >
                         {reviews.items.map((review) => (
                             <ReviewCard
                                 key={review.id}
@@ -108,7 +118,7 @@ export function ReviewCard({
                     ))}
                 </div>
             </div>
-            <blockquote>“{review.body}”</blockquote>
+            <blockquote>{review.body}</blockquote>
             <footer>
                 {review.verified ? <span>{translations.verified}</span> : null}
                 {published === null ? null : (

@@ -91,6 +91,11 @@ it('renders the refined SBC hierarchy and trust strip', () => {
         screen.getByRole('list', { name: 'Platform prices' }).closest('li'),
     ).toHaveClass('store-catalog-card', 'store-catalog-card--sbc');
     expect(
+        document.querySelector(
+            '.store-catalog-card--sbc .store-catalog-card__image img',
+        ),
+    ).toHaveAttribute('height', '288');
+    expect(
         screen.getByRole('heading', { name: 'Browse by type', level: 2 }),
     ).toBeVisible();
     expect(

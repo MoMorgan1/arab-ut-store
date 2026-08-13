@@ -382,6 +382,33 @@ test('identity-aware safety permits only expected catalog departures and new arr
     };
 
     await t.test(
+        'bootstrap baseline uses the relative source floor when an expired item disappears',
+        async () => {
+            const expiring = {
+                ...previous[0],
+                endTime: Math.floor(
+                    new Date('2026-08-12T13:00:00.000Z') / 1000,
+                ),
+            };
+            const previousWithExpiry = [expiring, ...previous.slice(1)];
+            const current = previousWithExpiry.slice(1);
+            const prepared = await prepare(current, {
+                settings: {
+                    ...settings,
+                    approvedBaseline: approvedBaseline(previousWithExpiry),
+                },
+                staticData: {
+                    sbcCatalogV1: { translations: translations(current) },
+                },
+            });
+
+            assert.equal(prepared.valid, true, prepared.failureReason);
+            assert.equal(prepared.sourceSafetyFloor, 17);
+            assert.equal(prepared.expectedDepartures.length, 1);
+        },
+    );
+
+    await t.test(
         'an omitted prior item inside the expiry lead passes',
         async () => {
             const expiring = {

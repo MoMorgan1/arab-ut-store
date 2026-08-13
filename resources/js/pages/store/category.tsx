@@ -278,7 +278,7 @@ function CatalogCard({
                             ? ''
                             : product.image.alt || product.name
                     }
-                    height="240"
+                    height={isSbc ? '288' : '240'}
                     loading="lazy"
                     src={
                         product.image?.url ??
@@ -286,7 +286,7 @@ function CatalogCard({
                             ? '/images/store/navigation/logo-sbc-96.webp'
                             : '/images/store/hero/arabut-logo-hero.webp')
                     }
-                    width="320"
+                    width={isSbc ? '384' : '320'}
                 />
             </a>
             <div className="store-catalog-card__body">
