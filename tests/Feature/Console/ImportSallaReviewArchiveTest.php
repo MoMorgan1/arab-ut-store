@@ -149,3 +149,21 @@ test('the archive command accepts the existing normalized review endpoint withou
             'private@example.test',
         );
 });
+
+test('the archive command reports only a safe reason code when normalized source validation fails', function () {
+    config()->set('services.n8n.reviews_url', 'https://reviews.example.test/archive');
+    Http::fake([
+        'https://reviews.example.test/archive' => Http::response(['reviews' => [[
+            'id' => 'diagnostic-private-sentinel',
+            'rating' => 5,
+            'comment' => null,
+            'published_at' => '2026-08-12T12:00:00Z',
+            'is_visible' => true,
+        ]]]),
+    ]);
+
+    $this->artisan('reviews:import-salla-archive', ['--from-config' => true])
+        ->expectsOutputToContain('reason=normalized_incomplete')
+        ->doesntExpectOutputToContain('diagnostic-private-sentinel')
+        ->assertFailed();
+});
