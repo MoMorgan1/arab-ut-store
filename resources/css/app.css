@@ -5508,6 +5508,15 @@
         grid-template-columns: minmax(0, 18.25rem);
     }
 
+    .store-catalog-card--sbc .store-catalog-card__image {
+        animation-name: store-sbc-card-image-float-mobile;
+        animation-duration: 2.8s;
+    }
+
+    .store-catalog-card--sbc .store-catalog-card__artwork-glow {
+        animation-duration: 3.2s;
+    }
+
     .store-catalog-toolbar--compact .store-catalog-toolbar__filters {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5583,6 +5592,16 @@
 
     .market-compare {
         gap: 0.625rem;
+    }
+}
+
+@keyframes store-sbc-card-image-float-mobile {
+    from {
+        transform: translateY(0.35rem) rotate(-0.55deg) scale(0.99);
+    }
+
+    to {
+        transform: translateY(-0.95rem) rotate(0.65deg) scale(1.025);
     }
 }
 
