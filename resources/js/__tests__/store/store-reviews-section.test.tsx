@@ -39,7 +39,13 @@ it('renders premium public 4–5 star cards with customer names and locations', 
         />,
     );
 
-    expect(screen.getAllByTestId('review-card')).toHaveLength(2);
+    const cards = screen.getAllByTestId('review-card');
+
+    expect(cards).toHaveLength(2);
+    expect(cards[0]).toHaveClass('store-review-card');
+    expect(cards[0]).toHaveClass('store-review-card--gold');
+    expect(cards[1]).toHaveClass('store-review-card');
+    expect(cards[1]).not.toHaveClass('store-review-card--gold');
     expect(screen.getByLabelText('5 out of 5')).toBeInTheDocument();
     expect(screen.getByLabelText('4 out of 5')).toBeInTheDocument();
     expect(screen.getByText('Riyadh')).toBeInTheDocument();

@@ -77,12 +77,15 @@ export function ReviewCard({
           }).format(new Date(review.publishedAt))
         : null;
     const initial = Array.from(review.reviewerName.trim())[0] ?? 'A';
+    const cardClassName = [
+        'store-review-card',
+        review.rating === 5 ? 'store-review-card--gold' : null,
+    ]
+        .filter(Boolean)
+        .join(' ');
 
     return (
-        <li
-            className={`store-review-card${review.rating === 5 ? 'store-review-card--gold' : ''}`}
-            data-testid="review-card"
-        >
+        <li className={cardClassName} data-testid="review-card">
             <div className="store-review-card__top">
                 <span aria-hidden="true" className="store-review-card__avatar">
                     {initial}
