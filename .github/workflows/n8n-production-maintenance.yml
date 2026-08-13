@@ -22,6 +22,7 @@ jobs:
   discover:
     if: inputs.operation == 'discover'
     runs-on: ubuntu-latest
+    timeout-minutes: 2
     environment:
       name: production
     env:
@@ -41,7 +42,8 @@ jobs:
 
       - name: Discover the managed n8n runtime
         run: |
-          ssh -i ~/.ssh/hostinger -p "$HOSTINGER_SSH_PORT" \
+          ssh -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 \
+            -i ~/.ssh/hostinger -p "$HOSTINGER_SSH_PORT" \
             "$HOSTINGER_SSH_USER@$HOSTINGER_SSH_HOST" \
             'bash -se' <<'REMOTE'
           set -euo pipefail
@@ -59,7 +61,7 @@ jobs:
           fi
 
           container="${containers[0]}"
-          version="$(docker exec "$container" n8n --version)"
+          version="$(timeout 20s docker exec "$container" n8n --version)"
 
           printf 'n8n container: %s\n' "$container"
           printf 'n8n version: %s\n' "$version"
