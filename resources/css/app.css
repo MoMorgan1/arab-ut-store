@@ -5223,7 +5223,7 @@
     overflow-x: auto;
     overscroll-behavior-inline: contain;
     padding: 0.2rem 0.1rem 1rem;
-    scroll-snap-type: inline proximity;
+    scroll-snap-type: none;
     scrollbar-color: var(--arabut-gold) rgb(255 255 255 / 10%);
     touch-action: pan-x pan-y;
     -webkit-overflow-scrolling: touch;
