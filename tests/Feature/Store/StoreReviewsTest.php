@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Review;
+use App\Services\Reviews\StoreReviewReader;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -61,3 +62,38 @@ test('the bilingual review pages expose only safe visible database projections',
     'Arabic' => ['/reviews', 'ar'],
     'English' => ['/en/reviews', 'en'],
 ]);
+
+test('the homepage prioritizes written reviews over newer rating-only entries', function () {
+    foreach (range(1, 6) as $index) {
+        Review::create([
+            'reviewer_name' => "Rating only {$index}",
+            'rating' => 5,
+            'body_ar' => trans('store.reviews.rating_without_comment', locale: 'ar'),
+            'source' => 'salla-import',
+            'source_key' => 'salla-import',
+            'external_id' => "rating-only-{$index}",
+            'content_hash' => hash('sha256', "rating-only-{$index}"),
+            'is_visible' => true,
+            'published_at' => now()->subMinutes($index),
+        ]);
+    }
+
+    foreach (['تفاصيل تجربة أولى', 'تفاصيل تجربة ثانية'] as $index => $body) {
+        Review::create([
+            'reviewer_name' => "Written review {$index}",
+            'rating' => 5,
+            'body_ar' => $body,
+            'source' => 'salla-import',
+            'source_key' => 'salla-import',
+            'external_id' => "written-review-{$index}",
+            'content_hash' => hash('sha256', "written-review-{$index}"),
+            'is_visible' => true,
+            'published_at' => now()->subDay()->subMinutes($index),
+        ]);
+    }
+
+    $homepage = app(StoreReviewReader::class)->homepage('ar');
+
+    expect(array_slice(array_column($homepage['items'], 'body'), 0, 2))
+        ->toBe(['تفاصيل تجربة أولى', 'تفاصيل تجربة ثانية']);
+});

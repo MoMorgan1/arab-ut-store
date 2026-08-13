@@ -5200,14 +5200,16 @@
     min-height: 15.75rem;
     gap: 0.9rem;
     padding: 1.3rem;
-    border: 1px solid rgb(255 255 255 / 13%);
+    border: 1px solid rgb(217 171 58 / 48%);
     border-radius: 0.9rem;
     background: linear-gradient(
         145deg,
         rgb(38 29 18 / 98%),
         rgb(22 17 12 / 98%)
     );
-    box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 14%);
+    box-shadow:
+        inset 0 0 0 1px rgb(255 255 255 / 4%),
+        0 0.75rem 2rem rgb(0 0 0 / 24%);
     scroll-snap-align: start;
     transition:
         transform 200ms var(--store-ease-out),
@@ -5217,13 +5219,16 @@
 }
 
 .store-review-card:hover {
-    border-color: rgb(217 171 58 / 42%);
-    box-shadow: 0 1rem 2.25rem rgb(0 0 0 / 36%);
+    border-color: rgb(238 193 78 / 78%);
+    box-shadow:
+        inset 0 0 0 1px rgb(255 255 255 / 6%),
+        0 1rem 2.25rem rgb(0 0 0 / 42%),
+        0 0 1.25rem rgb(217 171 58 / 9%);
     transform: translateY(-0.2rem);
 }
 
 .store-review-card--gold {
-    border-color: rgb(217 171 58 / 28%);
+    border-color: rgb(217 171 58 / 58%);
     border-block-start: 2px solid var(--arabut-gold);
     background: linear-gradient(
         145deg,

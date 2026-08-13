@@ -5,6 +5,7 @@ namespace App\Services\Reviews;
 use App\Models\Review;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Lang;
 
 final class StoreReviewReader
@@ -15,7 +16,7 @@ final class StoreReviewReader
         $query = $this->visible();
         $count = (clone $query)->count();
         $average = $count > 0 ? round((float) (clone $query)->avg('rating'), 1) : null;
-        $items = array_values($query->limit(6)->get()
+        $items = array_values($this->homepageItems($query, $locale)
             ->map(fn (Review $review) => $this->project($review, $locale))
             ->all());
 
@@ -54,6 +55,32 @@ final class StoreReviewReader
             ->whereNotNull('published_at')
             ->latest('published_at')
             ->latest('id');
+    }
+
+    /**
+     * @param  Builder<Review>  $query
+     * @return Collection<int, Review>
+     */
+    private function homepageItems(Builder $query, string $locale): Collection
+    {
+        [$preferredBody, $fallbackBody] = $locale === 'ar'
+            ? ['body_ar', 'body_en']
+            : ['body_en', 'body_ar'];
+        $ratingOnlyBodies = [
+            Lang::get('store.reviews.rating_without_comment', [], 'ar'),
+            Lang::get('store.reviews.rating_without_comment', [], 'en'),
+        ];
+
+        return (clone $query)
+            ->reorder()
+            ->orderByRaw(
+                "CASE WHEN COALESCE({$preferredBody}, {$fallbackBody}) IN (?, ?) THEN 1 ELSE 0 END",
+                $ratingOnlyBodies,
+            )
+            ->latest('published_at')
+            ->latest('id')
+            ->limit(6)
+            ->get();
     }
 
     /** @return array<string, mixed> */
