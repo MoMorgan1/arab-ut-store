@@ -28,6 +28,12 @@ export type StoreShellConfig = {
 
 export type StoreShellTranslations = {
     brand: string;
+    cart_added: {
+        title: string;
+        message: string;
+        buy_now: string;
+        continue_shopping: string;
+    };
     language: string;
     currency_selector: string;
     home_title: string;
@@ -152,7 +158,16 @@ export type StoreCartTranslations = {
     title: string;
     eyebrow: string;
     empty: string;
+    empty_title: string;
+    empty_description: string;
+    browse_sbc: string;
     back: string;
+    items_heading: string;
+    summary_title: string;
+    checkout_progress: string;
+    step_cart: string;
+    step_phone: string;
+    step_payment: string;
     service: string;
     coins_service: string;
     platform: string;

@@ -55,6 +55,12 @@ const shell: StoreShellConfig = {
 
 const translations = {
     brand: 'Arab UT',
+    cart_added: {
+        title: 'Added to your cart',
+        message: ':item is ready in your cart.',
+        buy_now: 'Buy now',
+        continue_shopping: 'Continue shopping',
+    },
     language: 'العربية',
     currency_selector: 'Display currency',
     home_title: 'Home',

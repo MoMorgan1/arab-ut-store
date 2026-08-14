@@ -35,6 +35,12 @@ const mockPage = vi.hoisted(() => ({
         },
         ui: {
             brand: 'Arab UT',
+            cart_added: {
+                title: 'Added to your cart',
+                message: ':item is ready in your cart.',
+                buy_now: 'Buy now',
+                continue_shopping: 'Continue shopping',
+            },
             checkout_notice:
                 'All final prices and checkout are in Saudi Riyal (:currency).',
             currency: 'Currency',
@@ -256,5 +262,48 @@ describe('StoreLayout', () => {
                 'All final prices and checkout are in Saudi Riyal (SAR).',
             ),
         ).not.toBeInTheDocument();
+    });
+
+    it('keeps shoppers on the current page and offers explicit next actions after an item is added', () => {
+        render(
+            <StoreLayout
+                cartCount={0}
+                currentUrl="/en/sbc/icon-challenge"
+                locale="en"
+                storeShell={storeShell}
+                direction="ltr"
+                displayCurrency="SAR"
+                displayCurrencies={['SAR']}
+                ui={englishUi}
+            >
+                <p>Product details remain visible</p>
+            </StoreLayout>,
+        );
+
+        fireEvent(
+            window,
+            new CustomEvent('arabut:cart-added', {
+                detail: {
+                    cartUrl: '/en/cart',
+                    itemLabel: 'Icon Challenge',
+                },
+            }),
+        );
+
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'Icon Challenge is ready in your cart.',
+        );
+        expect(screen.getByRole('link', { name: 'Buy now' })).toHaveAttribute(
+            'href',
+            '/en/cart',
+        );
+        expect(
+            screen.getByText('Product details remain visible'),
+        ).toBeVisible();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Continue shopping' }),
+        );
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 });

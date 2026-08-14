@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from 'react';
 
+import { CartAddedNotice } from '@/components/store/cart-added-notice';
 import { StoreFooter } from '@/components/store/store-footer';
 import { StoreHeader } from '@/components/store/store-header';
 import type {
@@ -53,6 +54,7 @@ export default function StoreLayout({
             <main className="store-main" id="store-content">
                 {children}
             </main>
+            <CartAddedNotice translations={ui.cart_added} />
             <StoreFooter locale={locale} shell={storeShell} translations={ui} />
         </div>
     );

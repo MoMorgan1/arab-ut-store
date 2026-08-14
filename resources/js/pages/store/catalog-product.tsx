@@ -1,4 +1,4 @@
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { CatalogAddControl } from '@/components/store/catalog/catalog-add-control';
@@ -141,9 +141,7 @@ export default function StoreCatalogProduct() {
                                             props.productPage.add_to_cart
                                         }
                                         loadingLabel={props.productPage.adding}
-                                        onSuccess={(result) =>
-                                            router.visit(result.cartUrl)
-                                        }
+                                        itemLabel={product.name}
                                         variantId={variantId}
                                     />
                                 )}

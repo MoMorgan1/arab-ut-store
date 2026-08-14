@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
 
+import { announceCartAddition } from '@/lib/cart-added-event';
 import {
     CatalogCartRequestError,
     submitCatalogCart,
 } from '@/lib/catalog-cart-api';
-import type { CatalogCartSuccess } from '@/lib/catalog-cart-api';
 
 function newAttemptKey(): string {
     return typeof crypto.randomUUID === 'function'
@@ -17,7 +17,7 @@ export function CatalogAddControl({
     errorLabel,
     idleLabel,
     loadingLabel,
-    onSuccess,
+    itemLabel,
     successLabel,
     variantId,
 }: {
@@ -25,7 +25,7 @@ export function CatalogAddControl({
     errorLabel: string;
     idleLabel: string;
     loadingLabel: string;
-    onSuccess: (result: CatalogCartSuccess) => void;
+    itemLabel: string;
     successLabel?: string;
     variantId: string;
 }) {
@@ -48,7 +48,12 @@ export function CatalogAddControl({
             });
             keyRef.current = newAttemptKey();
             setSuccess(true);
-            onSuccess(result);
+            announceCartAddition({ cartUrl: result.cartUrl, itemLabel });
+            window.dispatchEvent(
+                new CustomEvent<number>('arabut:cart-count', {
+                    detail: result.cartCount,
+                }),
+            );
         } catch (failure) {
             if (
                 failure instanceof CatalogCartRequestError &&

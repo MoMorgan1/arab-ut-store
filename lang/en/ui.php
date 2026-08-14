@@ -2,6 +2,12 @@
 
 return [
     'brand' => 'Arab UT',
+    'cart_added' => [
+        'title' => 'Added to your cart',
+        'message' => ':item is ready in your cart.',
+        'buy_now' => 'Buy now',
+        'continue_shopping' => 'Continue shopping',
+    ],
     'language' => 'العربية',
     'currency' => 'Currency',
     'currency_selector' => 'Choose display currency',

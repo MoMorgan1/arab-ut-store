@@ -2,6 +2,12 @@
 
 return [
     'brand' => 'عرب التيميت',
+    'cart_added' => [
+        'title' => 'تمت الإضافة إلى السلة',
+        'message' => ':item جاهز في سلتك.',
+        'buy_now' => 'الشراء الآن',
+        'continue_shopping' => 'أكمل التسوق',
+    ],
     'language' => 'English',
     'currency' => 'العملة',
     'currency_selector' => 'اختر عملة العرض',

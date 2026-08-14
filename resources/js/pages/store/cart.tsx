@@ -1,4 +1,10 @@
 import { Head, usePage } from '@inertiajs/react';
+import {
+    CreditCard,
+    MessageCircleMore,
+    ShoppingBag,
+    ShieldCheck,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { interpolate } from '@/components/configurator/coins/configurator-copy';
@@ -40,6 +46,11 @@ export default function StoreCart() {
         storeShell,
         ui,
     } = page.props;
+    const authenticated = page.props.auth.user !== null;
+    const totalHalalah = cart.items.reduce(
+        (total, cartItem) => total + cartItem.totalHalalah,
+        0,
+    );
 
     return (
         <StoreLayout
@@ -63,40 +74,140 @@ export default function StoreCart() {
                 </header>
 
                 {cart.items.length === 0 ? (
-                    <p className="store-cart-empty">
-                        {cartPage.translations.empty}
-                    </p>
-                ) : (
-                    <ol className="store-cart-lines">
-                        {cart.items.map((cartItem) => (
-                            <CartLine
-                                cartItem={cartItem}
-                                key={cartItem.id}
-                                locale={locale}
-                                translations={cartPage.translations}
-                            />
-                        ))}
-                    </ol>
-                )}
-
-                {cart.items.length > 0 ? (
-                    <CheckoutPanel
-                        authenticated={page.props.auth.user !== null}
-                        checkout={cartPage.checkout}
-                        locale={locale}
-                        totalHalalah={cart.items.reduce(
-                            (total, item) => total + item.totalHalalah,
-                            0,
-                        )}
+                    <CartEmptyState
+                        backUrl={cartPage.backUrl}
+                        sbcUrl={storeShell.sbcUrl}
                         translations={cartPage.translations}
                     />
-                ) : null}
-
-                <a className="store-cart-back" href={cartPage.backUrl}>
-                    {cartPage.translations.back}
-                </a>
+                ) : (
+                    <>
+                        <CheckoutProgress
+                            authenticated={authenticated}
+                            phoneVerified={cartPage.checkout.phoneVerified}
+                            translations={cartPage.translations}
+                        />
+                        <div className="store-cart-page__layout">
+                            <section
+                                aria-labelledby="store-cart-items-title"
+                                className="store-cart-page__items"
+                            >
+                                <h2 id="store-cart-items-title">
+                                    {cartPage.translations.items_heading}
+                                </h2>
+                                <ol className="store-cart-lines">
+                                    {cart.items.map((cartItem) => (
+                                        <CartLine
+                                            cartItem={cartItem}
+                                            key={cartItem.id}
+                                            locale={locale}
+                                            translations={cartPage.translations}
+                                        />
+                                    ))}
+                                </ol>
+                                <a
+                                    className="store-cart-back"
+                                    href={cartPage.backUrl}
+                                >
+                                    {cartPage.translations.back}
+                                </a>
+                            </section>
+                            <CheckoutPanel
+                                authenticated={authenticated}
+                                checkout={cartPage.checkout}
+                                locale={locale}
+                                policyLinks={{
+                                    terms: {
+                                        label: ui.footer.terms,
+                                        url: storeShell.termsUrl,
+                                    },
+                                    warranty: {
+                                        label: ui.footer.warranty,
+                                        url: storeShell.warrantyUrl,
+                                    },
+                                }}
+                                totalHalalah={totalHalalah}
+                                translations={cartPage.translations}
+                            />
+                        </div>
+                    </>
+                )}
             </section>
         </StoreLayout>
+    );
+}
+
+function CartEmptyState({
+    backUrl,
+    sbcUrl,
+    translations,
+}: {
+    backUrl: string;
+    sbcUrl: string;
+    translations: StoreCartTranslations;
+}) {
+    return (
+        <section className="store-cart-empty">
+            <span aria-hidden="true">
+                <ShoppingBag />
+            </span>
+            <h2>{translations.empty_title}</h2>
+            <p>{translations.empty_description}</p>
+            <div>
+                <a href={backUrl}>{translations.back}</a>
+                <a href={sbcUrl}>{translations.browse_sbc}</a>
+            </div>
+        </section>
+    );
+}
+
+function CheckoutProgress({
+    authenticated,
+    phoneVerified,
+    translations,
+}: {
+    authenticated: boolean;
+    phoneVerified: boolean;
+    translations: StoreCartTranslations;
+}) {
+    const currentStep = !authenticated ? 0 : phoneVerified ? 2 : 1;
+    const steps = [
+        { icon: ShoppingBag, label: translations.step_cart },
+        { icon: MessageCircleMore, label: translations.step_phone },
+        { icon: CreditCard, label: translations.step_payment },
+    ];
+
+    return (
+        <nav
+            aria-label={translations.checkout_progress}
+            className="store-cart-progress"
+        >
+            <ol>
+                {steps.map((step, index) => {
+                    const Icon = step.icon;
+                    const state =
+                        index < currentStep
+                            ? 'complete'
+                            : index === currentStep
+                              ? 'current'
+                              : 'upcoming';
+
+                    return (
+                        <li
+                            aria-current={
+                                state === 'current' ? 'step' : undefined
+                            }
+                            data-state={state}
+                            key={step.label}
+                        >
+                            <span aria-hidden="true">
+                                <Icon />
+                            </span>
+                            <strong>{step.label}</strong>
+                        </li>
+                    );
+                })}
+            </ol>
+        </nav>
     );
 }
 
@@ -104,12 +215,17 @@ function CheckoutPanel({
     authenticated,
     checkout,
     locale,
+    policyLinks,
     totalHalalah,
     translations,
 }: {
     authenticated: boolean;
     checkout: StoreCartPageProps['cartPage']['checkout'];
     locale: 'ar' | 'en';
+    policyLinks: {
+        terms: { label: string; url: string };
+        warranty: { label: string; url: string };
+    };
     totalHalalah: number;
     translations: StoreCartTranslations;
 }) {
@@ -153,15 +269,35 @@ function CheckoutPanel({
 
     return (
         <aside
-            className="store-cart-checkout"
+            className={[
+                'store-cart-checkout',
+                authenticated && checkout.phoneVerified
+                    ? 'store-cart-checkout--ready'
+                    : null,
+            ]
+                .filter(Boolean)
+                .join(' ')}
             aria-label={translations.checkout}
         >
+            <header className="store-cart-checkout__heading">
+                <span aria-hidden="true">
+                    <ShieldCheck />
+                </span>
+                <h2>{translations.summary_title}</h2>
+            </header>
             <div className="store-cart-checkout__total">
                 <span>{translations.order_total}</span>
                 <strong>{formatMinorUnits(totalHalalah, 'SAR', locale)}</strong>
             </div>
             <p className="store-cart-checkout__secure">
                 {translations.checkout_secure}
+            </p>
+            <p className="store-cart-checkout__policies">
+                <a href={policyLinks.terms.url}>{policyLinks.terms.label}</a>
+                <span aria-hidden="true">·</span>
+                <a href={policyLinks.warranty.url}>
+                    {policyLinks.warranty.label}
+                </a>
             </p>
             {!authenticated ? (
                 <a

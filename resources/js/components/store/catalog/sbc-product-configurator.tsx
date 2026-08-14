@@ -1,6 +1,6 @@
-import { router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
+import { announceCartAddition } from '@/lib/cart-added-event';
 import { catalogPlatformName } from '@/lib/catalog-platform-name';
 import { formatMinorUnits } from '@/lib/money';
 import { SbcCartRequestError, submitSbcCart } from '@/lib/sbc-cart-api';
@@ -101,26 +101,14 @@ export function SbcProductConfigurator({
         useState<CoinsCredentials>(EMPTY_CREDENTIALS);
     const [errors, setErrors] = useState<CredentialErrors>({});
     const [passwordVisible, setPasswordVisible] = useState(false);
-    const [state, setState] = useState<
-        'idle' | 'loading' | 'success' | 'error'
-    >('idle');
+    const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
     const attemptKey = useRef(newAttemptKey());
     const fieldRefs = useRef<
         Partial<Record<CoinsCredentialField, HTMLInputElement | null>>
     >({});
     const pendingFocus = useRef<CoinsCredentialField | null>(null);
-    const visitTimer = useRef<number | null>(null);
     const variant = product.variants.find((option) => option.id === variantId);
-    const locked = state === 'loading' || state === 'success';
-
-    useEffect(
-        () => () => {
-            if (visitTimer.current !== null) {
-                window.clearTimeout(visitTimer.current);
-            }
-        },
-        [],
-    );
+    const locked = state === 'loading';
 
     useEffect(() => {
         if (state !== 'error' || pendingFocus.current === null) {
@@ -184,15 +172,15 @@ export function SbcProductConfigurator({
             });
             attemptKey.current = newAttemptKey();
             setCredentials(EMPTY_CREDENTIALS);
-            setState('success');
+            setState('idle');
+            announceCartAddition({
+                cartUrl: result.cartUrl,
+                itemLabel: product.name,
+            });
             window.dispatchEvent(
                 new CustomEvent<number>('arabut:cart-count', {
                     detail: result.cartCount,
                 }),
-            );
-            visitTimer.current = window.setTimeout(
-                () => router.visit(result.cartUrl),
-                420,
             );
         } catch (failure) {
             if (failure instanceof SbcCartRequestError) {
@@ -417,11 +405,6 @@ export function SbcProductConfigurator({
                     ? translations.adding
                     : translations.add_to_cart}
             </button>
-            {state === 'success' ? (
-                <p className="sbc-product-status" role="status">
-                    {translations.sbc.success}
-                </p>
-            ) : null}
             {state === 'error' ? (
                 <p className="sbc-product-status" role="alert">
                     {translations.add_error}

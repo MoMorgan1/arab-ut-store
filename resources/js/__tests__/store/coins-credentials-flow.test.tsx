@@ -287,6 +287,12 @@ function pageProps(authenticated = true) {
         },
         ui: {
             brand: 'Arab UT',
+            cart_added: {
+                title: 'Added to your cart',
+                message: ':item is ready in your cart.',
+                buy_now: 'Buy now',
+                continue_shopping: 'Continue shopping',
+            },
             currency_selector: 'Choose display currency',
             home_title: 'Home',
             language: 'العربية',
@@ -632,7 +638,7 @@ describe('Coins credentials flow', () => {
         expect(localStorageSpy).not.toHaveBeenCalled();
     });
 
-    it('prevents double-submit, reuses the key for transport retry, then clears and redirects on 201', async () => {
+    it('prevents double-submit, reuses the key for transport retry, then clears without leaving the page on 201', async () => {
         mockPage.props = pageProps(false);
         const requests: Array<{
             key: string | null;
@@ -720,7 +726,14 @@ describe('Coins credentials flow', () => {
         expect(screen.queryByLabelText('EA password')).not.toBeInTheDocument();
         expect(document.body.textContent).not.toContain('opaque EA password');
         expect(cartCountEvents).toEqual([2]);
-        expect(visitMock).toHaveBeenCalledWith('/en/cart');
+        expect(visitMock).not.toHaveBeenCalled();
+        expect(
+            screen.getByText('FC 27 Coins is ready in your cart.'),
+        ).toBeVisible();
+        expect(screen.getByRole('link', { name: 'Buy now' })).toHaveAttribute(
+            'href',
+            '/en/cart',
+        );
     });
 
     it('maps a mixed 422 to credential fields without reflecting backend text', async () => {

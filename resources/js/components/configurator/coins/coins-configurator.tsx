@@ -1,6 +1,6 @@
-import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
+import { announceCartAddition } from '@/lib/cart-added-event';
 import { CoinsCartRequestError, submitCoinsCart } from '@/lib/coins-cart-api';
 import { quoteFromSchedule } from '@/lib/coins-quote-schedule';
 import type {
@@ -60,7 +60,6 @@ export function CoinsConfigurator({
         emptyCoinsCredentials,
     );
     const [pending, setPending] = useState(false);
-    const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
     const [retrying, setRetrying] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [rejectedCredentialFields, setRejectedCredentialFields] = useState<
@@ -156,12 +155,6 @@ export function CoinsConfigurator({
         targets[state.step]?.focus({ preventScroll: true });
         pendingFocus.current = null;
     }, [state.step]);
-
-    useEffect(() => {
-        if (redirectUrl !== null) {
-            router.visit(redirectUrl);
-        }
-    }, [redirectUrl]);
 
     useEffect(() => {
         return () => {
@@ -381,17 +374,17 @@ export function CoinsConfigurator({
                 platform: selectedPlatform.value,
                 quantity: state.lastValidQuantity,
             });
-            const emptyCredentials = emptyCoinsCredentials();
-
-            credentialsRef.current = emptyCredentials;
             idempotencyKey.current = null;
-            setCredentials(emptyCredentials);
-            setRedirectUrl(addition.cartUrl);
+            announceCartAddition({
+                cartUrl: addition.cartUrl,
+                itemLabel: translations.summary.service_value,
+            });
             window.dispatchEvent(
                 new CustomEvent<number>('arabut:cart-count', {
                     detail: addition.cartCount,
                 }),
             );
+            clearCredentials();
         } catch (error) {
             if (!(error instanceof CoinsCartRequestError)) {
                 throw error;
@@ -512,8 +505,7 @@ export function CoinsConfigurator({
 
             {state.step === 'summary' &&
             selectedPlatform !== null &&
-            quoteState.status === 'success' &&
-            redirectUrl === null ? (
+            quoteState.status === 'success' ? (
                 <SummaryStep
                     delivery={requestDelivery}
                     error={submitError}
@@ -529,12 +521,6 @@ export function CoinsConfigurator({
                     translations={translations}
                 />
             ) : null}
-
-            {redirectUrl === null ? null : (
-                <p className="coins-redirecting" role="status">
-                    {translations.summary.adding}
-                </p>
-            )}
         </div>
     );
 }

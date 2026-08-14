@@ -164,7 +164,7 @@ it('focuses the first invalid field and submits exactly three credentials in mem
     expect(sessionStorage).toHaveLength(0);
 });
 
-it('reveals the password accessibly and gives visible success feedback before visiting the cart', async () => {
+it('reveals the password accessibly and confirms the add without leaving the product', async () => {
     vi.useFakeTimers();
     render(<StoreCatalogProduct />);
     const password = screen.getByLabelText('EA password');
@@ -186,11 +186,17 @@ it('reveals the password accessibly and gives visible success feedback before vi
     await act(async () => {
         await Promise.resolve();
     });
-    expect(screen.getByRole('status')).toHaveTextContent('Added securely');
+    expect(screen.getByRole('status')).toHaveTextContent(
+        'Icon Challenge is ready in your cart.',
+    );
     expect(mocks.visit).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(450);
-    expect(mocks.visit).toHaveBeenCalledWith('/en/cart');
+    expect(mocks.visit).not.toHaveBeenCalled();
+    expect(screen.getByRole('link', { name: 'Buy now' })).toHaveAttribute(
+        'href',
+        '/en/cart',
+    );
 });
 
 it('locks the selected platform and credentials while the add request is in flight', async () => {
@@ -368,6 +374,12 @@ function sbcProductProps() {
         },
         ui: {
             brand: 'Arab UT',
+            cart_added: {
+                title: 'Added to your cart',
+                message: ':item is ready in your cart.',
+                buy_now: 'Buy now',
+                continue_shopping: 'Continue shopping',
+            },
             language: 'Arabic',
             currency_selector: 'Currency',
             home_title: 'Home',

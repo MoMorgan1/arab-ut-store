@@ -78,7 +78,17 @@ const mockPage = vi.hoisted(() => ({
                 title: 'Your cart',
                 eyebrow: 'Arab UT',
                 empty: 'Your cart is empty.',
+                empty_title: 'Your next service starts here',
+                empty_description:
+                    'Choose Coins or an SBC service to continue.',
+                browse_sbc: 'Browse SBC services',
                 back: 'Back to Coins',
+                items_heading: 'Your services',
+                summary_title: 'Order summary',
+                checkout_progress: 'Checkout progress',
+                step_cart: 'Cart',
+                step_phone: 'WhatsApp verification',
+                step_payment: 'Secure payment',
                 service: 'Service',
                 coins_service: 'FC 27 Coins',
                 platform: 'Platform',
@@ -150,6 +160,12 @@ const mockPage = vi.hoisted(() => ({
         },
         ui: {
             brand: 'Arab UT',
+            cart_added: {
+                title: 'Added to your cart',
+                message: ':item is ready in your cart.',
+                buy_now: 'Buy now',
+                continue_shopping: 'Continue shopping',
+            },
             currency_selector: 'Currency',
             home_title: 'Home',
             language: 'العربية',
@@ -198,6 +214,7 @@ const validConfiguration: StoreCartConfiguration = {
     quoted_at: '2026-08-10T12:00:00+00:00',
     service_type: 'coins' as const,
 };
+const defaultCartItem = mockPage.props.cart.items[0];
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
@@ -210,6 +227,8 @@ beforeEach(() => {
     mockPage.props.auth.user = null;
     mockPage.props.cartPage.checkout.canCheckout = false;
     mockPage.props.cartPage.checkout.phoneVerified = false;
+    mockPage.props.cart.count = 1;
+    mockPage.props.cart.items = [defaultCartItem];
     mockPage.props.cart.items[0].configuration = validConfiguration;
     mockPage.props.cart.items[0].product = {
         imageUrl: '/images/store/coins/ut-coin-80.webp',
@@ -245,6 +264,29 @@ it('renders only the authoritative read-only Coins cart summary', () => {
     expect(document.body.textContent).not.toMatch(
         /10000001|opaque EA password/,
     );
+    expect(
+        screen.getByRole('navigation', { name: 'Checkout progress' }),
+    ).toBeVisible();
+    expect(screen.getByText('Order summary')).toBeVisible();
+    expect(screen.getByText('Your services')).toBeVisible();
+});
+
+it('offers Coins and SBC routes from a purposeful empty state', () => {
+    mockPage.props.cart.items = [];
+    mockPage.props.cart.count = 0;
+
+    render(<StoreCart />);
+
+    expect(
+        screen.getByRole('heading', { name: 'Your next service starts here' }),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Back to Coins' })).toHaveAttribute(
+        'href',
+        '/en#coins',
+    );
+    expect(
+        screen.getByRole('link', { name: 'Browse SBC services' }),
+    ).toHaveAttribute('href', '/en/sbc');
 });
 
 it('locks checkout while Paylink opens and navigates only to the validated hosted URL', async () => {

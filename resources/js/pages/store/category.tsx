@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { CatalogAddControl } from '@/components/store/catalog/catalog-add-control';
 import { SbcCatalogCard } from '@/components/store/catalog/sbc-catalog-card';
 import StoreLayout from '@/layouts/store-layout';
-import type { CatalogCartSuccess } from '@/lib/catalog-cart-api';
 import { formatMinorUnits } from '@/lib/money';
 import type {
     CatalogProduct,
@@ -193,14 +192,6 @@ export default function StoreCategory() {
                                 isSbc={isSbc}
                                 key={product.id}
                                 locale={props.locale}
-                                onSuccess={(result) =>
-                                    window.dispatchEvent(
-                                        new CustomEvent<number>(
-                                            'arabut:cart-count',
-                                            { detail: result.cartCount },
-                                        ),
-                                    )
-                                }
                                 product={product}
                                 translations={props.catalogPage}
                             />
@@ -226,14 +217,12 @@ function CatalogCard({
     addUrl,
     isSbc,
     locale,
-    onSuccess,
     product,
     translations,
 }: {
     addUrl: string;
     isSbc: boolean;
     locale: 'ar' | 'en';
-    onSuccess: (result: CatalogCartSuccess) => void;
     product: CatalogProduct;
     translations: StoreCategoryPageProps['catalogPage'];
 }) {
@@ -315,8 +304,8 @@ function CatalogCard({
                         addUrl={addUrl}
                         errorLabel={translations.add_error}
                         idleLabel={translations.add_to_cart}
+                        itemLabel={product.name}
                         loadingLabel={translations.adding}
-                        onSuccess={onSuccess}
                         successLabel={translations.added}
                         variantId={variantId}
                     />

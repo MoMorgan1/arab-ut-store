@@ -165,6 +165,12 @@ function orderProps(): StoreOrderPageProps {
         },
         ui: {
             brand: 'Arab UT',
+            cart_added: {
+                title: 'Added to your cart',
+                message: ':item is ready in your cart.',
+                buy_now: 'Buy now',
+                continue_shopping: 'Continue shopping',
+            },
             currency_selector: 'Currency',
             footer: {
                 copyright: '',

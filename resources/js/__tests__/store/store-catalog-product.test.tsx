@@ -49,7 +49,11 @@ it('renders product hierarchy and adds the selected variant without checkout con
     expect(mocks.submit.mock.calls[0][0].variantId).toBe(
         '01K00000000000000000000004',
     );
-    expect(mocks.visit).toHaveBeenCalledWith('/en/cart');
+    expect(mocks.visit).not.toHaveBeenCalled();
+    expect(screen.getByRole('link', { name: 'Buy now' })).toHaveAttribute(
+        'href',
+        '/en/cart',
+    );
     expect(screen.queryByRole('button', { name: /checkout|pay/i })).toBeNull();
 });
 
@@ -79,6 +83,12 @@ function productProps() {
         },
         ui: {
             brand: 'Arab UT',
+            cart_added: {
+                title: 'Added to your cart',
+                message: ':item is ready in your cart.',
+                buy_now: 'Buy now',
+                continue_shopping: 'Continue shopping',
+            },
             language: 'Arabic',
             currency_selector: 'Currency',
             home_title: 'Home',
