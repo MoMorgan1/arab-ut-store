@@ -46,7 +46,19 @@ function catalogSnapshotPayload(): array
                 'salePriceMinor' => null,
                 'priceVersion' => 3,
                 'active' => true,
-                'configuration' => ['sbcCategory' => 'icons'],
+                'configuration' => [
+                    'sbcCategory' => 'icons',
+                    'completionPricing' => [
+                        'version' => 1,
+                        'repeatable' => false,
+                        'maximum' => 1,
+                        'tiers' => [[
+                            'completions' => 1,
+                            'multiplierBps' => 10_000,
+                            'totalMinor' => 12_500,
+                        ]],
+                    ],
+                ],
             ]],
             'media' => [],
         ]],
@@ -346,6 +358,7 @@ it('keeps price versions server authoritative across catalog routes', function (
     $next['products'][0]['variants'][0]['priceVersion'] = $nextProducerVersion;
     $next['products'][0]['variants'][0]['priceMinor'] = $nextPrice;
     $next['products'][0]['variants'][0]['salePriceMinor'] = $nextSalePrice;
+    $next['products'][0]['variants'][0]['configuration']['completionPricing']['tiers'][0]['totalMinor'] = $nextSalePrice ?? $nextPrice;
     $next['products'][0]['variants'][0]['name']['en'] = 'Updated name';
 
     signedCatalogSnapshot(
@@ -367,6 +380,74 @@ it('keeps price versions server authoritative across catalog routes', function (
     'SBC sale change producer regression' => ['/api/automation/v1/catalog/sbc/snapshots', 'sbc_catalog', 900, 1, 12_500, 11_500, 2],
     'SBC regular and sale change increment only once' => ['/api/automation/v1/catalog/sbc/snapshots', 'sbc_catalog', 1, 9_999, 13_000, 11_500, 2],
 ]);
+
+it('increments an SBC price version when a non-default completion tier changes', function () {
+    $initial = catalogSnapshotPayload();
+    $initial['products'][0]['variants'][0]['priceMinor'] = 57_000;
+    $initial['products'][0]['variants'][0]['configuration']['completionPricing'] = [
+        'version' => 1,
+        'repeatable' => true,
+        'maximum' => 10,
+        'tiers' => [
+            ['completions' => 5, 'multiplierBps' => 10_000, 'totalMinor' => 57_000],
+            ['completions' => 10, 'multiplierBps' => 9_500, 'totalMinor' => 107_900],
+        ],
+    ];
+
+    signedCatalogSnapshot(
+        $initial,
+        path: '/api/automation/v1/catalog/sbc/snapshots',
+        credentialScope: 'sbc_catalog',
+    )->assertCreated();
+
+    $metadataOnly = catalogSnapshotPayload();
+    $metadataOnly['products'][0]['variants'][0]['priceMinor'] = 57_000;
+    $metadataOnly['products'][0]['variants'][0]['configuration'] = [
+        ...$initial['products'][0]['variants'][0]['configuration'],
+        'expiresAt' => '2026-08-20T00:00:00Z',
+    ];
+    signedCatalogSnapshot(
+        $metadataOnly,
+        path: '/api/automation/v1/catalog/sbc/snapshots',
+        credentialScope: 'sbc_catalog',
+    )->assertCreated();
+    expect(ProductVariant::sole()->price_version)->toBe(1);
+
+    $changedTier = catalogSnapshotPayload();
+    $changedTier['products'][0]['variants'][0]['priceMinor'] = 57_000;
+    $changedTier['products'][0]['variants'][0]['configuration']['completionPricing'] = [
+        ...$initial['products'][0]['variants'][0]['configuration']['completionPricing'],
+        'tiers' => [
+            ['completions' => 5, 'multiplierBps' => 10_000, 'totalMinor' => 57_000],
+            ['completions' => 10, 'multiplierBps' => 9_500, 'totalMinor' => 108_000],
+        ],
+    ];
+    signedCatalogSnapshot(
+        $changedTier,
+        path: '/api/automation/v1/catalog/sbc/snapshots',
+        credentialScope: 'sbc_catalog',
+    )->assertCreated();
+
+    expect(ProductVariant::sole()->price_version)->toBe(2);
+});
+
+it('rejects malformed SBC completion pricing before writing any snapshot rows', function () {
+    $payload = catalogSnapshotPayload();
+    $payload['products'][0]['variants'][0]['configuration']['completionPricing']['tiers'][0]['unexpected'] = true;
+
+    signedCatalogSnapshot(
+        $payload,
+        path: '/api/automation/v1/catalog/sbc/snapshots',
+        credentialScope: 'sbc_catalog',
+    )->assertUnprocessable()->assertJsonValidationErrors([
+        'products.0.variants.0.configuration.completionPricing',
+    ]);
+
+    expect(Product::count())->toBe(0)
+        ->and(ProductVariant::count())->toBe(0)
+        ->and(CatalogSyncRun::count())->toBe(0)
+        ->and(IntegrationEvent::count())->toBe(0);
+});
 
 it('rejects invalid catalog signatures without writing catalog rows', function () {
     $response = signedCatalogSnapshot(catalogSnapshotPayload(), str_repeat('0', 64))

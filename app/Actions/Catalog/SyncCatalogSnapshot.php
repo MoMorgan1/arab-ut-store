@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Models\IntegrationEvent;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\ValueObjects\Pricing\SbcCompletionPricing;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -241,9 +242,19 @@ final class SyncCatalogSnapshot
             $salePriceMinor = $variantPayload['salePriceMinor'] === null
                 ? null
                 : (int) $variantPayload['salePriceMinor'];
+            $completionPricingChanged = $variant->exists
+                && $product->service_type === ServiceType::Sbc
+                && $this->completionPricingFingerprint(
+                    is_array($variant->configuration) ? $variant->configuration : [],
+                    $variant->sale_price_halalah ?? (int) $variant->price_halalah,
+                ) !== $this->completionPricingFingerprint(
+                    $variantPayload['configuration'],
+                    $salePriceMinor ?? $priceMinor,
+                );
             $priceChanged = $variant->exists && (
                 (int) $variant->price_halalah !== $priceMinor
                 || $variant->sale_price_halalah !== $salePriceMinor
+                || $completionPricingChanged
             );
             $priceVersion = $variant->exists
                 ? ((int) $variant->price_version) + ($priceChanged ? 1 : 0)
@@ -264,6 +275,16 @@ final class SyncCatalogSnapshot
                 'is_active' => $variantPayload['active'],
             ])->save();
         }
+    }
+
+    /** @param array<string, mixed> $configuration */
+    private function completionPricingFingerprint(array $configuration, int $fallbackMinor): string
+    {
+        return SbcCompletionPricing::fromConfiguration(
+            $configuration,
+            $fallbackMinor,
+            requireDeclared: false,
+        )->fingerprint();
     }
 
     /** @param array<string, mixed> $snapshot */
