@@ -1,4 +1,5 @@
 import {
+    act,
     cleanup,
     fireEvent,
     render,
@@ -28,7 +29,10 @@ vi.mock('@inertiajs/react', () => ({
 }));
 vi.mock('@/lib/catalog-cart-api', () => ({ submitCatalogCart: mocks.submit }));
 
-afterEach(cleanup);
+afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+});
 
 beforeEach(() => {
     mocks.get.mockReset();
@@ -168,6 +172,46 @@ it('cancels touch feedback once the gesture becomes a scroll', () => {
         pointerType: 'touch',
     });
     expect(card).not.toHaveClass('is-pressed');
+});
+
+it('keeps touch feedback visible briefly after a stationary tap', () => {
+    vi.useFakeTimers();
+    render(<StoreCategory />);
+
+    const card = screen
+        .getByRole('list', { name: 'Platform prices' })
+        .closest('.store-catalog-card--sbc');
+
+    fireEvent.pointerDown(card as Element, {
+        clientX: 24,
+        clientY: 40,
+        pointerId: 8,
+        pointerType: 'touch',
+    });
+    fireEvent.pointerUp(card as Element, {
+        clientX: 24,
+        clientY: 40,
+        pointerId: 8,
+        pointerType: 'touch',
+    });
+
+    expect(card).toHaveClass('is-pressed');
+
+    act(() => vi.advanceTimersByTime(800));
+
+    expect(card).not.toHaveClass('is-pressed');
+    vi.useRealTimers();
+});
+
+it('separates the console logos from the non-wrapping platform label', () => {
+    render(<StoreCategory />);
+
+    const consolePlatform = screen.getByText('PlayStation / Xbox');
+
+    expect(consolePlatform).toHaveClass('store-catalog-card__platform-name');
+    expect(consolePlatform.previousElementSibling).toHaveClass(
+        'store-catalog-card__platform-logos',
+    );
 });
 
 it('tilts SBC artwork toward a fine pointer and resets on exit', async () => {

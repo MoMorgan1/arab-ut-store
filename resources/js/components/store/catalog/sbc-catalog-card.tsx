@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { catalogPlatformName } from '@/lib/catalog-platform-name';
 import { formatMinorUnits } from '@/lib/money';
@@ -20,19 +20,48 @@ export function SbcCatalogCard({
     >;
 }) {
     const [isPressed, setIsPressed] = useState(false);
+    const feedbackTimer = useRef<number | null>(null);
     const touchStart = useRef<{
         pointerId: number;
         x: number;
         y: number;
     } | null>(null);
+    const clearFeedbackTimer = () => {
+        if (feedbackTimer.current !== null) {
+            window.clearTimeout(feedbackTimer.current);
+            feedbackTimer.current = null;
+        }
+    };
     const cancelPress = () => {
+        clearFeedbackTimer();
         touchStart.current = null;
         setIsPressed(false);
+    };
+    const completePress = (pointerId: number) => {
+        if (touchStart.current?.pointerId !== pointerId) {
+            return;
+        }
+
+        touchStart.current = null;
+        clearFeedbackTimer();
+        feedbackTimer.current = window.setTimeout(() => {
+            feedbackTimer.current = null;
+            setIsPressed(false);
+        }, 700);
     };
     const resetTilt = (card: HTMLElement) => {
         card.style.setProperty('--sbc-tilt-x', '0deg');
         card.style.setProperty('--sbc-tilt-y', '0deg');
     };
+
+    useEffect(
+        () => () => {
+            if (feedbackTimer.current !== null) {
+                window.clearTimeout(feedbackTimer.current);
+            }
+        },
+        [],
+    );
 
     return (
         <li
@@ -49,6 +78,7 @@ export function SbcCatalogCard({
                     return;
                 }
 
+                clearFeedbackTimer();
                 touchStart.current = {
                     pointerId: event.pointerId,
                     x: event.clientX,
@@ -57,10 +87,14 @@ export function SbcCatalogCard({
                 setIsPressed(true);
             }}
             onPointerLeave={(event) => {
-                cancelPress();
-
                 if (event.pointerType === 'mouse') {
                     resetTilt(event.currentTarget);
+
+                    return;
+                }
+
+                if (touchStart.current !== null) {
+                    cancelPress();
                 }
             }}
             onPointerMove={(event) => {
@@ -98,7 +132,11 @@ export function SbcCatalogCard({
                     cancelPress();
                 }
             }}
-            onPointerUp={cancelPress}
+            onPointerUp={(event) => {
+                if (event.pointerType !== 'mouse') {
+                    completePress(event.pointerId);
+                }
+            }}
         >
             <a
                 aria-label={product.name}
@@ -185,12 +223,17 @@ function PlatformMark({
 
     return (
         <span className="store-catalog-card__platform">
-            <span aria-hidden="true">
+            <span
+                aria-hidden="true"
+                className="store-catalog-card__platform-logos"
+            >
                 {iconUrls.map((url) => (
                     <img alt="" height="18" key={url} src={url} width="18" />
                 ))}
             </span>
-            <span>{catalogPlatformName(platform, name, locale)}</span>
+            <span className="store-catalog-card__platform-name">
+                {catalogPlatformName(platform, name, locale)}
+            </span>
         </span>
     );
 }
