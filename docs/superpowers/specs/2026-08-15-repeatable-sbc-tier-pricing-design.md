@@ -1,6 +1,6 @@
 # Repeatable SBC Tier Pricing and Cart Notice Design
 
-**Status:** Approved direction; pending written-spec review
+**Status:** Approved by Mohamed on 2026-08-15
 
 **Complexity:** Ambitious
 
