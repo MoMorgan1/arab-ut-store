@@ -53,6 +53,11 @@ export function CartAddedNotice({
                 <p>
                     {translations.message.replace(':item', addition.itemLabel)}
                 </p>
+                {addition.selectionLabel ? (
+                    <span className="store-cart-added__selection">
+                        {addition.selectionLabel}
+                    </span>
+                ) : null}
             </div>
             <div className="store-cart-added__actions">
                 <a href={addition.cartUrl}>{translations.buy_now}</a>

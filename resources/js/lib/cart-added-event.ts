@@ -5,6 +5,7 @@ export type CartAddedDetail = {
     imageAlt: string;
     imageUrl: string;
     itemLabel: string;
+    selectionLabel?: string;
 };
 
 export function announceCartAddition(detail: CartAddedDetail) {

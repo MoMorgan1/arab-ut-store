@@ -2867,9 +2867,9 @@
         left: 50%;
         z-index: 90;
         display: grid;
-        width: min(calc(100% - 2rem), 32rem);
-        grid-template-columns: 4rem minmax(0, 1fr);
-        gap: 0.8rem 0.9rem;
+        width: min(calc(100% - 2rem), 38rem);
+        grid-template-columns: 5rem minmax(0, 1fr);
+        gap: 0.9rem 1rem;
         overflow: hidden;
         border: 1px solid rgb(245 207 109 / 56%);
         border-radius: 1rem;
@@ -2880,7 +2880,7 @@
                 transparent 42%
             ),
             rgb(13 14 15 / 98%);
-        padding: 1rem 1rem 1.15rem;
+        padding: 1.15rem 1.15rem 1.3rem;
         box-shadow:
             0 1.25rem 4rem rgb(0 0 0 / 48%),
             inset 0 1px rgb(255 255 255 / 5%);
@@ -2891,8 +2891,8 @@
     .store-cart-added__visual {
         position: relative;
         display: grid;
-        width: 4rem;
-        height: 4rem;
+        width: 5rem;
+        height: 5rem;
         place-items: center;
         border-radius: 0.8rem;
         background: rgb(255 255 255 / 4%);
@@ -2938,6 +2938,15 @@
         margin-block-start: 0.2rem;
         color: var(--arabut-muted);
         line-height: 1.45;
+    }
+
+    .store-cart-added__selection {
+        display: block;
+        margin-block-start: 0.45rem;
+        color: var(--arabut-gold-bright);
+        font-size: 0.94rem;
+        font-weight: 800;
+        line-height: 1.35;
     }
 
     .store-cart-added__actions {
@@ -3736,7 +3745,13 @@
 
         .store-cart-added {
             top: max(0.65rem, env(safe-area-inset-top));
-            width: min(calc(100% - 1.3rem), 32rem);
+            width: min(calc(100% - 1.3rem), 38rem);
+            grid-template-columns: 4.5rem minmax(0, 1fr);
+        }
+
+        .store-cart-added__visual {
+            width: 4.5rem;
+            height: 4.5rem;
         }
 
         .auth-password-requirements ul {

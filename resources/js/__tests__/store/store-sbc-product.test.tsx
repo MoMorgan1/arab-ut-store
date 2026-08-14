@@ -213,6 +213,7 @@ it('reveals the password accessibly and confirms the add without leaving the pro
     expect(screen.getByRole('status')).toHaveTextContent(
         'Icon Challenge is ready in your cart.',
     );
+    expect(screen.getByRole('status')).toHaveTextContent('5 completions · PC');
     expect(mocks.visit).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(450);

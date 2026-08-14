@@ -226,6 +226,14 @@ export function SbcProductConfigurator({
                     product.image?.url ??
                     '/images/store/navigation/logo-sbc-96.webp',
                 itemLabel: product.name,
+                selectionLabel: `${completionLabel(
+                    translations.sbc.completion_option,
+                    completionCount,
+                )} · ${catalogPlatformName(
+                    variant.platform,
+                    variant.name,
+                    locale,
+                )}`,
             });
             window.dispatchEvent(
                 new CustomEvent<number>('arabut:cart-count', {

@@ -290,6 +290,7 @@ describe('StoreLayout', () => {
                     imageAlt: 'Icon Challenge artwork',
                     imageUrl: '/images/icon-challenge.webp',
                     itemLabel: 'Icon Challenge',
+                    selectionLabel: '5 completions · PC',
                 },
             }),
         );
@@ -300,6 +301,7 @@ describe('StoreLayout', () => {
         expect(notification).toHaveTextContent(
             'Icon Challenge is ready in your cart.',
         );
+        expect(notification).toHaveTextContent('5 completions · PC');
         expect(
             screen.getByRole('img', { name: 'Icon Challenge artwork' }),
         ).toHaveAttribute('src', '/images/icon-challenge.webp');
