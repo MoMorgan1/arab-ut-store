@@ -1,5 +1,4 @@
 import {
-    act,
     cleanup,
     fireEvent,
     render,
@@ -149,90 +148,50 @@ it('keeps touch feedback active while the finger scrolls the page', () => {
         .getByRole('list', { name: 'Platform prices' })
         .closest('.store-catalog-card--sbc');
 
-    fireEvent.pointerDown(card as Element, {
-        clientX: 24,
-        clientY: 40,
-        pointerId: 7,
-        pointerType: 'touch',
+    fireEvent.touchStart(card as Element, {
+        touches: [{ clientX: 24, clientY: 40, identifier: 7 }],
     });
     expect(card).toHaveClass('is-pressed');
 
-    fireEvent.pointerMove(card as Element, {
-        clientX: 27,
-        clientY: 46,
-        pointerId: 7,
-        pointerType: 'touch',
+    fireEvent.touchMove(card as Element, {
+        touches: [{ clientX: 27, clientY: 46, identifier: 7 }],
     });
     expect(card).toHaveClass('is-pressed');
 
-    fireEvent.pointerMove(card as Element, {
-        clientX: 26,
-        clientY: 58,
-        pointerId: 7,
-        pointerType: 'touch',
+    fireEvent.touchMove(card as Element, {
+        touches: [{ clientX: 26, clientY: 58, identifier: 7 }],
     });
     expect(card).toHaveClass('is-pressed');
 });
 
-it('keeps touch feedback visible after the browser cancels a scrolling pointer', () => {
-    vi.useFakeTimers();
+it('clears touch feedback when the browser cancels the touch', () => {
     render(<StoreCategory />);
 
     const card = screen
         .getByRole('list', { name: 'Platform prices' })
         .closest('.store-catalog-card--sbc');
 
-    fireEvent.pointerDown(card as Element, {
-        clientX: 24,
-        clientY: 40,
-        pointerId: 9,
-        pointerType: 'touch',
+    fireEvent.touchStart(card as Element, {
+        touches: [{ clientX: 24, clientY: 40, identifier: 9 }],
     });
-    fireEvent.pointerCancel(card as Element, {
-        clientX: 24,
-        clientY: 80,
-        pointerId: 9,
-        pointerType: 'touch',
-    });
-
-    expect(card).toHaveClass('is-pressed');
-
-    act(() => vi.advanceTimersByTime(1500));
+    fireEvent.touchCancel(card as Element);
 
     expect(card).not.toHaveClass('is-pressed');
 });
 
-it('keeps touch feedback visible for more than one second after a stationary tap', () => {
-    vi.useFakeTimers();
+it('clears touch feedback as soon as a stationary touch ends', () => {
     render(<StoreCategory />);
 
     const card = screen
         .getByRole('list', { name: 'Platform prices' })
         .closest('.store-catalog-card--sbc');
 
-    fireEvent.pointerDown(card as Element, {
-        clientX: 24,
-        clientY: 40,
-        pointerId: 8,
-        pointerType: 'touch',
+    fireEvent.touchStart(card as Element, {
+        touches: [{ clientX: 24, clientY: 40, identifier: 8 }],
     });
-    fireEvent.pointerUp(card as Element, {
-        clientX: 24,
-        clientY: 40,
-        pointerId: 8,
-        pointerType: 'touch',
-    });
-
-    expect(card).toHaveClass('is-pressed');
-
-    act(() => vi.advanceTimersByTime(1100));
-
-    expect(card).toHaveClass('is-pressed');
-
-    act(() => vi.advanceTimersByTime(400));
+    fireEvent.touchEnd(card as Element);
 
     expect(card).not.toHaveClass('is-pressed');
-    vi.useRealTimers();
 });
 
 it('keeps the shine clipping layer separate from the protruding artwork', () => {

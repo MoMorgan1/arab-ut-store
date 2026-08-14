@@ -31,6 +31,7 @@ import {
     PaylinkCheckoutError,
     startPaylinkCheckout,
 } from '@/lib/paylink-checkout-api';
+import { phoneCountryCodes } from '@/lib/phone-country-codes';
 import type {
     StoreCartItem,
     StoreCartPageProps,
@@ -333,16 +334,6 @@ function CheckoutPanel({
     );
 }
 
-const CHECKOUT_COUNTRY_CODES = [
-    { code: '+966', label: '🇸🇦 +966' },
-    { code: '+20', label: '🇪🇬 +20' },
-    { code: '+971', label: '🇦🇪 +971' },
-    { code: '+965', label: '🇰🇼 +965' },
-    { code: '+974', label: '🇶🇦 +974' },
-    { code: '+973', label: '🇧🇭 +973' },
-    { code: '+968', label: '🇴🇲 +968' },
-] as const;
-
 function CheckoutPhoneForm({
     checkout,
     translations,
@@ -427,9 +418,9 @@ function CheckoutPhoneForm({
                     }
                     value={countryCode}
                 >
-                    {CHECKOUT_COUNTRY_CODES.map((country) => (
-                        <option key={country.code} value={country.code}>
-                            {country.label}
+                    {phoneCountryCodes.map((countryCode) => (
+                        <option key={countryCode} value={countryCode}>
+                            {countryCode}
                         </option>
                     ))}
                 </select>

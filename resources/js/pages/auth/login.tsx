@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { phoneCountryCodes } from '@/lib/phone-country-codes';
 import {
     sendWhatsAppLoginCode,
     verifyWhatsAppLoginCode,
@@ -20,16 +21,6 @@ type Props = {
     status?: string;
     canResetPassword: boolean;
 };
-
-const countryCodes = [
-    { code: '+966', label: '🇸🇦 +966' },
-    { code: '+20', label: '🇪🇬 +20' },
-    { code: '+971', label: '🇦🇪 +971' },
-    { code: '+965', label: '🇰🇼 +965' },
-    { code: '+974', label: '🇶🇦 +974' },
-    { code: '+973', label: '🇧🇭 +973' },
-    { code: '+968', label: '🇴🇲 +968' },
-] as const;
 
 export default function Login({
     authRoutes,
@@ -251,14 +242,16 @@ export default function Login({
                                                 authUi.login.country_code
                                             }
                                         >
-                                            {countryCodes.map((country) => (
-                                                <option
-                                                    key={country.code}
-                                                    value={country.code}
-                                                >
-                                                    {country.label}
-                                                </option>
-                                            ))}
+                                            {phoneCountryCodes.map(
+                                                (countryCode) => (
+                                                    <option
+                                                        key={countryCode}
+                                                        value={countryCode}
+                                                    >
+                                                        {countryCode}
+                                                    </option>
+                                                ),
+                                            )}
                                         </select>
                                         <Input
                                             id="phone-number"

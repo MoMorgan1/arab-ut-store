@@ -173,3 +173,13 @@ test('the catalog exposes the refined SBC hierarchy and add feedback in both loc
         ->and($arabic['catalog'])->not->toHaveKey('sbc')
         ->and($english['catalog'])->not->toHaveKey('sbc');
 });
+
+test('the cart uses a concise total label in both locales', function () {
+    $arabic = require lang_path('ar/store.php');
+    $english = require lang_path('en/store.php');
+
+    expect(data_get($arabic, 'cart_page.total'))->toBe('الإجمالي')
+        ->and(data_get($arabic, 'summary.total'))->toBe('الإجمالي')
+        ->and(data_get($english, 'cart_page.total'))->toBe('Total')
+        ->and(data_get($english, 'summary.total'))->toBe('Total');
+});

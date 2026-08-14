@@ -377,6 +377,8 @@ export function CoinsConfigurator({
             idempotencyKey.current = null;
             announceCartAddition({
                 cartUrl: addition.cartUrl,
+                imageAlt: translations.summary.service_value,
+                imageUrl: '/images/store/coins/ut-coin-160.webp',
                 itemLabel: translations.summary.service_value,
             });
             window.dispatchEvent(

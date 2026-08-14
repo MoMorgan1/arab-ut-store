@@ -18,8 +18,31 @@ type Props = {
 
 export default function Register({ authRoutes, authUi, passwordRules }: Props) {
     const [password, setPassword] = useState('');
-    const symbolMissing =
-        password.length > 0 && !/[\p{Z}\p{S}\p{P}]/u.test(password);
+    const minimumLength = Number(
+        passwordRules.match(/minlength:(\d+)/)?.[1] ?? 12,
+    );
+    const passwordChecks = [
+        {
+            id: 'minimum',
+            label: authUi.register.password_requirements.minimum,
+            met: password.length >= minimumLength,
+        },
+        {
+            id: 'mixed-case',
+            label: authUi.register.password_requirements.mixed_case,
+            met: /[a-z]/.test(password) && /[A-Z]/.test(password),
+        },
+        {
+            id: 'number',
+            label: authUi.register.password_requirements.number,
+            met: /\d/.test(password),
+        },
+        {
+            id: 'symbol',
+            label: authUi.register.password_requirements.symbol,
+            met: /[\p{Z}\p{S}\p{P}]/u.test(password),
+        },
+    ];
 
     return (
         <>
@@ -144,14 +167,10 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                     }}
                                     aria-describedby={
                                         errors.password
-                                            ? 'password-error'
-                                            : symbolMissing
-                                              ? 'password-symbol-error'
-                                              : undefined
+                                            ? 'password-requirements password-error'
+                                            : 'password-requirements'
                                     }
-                                    aria-invalid={Boolean(
-                                        errors.password || symbolMissing,
-                                    )}
+                                    aria-invalid={Boolean(errors.password)}
                                     showLabel={authUi.password_visibility.show}
                                     hideLabel={authUi.password_visibility.hide}
                                 />
@@ -160,16 +179,30 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                     message={errors.password}
                                     role="alert"
                                 />
-                                <InputError
-                                    id="password-symbol-error"
-                                    message={
-                                        symbolMissing && !errors.password
-                                            ? authUi.register
-                                                  .password_symbol_error
-                                            : undefined
-                                    }
-                                    role="status"
-                                />
+                                <div
+                                    className="auth-password-requirements"
+                                    id="password-requirements"
+                                >
+                                    <p>
+                                        {
+                                            authUi.register
+                                                .password_requirements.title
+                                        }
+                                    </p>
+                                    <ul>
+                                        {passwordChecks.map((check) => (
+                                            <li
+                                                data-met={String(check.met)}
+                                                key={check.id}
+                                            >
+                                                <span aria-hidden="true">
+                                                    {check.met ? '✓' : '•'}
+                                                </span>
+                                                {check.label}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
                             </div>
 
                             <div className="grid gap-2">

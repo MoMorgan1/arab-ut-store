@@ -17,6 +17,8 @@ export function CatalogAddControl({
     errorLabel,
     idleLabel,
     loadingLabel,
+    imageAlt,
+    imageUrl,
     itemLabel,
     successLabel,
     variantId,
@@ -25,6 +27,8 @@ export function CatalogAddControl({
     errorLabel: string;
     idleLabel: string;
     loadingLabel: string;
+    imageAlt: string;
+    imageUrl: string;
     itemLabel: string;
     successLabel?: string;
     variantId: string;
@@ -48,7 +52,12 @@ export function CatalogAddControl({
             });
             keyRef.current = newAttemptKey();
             setSuccess(true);
-            announceCartAddition({ cartUrl: result.cartUrl, itemLabel });
+            announceCartAddition({
+                cartUrl: result.cartUrl,
+                imageAlt,
+                imageUrl,
+                itemLabel,
+            });
             window.dispatchEvent(
                 new CustomEvent<number>('arabut:cart-count', {
                     detail: result.cartCount,

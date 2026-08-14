@@ -56,7 +56,13 @@ return [
         'submit' => 'Create account',
         'login_prompt' => 'Already have an account?',
         'login_link' => 'Log in',
-        'password_symbol_error' => 'Add at least one symbol, such as !, @, or #.',
+        'password_requirements' => [
+            'title' => 'Your password must include:',
+            'minimum' => 'At least 12 characters',
+            'mixed_case' => 'One uppercase and one lowercase letter',
+            'number' => 'At least one number',
+            'symbol' => 'At least one symbol, such as !, @, or #',
+        ],
         'phone_unavailable' => 'This number is linked to another account. Sign in with the number instead.',
     ],
     'forgot_password' => [

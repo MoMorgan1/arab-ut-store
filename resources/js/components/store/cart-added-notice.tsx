@@ -21,16 +21,34 @@ export function CartAddedNotice({
         return () => window.removeEventListener(CART_ADDED_EVENT, showAddition);
     }, []);
 
+    useEffect(() => {
+        if (addition === null) {
+            return;
+        }
+
+        const timeout = window.setTimeout(() => setAddition(null), 5_000);
+
+        return () => window.clearTimeout(timeout);
+    }, [addition]);
+
     if (addition === null) {
         return null;
     }
 
     return (
-        <aside className="store-cart-added">
-            <span aria-hidden="true" className="store-cart-added__mark">
-                <CartCheckIcon />
-            </span>
-            <div className="store-cart-added__copy" role="status">
+        <aside aria-atomic="true" className="store-cart-added" role="status">
+            <div className="store-cart-added__visual">
+                <img
+                    alt={addition.imageAlt}
+                    height="64"
+                    src={addition.imageUrl}
+                    width="64"
+                />
+                <span aria-hidden="true" className="store-cart-added__mark">
+                    <CartCheckIcon />
+                </span>
+            </div>
+            <div className="store-cart-added__copy">
                 <strong>{translations.title}</strong>
                 <p>
                     {translations.message.replace(':item', addition.itemLabel)}
@@ -42,6 +60,7 @@ export function CartAddedNotice({
                     {translations.continue_shopping}
                 </button>
             </div>
+            <span aria-hidden="true" className="store-cart-added__progress" />
         </aside>
     );
 }

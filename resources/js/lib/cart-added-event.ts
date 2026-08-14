@@ -2,6 +2,8 @@ export const CART_ADDED_EVENT = 'arabut:cart-added';
 
 export type CartAddedDetail = {
     cartUrl: string;
+    imageAlt: string;
+    imageUrl: string;
     itemLabel: string;
 };
 

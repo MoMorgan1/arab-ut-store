@@ -139,7 +139,13 @@ const arabicUi = {
         submit: 'إنشاء الحساب',
         login_prompt: 'عندك حساب؟',
         login_link: 'سجّل الدخول',
-        password_symbol_error: 'أضف رمزًا واحدًا على الأقل، مثل ! أو @ أو #.',
+        password_requirements: {
+            title: 'يجب أن تحتوي كلمة المرور على:',
+            minimum: '12 حرفًا على الأقل',
+            mixed_case: 'حرف إنجليزي كبير وحرف صغير',
+            number: 'رقم واحد على الأقل',
+            symbol: 'رمز واحد على الأقل، مثل ! أو @ أو #',
+        },
         phone_unavailable:
             'هذا الرقم مرتبط بحساب آخر. سجّل الدخول بالرقم بدلًا من إنشاء حساب جديد.',
     },
@@ -194,7 +200,13 @@ const englishUi = {
         submit: 'Create account',
         login_prompt: 'Already have an account?',
         login_link: 'Log in',
-        password_symbol_error: 'Add at least one symbol, such as !, @, or #.',
+        password_requirements: {
+            title: 'Your password must include:',
+            minimum: 'At least 12 characters',
+            mixed_case: 'One uppercase and one lowercase letter',
+            number: 'At least one number',
+            symbol: 'At least one symbol, such as !, @, or #',
+        },
         phone_unavailable:
             'This number is linked to another account. Sign in with the number instead.',
     },

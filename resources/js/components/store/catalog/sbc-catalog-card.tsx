@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { catalogPlatformName } from '@/lib/catalog-platform-name';
 import { formatMinorUnits } from '@/lib/money';
@@ -20,41 +20,21 @@ export function SbcCatalogCard({
     >;
 }) {
     const [isPressed, setIsPressed] = useState(false);
-    const feedbackTimer = useRef<number | null>(null);
-    const touchStart = useRef<{
+    const activePen = useRef<{
         pointerId: number;
     } | null>(null);
-    const clearFeedbackTimer = () => {
-        if (feedbackTimer.current !== null) {
-            window.clearTimeout(feedbackTimer.current);
-            feedbackTimer.current = null;
-        }
-    };
     const completePress = (pointerId: number) => {
-        if (touchStart.current?.pointerId !== pointerId) {
+        if (activePen.current?.pointerId !== pointerId) {
             return;
         }
 
-        touchStart.current = null;
-        clearFeedbackTimer();
-        feedbackTimer.current = window.setTimeout(() => {
-            feedbackTimer.current = null;
-            setIsPressed(false);
-        }, 1250);
+        activePen.current = null;
+        setIsPressed(false);
     };
     const resetTilt = (card: HTMLElement) => {
         card.style.setProperty('--sbc-tilt-x', '0deg');
         card.style.setProperty('--sbc-tilt-y', '0deg');
     };
-
-    useEffect(
-        () => () => {
-            if (feedbackTimer.current !== null) {
-                window.clearTimeout(feedbackTimer.current);
-            }
-        },
-        [],
-    );
 
     return (
         <li
@@ -66,17 +46,16 @@ export function SbcCatalogCard({
                 .filter(Boolean)
                 .join(' ')}
             onPointerCancel={(event) => {
-                if (event.pointerType !== 'mouse') {
+                if (event.pointerType === 'pen') {
                     completePress(event.pointerId);
                 }
             }}
             onPointerDown={(event) => {
-                if (event.pointerType === 'mouse') {
+                if (event.pointerType !== 'pen') {
                     return;
                 }
 
-                clearFeedbackTimer();
-                touchStart.current = {
+                activePen.current = {
                     pointerId: event.pointerId,
                 };
                 setIsPressed(true);
@@ -109,10 +88,13 @@ export function SbcCatalogCard({
                 }
             }}
             onPointerUp={(event) => {
-                if (event.pointerType !== 'mouse') {
+                if (event.pointerType === 'pen') {
                     completePress(event.pointerId);
                 }
             }}
+            onTouchCancel={() => setIsPressed(false)}
+            onTouchEnd={() => setIsPressed(false)}
+            onTouchStart={() => setIsPressed(true)}
         >
             <a
                 aria-label={product.name}

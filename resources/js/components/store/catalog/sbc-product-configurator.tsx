@@ -175,6 +175,10 @@ export function SbcProductConfigurator({
             setState('idle');
             announceCartAddition({
                 cartUrl: result.cartUrl,
+                imageAlt: product.image?.alt || product.name,
+                imageUrl:
+                    product.image?.url ??
+                    '/images/store/navigation/logo-sbc-96.webp',
                 itemLabel: product.name,
             });
             window.dispatchEvent(

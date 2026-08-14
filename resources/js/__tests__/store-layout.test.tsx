@@ -1,4 +1,5 @@
 import {
+    act,
     cleanup,
     fireEvent,
     render,
@@ -264,7 +265,8 @@ describe('StoreLayout', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('keeps shoppers on the current page and offers explicit next actions after an item is added', () => {
+    it('shows a timed top-center product notification with explicit next actions', () => {
+        vi.useFakeTimers();
         render(
             <StoreLayout
                 cartCount={0}
@@ -285,14 +287,25 @@ describe('StoreLayout', () => {
             new CustomEvent('arabut:cart-added', {
                 detail: {
                     cartUrl: '/en/cart',
+                    imageAlt: 'Icon Challenge artwork',
+                    imageUrl: '/images/icon-challenge.webp',
                     itemLabel: 'Icon Challenge',
                 },
             }),
         );
 
-        expect(screen.getByRole('status')).toHaveTextContent(
+        const notification = screen.getByRole('status');
+
+        expect(notification).toHaveClass('store-cart-added');
+        expect(notification).toHaveTextContent(
             'Icon Challenge is ready in your cart.',
         );
+        expect(
+            screen.getByRole('img', { name: 'Icon Challenge artwork' }),
+        ).toHaveAttribute('src', '/images/icon-challenge.webp');
+        expect(
+            notification.querySelector('.store-cart-added__progress'),
+        ).not.toBeNull();
         expect(screen.getByRole('link', { name: 'Buy now' })).toHaveAttribute(
             'href',
             '/en/cart',
@@ -300,6 +313,40 @@ describe('StoreLayout', () => {
         expect(
             screen.getByText('Product details remain visible'),
         ).toBeVisible();
+
+        act(() => vi.advanceTimersByTime(5_000));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        vi.useRealTimers();
+    });
+
+    it('lets shoppers dismiss the cart notification without leaving the page', () => {
+        render(
+            <StoreLayout
+                cartCount={0}
+                currentUrl="/en/sbc/icon-challenge"
+                locale="en"
+                storeShell={storeShell}
+                direction="ltr"
+                displayCurrency="SAR"
+                displayCurrencies={['SAR']}
+                ui={englishUi}
+            >
+                <p>Product details remain visible</p>
+            </StoreLayout>,
+        );
+
+        fireEvent(
+            window,
+            new CustomEvent('arabut:cart-added', {
+                detail: {
+                    cartUrl: '/en/cart',
+                    imageAlt: 'Icon Challenge artwork',
+                    imageUrl: '/images/icon-challenge.webp',
+                    itemLabel: 'Icon Challenge',
+                },
+            }),
+        );
 
         fireEvent.click(
             screen.getByRole('button', { name: 'Continue shopping' }),

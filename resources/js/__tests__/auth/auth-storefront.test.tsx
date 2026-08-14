@@ -186,7 +186,13 @@ const arabicAuthUi = {
         submit: 'إنشاء الحساب',
         login_prompt: 'عندك حساب؟',
         login_link: 'سجّل الدخول',
-        password_symbol_error: 'أضف رمزًا واحدًا على الأقل، مثل ! أو @ أو #.',
+        password_requirements: {
+            title: 'يجب أن تحتوي كلمة المرور على:',
+            minimum: '12 حرفًا على الأقل',
+            mixed_case: 'حرف إنجليزي كبير وحرف صغير',
+            number: 'رقم واحد على الأقل',
+            symbol: 'رمز واحد على الأقل، مثل ! أو @ أو #',
+        },
         phone_unavailable:
             'هذا الرقم مرتبط بحساب آخر. سجّل الدخول بالرقم بدلًا من إنشاء حساب جديد.',
     },
@@ -267,7 +273,13 @@ const englishAuthUi = {
         submit: 'Create account',
         login_prompt: 'Already have an account?',
         login_link: 'Log in',
-        password_symbol_error: 'Add at least one symbol, such as !, @, or #.',
+        password_requirements: {
+            title: 'Your password must include:',
+            minimum: 'At least 12 characters',
+            mixed_case: 'One uppercase and one lowercase letter',
+            number: 'At least one number',
+            symbol: 'At least one symbol, such as !, @, or #',
+        },
         phone_unavailable:
             'This number is linked to another account. Sign in with the number instead.',
     },
@@ -475,7 +487,7 @@ describe('storefront authentication shell', () => {
         ).toHaveClass('auth-form__submit');
     });
 
-    it('shows the Arabic symbol requirement while the password is being typed', () => {
+    it('shows every Arabic password requirement and marks each one as it is met', () => {
         setPage('register');
 
         render(
@@ -490,29 +502,31 @@ describe('storefront authentication shell', () => {
 
         const password = screen.getByLabelText(arabicAuthUi.fields.password);
 
-        expect(
-            screen.queryByText(arabicAuthUi.register.password_symbol_error),
-        ).not.toBeInTheDocument();
+        const requirements = arabicAuthUi.register.password_requirements;
+        const minimum = screen.getByText(requirements.minimum);
+        const mixedCase = screen.getByText(requirements.mixed_case);
+        const number = screen.getByText(requirements.number);
+        const symbol = screen.getByText(requirements.symbol);
 
-        fireEvent.change(password, { target: { value: 'StrongPassword12' } });
+        expect(minimum).toHaveAttribute('data-met', 'false');
+        expect(mixedCase).toHaveAttribute('data-met', 'false');
+        expect(number).toHaveAttribute('data-met', 'false');
+        expect(symbol).toHaveAttribute('data-met', 'false');
 
-        expect(
-            screen.getByText(arabicAuthUi.register.password_symbol_error),
-        ).toBeVisible();
-        expect(password).toHaveAttribute('aria-invalid', 'true');
-        expect(password).toHaveAttribute(
-            'aria-describedby',
-            'password-symbol-error',
-        );
+        fireEvent.change(password, { target: { value: 'StrongPassword' } });
+        expect(minimum).toHaveAttribute('data-met', 'true');
+        expect(mixedCase).toHaveAttribute('data-met', 'true');
+        expect(number).toHaveAttribute('data-met', 'false');
+        expect(symbol).toHaveAttribute('data-met', 'false');
 
         fireEvent.change(password, {
-            target: { value: 'StrongPassword12!' },
+            target: { value: 'StrongPassword12' },
         });
+        expect(number).toHaveAttribute('data-met', 'true');
+        expect(symbol).toHaveAttribute('data-met', 'false');
 
-        expect(
-            screen.queryByText(arabicAuthUi.register.password_symbol_error),
-        ).not.toBeInTheDocument();
-        expect(password).toHaveAttribute('aria-invalid', 'false');
+        fireEvent.change(password, { target: { value: 'StrongPassword12!' } });
+        expect(symbol).toHaveAttribute('data-met', 'true');
     });
 
     it('explains that WhatsApp verification supports existing and new accounts', () => {

@@ -90,7 +90,13 @@ export type AuthUiTranslations = {
         submit: string;
         login_prompt: string;
         login_link: string;
-        password_symbol_error: string;
+        password_requirements: {
+            title: string;
+            minimum: string;
+            mixed_case: string;
+            number: string;
+            symbol: string;
+        };
         phone_unavailable: string;
     };
     forgot_password: {

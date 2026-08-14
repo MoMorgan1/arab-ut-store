@@ -140,6 +140,13 @@ export default function StoreCatalogProduct() {
                                         idleLabel={
                                             props.productPage.add_to_cart
                                         }
+                                        imageAlt={
+                                            product.image?.alt || product.name
+                                        }
+                                        imageUrl={
+                                            product.image?.url ??
+                                            '/images/store/navigation/logo-sbc-96.webp'
+                                        }
                                         loadingLabel={props.productPage.adding}
                                         itemLabel={product.name}
                                         variantId={variantId}

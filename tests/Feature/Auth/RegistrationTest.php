@@ -32,7 +32,7 @@ test('new users can register', function () {
     ]);
 });
 
-test('Arabic registration returns the symbol requirement in Arabic', function () {
+test('Arabic registration returns every password requirement in Arabic', function (string $password, string $message) {
     Password::defaults(fn (): Password => Password::min(12)
         ->mixedCase()
         ->letters()
@@ -43,16 +43,29 @@ test('Arabic registration returns the symbol requirement in Arabic', function ()
         $this->post(route('register.store'), [
             'first_name' => 'Test',
             'last_name' => 'User',
-            'email' => 'symbol-test@example.com',
-            'password' => 'StrongPassword12',
-            'password_confirmation' => 'StrongPassword12',
+            'email' => md5($password).'@example.com',
+            'password' => $password,
+            'password_confirmation' => $password,
         ])->assertSessionHasErrors([
-            'password' => 'يجب أن تحتوي كلمة المرور على رمز واحد على الأقل.',
+            'password' => $message,
         ]);
     } finally {
         Password::defaults(fn (): null => null);
     }
-});
+})->with([
+    'mixed case' => [
+        'strongpassword12!',
+        'يجب أن تحتوي كلمة المرور على حرف إنجليزي كبير وحرف صغير على الأقل.',
+    ],
+    'number' => [
+        'StrongPassword!',
+        'يجب أن تحتوي كلمة المرور على رقم واحد على الأقل.',
+    ],
+    'symbol' => [
+        'StrongPassword12',
+        'يجب أن تحتوي كلمة المرور على رمز واحد على الأقل.',
+    ],
+]);
 
 test('users without local passwords can be persisted for imported identities', function () {
     $user = User::create([

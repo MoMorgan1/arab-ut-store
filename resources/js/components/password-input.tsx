@@ -18,17 +18,17 @@ export default function PasswordInput({
     const [showPassword, setShowPassword] = useState(false);
 
     return (
-        <div className="relative">
+        <div className="password-input relative">
             <Input
                 type={showPassword ? 'text' : 'password'}
-                className={cn('pr-11', className)}
+                className={cn('password-input__control pr-11', className)}
                 ref={ref}
                 {...props}
             />
             <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute inset-y-0 right-0 flex min-w-11 items-center justify-center rounded-r-md text-muted-foreground hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
+                className="password-input__toggle absolute inset-y-0 right-0 flex min-w-11 items-center justify-center rounded-r-md text-muted-foreground hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
                 aria-label={showPassword ? hideLabel : showLabel}
             >
                 {showPassword ? (

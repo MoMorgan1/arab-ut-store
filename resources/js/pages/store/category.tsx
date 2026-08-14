@@ -304,6 +304,11 @@ function CatalogCard({
                         addUrl={addUrl}
                         errorLabel={translations.add_error}
                         idleLabel={translations.add_to_cart}
+                        imageAlt={product.image?.alt || product.name}
+                        imageUrl={
+                            product.image?.url ??
+                            '/images/store/navigation/logo-sbc-96.webp'
+                        }
                         itemLabel={product.name}
                         loadingLabel={translations.adding}
                         successLabel={translations.added}
