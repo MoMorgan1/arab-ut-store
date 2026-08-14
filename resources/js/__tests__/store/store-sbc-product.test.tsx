@@ -103,6 +103,29 @@ it('matches the compact SBC platform and three-code credential hierarchy', () =>
     ).toHaveClass('store-catalog-card--sbc');
 });
 
+it('selects an exact repeatable completion bundle and preserves it across platforms', () => {
+    render(<StoreCatalogProduct />);
+
+    expect(
+        screen.getByRole('group', { name: 'Number of completions' }),
+    ).toBeVisible();
+    expect(screen.getByRole('radio', { name: /5 completions/ })).toBeChecked();
+    expect(
+        document.querySelector('.sbc-product-summary > div:nth-child(2) dd'),
+    ).toHaveTextContent('SAR 150.00');
+
+    fireEvent.click(screen.getByRole('radio', { name: /10 completions/ }));
+    expect(
+        document.querySelector('.sbc-product-summary > div:nth-child(2) dd'),
+    ).toHaveTextContent('SAR 285.00');
+
+    fireEvent.click(screen.getByRole('radio', { name: /PlayStation \/ Xbox/ }));
+    expect(screen.getByRole('radio', { name: /10 completions/ })).toBeChecked();
+    expect(
+        document.querySelector('.sbc-product-summary > div:nth-child(2) dd'),
+    ).toHaveTextContent('SAR 237.50');
+});
+
 it('places the SBC identity above its image on a direct visit', () => {
     page.url = '/en/sbc/icon-challenge';
     render(<StoreCatalogProduct />);
@@ -153,6 +176,7 @@ it('focuses the first invalid field and submits exactly three credentials in mem
     await waitFor(() => expect(mocks.submit).toHaveBeenCalledTimes(1));
     expect(mocks.submit.mock.calls[0][0]).toMatchObject({
         cartUrl: '/en/cart/items/sbc',
+        completionCount: 5,
         variantId: '01K00000000000000000000004',
         credentials: {
             eaEmail: 'owner@example.test',
@@ -224,6 +248,9 @@ it('locks the selected platform and credentials while the add request is in flig
         .getAllByLabelText(/Backup code [123]/)
         .forEach((input) => expect(input).toBeDisabled());
     expect(screen.getByRole('radio', { name: /PC/ })).toBeDisabled();
+    expect(
+        screen.getByRole('radio', { name: /10 completions/ }),
+    ).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Adding…' }));
     expect(mocks.submit).toHaveBeenCalledTimes(1);
 
@@ -299,12 +326,32 @@ function sbcProductProps() {
                         name: 'PS / Xbox',
                         platform: 'playstation',
                         price: { amountMinor: 12500, currency: 'SAR' },
+                        completionTiers: [
+                            {
+                                completions: 5,
+                                price: { amountMinor: 12500, currency: 'SAR' },
+                            },
+                            {
+                                completions: 10,
+                                price: { amountMinor: 23750, currency: 'SAR' },
+                            },
+                        ],
                     },
                     {
                         id: '01K00000000000000000000004',
                         name: 'PC',
                         platform: 'pc',
                         price: { amountMinor: 15000, currency: 'SAR' },
+                        completionTiers: [
+                            {
+                                completions: 5,
+                                price: { amountMinor: 15000, currency: 'SAR' },
+                            },
+                            {
+                                completions: 10,
+                                price: { amountMinor: 28500, currency: 'SAR' },
+                            },
+                        ],
                     },
                 ],
             },
@@ -333,6 +380,9 @@ function sbcProductProps() {
             add_error: 'Could not add this item.',
             sbc: {
                 platform_legend: 'Choose platform',
+                completion_legend: 'Number of completions',
+                completion_option: ':count completions',
+                completion_summary: 'Completions',
                 credentials_title: 'EA account details',
                 email: 'EA email',
                 password: 'EA password',

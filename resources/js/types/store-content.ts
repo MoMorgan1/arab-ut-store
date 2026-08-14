@@ -61,7 +61,12 @@ export type FaqEntry = { answer: string; question: string };
 export type FaqTranslations = { eyebrow: string; title: string };
 
 export type CatalogMoney = { amountMinor: number; currency: string };
+export type CatalogCompletionTier = {
+    completions: number;
+    price: CatalogMoney;
+};
 export type CatalogVariant = {
+    completionTiers: CatalogCompletionTier[];
     id: string;
     name: string;
     platform: string;
@@ -132,6 +137,9 @@ export type ProductTranslations = {
         backup_codes: string;
         backup_help: string;
         credentials_title: string;
+        completion_legend: string;
+        completion_option: string;
+        completion_summary: string;
         duplicate_code: string;
         email: string;
         hide_password: string;

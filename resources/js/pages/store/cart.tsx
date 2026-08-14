@@ -606,6 +606,17 @@ function CartLine({
                 {isCoins && configuration.coins_quantity !== undefined ? (
                     <CartFact label={translations.quantity} value={quantity} />
                 ) : null}
+                {!isCoins &&
+                cartItem.product.serviceType === 'sbc' &&
+                configuration.completion_count !== undefined ? (
+                    <CartFact
+                        label={translations.completions}
+                        value={formatInteger(
+                            configuration.completion_count,
+                            locale,
+                        )}
+                    />
+                ) : null}
                 <CartFact
                     emphasized
                     label={translations.total}

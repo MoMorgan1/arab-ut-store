@@ -125,6 +125,7 @@ export type StoreInformationPage = {
 };
 
 export type StoreCartConfiguration = Partial<{
+    completion_count: number;
     coins_quantity: number;
     delivery: 'normal' | 'fast' | null;
     market: 'console' | 'pc';
@@ -177,6 +178,7 @@ export type StoreCartTranslations = {
     delivery_fast: string;
     delivery_pc: string;
     quantity: string;
+    completions: string;
     coins_unit: string;
     total: string;
     credentials: string;

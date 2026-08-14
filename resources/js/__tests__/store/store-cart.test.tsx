@@ -98,6 +98,7 @@ const mockPage = vi.hoisted(() => ({
                 delivery_fast: 'Fast',
                 delivery_pc: 'Not required for PC',
                 quantity: 'Coins quantity',
+                completions: 'Completions',
                 coins_unit: 'Coins',
                 total: 'Authoritative total',
                 credentials: 'EA details',
@@ -638,6 +639,40 @@ it('does not invent a Coins presentation for another safe service type', () => {
             '.store-cart-line__title img[src="/images/store/coins/ut-coin-80.webp"]',
         ),
     ).not.toBeInTheDocument();
+});
+
+it('shows the selected completion count for an SBC cart item', () => {
+    mockPage.props.cart.items[0].configuration = {
+        ...validConfiguration,
+        completion_count: 10,
+        service_type: 'sbc',
+    } as StoreCartConfiguration;
+    mockPage.props.cart.items[0].product = {
+        imageUrl: null,
+        name: 'Repeatable SBC',
+        serviceType: 'sbc',
+    };
+
+    render(<StoreCart />);
+
+    expect(screen.getByText('Completions')).toBeVisible();
+    expect(screen.getByText('10')).toBeVisible();
+});
+
+it('does not show an SBC completion count for a Coins cart item', () => {
+    mockPage.props.cart.items[0].configuration = {
+        ...validConfiguration,
+        completion_count: 10,
+    } as StoreCartConfiguration;
+    mockPage.props.cart.items[0].product = {
+        imageUrl: '/images/store/coins/ut-coin-80.webp',
+        name: 'FC 27 Coins',
+        serviceType: 'coins',
+    };
+
+    render(<StoreCart />);
+
+    expect(screen.queryByText('Completions')).not.toBeInTheDocument();
 });
 
 it('keeps the Arabic credential state RTL without an email identity isolate', () => {

@@ -9,6 +9,7 @@ use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Support\Money;
 use App\ValueObjects\Pricing\PreparedDisplayMoneyConverter;
+use App\ValueObjects\Pricing\SbcCompletionPricing;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -57,9 +58,13 @@ final class StoreCatalogReader
         return [
             'service' => $service->value,
             'products' => array_values($products
-                ->map(fn (Product $product): array => $this->withoutInternalFields(
-                    $this->present($product, $locale, $converter),
+                ->map(fn (Product $product): ?array => $this->presentSafely(
+                    $product,
+                    $locale,
+                    $converter,
                 ))
+                ->filter()
+                ->map(fn (array $product): array => $this->withoutInternalFields($product))
                 ->values()
                 ->all()),
             'filterCounts' => $filterCounts,
@@ -90,15 +95,21 @@ final class StoreCatalogReader
             ->limit(8)
             ->get();
 
+        $presented = $this->presentSafely($product, $locale, $converter);
+
+        abort_unless(is_array($presented), 404);
+
         return [
             'service' => $service->value,
-            'product' => $this->withoutInternalFields(
-                $this->present($product, $locale, $converter),
-            ),
+            'product' => $this->withoutInternalFields($presented),
             'suggestions' => array_values($suggestions
-                ->map(fn (Product $suggestion): array => $this->withoutInternalFields(
-                    $this->present($suggestion, $locale, $converter),
+                ->map(fn (Product $suggestion): ?array => $this->presentSafely(
+                    $suggestion,
+                    $locale,
+                    $converter,
                 ))
+                ->filter()
+                ->map(fn (array $suggestion): array => $this->withoutInternalFields($suggestion))
                 ->all()),
         ];
     }
@@ -113,11 +124,13 @@ final class StoreCatalogReader
 
         abort_unless($product instanceof Product, 404);
 
+        $presented = $this->presentSafely($product, $locale, $this->converter($displayCurrency));
+
+        abort_unless(is_array($presented), 404);
+
         return [
             'service' => $service->value,
-            'product' => $this->withoutInternalFields(
-                $this->present($product, $locale, $this->converter($displayCurrency)),
-            ),
+            'product' => $this->withoutInternalFields($presented),
         ];
     }
 
@@ -186,18 +199,82 @@ final class StoreCatalogReader
                 ->unique()
                 ->values()
                 ->all(),
-            'variants' => $variants->map(fn (ProductVariant $variant): array => [
-                'id' => $variant->public_id,
-                'name' => $this->localized($variant, 'name', $locale),
-                'platform' => $variant->platform->value,
-                'price' => $converter instanceof PreparedDisplayMoneyConverter
-                    ? $this->convert($converter, $this->effectivePrice($variant))
-                    : null,
-            ])->values()->all(),
+            'variants' => $variants->map(fn (ProductVariant $variant): array => $this->presentVariant(
+                $variant,
+                $locale,
+                $converter,
+                $product->service_type === ServiceType::Sbc,
+            ))->values()->all(),
             'filters' => $this->filters($variants),
             'sortOrder' => (int) $product->sort_order,
             'createdAt' => $product->created_at?->getTimestamp() ?? 0,
         ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function presentSafely(
+        Product $product,
+        string $locale,
+        ?PreparedDisplayMoneyConverter $converter,
+    ): ?array {
+        try {
+            return $this->present($product, $locale, $converter);
+        } catch (DomainException) {
+            return null;
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function presentVariant(
+        ProductVariant $variant,
+        string $locale,
+        ?PreparedDisplayMoneyConverter $converter,
+        bool $includeCompletionTiers,
+    ): array {
+        $effectivePrice = $this->effectivePrice($variant);
+
+        return [
+            'id' => $variant->public_id,
+            'name' => $this->localized($variant, 'name', $locale),
+            'platform' => $variant->platform->value,
+            'price' => $converter instanceof PreparedDisplayMoneyConverter
+                ? $this->convert($converter, $effectivePrice)
+                : null,
+            'completionTiers' => $includeCompletionTiers
+                ? $this->completionTiers($variant, $effectivePrice, $converter)
+                : [],
+        ];
+    }
+
+    /** @return list<array{completions:int,price:array{amountMinor:int,currency:string}}> */
+    private function completionTiers(
+        ProductVariant $variant,
+        int $effectivePrice,
+        ?PreparedDisplayMoneyConverter $converter,
+    ): array {
+        if (! $converter instanceof PreparedDisplayMoneyConverter) {
+            return [];
+        }
+
+        $configuration = $variant->getAttribute('configuration');
+        $pricing = SbcCompletionPricing::fromConfiguration(
+            is_array($configuration) ? $configuration : [],
+            $effectivePrice,
+            false,
+        );
+
+        return array_map(function (array $tier) use ($converter): array {
+            $price = $this->convert($converter, $tier['totalMinor']);
+
+            if ($price === null) {
+                throw new DomainException('The SBC completion tier could not be converted.');
+            }
+
+            return [
+                'completions' => $tier['completions'],
+                'price' => $price,
+            ];
+        }, $pricing->tiers());
     }
 
     /** @param Collection<int, ProductVariant> $variants

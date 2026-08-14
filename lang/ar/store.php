@@ -34,6 +34,7 @@ return [
         'delivery_fast' => 'سريع',
         'delivery_pc' => 'ما يحتاج على PC',
         'quantity' => 'كمية الكوينز',
+        'completions' => 'مرات الإكمال',
         'coins_unit' => 'كوينز',
         'total' => 'الإجمالي',
         'credentials' => 'بيانات EA',
@@ -178,6 +179,9 @@ return [
         'add_error' => 'تعذرت إضافة المنتج. حاول مرة أخرى.',
         'sbc' => [
             'platform_legend' => 'اختر المنصة',
+            'completion_legend' => 'اختر عدد مرات الإكمال',
+            'completion_option' => ':count مرات',
+            'completion_summary' => 'مرات الإكمال',
             'credentials_title' => 'بيانات حساب EA',
             'email' => 'بريد EA الإلكتروني',
             'password' => 'كلمة مرور EA',

@@ -40,6 +40,20 @@ function createStoreCatalogProduct(ServiceType $service, array $product = [], ar
     return $model;
 }
 
+/** @param list<array{completions:int,multiplierBps:int,totalMinor:int}> $tiers */
+function storeSbcCompletionPricing(array $tiers, ?int $maximum = null): array
+{
+    return [
+        'sbcCategory' => 'players',
+        'completionPricing' => [
+            'version' => 1,
+            'repeatable' => true,
+            'maximum' => $maximum,
+            'tiers' => $tiers,
+        ],
+    ];
+}
+
 test('the bilingual service routes expose the correct catalog page contracts', function (
     string $path,
     string $component,
@@ -283,6 +297,80 @@ test('category product pages resolve the slug in both storefront locales', funct
             ->where('locale', 'en')
             ->where('catalog.product.slug', 'localized-sbc-product')
             ->has('catalog.suggestions', 8));
+});
+
+test('SBC product pages expose only converted completion totals for each platform', function () {
+    $product = createStoreCatalogProduct(ServiceType::Sbc, [
+        'slug' => 'repeatable-player',
+    ], [
+        'platform' => Platform::PlayStation,
+        'price_halalah' => 5_700,
+        'configuration' => storeSbcCompletionPricing([
+            ['completions' => 5, 'multiplierBps' => 10_000, 'totalMinor' => 5_700],
+            ['completions' => 10, 'multiplierBps' => 9_500, 'totalMinor' => 10_830],
+            ['completions' => 15, 'multiplierBps' => 9_200, 'totalMinor' => 15_732],
+            ['completions' => 20, 'multiplierBps' => 9_000, 'totalMinor' => 20_520],
+            ['completions' => 30, 'multiplierBps' => 8_700, 'totalMinor' => 29_754],
+            ['completions' => 40, 'multiplierBps' => 8_500, 'totalMinor' => 38_760],
+            ['completions' => 50, 'multiplierBps' => 8_200, 'totalMinor' => 46_740],
+            ['completions' => 75, 'multiplierBps' => 7_800, 'totalMinor' => 66_690],
+            ['completions' => 100, 'multiplierBps' => 7_600, 'totalMinor' => 86_640],
+        ]),
+    ]);
+    ProductVariant::factory()->for($product)->create([
+        'service_type' => ServiceType::Sbc,
+        'platform' => Platform::Pc,
+        'price_halalah' => 6_300,
+        'configuration' => storeSbcCompletionPricing([
+            ['completions' => 5, 'multiplierBps' => 10_000, 'totalMinor' => 6_300],
+            ['completions' => 10, 'multiplierBps' => 9_500, 'totalMinor' => 11_970],
+            ['completions' => 15, 'multiplierBps' => 9_200, 'totalMinor' => 17_388],
+            ['completions' => 20, 'multiplierBps' => 9_000, 'totalMinor' => 22_680],
+            ['completions' => 30, 'multiplierBps' => 8_700, 'totalMinor' => 32_886],
+            ['completions' => 40, 'multiplierBps' => 8_500, 'totalMinor' => 42_840],
+            ['completions' => 50, 'multiplierBps' => 8_200, 'totalMinor' => 51_660],
+            ['completions' => 75, 'multiplierBps' => 7_800, 'totalMinor' => 73_710],
+            ['completions' => 100, 'multiplierBps' => 7_600, 'totalMinor' => 95_760],
+        ]),
+    ]);
+
+    $this->get('/en/sbc/repeatable-player')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('catalog.product.variants.0.completionTiers.0', [
+                'completions' => 5,
+                'price' => ['amountMinor' => 5_700, 'currency' => 'SAR'],
+            ])
+            ->where('catalog.product.variants.0.completionTiers.1', [
+                'completions' => 10,
+                'price' => ['amountMinor' => 10_830, 'currency' => 'SAR'],
+            ])
+            ->where('catalog.product.variants.1.completionTiers.1', [
+                'completions' => 10,
+                'price' => ['amountMinor' => 11_970, 'currency' => 'SAR'],
+            ])
+            ->missing('catalog.product.variants.0.configuration')
+            ->missing('catalog.product.variants.0.completionTiers.0.multiplierBps'));
+});
+
+test('legacy SBC variants expose one completion and malformed declared pricing fails closed', function () {
+    createStoreCatalogProduct(ServiceType::Sbc, ['slug' => 'legacy-sbc'], [
+        'price_halalah' => 4_200,
+    ]);
+    createStoreCatalogProduct(ServiceType::Sbc, ['slug' => 'malformed-sbc'], [
+        'price_halalah' => 4_200,
+        'configuration' => [
+            'completionPricing' => ['version' => 1, 'repeatable' => true],
+        ],
+    ]);
+
+    $this->get('/en/sbc/legacy-sbc')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where(
+            'catalog.product.variants.0.completionTiers',
+            [['completions' => 1, 'price' => ['amountMinor' => 4_200, 'currency' => 'SAR']]],
+        ));
+    $this->get('/en/sbc/malformed-sbc')->assertNotFound();
 });
 
 test('homepage service rail contract has equal ordered internal routes and the exact Sell Coins destination', function () {

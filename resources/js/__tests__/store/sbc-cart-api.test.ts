@@ -12,6 +12,7 @@ const credentials: CoinsCredentials = {
 const request = () =>
     submitSbcCart({
         cartUrl: '/en/cart/items/sbc',
+        completionCount: 10,
         credentials,
         idempotencyKey: 'sbc-attempt-1',
         variantId: '01K00000000000000000000000',
@@ -67,6 +68,7 @@ describe('secure SBC cart API', () => {
         });
         expect(JSON.parse(String(init.body))).toEqual({
             variantId: '01K00000000000000000000000',
+            completionCount: 10,
             credentials: {
                 ea_email: credentials.eaEmail,
                 ea_password: credentials.eaPassword,
@@ -137,6 +139,7 @@ describe('secure SBC cart API', () => {
         await expect(
             submitSbcCart({
                 cartUrl: 'https://attacker.example/cart',
+                completionCount: 10,
                 credentials,
                 idempotencyKey: 'key',
                 variantId: '01K00000000000000000000000',

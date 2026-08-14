@@ -34,6 +34,7 @@ return [
         'delivery_fast' => 'Fast',
         'delivery_pc' => 'Not required for PC',
         'quantity' => 'Coins quantity',
+        'completions' => 'Completions',
         'coins_unit' => 'Coins',
         'total' => 'Total',
         'credentials' => 'EA details',
@@ -178,6 +179,9 @@ return [
         'add_error' => 'Could not add this item. Try again.',
         'sbc' => [
             'platform_legend' => 'Choose platform',
+            'completion_legend' => 'Number of completions',
+            'completion_option' => ':count completions',
+            'completion_summary' => 'Completions',
             'credentials_title' => 'EA account details',
             'email' => 'EA email',
             'password' => 'EA password',

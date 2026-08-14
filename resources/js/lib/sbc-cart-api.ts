@@ -10,6 +10,7 @@ export type SbcCartSuccess = {
 
 type SubmitSbcCartInput = {
     cartUrl: string;
+    completionCount: number;
     credentials: CoinsCredentials;
     idempotencyKey: string;
     variantId: string;
@@ -126,6 +127,7 @@ function safeSuccess(payload: unknown): SbcCartSuccess | null {
 function requestBody(input: SubmitSbcCartInput) {
     return {
         variantId: input.variantId,
+        completionCount: input.completionCount,
         credentials: {
             ea_email: input.credentials.eaEmail,
             ea_password: input.credentials.eaPassword,

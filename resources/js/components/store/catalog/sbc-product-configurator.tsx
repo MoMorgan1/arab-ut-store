@@ -48,6 +48,20 @@ function initialVariant(product: CatalogProduct, currentUrl: string): string {
     );
 }
 
+function initialCompletionCount(
+    product: CatalogProduct,
+    variantId: string,
+): number {
+    return (
+        product.variants.find((variant) => variant.id === variantId)
+            ?.completionTiers[0]?.completions ?? 1
+    );
+}
+
+function completionLabel(template: string, count: number): string {
+    return template.replace(':count', String(count));
+}
+
 function validate(
     credentials: CoinsCredentials,
     copy: ProductTranslations['sbc'],
@@ -94,8 +108,10 @@ export function SbcProductConfigurator({
     product: CatalogProduct;
     translations: ProductTranslations;
 }) {
-    const [variantId, setVariantId] = useState(() =>
-        initialVariant(product, currentUrl),
+    const initialVariantId = initialVariant(product, currentUrl);
+    const [variantId, setVariantId] = useState(initialVariantId);
+    const [completionCount, setCompletionCount] = useState(() =>
+        initialCompletionCount(product, initialVariantId),
     );
     const [credentials, setCredentials] =
         useState<CoinsCredentials>(EMPTY_CREDENTIALS);
@@ -108,6 +124,9 @@ export function SbcProductConfigurator({
     >({});
     const pendingFocus = useRef<CoinsCredentialField | null>(null);
     const variant = product.variants.find((option) => option.id === variantId);
+    const completionTier = variant?.completionTiers.find(
+        (tier) => tier.completions === completionCount,
+    );
     const locked = state === 'loading';
 
     useEffect(() => {
@@ -141,6 +160,32 @@ export function SbcProductConfigurator({
         updateCredential('backupCodes', backupCodes, `code-${index}`);
     }
 
+    function selectVariant(nextVariantId: string) {
+        if (locked) {
+            return;
+        }
+
+        const nextVariant = product.variants.find(
+            (option) => option.id === nextVariantId,
+        );
+
+        if (nextVariant === undefined) {
+            return;
+        }
+
+        setVariantId(nextVariantId);
+
+        if (
+            !nextVariant.completionTiers.some(
+                (tier) => tier.completions === completionCount,
+            )
+        ) {
+            setCompletionCount(
+                nextVariant.completionTiers[0]?.completions ?? 1,
+            );
+        }
+    }
+
     async function add() {
         const nextErrors = validate(credentials, translations.sbc);
         const firstError = Object.keys(nextErrors)[0] as
@@ -155,7 +200,7 @@ export function SbcProductConfigurator({
 
         if (
             variant === undefined ||
-            variant.price === null ||
+            completionTier === undefined ||
             state === 'loading'
         ) {
             return;
@@ -166,6 +211,7 @@ export function SbcProductConfigurator({
         try {
             const result = await submitSbcCart({
                 cartUrl: addUrl,
+                completionCount,
                 credentials,
                 idempotencyKey: attemptKey.current,
                 variantId: variant.id,
@@ -214,7 +260,7 @@ export function SbcProductConfigurator({
                                 checked={option.id === variantId}
                                 disabled={option.price === null}
                                 name="sbc-platform"
-                                onChange={() => setVariantId(option.id)}
+                                onChange={() => selectVariant(option.id)}
                                 type="radio"
                                 value={option.id}
                             />
@@ -238,6 +284,42 @@ export function SbcProductConfigurator({
                     ))}
                 </div>
             </fieldset>
+
+            {variant !== undefined && variant.completionTiers.length > 1 ? (
+                <fieldset className="sbc-completion-tiers" disabled={locked}>
+                    <legend>{translations.sbc.completion_legend}</legend>
+                    <div>
+                        {variant.completionTiers.map((tier) => (
+                            <label key={tier.completions}>
+                                <input
+                                    checked={
+                                        tier.completions === completionCount
+                                    }
+                                    name="sbc-completions"
+                                    onChange={() =>
+                                        setCompletionCount(tier.completions)
+                                    }
+                                    type="radio"
+                                    value={tier.completions}
+                                />
+                                <span>
+                                    {completionLabel(
+                                        translations.sbc.completion_option,
+                                        tier.completions,
+                                    )}
+                                </span>
+                                <strong>
+                                    {formatMinorUnits(
+                                        tier.price.amountMinor,
+                                        tier.price.currency,
+                                        locale,
+                                    )}
+                                </strong>
+                            </label>
+                        ))}
+                    </div>
+                </fieldset>
+            ) : null}
 
             <section
                 aria-labelledby="sbc-credentials-title"
@@ -388,20 +470,24 @@ export function SbcProductConfigurator({
                 <div>
                     <dt>{translations.sbc.total}</dt>
                     <dd>
-                        {variant?.price === null || variant === undefined
+                        {completionTier === undefined
                             ? translations.unavailable_price
                             : formatMinorUnits(
-                                  variant.price.amountMinor,
-                                  variant.price.currency,
+                                  completionTier.price.amountMinor,
+                                  completionTier.price.currency,
                                   locale,
                               )}
                     </dd>
+                </div>
+                <div>
+                    <dt>{translations.sbc.completion_summary}</dt>
+                    <dd>{completionCount}</dd>
                 </div>
             </dl>
             <button
                 className="sbc-product-add"
                 data-state={state}
-                disabled={state === 'loading' || variant?.price == null}
+                disabled={state === 'loading' || completionTier === undefined}
                 onClick={() => void add()}
                 type="button"
             >
