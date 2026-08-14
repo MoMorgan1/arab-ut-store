@@ -31,6 +31,96 @@ function unique(values) {
     return new Set(values).size === values.length;
 }
 
+const STANDARD_REPEAT_TIERS = [
+    [5, 10_000],
+    [10, 9_500],
+    [15, 9_200],
+    [20, 9_000],
+    [30, 8_700],
+    [40, 8_500],
+    [50, 8_200],
+    [75, 7_800],
+    [100, 7_600],
+];
+
+function expectedCompletionTiers(repeatable, maximum) {
+    if (!repeatable) return [[1, 10_000]];
+    if (maximum == null || maximum >= 100) return STANDARD_REPEAT_TIERS;
+    if (maximum < 5) {
+        return Array.from({ length: maximum }, (_, index) => [
+            index + 1,
+            10_000,
+        ]);
+    }
+
+    const tiers = STANDARD_REPEAT_TIERS.filter(
+        ([completions]) => completions <= maximum,
+    );
+    const previous = tiers.at(-1);
+    if (previous[0] !== maximum) {
+        tiers.push([maximum, Math.max(7_000, previous[1] - 200)]);
+    }
+
+    return tiers;
+}
+
+function completionPricingFailure(pricing, priceMinor) {
+    if (!exactKeys(pricing, ['version', 'repeatable', 'maximum', 'tiers'])) {
+        return 'Variant completion pricing keys are not exact';
+    }
+    if (pricing.version !== 1 || typeof pricing.repeatable !== 'boolean') {
+        return 'Variant completion pricing metadata is invalid';
+    }
+    if (
+        (!pricing.repeatable && pricing.maximum !== 1) ||
+        (pricing.repeatable &&
+            pricing.maximum !== null &&
+            (!Number.isInteger(pricing.maximum) || pricing.maximum < 2))
+    ) {
+        return 'Variant completion pricing maximum is invalid';
+    }
+    if (!Array.isArray(pricing.tiers) || pricing.tiers.length === 0) {
+        return 'Variant completion pricing tiers are invalid';
+    }
+
+    const expected = expectedCompletionTiers(
+        pricing.repeatable,
+        pricing.maximum,
+    );
+    if (pricing.tiers.length !== expected.length) {
+        return 'Variant completion choices tier count is invalid';
+    }
+
+    for (let index = 0; index < pricing.tiers.length; index += 1) {
+        const tier = pricing.tiers[index];
+        const [expectedCompletions, expectedMultiplier] = expected[index];
+        if (!exactKeys(tier, ['completions', 'multiplierBps', 'totalMinor'])) {
+            return 'Variant completion pricing tier keys are not exact';
+        }
+        if (
+            tier.completions !== expectedCompletions ||
+            !Number.isInteger(tier.completions)
+        ) {
+            return 'Variant completion choices are invalid';
+        }
+        if (
+            tier.multiplierBps !== expectedMultiplier ||
+            !Number.isInteger(tier.multiplierBps)
+        ) {
+            return 'Variant completion multiplier is invalid';
+        }
+        if (!Number.isInteger(tier.totalMinor) || tier.totalMinor <= 0) {
+            return 'Variant completion tier total is invalid';
+        }
+    }
+
+    if (pricing.tiers[0].totalMinor !== priceMinor) {
+        return 'Variant price must equal the first tier total';
+    }
+
+    return null;
+}
+
 if (!item.valid || !snapshot)
     return fail(item.failureReason || 'Catalog snapshot was not built');
 if (
@@ -147,6 +237,7 @@ for (const product of snapshot.products) {
     productSlugs.push(product.slug);
 
     const platforms = [];
+    const completionChoices = [];
     for (const variant of product.variants) {
         if (
             !exactKeys(variant, [
@@ -201,7 +292,17 @@ for (const product of snapshot.products) {
                 `easysbc-category-${variant.configuration.sbcCategory}`
         )
             return fail('Variant SBC category is invalid');
+        const completionFailure = completionPricingFailure(
+            variant.configuration.completionPricing,
+            variant.priceMinor,
+        );
+        if (completionFailure) return fail(completionFailure);
         platforms.push(variant.platform);
+        completionChoices.push(
+            variant.configuration.completionPricing.tiers.map(
+                ({ completions }) => completions,
+            ),
+        );
         variantIds.push(variant.externalId);
         skus.push(variant.sku);
     }
@@ -209,6 +310,12 @@ for (const product of snapshot.products) {
         return fail(
             'Every SBC product must contain ordered PS and PC variants',
         );
+    if (
+        JSON.stringify(completionChoices[0]) !==
+        JSON.stringify(completionChoices[1])
+    ) {
+        return fail('PS and PC completion choices must match');
+    }
 
     for (const media of product.media) {
         if (

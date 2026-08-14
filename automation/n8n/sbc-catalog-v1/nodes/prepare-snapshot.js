@@ -137,7 +137,7 @@ function ineligibilityReason(record) {
     if (record.endTime <= expiryCutoff) return 'inside_expiry_lead';
     if (/\b(?:bronze|silver)\b/i.test(record.name)) return 'excluded_name';
     if (Number(record.psPrice) < 1500) return 'ps_below_minimum';
-    if (!record.repeatable && Number(record.psPrice) < 20_000)
+    if (!isRepeatableBundle(record) && Number(record.psPrice) < 20_000)
         return 'nonrepeatable_ps_below_minimum';
     if (Number(record.pcPrice) <= 0) return 'pc_not_positive';
     return null;
@@ -359,10 +359,100 @@ function priceMinor(coins, challengeCount, quote) {
     return sar * 100;
 }
 
+const SERVICE_FEE_SAR = 3;
+const REPEAT_LABOR_PER_RUN_SAR = 1.1;
+const STANDARD_REPEAT_TIERS = [
+    [5, 10_000],
+    [10, 9_500],
+    [15, 9_200],
+    [20, 9_000],
+    [30, 8_700],
+    [40, 8_500],
+    [50, 8_200],
+    [75, 7_800],
+    [100, 7_600],
+];
+
+function isRepeatableBundle(record) {
+    return (
+        record.repeatable === true &&
+        (record.repeats == null || record.repeats > 1)
+    );
+}
+
+function repeatTierDefinitions(maximum) {
+    if (maximum == null || maximum >= 100) return STANDARD_REPEAT_TIERS;
+    if (maximum < 5) {
+        return Array.from({ length: maximum }, (_, index) => [
+            index + 1,
+            10_000,
+        ]);
+    }
+
+    const tiers = STANDARD_REPEAT_TIERS.filter(
+        ([completions]) => completions <= maximum,
+    );
+    const previous = tiers.at(-1);
+    if (previous[0] !== maximum) {
+        tiers.push([maximum, Math.max(7_000, previous[1] - 200)]);
+    }
+
+    return tiers;
+}
+
+function repeatTotalMinor(coins, quote, completions, multiplierBps) {
+    const sarPerCoin = quote.totalHalalah / 100 / 1_000_000;
+    const perCompletionSar =
+        coins * multiplier(coins) * 1.02 * sarPerCoin +
+        REPEAT_LABOR_PER_RUN_SAR;
+    const bundleSar =
+        Math.round(perCompletionSar * (multiplierBps / 10_000) * completions) +
+        SERVICE_FEE_SAR;
+
+    return bundleSar * 100;
+}
+
+function completionPricing(record, coins, quote) {
+    const repeatable = isRepeatableBundle(record);
+    if (!repeatable) {
+        const totalMinor = priceMinor(coins, record.sbcsCount, quote);
+        return {
+            version: 1,
+            repeatable: false,
+            maximum: 1,
+            tiers: [{ completions: 1, multiplierBps: 10_000, totalMinor }],
+        };
+    }
+
+    const maximum = record.repeats ?? null;
+    return {
+        version: 1,
+        repeatable: true,
+        maximum,
+        tiers: repeatTierDefinitions(maximum).map(
+            ([completions, multiplierBps]) => ({
+                completions,
+                multiplierBps,
+                totalMinor: repeatTotalMinor(
+                    coins,
+                    quote,
+                    completions,
+                    multiplierBps,
+                ),
+            }),
+        ),
+    };
+}
+
 function variant(record, platform) {
     const isPs = platform === 'playstation';
     const quoteKey = isPs ? 'playstation_fast' : 'pc';
     const coins = Number(isPs ? record.psPrice : record.pcPrice);
+    const pricing = completionPricing(
+        record,
+        coins,
+        pricingState.pricing.quotes[quoteKey],
+    );
     return {
         externalId: `easysbc-sbc-${record.id}-${isPs ? 'ps' : 'pc'}`,
         sku: `SBC-EASYSBC-${record.id}-${isPs ? 'PS' : 'PC'}`,
@@ -373,11 +463,7 @@ function variant(record, platform) {
             ar: isPs ? 'سوني / إكس بوكس' : 'بي سي',
             en: isPs ? 'PlayStation / Xbox' : 'PC',
         },
-        priceMinor: priceMinor(
-            coins,
-            record.sbcsCount,
-            pricingState.pricing.quotes[quoteKey],
-        ),
+        priceMinor: pricing.tiers[0].totalMinor,
         salePriceMinor: null,
         priceVersion: 1,
         active: true,
@@ -391,15 +477,18 @@ function variant(record, platform) {
                     ? record.slug
                     : safeSlug(record),
             challengeCount: record.sbcsCount,
-            completionCount: 1,
-            repeatable: record.repeatable,
+            completionCount: pricing.tiers[0].completions,
+            repeatable: pricing.repeatable,
             repeatabilityMode: record.repeatabilityMode,
-            maxRepeats: record.repeatable ? (record.repeats ?? null) : 1,
+            maxRepeats: pricing.maximum,
             sourceCoins: coins,
             expiresAt: new Date(record.endTime * 1000).toISOString(),
             pricingVersion: pricingState.pricing.pricingVersion,
             pricingBase: quoteKey,
-            formulaVersion: 'legacy-sbc-one-completion-v1',
+            formulaVersion: pricing.repeatable
+                ? 'legacy-sbc-repeat-bundle-v1'
+                : 'legacy-sbc-one-completion-v1',
+            completionPricing: pricing,
         },
     };
 }

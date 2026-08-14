@@ -111,6 +111,18 @@ test('a complete EasySBC source maps to an exact, stable PS and PC catalog snaps
         pricingVersion: 7,
         pricingBase: 'playstation_fast',
         formulaVersion: 'legacy-sbc-one-completion-v1',
+        completionPricing: {
+            version: 1,
+            repeatable: false,
+            maximum: 1,
+            tiers: [
+                {
+                    completions: 1,
+                    multiplierBps: 10_000,
+                    totalMinor: 12_300,
+                },
+            ],
+        },
     });
     assert.deepEqual(first.media, [
         {
@@ -122,6 +134,205 @@ test('a complete EasySBC source maps to an exact, stable PS and PC catalog snaps
             sortOrder: 0,
         },
     ]);
+});
+
+test('unlimited repeatable SBCs publish exact independent PS and PC bundle tiers', async () => {
+    const records = sourceRecords(20);
+    records[0] = {
+        ...records[0],
+        repeatable: true,
+        repeatabilityMode: 'UNLIMITED',
+        repeats: null,
+    };
+
+    const prepared = await prepare(records);
+
+    assert.equal(prepared.valid, true, prepared.failureReason);
+    const [playstation, pc] = prepared.snapshot.products[0].variants;
+    assert.equal(playstation.priceMinor, 57_000);
+    assert.equal(pc.priceMinor, 81_600);
+    assert.deepEqual(playstation.configuration.completionPricing, {
+        version: 1,
+        repeatable: true,
+        maximum: null,
+        tiers: [
+            { completions: 5, multiplierBps: 10_000, totalMinor: 57_000 },
+            { completions: 10, multiplierBps: 9_500, totalMinor: 107_900 },
+            { completions: 15, multiplierBps: 9_200, totalMinor: 156_700 },
+            { completions: 20, multiplierBps: 9_000, totalMinor: 204_200 },
+            { completions: 30, multiplierBps: 8_700, totalMinor: 296_000 },
+            { completions: 40, multiplierBps: 8_500, totalMinor: 385_500 },
+            { completions: 50, multiplierBps: 8_200, totalMinor: 464_800 },
+            { completions: 75, multiplierBps: 7_800, totalMinor: 663_100 },
+            { completions: 100, multiplierBps: 7_600, totalMinor: 861_400 },
+        ],
+    });
+    assert.deepEqual(pc.configuration.completionPricing, {
+        version: 1,
+        repeatable: true,
+        maximum: null,
+        tiers: [
+            { completions: 5, multiplierBps: 10_000, totalMinor: 81_600 },
+            { completions: 10, multiplierBps: 9_500, totalMinor: 154_800 },
+            { completions: 15, multiplierBps: 9_200, totalMinor: 224_800 },
+            { completions: 20, multiplierBps: 9_000, totalMinor: 293_100 },
+            { completions: 30, multiplierBps: 8_700, totalMinor: 424_900 },
+            { completions: 40, multiplierBps: 8_500, totalMinor: 553_400 },
+            { completions: 50, multiplierBps: 8_200, totalMinor: 667_200 },
+            { completions: 75, multiplierBps: 7_800, totalMinor: 951_900 },
+            {
+                completions: 100,
+                multiplierBps: 7_600,
+                totalMinor: 1_236_600,
+            },
+        ],
+    });
+});
+
+test('limited repeatable SBCs expose only the approved completion quantities', async (t) => {
+    const cases = [
+        {
+            name: 'maximum three exposes each completion without a discount',
+            repeats: 3,
+            expected: [
+                { completions: 1, multiplierBps: 10_000, totalMinor: 11_600 },
+                { completions: 2, multiplierBps: 10_000, totalMinor: 23_000 },
+                { completions: 3, multiplierBps: 10_000, totalMinor: 34_300 },
+            ],
+        },
+        {
+            name: 'maximum twelve appends the maximum two points below ten',
+            repeats: 12,
+            expected: [
+                { completions: 5, multiplierBps: 10_000, totalMinor: 57_000 },
+                { completions: 10, multiplierBps: 9_500, totalMinor: 107_900 },
+                { completions: 12, multiplierBps: 9_300, totalMinor: 126_700 },
+            ],
+        },
+    ];
+
+    for (const fixture of cases) {
+        await t.test(fixture.name, async () => {
+            const records = sourceRecords(20);
+            records[0] = {
+                ...records[0],
+                repeatable: true,
+                repeatabilityMode: 'REFRESH',
+                repeats: fixture.repeats,
+            };
+
+            const prepared = await prepare(records);
+
+            assert.equal(prepared.valid, true, prepared.failureReason);
+            const pricing =
+                prepared.snapshot.products[0].variants[0].configuration
+                    .completionPricing;
+            assert.ok(pricing, 'completionPricing must be published');
+            assert.equal(pricing.maximum, fixture.repeats);
+            assert.deepEqual(pricing.tiers, fixture.expected);
+        });
+    }
+});
+
+test('a repeat limit of one remains on the existing non-repeatable formula', async () => {
+    const records = sourceRecords(20);
+    records[0] = {
+        ...records[0],
+        repeatable: true,
+        repeatabilityMode: 'REFRESH',
+        repeats: 1,
+    };
+
+    const prepared = await prepare(records);
+
+    assert.equal(prepared.valid, true, prepared.failureReason);
+    const [playstation, pc] = prepared.snapshot.products[0].variants;
+    assert.equal(playstation.priceMinor, 12_300);
+    assert.equal(pc.priceMinor, 17_300);
+    assert.deepEqual(playstation.configuration.completionPricing, {
+        version: 1,
+        repeatable: false,
+        maximum: 1,
+        tiers: [{ completions: 1, multiplierBps: 10_000, totalMinor: 12_300 }],
+    });
+});
+
+test('a repeat limit of one uses the non-repeatable eligibility floor', async () => {
+    const records = sourceRecords(20);
+    records[0] = {
+        ...records[0],
+        psPrice: 19_999,
+        repeatable: true,
+        repeatabilityMode: 'REFRESH',
+        repeats: 1,
+    };
+
+    const prepared = await prepare(records);
+
+    assert.equal(prepared.valid, true, prepared.failureReason);
+    assert.equal(prepared.snapshot.products.length, 19);
+    assert.equal(
+        prepared.snapshot.products.some(
+            ({ externalId }) => externalId === 'easysbc-sbc-1000',
+        ),
+        false,
+    );
+});
+
+test('snapshot validation rejects malformed or cross-platform completion pricing', async (t) => {
+    const records = sourceRecords(20);
+    records[0] = {
+        ...records[0],
+        repeatable: true,
+        repeatabilityMode: 'UNLIMITED',
+        repeats: null,
+    };
+    const prepared = await prepare(records);
+    assert.equal(prepared.valid, true, prepared.failureReason);
+    assert.ok(
+        prepared.snapshot.products[0].variants[0].configuration
+            .completionPricing,
+        'completionPricing must be published before validation',
+    );
+
+    const cases = [
+        [
+            'wrong multiplier',
+            (snapshot) => {
+                snapshot.products[0].variants[0].configuration.completionPricing.tiers[1].multiplierBps = 9_400;
+            },
+            /multiplier/i,
+        ],
+        [
+            'first total differs from variant price',
+            (snapshot) => {
+                snapshot.products[0].variants[0].priceMinor += 100;
+            },
+            /first tier/i,
+        ],
+        [
+            'platform completion choices differ',
+            (snapshot) => {
+                snapshot.products[0].variants[1].configuration.completionPricing.tiers.pop();
+            },
+            /completion choices/i,
+        ],
+    ];
+
+    for (const [name, mutate, pattern] of cases) {
+        await t.test(name, async () => {
+            const snapshot = structuredClone(prepared.snapshot);
+            mutate(snapshot);
+            const result = (
+                await runNode('validate-snapshot', {
+                    items: [{ ...prepared, snapshot }],
+                })
+            )[0].json;
+
+            assert.equal(result.valid, false);
+            assert.match(result.failureReason, pattern);
+        });
+    }
 });
 
 test('approved EasySBC images validate in the restricted n8n Code sandbox', async () => {
@@ -216,15 +427,15 @@ test('player SBCs fail closed when their declared reward art is not an approved 
     assert.equal(prepared.snapshot, undefined);
 });
 
-test('legacy one-completion pricing uses every audited multiplier boundary', async () => {
+test('non-repeatable one-completion pricing uses every audited multiplier boundary', async () => {
     const quantities = [49_999, 50_000, 899_999, 900_000, 1_000_000, 1_000_001];
     const expectedPsSar = [70, 67, 1021, 929, 1031, 1057];
     const records = quantities.map((psPrice, index) =>
         sourceRecord(index, {
             psPrice,
             pcPrice: psPrice,
-            repeatable: true,
-            repeatabilityMode: 'UNLIMITED',
+            repeatable: false,
+            repeatabilityMode: 'NON_REPEATABLE',
         }),
     );
 

@@ -15,7 +15,7 @@ It has no external storefront mutation or product-platform dependency. Laravel a
 - Also fails closed at 200 records (pagination ambiguity), on duplicate IDs, or on any malformed complete source record.
 - Categories: `players`, `upgrades` (source categories 2, 3, and 6), `icons`, and `foundations`.
 - Eligibility: active, more than two hours before expiry, no Bronze/Silver names, PlayStation coins at least 1,500, non-repeatable PlayStation coins at least 20,000, and a positive PC coin value.
-- Exactly one PlayStation and one PC variant per product. v1 prices one completion even when the source challenge is repeatable; repeatability metadata is retained in `configuration`, but there is no repeat selector.
+- Exactly one PlayStation/Xbox and one PC variant per product. Non-repeatable challenges retain the audited one-completion price. Repeatable challenges publish exact, independent platform totals for every allowed completion tier in `configuration.completionPricing`.
 - Images are optional. A supplied image must be HTTPS on `assets.easysbc.io`.
 - English names remain byte-for-byte exact. Missing Arabic names are sent in one exact ID/name batch through `Google Gemini(PaLM) Api account 2` with temperature `0` and `maxOutputTokens: 8192`; output must contain the same IDs, count, order-independent source names, Arabic script, no Latin letters, and at most 120 characters. Validation is atomic: any missing, extra, mismatched, mixed-language, or malformed entry fails the run and leaves the cache unchanged.
 - Every invalid branch ends in `Stop And Error` after the optional Whapi attempt, so a failed scheduled execution is visibly nonzero.
@@ -23,7 +23,7 @@ It has no external storefront mutation or product-platform dependency. Laravel a
 
 ## Audited pricing formula
 
-For each platform, Laravel returns its current one-million Coins total in halalah. Convert that base to SAR and calculate one completion:
+For each platform, Laravel returns its current one-million Coins total in halalah. Convert that base to SAR. Non-repeatable challenges keep the existing one-completion formula:
 
 ```text
 M(c) = 1.15 when c < 50,000
@@ -34,6 +34,19 @@ M(c) = 1.15 when c < 50,000
 SAR = round(challengeCount*2 + coins*M(c)*1.02*(baseSar/1,000,000) + 2) + 3
 priceMinor = SAR*100
 ```
+
+Repeatable challenges use the original Salla quantity policy without its approximate PC surcharge. PlayStation/Xbox and PC are calculated separately:
+
+```text
+perCompletion = coins*M(c)*1.02*(baseSar/1,000,000) + 1.10
+bundleSar = round(perCompletion*multiplier*completions) + 3
+totalMinor = bundleSar*100
+
+tiers = 5@1.00, 10@0.95, 15@0.92, 20@0.90, 30@0.87,
+        40@0.85, 50@0.82, 75@0.78, 100@0.76
+```
+
+Unlimited and 100+ challenges expose the full tier list. Limits from two through four expose every integer at multiplier 1.00. Limits from five through 99 expose standard tiers up to the limit and append a missing maximum at two percentage points below the previous multiplier, floored at 0.70. The three-SAR service fee is charged once per selected bundle. `priceMinor` equals the first published tier total.
 
 The workflow sends `priceVersion: 1` for contract compatibility. Laravel owns stored price-version increments.
 
