@@ -46,7 +46,7 @@ final readonly class SendCheckoutPhoneCode
         ]);
 
         try {
-            $this->sender->send($phone, $code, $locale, 'checkout');
+            $this->sender->send($phone, $code, $locale);
         } catch (Throwable $exception) {
             $verification->delete();
 

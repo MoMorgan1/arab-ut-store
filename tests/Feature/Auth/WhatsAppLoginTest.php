@@ -43,9 +43,106 @@ test('an existing verified phone receives a short-lived hashed WhatsApp login co
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://gate.whapi.test/messages/text'
         && $request->hasHeader('Authorization', 'Bearer synthetic-whapi-token')
         && $request['to'] === '201001234567'
-        && str_contains((string) $request['body'], 'رمز تسجيل الدخول في عرب التيميت')
-        && str_contains((string) $request['body'], 'صالح لمدة 5 دقائق')
+        && $request['body'] === "رمز عرب التيميت: {$sentCode}"
     );
+});
+
+test('a new verified WhatsApp number continues to registration and becomes the account phone', function () {
+    $sentCode = null;
+    Http::fake(function (Request $request) use (&$sentCode) {
+        preg_match('/\b([0-9]{6})\b/', (string) $request['body'], $matches);
+        $sentCode = $matches[1] ?? null;
+
+        return Http::response(['sent' => true]);
+    });
+
+    $this->postJson(route('auth.whatsapp.send'), ['phone' => '+201001234567'])
+        ->assertOk()
+        ->assertExactJson(['data' => ['sent' => true]]);
+
+    $verification = PhoneVerification::query()->sole();
+    expect($verification->user_id)->toBeNull()
+        ->and($sentCode)->toMatch('/\A[0-9]{6}\z/');
+
+    $verifyResponse = $this->postJson(route('auth.whatsapp.verify'), [
+        'phone' => '+201001234567',
+        'code' => $sentCode,
+    ]);
+
+    $verifyResponse->assertOk()
+        ->assertJsonPath('data.redirectUrl', route('register', absolute: false))
+        ->assertSessionHas('auth.verified_registration_phone.phone', '+201001234567');
+
+    $this->assertGuest();
+
+    $this->post(route('register.store'), [
+        'first_name' => 'New',
+        'last_name' => 'Customer',
+        'email' => 'new-phone@example.test',
+        'password' => 'StrongPassword!12',
+        'password_confirmation' => 'StrongPassword!12',
+    ])->assertRedirect(route('dashboard', absolute: false));
+
+    $user = User::query()->where('email', 'new-phone@example.test')->sole();
+    $this->assertAuthenticatedAs($user);
+    expect($user->phone)->toBe('+201001234567')
+        ->and($user->phone_verified_at)->not->toBeNull();
+    expect(session()->has('auth.verified_registration_phone'))->toBeFalse();
+});
+
+test('a new English WhatsApp number receives concise copy and continues to localized registration', function () {
+    $sentCode = null;
+    Http::fake(function (Request $request) use (&$sentCode) {
+        preg_match('/\b([0-9]{6})\b/', (string) $request['body'], $matches);
+        $sentCode = $matches[1] ?? null;
+
+        return Http::response(['sent' => true]);
+    });
+
+    $this->postJson(route('localized.auth.whatsapp.send', ['locale' => 'en']), [
+        'phone' => '+966501112233',
+    ])->assertOk();
+
+    Http::assertSent(fn (Request $request): bool => $request['body'] === "Arab UT code: {$sentCode}");
+
+    $this->postJson(route('localized.auth.whatsapp.verify', ['locale' => 'en']), [
+        'phone' => '+966501112233',
+        'code' => $sentCode,
+    ])->assertOk()
+        ->assertJsonPath('data.redirectUrl', route('localized.register', ['locale' => 'en'], absolute: false));
+});
+
+test('registration fails safely if a newly verified phone is claimed in another session', function () {
+    $sentCode = null;
+    Http::fake(function (Request $request) use (&$sentCode) {
+        preg_match('/\b([0-9]{6})\b/', (string) $request['body'], $matches);
+        $sentCode = $matches[1] ?? null;
+
+        return Http::response(['sent' => true]);
+    });
+
+    $this->postJson(route('auth.whatsapp.send'), ['phone' => '+201001234567'])->assertOk();
+    $this->postJson(route('auth.whatsapp.verify'), [
+        'phone' => '+201001234567',
+        'code' => $sentCode,
+    ])->assertOk();
+
+    User::factory()->create([
+        'phone' => '+201001234567',
+        'phone_verified_at' => now(),
+    ]);
+
+    $this->post(route('register.store'), [
+        'first_name' => 'Conflicting',
+        'last_name' => 'Customer',
+        'email' => 'phone-conflict@example.test',
+        'password' => 'StrongPassword!12',
+        'password_confirmation' => 'StrongPassword!12',
+    ])->assertSessionHasErrors('phone');
+
+    $this->assertGuest();
+    $this->assertDatabaseMissing('users', ['email' => 'phone-conflict@example.test']);
+    expect(session()->get('auth.verified_registration_phone.phone'))->toBe('+201001234567');
 });
 
 test('the matching WhatsApp code is consumed once and signs in the phone owner', function () {
@@ -107,7 +204,7 @@ test('five incorrect attempts are persisted and exhaust the code', function () {
     $this->assertGuest();
 });
 
-test('unknown unverified and inactive phones receive the same safe response without a provider call', function (array $attributes) {
+test('unverified and inactive account phones receive the same safe response without a provider call', function (array $attributes) {
     User::factory()->create($attributes);
     Http::fake();
 

@@ -37,7 +37,7 @@ test('an authenticated customer can verify a new checkout phone through Whapi', 
 
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://gate.whapi.test/messages/text'
         && $request['to'] === '201001234567'
-        && str_contains((string) $request['body'], 'رمز توثيق رقمك لإتمام الدفع في عرب التيميت'));
+        && $request['body'] === "رمز عرب التيميت: {$sentCode}");
 
     $this->actingAs($user)->postJson('/checkout/phone/verify', [
         'phone' => '+201001234567',

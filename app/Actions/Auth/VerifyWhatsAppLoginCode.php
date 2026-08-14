@@ -5,15 +5,16 @@ namespace App\Actions\Auth;
 use App\Models\PhoneVerification;
 use App\Models\User;
 use App\ValueObjects\E164Phone;
+use App\ValueObjects\WhatsAppLoginResult;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 final class VerifyWhatsAppLoginCode
 {
-    public function execute(E164Phone $phone, string $code): User
+    public function execute(E164Phone $phone, string $code): WhatsAppLoginResult
     {
-        $user = DB::transaction(function () use ($code, $phone): ?User {
+        $result = DB::transaction(function () use ($code, $phone): ?WhatsAppLoginResult {
             $verification = PhoneVerification::query()
                 ->where('phone', $phone->value())
                 ->whereNull('verified_at')
@@ -32,21 +33,25 @@ final class VerifyWhatsAppLoginCode
                 return null;
             }
 
-            $user = $verification->user()->lockForUpdate()->first();
+            $user = $verification->user_id === null
+                ? User::query()->where('phone', $phone->value())->lockForUpdate()->first()
+                : $verification->user()->lockForUpdate()->first();
 
-            if ($user === null || ! $user->is_active || $user->phone_verified_at === null) {
+            if ($user instanceof User && (! $user->is_active || $user->phone_verified_at === null)) {
                 return null;
             }
 
             $verification->forceFill(['verified_at' => now()])->save();
 
-            return $user;
+            return $user instanceof User
+                ? WhatsAppLoginResult::existing($phone, $user)
+                : WhatsAppLoginResult::registration($phone);
         }, attempts: 3);
 
-        if ($user === null) {
+        if ($result === null) {
             throw new DomainException('The WhatsApp login code is invalid or expired.');
         }
 
-        return $user;
+        return $result;
     }
 }

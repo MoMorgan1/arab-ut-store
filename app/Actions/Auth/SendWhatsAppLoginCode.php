@@ -15,13 +15,9 @@ final readonly class SendWhatsAppLoginCode
 
     public function execute(E164Phone $phone, string $locale): void
     {
-        $user = User::query()
-            ->where('phone', $phone->value())
-            ->whereNotNull('phone_verified_at')
-            ->where('is_active', true)
-            ->first();
+        $user = User::query()->where('phone', $phone->value())->first();
 
-        if ($user === null) {
+        if ($user instanceof User && ($user->phone_verified_at === null || ! $user->is_active)) {
             Hash::make((string) random_int(100000, 999999));
 
             return;
@@ -39,7 +35,7 @@ final readonly class SendWhatsAppLoginCode
 
         $code = (string) random_int(100000, 999999);
         $verification = PhoneVerification::create([
-            'user_id' => $user->id,
+            'user_id' => $user?->id,
             'phone' => $phone->value(),
             'code_hash' => Hash::make($code),
             'attempts' => 0,
@@ -48,7 +44,7 @@ final readonly class SendWhatsAppLoginCode
         ]);
 
         try {
-            $this->sender->send($phone, $code, $locale, 'login');
+            $this->sender->send($phone, $code, $locale);
         } catch (Throwable $exception) {
             $verification->delete();
 

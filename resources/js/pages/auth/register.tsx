@@ -34,6 +34,12 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                 {({ clearErrors, processing, errors }) => (
                     <>
                         <div className="grid gap-6">
+                            <InputError
+                                id="verified-phone-error"
+                                message={errors.phone}
+                                role="alert"
+                            />
+
                             <div className="grid gap-2 sm:grid-cols-2">
                                 <div className="grid gap-2">
                                     <Label htmlFor="first_name">

@@ -165,13 +165,11 @@ const arabicAuthUi = {
         phone_tab: 'الهاتف',
         country_code: 'رمز الدولة',
         phone_number: 'رقم الهاتف',
-        phone_existing_only:
-            'تسجيل الدخول بواتساب يعمل فقط لرقم مرتبط مسبقًا بحساب نشط.',
+        phone_account_hint: 'استخدم واتساب للدخول أو إنشاء حساب جديد.',
         phone_send_code: 'أرسل كود واتساب',
         phone_code: 'كود واتساب المكوّن من 6 أرقام',
-        phone_verify: 'تحقق وسجّل الدخول',
-        phone_code_sent:
-            'إذا كان الرقم مرتبطًا بحساب، أرسلنا له كودًا على واتساب.',
+        phone_verify: 'تحقق وتابع',
+        phone_code_sent: 'أرسلنا لك كودًا على واتساب.',
         phone_code_invalid: 'الكود غير صحيح أو انتهت صلاحيته.',
         phone_invalid: 'أدخل رقم هاتف صحيحًا مع رمز الدولة.',
         phone_unavailable:
@@ -189,6 +187,8 @@ const arabicAuthUi = {
         login_prompt: 'عندك حساب؟',
         login_link: 'سجّل الدخول',
         password_symbol_error: 'أضف رمزًا واحدًا على الأقل، مثل ! أو @ أو #.',
+        phone_unavailable:
+            'هذا الرقم مرتبط بحساب آخر. سجّل الدخول بالرقم بدلًا من إنشاء حساب جديد.',
     },
     forgot_password: {
         head_title: 'نسيت كلمة المرور',
@@ -246,12 +246,11 @@ const englishAuthUi = {
         phone_tab: 'Phone',
         country_code: 'Country code',
         phone_number: 'Phone number',
-        phone_existing_only:
-            'WhatsApp sign-in works only for a phone number already linked to an active account.',
+        phone_account_hint: 'Use WhatsApp to sign in or create a new account.',
         phone_send_code: 'Send WhatsApp code',
         phone_code: '6-digit WhatsApp code',
-        phone_verify: 'Verify and log in',
-        phone_code_sent: 'If linked, a WhatsApp code was sent.',
+        phone_verify: 'Verify and continue',
+        phone_code_sent: 'We sent you a WhatsApp code.',
         phone_code_invalid: 'The code is invalid or expired.',
         phone_invalid: 'Enter a valid phone number.',
         phone_unavailable: 'Could not send a WhatsApp code.',
@@ -269,6 +268,8 @@ const englishAuthUi = {
         login_prompt: 'Already have an account?',
         login_link: 'Log in',
         password_symbol_error: 'Add at least one symbol, such as !, @, or #.',
+        phone_unavailable:
+            'This number is linked to another account. Sign in with the number instead.',
     },
     forgot_password: {
         head_title: 'Forgot password',
@@ -514,7 +515,7 @@ describe('storefront authentication shell', () => {
         expect(password).toHaveAttribute('aria-invalid', 'false');
     });
 
-    it('explains that WhatsApp login is only for an existing linked account', () => {
+    it('explains that WhatsApp verification supports existing and new accounts', () => {
         setPage('login', 'en');
         const englishRoutes = page.props.authRoutes as typeof routes;
 
@@ -531,7 +532,7 @@ describe('storefront authentication shell', () => {
         fireEvent.click(screen.getByRole('tab', { name: 'Phone' }));
         expect(
             screen.getByText(
-                'WhatsApp sign-in works only for a phone number already linked to an active account.',
+                'Use WhatsApp to sign in or create a new account.',
             ),
         ).toBeVisible();
     });

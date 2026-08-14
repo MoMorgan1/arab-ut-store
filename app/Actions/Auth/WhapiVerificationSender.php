@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Http;
 
 final class WhapiVerificationSender
 {
-    public function send(E164Phone $phone, string $code, string $locale, string $purpose): void
+    public function send(E164Phone $phone, string $code, string $locale): void
     {
         $baseUrl = rtrim((string) config('services.whapi.base_url'), '/');
         $token = trim((string) config('services.whapi.token'));
@@ -24,7 +24,7 @@ final class WhapiVerificationSender
             throw new DomainException('Whapi is not configured.');
         }
 
-        $body = $this->message($code, $locale, $purpose);
+        $body = $this->message($code, $locale);
 
         Http::baseUrl($baseUrl)
             ->acceptJson()
@@ -38,16 +38,12 @@ final class WhapiVerificationSender
             ->throw();
     }
 
-    private function message(string $code, string $locale, string $purpose): string
+    private function message(string $code, string $locale): string
     {
         if ($locale === 'ar') {
-            $label = $purpose === 'checkout' ? 'توثيق رقمك لإتمام الدفع' : 'تسجيل الدخول';
-
-            return "رمز {$label} في عرب التيميت: {$code}\nصالح لمدة 5 دقائق. لا تشاركه مع أحد.";
+            return "رمز عرب التيميت: {$code}";
         }
 
-        $label = $purpose === 'checkout' ? 'phone verification' : 'login';
-
-        return "Your Arab UT {$label} code is: {$code}\nIt expires in 5 minutes. Do not share it.";
+        return "Arab UT code: {$code}";
     }
 }

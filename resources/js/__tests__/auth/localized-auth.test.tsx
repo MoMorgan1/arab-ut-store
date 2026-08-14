@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/react';
 import {
     cleanup,
     fireEvent,
@@ -117,13 +118,11 @@ const arabicUi = {
         phone_tab: 'الهاتف',
         country_code: 'رمز الدولة',
         phone_number: 'رقم الهاتف',
-        phone_existing_only:
-            'تسجيل الدخول بواتساب يعمل فقط لرقم مرتبط مسبقًا بحساب نشط.',
+        phone_account_hint: 'استخدم واتساب للدخول أو إنشاء حساب جديد.',
         phone_send_code: 'أرسل كود واتساب',
         phone_code: 'كود واتساب المكوّن من 6 أرقام',
-        phone_verify: 'تحقق وسجّل الدخول',
-        phone_code_sent:
-            'إذا كان الرقم مرتبطًا بحساب، أرسلنا له كودًا على واتساب.',
+        phone_verify: 'تحقق وتابع',
+        phone_code_sent: 'أرسلنا لك كودًا على واتساب.',
         phone_code_invalid: 'الكود غير صحيح أو انتهت صلاحيته.',
         phone_invalid: 'أدخل رقم هاتف صحيحًا مع رمز الدولة.',
         phone_unavailable:
@@ -141,6 +140,8 @@ const arabicUi = {
         login_prompt: 'عندك حساب؟',
         login_link: 'سجّل الدخول',
         password_symbol_error: 'أضف رمزًا واحدًا على الأقل، مثل ! أو @ أو #.',
+        phone_unavailable:
+            'هذا الرقم مرتبط بحساب آخر. سجّل الدخول بالرقم بدلًا من إنشاء حساب جديد.',
     },
     forgot_password: {
         head_title: 'نسيت كلمة المرور',
@@ -194,6 +195,8 @@ const englishUi = {
         login_prompt: 'Already have an account?',
         login_link: 'Log in',
         password_symbol_error: 'Add at least one symbol, such as !, @, or #.',
+        phone_unavailable:
+            'This number is linked to another account. Sign in with the number instead.',
     },
     forgot_password: {
         head_title: 'Forgot password',
@@ -235,12 +238,23 @@ vi.stubGlobal('ResizeObserver', TestResizeObserver);
 it('renders the Arabic login handoff and sends a normalized WhatsApp code request', async () => {
     document.head.innerHTML =
         '<meta name="csrf-token" content="csrf-test-token">';
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response(JSON.stringify({ data: { sent: true } }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-        }),
-    );
+    const fetchMock = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+            new Response(JSON.stringify({ data: { sent: true } }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+            }),
+        )
+        .mockResolvedValueOnce(
+            new Response(
+                JSON.stringify({ data: { redirectUrl: '/register' } }),
+                {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                },
+            ),
+        );
     page.props = {
         authPage: 'login',
         authRoutes: routes,
@@ -292,6 +306,15 @@ it('renders the Arabic login handoff and sends a normalized WhatsApp code reques
         phone: '+201001234567',
     });
     expect(screen.getByLabelText(arabicUi.login.phone_code)).toBeVisible();
+
+    fireEvent.change(screen.getByLabelText(arabicUi.login.phone_code), {
+        target: { value: '123456' },
+    });
+    fireEvent.click(
+        screen.getByRole('button', { name: arabicUi.login.phone_verify }),
+    );
+
+    await waitFor(() => expect(router.visit).toHaveBeenCalledWith('/register'));
 });
 
 it('renders English register forgot and reset forms with the localized route contract', () => {

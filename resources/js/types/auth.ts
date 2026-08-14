@@ -70,7 +70,7 @@ export type AuthUiTranslations = {
         phone_tab: string;
         country_code: string;
         phone_number: string;
-        phone_existing_only: string;
+        phone_account_hint: string;
         phone_send_code: string;
         phone_code: string;
         phone_verify: string;
@@ -91,6 +91,7 @@ export type AuthUiTranslations = {
         login_prompt: string;
         login_link: string;
         password_symbol_error: string;
+        phone_unavailable: string;
     };
     forgot_password: {
         head_title: string;
