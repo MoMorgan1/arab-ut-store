@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Security\SbcCartFingerprint;
 use App\ValueObjects\Cart\CartOwner;
+use App\ValueObjects\Pricing\SbcCompletionPricing;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -50,9 +51,20 @@ final readonly class AddSbcToCart
         }
 
         $variant = $this->eligibleVariant((string) $validated['variantId']);
-        $price = $this->effectivePrice($variant);
+        $completionCount = (int) $validated['completionCount'];
+        $pricing = SbcCompletionPricing::fromConfiguration(
+            is_array($variant->configuration) ? $variant->configuration : [],
+            $this->effectivePrice($variant),
+            requireDeclared: false,
+        );
+        $price = $pricing->tierTotal($completionCount);
+
+        if ($price === null) {
+            throw new DomainException('The selected SBC completion tier is unavailable.');
+        }
+
         $cart = $this->acquireActiveCart->execute($owner);
-        $item = $this->createItem($cart, $variant, $price);
+        $item = $this->createItem($cart, $variant, $price, $completionCount);
         $this->persistCredentials->execute($item, $validated['credentials']);
         $body = $this->responseBody($cart, $item, $locale);
         $this->completeClaim($claim, $body);
@@ -101,8 +113,12 @@ final readonly class AddSbcToCart
         return $price;
     }
 
-    private function createItem(Cart $cart, ProductVariant $variant, int $price): CartItem
-    {
+    private function createItem(
+        Cart $cart,
+        ProductVariant $variant,
+        int $price,
+        int $completionCount,
+    ): CartItem {
         return $cart->items()->create([
             'product_variant_id' => $variant->id,
             'quantity' => 1,
@@ -112,6 +128,7 @@ final readonly class AddSbcToCart
                 'service_type' => ServiceType::Sbc->value,
                 'platform' => $variant->platform->value,
                 'market' => $variant->market->value,
+                'completion_count' => $completionCount,
                 'quoted_at' => now()->utc()->toIso8601String(),
                 'price_version' => (int) $variant->getAttribute('price_version'),
             ],

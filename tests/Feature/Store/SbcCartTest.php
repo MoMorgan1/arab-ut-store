@@ -36,6 +36,7 @@ function sbcCartPayload(ProductVariant $variant, array $changes = []): array
 {
     $payload = [
         'variantId' => $variant->public_id,
+        'completionCount' => 1,
         'credentials' => [
             'ea_email' => 'sbc-owner@example.test',
             'ea_password' => '  Opaque SBC Password  ',
@@ -68,6 +69,7 @@ test('a guest adds an SBC with encrypted persistent credentials and a secret fre
         'service_type' => 'sbc',
         'platform' => 'playstation',
         'market' => 'console',
+        'completion_count' => 1,
         'price_version' => 4,
     ])->not->toHaveKey('credentials')
         ->and($item->unit_price_halalah)->toBe(12_500)
@@ -82,6 +84,121 @@ test('a guest adds an SBC with encrypted persistent credentials and a secret fre
         ->and($response->getContent())->not->toContain('sbc-owner@example.test')
         ->not->toContain('93000001')
         ->not->toContain('Opaque SBC Password');
+});
+
+test('an SBC bundle uses the exact server tier while cart and Paylink quantity remain one', function () {
+    ['variant' => $variant] = createSbcCartProduct(variantChanges: [
+        'price_halalah' => 57_000,
+        'configuration' => [
+            'completionPricing' => [
+                'version' => 1,
+                'repeatable' => true,
+                'maximum' => 10,
+                'tiers' => [
+                    ['completions' => 5, 'multiplierBps' => 10_000, 'totalMinor' => 57_000],
+                    ['completions' => 10, 'multiplierBps' => 9_500, 'totalMinor' => 107_900],
+                ],
+            ],
+        ],
+    ]);
+
+    $response = $this->postJson('/cart/items/sbc', sbcCartPayload($variant, [
+        'completionCount' => 10,
+    ]), ['Idempotency-Key' => 'sbc-ten-completions']);
+
+    $response->assertCreated();
+    $item = CartItem::sole();
+    expect($item->quantity)->toBe(1)
+        ->and($item->unit_price_halalah)->toBe(107_900)
+        ->and($item->total_halalah)->toBe(107_900)
+        ->and($item->configuration)->toMatchArray(['completion_count' => 10])
+        ->and($response->getContent())->not->toContain('completionPricing')
+        ->not->toContain('multiplierBps')
+        ->not->toContain('107900');
+});
+
+test('SBC completion counts must be required positive integers', function (array $changes) {
+    ['variant' => $variant] = createSbcCartProduct(variantChanges: [
+        'price_halalah' => 57_000,
+        'configuration' => [
+            'completionPricing' => [
+                'version' => 1,
+                'repeatable' => true,
+                'maximum' => 10,
+                'tiers' => [
+                    ['completions' => 5, 'multiplierBps' => 10_000, 'totalMinor' => 57_000],
+                    ['completions' => 10, 'multiplierBps' => 9_500, 'totalMinor' => 107_900],
+                ],
+            ],
+        ],
+    ]);
+    $payload = sbcCartPayload($variant, $changes);
+
+    if (array_key_exists('completionCount', $changes) && $changes['completionCount'] === null) {
+        unset($payload['completionCount']);
+    }
+
+    $this->postJson('/cart/items/sbc', $payload, [
+        'Idempotency-Key' => 'sbc-invalid-count-'.fake()->unique()->numerify('####'),
+    ])->assertUnprocessable()->assertJsonValidationErrors(['completionCount']);
+
+    expect(CartItem::count())->toBe(0);
+})->with([
+    'missing' => [['completionCount' => null]],
+    'string' => [['completionCount' => '10']],
+    'zero' => [['completionCount' => 0]],
+]);
+
+test('an unavailable SBC completion count fails closed', function () {
+    ['variant' => $variant] = createSbcCartProduct(variantChanges: [
+        'price_halalah' => 57_000,
+        'configuration' => [
+            'completionPricing' => [
+                'version' => 1,
+                'repeatable' => true,
+                'maximum' => 10,
+                'tiers' => [
+                    ['completions' => 5, 'multiplierBps' => 10_000, 'totalMinor' => 57_000],
+                    ['completions' => 10, 'multiplierBps' => 9_500, 'totalMinor' => 107_900],
+                ],
+            ],
+        ],
+    ]);
+
+    $response = $this->postJson('/cart/items/sbc', sbcCartPayload($variant, [
+        'completionCount' => 7,
+    ]), ['Idempotency-Key' => 'sbc-undeclared-count']);
+
+    $response->assertUnprocessable()
+        ->assertJsonPath('error.code', 'catalog_item_unavailable');
+    expect($response->headers->get('Cache-Control'))->toContain('no-store')
+        ->and(CartItem::count())->toBe(0);
+});
+
+test('an idempotency key conflicts when the selected completion count changes', function () {
+    ['variant' => $variant] = createSbcCartProduct(variantChanges: [
+        'price_halalah' => 57_000,
+        'configuration' => [
+            'completionPricing' => [
+                'version' => 1,
+                'repeatable' => true,
+                'maximum' => 10,
+                'tiers' => [
+                    ['completions' => 5, 'multiplierBps' => 10_000, 'totalMinor' => 57_000],
+                    ['completions' => 10, 'multiplierBps' => 9_500, 'totalMinor' => 107_900],
+                ],
+            ],
+        ],
+    ]);
+
+    $this->postJson('/cart/items/sbc', sbcCartPayload($variant, ['completionCount' => 5]), [
+        'Idempotency-Key' => 'sbc-count-conflict',
+    ])->assertCreated();
+    $this->postJson('/cart/items/sbc', sbcCartPayload($variant, ['completionCount' => 10]), [
+        'Idempotency-Key' => 'sbc-count-conflict',
+    ])->assertConflict()->assertJsonPath('error.code', 'idempotency_conflict');
+
+    expect(CartItem::count())->toBe(1);
 });
 
 test('the generic catalog endpoint cannot create an SBC line without credentials', function () {
@@ -189,6 +306,7 @@ test('the SBC cart exposes credentials only through the owner no store endpoint 
     $this->get('/cart')->assertInertia(fn ($page) => $page
         ->where('cart.items.0.credentials.hasPassword', true)
         ->where('cart.items.0.credentials.backupCodeCount', 3)
+        ->where('cart.items.0.configuration.completion_count', 1)
         ->where('cart.items.0.credentialsUrl', "/cart/items/{$item->public_id}/credentials")
         ->where('cart.items.0.requiresCredentials', false)
         ->missing('cart.items.0.credentials.eaPassword'));

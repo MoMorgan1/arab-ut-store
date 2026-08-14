@@ -25,6 +25,8 @@ use App\Models\ProductVariant;
 use App\Models\User;
 use App\Security\CheckoutFingerprint;
 use App\ValueObjects\Cart\CartOwner;
+use App\ValueObjects\Pricing\SbcCompletionPricing;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use JsonException;
@@ -200,7 +202,7 @@ final readonly class PlaceOrder
 
         if ($configuration['price_version'] !== $variant->price_version
             || $item->quantity < 1
-            || ($service === ServiceType::Coins && $item->quantity !== 1)
+            || (in_array($service, [ServiceType::Coins, ServiceType::Sbc], true) && $item->quantity !== 1)
             || $item->unit_price_halalah !== $currentUnit
             || $item->total_halalah !== $currentTotal) {
             throw new CheckoutUnavailable('The cart price has changed.');
@@ -222,7 +224,6 @@ final readonly class PlaceOrder
         ];
     }
 
-    /** @param array<string, mixed> $configuration */
     /** @param array<string, mixed> $configuration
      * @return array{int, int}
      */
@@ -252,6 +253,32 @@ final readonly class PlaceOrder
         }
 
         $effective = $variant->sale_price_halalah ?? $variant->price_halalah;
+
+        if ($service === ServiceType::Sbc) {
+            $completionCount = $configuration['completion_count'] ?? null;
+
+            if (! is_int($completionCount) || $completionCount < 1 || $completionCount > 100) {
+                throw new CheckoutUnavailable('A cart item is invalid.');
+            }
+
+            try {
+                $pricing = SbcCompletionPricing::fromConfiguration(
+                    is_array($variant->configuration) ? $variant->configuration : [],
+                    $effective,
+                    requireDeclared: false,
+                );
+            } catch (DomainException $exception) {
+                throw new CheckoutUnavailable('A cart item is invalid.', previous: $exception);
+            }
+
+            $tierTotal = $pricing->tierTotal($completionCount);
+
+            if ($tierTotal === null) {
+                throw new CheckoutUnavailable('The cart price has changed.');
+            }
+
+            return [$tierTotal, $tierTotal];
+        }
 
         return [$effective, $effective * $item->quantity];
     }
@@ -289,6 +316,10 @@ final readonly class PlaceOrder
 
         if ($service === ServiceType::Coins) {
             array_push($keys, 'delivery', 'coins_quantity');
+        }
+
+        if ($service === ServiceType::Sbc) {
+            $keys[] = 'completion_count';
         }
 
         return array_intersect_key($configuration, array_flip($keys));

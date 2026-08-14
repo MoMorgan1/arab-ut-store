@@ -208,6 +208,7 @@ final class CartController extends Controller
             ...$this->safeEnumField($configuration, 'market', Market::cases()),
             ...$this->safeEnumField($configuration, 'delivery', DeliveryMode::cases()),
             ...$this->safeCoinsQuantity($configuration),
+            ...$this->safeCompletionCount($configuration),
             ...$this->safeQuotedAt($configuration),
             ...$this->safePriceVersion($configuration),
         ];
@@ -257,6 +258,19 @@ final class CartController extends Controller
             && $quantity % $increment === 0
                 ? ['coins_quantity' => $quantity]
                 : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @return array{completion_count?: int}
+     */
+    private function safeCompletionCount(array $configuration): array
+    {
+        $completionCount = $configuration['completion_count'] ?? null;
+
+        return is_int($completionCount) && $completionCount >= 1 && $completionCount <= 100
+            ? ['completion_count' => $completionCount]
+            : [];
     }
 
     /**

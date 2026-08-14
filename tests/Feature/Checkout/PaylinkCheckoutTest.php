@@ -45,6 +45,7 @@ function paylinkCheckoutCart(bool $verified = true): array
             'service_type' => 'sbc',
             'platform' => 'playstation',
             'market' => 'console',
+            'completion_count' => 1,
             'quoted_at' => now()->utc()->toIso8601String(),
             'price_version' => 8,
         ],

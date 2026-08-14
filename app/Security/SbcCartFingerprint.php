@@ -12,6 +12,7 @@ final class SbcCartFingerprint
         return hash_hmac('sha256', json_encode([
             ...self::canonicalOwner($ownerKey),
             'variant_id' => $validated['variantId'],
+            'completion_count' => (int) $validated['completionCount'],
             'credentials' => [
                 'ea_email' => $validated['credentials']['ea_email'],
                 'ea_password' => $validated['credentials']['ea_password'],

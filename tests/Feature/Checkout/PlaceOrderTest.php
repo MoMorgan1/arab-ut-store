@@ -65,6 +65,7 @@ function checkoutSbcCart(array $changes = []): array
             'service_type' => 'sbc',
             'platform' => 'playstation',
             'market' => 'console',
+            'completion_count' => 1,
             'quoted_at' => now()->utc()->toIso8601String(),
             'price_version' => 4,
         ],
@@ -126,6 +127,93 @@ test('checkout atomically snapshots a verified users active cart and encrypted c
         ->and(IdempotencyKey::sole()->response_body)
         ->not->toContain('owner@example.test')
         ->not->toContain('12345678');
+});
+
+test('checkout snapshots the selected SBC bundle total while keeping payment quantity one', function () {
+    $tierConfiguration = [
+        'completionPricing' => [
+            'version' => 1,
+            'repeatable' => true,
+            'maximum' => 10,
+            'tiers' => [
+                ['completions' => 5, 'multiplierBps' => 10_000, 'totalMinor' => 57_000],
+                ['completions' => 10, 'multiplierBps' => 9_500, 'totalMinor' => 107_900],
+            ],
+        ],
+    ];
+    ['user' => $user] = checkoutSbcCart([
+        'variant' => ['price_halalah' => 57_000, 'configuration' => $tierConfiguration],
+        'item' => [
+            'quantity' => 1,
+            'unit_price_halalah' => 107_900,
+            'total_halalah' => 107_900,
+            'configuration' => [
+                'service_type' => 'sbc',
+                'platform' => 'playstation',
+                'market' => 'console',
+                'completion_count' => 10,
+                'quoted_at' => now()->utc()->toIso8601String(),
+                'price_version' => 4,
+            ],
+        ],
+    ]);
+
+    $result = app(PlaceOrder::class)->execute($user, 'ar', 'checkout-ten-completions');
+    $orderItem = $result->order->items()->sole();
+
+    expect($orderItem->quantity)->toBe(1)
+        ->and($orderItem->unit_price_halalah)->toBe(107_900)
+        ->and($orderItem->total_halalah)->toBe(107_900)
+        ->and($orderItem->configuration)->toMatchArray(['completion_count' => 10])
+        ->and($result->payment->amount_halalah)->toBe(107_900);
+});
+
+test('checkout rejects an SBC bundle whose selected tier is no longer available', function () {
+    $state = checkoutSbcCart([
+        'variant' => [
+            'price_halalah' => 57_000,
+            'configuration' => [
+                'completionPricing' => [
+                    'version' => 1,
+                    'repeatable' => true,
+                    'maximum' => 10,
+                    'tiers' => [
+                        ['completions' => 5, 'multiplierBps' => 10_000, 'totalMinor' => 57_000],
+                        ['completions' => 10, 'multiplierBps' => 9_500, 'totalMinor' => 107_900],
+                    ],
+                ],
+            ],
+        ],
+        'item' => [
+            'unit_price_halalah' => 107_900,
+            'total_halalah' => 107_900,
+            'configuration' => [
+                'service_type' => 'sbc',
+                'platform' => 'playstation',
+                'market' => 'console',
+                'completion_count' => 10,
+                'quoted_at' => now()->utc()->toIso8601String(),
+                'price_version' => 4,
+            ],
+        ],
+    ]);
+    $state['variant']->update([
+        'configuration' => [
+            'completionPricing' => [
+                'version' => 1,
+                'repeatable' => false,
+                'maximum' => 1,
+                'tiers' => [
+                    ['completions' => 1, 'multiplierBps' => 10_000, 'totalMinor' => 57_000],
+                ],
+            ],
+        ],
+        'price_version' => 5,
+    ]);
+
+    expect(fn () => app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-removed-tier'))
+        ->toThrow(CheckoutUnavailable::class, 'The cart price has changed.')
+        ->and(Order::count())->toBe(0);
 });
 
 test('an exact checkout retry replays one order while another user conflicts', function () {
