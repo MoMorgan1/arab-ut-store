@@ -155,7 +155,7 @@ test('the catalog exposes the refined SBC hierarchy and add feedback in both loc
     expect(data_get($arabic, 'services.sbc.page_title'))->toBe('حل تحديات بناء التشكيلة SBC')
         ->and(data_get($english, 'services.sbc.page_title'))->toBe('Complete Squad Building Challenges')
         ->and(data_get($arabic, 'catalog.browse_by_type'))->toBe('استكشف حسب النوع')
-        ->and(data_get($arabic, 'catalog.included'))->toBe('شامل الكوينز والتنفيذ')
+        ->and(data_get($arabic, 'catalog.included'))->toBe('شامل الشحن والتنفيذ')
         ->and(data_get($arabic, 'catalog.platform_prices'))->toBe('أسعار المنصات')
         ->and(data_get($arabic, 'catalog.added'))->toBe('تمت الإضافة إلى السلة')
         ->and(data_get($arabic, 'catalog.assurances'))->toBe('ضمانات الخدمة')

@@ -148,9 +148,6 @@ export function SbcCatalogCard({
                     className="store-catalog-card__shine-clip"
                 />
                 <div className="store-catalog-card__media">
-                    <span className="store-catalog-card__included">
-                        {translations.included}
-                    </span>
                     <span
                         aria-hidden="true"
                         className="store-catalog-card__artwork-glow"
@@ -174,6 +171,9 @@ export function SbcCatalogCard({
                     </span>
                 </div>
                 <div className="store-catalog-card__body">
+                    <span className="store-catalog-card__included">
+                        {translations.included}
+                    </span>
                     <h2>{product.name}</h2>
                     <ul
                         aria-label={translations.platform_prices}

@@ -127,7 +127,7 @@ it('renders the refined SBC hierarchy and trust strip', () => {
     ).toBeVisible();
 });
 
-it('uses the WordPress ribbon artwork without consuming an artwork row', () => {
+it('keeps the included-service label below the artwork', () => {
     render(<StoreCategory />);
 
     const card = screen
@@ -135,11 +135,11 @@ it('uses the WordPress ribbon artwork without consuming an artwork row', () => {
         .closest('.store-catalog-card--sbc');
     const media = card?.querySelector('.store-catalog-card__media');
     const ribbon = screen.getByText('Coins + completion');
-    const artwork = card?.querySelector('.store-catalog-card__image');
+    const body = card?.querySelector('.store-catalog-card__body');
 
-    expect(media).not.toBeNull();
+    expect(media).not.toContainElement(ribbon);
     expect(ribbon).toHaveClass('store-catalog-card__included');
-    expect(media).toContainElement(artwork as HTMLElement);
+    expect(body).toContainElement(ribbon);
 });
 
 it('cancels touch feedback once the gesture becomes a scroll', () => {
