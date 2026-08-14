@@ -62,4 +62,15 @@ return [
         'token' => env('WHAPI_TOKEN'),
     ],
 
+    'paylink' => [
+        'environment' => env('PAYLINK_ENV', 'test'),
+        'api_id' => env('PAYLINK_API_ID'),
+        'secret_key' => env('PAYLINK_SECRET_KEY'),
+        'webhook_token' => env('PAYLINK_WEBHOOK_TOKEN'),
+        'partner_profile_no' => env('PAYLINK_PARTNER_PROFILE_NO'),
+        'partner_api_key' => env('PAYLINK_PARTNER_API_KEY'),
+        'merchant_lookup_key' => env('PAYLINK_MERCHANT_LOOKUP_KEY', 'accountNo'),
+        'merchant_lookup_value' => env('PAYLINK_MERCHANT_LOOKUP_VALUE'),
+    ],
+
 ];
