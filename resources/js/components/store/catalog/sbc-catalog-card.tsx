@@ -23,19 +23,12 @@ export function SbcCatalogCard({
     const feedbackTimer = useRef<number | null>(null);
     const touchStart = useRef<{
         pointerId: number;
-        x: number;
-        y: number;
     } | null>(null);
     const clearFeedbackTimer = () => {
         if (feedbackTimer.current !== null) {
             window.clearTimeout(feedbackTimer.current);
             feedbackTimer.current = null;
         }
-    };
-    const cancelPress = () => {
-        clearFeedbackTimer();
-        touchStart.current = null;
-        setIsPressed(false);
     };
     const completePress = (pointerId: number) => {
         if (touchStart.current?.pointerId !== pointerId) {
@@ -72,7 +65,11 @@ export function SbcCatalogCard({
             ]
                 .filter(Boolean)
                 .join(' ')}
-            onPointerCancel={cancelPress}
+            onPointerCancel={(event) => {
+                if (event.pointerType !== 'mouse') {
+                    completePress(event.pointerId);
+                }
+            }}
             onPointerDown={(event) => {
                 if (event.pointerType === 'mouse') {
                     return;
@@ -81,8 +78,6 @@ export function SbcCatalogCard({
                 clearFeedbackTimer();
                 touchStart.current = {
                     pointerId: event.pointerId,
-                    x: event.clientX,
-                    y: event.clientY,
                 };
                 setIsPressed(true);
             }}
@@ -91,10 +86,6 @@ export function SbcCatalogCard({
                     resetTilt(event.currentTarget);
 
                     return;
-                }
-
-                if (touchStart.current !== null) {
-                    cancelPress();
                 }
             }}
             onPointerMove={(event) => {
@@ -115,21 +106,6 @@ export function SbcCatalogCard({
                     );
 
                     return;
-                }
-
-                const start = touchStart.current;
-
-                if (start === null || start.pointerId !== event.pointerId) {
-                    return;
-                }
-
-                if (
-                    Math.hypot(
-                        event.clientX - start.x,
-                        event.clientY - start.y,
-                    ) > 10
-                ) {
-                    cancelPress();
                 }
             }}
             onPointerUp={(event) => {

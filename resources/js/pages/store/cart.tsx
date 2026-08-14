@@ -9,6 +9,8 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import { interpolate } from '@/components/configurator/coins/configurator-copy';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import StoreLayout from '@/layouts/store-layout';
 import {
     loadCartCredentials,
@@ -332,13 +334,13 @@ function CheckoutPanel({
 }
 
 const CHECKOUT_COUNTRY_CODES = [
-    '+966',
-    '+971',
-    '+965',
-    '+974',
-    '+973',
-    '+968',
-    '+20',
+    { code: '+966', label: '🇸🇦 +966' },
+    { code: '+20', label: '🇪🇬 +20' },
+    { code: '+971', label: '🇦🇪 +971' },
+    { code: '+965', label: '🇰🇼 +965' },
+    { code: '+974', label: '🇶🇦 +974' },
+    { code: '+973', label: '🇧🇭 +973' },
+    { code: '+968', label: '🇴🇲 +968' },
 ] as const;
 
 function CheckoutPhoneForm({
@@ -405,44 +407,48 @@ function CheckoutPhoneForm({
             <p className="store-cart-checkout__notice">
                 {translations.checkout_phone}
             </p>
-            <div className="store-cart-phone__number" dir="ltr">
-                <label>
-                    <span>{translations.phone_country}</span>
-                    <select
-                        aria-label={translations.phone_country}
-                        disabled={busy || stage === 'code'}
-                        onChange={(event) =>
-                            setCountryCode(event.currentTarget.value)
-                        }
-                        value={countryCode}
-                    >
-                        {CHECKOUT_COUNTRY_CODES.map((value) => (
-                            <option key={value} value={value}>
-                                {value}
-                            </option>
-                        ))}
-                    </select>
+            <Label htmlFor="checkout-phone-number">
+                {translations.phone_number}
+            </Label>
+            <div
+                className="auth-phone-field store-cart-phone__number"
+                dir="ltr"
+            >
+                <label className="sr-only" htmlFor="checkout-country-code">
+                    {translations.phone_country}
                 </label>
-                <label>
-                    <span>{translations.phone_number}</span>
-                    <input
-                        aria-label={translations.phone_number}
-                        autoComplete="tel-national"
-                        disabled={busy || stage === 'code'}
-                        inputMode="numeric"
-                        maxLength={14}
-                        onChange={(event) =>
-                            setLocalNumber(
-                                event.currentTarget.value.replace(
-                                    /[^0-9]/g,
-                                    '',
-                                ),
-                            )
-                        }
-                        type="tel"
-                        value={localNumber}
-                    />
-                </label>
+                <select
+                    aria-label={translations.phone_country}
+                    className="auth-phone-field__country"
+                    disabled={busy || stage === 'code'}
+                    id="checkout-country-code"
+                    onChange={(event) =>
+                        setCountryCode(event.currentTarget.value)
+                    }
+                    value={countryCode}
+                >
+                    {CHECKOUT_COUNTRY_CODES.map((country) => (
+                        <option key={country.code} value={country.code}>
+                            {country.label}
+                        </option>
+                    ))}
+                </select>
+                <Input
+                    aria-label={translations.phone_number}
+                    autoComplete="tel-national"
+                    className="h-11"
+                    disabled={busy || stage === 'code'}
+                    id="checkout-phone-number"
+                    inputMode="numeric"
+                    maxLength={14}
+                    onChange={(event) =>
+                        setLocalNumber(
+                            event.currentTarget.value.replace(/[^0-9]/g, ''),
+                        )
+                    }
+                    type="tel"
+                    value={localNumber}
+                />
             </div>
             {stage === 'phone' ? (
                 <button

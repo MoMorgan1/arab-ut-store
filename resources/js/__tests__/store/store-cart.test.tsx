@@ -425,10 +425,18 @@ it('verifies an authenticated checkout phone through Whapi before enabling payme
     ).not.toBeInTheDocument();
     expect(screen.getByText('Cart')).toBeVisible();
     expect(screen.getByText('Secure payment')).toBeVisible();
+    const phoneNumber = screen.getByLabelText('WhatsApp number');
+    const phoneField = phoneNumber.closest('.auth-phone-field');
+
+    expect(phoneField).not.toBeNull();
+    expect(phoneField).toContainElement(screen.getByLabelText('Country code'));
+    expect(screen.getByLabelText('Country code')).toHaveClass(
+        'auth-phone-field__country',
+    );
     fireEvent.change(screen.getByLabelText('Country code'), {
         target: { value: '+966' },
     });
-    fireEvent.change(screen.getByLabelText('WhatsApp number'), {
+    fireEvent.change(phoneNumber, {
         target: { value: '501234567' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Send WhatsApp code' }));

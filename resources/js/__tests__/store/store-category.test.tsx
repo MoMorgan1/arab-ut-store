@@ -142,7 +142,7 @@ it('keeps the included-service label below the artwork', () => {
     expect(body).toContainElement(ribbon);
 });
 
-it('cancels touch feedback once the gesture becomes a scroll', () => {
+it('keeps touch feedback active while the finger scrolls the page', () => {
     render(<StoreCategory />);
 
     const card = screen
@@ -171,6 +171,34 @@ it('cancels touch feedback once the gesture becomes a scroll', () => {
         pointerId: 7,
         pointerType: 'touch',
     });
+    expect(card).toHaveClass('is-pressed');
+});
+
+it('keeps touch feedback visible after the browser cancels a scrolling pointer', () => {
+    vi.useFakeTimers();
+    render(<StoreCategory />);
+
+    const card = screen
+        .getByRole('list', { name: 'Platform prices' })
+        .closest('.store-catalog-card--sbc');
+
+    fireEvent.pointerDown(card as Element, {
+        clientX: 24,
+        clientY: 40,
+        pointerId: 9,
+        pointerType: 'touch',
+    });
+    fireEvent.pointerCancel(card as Element, {
+        clientX: 24,
+        clientY: 80,
+        pointerId: 9,
+        pointerType: 'touch',
+    });
+
+    expect(card).toHaveClass('is-pressed');
+
+    act(() => vi.advanceTimersByTime(1500));
+
     expect(card).not.toHaveClass('is-pressed');
 });
 
