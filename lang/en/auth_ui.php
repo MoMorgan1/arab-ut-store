@@ -36,6 +36,7 @@ return [
         'phone_tab' => 'Phone',
         'country_code' => 'Country code',
         'phone_number' => 'Phone number',
+        'phone_existing_only' => 'WhatsApp sign-in works only for a phone number already linked to an active account.',
         'phone_send_code' => 'Send WhatsApp code',
         'phone_code' => '6-digit WhatsApp code',
         'phone_verify' => 'Verify and log in',

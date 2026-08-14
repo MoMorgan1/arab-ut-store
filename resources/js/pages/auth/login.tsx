@@ -284,6 +284,10 @@ export default function Login({
                                         />
                                     </div>
 
+                                    <p className="auth-whatsapp-login__note">
+                                        {authUi.login.phone_existing_only}
+                                    </p>
+
                                     {phoneCodeSent ? (
                                         <>
                                             <p role="status">

@@ -36,6 +36,7 @@ return [
         'phone_tab' => 'الهاتف',
         'country_code' => 'رمز الدولة',
         'phone_number' => 'رقم الهاتف',
+        'phone_existing_only' => 'تسجيل الدخول بواتساب يعمل فقط لرقم مرتبط مسبقًا بحساب نشط.',
         'phone_send_code' => 'أرسل كود واتساب',
         'phone_code' => 'كود واتساب المكوّن من 6 أرقام',
         'phone_verify' => 'تحقق وسجّل الدخول',

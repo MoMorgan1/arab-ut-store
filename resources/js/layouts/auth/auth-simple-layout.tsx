@@ -51,19 +51,6 @@ export default function AuthSimpleLayout({
                         .filter(Boolean)
                         .join(' ')}
                 >
-                    <article className="auth-shell__form-card" dir={direction}>
-                        <div className="auth-shell__heading">
-                            <h1
-                                className="auth-shell__title"
-                                id="auth-page-title"
-                            >
-                                {title}
-                            </h1>
-                            <p>{description}</p>
-                        </div>
-                        {children}
-                    </article>
-
                     {showBenefits ? (
                         <aside
                             aria-labelledby="auth-benefits-title"
@@ -100,6 +87,19 @@ export default function AuthSimpleLayout({
                             </ul>
                         </aside>
                     ) : null}
+
+                    <article className="auth-shell__form-card" dir={direction}>
+                        <div className="auth-shell__heading">
+                            <h1
+                                className="auth-shell__title"
+                                id="auth-page-title"
+                            >
+                                {title}
+                            </h1>
+                            <p>{description}</p>
+                        </div>
+                        {children}
+                    </article>
                 </div>
             </div>
         </section>

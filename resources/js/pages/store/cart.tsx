@@ -1,9 +1,11 @@
 import { Head, usePage } from '@inertiajs/react';
 import {
+    ChevronDown,
     CreditCard,
     MessageCircleMore,
     ShoppingBag,
     ShieldCheck,
+    Trash2,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -14,6 +16,7 @@ import {
     updateCartCredentials,
 } from '@/lib/cart-credentials-api';
 import type { StoredCartCredentials } from '@/lib/cart-credentials-api';
+import { removeCartItem } from '@/lib/cart-items-api';
 import {
     CheckoutPhoneError,
     reloadAfterPhoneVerification,
@@ -47,10 +50,18 @@ export default function StoreCart() {
         ui,
     } = page.props;
     const authenticated = page.props.auth.user !== null;
-    const totalHalalah = cart.items.reduce(
+    const [items, setItems] = useState(cart.items);
+    const totalHalalah = items.reduce(
         (total, cartItem) => total + cartItem.totalHalalah,
         0,
     );
+
+    function itemRemoved(itemId: string, count: number) {
+        setItems((current) => current.filter((item) => item.id !== itemId));
+        window.dispatchEvent(
+            new CustomEvent<number>('arabut:cart-count', { detail: count }),
+        );
+    }
 
     return (
         <StoreLayout
@@ -73,9 +84,8 @@ export default function StoreCart() {
                     <h1 id="store-cart-title">{cartPage.translations.title}</h1>
                 </header>
 
-                {cart.items.length === 0 ? (
+                {items.length === 0 ? (
                     <CartEmptyState
-                        backUrl={cartPage.backUrl}
                         sbcUrl={storeShell.sbcUrl}
                         translations={cartPage.translations}
                     />
@@ -95,21 +105,16 @@ export default function StoreCart() {
                                     {cartPage.translations.items_heading}
                                 </h2>
                                 <ol className="store-cart-lines">
-                                    {cart.items.map((cartItem) => (
+                                    {items.map((cartItem) => (
                                         <CartLine
                                             cartItem={cartItem}
                                             key={cartItem.id}
                                             locale={locale}
+                                            onRemoved={itemRemoved}
                                             translations={cartPage.translations}
                                         />
                                     ))}
                                 </ol>
-                                <a
-                                    className="store-cart-back"
-                                    href={cartPage.backUrl}
-                                >
-                                    {cartPage.translations.back}
-                                </a>
                             </section>
                             <CheckoutPanel
                                 authenticated={authenticated}
@@ -137,11 +142,9 @@ export default function StoreCart() {
 }
 
 function CartEmptyState({
-    backUrl,
     sbcUrl,
     translations,
 }: {
-    backUrl: string;
     sbcUrl: string;
     translations: StoreCartTranslations;
 }) {
@@ -153,7 +156,6 @@ function CartEmptyState({
             <h2>{translations.empty_title}</h2>
             <p>{translations.empty_description}</p>
             <div>
-                <a href={backUrl}>{translations.back}</a>
                 <a href={sbcUrl}>{translations.browse_sbc}</a>
             </div>
         </section>
@@ -509,12 +511,17 @@ function CheckoutPhoneForm({
 function CartLine({
     cartItem,
     locale,
+    onRemoved,
     translations,
 }: {
     cartItem: StoreCartItem;
     locale: 'ar' | 'en';
+    onRemoved: (itemId: string, count: number) => void;
     translations: StoreCartTranslations;
 }) {
+    const [removalState, setRemovalState] = useState<
+        'idle' | 'confirming' | 'removing' | 'failed'
+    >('idle');
     const configuration = cartItem.configuration;
     const isCoins = cartItem.product.serviceType === 'coins';
     const platform =
@@ -538,6 +545,21 @@ function CartLine({
             ? '—'
             : `${formatCoins(configuration.coins_quantity, locale)} ${translations.coins_unit}`;
 
+    async function remove() {
+        if (removalState === 'removing') {
+            return;
+        }
+
+        setRemovalState('removing');
+
+        try {
+            const result = await removeCartItem(cartItem.deleteUrl);
+            onRemoved(cartItem.id, result.cartCount);
+        } catch {
+            setRemovalState('failed');
+        }
+    }
+
     return (
         <li className="store-cart-line">
             <div className="store-cart-line__title">
@@ -554,7 +576,36 @@ function CartLine({
                     <span>{translations.service}</span>
                     <h2>{cartItem.product.name}</h2>
                 </div>
+                {removalState === 'confirming' ? (
+                    <div className="store-cart-line__remove-confirmation">
+                        <button onClick={remove} type="button">
+                            {translations.remove_confirm}
+                        </button>
+                        <button
+                            onClick={() => setRemovalState('idle')}
+                            type="button"
+                        >
+                            {translations.remove_cancel}
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        aria-label={translations.remove_item}
+                        className="store-cart-line__remove"
+                        disabled={removalState === 'removing'}
+                        onClick={() => setRemovalState('confirming')}
+                        type="button"
+                    >
+                        <Trash2 aria-hidden="true" />
+                        <span>{translations.remove_item}</span>
+                    </button>
+                )}
             </div>
+            {removalState === 'failed' ? (
+                <p className="store-cart-line__remove-error" role="alert">
+                    {translations.remove_error}
+                </p>
+            ) : null}
             <dl className="store-cart-line__summary">
                 <CartFact label={translations.platform} value={platform} />
                 <CartFact label={translations.delivery} value={delivery} />
@@ -592,6 +643,7 @@ function CredentialState({
     const [credentials, setCredentials] =
         useState<StoredCartCredentials | null>(null);
     const [draft, setDraft] = useState<StoredCartCredentials | null>(null);
+    const [expanded, setExpanded] = useState(false);
     const [editing, setEditing] = useState(false);
     const [loadFailed, setLoadFailed] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -600,7 +652,11 @@ function CredentialState({
     );
 
     useEffect(() => {
-        if (cartItem.requiresCredentials || cartItem.credentials === null) {
+        if (
+            !expanded ||
+            cartItem.requiresCredentials ||
+            cartItem.credentials === null
+        ) {
             return;
         }
 
@@ -624,6 +680,7 @@ function CredentialState({
         cartItem.credentials,
         cartItem.credentialsUrl,
         cartItem.requiresCredentials,
+        expanded,
     ]);
 
     if (cartItem.requiresCredentials || cartItem.credentials === null) {
@@ -634,28 +691,68 @@ function CredentialState({
         );
     }
 
-    if (loadFailed) {
-        return (
-            <p
-                className="store-cart-credentials store-cart-credentials--missing"
-                role="alert"
-            >
-                {translations.credentials_load_error}
-            </p>
-        );
-    }
+    const contentId = `cart-credentials-${cartItem.id}`;
+    const disclosure = (
+        <button
+            aria-controls={contentId}
+            aria-expanded={expanded}
+            aria-label={
+                expanded
+                    ? translations.credentials_hide
+                    : translations.credentials_show
+            }
+            className="store-cart-credentials__disclosure"
+            onClick={() => {
+                setExpanded((current) => !current);
 
-    if (credentials === null || draft === null) {
-        return (
-            <div className="store-cart-credentials" role="status">
-                <p>{translations.credentials_ready}</p>
-                <p>
+                if (expanded) {
+                    setEditing(false);
+                    setDraft(credentials);
+                    setSaveState('idle');
+                }
+            }}
+            type="button"
+        >
+            <span>
+                <strong>{translations.credentials}</strong>
+                <small>
                     {interpolate(translations.backup_codes, {
                         count: formatInteger(
                             cartItem.credentials.backupCodeCount,
                             locale,
                         ),
                     })}
+                </small>
+            </span>
+            <ChevronDown aria-hidden="true" />
+        </button>
+    );
+
+    if (!expanded) {
+        return <div className="store-cart-credentials">{disclosure}</div>;
+    }
+
+    if (loadFailed) {
+        return (
+            <div className="store-cart-credentials">
+                {disclosure}
+                <p
+                    className="store-cart-credentials--missing"
+                    id={contentId}
+                    role="alert"
+                >
+                    {translations.credentials_load_error}
+                </p>
+            </div>
+        );
+    }
+
+    if (credentials === null || draft === null) {
+        return (
+            <div className="store-cart-credentials">
+                {disclosure}
+                <p id={contentId} role="status">
+                    {translations.credentials_ready}
                 </p>
             </div>
         );
@@ -721,218 +818,168 @@ function CredentialState({
 
     return (
         <div className="store-cart-credentials">
-            <h3>{translations.credentials}</h3>
-            <p>
-                {interpolate(translations.backup_codes, {
-                    count: formatInteger(
-                        cartItem.credentials.backupCodeCount,
-                        locale,
-                    ),
-                })}
-            </p>
-            {editing ? (
-                <div className="store-cart-credentials__form">
-                    <label>
-                        <span>{translations.ea_email}</span>
-                        <input
-                            autoComplete="off"
-                            dir="ltr"
-                            onChange={(event) =>
-                                updateDraft(
-                                    'eaEmail',
-                                    event.currentTarget.value,
-                                )
-                            }
-                            required
-                            type="email"
-                            value={draft.eaEmail}
-                        />
-                    </label>
-                    <label>
-                        <span>{translations.ea_password}</span>
-                        <input
-                            autoComplete="off"
-                            dir="ltr"
-                            onChange={(event) =>
-                                updateDraft(
-                                    'eaPassword',
-                                    event.currentTarget.value,
-                                )
-                            }
-                            required
-                            type="text"
-                            value={draft.eaPassword}
-                        />
-                    </label>
-                    {requiresBalance ? (
+            {disclosure}
+            <div className="store-cart-credentials__content" id={contentId}>
+                {editing ? (
+                    <div className="store-cart-credentials__form">
                         <label>
-                            <span>{translations.current_balance}</span>
-                            <input
-                                dir="ltr"
-                                inputMode="numeric"
-                                maxLength={9}
-                                onChange={(event) => {
-                                    const digits = event.currentTarget.value
-                                        .replace(/[^0-9]/g, '')
-                                        .slice(0, 9);
-                                    updateDraft(
-                                        'currentBalance',
-                                        digits === '' ? null : Number(digits),
-                                    );
-                                }}
-                                required
-                                type="text"
-                                value={draft.currentBalance ?? ''}
-                            />
-                        </label>
-                    ) : null}
-                    {draft.backupCodes.map((code, index) => (
-                        <label key={index}>
-                            <span>
-                                {interpolate(translations.backup_code, {
-                                    number: formatInteger(index + 1, locale),
-                                })}
-                            </span>
+                            <span>{translations.ea_email}</span>
                             <input
                                 autoComplete="off"
                                 dir="ltr"
-                                inputMode="numeric"
-                                maxLength={8}
                                 onChange={(event) =>
-                                    updateCode(
-                                        index as 0 | 1 | 2,
+                                    updateDraft(
+                                        'eaEmail',
                                         event.currentTarget.value,
                                     )
                                 }
-                                pattern="[0-9]{8}"
                                 required
-                                value={code}
+                                type="email"
+                                value={draft.eaEmail}
                             />
                         </label>
-                    ))}
-                    {isCoins ? (
-                        <>
-                            <label className="store-cart-credentials__check">
+                        <label>
+                            <span>{translations.ea_password}</span>
+                            <input
+                                autoComplete="off"
+                                dir="ltr"
+                                onChange={(event) =>
+                                    updateDraft(
+                                        'eaPassword',
+                                        event.currentTarget.value,
+                                    )
+                                }
+                                required
+                                type="text"
+                                value={draft.eaPassword}
+                            />
+                        </label>
+                        {requiresBalance ? (
+                            <label>
+                                <span>{translations.current_balance}</span>
                                 <input
-                                    checked={draft.companionMarketOpen}
-                                    onChange={(event) =>
+                                    dir="ltr"
+                                    inputMode="numeric"
+                                    maxLength={9}
+                                    onChange={(event) => {
+                                        const digits = event.currentTarget.value
+                                            .replace(/[^0-9]/g, '')
+                                            .slice(0, 9);
                                         updateDraft(
-                                            'companionMarketOpen',
-                                            event.currentTarget.checked,
-                                        )
-                                    }
-                                    type="checkbox"
+                                            'currentBalance',
+                                            digits === ''
+                                                ? null
+                                                : Number(digits),
+                                        );
+                                    }}
+                                    required
+                                    type="text"
+                                    value={draft.currentBalance ?? ''}
                                 />
+                            </label>
+                        ) : null}
+                        {draft.backupCodes.map((code, index) => (
+                            <label key={index}>
                                 <span>
-                                    {translations.companion_market_open}
-                                </span>
-                            </label>
-                            <label className="store-cart-credentials__check">
-                                <input
-                                    checked={draft.policyAccepted}
-                                    onChange={(event) =>
-                                        updateDraft(
-                                            'policyAccepted',
-                                            event.currentTarget.checked,
-                                        )
-                                    }
-                                    type="checkbox"
-                                />
-                                <span>{translations.policy_accepted}</span>
-                            </label>
-                        </>
-                    ) : null}
-                    <div className="store-cart-credentials__actions">
-                        <button
-                            disabled={saving || !draftIsValid}
-                            onClick={save}
-                            type="button"
-                        >
-                            {translations.save_credentials}
-                        </button>
-                        <button
-                            onClick={() => {
-                                setDraft(credentials);
-                                setEditing(false);
-                                setSaveState('idle');
-                            }}
-                            type="button"
-                        >
-                            {translations.cancel_edit}
-                        </button>
-                    </div>
-                </div>
-            ) : (
-                <>
-                    <dl className="store-cart-credentials__values" dir="ltr">
-                        <div>
-                            <dt>{translations.ea_email}</dt>
-                            <dd>{credentials.eaEmail}</dd>
-                        </div>
-                        <div>
-                            <dt>{translations.ea_password}</dt>
-                            <dd>{credentials.eaPassword}</dd>
-                        </div>
-                        {credentials.backupCodes.map((code, index) => (
-                            <div key={index}>
-                                <dt>
                                     {interpolate(translations.backup_code, {
                                         number: formatInteger(
                                             index + 1,
                                             locale,
                                         ),
                                     })}
-                                </dt>
-                                <dd>{code}</dd>
-                            </div>
-                        ))}
-                        {isCoins && credentials.currentBalance !== null ? (
-                            <div>
-                                <dt>{translations.current_balance}</dt>
-                                <dd>
-                                    {formatInteger(
-                                        credentials.currentBalance,
-                                        locale,
-                                    )}
-                                </dd>
-                            </div>
-                        ) : null}
-                        {isCoins && credentials.companionMarketOpen ? (
-                            <div>
-                                <dt>{translations.companion_market_open}</dt>
-                                <dd
-                                    aria-label={
-                                        translations.companion_market_open
+                                </span>
+                                <input
+                                    autoComplete="off"
+                                    dir="ltr"
+                                    inputMode="numeric"
+                                    maxLength={8}
+                                    onChange={(event) =>
+                                        updateCode(
+                                            index as 0 | 1 | 2,
+                                            event.currentTarget.value,
+                                        )
                                     }
-                                >
-                                    ✓
-                                </dd>
-                            </div>
-                        ) : null}
-                        {isCoins && credentials.policyAccepted ? (
+                                    pattern="[0-9]{8}"
+                                    required
+                                    value={code}
+                                />
+                            </label>
+                        ))}
+                        <div className="store-cart-credentials__actions">
+                            <button
+                                disabled={saving || !draftIsValid}
+                                onClick={save}
+                                type="button"
+                            >
+                                {translations.save_credentials}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setDraft(credentials);
+                                    setEditing(false);
+                                    setSaveState('idle');
+                                }}
+                                type="button"
+                            >
+                                {translations.cancel_edit}
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <dl
+                            className="store-cart-credentials__values"
+                            dir="ltr"
+                        >
                             <div>
-                                <dt>{translations.policy_accepted}</dt>
-                                <dd aria-label={translations.policy_accepted}>
-                                    ✓
-                                </dd>
+                                <dt>{translations.ea_email}</dt>
+                                <dd>{credentials.eaEmail}</dd>
                             </div>
-                        ) : null}
-                    </dl>
-                    <button
-                        className="store-cart-credentials__edit"
-                        onClick={() => setEditing(true)}
-                        type="button"
-                    >
-                        {translations.edit_credentials}
-                    </button>
-                </>
-            )}
-            {saveState === 'saved' ? (
-                <p role="status">{translations.credentials_saved}</p>
-            ) : null}
-            {saveState === 'failed' ? (
-                <p role="alert">{translations.credentials_save_error}</p>
-            ) : null}
+                            <div>
+                                <dt>{translations.ea_password}</dt>
+                                <dd>{credentials.eaPassword}</dd>
+                            </div>
+                            {credentials.backupCodes.map((code, index) => (
+                                <div key={index}>
+                                    <dt>
+                                        {interpolate(translations.backup_code, {
+                                            number: formatInteger(
+                                                index + 1,
+                                                locale,
+                                            ),
+                                        })}
+                                    </dt>
+                                    <dd>{code}</dd>
+                                </div>
+                            ))}
+                            {isCoins && credentials.currentBalance !== null ? (
+                                <div>
+                                    <dt>{translations.current_balance}</dt>
+                                    <dd>
+                                        {formatInteger(
+                                            credentials.currentBalance,
+                                            locale,
+                                        )}
+                                    </dd>
+                                </div>
+                            ) : null}
+                        </dl>
+                        <button
+                            className="store-cart-credentials__edit"
+                            onClick={() => setEditing(true)}
+                            type="button"
+                        >
+                            {translations.edit_credentials}
+                        </button>
+                    </>
+                )}
+                {saveState === 'saved' ? (
+                    <p role="status">{translations.credentials_saved}</p>
+                ) : null}
+                {saveState === 'failed' ? (
+                    <p role="alert">{translations.credentials_save_error}</p>
+                ) : null}
+            </div>
         </div>
     );
 }

@@ -454,6 +454,38 @@ test('the cart exposes encrypted EA credentials only through an owner no-store e
     ])->assertNotFound();
 });
 
+test('a cart owner can remove an item and its secret while another owner cannot', function (string $prefix) {
+    createCartCatalog();
+    $ownerToken = str_repeat('a', 64);
+    $this->withSession([ResolveCartOwner::SESSION_KEY => $ownerToken]);
+
+    $localeKey = $prefix === '' ? 'ar' : 'en';
+    addCoinsToCart("{$prefix}/cart/items/coins", coinsCartPayload(), "remove-item-{$localeKey}")
+        ->assertCreated();
+    $item = CartItem::sole();
+    $deleteUrl = "{$prefix}/cart/items/{$item->public_id}";
+
+    $this->get("{$prefix}/cart")->assertInertia(fn (Assert $page) => $page
+        ->where('cart.items.0.deleteUrl', $deleteUrl));
+
+    $this->flushSession();
+    $this->withSession([ResolveCartOwner::SESSION_KEY => str_repeat('b', 64)]);
+    $this->deleteJson($deleteUrl)->assertNotFound();
+    expect(CartItem::count())->toBe(1)->and(CartItemSecret::count())->toBe(1);
+
+    $this->flushSession();
+    $this->withSession([ResolveCartOwner::SESSION_KEY => $ownerToken]);
+    $response = $this->deleteJson($deleteUrl);
+
+    $response->assertOk()->assertExactJson(['data' => ['cartCount' => 0]]);
+    expect($response->headers->get('Cache-Control'))->toContain('no-store')
+        ->and(CartItem::count())->toBe(0)
+        ->and(CartItemSecret::count())->toBe(0);
+})->with([
+    'Arabic' => '',
+    'English' => '/en',
+]);
+
 test('Coins cart secrets have no automatic retention deadline', function () {
     createCartCatalog();
 

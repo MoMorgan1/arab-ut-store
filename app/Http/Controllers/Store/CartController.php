@@ -37,15 +37,11 @@ final class CartController extends Controller
             ->values()
             ->all() ?? [];
 
-        $homeUrl = $localized
-            ? route('localized.home', ['locale' => 'en'], absolute: false)
-            : route('home', absolute: false);
         $user = $request->user();
         $phoneVerified = $user instanceof User && $user->phone_verified_at !== null;
 
         return Inertia::render('store/cart', [
             'cartPage' => [
-                'backUrl' => "{$homeUrl}#coins",
                 'checkout' => [
                     'canCheckout' => $phoneVerified && $safeCartItems !== [],
                     'checkoutUrl' => route(
@@ -94,6 +90,7 @@ final class CartController extends Controller
             'product' => $this->safeProduct($cartItem->productVariant),
             'credentials' => $credentials,
             'credentialsUrl' => $this->credentialsUrl($cartItem, $localized),
+            'deleteUrl' => $this->deleteUrl($cartItem, $localized),
             'requiresCredentials' => $credentials === null,
         ];
     }
@@ -176,6 +173,18 @@ final class CartController extends Controller
         $route = $localized
             ? 'localized.cart.items.credentials.show'
             : 'cart.items.credentials.show';
+
+        return route($route, [
+            ...($localized ? ['locale' => 'en'] : []),
+            'cartItem' => $cartItem->public_id,
+        ], absolute: false);
+    }
+
+    private function deleteUrl(CartItem $cartItem, bool $localized): string
+    {
+        $route = $localized
+            ? 'localized.cart.items.destroy'
+            : 'cart.items.destroy';
 
         return route($route, [
             ...($localized ? ['locale' => 'en'] : []),

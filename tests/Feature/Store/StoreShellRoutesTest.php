@@ -72,7 +72,7 @@ test('the cart destinations render the real safe cart page', function (string $p
             ->where('cart.count', 0)
             ->where('cart.currency', 'SAR')
             ->where('cart.items', [])
-            ->where('cartPage.backUrl', $locale === 'en' ? '/en#coins' : '/#coins')
+            ->missing('cartPage.backUrl')
             ->has('cartPage.translations.title')
             ->missing('checkout')
             ->missing('payment'));

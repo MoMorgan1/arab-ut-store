@@ -50,6 +50,7 @@ const mockPage = vi.hoisted(() => ({
                     },
                     credentialsUrl:
                         '/en/cart/items/01K00000000000000000000000/credentials',
+                    deleteUrl: '/en/cart/items/01K00000000000000000000000',
                     id: '01K00000000000000000000000',
                     product: {
                         imageUrl: '/images/store/coins/ut-coin-80.webp' as
@@ -65,7 +66,6 @@ const mockPage = vi.hoisted(() => ({
             ],
         },
         cartPage: {
-            backUrl: '/en#coins',
             checkout: {
                 canCheckout: false,
                 checkoutUrl: '/en/checkout/paylink',
@@ -116,6 +116,12 @@ const mockPage = vi.hoisted(() => ({
                 credentials_saved: 'EA details saved',
                 credentials_load_error: 'EA details could not be loaded.',
                 credentials_save_error: 'EA details could not be saved.',
+                credentials_show: 'Show EA details',
+                credentials_hide: 'Hide EA details',
+                remove_item: 'Remove service',
+                remove_confirm: 'Confirm removal',
+                remove_cancel: 'Keep service',
+                remove_error: 'The service could not be removed.',
                 backup_code: 'Backup code :number',
                 checkout: 'Continue to secure payment',
                 checkout_loading: 'Opening Paylink…',
@@ -254,10 +260,9 @@ it('renders only the authoritative read-only Coins cart summary', () => {
     expect(screen.getAllByText(/125\.00/)).toHaveLength(2);
     expect(document.body.textContent).not.toContain('EA email:');
     expect(screen.getByText('3 backup codes stored')).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Back to Coins' })).toHaveAttribute(
-        'href',
-        '/en#coins',
-    );
+    expect(
+        screen.queryByRole('link', { name: 'Back to Coins' }),
+    ).not.toBeInTheDocument();
     expect(
         screen.getByRole('link', { name: 'Sign in to continue' }),
     ).toHaveAttribute('href', '/en/login');
@@ -271,7 +276,7 @@ it('renders only the authoritative read-only Coins cart summary', () => {
     expect(screen.getByText('Your services')).toBeVisible();
 });
 
-it('offers Coins and SBC routes from a purposeful empty state', () => {
+it('offers the SBC route from a purposeful empty state without a Coins back link', () => {
     mockPage.props.cart.items = [];
     mockPage.props.cart.count = 0;
 
@@ -280,10 +285,9 @@ it('offers Coins and SBC routes from a purposeful empty state', () => {
     expect(
         screen.getByRole('heading', { name: 'Your next service starts here' }),
     ).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Back to Coins' })).toHaveAttribute(
-        'href',
-        '/en#coins',
-    );
+    expect(
+        screen.queryByRole('link', { name: 'Back to Coins' }),
+    ).not.toBeInTheDocument();
     expect(
         screen.getByRole('link', { name: 'Browse SBC services' }),
     ).toHaveAttribute('href', '/en/sbc');
@@ -440,7 +444,7 @@ it('verifies an authenticated checkout phone through Whapi before enabling payme
     );
 });
 
-it('loads owner-only credentials after render and edits exactly three codes without browser persistence', async () => {
+it('loads owner-only credentials only after disclosure and edits exactly three codes without browser persistence', async () => {
     const fetchMock = vi
         .fn()
         .mockResolvedValueOnce(
@@ -468,12 +472,21 @@ it('loads owner-only credentials after render and edits exactly three codes with
     render(<StoreCart />);
 
     expect(document.body.textContent).not.toContain('owner@example.test');
+    expect(fetchMock).not.toHaveBeenCalled();
+    const disclosure = screen.getByRole('button', {
+        name: 'Show EA details',
+    });
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(disclosure);
+    expect(disclosure).toHaveAttribute('aria-expanded', 'true');
     expect(await screen.findByText('owner@example.test')).toBeVisible();
     expect(screen.getByText('opaque EA password')).toBeVisible();
     expect(screen.getByText('10000003')).toBeVisible();
     expect(screen.getByText('500,000')).toBeVisible();
-    expect(screen.getByText('Transfer Market is open')).toBeVisible();
-    expect(screen.getByText('Policies accepted')).toBeVisible();
+    expect(
+        screen.queryByText('Transfer Market is open'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Policies accepted')).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenNthCalledWith(
         1,
         '/en/cart/items/01K00000000000000000000000/credentials',
@@ -503,6 +516,43 @@ it('loads owner-only credentials after render and edits exactly three codes with
     });
     expect(screen.getByText('EA details saved')).toBeVisible();
     expect(localStorageSpy).not.toHaveBeenCalled();
+});
+
+it('removes a cart service only after inline confirmation and updates the cart count', async () => {
+    const cartCountEvents: number[] = [];
+    window.addEventListener(
+        'arabut:cart-count',
+        (event) => {
+            cartCountEvents.push((event as CustomEvent<number>).detail);
+        },
+        { once: true },
+    );
+    const fetchMock = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ data: { cartCount: 0 } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<StoreCart />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove service' }));
+    expect(screen.getByText('FC 27 Coins')).toBeVisible();
+    expect(fetchMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm removal' }));
+
+    await waitFor(() =>
+        expect(screen.queryByText('FC 27 Coins')).not.toBeInTheDocument(),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+        '/en/cart/items/01K00000000000000000000000',
+        expect.objectContaining({ method: 'DELETE' }),
+    );
+    expect(cartCountEvents).toEqual([0]);
+    expect(
+        screen.getByRole('heading', { name: 'Your next service starts here' }),
+    ).toBeVisible();
 });
 
 it('does not invent cart facts when a safe projected field is absent', () => {

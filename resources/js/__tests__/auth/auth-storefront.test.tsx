@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -165,6 +165,8 @@ const arabicAuthUi = {
         phone_tab: 'الهاتف',
         country_code: 'رمز الدولة',
         phone_number: 'رقم الهاتف',
+        phone_existing_only:
+            'تسجيل الدخول بواتساب يعمل فقط لرقم مرتبط مسبقًا بحساب نشط.',
         phone_send_code: 'أرسل كود واتساب',
         phone_code: 'كود واتساب المكوّن من 6 أرقام',
         phone_verify: 'تحقق وسجّل الدخول',
@@ -243,6 +245,8 @@ const englishAuthUi = {
         phone_tab: 'Phone',
         country_code: 'Country code',
         phone_number: 'Phone number',
+        phone_existing_only:
+            'WhatsApp sign-in works only for a phone number already linked to an active account.',
         phone_send_code: 'Send WhatsApp code',
         phone_code: '6-digit WhatsApp code',
         phone_verify: 'Verify and log in',
@@ -345,13 +349,13 @@ function setPage(
     };
 }
 
-function expectFormBeforeBenefits() {
+function expectBenefitsBeforeForm() {
     const formCard = document.querySelector('.auth-shell__form-card');
     const benefits = document.querySelector('.auth-shell__benefits');
 
     expect(formCard).not.toBeNull();
     expect(benefits).not.toBeNull();
-    expect(formCard?.compareDocumentPosition(benefits as Node) ?? 0).toBe(
+    expect(benefits?.compareDocumentPosition(formCard as Node) ?? 0).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,
     );
 }
@@ -408,7 +412,7 @@ describe('storefront authentication shell', () => {
         expect(
             screen.getByRole('heading', { name: 'تسجيل الدخول إلى حسابك' }),
         ).toHaveClass('auth-shell__title');
-        expectFormBeforeBenefits();
+        expectBenefitsBeforeForm();
 
         for (const benefit of arabicAuthUi.benefits.items) {
             expect(screen.getByText(benefit)).toBeVisible();
@@ -453,7 +457,7 @@ describe('storefront authentication shell', () => {
             'dir',
             'ltr',
         );
-        expectFormBeforeBenefits();
+        expectBenefitsBeforeForm();
 
         for (const benefit of englishAuthUi.benefits.items) {
             expect(screen.getByText(benefit)).toBeVisible();
@@ -466,6 +470,28 @@ describe('storefront authentication shell', () => {
         expect(
             screen.getByRole('button', { name: 'Create account' }),
         ).toHaveClass('auth-form__submit');
+    });
+
+    it('explains that WhatsApp login is only for an existing linked account', () => {
+        setPage('login', 'en');
+        const englishRoutes = page.props.authRoutes as typeof routes;
+
+        render(
+            <AuthLayout>
+                <Login
+                    authRoutes={englishRoutes}
+                    authUi={englishAuthUi}
+                    canResetPassword
+                />
+            </AuthLayout>,
+        );
+
+        fireEvent.click(screen.getByRole('tab', { name: 'Phone' }));
+        expect(
+            screen.getByText(
+                'WhatsApp sign-in works only for a phone number already linked to an active account.',
+            ),
+        ).toBeVisible();
     });
 
     it('keeps forgot and reset password focused without a benefits panel', () => {

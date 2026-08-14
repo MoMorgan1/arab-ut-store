@@ -141,6 +141,7 @@ export type StoreCartItem = {
         hasPassword: true;
     } | null;
     credentialsUrl: string;
+    deleteUrl: string;
     id: string;
     product: {
         imageUrl: string | null;
@@ -161,7 +162,6 @@ export type StoreCartTranslations = {
     empty_title: string;
     empty_description: string;
     browse_sbc: string;
-    back: string;
     items_heading: string;
     summary_title: string;
     checkout_progress: string;
@@ -188,14 +188,18 @@ export type StoreCartTranslations = {
     ea_email: string;
     ea_password: string;
     current_balance: string;
-    companion_market_open: string;
-    policy_accepted: string;
+    credentials_show: string;
+    credentials_hide: string;
     edit_credentials: string;
     save_credentials: string;
     cancel_edit: string;
     credentials_saved: string;
     credentials_load_error: string;
     credentials_save_error: string;
+    remove_item: string;
+    remove_confirm: string;
+    remove_cancel: string;
+    remove_error: string;
     checkout: string;
     checkout_loading: string;
     checkout_login: string;
@@ -221,7 +225,6 @@ export type StoreCartPageProps = {
     cartCount: number;
     cart: { count: number; currency: 'SAR'; items: StoreCartItem[] };
     cartPage: {
-        backUrl: string;
         checkout: {
             canCheckout: boolean;
             checkoutUrl: string;

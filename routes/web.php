@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\PaylinkRefundController;
 use App\Http\Controllers\Auth\GoogleAuthenticationController;
 use App\Http\Controllers\Auth\WhatsAppLoginController;
 use App\Http\Controllers\Store\CartController;
+use App\Http\Controllers\Store\CartItemController;
 use App\Http\Controllers\Store\CartItemCredentialsController;
 use App\Http\Controllers\Store\CatalogCartController;
 use App\Http\Controllers\Store\CatalogProductController;
@@ -60,6 +61,9 @@ Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController:
 Route::patch('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'update'])
     ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])
     ->name('cart.items.credentials.update');
+Route::delete('/cart/items/{cartItem}', [CartItemController::class, 'destroy'])
+    ->middleware([NoStore::class, 'throttle:coins-cart'])
+    ->name('cart.items.destroy');
 Route::get('/reviews', ReviewsController::class)->name('store.reviews');
 Route::post('/cart/items/coins', CoinsCartController::class)
     ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])
@@ -152,6 +156,9 @@ Route::prefix('{locale}')
         Route::patch('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'update'])
             ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.credentials.update');
+        Route::delete('/cart/items/{cartItem}', [CartItemController::class, 'destroy'])
+            ->middleware([NoStore::class, 'throttle:coins-cart'])
+            ->name('localized.cart.items.destroy');
         Route::get('/reviews', ReviewsController::class)->name('localized.store.reviews');
         Route::post('/cart/items/coins', CoinsCartController::class)
             ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])

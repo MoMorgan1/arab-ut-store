@@ -70,6 +70,7 @@ export type AuthUiTranslations = {
         phone_tab: string;
         country_code: string;
         phone_number: string;
+        phone_existing_only: string;
         phone_send_code: string;
         phone_code: string;
         phone_verify: string;
