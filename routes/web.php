@@ -33,7 +33,9 @@ use Laravel\Fortify\Http\Controllers\RegisteredUserController;
 
 Route::get('/', HomeController::class)->name('home');
 Route::get('/coins/quote', CoinsQuoteController::class)->name('coins.quote');
-Route::get('/cart', CartController::class)->name('store.cart');
+Route::get('/cart', CartController::class)
+    ->middleware(NoStore::class)
+    ->name('store.cart');
 Route::post('/checkout/paylink', PaylinkCheckoutController::class)
     ->middleware([NoStore::class, 'auth', RequireCatalogCartJson::class, 'throttle:coins-cart'])
     ->name('store.checkout.paylink');
@@ -131,7 +133,9 @@ Route::prefix('{locale}')
     ->group(function () use ($catalogCategories, $catalogProducts, $localizedLoginMiddleware, $simpleStorePages): void {
         Route::get('/', HomeController::class)->name('localized.home');
         Route::get('/coins/quote', CoinsQuoteController::class)->name('localized.coins.quote');
-        Route::get('/cart', CartController::class)->name('localized.store.cart');
+        Route::get('/cart', CartController::class)
+            ->middleware(NoStore::class)
+            ->name('localized.store.cart');
         Route::post('/checkout/paylink', PaylinkCheckoutController::class)
             ->middleware([NoStore::class, 'auth', RequireCatalogCartJson::class, 'throttle:coins-cart'])
             ->name('localized.store.checkout.paylink');

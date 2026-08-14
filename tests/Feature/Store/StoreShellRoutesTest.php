@@ -66,6 +66,7 @@ test('every non-transactional storefront destination has the right bilingual pag
 test('the cart destinations render the real safe cart page', function (string $path, string $locale) {
     $this->get($path)
         ->assertOk()
+        ->assertHeader('Cache-Control', 'no-store, private')
         ->assertInertia(fn (Assert $inertia) => $inertia
             ->component('store/cart')
             ->where('locale', $locale)
