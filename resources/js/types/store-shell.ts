@@ -181,17 +181,91 @@ export type StoreCartTranslations = {
     credentials_saved: string;
     credentials_load_error: string;
     credentials_save_error: string;
+    checkout: string;
+    checkout_loading: string;
+    checkout_login: string;
+    checkout_phone: string;
+    checkout_error: string;
+    checkout_cart_changed: string;
+    checkout_secure: string;
+    phone_country: string;
+    phone_number: string;
+    phone_code: string;
+    phone_send: string;
+    phone_sending: string;
+    phone_verify: string;
+    phone_verifying: string;
+    phone_sent: string;
+    phone_invalid: string;
+    phone_unavailable: string;
+    order_total: string;
 };
 
 export type StoreCartPageProps = {
     auth: { user: { id: number; name: string } | null };
     cartCount: number;
     cart: { count: number; currency: 'SAR'; items: StoreCartItem[] };
-    cartPage: { backUrl: string; translations: StoreCartTranslations };
+    cartPage: {
+        backUrl: string;
+        checkout: {
+            canCheckout: boolean;
+            checkoutUrl: string;
+            loginUrl: string;
+            phoneCodeUrl: string;
+            phoneVerified: boolean;
+            phoneVerifyUrl: string;
+        };
+        translations: StoreCartTranslations;
+    };
     direction: 'rtl' | 'ltr';
     displayCurrency: string;
     displayCurrencies: string[];
     locale: StoreLocale;
+    storeShell: StoreShellConfig;
+    ui: StoreShellTranslations;
+};
+
+export type StoreOrderStatus =
+    | 'pending_payment'
+    | 'received'
+    | 'in_progress'
+    | 'waiting_for_customer'
+    | 'completed'
+    | 'cancelled'
+    | 'refunded';
+
+export type StoreOrderPageProps = {
+    cartCount: number;
+    direction: 'rtl' | 'ltr';
+    displayCurrency: string;
+    displayCurrencies: string[];
+    locale: StoreLocale;
+    order: {
+        currency: 'SAR';
+        id: string;
+        items: Array<{
+            id: string;
+            name: string;
+            status: StoreOrderStatus | 'failed';
+            totalHalalah: number;
+        }>;
+        number: string;
+        paymentStartUrl: string | null;
+        status: StoreOrderStatus;
+        totalHalalah: number;
+    };
+    orderPage: {
+        back: string;
+        eyebrow: string;
+        number: string;
+        pay_error: string;
+        pay_loading: string;
+        pay_now: string;
+        status: string;
+        statuses: Record<StoreOrderStatus | 'failed', string>;
+        title: string;
+        total: string;
+    };
     storeShell: StoreShellConfig;
     ui: StoreShellTranslations;
 };

@@ -53,7 +53,7 @@ final class PaylinkPaymentGateway implements PaymentGateway
     public function getInvoice(string $transactionNo): PaymentInvoice
     {
         $this->assertIdentifier($transactionNo);
-        $response = $this->send(fn (): Response => $this->merchantRequest()->get($this->baseUrl().'/api/getInvoice/'.$transactionNo));
+        $response = $this->send(fn (): Response => $this->merchantRequest(retrySafeRead: true)->get($this->baseUrl().'/api/getInvoice/'.$transactionNo));
 
         return $this->parseInvoice($this->json($response));
     }
@@ -113,7 +113,7 @@ final class PaylinkPaymentGateway implements PaymentGateway
         }
     }
 
-    private function merchantRequest(): PendingRequest
+    private function merchantRequest(bool $retrySafeRead = false): PendingRequest
     {
         [$apiId, $secretKey] = $this->merchantConfiguration();
         $token = $this->token(
@@ -122,7 +122,7 @@ final class PaylinkPaymentGateway implements PaymentGateway
             ['apiId' => $apiId, 'secretKey' => $secretKey, 'persistToken' => true],
         );
 
-        return $this->request()->withToken($token);
+        return ($retrySafeRead ? $this->safeReadRequest() : $this->request())->withToken($token);
     }
 
     /** @param array<string, string|bool> $credentials */
@@ -148,7 +148,12 @@ final class PaylinkPaymentGateway implements PaymentGateway
         return Http::acceptJson()
             ->asJson()
             ->connectTimeout(5)
-            ->timeout(12)
+            ->timeout(12);
+    }
+
+    private function safeReadRequest(): PendingRequest
+    {
+        return $this->request()
             ->retry(2, 150, function (Throwable $exception): bool {
                 return $exception instanceof ConnectionException
                     || ($exception instanceof RequestException && $exception->response->serverError());

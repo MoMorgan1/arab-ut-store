@@ -6,6 +6,12 @@ use App\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $amount_halalah
+ * @property int $captured_halalah
+ * @property int $refunded_halalah
+ * @property PaymentStatus $status
+ */
 class Payment extends DomainModel
 {
     /** @return array<string, string> */

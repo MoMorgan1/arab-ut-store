@@ -51,13 +51,14 @@ enum Platform: string
 ```php
 interface PaymentGateway
 {
-    public function start(PaymentAttempt $attempt): PaymentStartResult;
-    public function verifyWebhook(Request $request): VerifiedPaymentEvent;
-    public function refund(Payment $payment, Money $amount): RefundResult;
+    public function createInvoice(PaymentInvoiceRequest $request): PaymentInvoice;
+    public function getInvoice(string $transactionNo): PaymentInvoice;
+    public function cancelInvoice(string $transactionNo): void;
+    public function refund(string $orderNumber, string $reason): RefundResult;
 }
 ```
 
-Only `FakePaymentGateway` is active before Mohamed authorizes a live gateway. Production configuration must refuse real checkout while no live adapter is configured.
+Mohamed authorized Paylink on 2026-08-14. `PaylinkPaymentGateway` is now the concrete hosted-checkout adapter; missing or invalid credentials still fail closed, and production acceptance remains gated on direct Hostinger configuration plus controlled pilots.
 
 ```php
 interface FulfillmentEventPublisher
@@ -218,6 +219,8 @@ interface OrderItemSecretVault
 - [ ] Commit: `feat: build storefront configurators and cart`
 
 ## Task 6: Implement checkout, orders, wallet, discounts, loyalty, and receipts
+
+**Approved payment slice update (2026-08-14):** Paylink hosted checkout, verified callbacks/webhooks, reload-safe pending-order retry, full original-method refunds, Whapi checkout phone verification, and the signed `order.paid` outbox are implemented. Wallet, discounts, loyalty, receipts, customer tracking, and the broader admin experience remain incomplete, so Task 6 as a whole is still open.
 
 **Files:**
 

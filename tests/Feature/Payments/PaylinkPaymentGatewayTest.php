@@ -216,6 +216,32 @@ test('authentication and transport failures never expose provider details or cre
     'connection failure' => ['connection'],
 ]);
 
+test('invoice creation is never retried after an ambiguous upstream failure', function () {
+    Http::fake([
+        'https://restpilot.paylink.sa/api/auth' => Http::response(['id_token' => 'merchant-token']),
+        'https://restpilot.paylink.sa/api/addInvoice' => Http::response(['detail' => 'temporary'], 503),
+    ]);
+
+    expect(fn () => app(PaylinkPaymentGateway::class)->createInvoice(paylinkInvoiceRequest()))
+        ->toThrow(PaymentGatewayException::class, 'Paylink is temporarily unavailable.');
+
+    expect(Http::recorded(fn (Request $request): bool => str_ends_with($request->url(), '/api/addInvoice')))
+        ->toHaveCount(1);
+});
+
+test('refund creation is never retried after an ambiguous upstream failure', function () {
+    Http::fake([
+        'https://restpilot.paylink.sa/api/partner/auth' => Http::response(['id_token' => 'partner-token']),
+        'https://restpilot.paylink.sa/rest/partner/v2/merchant/accountNo/123456/refund' => Http::response(['detail' => 'temporary'], 503),
+    ]);
+
+    expect(fn () => app(PaylinkPaymentGateway::class)->refund('AUT-01HXYZ', 'Customer request.'))
+        ->toThrow(PaymentGatewayException::class, 'Paylink is temporarily unavailable.');
+
+    expect(Http::recorded(fn (Request $request): bool => str_ends_with($request->url(), '/refund')))
+        ->toHaveCount(1);
+});
+
 function paylinkInvoiceRequest(): PaymentInvoiceRequest
 {
     return new PaymentInvoiceRequest(

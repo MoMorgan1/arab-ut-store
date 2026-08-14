@@ -7,6 +7,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property int $total_halalah
+ * @property string $currency
+ * @property string $locale
+ * @property string $order_number
+ * @property OrderStatus $status
+ */
 class Order extends DomainModel
 {
     /** @return array<string, string> */

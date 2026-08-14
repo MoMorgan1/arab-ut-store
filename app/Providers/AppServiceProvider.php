@@ -82,5 +82,11 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)
                 ->by('automation-sbc-pricing-read:'.hash('sha256', $identity));
         });
+
+        RateLimiter::for('paylink-webhook', fn (): Limit => Limit::perMinute(120)
+            ->by('paylink-webhook'));
+
+        RateLimiter::for('staff-payments', fn (Request $request): Limit => Limit::perMinute(10)
+            ->by('staff-payments:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
     }
 }

@@ -37,6 +37,9 @@ return [
 
     'n8n' => [
         'reviews_url' => env('N8N_REVIEWS_URL'),
+        'order_paid_url' => env('N8N_ORDER_PAID_URL'),
+        'order_paid_key' => env('N8N_ORDER_PAID_KEY'),
+        'order_paid_secret' => env('N8N_ORDER_PAID_SECRET'),
         'catalog_key' => env('N8N_CATALOG_KEY'),
         'catalog_secret' => env('N8N_CATALOG_SECRET'),
         'sbc_catalog_key' => env('N8N_SBC_CATALOG_KEY'),

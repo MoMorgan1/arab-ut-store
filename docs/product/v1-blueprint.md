@@ -129,7 +129,7 @@ Customer-visible order statuses are:
 
 Mixed orders can show item-level progress. The order-level status is derived conservatively from its items so one completed item cannot hide another failed or waiting item.
 
-The website will implement the payment interface, payment records, webhook verification boundary, and test double. A live provider adapter, real charges, and original-method refunds remain excluded until Mohamed explicitly starts payment integration. Production checkout cannot accept real money before that adapter is approved and tested.
+Mohamed approved Paylink integration on 2026-08-14. The repository now includes the Paylink hosted-checkout adapter, payment records, verified callback/webhook reconciliation, and original-method full-refund boundary. Live money acceptance remains disabled operationally until Mohamed installs the credentials directly in Hostinger and the controlled test and low-value production pilots pass.
 
 ## Admin dashboard
 

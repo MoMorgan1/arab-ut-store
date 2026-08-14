@@ -484,6 +484,16 @@ test('operational lookup columns are indexed', function (string $table, array $c
     'notification outbox' => ['notification_deliveries', ['status', 'available_at']],
 ]);
 
+test('Paylink refund provider identities and idempotency are uniquely enforced', function () {
+    expect(Schema::hasColumns('refunds', [
+        'idempotency_key',
+        'provider_refund_id',
+        'provider_metadata',
+    ]))->toBeTrue()
+        ->and(Schema::hasIndex('refunds', ['idempotency_key'], 'unique'))->toBeTrue()
+        ->and(Schema::hasIndex('refunds', ['provider_refund_id'], 'unique'))->toBeTrue();
+});
+
 test('critical commerce records keep enforced foreign keys', function (string $table, string $referencedTable) {
     $foreignTables = collect(Schema::getForeignKeys($table))
         ->pluck('foreign_table');

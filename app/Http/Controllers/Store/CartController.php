@@ -14,6 +14,7 @@ use App\Models\CartItemSecret;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
+use App\Models\User;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Http\Request;
@@ -39,10 +40,36 @@ final class CartController extends Controller
         $homeUrl = $localized
             ? route('localized.home', ['locale' => 'en'], absolute: false)
             : route('home', absolute: false);
+        $user = $request->user();
+        $phoneVerified = $user instanceof User && $user->phone_verified_at !== null;
 
         return Inertia::render('store/cart', [
             'cartPage' => [
                 'backUrl' => "{$homeUrl}#coins",
+                'checkout' => [
+                    'canCheckout' => $phoneVerified && $safeCartItems !== [],
+                    'checkoutUrl' => route(
+                        $localized ? 'localized.store.checkout.paylink' : 'store.checkout.paylink',
+                        $localized ? ['locale' => 'en'] : [],
+                        absolute: false,
+                    ),
+                    'loginUrl' => route(
+                        $localized ? 'localized.login' : 'login',
+                        $localized ? ['locale' => 'en'] : [],
+                        absolute: false,
+                    ),
+                    'phoneCodeUrl' => route(
+                        $localized ? 'localized.store.checkout.phone.send' : 'store.checkout.phone.send',
+                        $localized ? ['locale' => 'en'] : [],
+                        absolute: false,
+                    ),
+                    'phoneVerified' => $phoneVerified,
+                    'phoneVerifyUrl' => route(
+                        $localized ? 'localized.store.checkout.phone.verify' : 'store.checkout.phone.verify',
+                        $localized ? ['locale' => 'en'] : [],
+                        absolute: false,
+                    ),
+                ],
                 'translations' => trans('store.cart_page'),
             ],
             'cart' => [

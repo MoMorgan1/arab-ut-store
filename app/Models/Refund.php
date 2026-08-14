@@ -5,6 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $amount_halalah
+ * @property string $status
+ * @property string|null $provider_refund_id
+ * @property array<string, mixed>|null $provider_metadata
+ */
 class Refund extends DomainModel
 {
     /** @return array<string, string> */
@@ -12,6 +18,7 @@ class Refund extends DomainModel
     {
         return [
             'amount_halalah' => 'integer',
+            'provider_metadata' => 'array',
             'completed_at' => 'immutable_datetime',
         ];
     }

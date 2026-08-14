@@ -60,6 +60,8 @@ return Application::configure(basePath: dirname(__DIR__))
                     $request->is('cart/items/coins') || $request->is('*/cart/items/coins')
                     || $request->is('cart/items/catalog') || $request->is('*/cart/items/catalog')
                     || $request->is('cart/items/sbc') || $request->is('*/cart/items/sbc')
+                    || $request->is('checkout/paylink') || $request->is('*/checkout/paylink')
+                    || $request->is('checkout/phone/*') || $request->is('*/checkout/phone/*')
                 ))
                 || ($request->isMethod('PATCH') && (
                     $request->is('cart/items/*/credentials')
@@ -70,7 +72,9 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('cart/items/coins*') || $request->is('*/cart/items/coins*')
                 || $request->is('cart/items/catalog*') || $request->is('*/cart/items/catalog*')
                 || $request->is('cart/items/sbc*') || $request->is('*/cart/items/sbc*')
-                || $request->is('cart/items/*/credentials') || $request->is('*/cart/items/*/credentials')) {
+                || $request->is('cart/items/*/credentials') || $request->is('*/cart/items/*/credentials')
+                || $request->is('checkout/paylink') || $request->is('*/checkout/paylink')
+                || $request->is('checkout/phone/*') || $request->is('*/checkout/phone/*')) {
                 if ($exceptionResponse->getStatusCode() >= 500) {
                     return response()->json([
                         'error' => [
@@ -83,7 +87,13 @@ return Application::configure(basePath: dirname(__DIR__))
                     ], 500)->header('Cache-Control', 'no-store');
                 }
 
-                $exceptionResponse->headers->set('Cache-Control', 'no-store');
+                $exceptionResponse->headers->set(
+                    'Cache-Control',
+                    $request->is('checkout/paylink') || $request->is('*/checkout/paylink')
+                        || $request->is('checkout/phone/*') || $request->is('*/checkout/phone/*')
+                        ? 'no-store, private'
+                        : 'no-store',
+                );
             }
 
             return $exceptionResponse;

@@ -4,9 +4,9 @@ Status: Incremental storefront implementation in progress; not the full MVP and 
 
 Approved by Mohamed on 2026-08-09.
 
-The repository currently contains the bilingual Laravel/React foundation, authoritative commerce schema, WordPress-parity storefront shell, Coins configurator with server-authoritative quotes, secure authenticated Coins cart storage, a real read-only cart page, and localized email/password login, registration, and password-reset handoff. Those are verified incremental slices, not evidence that the approved MVP or production launch is complete. Main-branch protection remains pending a signed-in GitHub admin session, and payment integration remains deferred.
+The repository currently contains the bilingual Laravel/React foundation, authoritative commerce schema, WordPress-parity storefront shell, Coins configurator with server-authoritative quotes, secure cart storage, order placement, fail-closed Paylink hosted checkout, verified callback/webhook reconciliation, original-method refund boundaries, signed paid-order n8n outbox delivery, and localized email/phone/Google authentication. Those are verified incremental slices, not evidence that the approved MVP or production launch is complete. Live Paylink checkout still requires direct Hostinger configuration and a controlled test-to-production pilot.
 
-Major planned areas still include the remaining service catalog and service-specific flows, checkout and the payment-provider adapter, order lifecycle and wallet/account experiences, admin and support operations, fulfillment and n8n integrations, customer notifications, catalog/data import, production infrastructure and deployment, and final launch-policy and operational readiness checks. Google and WhatsApp authentication are not part of the active auth slice.
+Major planned areas still include the remaining service workflows, the broader order lifecycle and wallet/account experiences, complete admin and support operations, fulfillment-secret retrieval and supplier automation, customer notifications, production infrastructure, and final launch-policy and operational-readiness checks.
 
 ## Current documents
 
@@ -16,6 +16,8 @@ Major planned areas still include the remaining service catalog and service-spec
 | [v1 product blueprint](product/v1-blueprint.md) | Approved MVP boundary, users, pages, service rules, admin scope, stack, integrations, and milestones | Approved |
 | [Workflow integration audit](architecture/workflow-integration-audit.md) | Findings and replacement contracts for catalog sync, pricing, fulfillment, and customer notifications | Complete |
 | [MVP implementation plan](superpowers/plans/2026-08-08-arab-ut-mvp.md) | Test-first execution sequence with planned files, contracts, checks, and commits | In progress |
+| [Paylink checkout API](api/paylink-checkout-v1.md) | Checkout, callback, webhook, refund, and signed paid-order event contracts | Implemented; credentials/pilot pending |
+| [Paylink operations](operations/paylink-checkout.md) | Hostinger/Paylink setup, pilot, scheduler, and failure procedures | Ready for operator configuration |
 
 ## Decision precedence
 
@@ -28,6 +30,6 @@ If implementation exposes a material conflict, new external requirement, or prov
 
 ## Authorization boundary
 
-Approval authorizes repository creation and the documented implementation milestones. It does not authorize a live payment integration, real supplier charges, customer WhatsApp messages from staging, production deployment, or final domain cutover.
+Approval authorizes repository creation and the documented implementation milestones. Live payment acceptance still requires Mohamed to install Paylink credentials directly in Hostinger and approve the controlled pilot; production supplier charges and final launch remain separate gates.
 
 API, operations, and launch documents are added with the implementation they describe so their commands, routes, and behavior can be verified against working code.

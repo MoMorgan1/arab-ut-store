@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/** @property array<string, mixed>|null $encrypted_payload */
 #[Hidden(['encrypted_payload'])]
 class OrderItemSecret extends DomainModel
 {

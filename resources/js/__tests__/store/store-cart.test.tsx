@@ -7,12 +7,29 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
+import type * as CheckoutPhoneApi from '@/lib/checkout-phone-api';
+import type * as PaylinkCheckoutApi from '@/lib/paylink-checkout-api';
 import StoreCart from '@/pages/store/cart';
 import type { StoreCartConfiguration } from '@/types/store-shell';
 
+const navigateToHostedPayment = vi.hoisted(() => vi.fn());
+const navigateToOrder = vi.hoisted(() => vi.fn());
+const reloadAfterPhoneVerification = vi.hoisted(() => vi.fn());
+
+vi.mock('@/lib/checkout-phone-api', async (importOriginal) => ({
+    ...(await importOriginal<typeof CheckoutPhoneApi>()),
+    reloadAfterPhoneVerification,
+}));
+
+vi.mock('@/lib/paylink-checkout-api', async (importOriginal) => ({
+    ...(await importOriginal<typeof PaylinkCheckoutApi>()),
+    navigateToHostedPayment,
+    navigateToOrder,
+}));
+
 const mockPage = vi.hoisted(() => ({
     props: {
-        auth: { user: null },
+        auth: { user: null as { id: number; name: string } | null },
         cart: {
             count: 1,
             currency: 'SAR',
@@ -49,6 +66,14 @@ const mockPage = vi.hoisted(() => ({
         },
         cartPage: {
             backUrl: '/en#coins',
+            checkout: {
+                canCheckout: false,
+                checkoutUrl: '/en/checkout/paylink',
+                loginUrl: '/en/login',
+                phoneCodeUrl: '/en/checkout/phone/code',
+                phoneVerified: false,
+                phoneVerifyUrl: '/en/checkout/phone/verify',
+            },
             translations: {
                 title: 'Your cart',
                 eyebrow: 'Arab UT',
@@ -82,6 +107,24 @@ const mockPage = vi.hoisted(() => ({
                 credentials_load_error: 'EA details could not be loaded.',
                 credentials_save_error: 'EA details could not be saved.',
                 backup_code: 'Backup code :number',
+                checkout: 'Continue to secure payment',
+                checkout_loading: 'Opening Paylink…',
+                checkout_login: 'Sign in to continue',
+                checkout_phone: 'Verify your WhatsApp number to continue.',
+                checkout_error: 'Payment could not be opened.',
+                checkout_cart_changed: 'Prices changed. Refresh and try again.',
+                checkout_secure: 'Secure payment powered by Paylink',
+                phone_country: 'Country code',
+                phone_number: 'WhatsApp number',
+                phone_code: '6-digit verification code',
+                phone_send: 'Send WhatsApp code',
+                phone_sending: 'Sending code…',
+                phone_verify: 'Verify number',
+                phone_verifying: 'Verifying…',
+                phone_sent: 'We sent a 6-digit code to your WhatsApp.',
+                phone_invalid: 'Check the number or code and try again.',
+                phone_unavailable: 'This number is already in use.',
+                order_total: 'Order total',
             },
         },
         direction: 'ltr',
@@ -164,6 +207,9 @@ vi.mock('@inertiajs/react', () => ({
 afterEach(cleanup);
 beforeEach(() => {
     document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+    mockPage.props.auth.user = null;
+    mockPage.props.cartPage.checkout.canCheckout = false;
+    mockPage.props.cartPage.checkout.phoneVerified = false;
     mockPage.props.cart.items[0].configuration = validConfiguration;
     mockPage.props.cart.items[0].product = {
         imageUrl: '/images/store/coins/ut-coin-80.webp',
@@ -172,6 +218,9 @@ beforeEach(() => {
     };
     mockPage.props.direction = 'ltr';
     mockPage.props.locale = 'en';
+    navigateToHostedPayment.mockReset();
+    navigateToOrder.mockReset();
+    reloadAfterPhoneVerification.mockReset();
     vi.unstubAllGlobals();
 });
 
@@ -183,7 +232,7 @@ it('renders only the authoritative read-only Coins cart summary', () => {
     expect(screen.getByText('PS / Xbox')).toBeVisible();
     expect(screen.getByText('Fast')).toBeVisible();
     expect(screen.getByText('500,000 Coins')).toBeVisible();
-    expect(screen.getByText(/125\.00/)).toBeVisible();
+    expect(screen.getAllByText(/125\.00/)).toHaveLength(2);
     expect(document.body.textContent).not.toContain('EA email:');
     expect(screen.getByText('3 backup codes stored')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Back to Coins' })).toHaveAttribute(
@@ -191,11 +240,161 @@ it('renders only the authoritative read-only Coins cart summary', () => {
         '/en#coins',
     );
     expect(
-        screen.queryByRole('button', { name: /checkout|pay|remove/i }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /checkout|pay/i })).toBeNull();
+        screen.getByRole('link', { name: 'Sign in to continue' }),
+    ).toHaveAttribute('href', '/en/login');
     expect(document.body.textContent).not.toMatch(
         /10000001|opaque EA password/,
+    );
+});
+
+it('locks checkout while Paylink opens and navigates only to the validated hosted URL', async () => {
+    mockPage.props.auth.user = { id: 1, name: 'Buyer' };
+    mockPage.props.cartPage.checkout.canCheckout = true;
+    mockPage.props.cartPage.checkout.phoneVerified = true;
+    const fetchMock = vi.fn().mockImplementation(() =>
+        Promise.resolve(
+            new Response(
+                JSON.stringify({
+                    data: {
+                        orderUrl: '/en/orders/01K00000000000000000000000',
+                        paymentUrl:
+                            'https://payment.paylink.sa/pay/info/1710000000099',
+                        status: 'pending',
+                    },
+                }),
+                {
+                    status: 201,
+                    headers: { 'Content-Type': 'application/json' },
+                },
+            ),
+        ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    render(<StoreCart />);
+    const checkout = screen.getByRole('button', {
+        name: 'Continue to secure payment',
+    });
+    fireEvent.click(checkout);
+    fireEvent.click(checkout);
+
+    expect(
+        screen.getByRole('button', { name: 'Opening Paylink…' }),
+    ).toBeDisabled();
+    await waitFor(() =>
+        expect(
+            fetchMock.mock.calls.filter(
+                ([, init]) =>
+                    (init as RequestInit | undefined)?.method === 'POST',
+            ),
+        ).toHaveLength(1),
+    );
+    await waitFor(() =>
+        expect(navigateToHostedPayment).toHaveBeenCalledWith(
+            'https://payment.paylink.sa/pay/info/1710000000099',
+        ),
+    );
+});
+
+it('opens the existing order when an idempotent checkout retry is already paid', async () => {
+    mockPage.props.auth.user = { id: 1, name: 'Buyer' };
+    mockPage.props.cartPage.checkout.canCheckout = true;
+    mockPage.props.cartPage.checkout.phoneVerified = true;
+    vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL) => {
+            if (String(input).endsWith('/credentials')) {
+                return Promise.resolve(new Response('{}', { status: 404 }));
+            }
+
+            return Promise.resolve(
+                new Response(
+                    JSON.stringify({
+                        data: {
+                            orderUrl: '/en/orders/01K00000000000000000000000',
+                            paymentUrl: null,
+                            status: 'paid',
+                        },
+                    }),
+                    { status: 200 },
+                ),
+            );
+        }),
+    );
+
+    render(<StoreCart />);
+    fireEvent.click(
+        screen.getByRole('button', {
+            name: 'Continue to secure payment',
+        }),
+    );
+
+    await waitFor(() =>
+        expect(navigateToOrder).toHaveBeenCalledWith(
+            '/en/orders/01K00000000000000000000000',
+        ),
+    );
+    expect(navigateToHostedPayment).not.toHaveBeenCalled();
+});
+
+it('verifies an authenticated checkout phone through Whapi before enabling payment', async () => {
+    mockPage.props.auth.user = { id: 1, name: 'Buyer' };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url.endsWith('/credentials')) {
+            return Promise.resolve(
+                new Response(
+                    JSON.stringify({
+                        data: {
+                            backupCodes: ['10000001', '10000002', '10000003'],
+                            eaEmail: 'owner@example.test',
+                            eaPassword: 'opaque EA password',
+                        },
+                    }),
+                    { status: 200 },
+                ),
+            );
+        }
+
+        if (url.endsWith('/code')) {
+            return Promise.resolve(
+                new Response(JSON.stringify({ data: { sent: true } }), {
+                    status: 200,
+                }),
+            );
+        }
+
+        return Promise.resolve(
+            new Response(JSON.stringify({ data: { verified: true } }), {
+                status: 200,
+            }),
+        );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<StoreCart />);
+    fireEvent.change(screen.getByLabelText('Country code'), {
+        target: { value: '+966' },
+    });
+    fireEvent.change(screen.getByLabelText('WhatsApp number'), {
+        target: { value: '501234567' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send WhatsApp code' }));
+
+    expect(await screen.findByText(/sent a 6-digit code/i)).toBeVisible();
+    fireEvent.change(screen.getByLabelText('6-digit verification code'), {
+        target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
+
+    await waitFor(() =>
+        expect(reloadAfterPhoneVerification).toHaveBeenCalledTimes(1),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+        new URL('/en/checkout/phone/code', window.location.origin),
+        expect.objectContaining({
+            body: JSON.stringify({ phone: '+966501234567' }),
+        }),
     );
 });
 

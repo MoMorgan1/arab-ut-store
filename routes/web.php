@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\PaylinkRefundController;
 use App\Http\Controllers\Auth\GoogleAuthenticationController;
 use App\Http\Controllers\Auth\WhatsAppLoginController;
 use App\Http\Controllers\Store\CartController;
@@ -8,9 +9,14 @@ use App\Http\Controllers\Store\CatalogCartController;
 use App\Http\Controllers\Store\CatalogProductController;
 use App\Http\Controllers\Store\CategoryController;
 use App\Http\Controllers\Store\CategoryProductController;
+use App\Http\Controllers\Store\CheckoutPhoneVerificationController;
 use App\Http\Controllers\Store\CoinsCartController;
 use App\Http\Controllers\Store\CoinsQuoteController;
 use App\Http\Controllers\Store\HomeController;
+use App\Http\Controllers\Store\OrderController;
+use App\Http\Controllers\Store\PaylinkCheckoutController;
+use App\Http\Controllers\Store\PaylinkOrderPaymentController;
+use App\Http\Controllers\Store\PaylinkReturnController;
 use App\Http\Controllers\Store\ReviewsController;
 use App\Http\Controllers\Store\SbcCartController;
 use App\Http\Controllers\Store\SimpleStorePageController;
@@ -27,6 +33,27 @@ use Laravel\Fortify\Http\Controllers\RegisteredUserController;
 Route::get('/', HomeController::class)->name('home');
 Route::get('/coins/quote', CoinsQuoteController::class)->name('coins.quote');
 Route::get('/cart', CartController::class)->name('store.cart');
+Route::post('/checkout/paylink', PaylinkCheckoutController::class)
+    ->middleware([NoStore::class, 'auth', RequireCatalogCartJson::class, 'throttle:coins-cart'])
+    ->name('store.checkout.paylink');
+Route::post('/checkout/phone/code', [CheckoutPhoneVerificationController::class, 'send'])
+    ->middleware([NoStore::class, 'auth', 'throttle:whatsapp-login-send'])
+    ->name('store.checkout.phone.send');
+Route::post('/checkout/phone/verify', [CheckoutPhoneVerificationController::class, 'verify'])
+    ->middleware([NoStore::class, 'auth', 'throttle:whatsapp-login-verify'])
+    ->name('store.checkout.phone.verify');
+Route::get('/payments/paylink/callback', PaylinkReturnController::class)
+    ->middleware([NoStore::class, 'auth'])->name('payments.paylink.callback');
+Route::get('/payments/paylink/cancel', PaylinkReturnController::class)
+    ->middleware([NoStore::class, 'auth'])->name('payments.paylink.cancel');
+Route::get('/orders/{order}', OrderController::class)
+    ->middleware(['auth', NoStore::class])->name('store.orders.show');
+Route::post('/orders/{order:public_id}/payments/paylink', PaylinkOrderPaymentController::class)
+    ->middleware(['auth', NoStore::class, 'throttle:coins-cart'])
+    ->name('store.orders.paylink-payment');
+Route::post('/admin/api/orders/{order:public_id}/refund', PaylinkRefundController::class)
+    ->middleware(['auth', NoStore::class, 'throttle:staff-payments'])
+    ->name('admin.orders.paylink-refund');
 Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])
     ->middleware([NoStore::class, 'throttle:coins-cart'])
     ->name('cart.items.credentials.show');
@@ -101,6 +128,24 @@ Route::prefix('{locale}')
         Route::get('/', HomeController::class)->name('localized.home');
         Route::get('/coins/quote', CoinsQuoteController::class)->name('localized.coins.quote');
         Route::get('/cart', CartController::class)->name('localized.store.cart');
+        Route::post('/checkout/paylink', PaylinkCheckoutController::class)
+            ->middleware([NoStore::class, 'auth', RequireCatalogCartJson::class, 'throttle:coins-cart'])
+            ->name('localized.store.checkout.paylink');
+        Route::post('/checkout/phone/code', [CheckoutPhoneVerificationController::class, 'send'])
+            ->middleware([NoStore::class, 'auth', 'throttle:whatsapp-login-send'])
+            ->name('localized.store.checkout.phone.send');
+        Route::post('/checkout/phone/verify', [CheckoutPhoneVerificationController::class, 'verify'])
+            ->middleware([NoStore::class, 'auth', 'throttle:whatsapp-login-verify'])
+            ->name('localized.store.checkout.phone.verify');
+        Route::get('/payments/paylink/callback', PaylinkReturnController::class)
+            ->middleware([NoStore::class, 'auth'])->name('localized.payments.paylink.callback');
+        Route::get('/payments/paylink/cancel', PaylinkReturnController::class)
+            ->middleware([NoStore::class, 'auth'])->name('localized.payments.paylink.cancel');
+        Route::get('/orders/{order}', OrderController::class)
+            ->middleware(['auth', NoStore::class])->name('localized.store.orders.show');
+        Route::post('/orders/{order:public_id}/payments/paylink', PaylinkOrderPaymentController::class)
+            ->middleware(['auth', NoStore::class, 'throttle:coins-cart'])
+            ->name('localized.store.orders.paylink-payment');
         Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])
             ->middleware([NoStore::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.credentials.show');

@@ -1,5 +1,5 @@
 import { Head, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { interpolate } from '@/components/configurator/coins/configurator-copy';
 import StoreLayout from '@/layouts/store-layout';
@@ -8,7 +8,19 @@ import {
     updateCartCredentials,
 } from '@/lib/cart-credentials-api';
 import type { StoredCartCredentials } from '@/lib/cart-credentials-api';
+import {
+    CheckoutPhoneError,
+    reloadAfterPhoneVerification,
+    sendCheckoutPhoneCode,
+    verifyCheckoutPhoneCode,
+} from '@/lib/checkout-phone-api';
 import { formatCoins, formatInteger, formatMinorUnits } from '@/lib/money';
+import {
+    navigateToHostedPayment,
+    navigateToOrder,
+    PaylinkCheckoutError,
+    startPaylinkCheckout,
+} from '@/lib/paylink-checkout-api';
 import type {
     StoreCartItem,
     StoreCartPageProps,
@@ -67,11 +79,294 @@ export default function StoreCart() {
                     </ol>
                 )}
 
+                {cart.items.length > 0 ? (
+                    <CheckoutPanel
+                        authenticated={page.props.auth.user !== null}
+                        checkout={cartPage.checkout}
+                        locale={locale}
+                        totalHalalah={cart.items.reduce(
+                            (total, item) => total + item.totalHalalah,
+                            0,
+                        )}
+                        translations={cartPage.translations}
+                    />
+                ) : null}
+
                 <a className="store-cart-back" href={cartPage.backUrl}>
                     {cartPage.translations.back}
                 </a>
             </section>
         </StoreLayout>
+    );
+}
+
+function CheckoutPanel({
+    authenticated,
+    checkout,
+    locale,
+    totalHalalah,
+    translations,
+}: {
+    authenticated: boolean;
+    checkout: StoreCartPageProps['cartPage']['checkout'];
+    locale: 'ar' | 'en';
+    totalHalalah: number;
+    translations: StoreCartTranslations;
+}) {
+    const idempotencyKey = useRef(crypto.randomUUID());
+    const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
+    const [errorCode, setErrorCode] = useState<string | null>(null);
+
+    async function startPayment() {
+        if (!checkout.canCheckout || state === 'loading') {
+            return;
+        }
+
+        setState('loading');
+        setErrorCode(null);
+
+        try {
+            const result = await startPaylinkCheckout(
+                checkout.checkoutUrl,
+                idempotencyKey.current,
+            );
+
+            if (result.paymentUrl === null) {
+                navigateToOrder(result.orderUrl);
+            } else {
+                navigateToHostedPayment(result.paymentUrl);
+            }
+        } catch (error) {
+            if (error instanceof PaylinkCheckoutError) {
+                setErrorCode(error.code);
+
+                if (error.conclusive) {
+                    idempotencyKey.current = crypto.randomUUID();
+                }
+            } else {
+                setErrorCode('checkout_error');
+            }
+
+            setState('error');
+        }
+    }
+
+    return (
+        <aside
+            className="store-cart-checkout"
+            aria-label={translations.checkout}
+        >
+            <div className="store-cart-checkout__total">
+                <span>{translations.order_total}</span>
+                <strong>{formatMinorUnits(totalHalalah, 'SAR', locale)}</strong>
+            </div>
+            <p className="store-cart-checkout__secure">
+                {translations.checkout_secure}
+            </p>
+            {!authenticated ? (
+                <a
+                    className="store-cart-checkout__action"
+                    href={checkout.loginUrl}
+                >
+                    {translations.checkout_login}
+                </a>
+            ) : !checkout.phoneVerified ? (
+                <CheckoutPhoneForm
+                    checkout={checkout}
+                    translations={translations}
+                />
+            ) : (
+                <button
+                    className="store-cart-checkout__action"
+                    disabled={!checkout.canCheckout || state === 'loading'}
+                    onClick={startPayment}
+                    type="button"
+                >
+                    {state === 'loading'
+                        ? translations.checkout_loading
+                        : translations.checkout}
+                </button>
+            )}
+            {state === 'error' ? (
+                <p className="store-cart-checkout__error" role="alert">
+                    {errorCode === 'cart_changed'
+                        ? translations.checkout_cart_changed
+                        : translations.checkout_error}
+                </p>
+            ) : null}
+        </aside>
+    );
+}
+
+const CHECKOUT_COUNTRY_CODES = [
+    '+966',
+    '+971',
+    '+965',
+    '+974',
+    '+973',
+    '+968',
+    '+20',
+] as const;
+
+function CheckoutPhoneForm({
+    checkout,
+    translations,
+}: {
+    checkout: StoreCartPageProps['cartPage']['checkout'];
+    translations: StoreCartTranslations;
+}) {
+    const [countryCode, setCountryCode] = useState('+966');
+    const [localNumber, setLocalNumber] = useState('');
+    const [code, setCode] = useState('');
+    const [stage, setStage] = useState<'phone' | 'code'>('phone');
+    const [busy, setBusy] = useState(false);
+    const [errorCode, setErrorCode] = useState<string | null>(null);
+    const phone = `${countryCode}${localNumber.replace(/^0+/, '')}`;
+    const phoneValid = /^\+[1-9][0-9]{7,14}$/.test(phone);
+
+    async function sendCode() {
+        if (!phoneValid || busy) {
+            setErrorCode('invalid_input');
+
+            return;
+        }
+
+        setBusy(true);
+        setErrorCode(null);
+
+        try {
+            await sendCheckoutPhoneCode(checkout.phoneCodeUrl, phone);
+            setStage('code');
+        } catch (error) {
+            setErrorCode(
+                error instanceof CheckoutPhoneError ? error.code : 'unknown',
+            );
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function verifyCode() {
+        if (!/^[0-9]{6}$/.test(code) || busy) {
+            setErrorCode('invalid_input');
+
+            return;
+        }
+
+        setBusy(true);
+        setErrorCode(null);
+
+        try {
+            await verifyCheckoutPhoneCode(checkout.phoneVerifyUrl, phone, code);
+            reloadAfterPhoneVerification();
+        } catch (error) {
+            setErrorCode(
+                error instanceof CheckoutPhoneError ? error.code : 'unknown',
+            );
+            setBusy(false);
+        }
+    }
+
+    return (
+        <div className="store-cart-phone">
+            <p className="store-cart-checkout__notice">
+                {translations.checkout_phone}
+            </p>
+            <div className="store-cart-phone__number" dir="ltr">
+                <label>
+                    <span>{translations.phone_country}</span>
+                    <select
+                        aria-label={translations.phone_country}
+                        disabled={busy || stage === 'code'}
+                        onChange={(event) =>
+                            setCountryCode(event.currentTarget.value)
+                        }
+                        value={countryCode}
+                    >
+                        {CHECKOUT_COUNTRY_CODES.map((value) => (
+                            <option key={value} value={value}>
+                                {value}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+                <label>
+                    <span>{translations.phone_number}</span>
+                    <input
+                        aria-label={translations.phone_number}
+                        autoComplete="tel-national"
+                        disabled={busy || stage === 'code'}
+                        inputMode="numeric"
+                        maxLength={14}
+                        onChange={(event) =>
+                            setLocalNumber(
+                                event.currentTarget.value.replace(
+                                    /[^0-9]/g,
+                                    '',
+                                ),
+                            )
+                        }
+                        type="tel"
+                        value={localNumber}
+                    />
+                </label>
+            </div>
+            {stage === 'phone' ? (
+                <button
+                    className="store-cart-phone__button"
+                    disabled={busy || !phoneValid}
+                    onClick={sendCode}
+                    type="button"
+                >
+                    {busy
+                        ? translations.phone_sending
+                        : translations.phone_send}
+                </button>
+            ) : (
+                <>
+                    <p className="store-cart-phone__sent" role="status">
+                        {translations.phone_sent}
+                    </p>
+                    <label className="store-cart-phone__code">
+                        <span>{translations.phone_code}</span>
+                        <input
+                            aria-label={translations.phone_code}
+                            autoComplete="one-time-code"
+                            disabled={busy}
+                            inputMode="numeric"
+                            maxLength={6}
+                            onChange={(event) =>
+                                setCode(
+                                    event.currentTarget.value.replace(
+                                        /[^0-9]/g,
+                                        '',
+                                    ),
+                                )
+                            }
+                            pattern="[0-9]{6}"
+                            value={code}
+                        />
+                    </label>
+                    <button
+                        className="store-cart-phone__button"
+                        disabled={busy || code.length !== 6}
+                        onClick={verifyCode}
+                        type="button"
+                    >
+                        {busy
+                            ? translations.phone_verifying
+                            : translations.phone_verify}
+                    </button>
+                </>
+            )}
+            {errorCode !== null ? (
+                <p className="store-cart-checkout__error" role="alert">
+                    {errorCode === 'phone_unavailable'
+                        ? translations.phone_unavailable
+                        : translations.phone_invalid}
+                </p>
+            ) : null}
+        </div>
     );
 }
 

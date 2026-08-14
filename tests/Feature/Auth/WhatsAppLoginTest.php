@@ -43,6 +43,8 @@ test('an existing verified phone receives a short-lived hashed WhatsApp login co
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://gate.whapi.test/messages/text'
         && $request->hasHeader('Authorization', 'Bearer synthetic-whapi-token')
         && $request['to'] === '+201001234567'
+        && str_contains((string) $request['body'], 'رمز تسجيل الدخول في عرب التيميت')
+        && str_contains((string) $request['body'], 'صالح لمدة 5 دقائق')
     );
 });
 
@@ -139,4 +141,34 @@ test('invalid phone and code payloads fail closed without reaching Whapi', funct
     ])->assertUnprocessable();
 
     Http::assertNothingSent();
+});
+
+test('an ambiguous Whapi failure never resends the same login code automatically', function () {
+    $user = User::factory()->create([
+        'phone' => '+201001234567',
+        'phone_verified_at' => now(),
+    ]);
+    Http::fake(['https://gate.whapi.test/messages/text' => Http::response(['error' => 'temporary'], 503)]);
+
+    $this->postJson(route('auth.whatsapp.send'), ['phone' => $user->phone])
+        ->assertServiceUnavailable();
+
+    expect(Http::recorded(fn (Request $request): bool => $request->url() === 'https://gate.whapi.test/messages/text'))
+        ->toHaveCount(1)
+        ->and(PhoneVerification::count())->toBe(0);
+});
+
+test('an unsafe Whapi base URL fails closed without exposing the token', function () {
+    $user = User::factory()->create([
+        'phone' => '+201001234567',
+        'phone_verified_at' => now(),
+    ]);
+    config()->set('services.whapi.base_url', 'http://example.test/steal');
+    Http::fake();
+
+    $this->postJson(route('auth.whatsapp.send'), ['phone' => $user->phone])
+        ->assertServiceUnavailable();
+
+    Http::assertNothingSent();
+    expect(PhoneVerification::count())->toBe(0);
 });

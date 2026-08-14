@@ -23,12 +23,15 @@ use Illuminate\Support\Carbon;
  * @property string $last_name
  * @property string $name
  * @property string $email
+ * @property string|null $phone
  * @property Carbon|null $email_verified_at
+ * @property Carbon|null $phone_verified_at
  * @property string|null $password
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
  * @property string|null $remember_token
+ * @property UserRole $role
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */

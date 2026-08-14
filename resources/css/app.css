@@ -2998,6 +2998,158 @@
         color: var(--arabut-muted);
     }
 
+    .store-cart-checkout {
+        display: grid;
+        gap: 0.85rem;
+        margin-block: 1.5rem;
+        border: 1px solid rgb(217 171 58 / 38%);
+        border-radius: 1rem;
+        background:
+            radial-gradient(
+                circle at 85% 15%,
+                rgb(217 171 58 / 12%),
+                transparent 35%
+            ),
+            rgb(15 14 12 / 94%);
+        padding: clamp(1.1rem, 3vw, 1.6rem);
+        box-shadow: 0 1rem 3rem rgb(0 0 0 / 24%);
+    }
+
+    .store-cart-checkout__total {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        color: var(--arabut-muted);
+    }
+
+    .store-cart-checkout__total strong {
+        color: var(--arabut-gold-bright);
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+        font-size: clamp(1.35rem, 3vw, 1.8rem);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .store-cart-checkout__secure,
+    .store-cart-checkout__notice,
+    .store-cart-checkout__error {
+        margin: 0;
+    }
+
+    .store-cart-checkout__secure {
+        color: var(--arabut-muted);
+        font-size: 0.84rem;
+    }
+
+    .store-cart-checkout__notice,
+    .store-cart-checkout__error {
+        border-inline-start: 3px solid var(--arabut-gold);
+        padding-inline-start: 0.75rem;
+    }
+
+    .store-cart-checkout__error {
+        color: #ffb0b0;
+    }
+
+    .store-cart-checkout__action {
+        display: grid;
+        width: 100%;
+        min-height: 3rem;
+        place-items: center;
+        border: 1px solid var(--arabut-gold-bright);
+        border-radius: 0.7rem;
+        background: linear-gradient(135deg, #f3cf6b, var(--arabut-gold));
+        padding: 0.7rem 1rem;
+        color: #080808;
+        font-weight: 800;
+        text-decoration: none;
+        transition:
+            transform 160ms ease,
+            box-shadow 160ms ease;
+    }
+
+    .store-cart-checkout__action:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 0.7rem 1.8rem rgb(217 171 58 / 18%);
+    }
+
+    .store-cart-checkout__action:disabled {
+        cursor: wait;
+        opacity: 0.66;
+    }
+
+    .store-cart-checkout__action:focus-visible {
+        outline: 2px solid var(--arabut-focus);
+        outline-offset: 3px;
+    }
+
+    .store-cart-phone {
+        display: grid;
+        gap: 0.8rem;
+    }
+
+    .store-cart-phone__number {
+        display: grid;
+        grid-template-columns: minmax(6.5rem, 0.35fr) minmax(0, 1fr);
+        gap: 0.65rem;
+    }
+
+    .store-cart-phone label {
+        display: grid;
+        gap: 0.35rem;
+        color: var(--arabut-muted);
+        font-size: 0.8rem;
+    }
+
+    .store-cart-phone input,
+    .store-cart-phone select {
+        width: 100%;
+        min-height: 2.75rem;
+        border: 1px solid rgb(217 171 58 / 42%);
+        border-radius: 0.6rem;
+        background: #080a0d;
+        padding-inline: 0.75rem;
+        color: var(--arabut-ink);
+        font-size: 1rem;
+    }
+
+    .store-cart-phone input:focus-visible,
+    .store-cart-phone select:focus-visible,
+    .store-cart-phone__button:focus-visible {
+        outline: 2px solid var(--arabut-focus);
+        outline-offset: 2px;
+    }
+
+    .store-cart-phone__button {
+        min-height: 2.75rem;
+        border: 1px solid rgb(217 171 58 / 72%);
+        border-radius: 0.6rem;
+        background: rgb(217 171 58 / 12%);
+        padding: 0.65rem 1rem;
+        color: var(--arabut-gold-bright);
+        font-weight: 800;
+    }
+
+    .store-cart-phone__button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+    }
+
+    .store-cart-phone__sent {
+        margin: 0;
+        color: #8ce3ad;
+    }
+
+    .store-cart-phone__code {
+        max-width: 18rem;
+    }
+
+    @media (max-width: 31rem) {
+        .store-cart-phone__number {
+            grid-template-columns: 1fr;
+        }
+    }
+
     .store-cart-back {
         display: inline-grid;
         min-height: 2.75rem;
@@ -3017,6 +3169,159 @@
     .store-cart-back:focus-visible {
         outline: 2px solid var(--arabut-focus);
         outline-offset: 3px;
+    }
+
+    .store-order-page {
+        width: min(100% - 2rem, 62rem);
+        min-height: 34rem;
+        margin-inline: auto;
+        padding-block: clamp(3rem, 7vw, 6rem);
+    }
+
+    .store-order-page__heading > p {
+        margin: 0 0 0.6rem;
+        color: var(--arabut-gold-bright);
+        font-weight: 700;
+    }
+
+    .store-order-page__heading h1 {
+        margin: 0;
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+        font-size: clamp(2.2rem, 6vw, 4rem);
+        line-height: 1.08;
+    }
+
+    .store-order-summary {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-block: 2rem 1.25rem;
+        overflow: hidden;
+        border: 1px solid rgb(217 171 58 / 36%);
+        border-radius: 1rem;
+        background: rgb(18 17 14 / 94%);
+    }
+
+    .store-order-summary > div {
+        min-width: 0;
+        padding: 1.15rem;
+    }
+
+    .store-order-summary > div + div {
+        border-inline-start: 1px solid var(--arabut-line);
+    }
+
+    .store-order-summary dt {
+        color: var(--arabut-muted);
+        font-size: 0.82rem;
+    }
+
+    .store-order-summary dd {
+        margin: 0.35rem 0 0;
+        color: var(--arabut-gold-bright);
+        font-weight: 800;
+        overflow-wrap: anywhere;
+    }
+
+    .store-order-items {
+        display: grid;
+        gap: 0.75rem;
+        margin: 0 0 1.5rem;
+        padding: 0;
+        list-style: none;
+    }
+
+    .store-order-items li {
+        display: flex;
+        min-height: 4.5rem;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border: 1px solid var(--arabut-line);
+        border-radius: 0.8rem;
+        background: rgb(12 13 15 / 84%);
+        padding: 1rem;
+    }
+
+    .store-order-items h2,
+    .store-order-items span {
+        margin: 0;
+    }
+
+    .store-order-items h2 {
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+        font-size: 1.15rem;
+    }
+
+    .store-order-items span {
+        color: var(--arabut-muted);
+        font-size: 0.82rem;
+    }
+
+    .store-order-items strong {
+        color: var(--arabut-gold-bright);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .store-order-payment {
+        display: grid;
+        gap: 0.7rem;
+        margin-block: 0 1.25rem;
+    }
+
+    .store-order-payment button {
+        min-height: 3rem;
+        border: 1px solid rgb(245 207 109 / 70%);
+        border-radius: 0.8rem;
+        background: linear-gradient(135deg, #f4d36f, #d6a632);
+        box-shadow: 0 0.65rem 1.6rem rgb(217 171 58 / 16%);
+        color: #090a0c;
+        font-weight: 900;
+        transition:
+            transform 160ms ease,
+            box-shadow 160ms ease;
+    }
+
+    .store-order-payment button:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 0.8rem 1.9rem rgb(217 171 58 / 24%);
+    }
+
+    .store-order-payment button:focus-visible {
+        outline: 2px solid var(--arabut-focus);
+        outline-offset: 3px;
+    }
+
+    .store-order-payment button:disabled {
+        cursor: wait;
+        opacity: 0.72;
+    }
+
+    .store-order-payment__error {
+        margin: 0;
+        color: #ffaaa0;
+        font-weight: 700;
+    }
+
+    .store-order-page__back {
+        display: inline-grid;
+        min-height: 2.75rem;
+        place-items: center;
+        border-bottom: 1px solid var(--arabut-gold);
+        color: var(--arabut-gold-bright);
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    @media (max-width: 39rem) {
+        .store-order-summary {
+            grid-template-columns: 1fr;
+        }
+
+        .store-order-summary > div + div {
+            border-block-start: 1px solid var(--arabut-line);
+            border-inline-start: 0;
+        }
     }
 
     .coins-unavailable {

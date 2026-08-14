@@ -9,6 +9,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property int $total_halalah
+ * @property string $name_ar
+ * @property string $name_en
+ * @property OrderItemStatus $status
+ */
 class OrderItem extends DomainModel
 {
     /** @return array<string, string> */

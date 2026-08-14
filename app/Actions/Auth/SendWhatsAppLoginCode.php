@@ -7,11 +7,12 @@ use App\Models\User;
 use App\ValueObjects\E164Phone;
 use DomainException;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Http;
 use Throwable;
 
-final class SendWhatsAppLoginCode
+final readonly class SendWhatsAppLoginCode
 {
+    public function __construct(private WhapiVerificationSender $sender) {}
+
     public function execute(E164Phone $phone, string $locale): void
     {
         $user = User::query()
@@ -47,37 +48,11 @@ final class SendWhatsAppLoginCode
         ]);
 
         try {
-            $this->send($phone, $code, $locale);
+            $this->sender->send($phone, $code, $locale, 'login');
         } catch (Throwable $exception) {
             $verification->delete();
 
             throw new DomainException('The WhatsApp login code could not be sent.', previous: $exception);
         }
-    }
-
-    private function send(E164Phone $phone, string $code, string $locale): void
-    {
-        $baseUrl = rtrim((string) config('services.whapi.base_url'), '/');
-        $token = trim((string) config('services.whapi.token'));
-
-        if ($baseUrl === '' || $token === '') {
-            throw new DomainException('Whapi is not configured.');
-        }
-
-        $body = $locale === 'ar'
-            ? "رمز دخولك إلى عرب التيميت: {$code}\nصالح لمدة 5 دقائق. لا تشاركه مع أحد."
-            : "Your Arab UT login code is: {$code}\nIt expires in 5 minutes. Do not share it.";
-
-        Http::baseUrl($baseUrl)
-            ->acceptJson()
-            ->asJson()
-            ->withToken($token)
-            ->timeout(5)
-            ->retry(2, 250)
-            ->post('/messages/text', [
-                'to' => $phone->value(),
-                'body' => $body,
-            ])
-            ->throw();
     }
 }
