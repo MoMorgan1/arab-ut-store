@@ -6255,7 +6255,8 @@
 .store-catalog-related ul {
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: clamp(15.5rem, 27vw, 18.25rem);
+    grid-auto-columns: clamp(16.5rem, 27vw, 18.25rem);
+    align-items: start;
     gap: 1rem;
     overflow-x: auto;
     overscroll-behavior-inline: contain;
@@ -6268,7 +6269,8 @@
 
 .store-catalog-related .store-catalog-card--sbc {
     min-width: 0;
-    min-height: 21.5rem;
+    min-height: 0;
+    align-self: start;
 }
 
 .store-catalog-related .store-catalog-card--sbc,
@@ -6277,7 +6279,8 @@
 }
 
 .store-catalog-related .store-catalog-card__target {
-    grid-template-rows: 12.25rem minmax(0, 1fr);
+    grid-template-rows: 11.75rem auto;
+    height: auto;
 }
 
 .store-catalog-related .store-catalog-card__media {
@@ -6290,9 +6293,11 @@
 }
 
 .store-catalog-related .store-catalog-card__body {
-    height: 100%;
-    grid-template-rows: auto minmax(5rem, auto) 1fr;
-    align-content: stretch;
+    height: auto;
+    grid-template-rows: auto minmax(4.35rem, auto) auto;
+    align-content: start;
+    gap: 0.55rem;
+    padding: 0.55rem 0.75rem 0.8rem;
 }
 
 .store-catalog-related .store-catalog-card--sbc h2 {
@@ -6310,7 +6315,41 @@
 }
 
 .store-catalog-related .store-catalog-card__prices {
-    align-self: end;
+    align-self: start;
+    gap: 0.55rem;
+}
+
+.store-catalog-related .store-catalog-card__prices li {
+    display: grid;
+    min-height: 4.45rem;
+    grid-template-rows: minmax(2.35rem, auto) auto;
+    align-content: center;
+    padding: 0.55rem 0.45rem;
+}
+
+.store-catalog-related .store-catalog-card__platform {
+    align-content: center;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    line-height: 1.22;
+}
+
+.store-catalog-related .store-catalog-card__platform-name {
+    font-size: 0.78rem;
+    line-height: 1.22;
+    white-space: normal;
+    text-wrap: balance;
+}
+
+.store-catalog-related .store-catalog-card__platform img {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.store-catalog-related .store-catalog-card__prices li > span:last-child {
+    margin-block-start: 0.35rem;
+    font-size: 1rem;
+    line-height: 1.1;
 }
 
 .sbc-product-add {
