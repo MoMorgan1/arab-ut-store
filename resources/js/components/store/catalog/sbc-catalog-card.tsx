@@ -47,7 +47,7 @@ export function SbcCatalogCard({
         feedbackTimer.current = window.setTimeout(() => {
             feedbackTimer.current = null;
             setIsPressed(false);
-        }, 700);
+        }, 1250);
     };
     const resetTilt = (card: HTMLElement) => {
         card.style.setProperty('--sbc-tilt-x', '0deg');
@@ -143,6 +143,10 @@ export function SbcCatalogCard({
                 className="store-catalog-card__target"
                 href={product.url ?? undefined}
             >
+                <span
+                    aria-hidden="true"
+                    className="store-catalog-card__shine-clip"
+                />
                 <div className="store-catalog-card__media">
                     <span className="store-catalog-card__included">
                         {translations.included}

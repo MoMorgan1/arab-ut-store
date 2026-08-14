@@ -4604,7 +4604,7 @@
     display: grid;
     grid-template-rows: 15rem minmax(0, 1fr);
     height: 100%;
-    overflow: hidden;
+    overflow: visible;
     border-radius: inherit;
     color: inherit;
     isolation: isolate;
@@ -4615,12 +4615,18 @@
     touch-action: pan-y;
 }
 
-.store-catalog-card__target::after {
+.store-catalog-card__shine-clip {
     position: absolute;
     z-index: 3;
     inset: 0;
     overflow: hidden;
     border-radius: inherit;
+    pointer-events: none;
+}
+
+.store-catalog-card__shine-clip::after {
+    position: absolute;
+    inset: 0;
     background: linear-gradient(
         118deg,
         transparent 26%,
@@ -4629,7 +4635,6 @@
     );
     content: '';
     opacity: 0;
-    pointer-events: none;
     transform: translateX(-120%);
 }
 
@@ -4752,7 +4757,7 @@
 .store-catalog-card--sbc.is-pressed .store-catalog-card__image img {
     filter: drop-shadow(0 1rem 1.15rem rgb(0 0 0 / 48%))
         drop-shadow(0 0 1.35rem rgb(244 204 92 / 30%));
-    transform: translateY(-0.35rem) scale(1.055);
+    transform: translateY(-0.7rem) scale(1.085) rotate(0.55deg);
 }
 
 .store-catalog-card__included {
@@ -4824,7 +4829,7 @@
             inset 0 0 1.75rem rgb(217 171 58 / 7%);
     }
 
-    .store-catalog-card--sbc:hover .store-catalog-card__target::after {
+    .store-catalog-card--sbc:hover .store-catalog-card__shine-clip::after {
         opacity: 1;
         transform: translateX(120%);
         transition:
@@ -4847,7 +4852,7 @@
 }
 
 @media (hover: none), (pointer: coarse) {
-    .store-catalog-card--sbc .store-catalog-card__target::after {
+    .store-catalog-card--sbc .store-catalog-card__shine-clip::after {
         opacity: 0.42;
         animation: store-sbc-mobile-shine 3.4s ease-in-out infinite;
     }
@@ -6053,7 +6058,7 @@
 
     .store-catalog-card--sbc,
     .store-catalog-card__artwork-glow,
-    .store-catalog-card__target::after,
+    .store-catalog-card__shine-clip::after,
     .store-catalog-product--sbc .store-catalog-product__image img,
     .store-catalog-related a {
         animation: none;

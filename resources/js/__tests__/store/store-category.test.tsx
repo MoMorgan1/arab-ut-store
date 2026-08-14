@@ -174,7 +174,7 @@ it('cancels touch feedback once the gesture becomes a scroll', () => {
     expect(card).not.toHaveClass('is-pressed');
 });
 
-it('keeps touch feedback visible briefly after a stationary tap', () => {
+it('keeps touch feedback visible for more than one second after a stationary tap', () => {
     vi.useFakeTimers();
     render(<StoreCategory />);
 
@@ -197,10 +197,25 @@ it('keeps touch feedback visible briefly after a stationary tap', () => {
 
     expect(card).toHaveClass('is-pressed');
 
-    act(() => vi.advanceTimersByTime(800));
+    act(() => vi.advanceTimersByTime(1100));
+
+    expect(card).toHaveClass('is-pressed');
+
+    act(() => vi.advanceTimersByTime(400));
 
     expect(card).not.toHaveClass('is-pressed');
     vi.useRealTimers();
+});
+
+it('keeps the shine clipping layer separate from the protruding artwork', () => {
+    render(<StoreCategory />);
+
+    const cardLink = screen.getByRole('link', { name: /Icon Service/i });
+    const shineClip = cardLink.querySelector('.store-catalog-card__shine-clip');
+    const artwork = cardLink.querySelector('.store-catalog-card__media');
+
+    expect(shineClip).not.toBeNull();
+    expect(shineClip).not.toContainElement(artwork as HTMLElement);
 });
 
 it('separates the console logos from the non-wrapping platform label', () => {
