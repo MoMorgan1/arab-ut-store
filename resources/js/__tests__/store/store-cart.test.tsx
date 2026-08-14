@@ -87,7 +87,6 @@ const mockPage = vi.hoisted(() => ({
                 summary_title: 'Order summary',
                 checkout_progress: 'Checkout progress',
                 step_cart: 'Cart',
-                step_phone: 'WhatsApp verification',
                 step_payment: 'Secure payment',
                 service: 'Service',
                 coins_service: 'FC 27 Coins',
@@ -118,10 +117,10 @@ const mockPage = vi.hoisted(() => ({
                 credentials_save_error: 'EA details could not be saved.',
                 credentials_show: 'Show EA details',
                 credentials_hide: 'Hide EA details',
-                remove_item: 'Remove service',
+                remove_item: 'Remove product',
                 remove_confirm: 'Confirm removal',
-                remove_cancel: 'Keep service',
-                remove_error: 'The service could not be removed.',
+                remove_cancel: 'Keep product',
+                remove_error: 'The product could not be removed.',
                 backup_code: 'Backup code :number',
                 checkout: 'Continue to secure payment',
                 checkout_loading: 'Opening Paylink…',
@@ -129,7 +128,6 @@ const mockPage = vi.hoisted(() => ({
                 checkout_phone: 'Verify your WhatsApp number to continue.',
                 checkout_error: 'Payment could not be opened.',
                 checkout_cart_changed: 'Prices changed. Refresh and try again.',
-                checkout_secure: 'Secure payment powered by Paylink',
                 phone_country: 'Country code',
                 phone_number: 'WhatsApp number',
                 phone_code: '6-digit verification code',
@@ -140,6 +138,8 @@ const mockPage = vi.hoisted(() => ({
                 phone_sent: 'We sent a 6-digit code to your WhatsApp.',
                 phone_invalid: 'Check the number or code and try again.',
                 phone_unavailable: 'This number is already in use.',
+                phone_delivery_error:
+                    'The WhatsApp code could not be sent right now.',
                 order_total: 'Order total',
             },
         },
@@ -419,6 +419,12 @@ it('verifies an authenticated checkout phone through Whapi before enabling payme
     vi.stubGlobal('fetch', fetchMock);
 
     render(<StoreCart />);
+    expect(screen.queryByText('WhatsApp verification')).not.toBeInTheDocument();
+    expect(
+        screen.queryByText('Secure payment powered by Paylink'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Cart')).toBeVisible();
+    expect(screen.getByText('Secure payment')).toBeVisible();
     fireEvent.change(screen.getByLabelText('Country code'), {
         target: { value: '+966' },
     });
@@ -442,6 +448,39 @@ it('verifies an authenticated checkout phone through Whapi before enabling payme
             body: JSON.stringify({ phone: '+966501234567' }),
         }),
     );
+});
+
+it('explains a temporary WhatsApp delivery failure without blaming the phone number', async () => {
+    mockPage.props.auth.user = { id: 1, name: 'Buyer' };
+    vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    error: { code: 'whatsapp_unavailable' },
+                }),
+                { status: 503 },
+            ),
+        ),
+    );
+
+    render(<StoreCart />);
+    fireEvent.change(screen.getByLabelText('Country code'), {
+        target: { value: '+20' },
+    });
+    fireEvent.change(screen.getByLabelText('WhatsApp number'), {
+        target: { value: '1001234567' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send WhatsApp code' }));
+
+    expect(
+        await screen.findByText(
+            'The WhatsApp code could not be sent right now.',
+        ),
+    ).toBeVisible();
+    expect(
+        screen.queryByText('Check the number or code and try again.'),
+    ).not.toBeInTheDocument();
 });
 
 it('loads owner-only credentials only after disclosure and edits exactly three codes without browser persistence', async () => {
@@ -518,7 +557,7 @@ it('loads owner-only credentials only after disclosure and edits exactly three c
     expect(localStorageSpy).not.toHaveBeenCalled();
 });
 
-it('removes a cart service only after inline confirmation and updates the cart count', async () => {
+it('removes a cart product only after inline confirmation and updates the cart count', async () => {
     const cartCountEvents: number[] = [];
     window.addEventListener(
         'arabut:cart-count',
@@ -537,7 +576,7 @@ it('removes a cart service only after inline confirmation and updates the cart c
 
     render(<StoreCart />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove service' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove product' }));
     expect(screen.getByText('FC 27 Coins')).toBeVisible();
     expect(fetchMock).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm removal' }));

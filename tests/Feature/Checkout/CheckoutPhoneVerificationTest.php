@@ -36,7 +36,7 @@ test('an authenticated customer can verify a new checkout phone through Whapi', 
         ->and(Hash::check((string) $sentCode, $verification->code_hash))->toBeTrue();
 
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://gate.whapi.test/messages/text'
-        && $request['to'] === '+201001234567'
+        && $request['to'] === '201001234567'
         && str_contains((string) $request['body'], 'رمز توثيق رقمك لإتمام الدفع في عرب التيميت'));
 
     $this->actingAs($user)->postJson('/checkout/phone/verify', [
@@ -86,4 +86,19 @@ test('checkout phone verification rejects guests reused phones and wrong codes',
     ])->assertUnprocessable()->assertJsonPath('error.code', 'phone_code_invalid');
 
     expect($user->fresh()?->phone_verified_at)->toBeNull();
+});
+
+test('checkout reports a temporary WhatsApp delivery failure and removes the unused code', function () {
+    $user = User::factory()->create(['phone' => null, 'phone_verified_at' => null]);
+    Http::fake([
+        'https://gate.whapi.test/messages/text' => Http::response(['error' => 'temporary'], 503),
+    ]);
+
+    $this->actingAs($user)->postJson('/checkout/phone/code', [
+        'phone' => '+201001234567',
+    ])->assertServiceUnavailable()
+        ->assertHeader('Cache-Control', 'no-store, private')
+        ->assertJsonPath('error.code', 'whatsapp_unavailable');
+
+    expect(PhoneVerification::query()->count())->toBe(0);
 });

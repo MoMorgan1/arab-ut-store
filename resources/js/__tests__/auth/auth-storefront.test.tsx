@@ -188,6 +188,7 @@ const arabicAuthUi = {
         submit: 'إنشاء الحساب',
         login_prompt: 'عندك حساب؟',
         login_link: 'سجّل الدخول',
+        password_symbol_error: 'أضف رمزًا واحدًا على الأقل، مثل ! أو @ أو #.',
     },
     forgot_password: {
         head_title: 'نسيت كلمة المرور',
@@ -267,6 +268,7 @@ const englishAuthUi = {
         submit: 'Create account',
         login_prompt: 'Already have an account?',
         login_link: 'Log in',
+        password_symbol_error: 'Add at least one symbol, such as !, @, or #.',
     },
     forgot_password: {
         head_title: 'Forgot password',
@@ -470,6 +472,46 @@ describe('storefront authentication shell', () => {
         expect(
             screen.getByRole('button', { name: 'Create account' }),
         ).toHaveClass('auth-form__submit');
+    });
+
+    it('shows the Arabic symbol requirement while the password is being typed', () => {
+        setPage('register');
+
+        render(
+            <AuthLayout>
+                <Register
+                    authRoutes={routes}
+                    authUi={arabicAuthUi}
+                    passwordRules="minlength:12; required: special;"
+                />
+            </AuthLayout>,
+        );
+
+        const password = screen.getByLabelText(arabicAuthUi.fields.password);
+
+        expect(
+            screen.queryByText(arabicAuthUi.register.password_symbol_error),
+        ).not.toBeInTheDocument();
+
+        fireEvent.change(password, { target: { value: 'StrongPassword12' } });
+
+        expect(
+            screen.getByText(arabicAuthUi.register.password_symbol_error),
+        ).toBeVisible();
+        expect(password).toHaveAttribute('aria-invalid', 'true');
+        expect(password).toHaveAttribute(
+            'aria-describedby',
+            'password-symbol-error',
+        );
+
+        fireEvent.change(password, {
+            target: { value: 'StrongPassword12!' },
+        });
+
+        expect(
+            screen.queryByText(arabicAuthUi.register.password_symbol_error),
+        ).not.toBeInTheDocument();
+        expect(password).toHaveAttribute('aria-invalid', 'false');
     });
 
     it('explains that WhatsApp login is only for an existing linked account', () => {

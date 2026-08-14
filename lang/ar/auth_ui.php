@@ -56,6 +56,7 @@ return [
         'submit' => 'إنشاء الحساب',
         'login_prompt' => 'عندك حساب؟',
         'login_link' => 'سجّل الدخول',
+        'password_symbol_error' => 'أضف رمزًا واحدًا على الأقل، مثل ! أو @ أو #.',
     ],
     'forgot_password' => [
         'head_title' => 'نسيت كلمة المرور',

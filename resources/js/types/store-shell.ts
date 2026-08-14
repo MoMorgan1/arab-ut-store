@@ -166,7 +166,6 @@ export type StoreCartTranslations = {
     summary_title: string;
     checkout_progress: string;
     step_cart: string;
-    step_phone: string;
     step_payment: string;
     service: string;
     coins_service: string;
@@ -206,7 +205,6 @@ export type StoreCartTranslations = {
     checkout_phone: string;
     checkout_error: string;
     checkout_cart_changed: string;
-    checkout_secure: string;
     phone_country: string;
     phone_number: string;
     phone_code: string;
@@ -217,6 +215,7 @@ export type StoreCartTranslations = {
     phone_sent: string;
     phone_invalid: string;
     phone_unavailable: string;
+    phone_delivery_error: string;
     order_total: string;
 };
 

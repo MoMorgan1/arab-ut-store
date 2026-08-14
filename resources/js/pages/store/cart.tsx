@@ -2,7 +2,6 @@ import { Head, usePage } from '@inertiajs/react';
 import {
     ChevronDown,
     CreditCard,
-    MessageCircleMore,
     ShoppingBag,
     ShieldCheck,
     Trash2,
@@ -171,10 +170,9 @@ function CheckoutProgress({
     phoneVerified: boolean;
     translations: StoreCartTranslations;
 }) {
-    const currentStep = !authenticated ? 0 : phoneVerified ? 2 : 1;
+    const currentStep = authenticated && phoneVerified ? 1 : 0;
     const steps = [
         { icon: ShoppingBag, label: translations.step_cart },
-        { icon: MessageCircleMore, label: translations.step_phone },
         { icon: CreditCard, label: translations.step_payment },
     ];
 
@@ -291,9 +289,6 @@ function CheckoutPanel({
                 <span>{translations.order_total}</span>
                 <strong>{formatMinorUnits(totalHalalah, 'SAR', locale)}</strong>
             </div>
-            <p className="store-cart-checkout__secure">
-                {translations.checkout_secure}
-            </p>
             <p className="store-cart-checkout__policies">
                 <a href={policyLinks.terms.url}>{policyLinks.terms.label}</a>
                 <span aria-hidden="true">·</span>
@@ -501,7 +496,9 @@ function CheckoutPhoneForm({
                 <p className="store-cart-checkout__error" role="alert">
                     {errorCode === 'phone_unavailable'
                         ? translations.phone_unavailable
-                        : translations.phone_invalid}
+                        : errorCode === 'whatsapp_unavailable'
+                          ? translations.phone_delivery_error
+                          : translations.phone_invalid}
                 </p>
             ) : null}
         </div>

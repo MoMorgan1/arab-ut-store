@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Validation\Rules\Password;
 use Laravel\Fortify\Features;
 
 beforeEach(function () {
@@ -29,6 +30,28 @@ test('new users can register', function () {
         'last_name' => 'User',
         'email' => 'test@example.com',
     ]);
+});
+
+test('Arabic registration returns the symbol requirement in Arabic', function () {
+    Password::defaults(fn (): Password => Password::min(12)
+        ->mixedCase()
+        ->letters()
+        ->numbers()
+        ->symbols());
+
+    try {
+        $this->post(route('register.store'), [
+            'first_name' => 'Test',
+            'last_name' => 'User',
+            'email' => 'symbol-test@example.com',
+            'password' => 'StrongPassword12',
+            'password_confirmation' => 'StrongPassword12',
+        ])->assertSessionHasErrors([
+            'password' => 'يجب أن تحتوي كلمة المرور على رمز واحد على الأقل.',
+        ]);
+    } finally {
+        Password::defaults(fn (): null => null);
+    }
 });
 
 test('users without local passwords can be persisted for imported identities', function () {

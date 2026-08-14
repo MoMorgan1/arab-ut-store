@@ -1,4 +1,6 @@
 import { Form, Head } from '@inertiajs/react';
+import { useState } from 'react';
+
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
@@ -15,6 +17,10 @@ type Props = {
 };
 
 export default function Register({ authRoutes, authUi, passwordRules }: Props) {
+    const [password, setPassword] = useState('');
+    const symbolMissing =
+        password.length > 0 && !/[\p{Z}\p{S}\p{P}]/u.test(password);
+
     return (
         <>
             <Head title={authUi.register.head_title} />
@@ -25,7 +31,7 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                 disableWhileProcessing
                 className="auth-form"
             >
-                {({ processing, errors }) => (
+                {({ clearErrors, processing, errors }) => (
                     <>
                         <div className="grid gap-6">
                             <div className="grid gap-2 sm:grid-cols-2">
@@ -123,12 +129,23 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                     placeholder={authUi.fields.password}
                                     passwordrules={passwordRules}
                                     className="h-11"
+                                    onChange={(event) => {
+                                        setPassword(event.currentTarget.value);
+
+                                        if (errors.password) {
+                                            clearErrors('password');
+                                        }
+                                    }}
                                     aria-describedby={
                                         errors.password
                                             ? 'password-error'
-                                            : undefined
+                                            : symbolMissing
+                                              ? 'password-symbol-error'
+                                              : undefined
                                     }
-                                    aria-invalid={Boolean(errors.password)}
+                                    aria-invalid={Boolean(
+                                        errors.password || symbolMissing,
+                                    )}
                                     showLabel={authUi.password_visibility.show}
                                     hideLabel={authUi.password_visibility.hide}
                                 />
@@ -136,6 +153,16 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                     id="password-error"
                                     message={errors.password}
                                     role="alert"
+                                />
+                                <InputError
+                                    id="password-symbol-error"
+                                    message={
+                                        symbolMissing && !errors.password
+                                            ? authUi.register
+                                                  .password_symbol_error
+                                            : undefined
+                                    }
+                                    role="status"
                                 />
                             </div>
 

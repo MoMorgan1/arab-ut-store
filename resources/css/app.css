@@ -2938,7 +2938,7 @@
 
     .store-cart-progress ol {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         margin: 0;
         padding: 0;
         list-style: none;
@@ -3437,15 +3437,9 @@
         font-variant-numeric: tabular-nums;
     }
 
-    .store-cart-checkout__secure,
     .store-cart-checkout__notice,
     .store-cart-checkout__error {
         margin: 0;
-    }
-
-    .store-cart-checkout__secure {
-        color: var(--arabut-muted);
-        font-size: 0.84rem;
     }
 
     .store-cart-checkout__policies {

@@ -42,7 +42,7 @@ test('an existing verified phone receives a short-lived hashed WhatsApp login co
 
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://gate.whapi.test/messages/text'
         && $request->hasHeader('Authorization', 'Bearer synthetic-whapi-token')
-        && $request['to'] === '+201001234567'
+        && $request['to'] === '201001234567'
         && str_contains((string) $request['body'], 'رمز تسجيل الدخول في عرب التيميت')
         && str_contains((string) $request['body'], 'صالح لمدة 5 دقائق')
     );

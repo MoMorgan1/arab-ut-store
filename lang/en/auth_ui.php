@@ -56,6 +56,7 @@ return [
         'submit' => 'Create account',
         'login_prompt' => 'Already have an account?',
         'login_link' => 'Log in',
+        'password_symbol_error' => 'Add at least one symbol, such as !, @, or #.',
     ],
     'forgot_password' => [
         'head_title' => 'Forgot password',

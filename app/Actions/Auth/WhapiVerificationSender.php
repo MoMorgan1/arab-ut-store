@@ -32,7 +32,7 @@ final class WhapiVerificationSender
             ->withToken($token)
             ->timeout(5)
             ->post('/messages/text', [
-                'to' => $phone->value(),
+                'to' => ltrim($phone->value(), '+'),
                 'body' => $body,
             ])
             ->throw();

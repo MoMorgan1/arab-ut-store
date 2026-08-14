@@ -90,6 +90,7 @@ export type AuthUiTranslations = {
         submit: string;
         login_prompt: string;
         login_link: string;
+        password_symbol_error: string;
     };
     forgot_password: {
         head_title: string;
