@@ -4,9 +4,9 @@ Date: 2026-08-15 (Africa/Cairo)
 
 ## Outcome
 
-The repeatable-SBC bundle contract is implemented and verified locally from the n8n transformation package through Laravel catalog validation, the public AR/EN selector, secure cart insertion, checkout revalidation, order configuration, and the enlarged add-to-cart notice.
+The repeatable-SBC bundle contract is implemented, deployed, and verified from the n8n transformation package through Laravel catalog validation, the public AR/EN selector, secure cart insertion, checkout revalidation, order configuration, and the enlarged add-to-cart notice.
 
-The code is **not deployed** in this verification step. After the n8n editor session was restored, the two verified transformation nodes were reconciled into the existing workflow draft and a safe manual dry run completed successfully. The published n8n runtime still emits the previous one-completion contract until the application release is deployed and the reviewed workflow draft is published. No `Publish`, production webhook `apply`, or catalog snapshot was triggered during this verification.
+GitHub CI and the Hostinger deployment completed successfully for `b54cfec23af...`. The final n8n workflow version was published, its authenticated production webhook completed a safe dry run, and a fresh signed apply completed with 29 products, 58 variants, and zero archives. Live storefront verification confirmed the updated catalog and independent PlayStation/Xbox and PC completion tiers.
 
 ## Commits
 
@@ -91,12 +91,12 @@ The normal PHP 8.5 CLI server was unsuitable in this Windows environment because
 
 Workflow: `SBC Catalog v1 - Signed Laravel Snapshot` (`xfoD5dzj4HqWrXza`) on n8n 2.6.3.
 
-Read-only inspection found:
+Initial read-only inspection found:
 
 - The workflow is currently active and its schedule has been executing every two hours.
 - The latest inspected successful scheduled execution was `#436423` at 2026-08-15 03:00:35, duration 25.059 seconds.
 - That execution used `mode=apply`, reached the catalog-signing/publish path, and emitted `formulaVersion=legacy-sbc-one-completion-v1` with no `completionPricing` bundle contract.
-- The editor has unpublished changes (`Publish` was available), so the published runtime and the locally verified export are not the same version.
+- The editor initially had unpublished changes (`Publish` was available), so the published runtime and the locally verified export were not the same version.
 
 Controlled safe check:
 
@@ -108,15 +108,19 @@ Controlled safe check:
 - No catalog POST was attempted; create/update/archive preview remains unavailable because Laravel intentionally exposes no authenticated current-snapshot read endpoint.
 - An attempted whole-workflow import appended duplicate nodes in the editor, so it was immediately undone before any execution or publish. The final draft contains no duplicated imported nodes.
 
-## Rollout state and exact blocker
+Production rollout:
 
-Local code, tests, and the authenticated n8n dry run are ready for rollout, but production is not ready to claim the new tier behavior until the application release and workflow draft are published in that order.
+- GitHub test run `31881957996` passed, including the MariaDB schema job and the aggregate CI job.
+- Hostinger deploy run `31882093287` completed successfully at `b54cfec23af...`; `https://store.arab-ut.com/up` returned HTTP 200.
+- The cleaned n8n workflow was published as `Repeatable SBC pricing - production verified` and remains active.
+- An authenticated production dry run returned `status=dry_run`, `publishAttempted=false`, 55 source records, 29 eligible products, and 58 variants.
+- Fresh signed apply run `01M02NF93HC0550DKCG77JK0GD` returned `status=completed`, `applied=29`, and `archived=0`; n8n recorded production execution `#436779` as successful.
+- The temporary credential-backed caller workflow was permanently deleted after verification; the credential value was never displayed, copied, logged, or added to the repository.
+- Live `/sbc` displayed 29 products across 3 pages. The repeatable Provisions Upgrade exposed the 5/10/15/20/30/40/50/75/100 selector.
+- Live independent pricing was confirmed: at 15 completions, PlayStation/Xbox displayed SAR 20.00 and PC displayed SAR 21.00.
 
-Required next production steps:
+## Rollout state
 
-1. Push the verified application release and require the GitHub test workflow plus Hostinger deployment to succeed.
-2. Publish the already-reviewed n8n draft only after the new Laravel catalog contract is live.
-3. Run one signed complete SBC snapshot, require HTTP 201, and verify a live repeatable and non-repeatable purchase path.
-4. Confirm the guarded two-hour schedule remains active after the verified publish.
+The application release, n8n workflow publish, authenticated production dry run, signed catalog apply, and live storefront verification are complete. The guarded two-hour schedule remains active on the final published workflow version.
 
-No production deployment, n8n publish, Paylink request, order, or signed catalog apply was performed in this step.
+No Paylink request or customer order was created during rollout verification. The cart presentation regression is covered by the deployed frontend test: SBC rows omit the Coins-only delivery field, while Coins rows retain it.
