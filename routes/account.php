@@ -6,6 +6,7 @@ use App\Http\Controllers\Account\OverviewController;
 use App\Http\Controllers\Account\ProfileController;
 use App\Http\Controllers\Account\ProfileEmailController;
 use App\Http\Controllers\Account\ProfilePhoneController;
+use App\Http\Controllers\Account\SecurityController;
 use App\Http\Controllers\Account\WalletController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureMyAccountEnabled;
@@ -42,6 +43,13 @@ Route::middleware($accountMiddleware)->group(function (): void {
     Route::post('/my-account/profile/phone/confirm', [ProfilePhoneController::class, 'confirm'])
         ->middleware('throttle:account-identity-confirm')
         ->name('account.profile.phone.confirm');
+    Route::get('/my-account/security', [SecurityController::class, 'show'])->name('account.security.show');
+    Route::put('/my-account/security/password', [SecurityController::class, 'change'])
+        ->middleware('throttle:6,1')
+        ->name('account.security.password.change');
+    Route::post('/my-account/security/password', [SecurityController::class, 'setup'])
+        ->middleware('throttle:6,1')
+        ->name('account.security.password.setup');
 });
 
 Route::prefix('en')
@@ -84,4 +92,15 @@ Route::prefix('en')
             ->middleware('throttle:account-identity-confirm')
             ->defaults('locale', 'en')
             ->name('account.profile.phone.confirm');
+        Route::get('/my-account/security', [SecurityController::class, 'show'])
+            ->defaults('locale', 'en')
+            ->name('account.security.show');
+        Route::put('/my-account/security/password', [SecurityController::class, 'change'])
+            ->middleware('throttle:6,1')
+            ->defaults('locale', 'en')
+            ->name('account.security.password.change');
+        Route::post('/my-account/security/password', [SecurityController::class, 'setup'])
+            ->middleware('throttle:6,1')
+            ->defaults('locale', 'en')
+            ->name('account.security.password.setup');
     });

@@ -161,6 +161,25 @@ export type AccountTranslations = {
         email_link_invalid: string;
         phone_code_invalid: string;
     };
+    security: {
+        title: string;
+        description: string;
+        current_password: string;
+        new_password: string;
+        confirm_password: string;
+        change_password: string;
+        set_password: string;
+        password_changed: string;
+        social_login_notice: string;
+        change_title: string;
+        setup_title: string;
+        change_description: string;
+        setup_description: string;
+        recovery_title: string;
+        recovery_email: string;
+        recovery_whatsapp: string;
+        recovery_action: string;
+    };
     verification: {
         verified: string;
         unverified: string;
@@ -302,5 +321,18 @@ export type AccountProfilePageProps = AccountPageShellProps & {
         emailRequestUrl: string;
         phoneRequestUrl: string;
         phoneConfirmUrl: string;
+    };
+};
+
+export type AccountSecurityPageProps = AccountPageShellProps & {
+    security: {
+        passwordMode: 'change' | 'setup';
+        passwordRules: string;
+        recoveryMode: 'email' | 'whatsapp';
+        recoveryUrl: string;
+    };
+    securityActions: {
+        changePasswordUrl: string;
+        setupPasswordUrl: string;
     };
 };

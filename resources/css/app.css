@@ -8464,6 +8464,108 @@
     padding-block-start: 1rem;
 }
 
+.account-security-page {
+    display: grid;
+    min-width: 0;
+    gap: 1.25rem;
+}
+
+.account-security-section {
+    max-width: 42rem;
+}
+
+.account-security-section .account-profile-section__heading {
+    align-items: flex-start;
+}
+
+.account-security-section .account-profile-section__heading p,
+.account-security-recovery p {
+    margin: 0.3rem 0 0;
+    color: var(--arabut-muted);
+    line-height: 1.5;
+}
+
+.account-security-section form {
+    max-width: 30rem;
+}
+
+.account-security-notice,
+.account-security-success {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+
+.account-security-notice {
+    margin: 0 0 1rem;
+    background: rgb(212 168 67 / 9%);
+    color: var(--arabut-gold-bright);
+}
+
+.account-security-success {
+    margin: 0.75rem 0 0;
+    background: rgb(101 193 140 / 10%);
+    color: #78d59e;
+}
+
+.account-security-notice svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex: 0 0 auto;
+}
+
+.account-security-recovery {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.85rem;
+    border: 1px solid var(--arabut-line);
+    border-radius: 1rem;
+    background: rgb(28 24 20 / 62%);
+    padding: clamp(1rem, 3vw, 1.35rem);
+}
+
+.account-security-recovery > span {
+    display: inline-flex;
+    width: 2.7rem;
+    height: 2.7rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    background: rgb(212 168 67 / 10%);
+    color: var(--arabut-gold-bright);
+}
+
+.account-security-recovery svg {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+
+.account-security-recovery h3 {
+    margin: 0;
+    color: var(--arabut-ink);
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
+.account-security-recovery a {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--arabut-gold);
+    border-radius: 0.7rem;
+    padding: 0.6rem 0.8rem;
+    color: var(--arabut-gold-bright);
+    font-weight: 800;
+    text-decoration: none;
+}
+
 .account-shell :is(a, button):focus-visible {
     outline: 3px solid var(--arabut-focus);
     outline-offset: 3px;
@@ -8556,6 +8658,15 @@
     }
 
     .account-profile-contact > strong {
+        grid-column: 2;
+        justify-self: start;
+    }
+
+    .account-security-recovery {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .account-security-recovery a {
         grid-column: 2;
         justify-self: start;
     }

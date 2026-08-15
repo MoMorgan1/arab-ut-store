@@ -439,6 +439,9 @@ git commit -m "feat: verify staged profile identity changes"
 - Create: `app/Account/Actions/SetAccountPassword.php`
 - Create: `app/Http/Requests/Account/PasswordChangeRequest.php`
 - Create: `app/Http/Requests/Account/PasswordSetupRequest.php`
+- Create: `app/Http/Middleware/EnsureVerifiedPasswordRecoveryEmail.php`
+- Modify: `bootstrap/app.php`
+- Modify: `app/Providers/FortifyServiceProvider.php`
 - Modify: `routes/account.php`
 - Create: `resources/js/pages/account/security.tsx`
 - Test: `tests/Feature/Account/AccountSecurityTest.php`
@@ -448,22 +451,22 @@ git commit -m "feat: verify staged profile identity changes"
 - Produces `passwordMode: 'change'|'setup'` based only on whether a password exists.
 - Change requires current password; setup requires recent trusted re-authentication; both use Laravel password defaults and throttle.
 
-- [ ] **Step 1: Write failing password-capable and passwordless tests**
+- [x] **Step 1: Write failing password-capable and passwordless tests**
 
-- [ ] **Step 2: Run tests and confirm failure**
+- [x] **Step 2: Run tests and confirm failure**
 
-- [ ] **Step 3: Implement safe server actions and routes**
+- [x] **Step 3: Implement safe server actions and routes**
 
 Do not expose the password hash. Reject standard email recovery when the user lacks a verified deliverable email; route those users to WhatsApp recovery/claim copy.
 
-- [ ] **Step 4: Add React tests and implement the security page**
+- [x] **Step 4: Add React tests and implement the security page**
 
 Call `dontRemember('current_password', 'password', 'password_confirmation')`; expose password manager autocomplete values and accessible success/error announcements.
 
-- [ ] **Step 5: Run focused checks and commit**
+- [x] **Step 5: Run focused checks and commit**
 
 ```bash
-git add app/Http/Controllers/Account/SecurityController.php app/Account/Actions/SetAccountPassword.php app/Http/Requests/Account routes/account.php resources/js/pages/account/security.tsx tests/Feature/Account/AccountSecurityTest.php resources/js/__tests__/account/account-security.test.tsx
+git add app/Http/Controllers/Account/SecurityController.php app/Account/Actions/SetAccountPassword.php app/Http/Requests/Account app/Http/Middleware/EnsureVerifiedPasswordRecoveryEmail.php app/Providers/FortifyServiceProvider.php bootstrap/app.php routes/account.php resources/js/pages/account/security.tsx tests/Feature/Account/AccountSecurityTest.php resources/js/__tests__/account/account-security.test.tsx
 git commit -m "feat: add customer account security flows"
 ```
 

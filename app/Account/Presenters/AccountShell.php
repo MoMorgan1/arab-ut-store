@@ -50,6 +50,14 @@ final class AccountShell
                         absolute: false,
                     ),
                 ],
+                [
+                    'key' => 'security',
+                    'label' => trans('account.navigation.security'),
+                    'url' => route(
+                        $localized ? 'localized.account.security.show' : 'account.security.show',
+                        absolute: false,
+                    ),
+                ],
             ],
             'logoutUrl' => route('logout', absolute: false),
         ];
