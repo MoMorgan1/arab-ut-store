@@ -93,7 +93,7 @@ test('login merges guest items into an existing user cart without selecting or c
     DB::disableQueryLog();
     $querySql = strtolower(implode("\n", array_column($claimQueries, 'query')));
 
-    $response->assertRedirect('/dashboard');
+    $response->assertRedirect('/my-account');
     $response->assertSessionMissing(ResolveCartOwner::SESSION_KEY);
 
     expect(Cart::query()->whereKey($guestCart->id)->exists())->toBeFalse()
@@ -174,7 +174,7 @@ test('a real claim failure logs the user back out, rolls back, retains the token
             'password' => 'password',
         ]);
 
-    $response->assertRedirect('/dashboard');
+    $response->assertRedirect('/my-account');
     $this->assertAuthenticatedAs($user);
     $response->assertSessionMissing(ResolveCartOwner::SESSION_KEY);
     expect(Cart::query()->whereKey($guestCart->id)->exists())->toBeFalse()
@@ -264,7 +264,7 @@ test('login cannot claim a cart belonging to another guest session', function ()
             'password' => 'password',
         ]);
 
-    $response->assertRedirect('/dashboard');
+    $response->assertRedirect('/my-account');
     $response->assertSessionMissing(ResolveCartOwner::SESSION_KEY);
 
     expect($guestCart->fresh()->active_owner_key)->toBe("guest:{$guestHmac}")

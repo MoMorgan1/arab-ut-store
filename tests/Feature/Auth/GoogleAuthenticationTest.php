@@ -36,7 +36,7 @@ test('verified google identity creates a customer and social account without sto
     $provider->shouldReceive('user')->once()->andReturn($providerUser);
     Socialite::shouldReceive('driver')->once()->with('google')->andReturn($provider);
 
-    $this->get('/auth/google/callback')->assertRedirect('/dashboard');
+    $this->get('/auth/google/callback')->assertRedirect('/my-account');
 
     $user = User::where('email', 'google-player@example.test')->sole();
     $this->assertAuthenticatedAs($user);

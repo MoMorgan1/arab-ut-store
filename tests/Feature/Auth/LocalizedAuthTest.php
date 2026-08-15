@@ -106,7 +106,7 @@ test('English registration records the originating locale', function () {
         'email' => 'english-player@example.test',
         'password' => 'password',
         'password_confirmation' => 'password',
-    ])->assertRedirect('/dashboard');
+    ])->assertRedirect('/en/my-account');
 
     expect(User::where('email', 'english-player@example.test')->value('preferred_locale'))->toBe('en');
 });

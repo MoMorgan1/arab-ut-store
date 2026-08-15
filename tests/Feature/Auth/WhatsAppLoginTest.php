@@ -81,7 +81,7 @@ test('a new verified WhatsApp number continues to registration and becomes the a
         'email' => 'new-phone@example.test',
         'password' => 'StrongPassword!12',
         'password_confirmation' => 'StrongPassword!12',
-    ])->assertRedirect(route('dashboard', absolute: false));
+    ])->assertRedirect('/my-account');
 
     $user = User::query()->where('email', 'new-phone@example.test')->sole();
     $this->assertAuthenticatedAs($user);
@@ -162,7 +162,7 @@ test('the matching WhatsApp code is consumed once and signs in the phone owner',
     $this->postJson(route('auth.whatsapp.verify'), [
         'phone' => $user->phone,
         'code' => $sentCode,
-    ])->assertOk()->assertJsonPath('data.redirectUrl', route('dashboard', absolute: false));
+    ])->assertOk()->assertJsonPath('data.redirectUrl', '/my-account');
 
     $this->assertAuthenticatedAs($user);
     expect(PhoneVerification::query()->sole()->verified_at)->not->toBeNull();

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Account\AccountOverviewUrl;
 use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -23,7 +24,7 @@ final class GoogleAuthenticationController extends Controller
         return Socialite::driver('google')->redirect();
     }
 
-    public function callback(Request $request): RedirectResponse
+    public function callback(Request $request, AccountOverviewUrl $accountOverviewUrl): RedirectResponse
     {
         abort_unless($this->configured(), 503);
 
@@ -40,7 +41,7 @@ final class GoogleAuthenticationController extends Controller
         Auth::login($user, remember: true);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended($accountOverviewUrl->for($user));
     }
 
     private function resolveUser(SocialiteUser $providerUser, string $locale): User

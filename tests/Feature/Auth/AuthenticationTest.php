@@ -9,17 +9,24 @@ test('login screen can be rendered', function () {
     $response->assertOk();
 });
 
-test('users can authenticate using the login screen', function () {
-    $user = User::factory()->create();
+test('account login lands directly in localized My Account without the legacy dashboard hop', function (
+    string $loginUrl,
+    string $preferredLocale,
+    string $accountUrl,
+) {
+    $user = User::factory()->create(['preferred_locale' => $preferredLocale]);
 
-    $response = $this->post(route('login.store'), [
+    $response = $this->post($loginUrl, [
         'email' => $user->email,
         'password' => 'password',
     ]);
 
-    $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
-});
+    $this->assertAuthenticatedAs($user);
+    $response->assertRedirect($accountUrl);
+})->with([
+    'Arabic account' => ['/login', 'ar', '/my-account'],
+    'English account' => ['/en/login', 'en', '/en/my-account'],
+]);
 
 test('phone numbers cannot bypass the one-time-code login flow with a password', function () {
     $user = User::factory()->create(['phone' => '+201001234567']);

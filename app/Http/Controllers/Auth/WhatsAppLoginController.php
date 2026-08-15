@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Account\AccountOverviewUrl;
 use App\Actions\Auth\PendingVerifiedRegistrationPhone;
 use App\Actions\Auth\SendWhatsAppLoginCode;
 use App\Actions\Auth\VerifyWhatsAppLoginCode;
@@ -36,6 +37,7 @@ final class WhatsAppLoginController extends Controller
         VerifyWhatsAppCodeRequest $request,
         VerifyWhatsAppLoginCode $verify,
         PendingVerifiedRegistrationPhone $pendingPhone,
+        AccountOverviewUrl $accountOverviewUrl,
     ): JsonResponse {
         $phone = $this->phone((string) $request->validated('phone'));
 
@@ -62,11 +64,12 @@ final class WhatsAppLoginController extends Controller
         $pendingPhone->forget($request);
         Auth::login($result->user, remember: true);
         $request->session()->put('auth.identity_confirmed_at', now()->timestamp);
-        $targetUrl = redirect()->intended(route('dashboard', absolute: false))->getTargetUrl();
+        $accountUrl = $accountOverviewUrl->for($result->user);
+        $targetUrl = redirect()->intended($accountUrl)->getTargetUrl();
         $parts = parse_url($targetUrl);
         $redirectUrl = is_array($parts) && (! isset($parts['host']) || $parts['host'] === $request->getHost())
             ? ($parts['path'] ?? '/').(isset($parts['query']) ? '?'.$parts['query'] : '')
-            : route('dashboard', absolute: false);
+            : $accountUrl;
 
         return response()->json(['data' => ['redirectUrl' => $redirectUrl]])
             ->header('Cache-Control', 'no-store, private');
