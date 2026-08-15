@@ -45,6 +45,8 @@ Wait for Mohamed's explicit approval before implementation.
 
 Do not build, redesign, or visually modify any customer-facing or admin interface until this gate is complete:
 
+This requirement applies to every frontend change, including small copy, CSS, spacing, responsive, animation, interaction-state, and component edits. Before changing frontend code, explicitly announce which required UI skills are being used and why; a frontend change made without loading and following the applicable skills is incomplete.
+
 1. Inspect the equivalent page, component, responsive behavior, assets, typography, copy, and interactions in the current Arab UT WordPress storefront and its available theme/plugin export.
 2. Inspect the relevant implementation already present in this repository.
 3. Load and follow both the `frontend-design` and `ui-ux-pro-max` skills.
