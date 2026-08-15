@@ -64,7 +64,10 @@ class HandleInertiaRequests extends Middleware
                 'futChampionsUrl' => $storeUrl('fut_champions'),
                 'accountUrl' => $request->user() === null
                     ? route($routeName('login'), $routeParameters, absolute: false)
-                    : route('dashboard', absolute: false),
+                    : route(
+                        $localized ? 'localized.account.overview' : 'account.overview',
+                        absolute: false,
+                    ),
                 'privacyUrl' => $storeUrl('privacy'),
                 'returnsUrl' => $storeUrl('returns'),
                 'warrantyUrl' => $storeUrl('warranty'),

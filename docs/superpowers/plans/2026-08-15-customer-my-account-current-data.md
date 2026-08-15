@@ -165,37 +165,37 @@ git commit -m "feat: secure my account rollout boundary"
 - Test: `tests/Feature/Account/AccountTranslationParityTest.php`
 
 **Interfaces:**
-- Produces route names `account.overview`, `account.orders`, `account.wallet`, `account.profile`, `account.security`, `account.support` and `localized.account.*`.
+- Produces `account.overview` and `localized.account.overview` now; each remaining named destination is added atomically with its real controller and page in Tasks 5-9 so no placeholder route is ever shipped.
 - Produces `storeShell.accountUrl` pointing to `/my-account` or `/en/my-account` for authenticated users.
 - Produces `accountUi = trans('account')` for every account destination.
 
-- [ ] **Step 1: Write failing route and translation tests**
+- [x] **Step 1: Write failing route and translation tests**
 
 Cover guest redirect, Arabic/English canonical URLs, `/dashboard` redirect, active-user 403, `Cache-Control: no-store`, `encryptHistory=true`, and exact Arabic/English translation leaf parity.
 
-- [ ] **Step 2: Run focused tests and confirm failure**
+- [x] **Step 2: Run focused tests and confirm failure**
 
 Run: `php artisan test tests/Feature/Account/AccountRoutesTest.php tests/Feature/Account/AccountTranslationParityTest.php`
 
-- [ ] **Step 3: Define account route groups**
+- [x] **Step 3: Define account route groups**
 
-Use middleware `['auth', EnsureActiveUser::class, NoStore::class, 'inertia::encrypt']`. Define the unprefixed Arabic group and an English `/en` group with `->defaults('locale', 'en')`; do not create `/ar/my-account` as a canonical URL.
+Use middleware `[EnsureMyAccountEnabled::class, 'auth', EnsureActiveUser::class, NoStore::class, 'inertia.encrypt']`. Define the unprefixed Arabic group and an English `/en` group; apply `->defaults('locale', 'en')` to each English route because Laravel route groups do not expose `defaults()`. Do not create `/ar/my-account` as a canonical URL.
 
-- [ ] **Step 4: Add the overview controller and shared URL**
+- [x] **Step 4: Add the overview controller and shared URL**
 
 The controller returns `Inertia::render('account/overview', ['accountUi' => trans('account')])`. Update `HandleInertiaRequests` to choose the locale-specific account route for authenticated customers and retain login for guests.
 
-- [ ] **Step 5: Add complete native translations**
+- [x] **Step 5: Add complete native translations**
 
 Define navigation, overview, orders, wallet, profile, security, support, status, action, error, empty, verification, and accessibility keys in both files. Arabic uses `حسابي`, `نظرة عامة`, `طلباتي`, `محفظتي`, `بياناتي`, `الأمان`, and `الدعم`.
 
-- [ ] **Step 6: Run focused tests, route inspection, and format**
+- [x] **Step 6: Run focused tests, route inspection, and format**
 
 Run: `php artisan route:list --path=my-account`
 
 Run: `php artisan test tests/Feature/Account/AccountRoutesTest.php tests/Feature/Account/AccountTranslationParityTest.php tests/Feature/Store/StoreShellRoutesTest.php`
 
-- [ ] **Step 7: Commit the canonical contract**
+- [x] **Step 7: Commit the canonical contract**
 
 ```bash
 git add routes/account.php routes/web.php app/Http/Middleware/HandleInertiaRequests.php app/Http/Controllers/Account/OverviewController.php lang/ar/account.php lang/en/account.php resources/js/types/store-shell.ts tests/Feature/Account
