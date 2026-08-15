@@ -28,6 +28,8 @@ return [
         'empty_title' => 'كل شيء جاهز لأول طلب لك',
         'empty_description' => 'لم تنشئ أي طلب بعد. اختر خدمتك وابدأ بخطوات واضحة وآمنة.',
         'browse_services' => 'تصفح الخدمات',
+        'loyalty_remaining' => 'تبقى :amount للوصول إلى فئة :tier.',
+        'loyalty_complete' => 'وصلت إلى أعلى فئة ولاء متاحة.',
     ],
     'orders' => [
         'title' => 'طلباتي',
@@ -102,6 +104,7 @@ return [
         'view_order' => 'عرض الطلب',
         'view_all' => 'عرض الكل',
         'pay_now' => 'إكمال الدفع',
+        'retry_payment' => 'إعادة محاولة الدفع',
         'provide_details' => 'استكمال البيانات',
         'retry' => 'إعادة المحاولة',
         'back_to_account' => 'العودة إلى حسابي',

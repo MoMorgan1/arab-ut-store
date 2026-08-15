@@ -28,6 +28,8 @@ return [
         'empty_title' => 'Everything is ready for your first order',
         'empty_description' => 'You have not placed an order yet. Choose a service and start with clear, secure steps.',
         'browse_services' => 'Browse services',
+        'loyalty_remaining' => ':amount remaining to reach :tier.',
+        'loyalty_complete' => 'You have reached the highest available loyalty tier.',
     ],
     'orders' => [
         'title' => 'Orders',
@@ -102,6 +104,7 @@ return [
         'view_order' => 'View order',
         'view_all' => 'View all',
         'pay_now' => 'Complete payment',
+        'retry_payment' => 'Retry payment',
         'provide_details' => 'Provide details',
         'retry' => 'Try again',
         'back_to_account' => 'Back to My Account',

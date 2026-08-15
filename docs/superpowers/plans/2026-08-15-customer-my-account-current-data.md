@@ -258,8 +258,12 @@ git commit -m "feat: project current account summary"
 - Create: `resources/js/components/account/account-order-card.tsx`
 - Create: `resources/js/components/account/account-metric.tsx`
 - Create: `resources/js/pages/account/overview.tsx`
+- Create: `resources/js/lib/account-money.ts`
 - Modify: `resources/js/types/index.ts`
 - Modify: `resources/css/app.css`
+- Modify: `app/Http/Controllers/Account/OverviewController.php`
+- Modify: `lang/ar/account.php`, `lang/en/account.php`
+- Test: `tests/Feature/Account/AccountOverviewTest.php`
 - Test: `resources/js/__tests__/account/account-overview.test.tsx`
 - Test: `resources/js/__tests__/account/account-navigation.test.tsx`
 
@@ -267,29 +271,29 @@ git commit -m "feat: project current account summary"
 - Consumes the exact Task 3 projections.
 - Produces `MyAccountLayout` wrapping `StoreLayout`, a separate POST logout button, horizontal mobile navigation, and desktop side navigation.
 
-- [ ] **Step 1: Write failing rendering and interaction tests**
+- [x] **Step 1: Write failing rendering and interaction tests**
 
 Assert `حسابي`/`My Account`, selected navigation semantics, separate button logout, active-order prominence, honest empty states, safe money rendering, keyboard focus, and no `Dashboard` label.
 
-- [ ] **Step 2: Run Vitest and confirm failure**
+- [x] **Step 2: Run Vitest and confirm failure**
 
 Run: `npm test -- resources/js/__tests__/account/account-overview.test.tsx resources/js/__tests__/account/account-navigation.test.tsx`
 
-- [ ] **Step 3: Implement types, layout, and focused components**
+- [x] **Step 3: Implement types, layout, and focused components**
 
-Use existing CSS variables and assets. Account navigation links are at least 44px high, expose `aria-current="page"`, and never prefetch wallet/security/order detail pages. Logout uses Inertia POST, `router.flushAll()`, and no anchor semantics.
+Use existing CSS variables and assets. Account navigation links are at least 44px high, expose `aria-current="page"`, and never prefetch wallet/security/order detail pages. The server supplies only destinations that have a real route, controller, and page; Tasks 5-9 append each remaining destination atomically instead of exposing temporary 404 links. Logout uses Inertia POST, `router.flushAll()`, and no anchor semantics.
 
-- [ ] **Step 4: Implement the overview page and states**
+- [x] **Step 4: Implement the overview page and states**
 
 Render the welcome area, actionable order, wallet/open/completed metrics, loyalty progress, three recent orders, and branded empty/unavailable states in the approved WordPress order.
 
-- [ ] **Step 5: Run frontend checks**
+- [x] **Step 5: Run frontend checks**
 
 Run: `npm test -- resources/js/__tests__/account`
 
 Run: `npm run types:check && npm run lint:check && npm run format:check`
 
-- [ ] **Step 6: Commit the account shell**
+- [x] **Step 6: Commit the account shell**
 
 ```bash
 git add resources/js/types resources/js/layouts/my-account-layout.tsx resources/js/components/account resources/js/pages/account/overview.tsx resources/css/app.css resources/js/__tests__/account

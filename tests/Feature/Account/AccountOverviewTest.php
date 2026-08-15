@@ -62,10 +62,21 @@ function accountOverview(User $user, string $path = '/my-account'): TestResponse
 }
 
 test('a new customer receives an honest empty current-data overview', function (): void {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'first_name' => 'محمد',
+        'last_name' => 'لاعب',
+    ]);
 
     accountOverview($user)
         ->assertInertia(fn ($page) => $page
+            ->where('accountIdentity', [
+                'name' => 'محمد لاعب',
+                'greeting' => 'مرحبًا، محمد لاعب',
+            ])
+            ->where('accountNavigation', [
+                ['key' => 'overview', 'label' => 'نظرة عامة', 'url' => '/my-account'],
+            ])
+            ->where('logoutUrl', '/logout')
             ->where('summary.orderCount', 0)
             ->where('summary.openOrderCount', 0)
             ->where('summary.completedOrderCount', 0)

@@ -21,6 +21,19 @@ final class OverviewController extends Controller
 
         return Inertia::render('account/overview', [
             'accountUi' => trans('account'),
+            'accountIdentity' => [
+                'name' => $user->name,
+                'greeting' => trans('account.greeting', ['name' => $user->name]),
+            ],
+            'accountNavigation' => [[
+                'key' => 'overview',
+                'label' => trans('account.navigation.overview'),
+                'url' => route(
+                    app()->getLocale() === 'en' ? 'localized.account.overview' : 'account.overview',
+                    absolute: false,
+                ),
+            ]],
+            'logoutUrl' => route('logout', absolute: false),
             ...$this->overview->for($user, app()->getLocale()),
         ]);
     }

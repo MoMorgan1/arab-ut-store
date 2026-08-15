@@ -7152,3 +7152,639 @@
         animation-iteration-count: 1 !important;
     }
 }
+
+/* Customer My Account — WordPress hierarchy refined inside the store shell. */
+.account-shell {
+    position: relative;
+    min-width: 0;
+    overflow: clip;
+    background:
+        radial-gradient(
+            circle at 84% 0%,
+            rgb(212 168 67 / 8%),
+            transparent 28rem
+        ),
+        var(--arabut-navy);
+}
+
+.account-shell__container {
+    width: min(100% - 1.5rem, 68.75rem);
+    margin-inline: auto;
+}
+
+.account-shell__hero {
+    position: relative;
+    overflow: hidden;
+    border-block-end: 1px solid var(--arabut-line);
+    background:
+        linear-gradient(112deg, rgb(28 24 20 / 88%), rgb(13 11 8 / 96%)),
+        url('/images/store/stadium-mobile.webp') center / cover;
+}
+
+.account-shell__glow {
+    position: absolute;
+    inset-block-start: -10rem;
+    inset-inline-end: -7rem;
+    width: 24rem;
+    height: 24rem;
+    border-radius: 50%;
+    background: rgb(212 168 67 / 11%);
+    filter: blur(4rem);
+    pointer-events: none;
+}
+
+.account-shell__hero-inner {
+    position: relative;
+    display: flex;
+    min-height: 12rem;
+    align-items: center;
+    gap: clamp(1rem, 4vw, 1.75rem);
+    padding-block: clamp(2rem, 6vw, 3.5rem);
+}
+
+.account-shell__hero-inner > img {
+    width: clamp(3.75rem, 9vw, 5rem);
+    height: clamp(3.75rem, 9vw, 5rem);
+    flex: 0 0 auto;
+    object-fit: contain;
+    filter: drop-shadow(0 0.75rem 1.5rem rgb(0 0 0 / 35%));
+}
+
+.account-shell__hero-inner p,
+.account-overview__intro p {
+    margin: 0 0 0.35rem;
+    color: var(--arabut-gold-bright);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.account-shell__hero-inner h1 {
+    margin: 0;
+    color: var(--arabut-ink);
+    font-size: clamp(2.25rem, 7vw, 4rem);
+    font-weight: 850;
+    line-height: 1;
+}
+
+.account-shell__hero-inner div > span {
+    display: block;
+    max-width: 55ch;
+    margin-block-start: 0.65rem;
+    color: var(--arabut-muted);
+    font-size: clamp(0.95rem, 2vw, 1.08rem);
+    line-height: 1.65;
+}
+
+.account-shell__grid {
+    display: grid;
+    min-width: 0;
+    gap: 1.25rem;
+    padding-block: 1.25rem clamp(3.5rem, 8vw, 6rem);
+}
+
+.account-shell__sidebar,
+.account-shell__content {
+    min-width: 0;
+}
+
+.account-navigation-wrap {
+    min-width: 0;
+    border: 1px solid var(--arabut-line);
+    border-radius: 1rem;
+    background: rgb(28 24 20 / 72%);
+    box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 16%);
+}
+
+.account-navigation {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--arabut-gold) transparent;
+}
+
+.account-navigation ul {
+    display: flex;
+    width: max-content;
+    min-width: 100%;
+    margin: 0;
+    gap: 0.25rem;
+    padding: 0.35rem;
+    list-style: none;
+}
+
+.account-navigation__link,
+.account-navigation__logout {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.65rem;
+    border: 1px solid transparent;
+    border-radius: 0.7rem;
+    padding: 0.65rem 0.8rem;
+    color: var(--arabut-muted);
+    font-size: 0.92rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+        border-color 160ms ease,
+        background-color 160ms ease,
+        color 160ms ease;
+}
+
+.account-navigation__link svg,
+.account-navigation__logout svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    flex: 0 0 auto;
+}
+
+.account-navigation__link:hover {
+    border-color: var(--arabut-line);
+    background: rgb(212 168 67 / 6%);
+    color: var(--arabut-ink);
+}
+
+.account-navigation__link[aria-current='page'] {
+    border-color: rgb(212 168 67 / 26%);
+    background: rgb(212 168 67 / 12%);
+    color: var(--arabut-gold-bright);
+}
+
+.account-navigation__logout {
+    width: calc(100% - 0.7rem);
+    margin: 0 0.35rem 0.35rem;
+    justify-content: center;
+    border-color: rgb(255 180 169 / 12%);
+    background: transparent;
+    color: var(--arabut-danger);
+    cursor: pointer;
+}
+
+.account-navigation__logout:hover {
+    border-color: rgb(255 180 169 / 25%);
+    background: rgb(255 180 169 / 7%);
+}
+
+.account-overview {
+    display: grid;
+    min-width: 0;
+    gap: 1.25rem;
+}
+
+.account-overview__intro {
+    display: flex;
+    min-width: 0;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.account-overview__intro h2 {
+    margin: 0;
+    color: var(--arabut-ink);
+    font-size: clamp(1.65rem, 4vw, 2.35rem);
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.account-overview__intro div > span {
+    display: block;
+    margin-block-start: 0.45rem;
+    color: var(--arabut-muted);
+    line-height: 1.55;
+}
+
+.account-overview__browse,
+.account-overview__empty a {
+    display: inline-flex;
+    min-height: 2.75rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    border-radius: 0.7rem;
+    background: var(--arabut-gold);
+    padding: 0.65rem 1rem;
+    color: var(--arabut-navy-deep);
+    font-weight: 850;
+    text-decoration: none;
+}
+
+.account-overview__browse svg,
+.account-overview__empty a svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.account-overview__welcome,
+.account-overview__loyalty,
+.account-overview__empty {
+    border: 1px solid var(--arabut-line);
+    border-radius: 1rem;
+    background:
+        linear-gradient(120deg, rgb(212 168 67 / 8%), transparent 48%),
+        rgb(28 24 20 / 64%);
+    box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 14%);
+}
+
+.account-overview__welcome {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: clamp(1rem, 3vw, 1.35rem);
+}
+
+.account-overview__welcome > span,
+.account-overview__empty > span {
+    display: inline-flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgb(212 168 67 / 22%);
+    border-radius: 0.8rem;
+    background: rgb(212 168 67 / 10%);
+    color: var(--arabut-gold-bright);
+}
+
+.account-overview__welcome svg,
+.account-overview__empty > span svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.account-overview__welcome h3 {
+    margin: 0;
+    color: var(--arabut-ink);
+    font-size: clamp(1.2rem, 3vw, 1.55rem);
+    font-weight: 800;
+}
+
+.account-overview__welcome p,
+.account-overview__empty p {
+    margin: 0.35rem 0 0;
+    color: var(--arabut-muted);
+    line-height: 1.55;
+}
+
+.account-overview__section {
+    min-width: 0;
+}
+
+.account-overview__section > h2,
+.account-overview__loyalty h2 {
+    margin: 0 0 0.75rem;
+    color: var(--arabut-ink);
+    font-size: clamp(1.2rem, 3vw, 1.55rem);
+    font-weight: 800;
+}
+
+.account-overview__metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+    gap: 0.75rem;
+}
+
+.account-metric {
+    display: flex;
+    min-width: 0;
+    min-height: 7rem;
+    align-items: center;
+    gap: 0.8rem;
+    border: 1px solid var(--arabut-line);
+    border-radius: 0.9rem;
+    background: rgb(28 24 20 / 58%);
+    padding: 1rem;
+}
+
+.account-metric__icon {
+    display: inline-flex;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex: 0 0 2.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.7rem;
+    background: rgb(212 168 67 / 9%);
+    color: var(--arabut-gold-bright);
+}
+
+.account-metric__icon svg {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+
+.account-metric dt {
+    color: var(--arabut-muted);
+    font-size: 0.82rem;
+    line-height: 1.35;
+}
+
+.account-metric dd {
+    margin: 0.25rem 0 0;
+    overflow-wrap: anywhere;
+    color: var(--arabut-ink);
+    font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+    font-size: clamp(1.25rem, 4vw, 1.7rem);
+    font-weight: 850;
+    line-height: 1;
+}
+
+.account-order-card {
+    min-width: 0;
+    border: 1px solid var(--arabut-line);
+    border-radius: 1rem;
+    background: rgb(28 24 20 / 62%);
+    padding: clamp(1rem, 3vw, 1.25rem);
+}
+
+.account-order-card--prominent {
+    border-color: rgb(212 168 67 / 34%);
+    background:
+        linear-gradient(135deg, rgb(212 168 67 / 9%), transparent 56%),
+        rgb(28 24 20 / 76%);
+    box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 18%);
+}
+
+.account-order-card__topline,
+.account-order-card__body {
+    display: flex;
+    min-width: 0;
+    justify-content: space-between;
+    gap: 0.85rem;
+}
+
+.account-order-card__topline {
+    align-items: center;
+}
+
+.account-order-card__status,
+.account-order-card__date {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--arabut-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.account-order-card__status > span {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--arabut-gold);
+    box-shadow: 0 0 0 0.2rem rgb(212 168 67 / 10%);
+}
+
+.account-order-card__status[data-status='completed'] > span {
+    background: #65c18c;
+    box-shadow: 0 0 0 0.2rem rgb(101 193 140 / 10%);
+}
+
+.account-order-card__status:is(
+        [data-status='cancelled'],
+        [data-status='failed']
+    )
+    > span {
+    background: var(--arabut-danger);
+    box-shadow: 0 0 0 0.2rem rgb(255 180 169 / 10%);
+}
+
+.account-order-card__date svg {
+    width: 0.95rem;
+    height: 0.95rem;
+}
+
+.account-order-card__body {
+    align-items: end;
+    margin-block: 1rem;
+}
+
+.account-order-card__number {
+    display: block;
+    color: var(--arabut-gold-bright);
+    font-size: 0.82rem;
+    font-weight: 800;
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.account-order-card h3 {
+    margin: 0.35rem 0 0;
+    overflow-wrap: anywhere;
+    color: var(--arabut-ink);
+    font-size: clamp(1.05rem, 3vw, 1.3rem);
+    font-weight: 750;
+    line-height: 1.25;
+}
+
+.account-order-card__total {
+    flex: 0 0 auto;
+    color: var(--arabut-ink);
+    font-size: 1rem;
+    white-space: nowrap;
+}
+
+.account-order-card__action {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.45rem;
+    border-block-start: 1px solid var(--arabut-line);
+    padding-block-start: 0.8rem;
+    color: var(--arabut-gold-bright);
+    font-size: 0.9rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.account-order-card__action svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.account-overview__orders {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.account-overview__loyalty {
+    padding: clamp(1rem, 3vw, 1.35rem);
+}
+
+.account-overview__loyalty-heading {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.account-overview__loyalty-heading > span {
+    display: inline-flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.8rem;
+    background: rgb(212 168 67 / 11%);
+    color: var(--arabut-gold-bright);
+}
+
+.account-overview__loyalty-heading svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.account-overview__loyalty h2 {
+    margin: 0;
+}
+
+.account-overview__loyalty-heading p {
+    margin: 0.2rem 0 0;
+    color: var(--arabut-gold-bright);
+    font-weight: 750;
+}
+
+.account-overview__loyalty-heading > strong {
+    color: var(--arabut-ink);
+    font-size: 1.15rem;
+}
+
+.account-overview__progress {
+    height: 0.55rem;
+    margin-block-start: 1rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgb(237 228 208 / 8%);
+}
+
+.account-overview__progress span {
+    display: block;
+    block-size: 100%;
+    border-radius: inherit;
+    background: linear-gradient(
+        90deg,
+        var(--arabut-gold),
+        var(--arabut-gold-bright)
+    );
+}
+
+.account-overview__loyalty-copy {
+    margin: 0.7rem 0 0;
+    color: var(--arabut-muted);
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
+.account-overview__empty {
+    padding: clamp(1.5rem, 5vw, 2.5rem);
+    text-align: center;
+}
+
+.account-overview__empty > span {
+    margin-inline: auto;
+}
+
+.account-overview__empty h2 {
+    margin: 0.9rem 0 0;
+    color: var(--arabut-ink);
+    font-size: clamp(1.35rem, 4vw, 1.8rem);
+}
+
+.account-overview__empty p {
+    max-width: 48ch;
+    margin-inline: auto;
+}
+
+.account-overview__empty a {
+    margin-block-start: 1rem;
+}
+
+.account-shell :is(a, button):focus-visible {
+    outline: 3px solid var(--arabut-focus);
+    outline-offset: 3px;
+}
+
+@media (min-width: 48rem) {
+    .account-shell__hero {
+        background-image:
+            linear-gradient(112deg, rgb(28 24 20 / 84%), rgb(13 11 8 / 94%)),
+            url('/images/store/stadium.webp');
+    }
+
+    .account-shell__grid {
+        grid-template-columns: minmax(11.5rem, 14rem) minmax(0, 1fr);
+        align-items: start;
+        gap: clamp(1.5rem, 4vw, 2.5rem);
+        padding-block-start: 2rem;
+    }
+
+    .account-navigation-wrap {
+        position: sticky;
+        inset-block-start: 8.5rem;
+        padding: 0.4rem;
+    }
+
+    .account-navigation {
+        overflow: visible;
+    }
+
+    .account-navigation ul {
+        width: auto;
+        flex-direction: column;
+        padding: 0;
+    }
+
+    .account-navigation__link,
+    .account-navigation__logout {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .account-navigation__logout {
+        margin: 0.4rem 0 0;
+        border-block-start-color: var(--arabut-line);
+    }
+
+    .account-overview__metrics {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .account-metric {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 34rem) {
+    .account-overview__intro,
+    .account-order-card__body {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .account-overview__browse {
+        width: 100%;
+    }
+
+    .account-order-card__total {
+        white-space: normal;
+    }
+}
+
+@media (max-width: 22rem) {
+    .account-shell__container {
+        width: min(100% - 1rem, 68.75rem);
+    }
+
+    .account-overview__metrics {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
