@@ -10,10 +10,12 @@ export function CartAddedNotice({
     translations: StoreShellTranslations['cart_added'];
 }) {
     const [addition, setAddition] = useState<CartAddedDetail | null>(null);
+    const [isPaused, setIsPaused] = useState(false);
 
     useEffect(() => {
         const showAddition = (event: Event) => {
             setAddition((event as CustomEvent<CartAddedDetail>).detail);
+            setIsPaused(false);
         };
 
         window.addEventListener(CART_ADDED_EVENT, showAddition);
@@ -22,21 +24,37 @@ export function CartAddedNotice({
     }, []);
 
     useEffect(() => {
-        if (addition === null) {
+        if (addition === null || isPaused) {
             return;
         }
 
         const timeout = window.setTimeout(() => setAddition(null), 5_000);
 
         return () => window.clearTimeout(timeout);
-    }, [addition]);
+    }, [addition, isPaused]);
 
     if (addition === null) {
         return null;
     }
 
     return (
-        <aside aria-atomic="true" className="store-cart-added" role="status">
+        <aside
+            aria-atomic="true"
+            className="store-cart-added"
+            onBlur={(event) => {
+                if (
+                    !event.currentTarget.contains(
+                        event.relatedTarget as Node | null,
+                    )
+                ) {
+                    setIsPaused(false);
+                }
+            }}
+            onFocus={() => setIsPaused(true)}
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+            role="status"
+        >
             <div className="store-cart-added__visual">
                 <img
                     alt={addition.imageAlt}

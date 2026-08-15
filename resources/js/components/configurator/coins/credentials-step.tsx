@@ -419,7 +419,13 @@ export function CredentialsStep({
                 ) : null}
 
                 <div className="coins-fulfillment-confirmations">
-                    <div className="coins-confirmation-field">
+                    <div
+                        className={
+                            errors.companion === undefined
+                                ? 'coins-confirmation-field'
+                                : 'coins-confirmation-field is-invalid'
+                        }
+                    >
                         <label htmlFor="coins-companion-market">
                             <input
                                 aria-describedby={`coins-companion-help${
@@ -467,7 +473,13 @@ export function CredentialsStep({
                         </button>
                     </div>
 
-                    <div className="coins-confirmation-field">
+                    <div
+                        className={
+                            errors.policy === undefined
+                                ? 'coins-confirmation-field'
+                                : 'coins-confirmation-field is-invalid'
+                        }
+                    >
                         <label htmlFor="coins-policy-accepted">
                             <input
                                 aria-describedby={`coins-policy-help${
@@ -667,13 +679,6 @@ export function CredentialsStep({
 
             <div className="coins-step__actions coins-step__actions--split">
                 <button
-                    className="coins-secondary-action"
-                    onClick={onBack}
-                    type="button"
-                >
-                    {translations.actions.back}
-                </button>
-                <button
                     aria-describedby={
                         quoteMessage === null
                             ? undefined
@@ -685,6 +690,13 @@ export function CredentialsStep({
                     type="button"
                 >
                     {translations.actions.continue}
+                </button>
+                <button
+                    className="coins-secondary-action"
+                    onClick={onBack}
+                    type="button"
+                >
+                    {translations.actions.back}
                 </button>
             </div>
             <button
@@ -794,6 +806,7 @@ function CredentialInput(props: CredentialInputProps) {
 function FieldError({ error, id }: { error: string | undefined; id: string }) {
     return error === undefined ? null : (
         <p className="coins-field-error" id={id} role="alert">
+            <span aria-hidden="true" className="coins-field-error__icon" />
             {error}
         </p>
     );
