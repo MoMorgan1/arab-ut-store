@@ -5456,6 +5456,8 @@
 }
 
 .store-catalog-toolbar--premium .store-catalog-toolbar__filters--single-row {
+    min-inline-size: 0;
+    max-inline-size: 100%;
     flex-wrap: nowrap;
     gap: 0.4rem;
     overflow-x: auto;

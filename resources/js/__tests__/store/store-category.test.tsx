@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import {
     cleanup,
     fireEvent,
@@ -9,6 +12,11 @@ import {
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import StoreCategory from '@/pages/store/category';
+
+const appCss = readFileSync(
+    resolve(process.cwd(), 'resources/css/app.css'),
+    'utf8',
+);
 
 const mocks = vi.hoisted(() => ({
     get: vi.fn(),
@@ -126,6 +134,16 @@ it('renders the refined SBC hierarchy and trust strip', () => {
             'We fund and complete the SBC without taking players.',
         ),
     ).toBeVisible();
+});
+
+it('keeps the mobile SBC filter rail inside its shell while scrolling', () => {
+    const filterRule =
+        appCss.match(
+            /\.store-catalog-toolbar--premium\s+\.store-catalog-toolbar__filters--single-row\s*\{[^}]*\}/s,
+        )?.[0] ?? '';
+
+    expect(filterRule).toContain('min-inline-size: 0;');
+    expect(filterRule).toContain('max-inline-size: 100%;');
 });
 
 it('keeps the included-service label below the artwork', () => {
