@@ -2,6 +2,8 @@
 
 Status: Approved by Mohamed on 2026-08-09; Phase 3 implementation is in progress
 
+Superseding approvals through 2026-08-15: Paylink is the selected hosted gateway; WhatsApp OTP may continue a verified new phone into account creation; encrypted EA credentials have no automatic expiry; public review sections show the approved four- and five-star subset; and the Laravel storefront has replaced the retired Next.js Hostinger application. The original blueprint remains below as implementation history where those later decisions are not repeated inline.
+
 Date: 2026-08-08
 
 ## Outcome
@@ -67,7 +69,7 @@ Current official references used for this decision:
 - FUT Champions: guided configuration for PlayStation and PC.
 - Product/service detail route for shareable and indexable catalog entries.
 - Cart: multiple services, item editing/removal, coupon entry, automatic discounts, wallet preview, and preserved configuration.
-- Authentication: email/password, Google, WhatsApp OTP for existing phone-linked accounts, password reset, and WhatsApp verification.
+- Authentication: email/password, Google, WhatsApp OTP for existing accounts or verified-phone registration, password reset, and WhatsApp verification.
 - Checkout: authenticated customer, first/last name, email, verified WhatsApp, per-item account fields, optional reuse of eligible account details, wallet application, SAR totals, policy consent, and payment handoff.
 - Order confirmation and public-safe signed action page for customer input requested by fulfillment.
 - Reviews, FAQ, Contact/Support, Privacy, Terms, Refund, and Warranty pages in Arabic and English.
@@ -100,7 +102,7 @@ Conditional account fields are defined per service/platform rather than hard-cod
 - PC Rivals/FUT using Steam adds the Steam username/password while retaining the EA fields and backup codes.
 - PlayStation Rivals/FUT includes the PlayStation email and required PlayStation/EA access fields.
 
-These credentials are collected before payment as requested, but are stored separately from normal order metadata, encrypted, masked by default, absent from analytics/logs, inaccessible to read-only staff, and deleted after completion, cancellation, or refund according to the fulfillment retention rule.
+These credentials are collected before payment as requested, but are stored separately from normal order metadata, encrypted, masked by default, absent from analytics/logs, inaccessible to read-only staff, retained without automatic expiry, and deleted only with the cart item or account.
 
 ## Checkout and order lifecycle
 
@@ -170,7 +172,7 @@ General page-builder functionality, visual banner editing, menu management, and 
 ## Wallet, discounts, loyalty, and documents
 
 - Wallet is an immutable ledger. Customers cannot top up.
-- Credit may cover all or part of an order; the remainder goes to the future payment adapter.
+- Credit may cover all or part of an order; the remainder goes through the Paylink payment adapter when production checkout is enabled.
 - Refunds may use original payment or wallet credit as selected by an authorized admin.
 - Coupons and automatic cart/quantity discounts are calculated server-side and recorded on the order.
 - Loyalty uses configurable completed-lifetime-spend thresholds for Silver, Gold, and Platinum. v1 has no points or automatic cashback engine.
@@ -178,7 +180,7 @@ General page-builder functionality, visual banner editing, menu management, and 
 
 ## Deliberately excluded from v1
 
-- Live payment provider integration until Mohamed authorizes it.
+- Production Paylink activation until Hostinger configuration and the controlled test and low-value production pilots pass.
 - Customer wallet top-ups.
 - Customer-initiated cancellation/refund.
 - Player/operator accounts, assignment, commission, or fulfillment portal.
@@ -226,4 +228,4 @@ Mohamed's approval confirms:
 - The application architecture, page map, roles, automation ownership, and seven-milestone order are accepted.
 - Repository creation and Milestone 1 implementation may begin.
 
-Payment integration still requires its own explicit authorization later; approving this blueprint does not authorize real payment calls.
+Paylink implementation was explicitly authorized on 2026-08-14. Real payment acceptance remains a separate operational gate until the documented Hostinger configuration and pilots pass.

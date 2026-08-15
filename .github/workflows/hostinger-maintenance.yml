@@ -1,0 +1,59 @@
+name: hostinger-maintenance
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Audit only or apply the bounded cleanup
+        required: true
+        default: audit
+        type: choice
+        options:
+          - audit
+          - apply
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hostinger-production
+  cancel-in-progress: false
+
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+    env:
+      HOSTINGER_SSH_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
+      HOSTINGER_SSH_PORT: ${{ secrets.HOSTINGER_SSH_PORT }}
+      HOSTINGER_SSH_USER: ${{ secrets.HOSTINGER_SSH_USER }}
+      HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+      HOSTINGER_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+      HOSTINGER_DEPLOY_ROOT: ${{ vars.HOSTINGER_DEPLOY_ROOT }}
+      PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+      MAINTENANCE_MODE: ${{ inputs.mode }}
+
+    steps:
+      - name: Checkout maintenance script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate maintenance script
+        run: bash -n deploy/hostinger-maintenance.sh
+
+      - name: Configure pinned Hostinger SSH identity
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > ~/.ssh/hostinger
+          chmod 600 ~/.ssh/hostinger
+          printf '%s\n' "$HOSTINGER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Audit or clean Hostinger deployment files
+        run: |
+          ssh -i ~/.ssh/hostinger -p "$HOSTINGER_SSH_PORT" \
+            "$HOSTINGER_SSH_USER@$HOSTINGER_SSH_HOST" \
+            "bash -s -- '$HOSTINGER_DEPLOY_ROOT' '$MAINTENANCE_MODE' '$PRODUCTION_URL'" \
+            < deploy/hostinger-maintenance.sh

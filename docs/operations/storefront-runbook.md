@@ -14,7 +14,7 @@ Run the production GitHub workflow `archive-salla-reviews` in this order:
 4. Run `apply` again. The count must be identical and no duplicate rows may be created.
 5. Verify `/`, `/en`, `/reviews`, and `/en/reviews`; imported reviews must not display a verified-order badge.
 6. Search the rendered Inertia payload and application logs for known test-only private sentinels. Do not print or export real customer values during verification.
-7. Remove the recurring `reviews:refresh` schedule after the archive has been verified. Future reviews belong to the local post-order review system, not this historical importer.
+7. Confirm `reviews:refresh` is not scheduled. The archived rows remain local and stable; a future post-order review system must be implemented as a separate source rather than re-enabling the retired recurring importer.
 
 The equivalent server commands are:
 

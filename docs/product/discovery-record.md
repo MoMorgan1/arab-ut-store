@@ -2,7 +2,17 @@
 
 Status: Discovery complete. The Phase 2 blueprint was approved by Mohamed on 2026-08-09, and Phase 3 implementation is in progress.
 
-Last updated: 2026-08-09
+Last updated: 2026-08-15
+
+## Superseding approved decisions
+
+This file preserves the original Discovery record. Mohamed's later explicit approvals supersede the older deferred or baseline statements below:
+
+- Paylink is the approved hosted payment gateway. The integration is implemented fail-closed; production acceptance still requires Hostinger configuration and controlled pilots.
+- WhatsApp OTP can sign in an existing phone-linked account or continue a new verified phone into account creation.
+- Encrypted EA credentials are retained without automatic expiry, remain viewable/editable only by the verified cart owner and authorized fulfillment staff, and are deleted only with the cart item or account.
+- The complete Salla review archive is retained locally, while public storefront sections display only published four- and five-star reviews. Future native reviews use a separate local post-order source.
+- The Laravel storefront is live at `store.arab-ut.com`; the retired Next.js Hostinger application is not a rollback target.
 
 ## Confirmed by Mohamed
 
@@ -11,10 +21,10 @@ Last updated: 2026-08-09
 - Primary audience: Arab customers, while allowing customers worldwide rather than restricting the storefront by country.
 - v1 will support both Arabic (RTL) and English (LTR) from the beginning. Arabic is the default storefront language, with a language switch for English.
 - SAR is the authoritative catalog and checkout currency. Customers may switch the storefront display to another supported currency, but checkout and the final payment charge remain in SAR. No special currency warning or banner is required; the normal checkout total still identifies its currency as SAR.
-- Payment-gateway selection/integration is intentionally deferred. Plan the MVP around a provider-neutral payment boundary and do not begin gateway integration until Mohamed explicitly authorizes it.
+- Paylink is the approved hosted payment gateway. Keep the payment boundary provider-isolated and fail closed until Hostinger configuration and the controlled test-to-production pilot pass.
 - Checkout requires an authenticated customer account. Registration/checkout must collect first name, last name, email address, WhatsApp number, and a password when email/password registration is used.
 - MVP authentication must include email/password, Google sign-in, and the existing WhatsApp OTP concept. The current WordPress implementations will be inspected for behavior only; secrets and provider-specific code must not be copied blindly.
-- WhatsApp OTP retains the current MVP behavior: it signs in an existing phone-linked account rather than creating a new account. A customer who signs in through Google must add a WhatsApp number before checkout.
+- WhatsApp OTP signs in an existing phone-linked account or continues a new verified phone into account creation. A customer who signs in through Google must add a WhatsApp number before checkout.
 - New email/password and Google customers must verify their WhatsApp number before checkout. Separate email verification is not required for v1.
 - After an order is created, the website sends the required order payload to n8n. The WhatsApp workflow owns delivery of the order details to the customer; the new website does not duplicate that messaging logic.
 - The customer wallet is a non-top-up balance for store credit and refunds. Customers cannot add funds to it in v1. Available credit can be spent on new orders; when it does not cover the total, the customer may pay the remainder through the payment gateway.
@@ -40,7 +50,7 @@ Last updated: 2026-08-09
 - The admin dashboard overview includes revenue, orders grouped by status, customer count, recent orders, and orders requiring attention.
 - Loyalty remains lean in v1: Silver, Gold, and Platinum are calculated from completed lifetime spend, customers see progress, and admins can target tiers with coupons/offers. Thresholds and benefits are configurable. A separate points or automatic-cashback engine is deferred to avoid duplicating the wallet and committing margin before real order economics are known.
 - An authorized admin may choose between refunding to the original payment method or issuing wallet credit.
-- Required EA account credentials are collected before payment. Despite the collection timing, EA passwords and backup codes are classified as sensitive secrets and must be encrypted, redacted from logs and analytics, access-controlled, and deleted after fulfillment or another terminal outcome.
+- Required EA account credentials are collected before payment. EA passwords and backup codes are encrypted, redacted from logs and analytics, access-controlled, retained without automatic expiry, and deleted only with the cart item or account.
 - Target product: a complete custom ecommerce system replacing WordPress and WooCommerce, including the storefront, backend, database, customer authentication, customer accounts, order history, wallet, and an admin dashboard.
 - FC 27 service catalog currently includes Coins, SBCs, Objectives, Rivals, and FUT Champions. Player-reward products are categorized within SBCs rather than represented as a separate service.
 - Coins:
@@ -175,9 +185,9 @@ Arab customers are the primary audience, but the MVP should allow purchases worl
 
 Product prices and payment settlement use Saudi riyals (SAR). Customers may select another currency for approximate storefront display, while checkout uses SAR. Mohamed does not want a separate warning or banner; the standard checkout total will still include its SAR currency label. Orders must store the authoritative SAR amount and may also record the displayed currency and exchange rate used for transparency.
 
-### Decision 8: Payment integration timing
+### Decision 8: Payment integration
 
-Mohamed is working on the payment-gateway decision separately. Architecture and documentation may define a provider-neutral payment interface, but gateway-specific implementation and credential setup must wait until Mohamed explicitly authorizes integration work.
+Mohamed approved Paylink on 2026-08-14. The gateway remains behind a provider boundary, and real payment acceptance stays fail-closed until Hostinger configuration and the controlled test and low-value production pilots pass.
 
 ### Decision 9: Customer account and authentication
 
@@ -205,15 +215,15 @@ One order may contain multiple services. Customer-visible statuses are Pending P
 
 ### Decision 15: Refund destinations
 
-An authorized admin may choose per refund between the original payment method and wallet credit. Gateway-specific refund execution remains deferred with the payment integration.
+An authorized admin may choose per refund between the original payment method and wallet credit. Paylink original-method refunds use the separately authenticated Partner API boundary when those credentials are configured; otherwise they fail closed.
 
 ### Decision 16: EA credential collection
 
-Required service credentials are collected before payment and stored per order item, with an option to reuse the same details across eligible items. Coins, SBCs, and Objectives use the customer's EA email; console Rivals and FUT Champions use the PlayStation email. Exact additional fields will be mapped from the reviewed workflow exports into versioned replacement schemas. EA passwords and backup codes must be encrypted in transit and at rest, excluded from routine logs and analytics, masked from unauthorized roles, and removed after fulfillment or another terminal outcome.
+Required service credentials are collected before payment and stored per order item, with an option to reuse the same details across eligible items. Coins, SBCs, and Objectives use the customer's EA email; console Rivals and FUT Champions use the PlayStation email. Exact additional fields are mapped into versioned replacement schemas. EA passwords and backup codes are encrypted in transit and at rest, excluded from routine logs and analytics, masked from unauthorized roles, retained without automatic expiry, and deleted only with the cart item or account.
 
 ### Decision 17: Authentication verification
 
-Email/password, Google sign-in, and WhatsApp OTP are retained. WhatsApp OTP signs in existing accounts. New email/password and Google customers must supply and verify a WhatsApp number before checkout. v1 does not block checkout on separate email verification.
+Email/password, Google sign-in, and WhatsApp OTP are retained. WhatsApp OTP signs in existing accounts or continues a verified new phone into registration. New email/password and Google customers must supply and verify a WhatsApp number before checkout. v1 does not block checkout on separate email verification.
 
 ### Decision 18: Service and platform taxonomy
 
@@ -253,7 +263,7 @@ The accepted MVP customer account sections are Overview, Orders, Order Tracking,
 
 ### Decision 27: Lean digital checkout
 
-Country, street address, and city are removed from the normal digital-service checkout. Only a field explicitly required by the future payment provider may be added back during payment integration.
+Country, street address, and city are removed from the normal digital-service checkout. Paylink hosted checkout does not add those fields to the Arab UT form.
 
 ### Decision 28: Admin overview
 

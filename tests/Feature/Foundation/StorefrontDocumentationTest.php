@@ -15,11 +15,11 @@ test('the storefront integration docs use the canonical domain and expose every 
         ->and(config('services.n8n'))->toHaveKeys(['catalog_key', 'catalog_secret', 'catalog_media_hosts', 'reviews_url']);
 });
 
-test('the operational docs require the scheduler and last-good review behavior', function () {
-    $audit = file_get_contents(base_path('docs/architecture/workflow-integration-audit.md'));
+test('the operational docs define the one-time last-good review archive', function () {
+    $runbook = file_get_contents(base_path('docs/operations/storefront-runbook.md'));
 
-    expect($audit)
-        ->toContain('schedule:run')
-        ->toContain('reviews:refresh')
+    expect($runbook)
+        ->toContain('reviews:import-salla-archive')
+        ->toContain('reviews:refresh` is not scheduled')
         ->toContain('last-good');
 });

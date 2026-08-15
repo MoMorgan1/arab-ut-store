@@ -116,6 +116,6 @@ external IDs may exist in `n8n-products` and `n8n-sbc`. Public slugs and SKUs
 remain globally unique; each producer must therefore assign route-appropriate
 slugs/SKUs without relying on external-ID uniqueness outside its source.
 
-## Review refresh
+## Historical review archive
 
-Reviews use a separate pull contract. Configure `N8N_REVIEWS_URL`; Laravel runs `reviews:refresh` hourly and projects only public review fields into the local database. Storefront requests never call n8n. Failed or malformed refreshes preserve the last-good public review snapshot.
+Reviews use a separate one-time archive contract. Configure `N8N_REVIEWS_URL` only for the operator-run `reviews:import-salla-archive --from-config` command. The command projects only allowlisted public fields into the local database and supports a count-only dry run before `--apply`. Storefront requests never call n8n, and the retired `reviews:refresh` command is not scheduled. Failed or malformed imports leave the local archive unchanged.

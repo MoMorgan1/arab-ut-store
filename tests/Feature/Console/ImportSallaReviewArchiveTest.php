@@ -1,7 +1,15 @@
 <?php
 
 use App\Models\Review;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Http;
+
+test('the legacy recurring review refresh is not scheduled after archive migration', function () {
+    $event = collect(app(Schedule::class)->events())
+        ->first(fn ($event) => str_contains($event->command, 'reviews:refresh'));
+
+    expect($event)->toBeNull();
+});
 
 test('the one-time archive command previews counts then applies without exposing review content', function () {
     $path = tempnam(sys_get_temp_dir(), 'arabut-review-archive-');

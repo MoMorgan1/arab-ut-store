@@ -37,6 +37,9 @@ jobs:
       - name: Run CI Checks
         run: composer ci:check
 
+      - name: Validate deployment scripts
+        run: bash -n deploy/*.sh
+
       - name: Package verified Hostinger release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |

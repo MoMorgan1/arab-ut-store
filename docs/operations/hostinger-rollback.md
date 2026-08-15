@@ -16,12 +16,13 @@ Application releases are recoverable without changing database history or exposi
 
 Do not run `migrate:rollback` as part of an application rollback. Database migrations are forward-only during deployment; rolling back code must use a release that remains compatible with the migrated schema.
 
-## Domain cutover rollback
+## Recovery beyond the retained releases
 
-The legacy Next.js repository remains in GitHub, and its Hostinger Web App is retained on a temporary Hostinger domain during the rollback window. If the Laravel domain verification fails:
+The retired Next.js Hostinger Web App is not a production rollback target. Normal rollback uses one of the five retained Laravel releases. If the required commit is older than those releases:
 
-1. Reassign `store.arab-ut.com` to the prior Web App in hPanel.
-2. Confirm HTTPS and the old homepage before ending the incident.
-3. Keep the Laravel PHP site and database intact for diagnosis; do not erase user or cart data.
+1. Identify the known-good commit in the private GitHub repository.
+2. Rebuild it through the normal verified `tests` and `deploy-production` workflows.
+3. Confirm that its schema compatibility is safe before activating it; never reverse production migrations as part of an application rollback.
+4. Keep the current Laravel application and database intact for diagnosis; do not erase customer, cart, order, or credential data.
 
-Before any future public launch, verify a current Hostinger backup, record the active release SHA, and rehearse this domain reassignment while no checkout/payment traffic is enabled.
+Before enabling production payment traffic, verify a current Hostinger backup, record the active release SHA, and rehearse the retained-release rollback procedure.

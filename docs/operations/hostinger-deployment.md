@@ -38,7 +38,7 @@ Hostinger Cron Jobs runs this PHP command every minute:
 /usr/bin/php /home/<account>/domains/<website>/current/artisan schedule:run
 ```
 
-Laravel then schedules exchange-rate refresh, review refresh, cart-secret cleanup, and guest-claim cleanup. Confirm it after a domain or directory change with:
+Laravel then schedules exchange-rate refresh, paid-order event publication, and guest-claim cleanup. Confirm it after a domain or directory change with:
 
 ```bash
 cd <deploy-root>/current
@@ -48,12 +48,26 @@ php artisan schedule:run
 
 ## Catalog and reviews
 
-- Coins pricing was initialized from the verified live Next.js production configuration so the replacement preserves the current formula.
-- SBC, Objectives, FUT Champions, and Rivals remain automation-owned and arrive through the signed n8n catalog snapshot endpoint documented in `docs/api/n8n-catalog-v1.md`.
-- Historical Salla reviews are archived once with the production maintenance workflow documented in `docs/operations/storefront-runbook.md`. Customer pages read only the local database.
+- Coins pricing is updated through the signed production pricing workflow and remains server-authoritative at quote and cart time.
+- SBC products use the dedicated signed `/api/automation/v1/catalog/sbc/snapshots` boundary and isolated `n8n-sbc` source documented in `docs/api/n8n-catalog-v1.md`. Other automated services use the generic catalog boundary only when their own workflow is approved.
+- The production SBC snapshot was verified on 2026-08-15 with 29 products and 58 variants. A complete accepted SBC snapshot can reconcile only `n8n-sbc` rows.
+- Historical Salla reviews are imported once with the production workflow documented in `docs/operations/storefront-runbook.md`. Customer pages read only the local database and render the approved public four- and five-star subset.
 - n8n credentials must be supplied through the approved secure access channel and placed only in Hostinger/n8n secret storage. Never paste them into issues, pull requests, logs, or chat.
 
-Until the n8n handoff is configured, category pages honestly show an empty catalog and reviews show their existing empty state; the storefront never fabricates products or testimonials.
+The Hostinger maintenance workflow never changes n8n. Workflow activation, deletion, credentials, and static data remain separate operator-controlled concerns.
+
+## Bounded maintenance
+
+Run the manual `hostinger-maintenance` GitHub workflow with `mode=audit` first. It reports the active release, retained release count, stale incoming archives, temporary deployment links, pre-Laravel public-directory backups, old logs, and storage size without changing the server.
+
+Use `mode=apply` only after the audit output is reviewed. The script verifies `/up`, preserves `current`, `shared/.env`, all shared application data, and the five retained Laravel releases, then removes only:
+
+- release archives in `incoming/` older than one day;
+- abandoned root-level `.current-*` and `.rollback-*` symlinks;
+- obsolete `public_html.before-laravel-*` directories from the retired Next.js cutover;
+- application log files older than 30 days.
+
+It refreshes the compiled Blade view cache and prints a second inventory. It does not touch MariaDB, customer uploads, carts, orders, credentials, n8n, or GitHub history.
 
 ## Post-deploy verification
 
