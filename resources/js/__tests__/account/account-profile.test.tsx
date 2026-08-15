@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import AccountProfile from '@/pages/account/profile';
@@ -18,6 +18,7 @@ vi.mock('@inertiajs/react', () => ({
         errors: {},
         patch: vi.fn(),
         post: vi.fn(),
+        put: vi.fn(),
         processing: false,
         recentlySuccessful: false,
         reset: vi.fn(),
@@ -51,10 +52,16 @@ it('renders persistent identity labels, verified states, and safe autocomplete c
         'family-name',
     );
     expect(screen.getAllByText('Verified')).toHaveLength(2);
+    expect(
+        screen.queryByLabelText('New email address'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit email' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit email' }));
     expect(screen.getByLabelText('New email address')).toHaveAttribute(
         'autocomplete',
         'email',
     );
+    fireEvent.click(screen.getByRole('button', { name: 'Edit number' }));
     expect(screen.getByLabelText('New WhatsApp number')).toHaveAttribute(
         'autocomplete',
         'tel',
@@ -65,7 +72,6 @@ it('renders persistent identity labels, verified states, and safe autocomplete c
 it('excludes every secret identity field from remembered Inertia state', () => {
     render(<AccountProfile />);
 
-    expect(excluded).toContainEqual(['current_password']);
     expect(excluded).toContainEqual(['code']);
 });
 
@@ -87,6 +93,9 @@ function profileProps() {
                 display_currency: 'Display currency',
                 save: 'Save changes',
                 saved: 'Your details have been saved.',
+                edit_email: 'Edit email',
+                edit_phone: 'Edit number',
+                cancel_edit: 'Cancel',
                 new_email: 'New email address',
                 request_email: 'Send verification link',
                 new_phone: 'New WhatsApp number',
@@ -95,7 +104,7 @@ function profileProps() {
                 confirm_phone: 'Confirm new number',
                 current_password: 'Current password',
                 sensitive_hint:
-                    'Confirm your identity before changing contact details.',
+                    'A verification link or WhatsApp code will confirm the change.',
                 pending_email: 'New email awaiting verification',
                 pending_phone: 'New number awaiting verification',
                 email_link_invalid: 'Invalid link.',
@@ -108,6 +117,25 @@ function profileProps() {
                 send_code: 'Send code',
                 verify: 'Verify',
                 code: 'Verification code',
+            },
+            security: {
+                title: 'Security',
+                description: 'Manage your password.',
+                current_password: 'Current password',
+                new_password: 'New password',
+                confirm_password: 'Confirm new password',
+                change_password: 'Change password',
+                set_password: 'Set a password',
+                password_changed: 'Password updated.',
+                social_login_notice: 'Set a password for your account.',
+                change_title: 'Change your password',
+                setup_title: 'Create an account password',
+                change_description: 'Use your current password.',
+                setup_description: 'Create a secure password.',
+                recovery_title: 'Account recovery',
+                recovery_email: 'Use your verified email.',
+                recovery_whatsapp: 'Use WhatsApp recovery.',
+                recovery_action: 'View recovery options',
             },
         },
         profile: {
@@ -125,7 +153,14 @@ function profileProps() {
             },
             preferredLocale: 'en',
             displayCurrency: 'SAR',
-            passwordConfirmationRequired: true,
+        },
+        security: {
+            passwordMode: 'change',
+            passwordRules: 'minlength:8',
+        },
+        securityActions: {
+            changePasswordUrl: '/en/my-account/security/password',
+            setupPasswordUrl: '/en/my-account/security/password',
         },
         profileActions: {
             updateUrl: '/en/my-account/profile',

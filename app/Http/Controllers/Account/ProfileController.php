@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\UserIdentityChange;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -46,8 +47,14 @@ final class ProfileController extends Controller
                 ],
                 'preferredLocale' => $user->preferred_locale,
                 'displayCurrency' => $user->display_currency,
-                'passwordConfirmationRequired' => is_string($user->getAttribute('password'))
-                    && $user->getAttribute('password') !== '',
+            ],
+            'security' => [
+                'passwordMode' => $this->hasPassword($user) ? 'change' : 'setup',
+                'passwordRules' => Password::defaults()->toPasswordRulesString(),
+            ],
+            'securityActions' => [
+                'changePasswordUrl' => $this->route('account.security.password.change', $locale),
+                'setupPasswordUrl' => $this->route('account.security.password.setup', $locale),
             ],
             'profileActions' => [
                 'updateUrl' => $this->route('account.profile.update', $locale),
@@ -98,5 +105,12 @@ final class ProfileController extends Controller
     private function route(string $name, string $locale): string
     {
         return route($locale === 'en' ? 'localized.'.$name : $name, absolute: false);
+    }
+
+    private function hasPassword(User $user): bool
+    {
+        $hash = $user->getAttribute('password');
+
+        return is_string($hash) && $hash !== '';
     }
 }

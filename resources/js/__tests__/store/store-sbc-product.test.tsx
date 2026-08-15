@@ -126,6 +126,31 @@ it('selects an exact repeatable completion bundle and preserves it across platfo
     ).toHaveTextContent('SAR 237.50');
 });
 
+it('exposes repeatable completion tiers as an accessible range control', () => {
+    render(<StoreCatalogProduct />);
+
+    const slider = screen.getByRole('slider', {
+        name: 'Number of completions',
+    });
+
+    expect(slider).toHaveAttribute('min', '0');
+    expect(slider).toHaveAttribute('max', '1');
+    expect(slider).toHaveValue('0');
+    expect(slider).toHaveAttribute(
+        'aria-valuetext',
+        '5 completions · SAR\u00a0150.00',
+    );
+
+    fireEvent.change(slider, { target: { value: '1' } });
+
+    expect(screen.getByRole('radio', { name: /10 completions/ })).toBeChecked();
+    expect(slider).toHaveValue('1');
+    expect(slider).toHaveAttribute(
+        'aria-valuetext',
+        '10 completions · SAR\u00a0285.00',
+    );
+});
+
 it('places the SBC identity above its image on a direct visit', () => {
     page.url = '/en/sbc/icon-challenge';
     render(<StoreCatalogProduct />);

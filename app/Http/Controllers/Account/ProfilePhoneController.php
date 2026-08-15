@@ -21,7 +21,6 @@ final class ProfilePhoneController extends Controller
         abort_unless($user instanceof User, 401);
         $validated = $request->validate([
             'phone' => ['required', 'string', 'max:20', 'regex:/\A\+[1-9][0-9]{7,14}\z/D'],
-            'current_password' => ['nullable', 'string'],
         ]);
 
         try {
@@ -35,9 +34,7 @@ final class ProfilePhoneController extends Controller
         try {
             $action->execute(
                 $user,
-                $request,
                 $phone,
-                $validated['current_password'] ?? null,
                 app()->getLocale(),
             );
         } catch (DomainException) {

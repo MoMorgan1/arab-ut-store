@@ -1,5 +1,11 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { Headphones, LockKeyhole, ShieldCheck, Zap } from 'lucide-react';
+import {
+    ChevronDown,
+    Headphones,
+    LockKeyhole,
+    ShieldCheck,
+    Zap,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import { CatalogAddControl } from '@/components/store/catalog/catalog-add-control';
@@ -351,20 +357,27 @@ function SortControl({
     return (
         <label className="store-catalog-toolbar__sort">
             <span>{translations.sort}</span>
-            <select
-                aria-label={translations.sort}
-                name="sort"
-                onChange={(event) => navigate({ sort: event.target.value })}
-                value={query.sort}
-            >
-                {['recommended', 'newest', 'price_asc', 'price_desc'].map(
-                    (sort) => (
-                        <option key={sort} value={sort}>
-                            {translations[sort as keyof typeof translations]}
-                        </option>
-                    ),
-                )}
-            </select>
+            <span className="store-catalog-toolbar__sort-control">
+                <select
+                    aria-label={translations.sort}
+                    name="sort"
+                    onChange={(event) => navigate({ sort: event.target.value })}
+                    value={query.sort}
+                >
+                    {['recommended', 'newest', 'price_asc', 'price_desc'].map(
+                        (sort) => (
+                            <option key={sort} value={sort}>
+                                {
+                                    translations[
+                                        sort as keyof typeof translations
+                                    ]
+                                }
+                            </option>
+                        ),
+                    )}
+                </select>
+                <ChevronDown aria-hidden="true" />
+            </span>
         </label>
     );
 }

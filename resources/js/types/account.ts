@@ -148,6 +148,9 @@ export type AccountTranslations = {
         display_currency: string;
         save: string;
         saved: string;
+        edit_email: string;
+        edit_phone: string;
+        cancel_edit: string;
         new_email: string;
         request_email: string;
         new_phone: string;
@@ -327,7 +330,14 @@ export type AccountProfilePageProps = AccountPageShellProps & {
         };
         preferredLocale: 'ar' | 'en';
         displayCurrency: string;
-        passwordConfirmationRequired: boolean;
+    };
+    security: {
+        passwordMode: 'change' | 'setup';
+        passwordRules: string;
+    };
+    securityActions: {
+        changePasswordUrl: string;
+        setupPasswordUrl: string;
     };
     profileActions: {
         updateUrl: string;

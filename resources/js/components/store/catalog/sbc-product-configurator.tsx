@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 
 import { announceCartAddition } from '@/lib/cart-added-event';
 import { catalogPlatformName } from '@/lib/catalog-platform-name';
@@ -124,9 +125,32 @@ export function SbcProductConfigurator({
     >({});
     const pendingFocus = useRef<CoinsCredentialField | null>(null);
     const variant = product.variants.find((option) => option.id === variantId);
+    const completionTiers = variant?.completionTiers ?? [];
+    const selectedCompletionIndex = Math.max(
+        0,
+        completionTiers.findIndex(
+            (tier) => tier.completions === completionCount,
+        ),
+    );
+    const selectedCompletionTier = completionTiers[selectedCompletionIndex];
+    const completionSliderProgress =
+        completionTiers.length > 1
+            ? `${(selectedCompletionIndex / (completionTiers.length - 1)) * 100}%`
+            : '0%';
     const completionTier = variant?.completionTiers.find(
         (tier) => tier.completions === completionCount,
     );
+    const completionSliderValueText =
+        selectedCompletionTier === undefined
+            ? ''
+            : `${completionLabel(
+                  translations.sbc.completion_option,
+                  selectedCompletionTier.completions,
+              )} · ${formatMinorUnits(
+                  selectedCompletionTier.price.amountMinor,
+                  selectedCompletionTier.price.currency,
+                  locale,
+              )}`;
     const locked = state === 'loading';
 
     useEffect(() => {
@@ -293,11 +317,11 @@ export function SbcProductConfigurator({
                 </div>
             </fieldset>
 
-            {variant !== undefined && variant.completionTiers.length > 1 ? (
+            {completionTiers.length > 1 ? (
                 <fieldset className="sbc-completion-tiers" disabled={locked}>
                     <legend>{translations.sbc.completion_legend}</legend>
-                    <div>
-                        {variant.completionTiers.map((tier) => (
+                    <div className="sbc-completion-tiers__cards">
+                        {completionTiers.map((tier) => (
                             <label key={tier.completions}>
                                 <input
                                     checked={
@@ -325,6 +349,69 @@ export function SbcProductConfigurator({
                                 </strong>
                             </label>
                         ))}
+                    </div>
+                    <div className="sbc-completion-tiers__slider">
+                        <div className="sbc-completion-tiers__slider-header">
+                            <span>
+                                {selectedCompletionTier === undefined
+                                    ? '—'
+                                    : completionLabel(
+                                          translations.sbc.completion_option,
+                                          selectedCompletionTier.completions,
+                                      )}
+                            </span>
+                            <span
+                                aria-live="polite"
+                                className="sbc-completion-tiers__slider-price"
+                                id="sbc-completion-slider-output"
+                            >
+                                {selectedCompletionTier === undefined
+                                    ? translations.unavailable_price
+                                    : formatMinorUnits(
+                                          selectedCompletionTier.price
+                                              .amountMinor,
+                                          selectedCompletionTier.price.currency,
+                                          locale,
+                                      )}
+                            </span>
+                        </div>
+                        <input
+                            aria-describedby="sbc-completion-slider-output"
+                            aria-label={translations.sbc.completion_legend}
+                            aria-valuetext={completionSliderValueText}
+                            id="sbc-completion-slider"
+                            max={completionTiers.length - 1}
+                            min="0"
+                            onChange={(event) => {
+                                const tier =
+                                    completionTiers[
+                                        Number(event.currentTarget.value)
+                                    ];
+
+                                if (tier !== undefined) {
+                                    setCompletionCount(tier.completions);
+                                }
+                            }}
+                            step="1"
+                            style={
+                                {
+                                    '--sbc-slider-progress':
+                                        completionSliderProgress,
+                                } as CSSProperties
+                            }
+                            type="range"
+                            value={selectedCompletionIndex}
+                        />
+                        <div
+                            aria-hidden="true"
+                            className="sbc-completion-tiers__slider-labels"
+                        >
+                            {completionTiers.map((tier) => (
+                                <span key={tier.completions}>
+                                    {tier.completions}
+                                </span>
+                            ))}
+                        </div>
                     </div>
                 </fieldset>
             ) : null}

@@ -29,12 +29,6 @@ it('keeps destination navigation separate from the POST logout action', () => {
         { key: 'orders', label: 'Orders', url: '/en/my-account/orders' },
         { key: 'wallet', label: 'Wallet', url: '/en/my-account/wallet' },
         { key: 'profile', label: 'Profile', url: '/en/my-account/profile' },
-        {
-            key: 'security',
-            label: 'Security',
-            url: '/en/my-account/security',
-        },
-        { key: 'support', label: 'Support', url: '/en/my-account/support' },
     ];
 
     render(
@@ -58,7 +52,7 @@ it('keeps destination navigation separate from the POST logout action', () => {
     expect(
         screen.getByRole('navigation', { name: 'My Account sections' }),
     ).toBeVisible();
-    expect(screen.getAllByRole('link')).toHaveLength(6);
+    expect(screen.getAllByRole('link')).toHaveLength(4);
     expect(screen.getByRole('link', { name: 'Orders' })).toHaveAttribute(
         'aria-current',
         'page',

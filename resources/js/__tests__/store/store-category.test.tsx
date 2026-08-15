@@ -84,6 +84,9 @@ it('renders the refined SBC hierarchy and trust strip', () => {
     expect(
         screen.getByRole('combobox', { name: 'Sort' }).closest('label'),
     ).toHaveClass('store-catalog-toolbar__sort');
+    expect(
+        screen.getByRole('combobox', { name: 'Sort' }).parentElement,
+    ).toHaveClass('store-catalog-toolbar__sort-control');
     expect(screen.getAllByRole('main')).toHaveLength(1);
     expect(
         screen.getByRole('heading', {

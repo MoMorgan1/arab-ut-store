@@ -18,13 +18,10 @@ final class ProfileEmailController extends Controller
         abort_unless($user instanceof User, 401);
         $validated = $request->validate([
             'email' => ['required', 'string', 'email', 'max:255'],
-            'current_password' => ['nullable', 'string'],
         ]);
         $action->execute(
             $user,
-            $request,
             $validated['email'],
-            $validated['current_password'] ?? null,
         );
 
         return redirect()->to($this->profileUrl());

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rules\Password;
 
-test('the bilingual security page exposes mode and recovery capability without hashes', function (
+test('the legacy security URLs redirect customers to the profile page', function (
     string $path,
     string $locale,
 ): void {
@@ -16,22 +16,8 @@ test('the bilingual security page exposes mode and recovery capability without h
         'phone_verified_at' => now(),
     ]);
 
-    $response = $this->actingAs($user)->get($path)
-        ->assertOk()
-        ->assertHeader('Cache-Control', 'no-store, private')
-        ->assertInertia(fn ($page) => $page
-            ->component('account/security')
-            ->where('locale', $locale)
-            ->where('security.passwordMode', 'change')
-            ->where('security.recoveryMode', 'email')
-            ->where('security.recoveryUrl', fn (string $url): bool => str_contains($url, 'forgot-password'))
-            ->where('accountNavigation', fn ($items): bool => collect($items)->pluck('key')->all() === [
-                'overview', 'orders', 'wallet', 'profile', 'security', 'support',
-            ])
-            ->missing('security.password'));
-
-    $payload = json_encode($response->inertiaPage(), JSON_THROW_ON_ERROR);
-    expect($payload)->not->toContain($user->getAuthPassword());
+    $this->actingAs($user)->get($path)
+        ->assertRedirect($locale === 'en' ? '/en/my-account/profile' : '/my-account/profile');
 })->with([
     'Arabic security' => ['/my-account/security', 'ar'],
     'English security' => ['/en/my-account/security', 'en'],
@@ -57,7 +43,7 @@ test('password changes require the current password and the configured password 
         'current_password' => 'password',
         'password' => 'SecurePassword12',
         'password_confirmation' => 'SecurePassword12',
-    ])->assertRedirect('/my-account/security');
+    ])->assertRedirect('/my-account/profile');
 
     expect(Hash::check('SecurePassword12', $user->fresh()->password))->toBeTrue();
 });
@@ -79,7 +65,7 @@ test('password setup is limited to passwordless accounts with recent trusted ver
         ->post('/my-account/security/password', [
             'password' => 'SecurePassword12',
             'password_confirmation' => 'SecurePassword12',
-        ])->assertRedirect('/my-account/security');
+        ])->assertRedirect('/my-account/profile');
 
     expect(Hash::check('SecurePassword12', $user->fresh()->password))->toBeTrue();
 
@@ -90,7 +76,7 @@ test('password setup is limited to passwordless accounts with recent trusted ver
         ])->assertForbidden();
 });
 
-test('passwordless accounts without verified email receive WhatsApp recovery guidance only', function (): void {
+test('the old security destination no longer renders a duplicate password screen', function (): void {
     $user = User::factory()->create([
         'password' => null,
         'email_verified_at' => null,
@@ -99,11 +85,7 @@ test('passwordless accounts without verified email receive WhatsApp recovery gui
     ]);
 
     $this->actingAs($user)->get('/my-account/security')
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->where('security.passwordMode', 'setup')
-            ->where('security.recoveryMode', 'whatsapp')
-            ->where('security.recoveryUrl', config('store.support.whatsapp_url')));
+        ->assertRedirect('/my-account/profile');
 });
 
 test('standard email recovery stays generic but sends only to a verified active email', function (string $path): void {

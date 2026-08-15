@@ -78,8 +78,6 @@ test('a new customer receives an honest empty current-data overview', function (
                 ['key' => 'orders', 'label' => 'طلباتي', 'url' => '/my-account/orders'],
                 ['key' => 'wallet', 'label' => 'محفظتي', 'url' => '/my-account/wallet'],
                 ['key' => 'profile', 'label' => 'بياناتي', 'url' => '/my-account/profile'],
-                ['key' => 'security', 'label' => 'الأمان', 'url' => '/my-account/security'],
-                ['key' => 'support', 'label' => 'الدعم', 'url' => '/my-account/support'],
             ])
             ->where('logoutUrl', '/logout')
             ->where('summary.orderCount', 0)

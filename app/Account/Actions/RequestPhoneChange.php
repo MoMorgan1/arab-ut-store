@@ -8,7 +8,6 @@ use App\Models\UserIdentityChange;
 use App\ValueObjects\E164Phone;
 use Carbon\CarbonInterface;
 use DomainException;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -16,14 +15,12 @@ use Throwable;
 final readonly class RequestPhoneChange
 {
     public function __construct(
-        private VerifySensitiveIdentityAction $sensitiveIdentity,
         private WhapiVerificationSender $sender,
     ) {}
 
-    public function execute(User $user, Request $request, E164Phone $candidate, ?string $currentPassword, string $locale): void
+    public function execute(User $user, E164Phone $candidate, string $locale): void
     {
         $phone = $candidate->value();
-        $this->sensitiveIdentity->execute($user, $request, $currentPassword);
 
         if ($phone === $user->phone || User::query()
             ->where('phone', $phone)

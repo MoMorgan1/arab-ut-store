@@ -41,9 +41,8 @@ test('the bilingual profile page exposes only editable identity state', function
             ->where('profile.phone.verified', true)
             ->where('profile.preferredLocale', 'ar')
             ->where('profile.displayCurrency', 'SAR')
-            ->where('profile.passwordConfirmationRequired', true)
             ->where('accountNavigation', fn ($items): bool => collect($items)->pluck('key')->all() === [
-                'overview', 'orders', 'wallet', 'profile', 'security', 'support',
+                'overview', 'orders', 'wallet', 'profile',
             ])
             ->missing('profile.password'));
 
@@ -89,7 +88,6 @@ test('email changes stay encrypted and pending until the new address opens its o
 
     $this->actingAs($user)->post('/my-account/profile/email', [
         'email' => 'new@example.test',
-        'current_password' => 'password',
     ])->assertRedirect('/my-account/profile');
 
     $change = UserIdentityChange::query()->sole();
@@ -127,21 +125,20 @@ test('email changes stay encrypted and pending until the new address opens its o
     $this->get((string) $verificationUrl)->assertSessionHasErrors('email');
 });
 
-test('email candidates cannot collide and password accounts require the current password', function (): void {
+test('email candidates can be staged without asking for the current password', function (): void {
+    Notification::fake();
     $user = User::factory()->create(['email' => 'owner@example.test']);
     User::factory()->create(['email' => 'taken@example.test']);
 
     $this->actingAs($user)->post('/my-account/profile/email', [
         'email' => 'taken@example.test',
-        'current_password' => 'password',
     ])->assertSessionHasErrors('email');
 
     $this->post('/my-account/profile/email', [
         'email' => 'free@example.test',
-        'current_password' => 'wrong-password',
-    ])->assertSessionHasErrors('current_password');
+    ])->assertRedirect('/my-account/profile');
 
-    expect(UserIdentityChange::count())->toBe(0);
+    expect(UserIdentityChange::count())->toBe(1);
 });
 
 test('phone changes use a bounded hashed OTP and swap atomically after proof', function (): void {
@@ -159,7 +156,6 @@ test('phone changes use a bounded hashed OTP and swap atomically after proof', f
 
     $this->actingAs($user)->postJson('/my-account/profile/phone', [
         'phone' => '+966501112233',
-        'current_password' => 'password',
     ])->assertOk()->assertExactJson(['data' => ['sent' => true]]);
 
     $change = UserIdentityChange::query()->sole();
@@ -198,7 +194,7 @@ test('phone resend cooldown avoids duplicate delivery and expired codes fail clo
         return Http::response(['sent' => true]);
     });
     $user = User::factory()->create();
-    $payload = ['phone' => '+966501112233', 'current_password' => 'password'];
+    $payload = ['phone' => '+966501112233'];
 
     $this->actingAs($user)->postJson('/my-account/profile/phone', $payload)->assertOk();
     $this->postJson('/my-account/profile/phone', $payload)->assertOk();
@@ -210,17 +206,13 @@ test('phone resend cooldown avoids duplicate delivery and expired codes fail clo
     expect($user->fresh()->phone)->toBeNull();
 });
 
-test('passwordless accounts require a recent trusted verification timestamp', function (): void {
+test('contact changes are available to password accounts without a current-password field', function (): void {
     Http::fake(fn () => Http::response(['sent' => true]));
-    $user = User::factory()->create(['password' => null]);
+    $user = User::factory()->create();
 
     $this->actingAs($user)->postJson('/my-account/profile/phone', [
         'phone' => '+966501112233',
-    ])->assertForbidden();
-
-    $this->withSession(['auth.identity_confirmed_at' => now()->timestamp])
-        ->postJson('/my-account/profile/phone', ['phone' => '+966501112233'])
-        ->assertOk();
+    ])->assertOk();
 });
 
 test('identity change delivery is rate limited by the signed in customer', function (): void {
@@ -230,13 +222,11 @@ test('identity change delivery is rate limited by the signed in customer', funct
     foreach (['+966501112231', '+966501112232', '+966501112233'] as $phone) {
         $this->actingAs($user)->postJson('/my-account/profile/phone', [
             'phone' => $phone,
-            'current_password' => 'password',
         ])->assertOk();
     }
 
     $this->postJson('/my-account/profile/phone', [
         'phone' => '+966501112234',
-        'current_password' => 'password',
     ])->assertTooManyRequests();
     Http::assertSentCount(3);
 });

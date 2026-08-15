@@ -5,7 +5,6 @@ namespace App\Account\Actions;
 use App\Models\User;
 use App\Models\UserIdentityChange;
 use App\Notifications\PendingEmailChangeNotification;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -13,12 +12,9 @@ use Illuminate\Validation\ValidationException;
 
 final readonly class RequestEmailChange
 {
-    public function __construct(private VerifySensitiveIdentityAction $sensitiveIdentity) {}
-
-    public function execute(User $user, Request $request, string $candidate, ?string $currentPassword): void
+    public function execute(User $user, string $candidate): void
     {
         $email = Str::lower(trim($candidate));
-        $this->sensitiveIdentity->execute($user, $request, $currentPassword);
 
         if ($email === Str::lower($user->email) || User::query()
             ->whereRaw('LOWER(email) = ?', [$email])

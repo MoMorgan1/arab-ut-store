@@ -1,8 +1,9 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { CheckCircle2, Mail, Phone, UserRound } from 'lucide-react';
 import { useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 
+import AccountPasswordSection from '@/components/account/account-password-section';
 import InputError from '@/components/input-error';
 import MyAccountLayout from '@/layouts/my-account-layout';
 import type { AccountProfilePageProps } from '@/types/account';
@@ -10,6 +11,9 @@ import type { AccountProfilePageProps } from '@/types/account';
 export default function AccountProfile() {
     const inertia = usePage<AccountProfilePageProps>();
     const props = inertia.props;
+    const [editingContact, setEditingContact] = useState<
+        'email' | 'phone' | null
+    >(null);
     const [phoneCodeSent, setPhoneCodeSent] = useState(
         props.profile.phone.pending !== null,
     );
@@ -19,12 +23,10 @@ export default function AccountProfile() {
         last_name: props.profile.lastName,
         preferred_locale: props.profile.preferredLocale,
     });
-    const email = useForm({ email: '', current_password: '' });
-    const phone = useForm({ phone: '', current_password: '' });
+    const email = useForm({ email: '' });
+    const phone = useForm({ phone: '' });
     const phoneCode = useForm({ code: '' });
 
-    email.dontRemember('current_password');
-    phone.dontRemember('current_password');
     phoneCode.dontRemember('code');
 
     function focusFirstError(
@@ -41,10 +43,7 @@ export default function AccountProfile() {
     function updateDetails(event: FormEvent) {
         event.preventDefault();
         details.patch(props.profileActions.updateUrl, {
-            onError: (errors) =>
-                focusFirstError(errors, {
-                    current_password: 'email_current_password',
-                }),
+            onError: (errors) => focusFirstError(errors),
             preserveScroll: true,
         });
     }
@@ -52,11 +51,11 @@ export default function AccountProfile() {
     function requestEmail(event: FormEvent) {
         event.preventDefault();
         email.post(props.profileActions.emailRequestUrl, {
-            onError: (errors) =>
-                focusFirstError(errors, {
-                    current_password: 'phone_current_password',
-                }),
-            onSuccess: () => email.reset('current_password'),
+            onError: (errors) => focusFirstError(errors),
+            onSuccess: () => {
+                email.reset();
+                setEditingContact(null);
+            },
             preserveScroll: true,
         });
     }
@@ -66,7 +65,7 @@ export default function AccountProfile() {
         phone.post(props.profileActions.phoneRequestUrl, {
             onError: (errors) => focusFirstError(errors),
             onSuccess: () => {
-                phone.reset('current_password');
+                phone.reset();
                 setPhoneCodeSent(true);
             },
             preserveScroll: true,
@@ -80,6 +79,7 @@ export default function AccountProfile() {
             onSuccess: () => {
                 phoneCode.reset();
                 setPhoneCodeSent(false);
+                setEditingContact(null);
             },
             preserveScroll: true,
         });
@@ -182,8 +182,19 @@ export default function AccountProfile() {
                     />
                     <div className="account-profile-contacts">
                         <ContactValue
+                            actionLabel={
+                                editingContact === 'email'
+                                    ? props.accountUi.profile.cancel_edit
+                                    : props.accountUi.profile.edit_email
+                            }
+                            editing={editingContact === 'email'}
                             icon={Mail}
                             label={props.accountUi.profile.email}
+                            onEdit={() =>
+                                setEditingContact((current) =>
+                                    current === 'email' ? null : 'email',
+                                )
+                            }
                             pending={props.profile.email.pending}
                             value={props.profile.email.value}
                             verification={
@@ -191,10 +202,48 @@ export default function AccountProfile() {
                                     ? props.accountUi.verification.verified
                                     : props.accountUi.verification.unverified
                             }
-                        />
+                        >
+                            {editingContact === 'email' ? (
+                                <form
+                                    className="account-profile-contact__editor"
+                                    onSubmit={requestEmail}
+                                >
+                                    <Field
+                                        autocomplete="email"
+                                        error={email.errors.email}
+                                        id="new_email"
+                                        label={
+                                            props.accountUi.profile.new_email
+                                        }
+                                        onChange={(value) =>
+                                            email.setData('email', value)
+                                        }
+                                        type="email"
+                                        value={email.data.email}
+                                    />
+                                    <button
+                                        disabled={email.processing}
+                                        type="submit"
+                                    >
+                                        {props.accountUi.profile.request_email}
+                                    </button>
+                                </form>
+                            ) : null}
+                        </ContactValue>
                         <ContactValue
+                            actionLabel={
+                                editingContact === 'phone'
+                                    ? props.accountUi.profile.cancel_edit
+                                    : props.accountUi.profile.edit_phone
+                            }
+                            editing={editingContact === 'phone'}
                             icon={Phone}
                             label={props.accountUi.profile.phone}
+                            onEdit={() =>
+                                setEditingContact((current) =>
+                                    current === 'phone' ? null : 'phone',
+                                )
+                            }
                             pending={props.profile.phone.pending}
                             value={props.profile.phone.value ?? '—'}
                             verification={
@@ -202,112 +251,92 @@ export default function AccountProfile() {
                                     ? props.accountUi.verification.verified
                                     : props.accountUi.verification.unverified
                             }
-                        />
+                        >
+                            {editingContact === 'phone' ? (
+                                <>
+                                    <form
+                                        className="account-profile-contact__editor"
+                                        onSubmit={requestPhone}
+                                    >
+                                        <Field
+                                            autocomplete="tel"
+                                            error={phone.errors.phone}
+                                            id="new_phone"
+                                            label={
+                                                props.accountUi.profile
+                                                    .new_phone
+                                            }
+                                            onChange={(value) =>
+                                                phone.setData('phone', value)
+                                            }
+                                            type="tel"
+                                            value={phone.data.phone}
+                                        />
+                                        <button
+                                            disabled={phone.processing}
+                                            type="submit"
+                                        >
+                                            {
+                                                props.accountUi.profile
+                                                    .send_phone_code
+                                            }
+                                        </button>
+                                    </form>
+                                    {phoneCodeSent ? (
+                                        <form
+                                            className="account-profile-contact__editor account-profile-code"
+                                            onSubmit={confirmPhone}
+                                        >
+                                            <Field
+                                                autocomplete="one-time-code"
+                                                error={phoneCode.errors.code}
+                                                id="code"
+                                                inputMode="numeric"
+                                                label={
+                                                    props.accountUi.profile
+                                                        .phone_code
+                                                }
+                                                maxLength={6}
+                                                onChange={(value) =>
+                                                    phoneCode.setData(
+                                                        'code',
+                                                        value
+                                                            .replace(/\D/g, '')
+                                                            .slice(0, 6),
+                                                    )
+                                                }
+                                                value={phoneCode.data.code}
+                                            />
+                                            <button
+                                                disabled={
+                                                    phoneCode.processing ||
+                                                    phoneCode.data.code
+                                                        .length !== 6
+                                                }
+                                                type="submit"
+                                            >
+                                                {
+                                                    props.accountUi.profile
+                                                        .confirm_phone
+                                                }
+                                            </button>
+                                        </form>
+                                    ) : null}
+                                </>
+                            ) : null}
+                        </ContactValue>
                     </div>
                     <p className="account-profile-sensitive-hint">
                         {props.accountUi.profile.sensitive_hint}
                     </p>
-
-                    <div className="account-profile-change-grid">
-                        <form onSubmit={requestEmail}>
-                            <h3>{props.accountUi.profile.new_email}</h3>
-                            <Field
-                                autocomplete="email"
-                                error={email.errors.email}
-                                id="email"
-                                label={props.accountUi.profile.new_email}
-                                onChange={(value) =>
-                                    email.setData('email', value)
-                                }
-                                type="email"
-                                value={email.data.email}
-                            />
-                            {props.profile.passwordConfirmationRequired ? (
-                                <Field
-                                    autocomplete="current-password"
-                                    error={email.errors.current_password}
-                                    id="email_current_password"
-                                    label={
-                                        props.accountUi.profile.current_password
-                                    }
-                                    onChange={(value) =>
-                                        email.setData('current_password', value)
-                                    }
-                                    type="password"
-                                    value={email.data.current_password}
-                                />
-                            ) : null}
-                            <button disabled={email.processing} type="submit">
-                                {props.accountUi.profile.request_email}
-                            </button>
-                        </form>
-
-                        <form onSubmit={requestPhone}>
-                            <h3>{props.accountUi.profile.new_phone}</h3>
-                            <Field
-                                autocomplete="tel"
-                                error={phone.errors.phone}
-                                id="phone"
-                                label={props.accountUi.profile.new_phone}
-                                onChange={(value) =>
-                                    phone.setData('phone', value)
-                                }
-                                type="tel"
-                                value={phone.data.phone}
-                            />
-                            {props.profile.passwordConfirmationRequired ? (
-                                <Field
-                                    autocomplete="current-password"
-                                    error={phone.errors.current_password}
-                                    id="phone_current_password"
-                                    label={
-                                        props.accountUi.profile.current_password
-                                    }
-                                    onChange={(value) =>
-                                        phone.setData('current_password', value)
-                                    }
-                                    type="password"
-                                    value={phone.data.current_password}
-                                />
-                            ) : null}
-                            <button disabled={phone.processing} type="submit">
-                                {props.accountUi.profile.send_phone_code}
-                            </button>
-                        </form>
-                    </div>
-
-                    {phoneCodeSent ? (
-                        <form
-                            className="account-profile-code"
-                            onSubmit={confirmPhone}
-                        >
-                            <Field
-                                autocomplete="one-time-code"
-                                error={phoneCode.errors.code}
-                                id="code"
-                                inputMode="numeric"
-                                label={props.accountUi.profile.phone_code}
-                                maxLength={6}
-                                onChange={(value) =>
-                                    phoneCode.setData(
-                                        'code',
-                                        value.replace(/\D/g, '').slice(0, 6),
-                                    )
-                                }
-                                value={phoneCode.data.code}
-                            />
-                            <button
-                                disabled={
-                                    phoneCode.processing ||
-                                    phoneCode.data.code.length !== 6
-                                }
-                                type="submit"
-                            >
-                                {props.accountUi.profile.confirm_phone}
-                            </button>
-                        </form>
-                    ) : null}
                 </section>
+
+                <AccountPasswordSection
+                    actions={props.securityActions}
+                    passwordMode={props.security.passwordMode}
+                    passwordRules={props.security.passwordRules}
+                    translations={props.accountUi.security}
+                />
             </div>
         </MyAccountLayout>
     );
@@ -373,29 +402,50 @@ function SectionHeading({
 }
 
 function ContactValue({
+    actionLabel,
+    children,
+    editing,
     icon: Icon,
     label,
+    onEdit,
     pending,
     value,
     verification,
 }: {
+    actionLabel: string;
+    children?: ReactNode;
+    editing: boolean;
     icon: typeof Mail;
     label: string;
+    onEdit: () => void;
     pending: string | null;
     value: string;
     verification: string;
 }) {
     return (
-        <div className="account-profile-contact">
-            <span aria-hidden="true">
-                <Icon />
-            </span>
-            <div>
-                <p>{label}</p>
-                <bdi>{value}</bdi>
-                {pending === null ? null : <small>{pending}</small>}
+        <div
+            className={`account-profile-contact${editing ? 'is-editing' : ''}`}
+        >
+            <div className="account-profile-contact__summary">
+                <span aria-hidden="true">
+                    <Icon />
+                </span>
+                <div>
+                    <p>{label}</p>
+                    <bdi>{value}</bdi>
+                    {pending === null ? null : <small>{pending}</small>}
+                </div>
+                <strong>{verification}</strong>
+                <button
+                    aria-expanded={editing}
+                    className="account-profile-contact__edit"
+                    onClick={onEdit}
+                    type="button"
+                >
+                    {actionLabel}
+                </button>
             </div>
-            <strong>{verification}</strong>
+            {children}
         </div>
     );
 }
