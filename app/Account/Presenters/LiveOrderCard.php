@@ -41,8 +41,8 @@ final class LiveOrderCard
                 (string) $order->getAttribute('currency'),
             ),
             'detailUrl' => route(
-                $locale === 'en' ? 'localized.store.orders.show' : 'store.orders.show',
-                [...($locale === 'en' ? ['locale' => 'en'] : []), 'order' => $order->getAttribute('public_id')],
+                $locale === 'en' ? 'localized.account.orders.show' : 'account.orders.show',
+                ['order' => $order->getAttribute('public_id')],
                 absolute: false,
             ),
         ];

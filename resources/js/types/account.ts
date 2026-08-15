@@ -89,6 +89,32 @@ export type AccountTranslations = {
         loyalty_remaining: string;
         loyalty_complete: string;
     };
+    orders: {
+        title: string;
+        description: string;
+        all: string;
+        open: string;
+        completed: string;
+        empty_title: string;
+        empty_description: string;
+        number: string;
+        placed_at: string;
+        total: string;
+        status: string;
+        source_live: string;
+        source_archive: string;
+        filters_label: string;
+        previous: string;
+        next: string;
+        pagination: string;
+        page_status: string;
+        items_title: string;
+        item_quantity: string;
+        credentials_ready: string;
+        refresh_status: string;
+        refreshing: string;
+        back: string;
+    };
     statuses: Record<AccountOrderStatus, string>;
     actions: {
         view_order: string;
@@ -104,6 +130,12 @@ export type AccountTranslations = {
         open_navigation: string;
         close_navigation: string;
         order_status: string;
+    };
+    errors: {
+        section_title: string;
+        section_description: string;
+        save_failed: string;
+        unexpected: string;
     };
 };
 
@@ -130,5 +162,38 @@ export type AccountOverviewPageProps = AccountPageShellProps & {
         openOrderCount: number;
         completedOrderCount: number;
         walletBalance: AccountMoney | null;
+    };
+};
+
+export type AccountOrdersPageProps = AccountPageShellProps & {
+    filters: { status: 'all' | 'open' | 'completed' };
+    orders: AccountOrder[];
+    pagination: {
+        currentPage: number;
+        lastPage: number;
+        perPage: number;
+        total: number;
+        nextUrl: string | null;
+        previousUrl: string | null;
+    };
+};
+
+export type AccountLiveOrderPageProps = AccountPageShellProps & {
+    order: {
+        id: string;
+        number: string;
+        status: AccountOrderStatus;
+        placedAt: string;
+        total: AccountMoney;
+        refreshable: boolean;
+        paymentStartUrl: string | null;
+        items: Array<{
+            id: string;
+            name: string;
+            status: AccountOrderStatus;
+            quantity: number;
+            total: AccountMoney;
+            credentialsPresent: boolean;
+        }>;
     };
 };

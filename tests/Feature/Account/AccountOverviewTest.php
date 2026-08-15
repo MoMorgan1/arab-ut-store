@@ -75,6 +75,7 @@ test('a new customer receives an honest empty current-data overview', function (
             ])
             ->where('accountNavigation', [
                 ['key' => 'overview', 'label' => 'نظرة عامة', 'url' => '/my-account'],
+                ['key' => 'orders', 'label' => 'طلباتي', 'url' => '/my-account/orders'],
             ])
             ->where('logoutUrl', '/logout')
             ->where('summary.orderCount', 0)
@@ -121,7 +122,7 @@ test('the overview scopes metrics and the three newest localized orders to the o
             ->where('recentOrders.2.summary', 'Service 2')
             ->where('recentOrders.0.source', 'live')
             ->where('recentOrders.0.placedAt', fn (string $date): bool => str_starts_with($date, '2026-08-04T12:00:00'))
-            ->where('recentOrders.0.detailUrl', fn (string $url): bool => str_starts_with($url, '/en/orders/'))
+            ->where('recentOrders.0.detailUrl', fn (string $url): bool => str_starts_with($url, '/en/my-account/orders/'))
             ->where('recentOrders', fn ($orders): bool => collect($orders)
                 ->every(fn (array $order): bool => $order['total']['amountMinor'] !== '900000')));
 });

@@ -304,12 +304,16 @@ git commit -m "feat: build branded my account overview"
 
 **Files:**
 - Create: `app/Account/Queries/ReadLiveOrders.php`
+- Create: `app/Account/Queries/ReadLiveOrder.php`
+- Create: `app/Account/Presenters/AccountShell.php`
 - Create: `app/Http/Controllers/Account/OrdersController.php`
 - Create: `app/Http/Controllers/Account/LiveOrderController.php`
 - Modify: `app/Http/Controllers/Store/OrderController.php`
 - Modify: `routes/account.php`
+- Modify: `resources/js/types/account.ts`, `resources/css/app.css`, `lang/ar/account.php`, `lang/en/account.php`
 - Create: `resources/js/pages/account/orders.tsx`
 - Create: `resources/js/pages/account/live-order.tsx`
+- Delete: superseded `resources/js/pages/store/order.tsx`, its test, and its page-only type
 - Test: `tests/Feature/Account/AccountOrdersTest.php`
 - Test: `resources/js/__tests__/account/account-orders.test.tsx`
 
@@ -317,25 +321,25 @@ git commit -m "feat: build branded my account overview"
 - Produces owner-scoped live order cards ordered by `placed_at DESC, public_id DESC` with bounded pagination.
 - Produces current detail props with safe item progress and payment recovery URL only when permitted.
 
-- [ ] **Step 1: Write failing owner, pagination, status, and privacy tests**
+- [x] **Step 1: Write failing owner, pagination, status, and privacy tests**
 
-- [ ] **Step 2: Run focused tests and confirm failure**
+- [x] **Step 2: Run focused tests and confirm failure**
 
 Run: `php artisan test tests/Feature/Account/AccountOrdersTest.php`
 
-- [ ] **Step 3: Implement server projections and canonical routes**
+- [x] **Step 3: Implement server projections and canonical routes**
 
 Filters use an allowlisted canonical status; unknown filters return validation errors. The legacy `/orders/{publicId}` destination redirects to the locale-correct canonical detail only after the same owner-scoped lookup succeeds.
 
-- [ ] **Step 4: Write and run failing React tests**
+- [x] **Step 4: Write and run failing React tests**
 
 Run: `npm test -- resources/js/__tests__/account/account-orders.test.tsx`
 
-- [ ] **Step 5: Implement order cards, filters, pagination, details, and explicit refresh**
+- [x] **Step 5: Implement order cards, filters, pagination, details, and explicit refresh**
 
 The refresh button performs `router.reload({ only: ['order'] })`, preserves focus, and disappears for terminal orders. Page props never expose saved EA secrets or raw item configuration.
 
-- [ ] **Step 6: Run focused backend/frontend checks and commit**
+- [x] **Step 6: Run focused backend/frontend checks and commit**
 
 ```bash
 git add app/Account/Queries/ReadLiveOrders.php app/Http/Controllers/Account app/Http/Controllers/Store/OrderController.php routes/account.php resources/js/pages/account resources/js/__tests__/account/account-orders.test.tsx tests/Feature/Account/AccountOrdersTest.php
