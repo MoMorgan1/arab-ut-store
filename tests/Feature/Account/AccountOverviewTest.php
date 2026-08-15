@@ -76,6 +76,7 @@ test('a new customer receives an honest empty current-data overview', function (
             ->where('accountNavigation', [
                 ['key' => 'overview', 'label' => 'نظرة عامة', 'url' => '/my-account'],
                 ['key' => 'orders', 'label' => 'طلباتي', 'url' => '/my-account/orders'],
+                ['key' => 'wallet', 'label' => 'محفظتي', 'url' => '/my-account/wallet'],
             ])
             ->where('logoutUrl', '/logout')
             ->where('summary.orderCount', 0)

@@ -364,21 +364,21 @@ git commit -m "feat: add customer live order history"
 - Produces monotonic `sequence` unique per wallet; existing unique `reference` remains the idempotency key.
 - Produces newest-sequence-first page data with exact string amounts and optional safe order reference.
 
-- [ ] **Step 1: Write failing migration/invariant and wallet route tests**
+- [x] **Step 1: Write failing migration/invariant and wallet route tests**
 
-- [ ] **Step 2: Run tests and confirm failure**
+- [x] **Step 2: Run tests and confirm failure**
 
 Run: `php artisan test tests/Feature/Database/WalletSequenceInvariantTest.php tests/Feature/Account/AccountWalletTest.php`
 
-- [ ] **Step 3: Add sequence safely and project the ledger**
+- [x] **Step 3: Add sequence safely and project the ledger**
 
-Backfill each wallet deterministically by `(created_at, id)`, add unique `(wallet_account_id, sequence)`, and retain immutable update/delete triggers. New wallet actions allocate the next sequence under `lockForUpdate()` in the same transaction as balance update.
+Backfill each wallet deterministically by `(created_at, id)`, add unique `(wallet_account_id, sequence)`, and retain immutable update/delete triggers. This read-only phase adds no wallet mutation endpoint; any future posting action must allocate the next sequence under `lockForUpdate()` in the same transaction as the balance update.
 
-- [ ] **Step 4: Add wallet UI tests, then implement the page**
+- [x] **Step 4: Add wallet UI tests, then implement the page**
 
 Cover no-wallet, zero balance, credits/debits/refunds/adjustments, large amounts, text-plus-color semantics, and bounded pagination.
 
-- [ ] **Step 5: Run migration lifecycle, focused tests, and commit**
+- [x] **Step 5: Run migration lifecycle, focused tests, and commit**
 
 ```bash
 git add database/migrations app/Models/WalletEntry.php app/Account/Queries/ReadWalletLedger.php app/Http/Controllers/Account/WalletController.php routes/account.php resources/js/pages/account/wallet.tsx resources/js/components/account/wallet-ledger.tsx tests/Feature resources/js/__tests__/account/account-wallet.test.tsx

@@ -34,6 +34,14 @@ final class AccountShell
                         absolute: false,
                     ),
                 ],
+                [
+                    'key' => 'wallet',
+                    'label' => trans('account.navigation.wallet'),
+                    'url' => route(
+                        $localized ? 'localized.account.wallet' : 'account.wallet',
+                        absolute: false,
+                    ),
+                ],
             ],
             'logoutUrl' => route('logout', absolute: false),
         ];

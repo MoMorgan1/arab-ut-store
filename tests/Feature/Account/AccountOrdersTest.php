@@ -62,7 +62,11 @@ test('the bilingual orders destinations render owner-scoped bounded pagination',
             ->has('orders', 10)
             ->where('orders', fn ($orders): bool => collect($orders)
                 ->every(fn (array $order): bool => $order['number'] !== 'UT-00000099'))
-            ->where('accountNavigation', fn ($items): bool => collect($items)->pluck('key')->all() === ['overview', 'orders']));
+            ->where('accountNavigation', fn ($items): bool => collect($items)->pluck('key')->all() === [
+                'overview',
+                'orders',
+                'wallet',
+            ]));
 
     expect($response->inertiaPage()['encryptHistory'] ?? false)->toBeTrue();
 })->with([

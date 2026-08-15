@@ -14,6 +14,7 @@ class WalletEntryFactory extends Factory
     {
         return [
             'wallet_account_id' => WalletAccount::factory(),
+            'sequence' => 1,
             'type' => WalletEntryType::Credit,
             'amount_halalah' => 1_000,
             'balance_after_halalah' => 1_000,

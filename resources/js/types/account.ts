@@ -115,6 +115,26 @@ export type AccountTranslations = {
         refreshing: string;
         back: string;
     };
+    wallet: {
+        title: string;
+        description: string;
+        available_balance: string;
+        unavailable_balance: string;
+        loyalty_title: string;
+        ledger_title: string;
+        empty_title: string;
+        empty_description: string;
+        credit: string;
+        debit: string;
+        refund: string;
+        adjustment: string;
+        balance_after: string;
+        related_order: string;
+        previous: string;
+        next: string;
+        pagination: string;
+        page_status: string;
+    };
     statuses: Record<AccountOrderStatus, string>;
     actions: {
         view_order: string;
@@ -196,4 +216,35 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
             credentialsPresent: boolean;
         }>;
     };
+};
+
+export type AccountWalletEntryType =
+    'credit' | 'debit' | 'refund' | 'adjustment';
+
+export type AccountWalletEntry = {
+    id: string;
+    sequence: number;
+    type: AccountWalletEntryType;
+    effect: 'credit' | 'debit' | 'neutral';
+    amount: AccountMoney;
+    balanceAfter: AccountMoney;
+    createdAt: string | null;
+    order: { number: string; url: string } | null;
+};
+
+export type AccountWalletPageProps = AccountPageShellProps & {
+    wallet: {
+        exists: boolean;
+        balance: AccountMoney | null;
+        entries: AccountWalletEntry[];
+        pagination: {
+            currentPage: number;
+            lastPage: number;
+            perPage: number;
+            total: number;
+            nextUrl: string | null;
+            previousUrl: string | null;
+        };
+    };
+    loyalty: AccountLoyalty | null;
 };
