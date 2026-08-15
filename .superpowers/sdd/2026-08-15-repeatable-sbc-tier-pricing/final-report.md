@@ -6,7 +6,7 @@ Date: 2026-08-15 (Africa/Cairo)
 
 The repeatable-SBC bundle contract is implemented and verified locally from the n8n transformation package through Laravel catalog validation, the public AR/EN selector, secure cart insertion, checkout revalidation, order configuration, and the enlarged add-to-cart notice.
 
-The code is **not deployed** in this verification step. Production rollout is blocked because the published n8n workflow is still emitting the previous one-completion contract, and the safe manual dry-run attempt from the updated editor draft was rejected by n8n with `Unauthorized` before an execution started. No `Publish`, production webhook `apply`, or catalog snapshot was triggered during this verification.
+The code is **not deployed** in this verification step. Production rollout is blocked because the published n8n workflow is still emitting the previous one-completion contract, and the safe manual dry-run attempt from the updated editor draft was rejected by n8n with `Unauthorized` before an execution started. A subsequent same-URL reload redirected to n8n's sign-in page, proving that the editor session had expired; this was an n8n session boundary failure, not a workflow-node, pricing-signature, or Laravel failure. No `Publish`, production webhook `apply`, or catalog snapshot was triggered during this verification.
 
 ## Commits
 
@@ -101,6 +101,8 @@ Controlled safe check:
 - The editor trigger was explicitly changed from `SBC Catalog Production Trigger` to `Run SBC Catalog Now`.
 - The resulting action label confirmed `Execute workflow from Run SBC Catalog Now`.
 - Starting that manual dry run returned `Problem running workflow — Unauthorized` before a workflow execution began.
+- The browser console showed the same HTTP authorization failure for both `runWorkflow` and the read-only `fetchExecutions` request.
+- Reloading the exact workflow URL redirected to `/signin?redirect=...`, confirming an expired n8n login session as the root cause.
 - No publish button, production webhook, apply trigger, or snapshot endpoint was invoked by this check.
 
 ## Rollout state and exact blocker
@@ -109,7 +111,7 @@ Local code and tests are ready for rollout, but production is not ready to claim
 
 Required next production steps:
 
-1. Resolve the n8n editor authorization failure without sharing credentials in chat.
+1. Sign back in to n8n through the existing browser tab without sharing credentials in chat.
 2. Import or reconcile the verified workflow export and confirm its draft contains `legacy-sbc-repeat-bundle-v1` plus `completionPricing`.
 3. Run the authenticated production webhook with the exact body `{ "mode": "dry_run" }` and verify counts/tier totals with `publishAttempted: false`.
 4. Only after that evidence is green, publish/deploy the application and workflow, run one signed complete SBC snapshot, require HTTP 201, and verify a live repeatable and non-repeatable purchase path.
