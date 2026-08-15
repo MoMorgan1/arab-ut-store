@@ -8,6 +8,9 @@ const page = vi.hoisted(() => ({
     url: '/en/my-account/profile',
 }));
 const excluded = vi.hoisted(() => [] as string[][]);
+type FormOptions = {
+    onError?: (errors: Record<string, string>) => void;
+};
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
@@ -17,7 +20,13 @@ vi.mock('@inertiajs/react', () => ({
         dontRemember: (...fields: string[]) => excluded.push(fields),
         errors: {},
         patch: vi.fn(),
-        post: vi.fn(),
+        post: vi.fn((url: string, options?: FormOptions) => {
+            if (url.includes('/profile/email')) {
+                options?.onError?.({ email: 'Invalid email.' });
+            } else if (url.includes('/profile/phone')) {
+                options?.onError?.({ phone: 'Invalid phone.' });
+            }
+        }),
         put: vi.fn(),
         processing: false,
         recentlySuccessful: false,
@@ -61,6 +70,11 @@ it('renders persistent identity labels, verified states, and safe autocomplete c
         'autocomplete',
         'email',
     );
+    expect(
+        screen
+            .getByRole('button', { name: 'Cancel' })
+            .closest('.account-profile-contact'),
+    ).toHaveClass('is-editing');
     fireEvent.click(screen.getByRole('button', { name: 'Edit number' }));
     expect(screen.getByLabelText('New WhatsApp number')).toHaveAttribute(
         'autocomplete',
@@ -68,6 +82,21 @@ it('renders persistent identity labels, verified states, and safe autocomplete c
     );
     expect(screen.queryByDisplayValue(/\$2y\$/)).not.toBeInTheDocument();
 });
+
+it.each([
+    ['Edit email', 'Send verification link', 'New email address'],
+    ['Edit number', 'Send WhatsApp code', 'New WhatsApp number'],
+])(
+    'focuses the inline contact field when %s validation fails',
+    (editAction, submitAction, fieldLabel) => {
+        render(<AccountProfile />);
+
+        fireEvent.click(screen.getByRole('button', { name: editAction }));
+        fireEvent.click(screen.getByRole('button', { name: submitAction }));
+
+        expect(screen.getByLabelText(fieldLabel)).toHaveFocus();
+    },
+);
 
 it('excludes every secret identity field from remembered Inertia state', () => {
     render(<AccountProfile />);
@@ -102,7 +131,6 @@ function profileProps() {
                 send_phone_code: 'Send WhatsApp code',
                 phone_code: '6-digit verification code',
                 confirm_phone: 'Confirm new number',
-                current_password: 'Current password',
                 sensitive_hint:
                     'A verification link or WhatsApp code will confirm the change.',
                 pending_email: 'New email awaiting verification',

@@ -101,7 +101,6 @@ return [
         'send_phone_code' => 'Send WhatsApp code',
         'phone_code' => '6-digit verification code',
         'confirm_phone' => 'Confirm new number',
-        'current_password' => 'Current password',
         'sensitive_hint' => 'A verification link or WhatsApp code will confirm the change before it is applied.',
         'email_link_invalid' => 'This email verification link is invalid, expired, or already used.',
         'phone_code_invalid' => 'The code is invalid, expired, or has reached its attempt limit.',

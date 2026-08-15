@@ -157,7 +157,6 @@ export type AccountTranslations = {
         send_phone_code: string;
         phone_code: string;
         confirm_phone: string;
-        current_password: string;
         sensitive_hint: string;
         pending_email: string;
         pending_phone: string;

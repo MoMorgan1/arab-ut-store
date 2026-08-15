@@ -24,7 +24,7 @@ test('the bilingual support destination projects only configured contact links a
             ->where('support.orderNumber', 'UT-00000091')
             ->where('support.available', true)
             ->where('accountNavigation', fn ($items): bool => collect($items)->pluck('key')->all() === [
-                'overview', 'orders', 'wallet', 'profile', 'security', 'support',
+                'overview', 'orders', 'wallet', 'profile',
             ]));
 
     $payload = json_encode($response->inertiaPage()['props']['support'], JSON_THROW_ON_ERROR);

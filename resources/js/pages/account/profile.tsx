@@ -51,7 +51,8 @@ export default function AccountProfile() {
     function requestEmail(event: FormEvent) {
         event.preventDefault();
         email.post(props.profileActions.emailRequestUrl, {
-            onError: (errors) => focusFirstError(errors),
+            onError: (errors) =>
+                focusFirstError(errors, { email: 'new_email' }),
             onSuccess: () => {
                 email.reset();
                 setEditingContact(null);
@@ -63,7 +64,8 @@ export default function AccountProfile() {
     function requestPhone(event: FormEvent) {
         event.preventDefault();
         phone.post(props.profileActions.phoneRequestUrl, {
-            onError: (errors) => focusFirstError(errors),
+            onError: (errors) =>
+                focusFirstError(errors, { phone: 'new_phone' }),
             onSuccess: () => {
                 phone.reset();
                 setPhoneCodeSent(true);
@@ -424,7 +426,12 @@ function ContactValue({
 }) {
     return (
         <div
-            className={`account-profile-contact${editing ? 'is-editing' : ''}`}
+            className={[
+                'account-profile-contact',
+                editing ? 'is-editing' : null,
+            ]
+                .filter(Boolean)
+                .join(' ')}
         >
             <div className="account-profile-contact__summary">
                 <span aria-hidden="true">
