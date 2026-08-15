@@ -30,6 +30,7 @@ test('the bilingual wallet destinations render an explicit no-wallet state', fun
                 'wallet',
                 'profile',
                 'security',
+                'support',
             ]));
 
     expect($response->inertiaPage()['encryptHistory'] ?? false)->toBeTrue();

@@ -43,7 +43,7 @@ test('the bilingual profile page exposes only editable identity state', function
             ->where('profile.displayCurrency', 'SAR')
             ->where('profile.passwordConfirmationRequired', true)
             ->where('accountNavigation', fn ($items): bool => collect($items)->pluck('key')->all() === [
-                'overview', 'orders', 'wallet', 'profile', 'security',
+                'overview', 'orders', 'wallet', 'profile', 'security', 'support',
             ])
             ->missing('profile.password'));
 

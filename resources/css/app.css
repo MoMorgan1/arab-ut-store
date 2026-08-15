@@ -8566,6 +8566,126 @@
     text-decoration: none;
 }
 
+.account-support-page {
+    display: grid;
+    min-width: 0;
+    gap: 1rem;
+}
+
+.account-support-context {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.65rem;
+    border: 1px solid rgb(212 168 67 / 22%);
+    border-radius: 0.85rem;
+    background: rgb(212 168 67 / 7%);
+    padding: 0.85rem 1rem;
+    color: var(--arabut-muted);
+}
+
+.account-support-context svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    flex: 0 0 auto;
+    color: var(--arabut-gold-bright);
+}
+
+.account-support-context strong {
+    color: var(--arabut-ink);
+}
+
+.account-support-grid {
+    display: grid;
+    min-width: 0;
+    gap: 1rem;
+}
+
+.account-support-card {
+    display: flex;
+    min-width: 0;
+    min-height: 15rem;
+    align-items: flex-start;
+    flex-direction: column;
+    border: 1px solid var(--arabut-line);
+    border-radius: 1rem;
+    background:
+        radial-gradient(
+            circle at 15% 5%,
+            rgb(212 168 67 / 10%),
+            transparent 42%
+        ),
+        rgb(28 24 20 / 68%);
+    padding: clamp(1.1rem, 3vw, 1.5rem);
+}
+
+.account-support-card > span,
+.account-section-error > span {
+    display: inline-flex;
+    width: 2.8rem;
+    height: 2.8rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.8rem;
+    background: rgb(212 168 67 / 11%);
+    color: var(--arabut-gold-bright);
+}
+
+.account-support-card svg,
+.account-section-error svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.account-support-card h3,
+.account-section-error h3 {
+    margin: 1rem 0 0;
+    color: var(--arabut-ink);
+    font-size: 1.2rem;
+    font-weight: 900;
+}
+
+.account-support-card p,
+.account-section-error p {
+    margin: 0.35rem 0 0;
+    color: var(--arabut-muted);
+    line-height: 1.75;
+}
+
+.account-support-card a,
+.account-section-error button {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    margin-block-start: auto;
+    border: 1px solid var(--arabut-gold);
+    border-radius: 0.72rem;
+    background: transparent;
+    padding: 0.65rem 1rem;
+    color: var(--arabut-gold-bright);
+    font: inherit;
+    font-weight: 900;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.account-section-error {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    flex-direction: column;
+    border: 1px dashed var(--arabut-line);
+    border-radius: 1rem;
+    background: rgb(28 24 20 / 54%);
+    padding: clamp(1.5rem, 5vw, 2.5rem);
+    text-align: center;
+}
+
+.account-section-error button {
+    margin-block-start: 1rem;
+}
+
 .account-shell :is(a, button):focus-visible {
     outline: 3px solid var(--arabut-focus);
     outline-offset: 3px;
@@ -8623,7 +8743,8 @@
 
     .account-profile-grid,
     .account-profile-change-grid,
-    .account-profile-contacts {
+    .account-profile-contacts,
+    .account-support-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }

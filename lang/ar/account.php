@@ -129,7 +129,11 @@ return [
         'whatsapp_description' => 'فريق الدعم متاح لمساعدتك على مدار الساعة.',
         'whatsapp_action' => 'فتح واتساب',
         'email_title' => 'راسلنا بالبريد',
+        'email_description' => 'أرسل رسالة إلى فريقنا وسنتابع معك في أقرب وقت.',
         'email_action' => 'إرسال رسالة',
+        'order_context' => 'بخصوص الطلب',
+        'unavailable_title' => 'الدعم غير متاح حاليًا',
+        'unavailable_description' => 'قنوات التواصل غير مهيأة الآن. حاول مرة أخرى لاحقًا.',
     ],
     'statuses' => [
         'pending_payment' => 'بانتظار الدفع',

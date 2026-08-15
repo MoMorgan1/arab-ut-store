@@ -58,6 +58,14 @@ final class AccountShell
                         absolute: false,
                     ),
                 ],
+                [
+                    'key' => 'support',
+                    'label' => trans('account.navigation.support'),
+                    'url' => route(
+                        $localized ? 'localized.account.support' : 'account.support',
+                        absolute: false,
+                    ),
+                ],
             ],
             'logoutUrl' => route('logout', absolute: false),
         ];

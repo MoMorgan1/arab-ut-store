@@ -26,7 +26,7 @@ test('the bilingual security page exposes mode and recovery capability without h
             ->where('security.recoveryMode', 'email')
             ->where('security.recoveryUrl', fn (string $url): bool => str_contains($url, 'forgot-password'))
             ->where('accountNavigation', fn ($items): bool => collect($items)->pluck('key')->all() === [
-                'overview', 'orders', 'wallet', 'profile', 'security',
+                'overview', 'orders', 'wallet', 'profile', 'security', 'support',
             ])
             ->missing('security.password'));
 

@@ -129,7 +129,11 @@ return [
         'whatsapp_description' => 'Our support team is available around the clock.',
         'whatsapp_action' => 'Open WhatsApp',
         'email_title' => 'Email us',
+        'email_description' => 'Send our team a message and we will follow up with you.',
         'email_action' => 'Send an email',
+        'order_context' => 'Regarding order',
+        'unavailable_title' => 'Support unavailable',
+        'unavailable_description' => 'Contact options are not configured right now. Please try again later.',
     ],
     'statuses' => [
         'pending_payment' => 'Awaiting payment',

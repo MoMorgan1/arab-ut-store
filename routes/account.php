@@ -7,6 +7,7 @@ use App\Http\Controllers\Account\ProfileController;
 use App\Http\Controllers\Account\ProfileEmailController;
 use App\Http\Controllers\Account\ProfilePhoneController;
 use App\Http\Controllers\Account\SecurityController;
+use App\Http\Controllers\Account\SupportController;
 use App\Http\Controllers\Account\WalletController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureMyAccountEnabled;
@@ -50,6 +51,7 @@ Route::middleware($accountMiddleware)->group(function (): void {
     Route::post('/my-account/security/password', [SecurityController::class, 'setup'])
         ->middleware('throttle:6,1')
         ->name('account.security.password.setup');
+    Route::get('/my-account/support', SupportController::class)->name('account.support');
 });
 
 Route::prefix('en')
@@ -103,4 +105,7 @@ Route::prefix('en')
             ->middleware('throttle:6,1')
             ->defaults('locale', 'en')
             ->name('account.security.password.setup');
+        Route::get('/my-account/support', SupportController::class)
+            ->defaults('locale', 'en')
+            ->name('account.support');
     });

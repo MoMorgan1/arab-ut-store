@@ -180,6 +180,19 @@ export type AccountTranslations = {
         recovery_whatsapp: string;
         recovery_action: string;
     };
+    support: {
+        title: string;
+        description: string;
+        whatsapp_title: string;
+        whatsapp_description: string;
+        whatsapp_action: string;
+        email_title: string;
+        email_description: string;
+        email_action: string;
+        order_context: string;
+        unavailable_title: string;
+        unavailable_description: string;
+    };
     verification: {
         verified: string;
         unverified: string;
@@ -334,5 +347,14 @@ export type AccountSecurityPageProps = AccountPageShellProps & {
     securityActions: {
         changePasswordUrl: string;
         setupPasswordUrl: string;
+    };
+};
+
+export type AccountSupportPageProps = AccountPageShellProps & {
+    support: {
+        available: boolean;
+        emailUrl: string | null;
+        orderNumber: string | null;
+        whatsappUrl: string | null;
     };
 };

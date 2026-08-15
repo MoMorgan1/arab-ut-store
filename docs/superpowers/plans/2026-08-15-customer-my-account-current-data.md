@@ -484,15 +484,15 @@ git commit -m "feat: add customer account security flows"
 - Produces configured WhatsApp/email URLs and optional safe public order number only.
 - Produces reusable navigation-preserving error/empty/retry states.
 
-- [ ] **Step 1: Write failing safe-contact and state tests**
+- [x] **Step 1: Write failing safe-contact and state tests**
 
-- [ ] **Step 2: Run tests and confirm failure**
+- [x] **Step 2: Run tests and confirm failure**
 
-- [ ] **Step 3: Implement server projection and support UI**
+- [x] **Step 3: Implement server projection and support UI**
 
 Never include raw provider IDs, notes, credentials, or personal data in contact URLs. Missing support configuration renders a controlled unavailable state.
 
-- [ ] **Step 4: Run focused tests and commit**
+- [x] **Step 4: Run focused tests and commit**
 
 ```bash
 git add app/Http/Controllers/Account/SupportController.php routes/account.php resources/js/pages/account/support.tsx resources/js/components/account/account-section-error.tsx tests/Feature/Account/AccountSupportTest.php resources/js/__tests__/account/account-states.test.tsx
