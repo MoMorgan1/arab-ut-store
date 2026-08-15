@@ -299,7 +299,7 @@ it('shows truthful category counts and disables categories with no products', ()
     ).toBeDisabled();
 });
 
-it('keeps the current search, filter, and sort while navigating every result page', () => {
+it('returns to the first product after changing result pages', () => {
     page.props = categoryProps({
         catalog: {
             ...categoryProps().catalog,
@@ -331,8 +331,29 @@ it('keeps the current search, filter, and sort while navigating every result pag
     expect(mocks.get).toHaveBeenLastCalledWith(
         '/en/sbc',
         { filter: 'icons', page: 3, q: 'icon', sort: 'price_asc' },
-        expect.objectContaining({ preserveScroll: true, replace: true }),
+        expect.objectContaining({
+            onSuccess: expect.any(Function),
+            preserveScroll: false,
+            replace: true,
+        }),
     );
+
+    const productList = document.querySelector('.store-catalog-grid');
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(productList, 'scrollIntoView', {
+        configurable: true,
+        value: scrollIntoView,
+    });
+
+    const visitOptions = mocks.get.mock.lastCall?.[2] as {
+        onSuccess?: () => void;
+    };
+    visitOptions.onSuccess?.();
+
+    expect(scrollIntoView).toHaveBeenCalledWith({
+        behavior: 'auto',
+        block: 'start',
+    });
 });
 
 it('makes the complete SBC card a product link with informational prices', () => {

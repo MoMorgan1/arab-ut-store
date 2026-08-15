@@ -88,7 +88,7 @@ export default function StoreCart() {
 
                 {items.length === 0 ? (
                     <CartEmptyState
-                        sbcUrl={storeShell.sbcUrl}
+                        coinsUrl={storeShell.coinsUrl}
                         translations={cartPage.translations}
                     />
                 ) : (
@@ -144,10 +144,10 @@ export default function StoreCart() {
 }
 
 function CartEmptyState({
-    sbcUrl,
+    coinsUrl,
     translations,
 }: {
-    sbcUrl: string;
+    coinsUrl: string;
     translations: StoreCartTranslations;
 }) {
     return (
@@ -158,7 +158,7 @@ function CartEmptyState({
             <h2>{translations.empty_title}</h2>
             <p>{translations.empty_description}</p>
             <div>
-                <a href={sbcUrl}>{translations.browse_sbc}</a>
+                <a href={coinsUrl}>{translations.browse_coins}</a>
             </div>
         </section>
     );

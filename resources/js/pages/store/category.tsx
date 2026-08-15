@@ -40,7 +40,12 @@ export default function StoreCategory() {
 
         setQuery(next);
         router.get(props.catalogPageUrl, next, {
-            preserveScroll: true,
+            onSuccess: () => {
+                document
+                    .getElementById('store-catalog-products')
+                    ?.scrollIntoView({ behavior: 'auto', block: 'start' });
+            },
+            preserveScroll: false,
             replace: true,
         });
     };
@@ -185,7 +190,10 @@ export default function StoreCategory() {
                         {props.catalogPage.empty}
                     </p>
                 ) : (
-                    <ul className="store-catalog-grid">
+                    <ul
+                        className="store-catalog-grid"
+                        id="store-catalog-products"
+                    >
                         {props.catalog.products.map((product) => (
                             <CatalogCard
                                 addUrl={props.catalogCartUrl}

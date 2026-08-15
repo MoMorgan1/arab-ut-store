@@ -4644,10 +4644,11 @@
     }
 
     .store-primary-nav a {
+        position: relative;
         min-height: 3.125rem;
-        border: 1px solid transparent;
-        border-radius: 999px;
-        background: rgb(255 255 255 / 2.5%);
+        border: 0;
+        border-radius: 0;
+        background: transparent;
         padding-inline: 0.75rem;
         font-size: 0.82rem;
         font-weight: 800;
@@ -4655,13 +4656,24 @@
     }
 
     .store-primary-nav a::after {
-        display: none;
+        display: block;
+        inset-inline: 0.75rem;
+        inset-block-end: 0;
+        height: 2px;
     }
 
     .store-primary-nav a:hover,
     .store-primary-nav a[aria-current] {
-        border-color: rgb(212 168 67 / 34%);
-        background: rgb(212 168 67 / 12%);
+        border-color: transparent;
+        background: transparent;
+    }
+
+    .store-primary-nav a:hover::after {
+        transform: scaleX(0.5);
+    }
+
+    .store-primary-nav a[aria-current]::after {
+        transform: scaleX(1);
     }
 
     .store-primary-nav a.store-primary-nav__whatsapp-target {
@@ -6595,7 +6607,38 @@
     }
 
     .store-catalog-assurances {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.35rem;
+        padding: 0.5rem;
+    }
+
+    .store-catalog-assurances li {
+        min-height: 4rem;
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: 0.25rem;
+        padding: 0.4rem 0.2rem;
+        border: 1px solid rgb(255 255 255 / 7%);
+        border-radius: 0.75rem;
+        text-align: center;
+    }
+
+    .store-catalog-assurances svg {
+        width: 1.25rem;
+    }
+
+    .store-catalog-assurances li > span {
+        text-align: center;
+    }
+
+    .store-catalog-assurances strong {
+        font-size: 0.62rem;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+    }
+
+    .store-catalog-assurances small {
+        display: none;
     }
 
     .store-catalog-related > ul {

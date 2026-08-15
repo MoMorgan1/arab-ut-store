@@ -162,7 +162,7 @@ export type StoreCartTranslations = {
     empty: string;
     empty_title: string;
     empty_description: string;
-    browse_sbc: string;
+    browse_coins: string;
     items_heading: string;
     summary_title: string;
     checkout_progress: string;
