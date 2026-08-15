@@ -613,6 +613,8 @@ describe('Coins homepage', () => {
         expect(normalCard).not.toBeNull();
         expect(fastCard).not.toBeNull();
         expect(screen.getAllByRole('radio')).toHaveLength(2);
+        expect(screen.getAllByRole('radio')[0]).toHaveAccessibleName('Fast');
+        expect(screen.getAllByRole('radio')[1]).toHaveAccessibleName('Normal');
         expect(within(normalCard!).getByText('Lower cost')).toBeVisible();
         expect(within(normalCard!).getByText(/150/)).toBeVisible();
         expect(within(normalCard!).getByText('Up to 2M')).toBeVisible();

@@ -355,4 +355,46 @@ describe('StoreLayout', () => {
         );
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
+
+    it('keeps the cart notification visible while shoppers interact with it', () => {
+        vi.useFakeTimers();
+        render(
+            <StoreLayout
+                cartCount={0}
+                currentUrl="/en/sbc/icon-challenge"
+                locale="en"
+                storeShell={storeShell}
+                direction="ltr"
+                displayCurrency="SAR"
+                displayCurrencies={['SAR']}
+                ui={englishUi}
+            >
+                <p>Product details remain visible</p>
+            </StoreLayout>,
+        );
+
+        fireEvent(
+            window,
+            new CustomEvent('arabut:cart-added', {
+                detail: {
+                    cartUrl: '/en/cart',
+                    imageAlt: 'Icon Challenge artwork',
+                    imageUrl: '/images/icon-challenge.webp',
+                    itemLabel: 'Icon Challenge',
+                },
+            }),
+        );
+
+        const notification = screen.getByRole('status');
+        fireEvent.mouseEnter(notification);
+
+        act(() => vi.advanceTimersByTime(5_000));
+        expect(screen.getByRole('status')).toBeVisible();
+
+        fireEvent.mouseLeave(notification);
+        act(() => vi.advanceTimersByTime(5_000));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        vi.useRealTimers();
+    });
 });

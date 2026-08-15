@@ -590,6 +590,40 @@ describe('Coins credentials flow', () => {
             }),
         ).toHaveAttribute('aria-invalid', 'true');
 
+        const companionCheckbox = screen.getByRole('checkbox', {
+            name: 'Transfer Market is open in EA Companion',
+        });
+        const policyCheckbox = screen.getByRole('checkbox', {
+            name: 'I confirm the details and accept the policies.',
+        });
+
+        expect(
+            companionCheckbox.closest('.coins-confirmation-field'),
+        ).toHaveClass('is-invalid');
+        expect(policyCheckbox.closest('.coins-confirmation-field')).toHaveClass(
+            'is-invalid',
+        );
+        expect(
+            screen
+                .getByText('Confirm that the Transfer Market is open.')
+                .closest('.coins-field-error'),
+        ).toHaveClass('coins-field-error');
+        expect(
+            screen
+                .getByText('Accept the policies to continue.')
+                .querySelector('.coins-field-error__icon'),
+        ).toHaveClass('coins-field-error__icon');
+
+        const credentialsActions = screen
+            .getByRole('button', { name: 'Continue' })
+            .closest('.coins-step__actions');
+        expect(credentialsActions?.firstElementChild).toHaveClass(
+            'coins-primary-action',
+        );
+        expect(credentialsActions?.lastElementChild).toHaveClass(
+            'coins-secondary-action',
+        );
+
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
         const marketGuideTrigger = screen.getByRole('button', {

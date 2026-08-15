@@ -31,6 +31,11 @@ export function DeliveryStep({
     selectedValue,
     translations,
 }: DeliveryStepProps) {
+    const deliveries = [...platform.deliveries].sort(
+        (first, second) =>
+            Number(second.value === 'fast') - Number(first.value === 'fast'),
+    );
+
     return (
         <fieldset className="coins-step">
             <legend className="coins-step__title" ref={focusRef} tabIndex={-1}>
@@ -38,7 +43,7 @@ export function DeliveryStep({
             </legend>
             <p className="coins-step__help">{translations.delivery.help}</p>
             <div className="coins-choice-grid coins-choice-grid--delivery">
-                {platform.deliveries.map((delivery) => {
+                {deliveries.map((delivery) => {
                     const label = translations.delivery.options[delivery.value];
 
                     return (
