@@ -66,10 +66,12 @@ it('renders the refined SBC hierarchy and trust strip', () => {
 
     expect(screen.getByRole('search')).toHaveClass(
         'store-catalog-toolbar--compact',
+        'store-catalog-toolbar--premium',
     );
     expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Filter' })).toHaveClass(
         'store-catalog-toolbar__filters',
+        'store-catalog-toolbar__filters--single-row',
     );
     expect(
         screen.getByRole('combobox', { name: 'Sort' }).closest('label'),

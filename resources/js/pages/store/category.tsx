@@ -103,6 +103,7 @@ export default function StoreCategory() {
                     className={[
                         'store-catalog-toolbar',
                         isSbc ? 'store-catalog-toolbar--compact' : null,
+                        isSbc ? 'store-catalog-toolbar--premium' : null,
                     ]
                         .filter(Boolean)
                         .join(' ')}
@@ -150,7 +151,7 @@ export default function StoreCategory() {
                         </div>
                     ) : null}
                     <div className="store-catalog-toolbar__filter-shell">
-                        <fieldset className="store-catalog-toolbar__filters">
+                        <fieldset className="store-catalog-toolbar__filters store-catalog-toolbar__filters--single-row">
                             <legend>{props.catalogPage.filter}</legend>
                             {filters.map((filter) => {
                                 const label = props.catalogPage[
