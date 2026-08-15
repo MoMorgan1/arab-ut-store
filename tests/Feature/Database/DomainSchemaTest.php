@@ -307,6 +307,7 @@ test('wallet entries are append-only at the database boundary', function () {
     $entryId = DB::table('wallet_entries')->insertGetId([
         'public_id' => (string) str()->ulid(),
         'wallet_account_id' => $walletId,
+        'sequence' => 1,
         'type' => 'credit',
         'amount_halalah' => 500,
         'balance_after_halalah' => 500,

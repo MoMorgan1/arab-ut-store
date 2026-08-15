@@ -511,29 +511,33 @@ git commit -m "feat: add safe customer support destination"
 - Consumes every current-data account destination.
 - Produces the acceptance evidence required before the historical archive plan begins.
 
-- [ ] **Step 1: Write the forbidden-prop test**
+- [x] **Step 1: Write the forbidden-prop test**
 
 Recursively scan account Inertia props and fail on keys containing `raw_payload`, `password`, `otp`, `credentials`, `secret`, or `internal_notes`.
 
-- [ ] **Step 2: Run the complete backend/frontend account suites**
+- [x] **Step 2: Run the complete backend/frontend account suites**
 
 Run: `php artisan test tests/Feature/Account tests/Unit/Account`
 
 Run: `npm test -- resources/js/__tests__/account`
 
-- [ ] **Step 3: Run the required UI skills and compare with WordPress**
+- [x] **Step 3: Run the required UI skills and compare with WordPress**
 
 Load `frontend-design`, `ui-ux-pro-max`, `arrange`, `typeset`, `clarify`, `adapt`, and final `polish`; compare against the inspected WordPress dashboard/orders/profile hierarchy and current storefront tokens.
 
-- [ ] **Step 4: Verify browser behavior at every required viewport**
+- [x] **Step 4: Verify browser behavior at every required viewport**
 
 Verify Arabic RTL and English LTR at 320, 390, 768, and 1440px; logout then Back; user switch isolation; focus after route/validation; 44px targets; 200% zoom; reduced motion; no horizontal overflow; and no console errors. Add a dev-only browser harness only if repeatable coverage cannot be achieved with the repository's available tooling.
 
-- [ ] **Step 5: Run the full quality gate**
+The temporary Vite browser harness verified both directions at all four widths, 44px controls, visible focus, reduced motion, 200% zoom, no horizontal overflow, and no console errors, then was removed. Logout/history clearing and cross-user isolation remain covered by the feature and component boundary suites because the local PHP 8.5.6 built-in server fails inside Laravel session handlers before the application can serve an authenticated browser request.
+
+- [x] **Step 5: Run the full quality gate**
 
 Run: `composer ci:check`
 
 Run: `npm run ci:check`
+
+`composer` was not available on PATH in the execution environment, so the Composer aggregate was reproduced directly with Pint, PHPStan, and the complete Pest suite; `npm run ci:check` ran unchanged.
 
 Expected: all PHP/JS tests, PHPStan, Pint, ESLint, Prettier, TypeScript, and production build pass.
 
