@@ -78,10 +78,10 @@ const mockPage = vi.hoisted(() => ({
                 title: 'Your cart',
                 eyebrow: 'Arab UT',
                 empty: 'Your cart is empty.',
-                empty_title: 'Your next service starts here',
+                empty_title: 'Your cart is empty',
                 empty_description:
-                    'Choose Coins or an SBC service to continue.',
-                browse_sbc: 'Browse SBC services',
+                    'Explore our services and complete your order in a few clear steps.',
+                browse_coins: 'Browse Coins services',
                 back: 'Back to Coins',
                 items_heading: 'Your services',
                 summary_title: 'Order summary',
@@ -277,21 +277,26 @@ it('renders only the authoritative read-only Coins cart summary', () => {
     expect(screen.getByText('Your services')).toBeVisible();
 });
 
-it('offers the SBC route from a purposeful empty state without a Coins back link', () => {
+it('offers the Coins route from a purposeful empty state without a back link', () => {
     mockPage.props.cart.items = [];
     mockPage.props.cart.count = 0;
 
     render(<StoreCart />);
 
     expect(
-        screen.getByRole('heading', { name: 'Your next service starts here' }),
+        screen.getByRole('heading', { name: 'Your cart is empty' }),
     ).toBeVisible();
     expect(
         screen.queryByRole('link', { name: 'Back to Coins' }),
     ).not.toBeInTheDocument();
     expect(
-        screen.getByRole('link', { name: 'Browse SBC services' }),
-    ).toHaveAttribute('href', '/en/sbc');
+        screen.getByRole('link', { name: 'Browse Coins services' }),
+    ).toHaveAttribute('href', '/en#coins');
+    expect(
+        screen.getByText(
+            'Explore our services and complete your order in a few clear steps.',
+        ),
+    ).toBeVisible();
 });
 
 it('locks checkout while Paylink opens and navigates only to the validated hosted URL', async () => {
@@ -599,7 +604,7 @@ it('removes a cart product only after inline confirmation and updates the cart c
     );
     expect(cartCountEvents).toEqual([0]);
     expect(
-        screen.getByRole('heading', { name: 'Your next service starts here' }),
+        screen.getByRole('heading', { name: 'Your cart is empty' }),
     ).toBeVisible();
 });
 
