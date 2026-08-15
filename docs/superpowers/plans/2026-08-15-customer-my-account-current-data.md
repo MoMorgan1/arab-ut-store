@@ -52,24 +52,43 @@
 **Files:**
 - Modify: `config/store.php`
 - Create: `app/Http/Middleware/EnsureActiveUser.php`
+- Create: `app/Http/Middleware/EnsureMyAccountEnabled.php`
 - Create: `app/Http/Responses/LogoutResponse.php`
 - Modify: `app/Providers/FortifyServiceProvider.php`
+- Modify: `app/Http/Controllers/Settings/ProfileController.php`
 - Modify: `routes/settings.php`
+- Delete: `app/Http/Requests/Settings/ProfileDeleteRequest.php`
+- Delete: `resources/js/components/delete-user.tsx`
+- Modify: `resources/js/pages/settings/profile.tsx`
 - Test: `tests/Feature/Account/AccountSecurityBoundaryTest.php`
+- Test: `resources/js/__tests__/settings/profile-settings.test.tsx`
 
 **Interfaces:**
 - Produces: `config('store.features.my_account_enabled')`, `config('store.features.legacy_history_enabled')`.
 - Produces: invokable `EnsureActiveUser::handle(Request $request, Closure $next): Response`.
+- Produces: invokable `EnsureMyAccountEnabled::handle(Request $request, Closure $next): Response` returning 404 while account rollout is disabled.
 - Produces: `LogoutResponse` implementing `Laravel\Fortify\Contracts\LogoutResponse` and calling `Inertia::clearHistory()`.
-- Removes: the live `profile.destroy` route until deletion retention rules are approved.
+- Removes: the live `profile.destroy` route, dead controller/request code, and its customer control until deletion retention rules are approved.
 
-- [ ] **Step 1: Write failing boundary tests**
+- [x] **Step 1: Write failing boundary tests**
 
 ```php
-test('account rollout flags are independent and legacy history is disabled by default', function () {
-    expect(config('store.features.my_account_enabled'))->toBeTrue()
-        ->and(config('store.features.legacy_history_enabled'))->toBeFalse();
-});
+test('account and legacy history rollout controls stay independent', function (
+    bool $accountEnabled,
+    bool $legacyEnabled,
+    int $expectedStatus,
+) {
+    Route::middleware(['web', EnsureMyAccountEnabled::class])
+        ->get('/_test/account-rollout', fn () => response()->noContent());
+
+    config()->set('store.features.my_account_enabled', $accountEnabled);
+    config()->set('store.features.legacy_history_enabled', $legacyEnabled);
+
+    $this->get('/_test/account-rollout')->assertStatus($expectedStatus);
+})->with([
+    'account disabled while archive enabled' => [false, true, 404],
+    'account enabled while archive disabled' => [true, false, 204],
+]);
 
 test('account deletion is not routable', function () {
     expect(Route::has('profile.destroy'))->toBeFalse();
@@ -84,13 +103,13 @@ test('logout asks inertia to clear encrypted browser history', function () {
 });
 ```
 
-- [ ] **Step 2: Run the boundary tests and confirm failure**
+- [x] **Step 2: Run the boundary tests and confirm failure**
 
 Run: `php artisan test tests/Feature/Account/AccountSecurityBoundaryTest.php`
 
 Expected: FAIL because the flags, middleware/response, and route removal do not exist.
 
-- [ ] **Step 3: Add the rollout flags and active-user middleware**
+- [x] **Step 3: Add the rollout flags and active-user middleware**
 
 ```php
 'features' => [
@@ -99,9 +118,9 @@ Expected: FAIL because the flags, middleware/response, and route removal do not 
 ],
 ```
 
-`EnsureActiveUser` must abort with 403 when `! $request->user()?->is_active` and otherwise return `$next($request)`.
+`EnsureActiveUser` aborts with 403 for inactive authenticated sessions. `EnsureMyAccountEnabled` checks only the account flag so the legacy flag cannot disable current-data account destinations.
 
-- [ ] **Step 4: Bind a Fortify logout response that clears history**
+- [x] **Step 4: Bind a Fortify logout response that clears history**
 
 ```php
 final class LogoutResponse implements LogoutResponseContract
@@ -115,9 +134,9 @@ final class LogoutResponse implements LogoutResponseContract
 }
 ```
 
-Bind it in `FortifyServiceProvider::register()` and remove the profile delete route from `routes/settings.php`.
+Bind it in `FortifyServiceProvider::register()`. Remove the profile delete route, its dead controller/request code, and the legacy delete-account control.
 
-- [ ] **Step 5: Run focused tests and format PHP**
+- [x] **Step 5: Run focused tests and format PHP**
 
 Run: `php artisan test tests/Feature/Account/AccountSecurityBoundaryTest.php tests/Feature/Auth/AuthenticationTest.php`
 
@@ -125,10 +144,10 @@ Run: `vendor/bin/pint --dirty`
 
 Expected: PASS; `/logout` still invalidates the session through Fortify and returns a history-clearing response.
 
-- [ ] **Step 6: Commit the security boundary**
+- [x] **Step 6: Commit the security boundary**
 
 ```bash
-git add config/store.php app/Http/Middleware/EnsureActiveUser.php app/Http/Responses/LogoutResponse.php app/Providers/FortifyServiceProvider.php routes/settings.php tests/Feature/Account/AccountSecurityBoundaryTest.php
+git add app config routes resources/js tests docs/superpowers/plans/2026-08-15-customer-my-account-current-data.md
 git commit -m "feat: secure my account rollout boundary"
 ```
 

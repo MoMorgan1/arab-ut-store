@@ -5,6 +5,10 @@ return [
     'locales' => ['ar', 'en'],
     'checkout_currency' => 'SAR',
     'default_display_currency' => 'SAR',
+    'features' => [
+        'my_account_enabled' => env('MY_ACCOUNT_ENABLED', true),
+        'legacy_history_enabled' => env('LEGACY_HISTORY_ENABLED', false),
+    ],
     'display_currencies' => ['SAR', 'AED', 'KWD', 'BHD', 'OMR', 'QAR', 'USD', 'EUR', 'GBP'],
     'display_exchange_rates' => [
         'provider_url' => 'https://open.er-api.com/v6/latest/SAR',
