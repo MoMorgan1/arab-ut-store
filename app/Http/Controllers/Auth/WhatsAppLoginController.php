@@ -61,6 +61,7 @@ final class WhatsAppLoginController extends Controller
 
         $pendingPhone->forget($request);
         Auth::login($result->user, remember: true);
+        $request->session()->put('auth.identity_confirmed_at', now()->timestamp);
         $targetUrl = redirect()->intended(route('dashboard', absolute: false))->getTargetUrl();
         $parts = parse_url($targetUrl);
         $redirectUrl = is_array($parts) && (! isset($parts['host']) || $parts['host'] === $request->getHost())

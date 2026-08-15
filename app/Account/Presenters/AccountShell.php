@@ -42,6 +42,14 @@ final class AccountShell
                         absolute: false,
                     ),
                 ],
+                [
+                    'key' => 'profile',
+                    'label' => trans('account.navigation.profile'),
+                    'url' => route(
+                        $localized ? 'localized.account.profile.show' : 'account.profile.show',
+                        absolute: false,
+                    ),
+                ],
             ],
             'logoutUrl' => route('logout', absolute: false),
         ];

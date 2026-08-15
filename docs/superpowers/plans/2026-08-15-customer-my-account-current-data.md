@@ -394,10 +394,15 @@ git commit -m "feat: expose immutable customer wallet ledger"
 - Create: `app/Account/Actions/ConfirmEmailChange.php`
 - Create: `app/Account/Actions/RequestPhoneChange.php`
 - Create: `app/Account/Actions/ConfirmPhoneChange.php`
+- Create: `app/Account/Actions/VerifySensitiveIdentityAction.php`
 - Create: `app/Http/Controllers/Account/ProfileController.php`
 - Create: `app/Http/Controllers/Account/ProfileEmailController.php`
 - Create: `app/Http/Controllers/Account/ProfilePhoneController.php`
 - Create: `app/Http/Requests/Account/ProfileUpdateRequest.php`
+- Create: `app/Notifications/PendingEmailChangeNotification.php`
+- Create: `app/Notifications/EmailChangedNotification.php`
+- Modify: `app/Http/Controllers/Auth/WhatsAppLoginController.php`
+- Modify: `app/Providers/AppServiceProvider.php`
 - Create: `resources/js/pages/account/profile.tsx`
 - Test: `tests/Feature/Account/AccountProfileTest.php`
 - Test: `resources/js/__tests__/account/account-profile.test.tsx`
@@ -406,21 +411,21 @@ git commit -m "feat: expose immutable customer wallet ledger"
 - Produces one pending identity-change record with encrypted candidate value, normalized hash, expiry, attempts, and consumed timestamp.
 - Current `email`/`phone` remain unchanged until verification succeeds atomically.
 
-- [ ] **Step 1: Write failing profile and pending-change tests**
+- [x] **Step 1: Write failing profile and pending-change tests**
 
 Cover names/preferences, email typo safety, email conflict, old-address notice, phone OTP hash/expiry/attempt/cooldown, rate limiting, atomic swap, and no OTP/candidate logging.
 
-- [ ] **Step 2: Run tests and confirm failure**
+- [x] **Step 2: Run tests and confirm failure**
 
-- [ ] **Step 3: Implement the schema, model, requests, and actions**
+- [x] **Step 3: Implement the schema, model, requests, and actions**
 
 Use separate `kind=email|phone`, encrypted candidate value, HMAC normalized lookup, hashed token/code, and single-use confirmation. Require current password for password-capable accounts or a recent trusted verification timestamp for passwordless accounts.
 
-- [ ] **Step 4: Add React tests and implement the profile state machine**
+- [x] **Step 4: Add React tests and implement the profile state machine**
 
 Use persistent labels and call `dontRemember('verification_code', 'otp')`; focus the first invalid field and preserve the form section after server validation.
 
-- [ ] **Step 5: Run focused tests, security scan, and commit**
+- [x] **Step 5: Run focused tests, security scan, and commit**
 
 ```bash
 git add database/migrations app/Models/UserIdentityChange.php app/Account/Actions app/Http/Controllers/Account app/Http/Requests/Account resources/js/pages/account/profile.tsx tests/Feature/Account/AccountProfileTest.php resources/js/__tests__/account/account-profile.test.tsx

@@ -135,6 +135,40 @@ export type AccountTranslations = {
         pagination: string;
         page_status: string;
     };
+    profile: {
+        title: string;
+        description: string;
+        personal_title: string;
+        contact_title: string;
+        first_name: string;
+        last_name: string;
+        email: string;
+        phone: string;
+        preferred_locale: string;
+        display_currency: string;
+        save: string;
+        saved: string;
+        new_email: string;
+        request_email: string;
+        new_phone: string;
+        send_phone_code: string;
+        phone_code: string;
+        confirm_phone: string;
+        current_password: string;
+        sensitive_hint: string;
+        pending_email: string;
+        pending_phone: string;
+        email_link_invalid: string;
+        phone_code_invalid: string;
+    };
+    verification: {
+        verified: string;
+        unverified: string;
+        pending: string;
+        send_code: string;
+        verify: string;
+        code: string;
+    };
     statuses: Record<AccountOrderStatus, string>;
     actions: {
         view_order: string;
@@ -247,4 +281,26 @@ export type AccountWalletPageProps = AccountPageShellProps & {
         };
     };
     loyalty: AccountLoyalty | null;
+};
+
+export type AccountProfilePageProps = AccountPageShellProps & {
+    profile: {
+        firstName: string;
+        lastName: string;
+        email: { value: string; verified: boolean; pending: string | null };
+        phone: {
+            value: string | null;
+            verified: boolean;
+            pending: string | null;
+        };
+        preferredLocale: 'ar' | 'en';
+        displayCurrency: string;
+        passwordConfirmationRequired: boolean;
+    };
+    profileActions: {
+        updateUrl: string;
+        emailRequestUrl: string;
+        phoneRequestUrl: string;
+        phoneConfirmUrl: string;
+    };
 };

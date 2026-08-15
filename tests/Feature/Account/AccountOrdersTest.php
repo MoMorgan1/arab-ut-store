@@ -66,6 +66,7 @@ test('the bilingual orders destinations render owner-scoped bounded pagination',
                 'overview',
                 'orders',
                 'wallet',
+                'profile',
             ]));
 
     expect($response->inertiaPage()['encryptHistory'] ?? false)->toBeTrue();
