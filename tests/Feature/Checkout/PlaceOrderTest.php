@@ -281,6 +281,10 @@ test('checkout fails closed when required credentials are missing or deleted', f
 ]);
 
 test('a database failure rolls back the order payment secret idempotency claim and cart conversion', function () {
+    if (DB::connection()->getDriverName() !== 'sqlite') {
+        $this->markTestSkipped('The deterministic checkout failure fixture uses a SQLite transaction-safe trigger.');
+    }
+
     $state = checkoutSbcCart();
     DB::statement("CREATE TRIGGER checkout_secret_abort BEFORE INSERT ON order_item_secrets BEGIN SELECT RAISE(ABORT, 'checkout-secret-failure'); END");
 
