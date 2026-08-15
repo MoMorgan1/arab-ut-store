@@ -602,7 +602,9 @@ function CartLine({
             ) : null}
             <dl className="store-cart-line__summary">
                 <CartFact label={translations.platform} value={platform} />
-                <CartFact label={translations.delivery} value={delivery} />
+                {isCoins ? (
+                    <CartFact label={translations.delivery} value={delivery} />
+                ) : null}
                 {isCoins && configuration.coins_quantity !== undefined ? (
                     <CartFact label={translations.quantity} value={quantity} />
                 ) : null}

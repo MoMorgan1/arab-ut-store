@@ -641,6 +641,29 @@ it('does not invent a Coins presentation for another safe service type', () => {
     ).not.toBeInTheDocument();
 });
 
+it('omits delivery from an SBC cart item while keeping its platform', () => {
+    mockPage.props.cart.items[0].configuration = {
+        market: 'console',
+        platform: 'playstation',
+        price_version: 3,
+        quoted_at: '2026-08-10T12:00:00+00:00',
+        service_type: 'sbc',
+    } as StoreCartConfiguration;
+    mockPage.props.cart.items[0].product = {
+        imageUrl: null,
+        name: 'Safe SBC service',
+        serviceType: 'sbc',
+    };
+
+    render(<StoreCart />);
+
+    expect(screen.getByText('PS / Xbox')).toBeVisible();
+    expect(screen.queryByText('Delivery')).not.toBeInTheDocument();
+    expect(screen.queryByText('Normal')).not.toBeInTheDocument();
+    expect(screen.queryByText('Fast')).not.toBeInTheDocument();
+    expect(screen.queryByText('Not required for PC')).not.toBeInTheDocument();
+});
+
 it('shows the selected completion count for an SBC cart item', () => {
     mockPage.props.cart.items[0].configuration = {
         ...validConfiguration,
