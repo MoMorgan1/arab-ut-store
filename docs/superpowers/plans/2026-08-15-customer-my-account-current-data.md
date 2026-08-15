@@ -206,10 +206,12 @@ git commit -m "feat: add canonical my account routes"
 
 **Files:**
 - Create: `app/Account/Presenters/AccountMoney.php`
+- Create: `app/Account/Presenters/LiveOrderCard.php`
 - Create: `app/Account/Queries/ReadAccountOverview.php`
 - Create: `app/Account/Queries/ResolveLiveActionableOrder.php`
 - Create: `app/Account/Queries/ResolveLoyaltyProgress.php`
 - Modify: `app/Http/Controllers/Account/OverviewController.php`
+- Modify: `app/Models/LoyaltyTier.php`
 - Test: `tests/Feature/Account/AccountOverviewTest.php`
 - Test: `tests/Unit/Account/AccountMoneyTest.php`
 
@@ -218,29 +220,29 @@ git commit -m "feat: add canonical my account routes"
 - Produces `ReadAccountOverview::for(User $user, string $locale): array{metrics:array,activeOrder:?array,recentOrders:list<array>,loyalty:?array}`.
 - Uses live orders only until `legacy_history_enabled` is connected by the archive plan.
 
-- [ ] **Step 1: Write failing projection tests**
+- [x] **Step 1: Write failing projection tests**
 
 Test empty accounts, owner scoping, actionable priority, three newest orders, open/completed counts, wallet absence, exact string money, current completed net-SAR loyalty, completed refunds, and no credential/configuration leakage.
 
-- [ ] **Step 2: Run tests and confirm failure**
+- [x] **Step 2: Run tests and confirm failure**
 
 Run: `php artisan test tests/Unit/Account/AccountMoneyTest.php tests/Feature/Account/AccountOverviewTest.php`
 
-- [ ] **Step 3: Implement the exact money presenter and query classes**
+- [x] **Step 3: Implement the exact money presenter and query classes**
 
 Queries select explicit columns and eager-load only public item names/statuses. Loyalty equals completed settled order totals minus completed refunds, never below zero; wallet-funded value counts as part of the order total.
 
-- [ ] **Step 4: Add query output as controller props**
+- [x] **Step 4: Add query output as controller props**
 
 Return only `summary`, `activeOrder`, `recentOrders`, and `loyalty`; never pass `Order`, `OrderItem`, `WalletAccount`, or `User` models as destination props.
 
-- [ ] **Step 5: Run tests, PHPStan on changed namespaces, and format**
+- [x] **Step 5: Run tests, PHPStan on changed namespaces, and format**
 
 Run: `php artisan test tests/Unit/Account tests/Feature/Account/AccountOverviewTest.php`
 
 Run: `vendor/bin/phpstan analyse app/Account app/Http/Controllers/Account --no-progress`
 
-- [ ] **Step 6: Commit the current-data read boundary**
+- [x] **Step 6: Commit the current-data read boundary**
 
 ```bash
 git add app/Account app/Http/Controllers/Account/OverviewController.php tests/Unit/Account tests/Feature/Account/AccountOverviewTest.php

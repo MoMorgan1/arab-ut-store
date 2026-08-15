@@ -2,6 +2,14 @@
 
 namespace App\Models;
 
+/**
+ * @property string $key
+ * @property string $name_ar
+ * @property string $name_en
+ * @property int $rank
+ * @property int $minimum_lifetime_spend_halalah
+ * @property bool $is_active
+ */
 class LoyaltyTier extends DomainModel
 {
     /** @return array<string, string> */
