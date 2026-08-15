@@ -154,7 +154,7 @@ const mockPage = vi.hoisted(() => ({
             cartUrl: '/en/cart',
             sbcUrl: '/en/sbc',
             futChampionsUrl: '/en/fut-champions',
-            accountUrl: '/dashboard',
+            accountUrl: '/my-account',
             privacyUrl: '/en/privacy',
             returnsUrl: '/en/returns',
             warrantyUrl: '/en/warranty',

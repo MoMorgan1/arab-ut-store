@@ -2,15 +2,16 @@
 
 use App\Models\User;
 
-test('profile page is displayed', function () {
-    $user = User::factory()->create();
+test('legacy profile settings redirect to the canonical account profile', function (string $locale, string $url) {
+    $user = User::factory()->create(['preferred_locale' => $locale]);
 
-    $response = $this
-        ->actingAs($user)
-        ->get(route('profile.edit'));
-
-    $response->assertOk();
-});
+    $this->actingAs($user)
+        ->get(route('profile.edit'))
+        ->assertRedirect($url);
+})->with([
+    'Arabic' => ['ar', '/my-account/profile'],
+    'English' => ['en', '/en/my-account/profile'],
+]);
 
 test('profile information can be updated', function () {
     $user = User::factory()->create();
