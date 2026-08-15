@@ -62,6 +62,16 @@ class AppServiceProvider extends ServiceProvider
                 ->by('coins-cart:'.$owner->idempotencyScope());
         });
 
+        RateLimiter::for('account-identity-send', fn (Request $request): array => [
+            Limit::perMinute(3)->by('account-identity-user:'.($request->user()?->getAuthIdentifier() ?? 'guest')),
+            Limit::perMinute(3)->by('account-identity-candidate:'.hash('sha256', mb_strtolower(trim((string) ($request->input('email') ?? $request->input('phone')))))),
+            Limit::perMinute(10)->by('account-identity-ip:'.$request->ip()),
+        ]);
+        RateLimiter::for('account-identity-confirm', fn (Request $request): array => [
+            Limit::perMinute(10)->by('account-identity-confirm-user:'.($request->user()?->getAuthIdentifier() ?? 'guest')),
+            Limit::perMinute(20)->by('account-identity-confirm-ip:'.$request->ip()),
+        ]);
+
         RateLimiter::for('automation-catalog', function (Request $request): Limit {
             $identity = (string) ($request->header('X-ArabUT-Key') ?: $request->ip());
 

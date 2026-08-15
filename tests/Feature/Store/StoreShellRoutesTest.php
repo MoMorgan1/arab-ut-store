@@ -83,13 +83,19 @@ test('the cart destinations render the real safe cart page', function (string $p
     'English cart' => ['/en/cart', 'en'],
 ]);
 
-test('the account destination changes from login to the authenticated dashboard', function () {
+test('the account destination changes from login to the locale-correct authenticated account', function (
+    string $path,
+    string $accountUrl,
+) {
     $this->actingAs(User::factory()->create())
-        ->get('/cart')
+        ->get($path)
         ->assertOk()
         ->assertInertia(fn (Assert $inertia) => $inertia
-            ->where('storeShell.accountUrl', '/dashboard'));
-});
+            ->where('storeShell.accountUrl', $accountUrl));
+})->with([
+    'Arabic shell' => ['/cart', '/my-account'],
+    'English shell' => ['/en/cart', '/en/my-account'],
+]);
 
 test('structured information pages expose headings dividers and ordered lists through the route contract', function () {
     $this->get('/warranty')

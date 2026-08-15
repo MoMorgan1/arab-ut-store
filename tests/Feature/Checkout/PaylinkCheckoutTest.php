@@ -153,7 +153,10 @@ test('a Paylink outage preserves the pending order for a safe retry', function (
     ])->assertServiceUnavailable()->assertJsonPath('error.code', 'payment_unavailable');
 
     expect(Order::count())->toBe(1)->and(Payment::count())->toBe(1);
+    $canonicalOrderUrl = '/my-account/orders/'.Order::sole()->public_id;
     $this->actingAs($user)->get('/orders/'.Order::sole()->public_id)
+        ->assertRedirect($canonicalOrderUrl);
+    $this->get($canonicalOrderUrl)
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('order.status', 'pending_payment')
@@ -245,13 +248,16 @@ test('the Paylink return verifies the invoice before marking the owner order rec
         ->and(Payment::sole()->captured_halalah)->toBe(1250)
         ->and(Payment::sole()->provider_metadata)->toMatchArray(['payment_method' => 'mada']);
 
+    $canonicalOrderUrl = '/my-account/orders/'.Order::sole()->public_id;
     $this->actingAs($user)->get('/orders/'.Order::sole()->public_id)
+        ->assertRedirect($canonicalOrderUrl);
+    $this->get($canonicalOrderUrl)
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('store/order')
+            ->component('account/live-order')
             ->where('order.status', 'received')
-            ->where('order.totalHalalah', 1250)
-            ->missing('order.credentials'));
+            ->where('order.total', ['amountMinor' => '1250', 'currency' => 'SAR'])
+            ->missing('order.payments'));
 });
 
 test('the authenticated Paylink webhook verifies the invoice before acknowledging payment', function () {

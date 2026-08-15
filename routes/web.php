@@ -24,6 +24,7 @@ use App\Http\Controllers\Store\SimpleStorePageController;
 use App\Http\Middleware\NoStore;
 use App\Http\Middleware\RequireCatalogCartJson;
 use App\Http\Middleware\RequireCoinsCartJson;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
@@ -235,8 +236,11 @@ Route::prefix('{locale}')
         }
     });
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
-});
+Route::get('dashboard', function (Request $request) {
+    return redirect()->to($request->user()?->preferred_locale === 'en'
+        ? route('localized.account.overview', absolute: false)
+        : route('account.overview', absolute: false));
+})->middleware('auth')->name('dashboard');
 
 require __DIR__.'/settings.php';
+require __DIR__.'/account.php';
