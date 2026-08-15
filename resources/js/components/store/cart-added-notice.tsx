@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { CART_ADDED_EVENT } from '@/lib/cart-added-event';
 import type { CartAddedDetail } from '@/lib/cart-added-event';
 import type { StoreShellTranslations } from '@/types/store-shell';
+
+const CART_NOTICE_DURATION_MS = 5_000;
 
 export function CartAddedNotice({
     translations,
@@ -11,6 +13,9 @@ export function CartAddedNotice({
 }) {
     const [addition, setAddition] = useState<CartAddedDetail | null>(null);
     const [isPaused, setIsPaused] = useState(false);
+    const timerRef = useRef<number | null>(null);
+    const timerStartedAtRef = useRef<number | null>(null);
+    const remainingMsRef = useRef(CART_NOTICE_DURATION_MS);
 
     useEffect(() => {
         const showAddition = (event: Event) => {
@@ -24,14 +29,68 @@ export function CartAddedNotice({
     }, []);
 
     useEffect(() => {
-        if (addition === null || isPaused) {
+        if (addition === null) {
             return;
         }
 
-        const timeout = window.setTimeout(() => setAddition(null), 5_000);
+        remainingMsRef.current = CART_NOTICE_DURATION_MS;
+        timerStartedAtRef.current = Date.now();
+        timerRef.current = window.setTimeout(() => {
+            timerRef.current = null;
+            timerStartedAtRef.current = null;
+            remainingMsRef.current = 0;
+            setAddition(null);
+        }, CART_NOTICE_DURATION_MS);
 
-        return () => window.clearTimeout(timeout);
-    }, [addition, isPaused]);
+        return () => {
+            if (timerRef.current !== null) {
+                window.clearTimeout(timerRef.current);
+                timerRef.current = null;
+            }
+
+            timerStartedAtRef.current = null;
+        };
+    }, [addition]);
+
+    const pauseNoticeTimer = () => {
+        if (timerRef.current !== null) {
+            const elapsed =
+                Date.now() - (timerStartedAtRef.current ?? Date.now());
+
+            remainingMsRef.current = Math.max(
+                0,
+                remainingMsRef.current - elapsed,
+            );
+
+            window.clearTimeout(timerRef.current);
+            timerRef.current = null;
+            timerStartedAtRef.current = null;
+        }
+
+        setIsPaused(true);
+    };
+
+    const resumeNoticeTimer = () => {
+        if (addition === null || timerRef.current !== null) {
+            return;
+        }
+
+        if (remainingMsRef.current <= 0) {
+            setAddition(null);
+
+            return;
+        }
+
+        timerStartedAtRef.current = Date.now();
+
+        timerRef.current = window.setTimeout(() => {
+            timerRef.current = null;
+            timerStartedAtRef.current = null;
+            remainingMsRef.current = 0;
+            setAddition(null);
+        }, remainingMsRef.current);
+        setIsPaused(false);
+    };
 
     if (addition === null) {
         return null;
@@ -41,18 +100,34 @@ export function CartAddedNotice({
         <aside
             aria-atomic="true"
             className="store-cart-added"
+            data-paused={isPaused}
             onBlur={(event) => {
                 if (
                     !event.currentTarget.contains(
                         event.relatedTarget as Node | null,
                     )
                 ) {
-                    setIsPaused(false);
+                    resumeNoticeTimer();
                 }
             }}
-            onFocus={() => setIsPaused(true)}
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
+            onFocus={pauseNoticeTimer}
+            onMouseEnter={pauseNoticeTimer}
+            onMouseLeave={resumeNoticeTimer}
+            onPointerCancel={(event) => {
+                if (event.pointerType === 'touch') {
+                    resumeNoticeTimer();
+                }
+            }}
+            onPointerDown={(event) => {
+                if (event.pointerType === 'touch') {
+                    pauseNoticeTimer();
+                }
+            }}
+            onPointerUp={(event) => {
+                if (event.pointerType === 'touch') {
+                    resumeNoticeTimer();
+                }
+            }}
             role="status"
         >
             <div className="store-cart-added__visual">

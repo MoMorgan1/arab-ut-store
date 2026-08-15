@@ -397,4 +397,94 @@ describe('StoreLayout', () => {
 
         vi.useRealTimers();
     });
+
+    it('resumes the cart notification with the remaining timer after hover', () => {
+        vi.useFakeTimers();
+        render(
+            <StoreLayout
+                cartCount={0}
+                currentUrl="/en/sbc/icon-challenge"
+                locale="en"
+                storeShell={storeShell}
+                direction="ltr"
+                displayCurrency="SAR"
+                displayCurrencies={['SAR']}
+                ui={englishUi}
+            >
+                <p>Product details remain visible</p>
+            </StoreLayout>,
+        );
+
+        fireEvent(
+            window,
+            new CustomEvent('arabut:cart-added', {
+                detail: {
+                    cartUrl: '/en/cart',
+                    imageAlt: 'Icon Challenge artwork',
+                    imageUrl: '/images/icon-challenge.webp',
+                    itemLabel: 'Icon Challenge',
+                },
+            }),
+        );
+
+        const notification = screen.getByRole('status');
+        act(() => vi.advanceTimersByTime(2_000));
+        fireEvent.mouseEnter(notification);
+        expect(notification).toHaveAttribute('data-paused', 'true');
+
+        act(() => vi.advanceTimersByTime(10_000));
+        expect(screen.getByRole('status')).toBeVisible();
+
+        fireEvent.mouseLeave(notification);
+        expect(notification).toHaveAttribute('data-paused', 'false');
+        act(() => vi.advanceTimersByTime(2_999));
+        expect(screen.getByRole('status')).toBeVisible();
+        act(() => vi.advanceTimersByTime(1));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        vi.useRealTimers();
+    });
+
+    it('pauses the cart notification while a shopper touches it', () => {
+        vi.useFakeTimers();
+        render(
+            <StoreLayout
+                cartCount={0}
+                currentUrl="/en/sbc/icon-challenge"
+                locale="en"
+                storeShell={storeShell}
+                direction="ltr"
+                displayCurrency="SAR"
+                displayCurrencies={['SAR']}
+                ui={englishUi}
+            >
+                <p>Product details remain visible</p>
+            </StoreLayout>,
+        );
+
+        fireEvent(
+            window,
+            new CustomEvent('arabut:cart-added', {
+                detail: {
+                    cartUrl: '/en/cart',
+                    imageAlt: 'Icon Challenge artwork',
+                    imageUrl: '/images/icon-challenge.webp',
+                    itemLabel: 'Icon Challenge',
+                },
+            }),
+        );
+
+        const notification = screen.getByRole('status');
+        fireEvent.pointerDown(notification, { pointerType: 'touch' });
+        expect(notification).toHaveAttribute('data-paused', 'true');
+        act(() => vi.advanceTimersByTime(5_000));
+        expect(screen.getByRole('status')).toBeVisible();
+
+        fireEvent.pointerUp(notification, { pointerType: 'touch' });
+        expect(notification).toHaveAttribute('data-paused', 'false');
+        act(() => vi.advanceTimersByTime(5_000));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        vi.useRealTimers();
+    });
 });
