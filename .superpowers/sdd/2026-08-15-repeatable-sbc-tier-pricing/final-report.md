@@ -6,7 +6,7 @@ Date: 2026-08-15 (Africa/Cairo)
 
 The repeatable-SBC bundle contract is implemented and verified locally from the n8n transformation package through Laravel catalog validation, the public AR/EN selector, secure cart insertion, checkout revalidation, order configuration, and the enlarged add-to-cart notice.
 
-The code is **not deployed** in this verification step. Production rollout is blocked because the published n8n workflow is still emitting the previous one-completion contract, and the safe manual dry-run attempt from the updated editor draft was rejected by n8n with `Unauthorized` before an execution started. A subsequent same-URL reload redirected to n8n's sign-in page, proving that the editor session had expired; this was an n8n session boundary failure, not a workflow-node, pricing-signature, or Laravel failure. No `Publish`, production webhook `apply`, or catalog snapshot was triggered during this verification.
+The code is **not deployed** in this verification step. After the n8n editor session was restored, the two verified transformation nodes were reconciled into the existing workflow draft and a safe manual dry run completed successfully. The published n8n runtime still emits the previous one-completion contract until the application release is deployed and the reviewed workflow draft is published. No `Publish`, production webhook `apply`, or catalog snapshot was triggered during this verification.
 
 ## Commits
 
@@ -16,6 +16,7 @@ The code is **not deployed** in this verification step. Production rollout is bl
 - `2b72ee5 feat(store): select repeatable sbc bundles`
 - `afedb5c fix(store): enlarge cart addition notice`
 - `4deee74 test(checkout): isolate sqlite rollback fixture`
+- `142161a fix(store): omit SBC delivery from cart`
 
 ## Contract delivered
 
@@ -43,7 +44,7 @@ Result: exit 0.
 - Pint: passed.
 - PHPStan: 0 errors.
 - Pest: 613 total, 610 passed, 3 expected skips, 30,867 assertions.
-- Vitest: 269/269 passed.
+- Vitest: 269/269 passed in the original aggregate gate; after the cart presentation regression was added, the refreshed frontend gate passed 270/270.
 - ESLint, Prettier, TypeScript, and Vite production build: passed.
 
 ## Workflow package gate
@@ -81,6 +82,7 @@ Matrix: Arabic and English at 320, 390, 768, and 1440 CSS pixels.
 - Add-to-cart created one bundle line with `completion_count=5`, showed product image, selection copy, cart action, dismiss action, and progress element.
 - At 390px the notice width was 354.19px, top safe gutter 10.39px, image size 72px, with no overflow.
 - The cart showed the selected completion count and exact SAR 57.00 bundle total.
+- SBC cart rows omit the Coins-only delivery fact while retaining platform, completion count, and total.
 - Browser console warnings/errors: zero.
 
 The normal PHP 8.5 CLI server was unsuitable in this Windows environment because dynamically loaded extension functions were resolved incorrectly by the CLI-server SAPI. Verification used a disposable Node-to-`php-cgi.exe` bridge against the same built application. The bridge, router, temporary PHP ini, local database, listener, and related files were removed after verification; the temporary database was moved to the Recycle Bin.
@@ -98,23 +100,23 @@ Read-only inspection found:
 
 Controlled safe check:
 
-- The editor trigger was explicitly changed from `SBC Catalog Production Trigger` to `Run SBC Catalog Now`.
-- The resulting action label confirmed `Execute workflow from Run SBC Catalog Now`.
-- Starting that manual dry run returned `Problem running workflow — Unauthorized` before a workflow execution began.
-- The browser console showed the same HTTP authorization failure for both `runWorkflow` and the read-only `fetchExecutions` request.
-- Reloading the exact workflow URL redirected to `/signin?redirect=...`, confirming an expired n8n login session as the root cause.
-- No publish button, production webhook, apply trigger, or snapshot endpoint was invoked by this check.
+- The two changed Code nodes were updated in place so the existing workflow ID, credentials, and durable workflow state were preserved.
+- The editor trigger was explicitly set to `Run SBC Catalog Now`; the action label confirmed `Execute workflow from Run SBC Catalog Now`.
+- The manual dry run completed with `status=dry_run`, `publishAttempted=false`, 4 categories, 29 products, 58 variants, source count 55, eligible count 29, source floor 47, and eligible floor 16.
+- The validated output contains `formulaVersion=legacy-sbc-repeat-bundle-v1` and `completionPricing` with the approved 5/10/15/20/30/40/50/75/100 unlimited bundle matrix and independent platform totals.
+- The sample output included bundle multipliers 10000/9500/9200/9000/8700/8500/8200/7800/7600 basis points.
+- No catalog POST was attempted; create/update/archive preview remains unavailable because Laravel intentionally exposes no authenticated current-snapshot read endpoint.
+- An attempted whole-workflow import appended duplicate nodes in the editor, so it was immediately undone before any execution or publish. The final draft contains no duplicated imported nodes.
 
 ## Rollout state and exact blocker
 
-Local code and tests are ready for rollout, but production is not ready to claim the new tier behavior.
+Local code, tests, and the authenticated n8n dry run are ready for rollout, but production is not ready to claim the new tier behavior until the application release and workflow draft are published in that order.
 
 Required next production steps:
 
-1. Sign back in to n8n through the existing browser tab without sharing credentials in chat.
-2. Import or reconcile the verified workflow export and confirm its draft contains `legacy-sbc-repeat-bundle-v1` plus `completionPricing`.
-3. Run the authenticated production webhook with the exact body `{ "mode": "dry_run" }` and verify counts/tier totals with `publishAttempted: false`.
-4. Only after that evidence is green, publish/deploy the application and workflow, run one signed complete SBC snapshot, require HTTP 201, and verify a live repeatable and non-repeatable purchase path.
-5. Confirm the guarded two-hour schedule remains active after the verified publish.
+1. Push the verified application release and require the GitHub test workflow plus Hostinger deployment to succeed.
+2. Publish the already-reviewed n8n draft only after the new Laravel catalog contract is live.
+3. Run one signed complete SBC snapshot, require HTTP 201, and verify a live repeatable and non-repeatable purchase path.
+4. Confirm the guarded two-hour schedule remains active after the verified publish.
 
 No production deployment, n8n publish, Paylink request, order, or signed catalog apply was performed in this step.
