@@ -85,6 +85,7 @@ export default function MyAccountLayout({
                     <div className="account-shell__content">{children}</div>
                 </div>
                 <AccountMobileBottomNav
+                    bottomNav={accountUi.bottom_nav}
                     current={current}
                     items={accountNavigation}
                     translations={accountUi.navigation}

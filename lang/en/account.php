@@ -6,14 +6,18 @@ return [
     'greeting' => 'Welcome, :name',
     'introduction' => 'Track your orders, balance, and account details in one place.',
     'navigation' => [
-        'label' => 'My Account sections',
-        'overview' => 'Home',
+        'label' => 'Account sections',
+        'overview' => 'Overview',
         'orders' => 'Orders',
         'wallet' => 'Wallet',
-        'profile' => 'Account',
+        'profile' => 'Profile',
         'security' => 'Security',
         'support' => 'Support',
         'logout' => 'Log out',
+    ],
+    'bottom_nav' => [
+        'home' => 'Home',
+        'account' => 'Account',
     ],
     'email_alert' => [
         'title' => 'Complete your account security',

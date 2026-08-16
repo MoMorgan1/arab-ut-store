@@ -78,6 +78,10 @@ export type AccountTranslations = {
         support: string;
         logout: string;
     };
+    bottom_nav?: {
+        home: string;
+        account: string;
+    };
     overview: {
         title: string;
         subtitle?: string;

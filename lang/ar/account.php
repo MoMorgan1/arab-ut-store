@@ -7,13 +7,17 @@ return [
     'introduction' => 'تابع طلباتك ورصيدك وبيانات حسابك من مكان واحد.',
     'navigation' => [
         'label' => 'أقسام حسابي',
-        'overview' => 'الرئيسية',
+        'overview' => 'نظرة عامة',
         'orders' => 'طلباتي',
         'wallet' => 'محفظتي',
-        'profile' => 'الحساب',
+        'profile' => 'بياناتي',
         'security' => 'الأمان',
         'support' => 'الدعم',
         'logout' => 'تسجيل الخروج',
+    ],
+    'bottom_nav' => [
+        'home' => 'الرئيسية',
+        'account' => 'الحساب',
     ],
     'email_alert' => [
         'title' => 'أكمل حماية حسابك',

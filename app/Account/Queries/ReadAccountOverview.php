@@ -33,8 +33,8 @@ final readonly class ReadAccountOverview
 
         return [
             'summary' => $this->summary($user),
-            'activeOrder' => $activeOrder,
-            'recentOrders' => $this->recentOrders($user, $locale, $activeOrderId),
+            'activeOrder' => $this->actionableOrder->for($user, $locale),
+            'recentOrders' => $this->recentOrders($user, $locale),
             'loyalty' => $this->loyaltyProgress->for($user, $locale),
         ];
     }
@@ -70,7 +70,7 @@ final readonly class ReadAccountOverview
     }
 
     /** @return list<array<string, mixed>> */
-    private function recentOrders(User $user, string $locale, ?string $excludeOrderId = null): array
+    private function recentOrders(User $user, string $locale): array
     {
         $orders = Order::query()
             ->select([
@@ -85,7 +85,6 @@ final readonly class ReadAccountOverview
                 'created_at',
             ])
             ->where('user_id', $user->id)
-            ->when($excludeOrderId !== null, fn ($query) => $query->where('public_id', '!=', $excludeOrderId)->where('id', '!=', $excludeOrderId))
             ->with(['items' => fn ($query) => $query
                 ->select(['id', 'order_id', 'name_ar', 'name_en', 'status'])
                 ->orderBy('id')])

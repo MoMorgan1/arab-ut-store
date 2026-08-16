@@ -23,6 +23,7 @@ const destinationIcons: Record<string, LucideIcon> = {
 };
 
 type AccountMobileBottomNavProps = {
+    bottomNav?: { home: string; account: string };
     current: AccountDestination;
     items: AccountNavigationItem[];
     translations: AccountTranslations['navigation'];
@@ -36,6 +37,7 @@ const ALLOWED_KEYS: AccountDestination[] = [
 ];
 
 export function AccountMobileBottomNav({
+    bottomNav,
     current,
     items,
     translations,
@@ -90,6 +92,12 @@ export function AccountMobileBottomNav({
                 {bottomNavItems.map((item) => {
                     const Icon = destinationIcons[item.key] || LayoutDashboard;
                     const selected = item.key === effectiveActiveKey;
+                    const label =
+                        item.key === 'overview'
+                            ? (bottomNav?.home ?? item.label)
+                            : item.key === 'profile'
+                              ? (bottomNav?.account ?? item.label)
+                              : item.label;
 
                     return (
                         <Link
@@ -106,7 +114,7 @@ export function AccountMobileBottomNav({
                                 <Icon aria-hidden="true" />
                             </span>
                             <span className="account-mobile-bottom-nav__label">
-                                {item.label}
+                                {label}
                             </span>
                         </Link>
                     );
