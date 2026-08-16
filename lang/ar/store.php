@@ -11,6 +11,7 @@ return [
         'catalog_json_required' => 'تتطلب إضافة المنتج إلى السلة طلب JSON.',
         'catalog_item_unavailable' => 'هذا الخيار غير متاح. حدّث الصفحة واختر خيارًا آخر.',
         'catalog_internal_error' => 'تعذرت إضافة هذا المنتج إلى السلة.',
+        'manual_service_unavailable' => 'الخدمة أو سعرها تغير. حدّث الصفحة وراجع اختياراتك.',
     ],
     'cart_page' => [
         'title' => 'السلة',

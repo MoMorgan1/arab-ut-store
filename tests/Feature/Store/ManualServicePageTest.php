@@ -66,8 +66,8 @@ it('exposes the exact public FUT Champions service contract in both locales', fu
 
     expect($keys)->not->toContain('xbox', 'credentials', 'password', 'codes', 'code', 'path');
 })->with([
-    'Arabic' => ['/fut-champions', 'ar', '/cart/items/manual-service'],
-    'English' => ['/en/fut-champions', 'en', '/en/cart/items/manual-service'],
+    'Arabic' => ['/fut-champions', 'ar', '/cart/items/fut-champions'],
+    'English' => ['/en/fut-champions', 'en', '/en/cart/items/fut-champions'],
 ]);
 
 it('exposes the exact public Rivals service contract in both locales', function (string $uri, string $locale, string $addUrl) {
@@ -101,8 +101,8 @@ it('exposes the exact public Rivals service contract in both locales', function 
                 ? 'يستغرق الطلب عادةً من يوم إلى 3 أيام حسب ضغط الطلبات وعدد الديفجنات المطلوبة.'
                 : 'Orders usually take 1–3 days, depending on demand and the number of divisions requested.'));
 })->with([
-    'Arabic' => ['/rivals', 'ar', '/cart/items/manual-service'],
-    'English' => ['/en/rivals', 'en', '/en/cart/items/manual-service'],
+    'Arabic' => ['/rivals', 'ar', '/cart/items/rivals'],
+    'English' => ['/en/rivals', 'en', '/en/cart/items/rivals'],
 ]);
 
 it('renders an unavailable state instead of publishing stale manual-service prices', function (ServiceType $service, string $uri) {

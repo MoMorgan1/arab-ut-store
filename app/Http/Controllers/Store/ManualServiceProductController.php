@@ -58,7 +58,7 @@ final class ManualServiceProductController extends Controller
                 'service' => $service->value,
                 'active' => $active,
                 'scheduleVersion' => $schedule?->version,
-                'addUrl' => $this->manualServiceCartUrl($request),
+                'addUrl' => $this->manualServiceCartUrl($request, $service),
                 'platforms' => [Platform::PlayStation->value, Platform::Pc->value],
                 'tutorials' => [
                     'ea' => self::EA_TUTORIAL,
@@ -169,11 +169,13 @@ final class ManualServiceProductController extends Controller
         return $service === ServiceType::FutChampions ? 'fut-champions' : 'rivals';
     }
 
-    private function manualServiceCartUrl(Request $request): string
+    private function manualServiceCartUrl(Request $request, ServiceType $service): string
     {
-        return $request->route('locale') === 'en'
-            ? '/en/cart/items/manual-service'
-            : '/cart/items/manual-service';
+        $name = $service === ServiceType::FutChampions
+            ? 'cart.items.fut-champions.store'
+            : 'cart.items.rivals.store';
+
+        return $this->route($request, $name);
     }
 
     private function route(Request $request, string $name): string

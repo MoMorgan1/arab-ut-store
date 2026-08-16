@@ -12,6 +12,7 @@ use App\Http\Controllers\Store\CategoryProductController;
 use App\Http\Controllers\Store\CheckoutPhoneVerificationController;
 use App\Http\Controllers\Store\CoinsCartController;
 use App\Http\Controllers\Store\CoinsQuoteController;
+use App\Http\Controllers\Store\FutChampionsCartController;
 use App\Http\Controllers\Store\HomeController;
 use App\Http\Controllers\Store\ManualServiceProductController;
 use App\Http\Controllers\Store\OrderController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Store\PaylinkCheckoutController;
 use App\Http\Controllers\Store\PaylinkOrderPaymentController;
 use App\Http\Controllers\Store\PaylinkReturnController;
 use App\Http\Controllers\Store\ReviewsController;
+use App\Http\Controllers\Store\RivalsCartController;
 use App\Http\Controllers\Store\SbcCartController;
 use App\Http\Controllers\Store\SimpleStorePageController;
 use App\Http\Middleware\NoStore;
@@ -77,6 +79,12 @@ Route::post('/cart/items/catalog', CatalogCartController::class)
 Route::post('/cart/items/sbc', SbcCartController::class)
     ->middleware([NoStore::class, RequireCatalogCartJson::class, 'throttle:coins-cart'])
     ->name('cart.items.sbc.store');
+Route::post('/cart/items/fut-champions', FutChampionsCartController::class)
+    ->middleware([NoStore::class, 'throttle:coins-cart'])
+    ->name('cart.items.fut-champions.store');
+Route::post('/cart/items/rivals', RivalsCartController::class)
+    ->middleware([NoStore::class, 'throttle:coins-cart'])
+    ->name('cart.items.rivals.store');
 Route::get('/auth/google/redirect', [GoogleAuthenticationController::class, 'redirect'])
     ->middleware(['guest:'.config('fortify.guard')])
     ->name('auth.google.redirect');
@@ -174,6 +182,12 @@ Route::prefix('{locale}')
         Route::post('/cart/items/sbc', SbcCartController::class)
             ->middleware([NoStore::class, RequireCatalogCartJson::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.sbc.store');
+        Route::post('/cart/items/fut-champions', FutChampionsCartController::class)
+            ->middleware([NoStore::class, 'throttle:coins-cart'])
+            ->name('localized.cart.items.fut-champions.store');
+        Route::post('/cart/items/rivals', RivalsCartController::class)
+            ->middleware([NoStore::class, 'throttle:coins-cart'])
+            ->name('localized.cart.items.rivals.store');
         Route::get('/auth/google/redirect', [GoogleAuthenticationController::class, 'redirect'])
             ->middleware(['guest:'.config('fortify.guard')])
             ->name('localized.auth.google.redirect');

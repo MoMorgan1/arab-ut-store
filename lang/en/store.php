@@ -11,6 +11,7 @@ return [
         'catalog_json_required' => 'Catalog additions require a JSON request.',
         'catalog_item_unavailable' => 'This option is unavailable. Refresh the page and choose another option.',
         'catalog_internal_error' => 'Unable to add this item to the cart.',
+        'manual_service_unavailable' => 'The service or its price changed. Refresh the page and review your choices.',
     ],
     'cart_page' => [
         'title' => 'Your cart',
