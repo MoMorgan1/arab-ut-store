@@ -4,6 +4,7 @@ namespace App\Account\Queries;
 
 use App\Account\Presenters\AccountMoney;
 use App\Enums\OrderStatus;
+use App\Enums\ServiceType;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
@@ -35,11 +36,15 @@ final class ReadLiveOrder
                     'order_id',
                     'name_ar',
                     'name_en',
+                    'service_type',
+                    'platform',
                     'status',
                     'quantity',
                     'total_halalah',
+                    'configuration',
                 ])
                 ->withExists('secret')
+                ->withExists('squadImage')
                 ->orderBy('id')])
             ->firstOrFail();
         $terminal = in_array($order->status, [
@@ -79,9 +84,94 @@ final class ReadLiveOrder
                         (string) $order->getAttribute('currency'),
                     ),
                     'credentialsPresent' => (bool) $item->getAttribute('secret_exists'),
+                    'manualFulfillment' => $this->manualFulfillment($item, $publicId, $locale),
                 ])
                 ->values()
                 ->all(),
         ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function manualFulfillment(OrderItem $item, string $orderId, string $locale): ?array
+    {
+        if (! in_array($item->service_type, [ServiceType::FutChampions, ServiceType::Rivals], true)) {
+            return null;
+        }
+
+        $configuration = is_array($item->configuration) ? $item->configuration : [];
+        $localized = $locale === 'en';
+        $routeParameters = [
+            'order' => $orderId,
+            'orderItem' => $item->public_id,
+        ];
+        $credentialsUrl = (bool) $item->getAttribute('secret_exists')
+            ? route(
+                $localized
+                    ? 'localized.account.orders.items.credentials'
+                    : 'account.orders.items.credentials',
+                $routeParameters,
+                absolute: false,
+            )
+            : null;
+        $squadImageUrl = (bool) $item->getAttribute('squad_image_exists')
+            ? route(
+                $localized
+                    ? 'localized.account.orders.items.squad-image'
+                    : 'account.orders.items.squad-image',
+                $routeParameters,
+                absolute: false,
+            )
+            : null;
+
+        return [
+            'credentialsUrl' => $credentialsUrl,
+            'squadImageUrl' => $squadImageUrl,
+            'platform' => $item->platform->value,
+            ...$this->safeManualConfiguration($configuration, $item->service_type),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @return array<string, bool|int|string|null>
+     */
+    private function safeManualConfiguration(array $configuration, ServiceType $service): array
+    {
+        $safe = [];
+        $launcher = $configuration['pc_store'] ?? null;
+
+        if (in_array($launcher, ['ea_app', 'steam'], true)) {
+            $safe['pcLauncher'] = $launcher;
+        }
+
+        if ($service === ServiceType::FutChampions) {
+            $rank = $configuration['rank'] ?? null;
+            $urgent = $configuration['urgent'] ?? null;
+            $matchesPlayed = $configuration['matches_played'] ?? null;
+
+            if (is_int($rank) && $rank >= 1 && $rank <= 6) {
+                $safe['targetRank'] = $rank;
+            }
+
+            if (is_bool($urgent)) {
+                $safe['urgent'] = $urgent;
+            }
+
+            if (is_int($matchesPlayed) && $matchesPlayed >= 0 && $matchesPlayed <= 100) {
+                $safe['matchesPlayed'] = $matchesPlayed;
+            }
+
+            return $safe;
+        }
+
+        foreach (['current_division' => 'fromDivision', 'target_division' => 'toDivision'] as $key => $output) {
+            $division = $configuration[$key] ?? null;
+
+            if (is_string($division) && in_array($division, ['7', '6', '5', '4', '3', '2', '1', 'elite'], true)) {
+                $safe[$output] = $division;
+            }
+        }
+
+        return $safe;
     }
 }

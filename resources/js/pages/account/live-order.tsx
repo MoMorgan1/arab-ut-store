@@ -4,12 +4,17 @@ import {
     ArrowRight,
     CalendarDays,
     CheckCircle2,
+    ChevronDown,
     RefreshCw,
+    ShieldCheck,
 } from 'lucide-react';
 import { useState } from 'react';
 
 import MyAccountLayout from '@/layouts/my-account-layout';
 import { formatAccountMoney } from '@/lib/account-money';
+import { formatInteger } from '@/lib/money';
+import { loadOrderCredentials } from '@/lib/order-fulfillment-api';
+import type { OrderCredentials } from '@/lib/order-fulfillment-api';
 import {
     navigateToHostedPayment,
     navigateToOrder,
@@ -175,6 +180,13 @@ export default function AccountLiveOrder() {
                                         )}
                                     </strong>
                                 </div>
+                                {item.manualFulfillment !== null ? (
+                                    <ManualOrderFulfillment
+                                        item={item}
+                                        locale={props.locale}
+                                        translations={props.accountUi.orders}
+                                    />
+                                ) : null}
                             </li>
                         ))}
                     </ol>
@@ -201,4 +213,273 @@ export default function AccountLiveOrder() {
             </div>
         </MyAccountLayout>
     );
+}
+
+type LiveOrderItem = AccountLiveOrderPageProps['order']['items'][number];
+type OrderTranslations = AccountLiveOrderPageProps['accountUi']['orders'];
+
+function ManualOrderFulfillment({
+    item,
+    locale,
+    translations,
+}: {
+    item: LiveOrderItem;
+    locale: 'ar' | 'en';
+    translations: OrderTranslations;
+}) {
+    const fulfillment = item.manualFulfillment;
+    const [expanded, setExpanded] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [failed, setFailed] = useState(false);
+    const [credentials, setCredentials] = useState<OrderCredentials | null>(
+        null,
+    );
+
+    if (fulfillment === null) {
+        return null;
+    }
+
+    const contentId = `order-fulfillment-${item.id}`;
+    const credentialsUrl = fulfillment.credentialsUrl;
+    const platform =
+        fulfillment.platform === 'playstation'
+            ? translations.platform_playstation
+            : translations.platform_pc;
+
+    async function toggleDetails() {
+        if (expanded) {
+            setExpanded(false);
+
+            return;
+        }
+
+        setExpanded(true);
+        setFailed(false);
+
+        if (credentials !== null || credentialsUrl === null) {
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            setCredentials(await loadOrderCredentials(credentialsUrl));
+        } catch {
+            setFailed(true);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    return (
+        <div className="account-order-fulfillment">
+            <h4>{translations.manual_details}</h4>
+            <dl className="account-order-fulfillment__summary">
+                <OrderFact label={translations.platform} value={platform} />
+                {fulfillment.pcLauncher !== undefined ? (
+                    <OrderFact
+                        label={translations.launcher}
+                        value={
+                            fulfillment.pcLauncher === 'steam'
+                                ? translations.launcher_steam
+                                : translations.launcher_ea_app
+                        }
+                    />
+                ) : null}
+                {fulfillment.targetRank !== undefined ? (
+                    <OrderFact
+                        label={translations.rank}
+                        value={translations.rank_value.replace(
+                            ':rank',
+                            formatInteger(fulfillment.targetRank, locale),
+                        )}
+                    />
+                ) : null}
+                {fulfillment.urgent !== undefined ? (
+                    <OrderFact
+                        label={translations.urgent}
+                        value={
+                            fulfillment.urgent
+                                ? translations.urgent_yes
+                                : translations.urgent_no
+                        }
+                    />
+                ) : null}
+                {fulfillment.matchesPlayed !== undefined ? (
+                    <OrderFact
+                        label={translations.matches_played}
+                        value={formatInteger(fulfillment.matchesPlayed, locale)}
+                    />
+                ) : null}
+                {fulfillment.fromDivision !== undefined ? (
+                    <OrderFact
+                        label={translations.from_division}
+                        value={divisionName(
+                            fulfillment.fromDivision,
+                            locale,
+                            translations,
+                        )}
+                    />
+                ) : null}
+                {fulfillment.toDivision !== undefined ? (
+                    <OrderFact
+                        label={translations.to_division}
+                        value={divisionName(
+                            fulfillment.toDivision,
+                            locale,
+                            translations,
+                        )}
+                    />
+                ) : null}
+            </dl>
+            {fulfillment.credentialsUrl !== null ? (
+                <button
+                    aria-controls={contentId}
+                    aria-expanded={expanded}
+                    className="account-order-fulfillment__toggle"
+                    disabled={loading}
+                    onClick={toggleDetails}
+                    type="button"
+                >
+                    <span>
+                        <ShieldCheck aria-hidden="true" />
+                        {loading
+                            ? translations.credentials_loading
+                            : expanded
+                              ? translations.hide_credentials
+                              : translations.show_credentials}
+                    </span>
+                    <ChevronDown aria-hidden="true" />
+                </button>
+            ) : null}
+            {expanded ? (
+                <div
+                    className="account-order-fulfillment__revealed"
+                    id={contentId}
+                >
+                    {failed ? (
+                        <p role="alert">{translations.credentials_error}</p>
+                    ) : null}
+                    {credentials !== null ? (
+                        <CredentialsValues
+                            credentials={credentials}
+                            translations={translations}
+                        />
+                    ) : null}
+                    {fulfillment.squadImageUrl !== null ? (
+                        <figure>
+                            <figcaption>{translations.squad_image}</figcaption>
+                            <img
+                                alt={translations.squad_image}
+                                loading="lazy"
+                                src={fulfillment.squadImageUrl}
+                            />
+                        </figure>
+                    ) : null}
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
+function CredentialsValues({
+    credentials,
+    translations,
+}: {
+    credentials: OrderCredentials;
+    translations: OrderTranslations;
+}) {
+    const eaCodes = credentials.eaBackupCodes;
+
+    return (
+        <div className="account-order-fulfillment__credentials" dir="ltr">
+            {credentials.platform === 'playstation' ? (
+                <>
+                    <CredentialFact
+                        label={translations.playstation_email}
+                        value={credentials.playstationEmail}
+                    />
+                    <CredentialFact
+                        label={translations.playstation_password}
+                        value={credentials.playstationPassword}
+                    />
+                </>
+            ) : (
+                <>
+                    <CredentialFact
+                        label={translations.ea_email}
+                        value={credentials.eaEmail}
+                    />
+                    <CredentialFact
+                        label={translations.ea_password}
+                        value={credentials.eaPassword}
+                    />
+                    {credentials.pcStore === 'steam' ? (
+                        <>
+                            <CredentialFact
+                                label={translations.steam_username}
+                                value={credentials.steamUsername ?? ''}
+                            />
+                            <CredentialFact
+                                label={translations.steam_password}
+                                value={credentials.steamPassword ?? ''}
+                            />
+                        </>
+                    ) : null}
+                </>
+            )}
+            <CodesFact label={translations.ea_codes} values={eaCodes} />
+            {credentials.platform === 'playstation' ? (
+                <CodesFact
+                    label={translations.playstation_codes}
+                    values={credentials.playstationBackupCodes}
+                />
+            ) : null}
+        </div>
+    );
+}
+
+function CredentialFact({ label, value }: { label: string; value: string }) {
+    return (
+        <div>
+            <span>{label}</span>
+            <bdi>{value}</bdi>
+        </div>
+    );
+}
+
+function CodesFact({
+    label,
+    values,
+}: {
+    label: string;
+    values: [string, string, string];
+}) {
+    return (
+        <div>
+            <span>{label}</span>
+            <bdi>{values.join(' · ')}</bdi>
+        </div>
+    );
+}
+
+function OrderFact({ label, value }: { label: string; value: string }) {
+    return (
+        <div>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+        </div>
+    );
+}
+
+function divisionName(
+    value: NonNullable<
+        NonNullable<LiveOrderItem['manualFulfillment']>['fromDivision']
+    >,
+    locale: 'ar' | 'en',
+    translations: OrderTranslations,
+): string {
+    return value === 'elite'
+        ? translations.elite
+        : formatInteger(Number(value), locale);
 }

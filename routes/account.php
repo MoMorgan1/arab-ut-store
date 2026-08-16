@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Account\LiveOrderController;
+use App\Http\Controllers\Account\OrderItemCredentialsController;
+use App\Http\Controllers\Account\OrderItemSquadImageController;
 use App\Http\Controllers\Account\OrdersController;
 use App\Http\Controllers\Account\OverviewController;
 use App\Http\Controllers\Account\ProfileController;
@@ -25,6 +27,12 @@ $accountMiddleware = [
 Route::middleware($accountMiddleware)->group(function (): void {
     Route::get('/my-account', OverviewController::class)->name('account.overview');
     Route::get('/my-account/orders', OrdersController::class)->name('account.orders');
+    Route::get('/my-account/orders/{order}/items/{orderItem}/credentials', OrderItemCredentialsController::class)
+        ->whereUlid(['order', 'orderItem'])
+        ->name('account.orders.items.credentials');
+    Route::get('/my-account/orders/{order}/items/{orderItem}/squad-image', OrderItemSquadImageController::class)
+        ->whereUlid(['order', 'orderItem'])
+        ->name('account.orders.items.squad-image');
     Route::get('/my-account/orders/{order}', LiveOrderController::class)
         ->whereUlid('order')
         ->name('account.orders.show');
@@ -64,6 +72,14 @@ Route::prefix('en')
         Route::get('/my-account/orders', OrdersController::class)
             ->defaults('locale', 'en')
             ->name('account.orders');
+        Route::get('/my-account/orders/{order}/items/{orderItem}/credentials', OrderItemCredentialsController::class)
+            ->whereUlid(['order', 'orderItem'])
+            ->defaults('locale', 'en')
+            ->name('account.orders.items.credentials');
+        Route::get('/my-account/orders/{order}/items/{orderItem}/squad-image', OrderItemSquadImageController::class)
+            ->whereUlid(['order', 'orderItem'])
+            ->defaults('locale', 'en')
+            ->name('account.orders.items.squad-image');
         Route::get('/my-account/orders/{order}', LiveOrderController::class)
             ->whereUlid('order')
             ->defaults('locale', 'en')

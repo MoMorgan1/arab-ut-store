@@ -10,6 +10,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import AccountLiveOrder from '@/pages/account/live-order';
 import AccountOrders from '@/pages/account/orders';
+import type { AccountLiveOrderPageProps } from '@/types/account';
 
 const inertia = vi.hoisted(() => ({
     flushAll: vi.fn(),
@@ -123,6 +124,73 @@ it('refreshes only current safe order data and keeps credentials opaque', () => 
     );
 });
 
+it('reveals manual-service credentials and squad image only after the owner asks', async () => {
+    const orderData = liveOrder(null);
+    orderData.items[0] = {
+        ...orderData.items[0],
+        name: 'FUT Champions service',
+        manualFulfillment: {
+            credentialsUrl:
+                '/en/my-account/orders/01ORDER1/items/01ITEM1/credentials',
+            squadImageUrl:
+                '/en/my-account/orders/01ORDER1/items/01ITEM1/squad-image',
+            platform: 'playstation',
+            targetRank: 3,
+            urgent: true,
+            matchesPlayed: 4,
+        },
+    };
+    page.props = { ...shellProps(), order: orderData };
+    const fetchMock = vi.fn().mockResolvedValue(
+        new Response(
+            JSON.stringify({
+                data: {
+                    platform: 'playstation',
+                    playstationEmail: 'owner@example.test',
+                    playstationPassword: 'private password',
+                    eaBackupCodes: ['12345678', '23456789', '34567890'],
+                    playstationBackupCodes: ['A1B2C3', 'D4E5F6', 'Z9Y8X7'],
+                },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const localStorageSpy = vi.spyOn(Storage.prototype, 'setItem');
+
+    render(<AccountLiveOrder />);
+
+    expect(document.body.textContent).not.toContain('owner@example.test');
+    expect(fetchMock).not.toHaveBeenCalled();
+    fireEvent.click(
+        screen.getByRole('button', { name: 'Show account details' }),
+    );
+
+    expect(await screen.findByText('owner@example.test')).toBeVisible();
+    expect(screen.getByText('private password')).toBeVisible();
+    expect(screen.getByText(/12345678/)).toBeVisible();
+    expect(screen.getByText(/A1B2C3/)).toBeVisible();
+    expect(
+        screen.getByRole('img', { name: 'Submitted squad' }),
+    ).toHaveAttribute(
+        'src',
+        '/en/my-account/orders/01ORDER1/items/01ITEM1/squad-image',
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+        '/en/my-account/orders/01ORDER1/items/01ITEM1/credentials',
+        expect.objectContaining({
+            cache: 'no-store',
+            credentials: 'same-origin',
+        }),
+    );
+    expect(localStorageSpy).not.toHaveBeenCalled();
+
+    fireEvent.click(
+        screen.getByRole('button', { name: 'Hide account details' }),
+    );
+    expect(screen.queryByText('owner@example.test')).not.toBeInTheDocument();
+});
+
 it('resumes the existing Paylink payment from the canonical detail', async () => {
     const orderId = '01K00000000000000000000000';
 
@@ -177,7 +245,9 @@ function order(id: string, number: string, status: string) {
     };
 }
 
-function liveOrder(paymentStartUrl: string | null) {
+function liveOrder(
+    paymentStartUrl: string | null,
+): AccountLiveOrderPageProps['order'] {
     return {
         id: '01ORDER1',
         number: 'UT-00000001',
@@ -194,6 +264,7 @@ function liveOrder(paymentStartUrl: string | null) {
                 quantity: 1,
                 total: { amountMinor: '12999', currency: 'SAR' },
                 credentialsPresent: true,
+                manualFulfillment: null,
             },
         ],
     };
@@ -259,6 +330,33 @@ function shellProps() {
                 items_title: 'Service details',
                 item_quantity: 'Quantity: :count',
                 credentials_ready: 'Fulfilment details stored securely',
+                manual_details: 'Manual service details',
+                platform: 'Platform',
+                platform_playstation: 'PlayStation',
+                platform_pc: 'PC',
+                launcher: 'Launcher',
+                rank: 'Target rank',
+                rank_value: 'Rank :rank',
+                urgent: 'Delivery',
+                urgent_yes: 'Urgent — 24–36 hours',
+                urgent_no: 'Standard',
+                matches_played: 'Matches already played',
+                from_division: 'Current division',
+                to_division: 'Target division',
+                elite: 'Elite',
+                show_credentials: 'Show account details',
+                hide_credentials: 'Hide account details',
+                credentials_loading: 'Loading account details…',
+                credentials_error: 'Could not load account details.',
+                squad_image: 'Submitted squad',
+                playstation_email: 'PlayStation email',
+                playstation_password: 'PlayStation password',
+                ea_email: 'EA email',
+                ea_password: 'EA password',
+                steam_username: 'Steam username',
+                steam_password: 'Steam password',
+                ea_codes: 'EA backup codes',
+                playstation_codes: 'PlayStation backup codes',
                 refresh_status: 'Refresh status',
                 refreshing: 'Refreshing…',
                 back: 'Back to Orders',
