@@ -1,6 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 
 import { FutChampionsConfigurator } from '@/components/configurator/manual-services/fut-champions-configurator';
+import { ManualServiceSuggestions } from '@/components/configurator/manual-services/manual-service-suggestions';
 import { RivalsConfigurator } from '@/components/configurator/manual-services/rivals-configurator';
 import StoreLayout from '@/layouts/store-layout';
 import type {
@@ -101,6 +102,10 @@ export default function StoreManualService() {
                         ))}
                     </ul>
                 </section>
+                <ManualServiceSuggestions
+                    services={props.manualServicePage.relatedServices}
+                    translations={props.manualServicePage.relatedTranslations}
+                />
             </main>
         </StoreLayout>
     );

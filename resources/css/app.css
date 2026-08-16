@@ -5965,8 +5965,7 @@
     gap: 0.15rem;
 }
 
-.manual-fut-options small,
-.manual-service-note {
+.manual-fut-options small {
     color: var(--arabut-muted);
 }
 
@@ -5990,8 +5989,7 @@
     width: 100%;
 }
 
-.manual-service-eta,
-.manual-service-note {
+.manual-service-eta {
     margin: 0;
     border-inline-start: 0.2rem solid var(--arabut-gold);
     padding: 0.75rem 1rem;
@@ -6002,6 +6000,12 @@
     background: rgb(212 168 67 / 7%);
     color: var(--arabut-ink);
     font-weight: 750;
+}
+
+.manual-fut-options .manual-service-eta--urgent-option {
+    margin-block-start: 0.25rem;
+    color: var(--arabut-ink);
+    line-height: 1.55;
 }
 
 .manual-credentials {
@@ -6379,6 +6383,107 @@
     line-height: 1.7;
 }
 
+.manual-service-related {
+    display: grid;
+    margin-block-start: clamp(3rem, 7vw, 5rem);
+    gap: 1.25rem;
+}
+
+.manual-service-related > header p {
+    margin: 0;
+    color: var(--arabut-gold-bright);
+    font-size: 0.875rem;
+    font-weight: 800;
+}
+
+.manual-service-related > header h2 {
+    margin: 0.35rem 0 0;
+    color: var(--arabut-ink);
+    font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+    font-size: clamp(1.65rem, 4vw, 2.35rem);
+    font-weight: 850;
+}
+
+.manual-service-related__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.manual-service-related__card {
+    display: grid;
+    min-width: 0;
+    min-height: 8.5rem;
+    grid-template-columns: minmax(7.5rem, 34%) minmax(0, 1fr);
+    overflow: hidden;
+    border: 1px solid var(--arabut-line);
+    border-radius: 1rem;
+    background: rgb(28 24 20 / 58%);
+    color: var(--arabut-ink);
+    box-shadow: 0 1.25rem 3rem rgb(0 0 0 / 12%);
+    transition:
+        border-color 180ms var(--store-ease-out),
+        background-color 180ms var(--store-ease-out),
+        transform 180ms var(--store-ease-out);
+}
+
+.manual-service-related__card:hover {
+    border-color: rgb(212 168 67 / 58%);
+    background: rgb(212 168 67 / 7%);
+    transform: translateY(-0.15rem);
+}
+
+.manual-service-related__card:focus-visible {
+    outline: 3px solid var(--arabut-focus);
+    outline-offset: 3px;
+}
+
+.manual-service-related__card > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.manual-service-related__card > span {
+    display: grid;
+    min-width: 0;
+    align-content: center;
+    gap: 0.4rem;
+    padding: 1rem;
+}
+
+.manual-service-related__card strong,
+.manual-service-related__card small {
+    overflow-wrap: anywhere;
+}
+
+.manual-service-related__card strong {
+    font-size: 1.1rem;
+}
+
+.manual-service-related__card small {
+    color: var(--arabut-muted);
+    line-height: 1.55;
+}
+
+.manual-service-related__cta {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--arabut-gold-bright);
+    font-size: 0.875rem;
+}
+
+.manual-service-related__card svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+[dir='rtl'] .manual-service-related__card svg {
+    transform: scaleX(-1);
+}
+
 .manual-service-unavailable p {
     margin: 0.65rem 0 0;
     color: var(--arabut-muted);
@@ -6408,6 +6513,10 @@
         flex-direction: column;
         gap: 0.15rem;
     }
+
+    .manual-service-related__grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 @media (max-width: 24rem) {
@@ -6432,12 +6541,14 @@
     .manual-password-field button,
     .manual-squad-upload > label,
     .manual-squad-upload__preview button,
+    .manual-service-related__card,
     .manual-configurator__submit {
         transition: none;
         animation: none;
     }
 
     .manual-selection-card:active,
+    .manual-service-related__card:hover,
     .manual-configurator__submit:active:not(:disabled) {
         transform: none;
     }

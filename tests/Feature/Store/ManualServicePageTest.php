@@ -58,7 +58,11 @@ it('exposes the exact public FUT Champions service contract in both locales', fu
             ->where('manualServicePage.service.title', $locale === 'ar' ? 'خدمة لعب الفوت' : 'FUT Champions service')
             ->where('manualServicePage.service.urgent_eta', $locale === 'ar'
                 ? 'المستعجل خلال 24–36 ساعة من استلام البيانات الصحيحة.'
-                : 'Urgent orders take 24–36 hours from receiving the correct details.'));
+                : 'Urgent orders take 24–36 hours from receiving the correct details.')
+            ->where('manualServicePage.relatedServices.0.key', 'sbc')
+            ->where('manualServicePage.relatedServices.0.href', $locale === 'ar' ? '/sbc' : '/en/sbc')
+            ->where('manualServicePage.relatedServices.1.key', 'rivals')
+            ->where('manualServicePage.relatedServices.1.href', $locale === 'ar' ? '/rivals' : '/en/rivals'));
 
     /** @var array<string, mixed> $props */
     $props = $response->viewData('page')['props']['manualService'];
@@ -99,7 +103,11 @@ it('exposes the exact public Rivals service contract in both locales', function 
             ->where('manualServicePage.service.title', $locale === 'ar' ? 'خدمة الرايفلز' : 'Division Rivals service')
             ->where('manualServicePage.service.standard_eta', $locale === 'ar'
                 ? 'يستغرق الطلب عادةً من يوم إلى 3 أيام حسب ضغط الطلبات وعدد الديفجنات المطلوبة.'
-                : 'Orders usually take 1–3 days, depending on demand and the number of divisions requested.'));
+                : 'Orders usually take 1–3 days, depending on demand and the number of divisions requested.')
+            ->where('manualServicePage.relatedServices.0.key', 'sbc')
+            ->where('manualServicePage.relatedServices.0.href', $locale === 'ar' ? '/sbc' : '/en/sbc')
+            ->where('manualServicePage.relatedServices.1.key', 'fut_champions')
+            ->where('manualServicePage.relatedServices.1.href', $locale === 'ar' ? '/fut-champions' : '/en/fut-champions'));
 })->with([
     'Arabic' => ['/rivals', 'ar', '/cart/items/rivals'],
     'English' => ['/en/rivals', 'en', '/en/cart/items/rivals'],

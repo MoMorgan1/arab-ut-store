@@ -52,6 +52,12 @@ final class ManualServiceProductController extends Controller
             'backUrl' => $this->route($request, 'home').'#services',
             'manualServicePage' => [
                 'common' => trans('store.manual_services.common'),
+                'relatedServices' => $this->relatedServices($request, $service),
+                'relatedTranslations' => [
+                    'eyebrow' => trans('store.services_section.eyebrow'),
+                    'title' => trans('store.services_section.title'),
+                    'open' => trans('store.product.sbc.related_link'),
+                ],
                 'service' => trans("store.manual_services.{$service->value}"),
             ],
             'manualService' => [
@@ -190,6 +196,25 @@ final class ManualServiceProductController extends Controller
             : 'cart.items.rivals.store';
 
         return $this->route($request, $name);
+    }
+
+    /** @return list<array{key: string, title: string, description: string, href: string, imageUrl: string}> */
+    private function relatedServices(Request $request, ServiceType $service): array
+    {
+        $related = [
+            ['sbc', 'store.sbc', '/images/store/services/sbc.webp'],
+            $service === ServiceType::FutChampions
+                ? ['rivals', 'store.rivals', '/images/store/services/rivals.webp']
+                : ['fut_champions', 'store.fut_champions', '/images/store/services/fut-champions.webp'],
+        ];
+
+        return array_map(fn (array $serviceCard): array => [
+            'key' => $serviceCard[0],
+            'title' => trans("store.services.{$serviceCard[0]}.title"),
+            'description' => trans("store.services.{$serviceCard[0]}.card_description"),
+            'href' => $this->route($request, $serviceCard[1]),
+            'imageUrl' => $serviceCard[2],
+        ], $related);
     }
 
     private function route(Request $request, string $name): string

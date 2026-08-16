@@ -9,6 +9,20 @@ export type PcLauncher = 'ea_app' | 'steam';
 export type Division = '7' | '6' | '5' | '4' | '3' | '2' | '1' | 'elite';
 export type ManualServiceMoney = { amountMinor: number; currency: 'SAR' };
 
+export type ManualServiceSuggestion = {
+    key: 'sbc' | 'fut_champions' | 'rivals';
+    title: string;
+    description: string;
+    href: string;
+    imageUrl: string;
+};
+
+export type ManualServiceSuggestionTranslations = {
+    eyebrow: string;
+    title: string;
+    open: string;
+};
+
 export type ManualCredentialsDraft = {
     eaEmail: string;
     eaPassword: string;
@@ -80,7 +94,6 @@ export type FutServiceTranslations = {
     urgent_price: string;
     urgent_eta: string;
     standard_eta: string;
-    already_played: string;
     matches_question: string;
     matches_yes: string;
     matches_no: string;
@@ -114,6 +127,8 @@ export type ManualServicePageProps = {
     ui: StoreShellTranslations;
     manualServicePage: {
         common: ManualServiceCommonTranslations;
+        relatedServices: ManualServiceSuggestion[];
+        relatedTranslations: ManualServiceSuggestionTranslations;
         service: FutServiceTranslations | RivalsServiceTranslations;
     };
     manualService: {

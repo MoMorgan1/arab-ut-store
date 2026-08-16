@@ -237,6 +237,9 @@ export function FutChampionsConfigurator({
                     <span>
                         <strong>{service.urgent}</strong>
                         <small>{service.urgent_price}</small>
+                        <small className="manual-service-eta--urgent-option">
+                            {urgent ? service.urgent_eta : service.standard_eta}
+                        </small>
                     </span>
                 </label>
                 <fieldset className="manual-played-matches">
@@ -291,10 +294,6 @@ export function FutChampionsConfigurator({
                     ) : null}
                 </fieldset>
             </div>
-            <p className="manual-service-eta">
-                {urgent ? service.urgent_eta : service.standard_eta}
-            </p>
-            <p className="manual-service-note">{service.already_played}</p>
             <CredentialsFields
                 credentials={credentials}
                 launcher={launcher}

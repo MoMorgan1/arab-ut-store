@@ -288,7 +288,6 @@ return [
             'urgent_price' => 'Add SAR 40',
             'urgent_eta' => 'Urgent orders take 24–36 hours from receiving the correct details.',
             'standard_eta' => 'Standard orders are completed within the current FUT Champions event.',
-            'already_played' => 'You can order after playing some matches; the price and service stay the same.',
             'matches_question' => 'Have you played any FUT matches?',
             'matches_yes' => 'Yes, I played matches',
             'matches_no' => 'No matches played',

@@ -64,6 +64,25 @@ it('uses a rank slider and only asks for a match count after the customer confir
     expect(rankSlider.getAttribute('aria-valuetext')).toContain('220.00');
 });
 
+it('keeps the active delivery estimate inside the urgent option and omits the repeated played-matches note', () => {
+    renderFut();
+
+    const urgentOption = screen.getByLabelText(/Urgent/).closest('label');
+    expect(urgentOption).toContainElement(
+        screen.getByText('Current FUT event'),
+    );
+    expect(
+        screen.queryByText('Played matches are accepted'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(/Urgent/));
+
+    expect(urgentOption).toContainElement(
+        screen.getByText('Urgent orders take 24–36 hours'),
+    );
+    expect(screen.queryByText('Current FUT event')).not.toBeInTheDocument();
+});
+
 it('submits the selected FUT rank, urgent option, exact credentials, and required image once', async () => {
     renderFut();
 
@@ -208,7 +227,6 @@ const fut = {
     urgent_price: 'Add SAR 40',
     urgent_eta: 'Urgent orders take 24–36 hours',
     standard_eta: 'Current FUT event',
-    already_played: 'Played matches are accepted',
     matches_question: 'Have you played any FUT matches?',
     matches_yes: 'Yes, I played matches',
     matches_no: 'No matches played',
