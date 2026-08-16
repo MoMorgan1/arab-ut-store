@@ -1,27 +1,25 @@
 import { Link } from '@inertiajs/react';
 import {
     LayoutDashboard,
-    LifeBuoy,
     PackageSearch,
-    ShieldCheck,
     UserRound,
     WalletCards,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
+import { cn } from '@/lib/utils';
 import type {
     AccountDestination,
     AccountNavigationItem,
     AccountTranslations,
 } from '@/types/account';
 
-const destinationIcons: Record<AccountDestination, LucideIcon> = {
+const destinationIcons: Record<string, LucideIcon> = {
     overview: LayoutDashboard,
     orders: PackageSearch,
     wallet: WalletCards,
     profile: UserRound,
-    security: ShieldCheck,
-    support: LifeBuoy,
 };
 
 type AccountMobileBottomNavProps = {
@@ -30,32 +28,77 @@ type AccountMobileBottomNavProps = {
     translations: AccountTranslations['navigation'];
 };
 
+const ALLOWED_KEYS: AccountDestination[] = [
+    'overview',
+    'orders',
+    'wallet',
+    'profile',
+];
+
 export function AccountMobileBottomNav({
     current,
     items,
     translations,
 }: AccountMobileBottomNavProps) {
+    const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
+    useEffect(() => {
+        const handleFocusIn = (event: FocusEvent) => {
+            const target = event.target as HTMLElement | null;
+
+            if (
+                target &&
+                (target.tagName === 'INPUT' ||
+                    target.tagName === 'TEXTAREA' ||
+                    target.tagName === 'SELECT')
+            ) {
+                setIsKeyboardOpen(true);
+            }
+        };
+
+        const handleFocusOut = () => {
+            setIsKeyboardOpen(false);
+        };
+
+        window.addEventListener('focusin', handleFocusIn);
+        window.addEventListener('focusout', handleFocusOut);
+
+        return () => {
+            window.removeEventListener('focusin', handleFocusIn);
+            window.removeEventListener('focusout', handleFocusOut);
+        };
+    }, []);
+
+    // Active key mapping: security/support map to profile (الحساب)
+    const effectiveActiveKey =
+        current === 'security' || current === 'support' ? 'profile' : current;
+
+    // Filter to ensure strictly the 4 destinations
+    const bottomNavItems = items.filter((item) =>
+        ALLOWED_KEYS.includes(item.key),
+    );
+
     return (
         <nav
             aria-label={translations.label}
-            className="account-mobile-bottom-nav"
+            className={cn(
+                'account-mobile-bottom-nav',
+                isKeyboardOpen && 'account-mobile-bottom-nav--keyboard-open',
+            )}
         >
             <div className="account-mobile-bottom-nav__inner">
-                {items.map((item) => {
+                {bottomNavItems.map((item) => {
                     const Icon = destinationIcons[item.key] || LayoutDashboard;
-                    const selected = item.key === current;
+                    const selected = item.key === effectiveActiveKey;
 
                     return (
                         <Link
                             aria-current={selected ? 'page' : undefined}
-                            className={[
+                            className={cn(
                                 'account-mobile-bottom-nav__item',
-                                selected
-                                    ? 'account-mobile-bottom-nav__item--active'
-                                    : '',
-                            ]
-                                .filter(Boolean)
-                                .join(' ')}
+                                selected &&
+                                    'account-mobile-bottom-nav__item--active',
+                            )}
                             href={item.url}
                             key={item.key}
                         >

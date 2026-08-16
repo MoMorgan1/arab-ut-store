@@ -63,6 +63,11 @@ export type AccountTranslations = {
     eyebrow: string;
     greeting: string;
     introduction: string;
+    email_alert?: {
+        title: string;
+        desc: string;
+        action: string;
+    };
     navigation: {
         label: string;
         overview: string;
@@ -75,13 +80,16 @@ export type AccountTranslations = {
     };
     overview: {
         title: string;
+        subtitle?: string;
         description: string;
         orders_metric: string;
         open_orders_metric: string;
         completed_orders_metric: string;
         wallet_metric: string;
         active_order: string;
+        current_order?: string;
         recent_orders: string;
+        view_all?: string;
         loyalty: string;
         empty_title: string;
         empty_description: string;
@@ -147,6 +155,13 @@ export type AccountTranslations = {
     wallet: {
         title: string;
         description: string;
+        coming_soon?: string;
+        coming_soon_notice?: string;
+        page_coming_soon_title?: string;
+        page_coming_soon_desc?: string;
+        feature_balance?: string;
+        feature_refund?: string;
+        feature_checkout?: string;
         available_balance: string;
         unavailable_balance: string;
         loyalty_title: string;
@@ -341,9 +356,12 @@ export type AccountWalletEntry = {
     order: { number: string; url: string } | null;
 };
 
+export type WalletStatus = 'coming_soon' | 'active' | 'unavailable';
+
 export type AccountWalletPageProps = AccountPageShellProps & {
     wallet: {
         exists: boolean;
+        status?: WalletStatus;
         balance: AccountMoney | null;
         entries: AccountWalletEntry[];
         pagination: {

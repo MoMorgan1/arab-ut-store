@@ -1,5 +1,12 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowLeft, ArrowRight, Sparkles, Trophy } from 'lucide-react';
+import {
+    ArrowLeft,
+    ArrowRight,
+    ShieldAlert,
+    Sparkles,
+    Trophy,
+    WalletCards,
+} from 'lucide-react';
 
 import AccountMetric from '@/components/account/account-metric';
 import AccountOrderCard from '@/components/account/account-order-card';
@@ -14,39 +21,64 @@ export default function AccountOverview() {
     const numberFormatter = new Intl.NumberFormat(props.locale);
     const hasOrders = props.summary.orderCount > 0;
 
+    // Filter recent orders to ensure activeOrder is never duplicated
+    const visibleRecentOrders = props.recentOrders
+        .filter((order) => order.id !== props.activeOrder?.id)
+        .slice(0, 2);
+
+    const ordersUrl =
+        props.accountNavigation.find((n) => n.key === 'orders')?.url ??
+        (props.locale === 'en'
+            ? '/en/my-account/orders'
+            : '/my-account/orders');
+
+    const isActionNeeded =
+        props.activeOrder?.status === 'waiting_for_customer' ||
+        props.activeOrder?.status === 'failed' ||
+        props.activeOrder?.status === 'pending_payment';
+
+    const activeOrderHeading = isActionNeeded
+        ? props.accountUi.overview.active_order
+        : (props.accountUi.overview.current_order ??
+          props.accountUi.overview.active_order);
+
+    const isEmailUnverified = props.auth?.user?.email_verified_at === null;
+
     return (
         <MyAccountLayout {...props} current="overview" currentUrl={inertia.url}>
             <Head title={props.accountUi.page_title} />
             <div className="account-overview">
-                <header className="account-overview__intro">
-                    <div>
-                        <p>{props.accountUi.eyebrow}</p>
-                        <h2>{props.accountUi.overview.title}</h2>
-                        <span>{props.accountUi.overview.description}</span>
-                    </div>
-                    <Link
-                        className="account-overview__browse"
-                        href={props.storeShell.coinsUrl}
+                {isEmailUnverified && props.accountUi.email_alert ? (
+                    <aside
+                        aria-label={props.accountUi.email_alert.title}
+                        className="account-alert-banner"
                     >
-                        {props.accountUi.overview.browse_services}
-                        <Arrow aria-hidden="true" />
-                    </Link>
-                </header>
-
-                <section
-                    aria-labelledby="account-welcome-title"
-                    className="account-overview__welcome"
-                >
-                    <span aria-hidden="true">
-                        <Sparkles />
-                    </span>
-                    <div>
-                        <h3 id="account-welcome-title">
-                            {props.accountIdentity.greeting}
-                        </h3>
-                        <p>{props.accountUi.introduction}</p>
-                    </div>
-                </section>
+                        <div className="account-alert-banner__content">
+                            <span
+                                aria-hidden="true"
+                                className="account-alert-banner__icon"
+                            >
+                                <ShieldAlert />
+                            </span>
+                            <div>
+                                <strong>
+                                    {props.accountUi.email_alert.title}
+                                </strong>
+                                <p>{props.accountUi.email_alert.desc}</p>
+                            </div>
+                        </div>
+                        <Link
+                            className="account-alert-banner__action"
+                            href={
+                                props.locale === 'en'
+                                    ? '/en/verify-email'
+                                    : '/verify-email'
+                            }
+                        >
+                            {props.accountUi.email_alert.action}
+                        </Link>
+                    </aside>
+                ) : null}
 
                 {props.activeOrder === null ? null : (
                     <section
@@ -54,7 +86,7 @@ export default function AccountOverview() {
                         className="account-overview__section"
                     >
                         <h2 id="account-active-order-title">
-                            {props.accountUi.overview.active_order}
+                            {activeOrderHeading}
                         </h2>
                         <AccountOrderCard
                             locale={props.locale}
@@ -64,6 +96,66 @@ export default function AccountOverview() {
                         />
                     </section>
                 )}
+
+                {visibleRecentOrders.length > 0 ? (
+                    <section
+                        aria-labelledby="account-recent-orders-title"
+                        className="account-overview__section"
+                    >
+                        <div className="account-overview__section-heading">
+                            <h2 id="account-recent-orders-title">
+                                {props.accountUi.overview.recent_orders}
+                            </h2>
+                            <Link
+                                className="account-overview__view-all"
+                                href={ordersUrl}
+                            >
+                                {props.accountUi.overview.view_all ??
+                                    'عرض الكل'}
+                                <Arrow aria-hidden="true" />
+                            </Link>
+                        </div>
+                        <div className="account-overview__orders">
+                            {visibleRecentOrders.map((order) => (
+                                <AccountOrderCard
+                                    key={order.id}
+                                    locale={props.locale}
+                                    order={order}
+                                    translations={props.accountUi}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                ) : null}
+
+                <section
+                    aria-labelledby="account-wallet-overview-title"
+                    className="account-overview__wallet-card"
+                >
+                    <div className="account-overview__wallet-header">
+                        <div className="account-overview__wallet-info">
+                            <span
+                                aria-hidden="true"
+                                className="account-overview__wallet-icon"
+                            >
+                                <WalletCards />
+                            </span>
+                            <div>
+                                <h2 id="account-wallet-overview-title">
+                                    {props.accountUi.overview.wallet_metric}
+                                </h2>
+                                <p>
+                                    {props.accountUi.wallet
+                                        ?.coming_soon_notice ??
+                                        'ستظهر أرصدتك وعمليات الاسترداد هنا عند إطلاق المحفظة.'}
+                                </p>
+                            </div>
+                        </div>
+                        <span className="account-overview__coming-soon-badge">
+                            {props.accountUi.wallet?.coming_soon ?? 'قريبًا'}
+                        </span>
+                    </div>
+                </section>
 
                 <dl
                     aria-label={props.accountUi.overview.title}
@@ -93,7 +185,8 @@ export default function AccountOverview() {
                         label={props.accountUi.overview.wallet_metric}
                         value={
                             props.summary.walletBalance === null
-                                ? '—'
+                                ? (props.accountUi.wallet?.coming_soon ??
+                                  'قريبًا')
                                 : formatAccountMoney(
                                       props.summary.walletBalance,
                                       props.locale,
@@ -152,36 +245,22 @@ export default function AccountOverview() {
                     </section>
                 )}
 
-                {!hasOrders ? (
+                {!hasOrders && props.activeOrder === null ? (
                     <section className="account-overview__empty">
                         <span aria-hidden="true">
                             <Sparkles />
                         </span>
                         <h2>{props.accountUi.overview.empty_title}</h2>
                         <p>{props.accountUi.overview.empty_description}</p>
-                        <Link href={props.storeShell.coinsUrl}>
+                        <Link
+                            className="account-overview__empty-cta"
+                            href={props.storeShell.coinsUrl}
+                        >
                             {props.accountUi.overview.browse_services}
                             <Arrow aria-hidden="true" />
                         </Link>
                     </section>
-                ) : (
-                    <section
-                        aria-label={props.accountUi.overview.recent_orders}
-                        className="account-overview__section"
-                    >
-                        <h2>{props.accountUi.overview.recent_orders}</h2>
-                        <div className="account-overview__orders">
-                            {props.recentOrders.map((order) => (
-                                <AccountOrderCard
-                                    key={order.id}
-                                    locale={props.locale}
-                                    order={order}
-                                    translations={props.accountUi}
-                                />
-                            ))}
-                        </div>
-                    </section>
-                )}
+                ) : null}
             </div>
         </MyAccountLayout>
     );

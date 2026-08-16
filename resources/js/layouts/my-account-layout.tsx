@@ -16,6 +16,7 @@ type MyAccountLayoutProps = PropsWithChildren<
 >;
 
 export default function MyAccountLayout({
+    accountIdentity,
     accountNavigation,
     accountUi,
     cartCount,
@@ -30,6 +31,19 @@ export default function MyAccountLayout({
     storeShell,
     ui,
 }: MyAccountLayoutProps) {
+    const rawName = accountIdentity?.name?.trim() ?? '';
+    const firstName = rawName.split(/\s+/)[0] || '';
+    const initial =
+        (firstName
+            ? firstName.charAt(0)
+            : accountUi.page_title.charAt(0)
+        ).toUpperCase() || 'U';
+    const headingGreeting = firstName
+        ? locale === 'ar'
+            ? `أهلًا، ${firstName}`
+            : `Welcome, ${firstName}`
+        : accountUi.greeting.replace(':name', rawName || accountUi.page_title);
+
     return (
         <StoreLayout
             cartCount={cartCount}
@@ -42,20 +56,20 @@ export default function MyAccountLayout({
             ui={ui}
         >
             <article className="account-shell">
-                <header className="account-shell__hero">
-                    <div aria-hidden="true" className="account-shell__glow" />
-                    <div className="account-shell__container account-shell__hero-inner">
-                        <img
-                            alt=""
+                <header className="account-shell__header">
+                    <div className="account-shell__container account-shell__header-inner">
+                        <div
                             aria-hidden="true"
-                            height="72"
-                            src="/images/arabut-logo-header.webp"
-                            width="72"
-                        />
-                        <div>
-                            <p>{accountUi.eyebrow}</p>
-                            <h1>{accountUi.page_title}</h1>
-                            <span>{accountUi.introduction}</span>
+                            className="account-shell__avatar"
+                        >
+                            <span>{initial}</span>
+                        </div>
+                        <div className="account-shell__header-text">
+                            <h1>{headingGreeting}</h1>
+                            <p>
+                                {accountUi.overview?.subtitle ??
+                                    accountUi.introduction}
+                            </p>
                         </div>
                     </div>
                 </header>

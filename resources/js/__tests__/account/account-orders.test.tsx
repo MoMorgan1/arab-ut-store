@@ -87,7 +87,7 @@ it('renders canonical filters, safe order cards, and bounded pagination', () => 
     expect(
         within(filters).getByRole('link', { name: 'In progress' }),
     ).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByText('UT-00000001')).toBeVisible();
+    expect(screen.getByTitle('UT-00000001')).toBeVisible();
     expect(screen.getByText('FC 27 Coins service')).toBeVisible();
     expect(screen.getByRole('link', { name: /Next/ })).toHaveAttribute(
         'href',

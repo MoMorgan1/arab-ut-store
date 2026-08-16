@@ -208,13 +208,7 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
     render(<AccountOverview />);
 
     expect(
-        screen.getByRole('heading', { level: 1, name: 'حسابي' }),
-    ).toBeVisible();
-    expect(
-        screen.getByRole('heading', { level: 2, name: 'نظرة عامة' }),
-    ).toBeVisible();
-    expect(
-        screen.getByRole('heading', { level: 3, name: 'مرحبًا، محمد لاعب' }),
+        screen.getByRole('heading', { level: 1, name: 'أهلًا، محمد' }),
     ).toBeVisible();
     expect(
         screen.getAllByRole('navigation', { name: 'أقسام حسابي' })[0],
@@ -223,15 +217,15 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
         screen.getAllByRole('link', { name: 'نظرة عامة' })[0],
     ).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('button', { name: 'تسجيل الخروج' })).toBeVisible();
-    expect(screen.getByText('UT-10000001')).toBeVisible();
+    expect(screen.getByTitle('UT-10000001')).toBeVisible();
     expect(screen.getByText('خدمة كوينز FC 27')).toBeVisible();
-    expect(screen.getByText('رصيد المحفظة')).toBeVisible();
+    expect(screen.getAllByText('رصيد المحفظة')[0]).toBeVisible();
     expect(screen.getByText('تقدم الولاء')).toBeVisible();
     expect(screen.getByText('90%')).toBeVisible();
 
     const recentOrders = screen.getByRole('region', { name: 'أحدث الطلبات' });
 
-    expect(within(recentOrders).getByText('UT-10000000')).toBeVisible();
+    expect(within(recentOrders).getByTitle('UT-10000000')).toBeVisible();
     expect(within(recentOrders).getByText('خدمة SBC')).toBeVisible();
     expect(
         document.documentElement.querySelector('[lang="ar"]'),

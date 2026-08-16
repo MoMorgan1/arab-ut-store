@@ -21,93 +21,99 @@ export default function AccountWallet() {
                     <span>{props.accountUi.wallet.description}</span>
                 </header>
 
-                <section className="account-wallet-balance">
-                    <span aria-hidden="true">
-                        <WalletCards />
-                    </span>
-                    <div>
-                        <p>{props.accountUi.wallet.available_balance}</p>
-                        {props.wallet.balance === null ? (
-                            <h3>
-                                {props.accountUi.wallet.unavailable_balance}
-                            </h3>
-                        ) : (
-                            <h3>
-                                <bdi>
-                                    {formatAccountMoney(
-                                        props.wallet.balance,
-                                        props.locale,
-                                    )}
-                                </bdi>
-                            </h3>
-                        )}
-                    </div>
-                </section>
-
-                {props.loyalty === null ? null : (
-                    <section
-                        aria-labelledby="account-wallet-loyalty-title"
-                        className="account-wallet-loyalty"
-                    >
-                        <div>
-                            <span aria-hidden="true">
-                                <Sparkles />
-                            </span>
-                            <div>
-                                <h3 id="account-wallet-loyalty-title">
-                                    {props.accountUi.wallet.loyalty_title}
-                                </h3>
-                                <p>{props.loyalty.currentTier?.name ?? '—'}</p>
-                            </div>
-                            <strong>{props.loyalty.progressPercent}%</strong>
+                {props.wallet.status !== 'unavailable' &&
+                props.wallet.balance === null &&
+                props.wallet.entries.length === 0 ? (
+                    <section className="account-wallet-coming-soon">
+                        <div className="account-wallet-coming-soon__badge">
+                            {props.accountUi.wallet.coming_soon ?? 'قريبًا'}
                         </div>
-                        <div
-                            aria-valuemax={100}
-                            aria-valuemin={0}
-                            aria-valuenow={props.loyalty.progressPercent}
-                            className="account-overview__progress"
-                            role="progressbar"
+                        <span
+                            aria-hidden="true"
+                            className="account-wallet-coming-soon__icon"
                         >
-                            <span
-                                style={{
-                                    inlineSize: `${props.loyalty.progressPercent}%`,
-                                }}
-                            />
-                        </div>
-                        <p>
-                            {props.loyalty.nextTier === null ||
-                            props.loyalty.remaining === null
-                                ? props.accountUi.overview.loyalty_complete
-                                : props.accountUi.overview.loyalty_remaining
-                                      .replace(
-                                          ':amount',
-                                          formatAccountMoney(
-                                              props.loyalty.remaining,
-                                              props.locale,
-                                          ),
-                                      )
-                                      .replace(
-                                          ':tier',
-                                          props.loyalty.nextTier.name,
-                                      )}
-                        </p>
-                    </section>
-                )}
-
-                {props.wallet.entries.length === 0 ? (
-                    <section className="account-overview__empty">
-                        <span aria-hidden="true">
                             <WalletCards />
                         </span>
-                        <h2>{props.accountUi.wallet.empty_title}</h2>
-                        <p>{props.accountUi.wallet.empty_description}</p>
+                        <h2>
+                            {props.accountUi.wallet.page_coming_soon_title ??
+                                'محفظتك ستكون متاحة قريبًا'}
+                        </h2>
+                        <p>
+                            {props.accountUi.wallet.page_coming_soon_desc ??
+                                'ستتمكن من متابعة رصيدك وعمليات الإضافة والخصم والاسترداد من مكان واحد بعد إطلاق الخدمة.'}
+                        </p>
+                        <div className="account-wallet-coming-soon__features">
+                            <div className="account-wallet-coming-soon__feature">
+                                <Sparkles aria-hidden="true" />
+                                <span>
+                                    {props.accountUi.wallet.feature_balance ??
+                                        'رصيد فوري وسريع'}
+                                </span>
+                            </div>
+                            <div className="account-wallet-coming-soon__feature">
+                                <Sparkles aria-hidden="true" />
+                                <span>
+                                    {props.accountUi.wallet.feature_refund ??
+                                        'استرداد تلقائي للمحفظة'}
+                                </span>
+                            </div>
+                            <div className="account-wallet-coming-soon__feature">
+                                <Sparkles aria-hidden="true" />
+                                <span>
+                                    {props.accountUi.wallet.feature_checkout ??
+                                        'دفع مباشر بضغطة واحدة'}
+                                </span>
+                            </div>
+                        </div>
                     </section>
                 ) : (
-                    <WalletLedger
-                        entries={props.wallet.entries}
-                        locale={props.locale}
-                        translations={props.accountUi.wallet}
-                    />
+                    <>
+                        <section className="account-wallet-balance">
+                            <span aria-hidden="true">
+                                <WalletCards />
+                            </span>
+                            <div>
+                                <p>
+                                    {props.accountUi.wallet.available_balance}
+                                </p>
+                                {props.wallet.balance === null ? (
+                                    <h3>
+                                        {
+                                            props.accountUi.wallet
+                                                .unavailable_balance
+                                        }
+                                    </h3>
+                                ) : (
+                                    <h3>
+                                        <bdi>
+                                            {formatAccountMoney(
+                                                props.wallet.balance,
+                                                props.locale,
+                                            )}
+                                        </bdi>
+                                    </h3>
+                                )}
+                            </div>
+                        </section>
+
+                        {props.wallet.entries.length === 0 ? (
+                            <section className="account-overview__empty">
+                                <span aria-hidden="true">
+                                    <WalletCards />
+                                </span>
+                                <h2>{props.accountUi.wallet.empty_title}</h2>
+                                <p>
+                                    {props.accountUi.wallet.empty_description}
+                                </p>
+                            </section>
+                        ) : (
+                            <WalletLedger
+                                entries={props.wallet.entries}
+                                locale={props.locale}
+                                translations={props.accountUi.wallet}
+                            />
+                        )}
+                    </>
                 )}
 
                 {props.wallet.pagination.lastPage > 1 ? (

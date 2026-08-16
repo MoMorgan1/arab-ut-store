@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import { ArrowLeft, ArrowRight, CalendarDays } from 'lucide-react';
 
 import { formatAccountMoney } from '@/lib/account-money';
+import { cn } from '@/lib/utils';
 import type {
     AccountOrder,
     AccountOrderAction,
@@ -32,10 +33,17 @@ export default function AccountOrderCard({
     const date = new Intl.DateTimeFormat(locale === 'ar' ? 'ar-SA' : 'en-GB', {
         dateStyle: 'medium',
     }).format(new Date(order.placedAt));
+    const displayNumber =
+        order.number.startsWith('UT-') && order.number.length > 8
+            ? `#${order.number.slice(-6)}`
+            : order.number;
 
     return (
         <article
-            className={`account-order-card${prominent ? 'account-order-card--prominent' : ''}`}
+            className={cn(
+                'account-order-card',
+                prominent && 'account-order-card--prominent',
+            )}
         >
             <div className="account-order-card__topline">
                 <span
@@ -52,8 +60,11 @@ export default function AccountOrderCard({
             </div>
             <div className="account-order-card__body">
                 <div>
-                    <bdi className="account-order-card__number">
-                        {order.number}
+                    <bdi
+                        className="account-order-card__number"
+                        title={order.number}
+                    >
+                        {displayNumber}
                     </bdi>
                     <h3>{order.summary}</h3>
                 </div>

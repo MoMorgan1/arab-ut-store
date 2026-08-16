@@ -53,17 +53,34 @@ it('renders exact balance, typed text semantics, order context, and bounded pagi
     );
 });
 
-it('distinguishes an unavailable wallet from a zero balance with no activity', () => {
+it('distinguishes coming-soon, unavailable, and active zero balance states', () => {
     page.props = {
         ...walletProps(),
         wallet: {
             exists: false,
+            status: 'coming_soon',
             balance: null,
             entries: [],
             pagination: pagination(0),
         },
     };
     const { rerender } = render(<AccountWallet />);
+
+    expect(
+        screen.getByText('Your wallet will be available soon'),
+    ).toBeVisible();
+
+    page.props = {
+        ...walletProps(),
+        wallet: {
+            exists: false,
+            status: 'unavailable',
+            balance: null,
+            entries: [],
+            pagination: pagination(0),
+        },
+    };
+    rerender(<AccountWallet />);
 
     expect(screen.getByText('Wallet is not active yet')).toBeVisible();
     expect(screen.getByText('No wallet activity yet')).toBeVisible();
@@ -72,6 +89,7 @@ it('distinguishes an unavailable wallet from a zero balance with no activity', (
         ...walletProps(),
         wallet: {
             exists: true,
+            status: 'active',
             balance: { amountMinor: '0', currency: 'SAR' },
             entries: [],
             pagination: pagination(0),
@@ -93,6 +111,13 @@ function walletProps() {
             wallet: {
                 title: 'Wallet',
                 description: 'Your balance and verified wallet activity.',
+                coming_soon: 'Coming soon',
+                page_coming_soon_title: 'Your wallet will be available soon',
+                page_coming_soon_desc:
+                    'You will be able to track your balance in one place.',
+                feature_balance: 'Instant balance',
+                feature_refund: 'Automatic refund',
+                feature_checkout: 'Direct checkout',
                 available_balance: 'Available balance',
                 unavailable_balance: 'Wallet is not active yet',
                 loyalty_title: 'Loyalty programme',
