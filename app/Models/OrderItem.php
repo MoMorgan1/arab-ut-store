@@ -51,6 +51,12 @@ class OrderItem extends DomainModel
         return $this->hasOne(OrderItemSecret::class);
     }
 
+    /** @return HasOne<FulfillmentAttachment, $this> */
+    public function squadImage(): HasOne
+    {
+        return $this->hasOne(FulfillmentAttachment::class)->where('kind', 'squad_image');
+    }
+
     /** @return HasOne<FulfillmentJob, $this> */
     public function fulfillmentJob(): HasOne
     {

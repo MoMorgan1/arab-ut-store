@@ -40,4 +40,10 @@ class CartItem extends DomainModel
     {
         return $this->hasOne(CartItemSecret::class);
     }
+
+    /** @return HasOne<FulfillmentAttachment, $this> */
+    public function squadImage(): HasOne
+    {
+        return $this->hasOne(FulfillmentAttachment::class)->where('kind', 'squad_image');
+    }
 }

@@ -30,7 +30,7 @@ const DOMAIN_TABLES = [
     'catalog_sync_runs', 'catalog_sync_items', 'price_rules', 'price_runs', 'price_proposals', 'price_history',
     'carts', 'cart_items', 'coupons', 'coupon_redemptions', 'orders', 'order_items', 'order_discounts',
     'payments', 'refunds', 'wallet_accounts', 'wallet_entries', 'loyalty_tiers', 'order_status_history', 'receipts',
-    'order_item_secrets', 'secret_access_logs', 'fulfillment_jobs', 'fulfillment_attempts',
+    'order_item_secrets', 'secret_access_logs', 'fulfillment_jobs', 'fulfillment_attempts', 'fulfillment_attachments',
     'integration_events', 'notification_deliveries', 'idempotency_keys',
     'reviews', 'faq_entries', 'exchange_rates',
 ];
