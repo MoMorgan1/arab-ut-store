@@ -1,6 +1,6 @@
 # FUT Champions and Rivals Service Configurators Design
 
-**Status:** In-chat design approved by Mohamed on 2026-08-16; written review pending
+**Status:** Approved by Mohamed on 2026-08-16
 
 **Complexity:** Medium
 
@@ -239,7 +239,7 @@ No new SaaS account, runtime dependency, payment credential, or n8n change is re
 
 The feature is not released merely because the pages render. Release requires focused and full automated gates, production build, migration lifecycle verification, bilingual browser acceptance, and a controlled low-value checkout rehearsal.
 
-The present slice has no operator-facing order view because both the admin interface and the new n8n handling are explicitly deferred. The service schedules therefore remain unavailable for real production purchases by default even though the pages, APIs, cart, checkout, and owner order view are complete and testable. A later approved operator-access slice must provide either the admin order UI or the n8n delivery path before Mohamed enables live FUT or Rivals ordering. This prevents the storefront from accepting a paid manual-service order that Mohamed cannot retrieve and fulfill.
+The services are enabled for real production purchases when this slice passes its release gate. Mohamed explicitly accepted operating FUT and Rivals through the same current interim process used for Coins until the next admin-interface slice is delivered. The absence of the future admin page and new n8n handling does not hold these storefront services closed.
 
 ## Deferred work
 
