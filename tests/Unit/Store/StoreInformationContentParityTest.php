@@ -58,16 +58,15 @@ test('English warranty retains the approved periods exclusions and compensation 
         ->toContain('not covered by compensation');
 });
 
-test('English terms retain the approved company age liability and governing law clauses', function () {
+test('English terms retain the approved store age liability and freelance certificate clauses', function () {
     $text = informationPageText(informationPages('en')['pages']['terms']);
 
     expect($text)
-        ->toContain('Ultimate Digital Services FZE')
+        ->toContain('Arab UT Store')
+        ->toContain('FL-621205220')
         ->toContain('16')
         ->toContain('indirect, incidental, or consequential damages')
-        ->toContain('does not exceed the amount actually paid for the order')
-        ->toContain('United Arab Emirates')
-        ->toContain('Sharjah');
+        ->toContain('does not exceed the amount actually paid for the order');
 });
 
 test('privacy truthfully documents the approved EA credential retention in both locales', function () {

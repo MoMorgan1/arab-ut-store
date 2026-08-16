@@ -37,7 +37,7 @@ return [
         'returns' => 'سياسة الاسترجاع',
         'warranty' => 'سياسة الضمان والتعويض',
         'ea_backup_codes' => 'أكواد EA الاحتياطية',
-        'terms' => 'شروط الخدمة',
+        'terms' => 'الشروط والأحكام',
         'customer_service' => 'خدمة العملاء',
         'whatsapp' => 'واتساب',
         'payment_methods' => 'طرق الدفع عند الإطلاق',

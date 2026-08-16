@@ -37,7 +37,7 @@ return [
         'returns' => 'Returns Policy',
         'warranty' => 'Warranty and Compensation',
         'ea_backup_codes' => 'EA Backup Codes',
-        'terms' => 'Terms of Service',
+        'terms' => 'Terms and Conditions',
         'customer_service' => 'Customer service',
         'whatsapp' => 'WhatsApp',
         'payment_methods' => 'Payment methods at launch',

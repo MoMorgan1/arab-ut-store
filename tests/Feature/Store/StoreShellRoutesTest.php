@@ -59,8 +59,8 @@ test('every non-transactional storefront destination has the right bilingual pag
     'English warranty' => ['/en/warranty', 'en', 'warranty', 'Warranty and Compensation', 'Warranty and Compensation', '1. Warranty Conditions'],
     'EA codes' => ['/ea-backup-codes', 'ar', 'ea_backup_codes', 'أكواد EA الاحتياطية', 'أكواد EA الاحتياطية', 'طريقة عرض الأكواد'],
     'English EA codes' => ['/en/ea-backup-codes', 'en', 'ea_backup_codes', 'EA Backup Codes', 'EA Backup Codes', 'How to view your codes'],
-    'terms' => ['/terms', 'ar', 'terms', 'شروط الخدمة', 'شروط الخدمة', '١. قبول الشروط'],
-    'English terms' => ['/en/terms', 'en', 'terms', 'Terms of Service', 'Terms of Service', '1. Acceptance of Terms'],
+    'terms' => ['/terms', 'ar', 'terms', 'الشروط والأحكام', 'الشروط والأحكام', '١. قبول الشروط والأحكام'],
+    'English terms' => ['/en/terms', 'en', 'terms', 'Terms and Conditions', 'Terms and Conditions', '1. Acceptance of Terms'],
 ]);
 
 test('the cart destinations render the real safe cart page', function (string $path, string $locale) {
