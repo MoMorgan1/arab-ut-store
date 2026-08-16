@@ -129,10 +129,17 @@ export type StoreCartConfiguration = Partial<{
     coins_quantity: number;
     delivery: 'normal' | 'fast' | null;
     market: 'console' | 'pc';
+    matches_played: number;
+    pc_launcher: 'ea_app' | 'steam';
     platform: 'playstation' | 'pc';
     price_version: number;
     quoted_at: string;
+    schedule_version: number;
     service_type: 'coins' | 'sbc' | 'objectives' | 'rivals' | 'fut_champions';
+    target_rank: number;
+    urgent: boolean;
+    from_division: '7' | '6' | '5' | '4' | '3' | '2' | '1' | 'elite';
+    to_division: '7' | '6' | '5' | '4' | '3' | '2' | '1' | 'elite';
 }>;
 
 export type StoreCartItem = {
@@ -141,8 +148,12 @@ export type StoreCartItem = {
         backupCodeCount: 3;
         hasPassword: true;
     } | null;
-    credentialsUrl: string;
+    credentialsUrl: string | null;
     deleteUrl: string;
+    fulfillment?: {
+        credentialsReady: boolean;
+        squadImagePresent: boolean;
+    } | null;
     id: string;
     product: {
         imageUrl: string | null;
@@ -172,18 +183,34 @@ export type StoreCartTranslations = {
     coins_service: string;
     platform: string;
     platform_playstation: string;
+    platform_playstation_manual: string;
     platform_pc: string;
+    launcher: string;
+    launcher_ea_app: string;
+    launcher_steam: string;
     delivery: string;
     delivery_normal: string;
     delivery_fast: string;
     delivery_pc: string;
     quantity: string;
     completions: string;
+    rank: string;
+    rank_value: string;
+    urgent: string;
+    urgent_yes: string;
+    urgent_no: string;
+    matches_played: string;
+    from_division: string;
+    to_division: string;
+    division_elite: string;
     coins_unit: string;
     total: string;
     credentials: string;
     credentials_ready: string;
     credentials_missing: string;
+    account_details_ready: string;
+    squad_image_ready: string;
+    fulfillment_missing: string;
     backup_codes: string;
     backup_code: string;
     ea_email: string;

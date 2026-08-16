@@ -6,6 +6,7 @@ use App\Models\ServicePriceSchedule;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     Storage::fake('local');
@@ -158,4 +159,31 @@ it('supports the localized Rivals multipart endpoint', function () {
     ])->post('/en/cart/items/rivals', validRivalsCartPayload())
         ->assertCreated()
         ->assertJsonPath('data.cartUrl', '/en/cart');
+});
+
+it('projects only a safe immutable Rivals route into the cart', function () {
+    postRivalsCart(validRivalsCartPayload([
+        'currentDivision' => '5',
+        'targetDivision' => 'elite',
+    ]), 'safe-rivals-projection')->assertCreated();
+
+    $response = $this->get('/cart')->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('cart.items.0.configuration.service_type', 'rivals')
+        ->where('cart.items.0.configuration.from_division', '5')
+        ->where('cart.items.0.configuration.to_division', 'elite')
+        ->where('cart.items.0.configuration.schedule_version', 1)
+        ->where('cart.items.0.fulfillment.credentialsReady', true)
+        ->where('cart.items.0.fulfillment.squadImagePresent', true)
+        ->where('cart.items.0.credentials', null)
+        ->where('cart.items.0.credentialsUrl', null)
+        ->missing('cart.items.0.configuration.urgent'));
+
+    expect(strtolower($response->getContent()))->not->toContain(
+        'player@example.com',
+        'ps secret',
+        '12345678',
+        'a1b2c3',
+        'fulfillment/squad-images',
+    );
 });

@@ -2,12 +2,15 @@
 
 use App\Enums\ServiceType;
 use App\Models\CartItem;
+use App\Models\CartItemSecret;
+use App\Models\FulfillmentAttachment;
 use App\Models\ServicePriceSchedule;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     Storage::fake('local');
@@ -198,4 +201,56 @@ it('stores FUT secrets only as ciphertext', function () {
     $ciphertext = (string) DB::table('cart_item_secrets')->value('encrypted_payload');
 
     expect($ciphertext)->not->toContain('player@example.com', 'PS Secret', '12345678', 'A1B2C3');
+});
+
+it('projects only a safe immutable FUT summary into the cart', function () {
+    postFutCart(validFutCartPayload([
+        'platform' => 'pc',
+        'pcStore' => 'steam',
+        'rank' => 3,
+        'urgent' => true,
+        'matchesPlayed' => 4,
+        'credentials' => futCartCredentials('pc', 'steam'),
+    ]), 'safe-fut-projection')->assertCreated();
+
+    $response = $this->get('/en/cart')->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('cart.items.0.configuration.service_type', 'fut_champions')
+        ->where('cart.items.0.configuration.platform', 'pc')
+        ->where('cart.items.0.configuration.pc_launcher', 'steam')
+        ->where('cart.items.0.configuration.target_rank', 3)
+        ->where('cart.items.0.configuration.urgent', true)
+        ->where('cart.items.0.configuration.matches_played', 4)
+        ->where('cart.items.0.configuration.schedule_version', 1)
+        ->where('cart.items.0.fulfillment.credentialsReady', true)
+        ->where('cart.items.0.fulfillment.squadImagePresent', true)
+        ->where('cart.items.0.credentials', null)
+        ->where('cart.items.0.credentialsUrl', null));
+
+    $serialized = strtolower($response->getContent());
+    expect($serialized)->not->toContain(
+        'player@example.com',
+        'ea secret',
+        'steam secret',
+        '12345678',
+        'fulfillment/squad-images',
+    );
+});
+
+it('removes FUT secrets and the private squad image with the owned cart line', function () {
+    postFutCart(validFutCartPayload(), 'delete-fut-fulfillment')->assertCreated();
+
+    $item = CartItem::query()->sole();
+    $attachment = FulfillmentAttachment::query()->sole();
+    $path = $attachment->path;
+    Storage::disk('local')->assertExists($path);
+
+    $this->deleteJson('/cart/items/'.$item->public_id)
+        ->assertOk()
+        ->assertJsonPath('data.cartCount', 0);
+
+    expect(CartItem::query()->count())->toBe(0)
+        ->and(CartItemSecret::query()->count())->toBe(0)
+        ->and(FulfillmentAttachment::query()->count())->toBe(0);
+    Storage::disk('local')->assertMissing($path);
 });

@@ -30,7 +30,7 @@ final class CartController extends Controller
         $localized = $request->route('locale') === 'en';
         $activeCart = Cart::query()
             ->activeForOwner($resolveCartOwner->forRequest($request))
-            ->with(['items.secret', 'items.productVariant.product.media'])
+            ->with(['items.secret', 'items.squadImage', 'items.productVariant.product.media'])
             ->first();
         $safeCartItems = $activeCart?->items
             ->map(fn (CartItem $cartItem): array => $this->safeCartItem($cartItem, $localized))
@@ -79,7 +79,13 @@ final class CartController extends Controller
     /** @return array<string, mixed> */
     private function safeCartItem(CartItem $cartItem, bool $localized): array
     {
-        $credentials = $this->safeCredentials($cartItem->secret);
+        $serviceType = $cartItem->productVariant->service_type;
+        $isManualService = in_array($serviceType, [
+            ServiceType::FutChampions,
+            ServiceType::Rivals,
+        ], true);
+        $credentials = $isManualService ? null : $this->safeCredentials($cartItem->secret);
+        $fulfillment = $isManualService ? $this->safeManualFulfillment($cartItem) : null;
 
         return [
             'id' => $cartItem->public_id,
@@ -89,9 +95,47 @@ final class CartController extends Controller
             'configuration' => $this->safeConfiguration($cartItem->configuration),
             'product' => $this->safeProduct($cartItem->productVariant),
             'credentials' => $credentials,
-            'credentialsUrl' => $this->credentialsUrl($cartItem, $localized),
+            'credentialsUrl' => $isManualService ? null : $this->credentialsUrl($cartItem, $localized),
             'deleteUrl' => $this->deleteUrl($cartItem, $localized),
-            'requiresCredentials' => $credentials === null,
+            'fulfillment' => $fulfillment,
+            'requiresCredentials' => $isManualService
+                ? ! $fulfillment['credentialsReady']
+                : $credentials === null,
+        ];
+    }
+
+    /** @return array{credentialsReady: bool, squadImagePresent: bool} */
+    private function safeManualFulfillment(CartItem $cartItem): array
+    {
+        $secret = $cartItem->secret;
+        $summary = $secret?->masked_summary;
+        $configuration = $cartItem->configuration ?? [];
+        $platform = $configuration['platform'] ?? null;
+        $store = $configuration['pc_store'] ?? null;
+
+        $credentialsReady = $secret instanceof CartItemSecret
+            && $secret->getRawOriginal('encrypted_payload') !== null
+            && $secret->getAttribute('deleted_at') === null
+            && is_array($summary)
+            && ($summary['platform'] ?? null) === $platform
+            && ($summary['pc_store'] ?? null) === $store
+            && ($summary['ea_backup_code_count'] ?? null) === 3;
+
+        if ($credentialsReady && $platform === Platform::PlayStation->value) {
+            $credentialsReady = ($summary['has_playstation_password'] ?? null) === true
+                && ($summary['playstation_backup_code_count'] ?? null) === 3
+                && ($summary['has_ea_password'] ?? null) === false;
+        } elseif ($credentialsReady && $platform === Platform::Pc->value) {
+            $credentialsReady = ($summary['has_ea_password'] ?? null) === true
+                && ($summary['playstation_backup_code_count'] ?? null) === 0
+                && ($store !== 'steam' || ($summary['has_steam_password'] ?? null) === true);
+        } else {
+            $credentialsReady = false;
+        }
+
+        return [
+            'credentialsReady' => $credentialsReady,
+            'squadImagePresent' => $cartItem->squadImage !== null,
         ];
     }
 
@@ -194,7 +238,7 @@ final class CartController extends Controller
 
     /**
      * @param  array<string, mixed>|null  $configuration
-     * @return array<string, int|string|null>
+     * @return array<string, bool|int|string|null>
      */
     private function safeConfiguration(?array $configuration): array
     {
@@ -209,9 +253,72 @@ final class CartController extends Controller
             ...$this->safeEnumField($configuration, 'delivery', DeliveryMode::cases()),
             ...$this->safeCoinsQuantity($configuration),
             ...$this->safeCompletionCount($configuration),
+            ...$this->safeManualServiceConfiguration($configuration),
             ...$this->safeQuotedAt($configuration),
             ...$this->safePriceVersion($configuration),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @return array<string, bool|int|string>
+     */
+    private function safeManualServiceConfiguration(array $configuration): array
+    {
+        $serviceType = $configuration['service_type'] ?? null;
+
+        if (! in_array($serviceType, [
+            ServiceType::FutChampions->value,
+            ServiceType::Rivals->value,
+        ], true)) {
+            return [];
+        }
+
+        $safe = [];
+        $launcher = $configuration['pc_store'] ?? null;
+        $scheduleVersion = $configuration['schedule_version'] ?? null;
+
+        if (in_array($launcher, ['ea_app', 'steam'], true)) {
+            $safe['pc_launcher'] = $launcher;
+        }
+
+        if (is_int($scheduleVersion) && $scheduleVersion > 0) {
+            $safe['schedule_version'] = $scheduleVersion;
+        }
+
+        if ($serviceType === ServiceType::FutChampions->value) {
+            $rank = $configuration['rank'] ?? null;
+            $urgent = $configuration['urgent'] ?? null;
+            $matchesPlayed = $configuration['matches_played'] ?? null;
+
+            if (is_int($rank) && $rank >= 1 && $rank <= 6) {
+                $safe['target_rank'] = $rank;
+            }
+
+            if (is_bool($urgent)) {
+                $safe['urgent'] = $urgent;
+            }
+
+            if (is_int($matchesPlayed) && $matchesPlayed >= 0 && $matchesPlayed <= 100) {
+                $safe['matches_played'] = $matchesPlayed;
+            }
+
+            return $safe;
+        }
+
+        $divisions = ['7', '6', '5', '4', '3', '2', '1', 'elite'];
+        $from = $configuration['current_division'] ?? null;
+        $to = $configuration['target_division'] ?? null;
+
+        if (is_string($from) && in_array($from, $divisions, true)) {
+            $safe['from_division'] = $from;
+        }
+
+        if (is_string($to) && in_array($to, $divisions, true)) {
+            $safe['to_division'] = $to;
+        }
+
+        return $safe;
     }
 
     /**

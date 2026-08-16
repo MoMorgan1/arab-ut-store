@@ -1,6 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 import {
     ChevronDown,
+    CheckCircle2,
     CreditCard,
     ShoppingBag,
     ShieldCheck,
@@ -518,11 +519,16 @@ function CartLine({
     >('idle');
     const configuration = cartItem.configuration;
     const isCoins = cartItem.product.serviceType === 'coins';
+    const isFutChampions = cartItem.product.serviceType === 'fut_champions';
+    const isRivals = cartItem.product.serviceType === 'rivals';
+    const isManualService = isFutChampions || isRivals;
     const platform =
         configuration.platform === 'pc'
             ? translations.platform_pc
             : configuration.platform === 'playstation'
-              ? translations.platform_playstation
+              ? isManualService
+                  ? translations.platform_playstation_manual
+                  : translations.platform_playstation
               : '—';
     const delivery =
         configuration.platform === 'pc' && configuration.delivery === null
@@ -619,6 +625,67 @@ function CartLine({
                         )}
                     />
                 ) : null}
+                {isManualService && configuration.pc_launcher !== undefined ? (
+                    <CartFact
+                        label={translations.launcher}
+                        value={
+                            configuration.pc_launcher === 'steam'
+                                ? translations.launcher_steam
+                                : translations.launcher_ea_app
+                        }
+                    />
+                ) : null}
+                {isFutChampions && configuration.target_rank !== undefined ? (
+                    <CartFact
+                        label={translations.rank}
+                        value={interpolate(translations.rank_value, {
+                            rank: formatInteger(
+                                configuration.target_rank,
+                                locale,
+                            ),
+                        })}
+                    />
+                ) : null}
+                {isFutChampions && configuration.urgent !== undefined ? (
+                    <CartFact
+                        label={translations.urgent}
+                        value={
+                            configuration.urgent
+                                ? translations.urgent_yes
+                                : translations.urgent_no
+                        }
+                    />
+                ) : null}
+                {isFutChampions &&
+                configuration.matches_played !== undefined ? (
+                    <CartFact
+                        label={translations.matches_played}
+                        value={formatInteger(
+                            configuration.matches_played,
+                            locale,
+                        )}
+                    />
+                ) : null}
+                {isRivals && configuration.from_division !== undefined ? (
+                    <CartFact
+                        label={translations.from_division}
+                        value={divisionLabel(
+                            configuration.from_division,
+                            locale,
+                            translations,
+                        )}
+                    />
+                ) : null}
+                {isRivals && configuration.to_division !== undefined ? (
+                    <CartFact
+                        label={translations.to_division}
+                        value={divisionLabel(
+                            configuration.to_division,
+                            locale,
+                            translations,
+                        )}
+                    />
+                ) : null}
                 <CartFact
                     emphasized
                     label={translations.total}
@@ -629,12 +696,63 @@ function CartLine({
                     )}
                 />
             </dl>
-            <CredentialState
-                cartItem={cartItem}
-                locale={locale}
-                translations={translations}
-            />
+            {isManualService ? (
+                <ManualFulfillmentState
+                    fulfillment={cartItem.fulfillment ?? null}
+                    translations={translations}
+                />
+            ) : (
+                <CredentialState
+                    cartItem={cartItem}
+                    locale={locale}
+                    translations={translations}
+                />
+            )}
         </li>
+    );
+}
+
+function divisionLabel(
+    division: NonNullable<StoreCartItem['configuration']['from_division']>,
+    locale: 'ar' | 'en',
+    translations: StoreCartTranslations,
+): string {
+    return division === 'elite'
+        ? translations.division_elite
+        : formatInteger(Number(division), locale);
+}
+
+function ManualFulfillmentState({
+    fulfillment,
+    translations,
+}: {
+    fulfillment: StoreCartItem['fulfillment'];
+    translations: StoreCartTranslations;
+}) {
+    if (
+        fulfillment === null ||
+        fulfillment === undefined ||
+        !fulfillment.credentialsReady ||
+        !fulfillment.squadImagePresent
+    ) {
+        return (
+            <p className="store-cart-credentials store-cart-credentials--missing">
+                {translations.fulfillment_missing}
+            </p>
+        );
+    }
+
+    return (
+        <div className="store-cart-fulfillment" role="status">
+            <span>
+                <CheckCircle2 aria-hidden="true" />
+                {translations.account_details_ready}
+            </span>
+            <span>
+                <CheckCircle2 aria-hidden="true" />
+                {translations.squad_image_ready}
+            </span>
+        </div>
     );
 }
 
@@ -662,7 +780,8 @@ function CredentialState({
         if (
             !expanded ||
             cartItem.requiresCredentials ||
-            cartItem.credentials === null
+            cartItem.credentials === null ||
+            cartItem.credentialsUrl === null
         ) {
             return;
         }
@@ -804,7 +923,12 @@ function CredentialState({
     }
 
     async function save() {
-        if (draft === null || saving || !draftIsValid) {
+        if (
+            draft === null ||
+            saving ||
+            !draftIsValid ||
+            cartItem.credentialsUrl === null
+        ) {
             return;
         }
 

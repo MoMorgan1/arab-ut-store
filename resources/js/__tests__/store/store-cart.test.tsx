@@ -10,7 +10,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type * as CheckoutPhoneApi from '@/lib/checkout-phone-api';
 import type * as PaylinkCheckoutApi from '@/lib/paylink-checkout-api';
 import StoreCart from '@/pages/store/cart';
-import type { StoreCartConfiguration } from '@/types/store-shell';
+import type {
+    StoreCartConfiguration,
+    StoreCartItem,
+} from '@/types/store-shell';
 
 const navigateToHostedPayment = vi.hoisted(() => vi.fn());
 const navigateToOrder = vi.hoisted(() => vi.fn());
@@ -223,6 +226,31 @@ const validConfiguration: StoreCartConfiguration = {
 };
 const defaultCartItem = mockPage.props.cart.items[0];
 
+const manualFutCartItem = {
+    ...defaultCartItem,
+    configuration: {
+        market: 'pc',
+        matches_played: 4,
+        pc_launcher: 'steam',
+        platform: 'pc',
+        schedule_version: 1,
+        service_type: 'fut_champions',
+        target_rank: 3,
+        urgent: true,
+    },
+    credentials: null,
+    credentialsUrl: null,
+    fulfillment: { credentialsReady: true, squadImagePresent: true },
+    product: {
+        imageUrl: '/images/store/navigation/logo-champions-80.webp',
+        name: 'FUT Champions service',
+        serviceType: 'fut_champions',
+    },
+    requiresCredentials: false,
+    totalHalalah: 21_000,
+    unitPriceHalalah: 21_000,
+} as StoreCartItem;
+
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
     usePage: () => mockPage,
@@ -275,6 +303,43 @@ it('renders only the authoritative read-only Coins cart summary', () => {
     ).toBeVisible();
     expect(screen.getByText('Order summary')).toBeVisible();
     expect(screen.getByText('Your services')).toBeVisible();
+});
+
+it('renders an immutable FUT summary with fulfillment readiness and no credential edit action', () => {
+    Object.assign(mockPage.props.cartPage.translations, {
+        account_details_ready: 'Account details stored securely',
+        division_elite: 'Elite',
+        from_division: 'From division',
+        launcher: 'Launcher',
+        launcher_ea_app: 'EA app',
+        launcher_steam: 'Steam',
+        matches_played: 'Matches already played',
+        rank: 'Target rank',
+        rank_value: 'Rank :rank',
+        squad_image_ready: 'Squad image attached',
+        to_division: 'To division',
+        urgent: 'Urgent service',
+        urgent_yes: 'Yes — 24–36 hours',
+    });
+    mockPage.props.cart.items = [
+        manualFutCartItem,
+    ] as typeof mockPage.props.cart.items;
+
+    render(<StoreCart />);
+
+    expect(screen.getByText('FUT Champions service')).toBeVisible();
+    expect(screen.getByText('Steam')).toBeVisible();
+    expect(screen.getByText('Rank 3')).toBeVisible();
+    expect(screen.getByText('Yes — 24–36 hours')).toBeVisible();
+    expect(screen.getByText('4')).toBeVisible();
+    expect(screen.getByText('Account details stored securely')).toBeVisible();
+    expect(screen.getByText('Squad image attached')).toBeVisible();
+    expect(
+        screen.queryByRole('button', { name: 'Edit EA details' }),
+    ).not.toBeInTheDocument();
+    expect(
+        screen.queryByRole('button', { name: 'Show EA details' }),
+    ).not.toBeInTheDocument();
 });
 
 it('offers the Coins route from a purposeful empty state without a back link', () => {
