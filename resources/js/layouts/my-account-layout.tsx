@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from 'react';
 
+import AccountMobileBottomNav from '@/components/account/account-mobile-bottom-nav';
 import AccountNavigation from '@/components/account/account-navigation';
 import StoreLayout from '@/layouts/store-layout';
 import type {
@@ -69,6 +70,11 @@ export default function MyAccountLayout({
                     </aside>
                     <div className="account-shell__content">{children}</div>
                 </div>
+                <AccountMobileBottomNav
+                    current={current}
+                    items={accountNavigation}
+                    translations={accountUi.navigation}
+                />
             </article>
         </StoreLayout>
     );

@@ -13,7 +13,7 @@ const mockPage = vi.hoisted(() => ({
     props: {
         accountUi: {
             page_title: 'حسابي',
-            eyebrow: 'حساب عرب ألتميت',
+            eyebrow: 'حساب عرب التيميت',
             greeting: 'مرحبًا، :name',
             introduction: 'تابع طلباتك ورصيدك وبيانات حسابك من مكان واحد.',
             navigation: {
@@ -217,9 +217,9 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
         screen.getByRole('heading', { level: 3, name: 'مرحبًا، محمد لاعب' }),
     ).toBeVisible();
     expect(
-        screen.getByRole('navigation', { name: 'أقسام حسابي' }),
+        screen.getAllByRole('navigation', { name: 'أقسام حسابي' })[0],
     ).toBeVisible();
-    expect(screen.getByRole('link', { name: 'نظرة عامة' })).toHaveAttribute(
+    expect(screen.getAllByRole('link', { name: 'نظرة عامة' })[0]).toHaveAttribute(
         'aria-current',
         'page',
     );

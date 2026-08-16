@@ -2,7 +2,7 @@
 
 return [
     'page_title' => 'حسابي',
-    'eyebrow' => 'حساب عرب ألتميت',
+    'eyebrow' => 'حساب عرب التيميت',
     'greeting' => 'مرحبًا، :name',
     'introduction' => 'تابع طلباتك ورصيدك وبيانات حسابك من مكان واحد.',
     'navigation' => [
