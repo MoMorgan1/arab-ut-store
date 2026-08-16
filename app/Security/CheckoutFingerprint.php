@@ -23,6 +23,9 @@ final class CheckoutFingerprint
                 'updated_at' => $item->updated_at?->toISOString(),
                 'secret_public_id' => $item->secret?->public_id,
                 'secret_updated_at' => $item->secret?->updated_at?->toISOString(),
+                'attachment_public_id' => $item->squadImage?->public_id,
+                'attachment_sha256' => $item->squadImage?->sha256,
+                'attachment_updated_at' => $item->squadImage?->updated_at?->toISOString(),
             ])
             ->values()
             ->all();
