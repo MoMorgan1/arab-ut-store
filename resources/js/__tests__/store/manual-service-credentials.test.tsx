@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    within,
+} from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, expect, it } from 'vitest';
 
@@ -42,16 +48,27 @@ it('shows the exact PlayStation credential shape and normalizes Sony codes', () 
     expect(screen.queryByLabelText('EA email')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('EA password')).not.toBeInTheDocument();
     expect(screen.getAllByLabelText(/Backup code/)).toHaveLength(6);
-    expect(screen.getByRole('link', { name: /EA tutorial/ })).toHaveAttribute(
+    const eaCodes = screen.getByRole('group', { name: 'EA codes' });
+    const playstationCodes = screen.getByRole('group', {
+        name: 'PlayStation codes',
+    });
+    expect(
+        within(eaCodes).getByRole('link', { name: /EA tutorial/ }),
+    ).toHaveAttribute(
         'href',
         'https://youtube.com/shorts/hNIW1ps_t3k?si=i9MR5izDKRhpRNjo',
     );
     expect(
-        screen.getByRole('link', { name: /PlayStation tutorial/ }),
+        within(playstationCodes).getByRole('link', {
+            name: /PlayStation tutorial/,
+        }),
     ).toHaveAttribute(
         'href',
         'https://youtu.be/fCAKsusuHR8?si=cYzL6fwszL4ExwPK',
     );
+    expect(
+        screen.queryByRole('navigation', { name: 'Tutorials' }),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
     expect(screen.getByLabelText('PlayStation password')).toHaveAttribute(
@@ -102,7 +119,6 @@ const translations: ManualServiceCommonTranslations = {
     squad_image: 'Squad image',
     squad_image_help: 'WebP up to 5MB',
     squad_image_remove: 'Remove image',
-    tutorials_title: 'Tutorials',
     ea_tutorial: 'EA tutorial',
     playstation_tutorial: 'PlayStation tutorial',
     notes_title: 'Notes',

@@ -43,7 +43,6 @@ export type ManualServiceCommonTranslations = {
     squad_image: string;
     squad_image_help: string;
     squad_image_remove: string;
-    tutorials_title: string;
     ea_tutorial: string;
     playstation_tutorial: string;
     notes_title: string;
@@ -82,6 +81,9 @@ export type FutServiceTranslations = {
     urgent_eta: string;
     standard_eta: string;
     already_played: string;
+    matches_question: string;
+    matches_yes: string;
+    matches_no: string;
     matches_played: string;
     notes: Record<
         'timing' | 'details' | 'login' | 'shortfall' | 'safety',
@@ -98,7 +100,6 @@ export type RivalsServiceTranslations = {
     division: string;
     elite: string;
     standard_eta: string;
-    no_urgent: string;
     notes: Record<'timing' | 'login' | 'shortfall' | 'safety', string>;
 };
 

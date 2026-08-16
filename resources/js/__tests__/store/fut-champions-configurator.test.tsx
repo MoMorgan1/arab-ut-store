@@ -45,43 +45,33 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-it('submits the selected FUT rank, urgent option, exact credentials, and required image once', async () => {
-    render(
-        <FutChampionsConfigurator
-            addUrl="/cart/items/fut-champions"
-            common={common}
-            locale="en"
-            pricing={{
-                currency: 'SAR',
-                rankOptions: [1, 2, 3, 4, 5, 6].map((rank, index) => ({
-                    rank,
-                    price: {
-                        amountMinor: [22000, 19000, 17000, 15000, 13000, 10000][
-                            index
-                        ],
-                        currency: 'SAR',
-                    },
-                })),
-                urgentSurcharge: { amountMinor: 4000, currency: 'SAR' },
-            }}
-            product={{
-                id: '01K00000000000000000000000',
-                slug: 'fut-champions',
-                name: 'FUT Champions service',
-                description: 'Service description',
-                image: { alt: 'FUT', url: '/fut.webp' },
-            }}
-            scheduleVersion={1}
-            service={fut}
-            tutorials={{
-                ea: 'https://example.test/ea',
-                playstation: 'https://example.test/ps',
-            }}
-        />,
-    );
+it('uses a rank slider and only asks for a match count after the customer confirms they played', () => {
+    renderFut();
 
-    fireEvent.click(screen.getByLabelText(/Rank 1/));
+    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
+    expect(rankSlider).toHaveValue('3');
+    expect(rankSlider.getAttribute('aria-valuetext')).toContain('Rank 3');
+    expect(rankSlider.getAttribute('aria-valuetext')).toContain('170.00');
+    expect(
+        screen.queryByLabelText('Matches already played'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Yes, I played matches'));
+    expect(screen.getByLabelText('Matches already played')).toBeVisible();
+
+    fireEvent.change(rankSlider, { target: { value: '1' } });
+    expect(rankSlider.getAttribute('aria-valuetext')).toContain('Rank 1');
+    expect(rankSlider.getAttribute('aria-valuetext')).toContain('220.00');
+});
+
+it('submits the selected FUT rank, urgent option, exact credentials, and required image once', async () => {
+    renderFut();
+
+    fireEvent.change(screen.getByRole('slider', { name: 'Target rank' }), {
+        target: { value: '1' },
+    });
     fireEvent.click(screen.getByLabelText(/Urgent/));
+    fireEvent.click(screen.getByLabelText('Yes, I played matches'));
     fireEvent.change(screen.getByLabelText('Matches already played'), {
         target: { value: '4' },
     });
@@ -122,6 +112,42 @@ it('submits the selected FUT rank, urgent option, exact credentials, and require
     expect(document.body.textContent).not.toContain('PS secret');
 });
 
+function renderFut() {
+    render(
+        <FutChampionsConfigurator
+            addUrl="/cart/items/fut-champions"
+            common={common}
+            locale="en"
+            pricing={{
+                currency: 'SAR',
+                rankOptions: [1, 2, 3, 4, 5, 6].map((rank, index) => ({
+                    rank,
+                    price: {
+                        amountMinor: [22000, 19000, 17000, 15000, 13000, 10000][
+                            index
+                        ],
+                        currency: 'SAR',
+                    },
+                })),
+                urgentSurcharge: { amountMinor: 4000, currency: 'SAR' },
+            }}
+            product={{
+                id: '01K00000000000000000000000',
+                slug: 'fut-champions',
+                name: 'FUT Champions service',
+                description: 'Service description',
+                image: { alt: 'FUT', url: '/fut.webp' },
+            }}
+            scheduleVersion={1}
+            service={fut}
+            tutorials={{
+                ea: 'https://example.test/ea',
+                playstation: 'https://example.test/ps',
+            }}
+        />,
+    );
+}
+
 const common = {
     back: 'Back',
     platform_legend: 'Choose platform',
@@ -145,7 +171,6 @@ const common = {
     squad_image: 'Squad image',
     squad_image_help: 'PNG up to 5MB',
     squad_image_remove: 'Remove image',
-    tutorials_title: 'Tutorials',
     ea_tutorial: 'EA tutorial',
     playstation_tutorial: 'PlayStation tutorial',
     notes_title: 'Notes',
@@ -184,6 +209,9 @@ const fut = {
     urgent_eta: 'Urgent orders take 24–36 hours',
     standard_eta: 'Current FUT event',
     already_played: 'Played matches are accepted',
+    matches_question: 'Have you played any FUT matches?',
+    matches_yes: 'Yes, I played matches',
+    matches_no: 'No matches played',
     matches_played: 'Matches already played',
     notes: { timing: '', details: '', login: '', shortfall: '', safety: '' },
 } satisfies FutServiceTranslations;

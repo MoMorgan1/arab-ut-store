@@ -34,31 +34,9 @@ export function CredentialsFields({
             className="manual-credentials"
             aria-labelledby="manual-credentials-title"
         >
-            <header>
-                <h2 id="manual-credentials-title">
-                    {translations.account_details_title}
-                </h2>
-                <nav aria-label={translations.tutorials_title}>
-                    <a
-                        href={tutorials.ea}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                    >
-                        {translations.ea_tutorial}
-                        <ExternalLink aria-hidden="true" />
-                    </a>
-                    {platform === 'playstation' ? (
-                        <a
-                            href={tutorials.playstation}
-                            rel="noopener noreferrer"
-                            target="_blank"
-                        >
-                            {translations.playstation_tutorial}
-                            <ExternalLink aria-hidden="true" />
-                        </a>
-                    ) : null}
-                </nav>
-            </header>
+            <h2 id="manual-credentials-title">
+                {translations.account_details_title}
+            </h2>
             <div className="manual-credentials__grid">
                 {platform === 'playstation' ? (
                     <>
@@ -145,6 +123,8 @@ export function CredentialsFields({
                 numeric
                 namePrefix="ea-code"
                 onChange={(codes) => update('eaCodes', codes)}
+                tutorialHref={tutorials.ea}
+                tutorialLabel={translations.ea_tutorial}
                 translations={translations}
             />
             {platform === 'playstation' ? (
@@ -154,6 +134,8 @@ export function CredentialsFields({
                     label={translations.playstation_codes}
                     namePrefix="playstation-code"
                     onChange={(codes) => update('playstationCodes', codes)}
+                    tutorialHref={tutorials.playstation}
+                    tutorialLabel={translations.playstation_tutorial}
                     translations={translations}
                 />
             ) : null}
@@ -247,6 +229,8 @@ function CodeFields({
     namePrefix,
     numeric = false,
     onChange,
+    tutorialHref,
+    tutorialLabel,
     translations,
 }: {
     codes: [string, string, string];
@@ -255,22 +239,33 @@ function CodeFields({
     namePrefix: string;
     numeric?: boolean;
     onChange: (codes: [string, string, string]) => void;
+    tutorialHref: string;
+    tutorialLabel: string;
     translations: ManualServiceCommonTranslations;
 }) {
     return (
         <fieldset className="manual-code-fields">
             <legend>{label}</legend>
-            <p>{help}</p>
-            <div>
+            <div className="manual-code-fields__heading">
+                <p>{help}</p>
+                <a
+                    href={tutorialHref}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                >
+                    {tutorialLabel}
+                    <ExternalLink aria-hidden="true" />
+                </a>
+            </div>
+            <div dir="ltr">
                 {codes.map((code, index) => (
                     <label key={index}>
-                        <span>
-                            {translations.backup_code.replace(
+                        <span aria-hidden="true">{index + 1}</span>
+                        <input
+                            aria-label={translations.backup_code.replace(
                                 ':number',
                                 String(index + 1),
                             )}
-                        </span>
-                        <input
                             autoComplete="off"
                             dir="ltr"
                             inputMode={numeric ? 'numeric' : 'text'}

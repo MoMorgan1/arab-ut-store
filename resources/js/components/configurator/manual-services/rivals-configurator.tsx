@@ -22,6 +22,7 @@ import {
 } from './form-utils';
 import { ManualOrderSummary } from './order-summary';
 import { SelectionCard } from './selection-card';
+import { ServiceSlider } from './service-slider';
 import { SquadUpload } from './squad-upload';
 
 type RivalsPricing = Extract<
@@ -74,6 +75,10 @@ export function RivalsConfigurator({
         amount === null
             ? null
             : { amountMinor: amount, currency: 'SAR' as const };
+    const formattedPrice =
+        price === null
+            ? ''
+            : formatMinorUnits(price.amountMinor, price.currency, locale);
 
     function divisionLabel(value: Division) {
         return value === 'elite'
@@ -207,55 +212,53 @@ export function RivalsConfigurator({
                     </div>
                 </fieldset>
             ) : null}
-            <fieldset>
-                <legend>{service.current_legend}</legend>
-                <div className="manual-selection-grid manual-selection-grid--divisions">
-                    {pricing.ladder.slice(0, -1).map((value) => (
-                        <SelectionCard
-                            checked={from === value}
-                            key={value}
-                            name="from-division"
-                            onChange={() => {
-                                setFrom(value);
-                                const nextTargets = pricing.ladder.slice(
-                                    pricing.ladder.indexOf(value) + 1,
-                                );
-                                setTo(nextTargets.at(-1) ?? 'elite');
-                            }}
-                            value={value}
-                        >
-                            {divisionLabel(value)}
-                        </SelectionCard>
-                    ))}
-                </div>
-            </fieldset>
-            <fieldset>
-                <legend>{service.target_legend}</legend>
-                <div className="manual-selection-grid manual-selection-grid--divisions">
-                    {targets.map((value) => (
-                        <SelectionCard
-                            badge={
-                                value === to && price !== null
-                                    ? formatMinorUnits(
-                                          price.amountMinor,
-                                          price.currency,
-                                          locale,
-                                      )
-                                    : undefined
-                            }
-                            checked={to === value}
-                            key={value}
-                            name="to-division"
-                            onChange={() => setTo(value)}
-                            value={value}
-                        >
-                            {divisionLabel(value)}
-                        </SelectionCard>
-                    ))}
-                </div>
-            </fieldset>
+            <div className="manual-rivals-route">
+                <ServiceSlider
+                    direction={locale === 'ar' ? 'rtl' : 'ltr'}
+                    inputName="from-division"
+                    legend={service.current_legend}
+                    maxValue={pricing.ladder.length - 2}
+                    minValue={0}
+                    onValueChange={(index) => {
+                        const value = pricing.ladder[index];
+
+                        if (value === undefined || value === 'elite') {
+                            return;
+                        }
+
+                        setFrom(value);
+                        setTo('elite');
+                    }}
+                    selectedValue={fromIndex}
+                    stopLabels={pricing.ladder
+                        .slice(0, -1)
+                        .map((value) => formatInteger(Number(value), locale))}
+                    valueLabel={divisionLabel(from)}
+                />
+                <ServiceSlider
+                    direction={locale === 'ar' ? 'rtl' : 'ltr'}
+                    inputName="to-division"
+                    legend={service.target_legend}
+                    maxValue={pricing.ladder.length - 1}
+                    minValue={fromIndex + 1}
+                    onValueChange={(index) => {
+                        const value = pricing.ladder[index];
+
+                        if (value !== undefined) {
+                            setTo(value);
+                        }
+                    }}
+                    price={formattedPrice}
+                    selectedValue={toIndex}
+                    stopLabels={targets.map((value) =>
+                        value === 'elite'
+                            ? service.elite
+                            : formatInteger(Number(value), locale),
+                    )}
+                    valueLabel={divisionLabel(to)}
+                />
+            </div>
             <p className="manual-service-eta">{service.standard_eta}</p>
-            <p className="manual-service-note">{service.no_urgent}</p>
             <CredentialsFields
                 credentials={credentials}
                 launcher={launcher}

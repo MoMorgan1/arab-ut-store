@@ -45,7 +45,67 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-it('calculates 5 to Elite as SAR 750 and never sends an urgent field', async () => {
+it('updates the available Rivals route and price through its division sliders', () => {
+    renderRivals();
+
+    const currentSlider = screen.getByRole('slider', {
+        name: 'Current division',
+    });
+    const targetSlider = screen.getByRole('slider', {
+        name: 'Target division',
+    });
+    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 5');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Elite');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('750.00');
+    expect(screen.getAllByText(/750\.00/)).toHaveLength(2);
+
+    fireEvent.change(currentSlider, { target: { value: '0' } });
+    fireEvent.change(targetSlider, { target: { value: '1' } });
+    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 7');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Division 6');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('110.00');
+});
+
+it('submits 5 to Elite as SAR 750 and never sends an urgent field', async () => {
+    renderRivals();
+
+    expect(screen.getAllByText(/750\.00/)).toHaveLength(2);
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(
+        screen.queryByText('No urgent service is available'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('PlayStation email'), {
+        target: { value: 'owner@example.test' },
+    });
+    fireEvent.change(screen.getByLabelText('PlayStation password'), {
+        target: { value: 'PS secret' },
+    });
+    const codes = screen.getAllByLabelText(/Backup code/);
+    ['12345678', '23456789', '34567890', 'A1B2C3', 'D4E5F6', 'Z9Y8X7'].forEach(
+        (value, index) => fireEvent.change(codes[index], { target: { value } }),
+    );
+    const image = new File(['squad'], 'squad.webp', { type: 'image/webp' });
+    fireEvent.change(screen.getByLabelText(/Squad image/), {
+        target: { files: [image] },
+    });
+    fireEvent.submit(
+        screen
+            .getByRole('button', { name: 'Add service to cart' })
+            .closest('form')!,
+    );
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const form = request.body as FormData;
+    expect(form.get('currentDivision')).toBe('5');
+    expect(form.get('targetDivision')).toBe('elite');
+    expect(form.has('urgent')).toBe(false);
+    expect(form.get('squadImage')).toBe(image);
+    expect(document.body.textContent).not.toContain('PS secret');
+});
+
+function renderRivals() {
     render(
         <RivalsConfigurator
             addUrl="/cart/items/rivals"
@@ -83,39 +143,7 @@ it('calculates 5 to Elite as SAR 750 and never sends an urgent field', async () 
             }}
         />,
     );
-
-    expect(screen.getAllByText(/750\.00/)).toHaveLength(2);
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
-    expect(screen.getByText('No urgent service is available')).toBeVisible();
-    fireEvent.change(screen.getByLabelText('PlayStation email'), {
-        target: { value: 'owner@example.test' },
-    });
-    fireEvent.change(screen.getByLabelText('PlayStation password'), {
-        target: { value: 'PS secret' },
-    });
-    const codes = screen.getAllByLabelText(/Backup code/);
-    ['12345678', '23456789', '34567890', 'A1B2C3', 'D4E5F6', 'Z9Y8X7'].forEach(
-        (value, index) => fireEvent.change(codes[index], { target: { value } }),
-    );
-    const image = new File(['squad'], 'squad.webp', { type: 'image/webp' });
-    fireEvent.change(screen.getByLabelText(/Squad image/), {
-        target: { files: [image] },
-    });
-    fireEvent.submit(
-        screen
-            .getByRole('button', { name: 'Add service to cart' })
-            .closest('form')!,
-    );
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
-    const form = request.body as FormData;
-    expect(form.get('currentDivision')).toBe('5');
-    expect(form.get('targetDivision')).toBe('elite');
-    expect(form.has('urgent')).toBe(false);
-    expect(form.get('squadImage')).toBe(image);
-    expect(document.body.textContent).not.toContain('PS secret');
-});
+}
 
 const common = {
     back: 'Back',
@@ -140,7 +168,6 @@ const common = {
     squad_image: 'Squad image',
     squad_image_help: 'WebP up to 5MB',
     squad_image_remove: 'Remove image',
-    tutorials_title: 'Tutorials',
     ea_tutorial: 'EA tutorial',
     playstation_tutorial: 'PlayStation tutorial',
     notes_title: 'Notes',
@@ -177,6 +204,5 @@ const rivals = {
     division: 'Division :division',
     elite: 'Elite',
     standard_eta: 'Usually one to three days depending on demand',
-    no_urgent: 'No urgent service is available',
     notes: { timing: '', login: '', shortfall: '', safety: '' },
 } satisfies RivalsServiceTranslations;

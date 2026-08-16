@@ -21,6 +21,7 @@ import {
 } from './form-utils';
 import { ManualOrderSummary } from './order-summary';
 import { SelectionCard } from './selection-card';
+import { ServiceSlider } from './service-slider';
 import { SquadUpload } from './squad-upload';
 
 type FutPricing = Extract<
@@ -54,6 +55,7 @@ export function FutChampionsConfigurator({
     const [launcher, setLauncher] = useState<PcLauncher | null>(null);
     const [rank, setRank] = useState(3);
     const [urgent, setUrgent] = useState(false);
+    const [hasPlayed, setHasPlayed] = useState(false);
     const [matchesPlayed, setMatchesPlayed] = useState(0);
     const [credentials, setCredentials] = useState(emptyManualCredentials);
     const [image, setImage] = useState<File | null>(null);
@@ -62,6 +64,18 @@ export function FutChampionsConfigurator({
         'idle' | 'loading' | 'success' | 'error'
     >('idle');
     const option = pricing.rankOptions.find((entry) => entry.rank === rank);
+    const rankLabel = service.rank.replace(
+        ':rank',
+        formatInteger(rank, locale),
+    );
+    const rankPrice =
+        option === undefined
+            ? ''
+            : formatMinorUnits(
+                  option.price.amountMinor,
+                  option.price.currency,
+                  locale,
+              );
     const price =
         option === undefined
             ? null
@@ -196,30 +210,20 @@ export function FutChampionsConfigurator({
                     </div>
                 </fieldset>
             ) : null}
-            <fieldset>
-                <legend>{service.target_legend}</legend>
-                <div className="manual-selection-grid manual-selection-grid--ranks">
-                    {pricing.rankOptions.map((entry) => (
-                        <SelectionCard
-                            badge={formatMinorUnits(
-                                entry.price.amountMinor,
-                                entry.price.currency,
-                                locale,
-                            )}
-                            checked={rank === entry.rank}
-                            key={entry.rank}
-                            name="rank"
-                            onChange={() => setRank(entry.rank)}
-                            value={String(entry.rank)}
-                        >
-                            {service.rank.replace(
-                                ':rank',
-                                formatInteger(entry.rank, locale),
-                            )}
-                        </SelectionCard>
-                    ))}
-                </div>
-            </fieldset>
+            <ServiceSlider
+                direction={locale === 'ar' ? 'rtl' : 'ltr'}
+                inputName="rank"
+                legend={service.target_legend}
+                maxValue={pricing.rankOptions.at(-1)?.rank ?? 6}
+                minValue={pricing.rankOptions[0]?.rank ?? 1}
+                onValueChange={setRank}
+                price={rankPrice}
+                selectedValue={rank}
+                stopLabels={pricing.rankOptions.map((entry) =>
+                    formatInteger(entry.rank, locale),
+                )}
+                valueLabel={rankLabel}
+            />
             <div className="manual-fut-options">
                 <label>
                     <input
@@ -235,20 +239,57 @@ export function FutChampionsConfigurator({
                         <small>{service.urgent_price}</small>
                     </span>
                 </label>
-                <label>
-                    <span>{service.matches_played}</span>
-                    <input
-                        max="100"
-                        min="0"
-                        name="matches-played"
-                        onChange={(event) =>
-                            setMatchesPlayed(Number(event.currentTarget.value))
-                        }
-                        required
-                        type="number"
-                        value={matchesPlayed}
-                    />
-                </label>
+                <fieldset className="manual-played-matches">
+                    <legend>{service.matches_question}</legend>
+                    <div className="manual-played-matches__choices">
+                        <label>
+                            <input
+                                checked={!hasPlayed}
+                                name="matches-played-choice"
+                                onChange={() => {
+                                    setHasPlayed(false);
+                                    setMatchesPlayed(0);
+                                }}
+                                type="radio"
+                                value="no"
+                            />
+                            <span>{service.matches_no}</span>
+                        </label>
+                        <label>
+                            <input
+                                checked={hasPlayed}
+                                name="matches-played-choice"
+                                onChange={() => {
+                                    setHasPlayed(true);
+                                    setMatchesPlayed((current) =>
+                                        Math.max(1, current),
+                                    );
+                                }}
+                                type="radio"
+                                value="yes"
+                            />
+                            <span>{service.matches_yes}</span>
+                        </label>
+                    </div>
+                    {hasPlayed ? (
+                        <label className="manual-played-matches__count">
+                            <span>{service.matches_played}</span>
+                            <input
+                                max="100"
+                                min="1"
+                                name="matches-played"
+                                onChange={(event) =>
+                                    setMatchesPlayed(
+                                        Number(event.currentTarget.value),
+                                    )
+                                }
+                                required
+                                type="number"
+                                value={matchesPlayed}
+                            />
+                        </label>
+                    ) : null}
+                </fieldset>
             </div>
             <p className="manual-service-eta">
                 {urgent ? service.urgent_eta : service.standard_eta}

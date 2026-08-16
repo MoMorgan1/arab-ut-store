@@ -251,7 +251,6 @@ return [
             'squad_image' => 'Squad image',
             'squad_image_help' => 'Upload one JPG, PNG, or WebP image up to 5MB.',
             'squad_image_remove' => 'Remove image',
-            'tutorials_title' => 'How to get backup codes',
             'ea_tutorial' => 'EA backup code guide',
             'playstation_tutorial' => 'PlayStation backup code guide',
             'notes_title' => 'Important notes before ordering',
@@ -289,6 +288,9 @@ return [
             'urgent_eta' => 'Urgent orders take 24–36 hours from receiving the correct details.',
             'standard_eta' => 'Standard orders are completed within the current FUT Champions event.',
             'already_played' => 'You can order after playing some matches; the price and service stay the same.',
+            'matches_question' => 'Have you played any FUT matches?',
+            'matches_yes' => 'Yes, I played matches',
+            'matches_no' => 'No matches played',
             'matches_played' => 'Matches already played',
             'notes' => [
                 'timing' => 'We may access the account at any time during the current event, or within 24–36 hours for an urgent order after receiving the correct details.',
@@ -307,7 +309,6 @@ return [
             'division' => 'Division :division',
             'elite' => 'Elite',
             'standard_eta' => 'Orders usually take 1–3 days, depending on demand and the number of divisions requested.',
-            'no_urgent' => 'Urgent delivery is not available for Division Rivals.',
             'notes' => [
                 'timing' => 'The delivery time is an estimate and depends on demand and the number of divisions requested.',
                 'login' => 'Do not access the account or change its password while we are working, as this can disconnect the session or affect results.',
