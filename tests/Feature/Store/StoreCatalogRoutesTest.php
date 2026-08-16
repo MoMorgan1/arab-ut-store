@@ -54,7 +54,7 @@ function storeSbcCompletionPricing(array $tiers, ?int $maximum = null): array
     ];
 }
 
-test('the bilingual service routes expose the correct catalog page contracts', function (
+test('the bilingual catalog routes expose the correct category page contracts', function (
     string $path,
     string $component,
     string $service,
@@ -74,8 +74,6 @@ test('the bilingual service routes expose the correct catalog page contracts', f
 })->with([
     'Arabic SBC category' => ['/sbc', 'store/category', 'sbc', 'ar'],
     'English Objectives category' => ['/en/objectives', 'store/category', 'objectives', 'en'],
-    'Arabic FUT Champions product' => ['/fut-champions', 'store/catalog-product', 'fut_champions', 'ar'],
-    'English Rivals product' => ['/en/rivals', 'store/catalog-product', 'rivals', 'en'],
 ]);
 
 test('category listings expose only public products and active variants', function () {

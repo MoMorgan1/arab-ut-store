@@ -8,7 +8,20 @@ use App\Models\Category;
 use App\Models\IntegrationEvent;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+
+/** @return Builder<Product> */
+function automationCatalogProducts(): Builder
+{
+    return Product::query()->where('authority', ProductAuthority::Automation);
+}
+
+/** @return Builder<ProductVariant> */
+function automationCatalogVariants(): Builder
+{
+    return ProductVariant::query()->where('authority', ProductAuthority::Automation);
+}
 
 function catalogSnapshotPayload(): array
 {
@@ -128,9 +141,9 @@ it('commits one fresh signed complete catalog snapshot', function () {
 
     expect($response->headers->get('Cache-Control'))->toContain('no-store')
         ->and(CatalogSyncRun::sole()->run_id)->toBe($payload['runId'])
-        ->and(Product::sole()->external_id)->toBe('sbc-icon-pick')
-        ->and(Product::sole()->source->key)->toBe('n8n-products')
-        ->and(ProductVariant::sole()->price_halalah)->toBe(12_500);
+        ->and(automationCatalogProducts()->sole()->external_id)->toBe('sbc-icon-pick')
+        ->and(automationCatalogProducts()->sole()->source->key)->toBe('n8n-products')
+        ->and(automationCatalogVariants()->sole()->price_halalah)->toBe(12_500);
 });
 
 it('rejects non SBC products on the SBC scoped snapshot route', function () {
@@ -143,7 +156,7 @@ it('rejects non SBC products on the SBC scoped snapshot route', function () {
         credentialScope: 'sbc_catalog',
     )->assertUnprocessable()->assertJsonValidationErrors(['products.0.serviceType']);
 
-    expect(Product::count())->toBe(0)
+    expect(automationCatalogProducts()->count())->toBe(0)
         ->and(CatalogSource::count())->toBe(0)
         ->and(CatalogSyncRun::count())->toBe(0);
 });
@@ -239,7 +252,7 @@ it('rejects a generic catalog signature at the SBC snapshot route', function () 
         path: '/api/automation/v1/catalog/sbc/snapshots',
     )->assertUnauthorized()->assertJsonPath('error.code', 'invalid_signature');
 
-    expect(Product::count())->toBe(0)
+    expect(automationCatalogProducts()->count())->toBe(0)
         ->and(CatalogSyncRun::count())->toBe(0);
 });
 
@@ -252,7 +265,7 @@ it('rejects an SBC catalog signature at the generic snapshot route', function ()
         credentialScope: 'sbc_catalog',
     )->assertUnauthorized()->assertJsonPath('error.code', 'invalid_signature');
 
-    expect(Product::count())->toBe(0)
+    expect(automationCatalogProducts()->count())->toBe(0)
         ->and(CatalogSyncRun::count())->toBe(0);
 });
 
@@ -265,7 +278,7 @@ it('domain separates the SBC signature even when both routes are misconfigured w
         path: '/api/automation/v1/catalog/sbc/snapshots',
     )->assertUnauthorized()->assertJsonPath('error.code', 'invalid_signature');
 
-    expect(Product::count())->toBe(0);
+    expect(automationCatalogProducts()->count())->toBe(0);
 });
 
 it('fails closed when SBC catalog signing credentials are not configured', function () {
@@ -279,7 +292,7 @@ it('fails closed when SBC catalog signing credentials are not configured', funct
         credentialScope: 'sbc_catalog',
     )->assertUnauthorized()->assertJsonPath('error.code', 'invalid_signature');
 
-    expect(Product::count())->toBe(0);
+    expect(automationCatalogProducts()->count())->toBe(0);
 });
 
 it('rejects replay on the SBC route without applying a second snapshot', function () {
@@ -352,7 +365,7 @@ it('keeps price versions server authoritative across catalog routes', function (
         credentialScope: $credentialScope,
     )->assertCreated();
 
-    expect(ProductVariant::sole()->price_version)->toBe(1);
+    expect(automationCatalogVariants()->sole()->price_version)->toBe(1);
 
     $next = catalogSnapshotPayload();
     $next['products'][0]['variants'][0]['priceVersion'] = $nextProducerVersion;
@@ -367,7 +380,7 @@ it('keeps price versions server authoritative across catalog routes', function (
         credentialScope: $credentialScope,
     )->assertCreated();
 
-    $variant = ProductVariant::sole();
+    $variant = automationCatalogVariants()->sole();
 
     expect($variant->price_version)->toBe($expectedVersion)
         ->and($variant->name_en)->toBe('Updated name');
@@ -411,7 +424,7 @@ it('increments an SBC price version when a non-default completion tier changes',
         path: '/api/automation/v1/catalog/sbc/snapshots',
         credentialScope: 'sbc_catalog',
     )->assertCreated();
-    expect(ProductVariant::sole()->price_version)->toBe(1);
+    expect(automationCatalogVariants()->sole()->price_version)->toBe(1);
 
     $changedTier = catalogSnapshotPayload();
     $changedTier['products'][0]['variants'][0]['priceMinor'] = 57_000;
@@ -428,7 +441,7 @@ it('increments an SBC price version when a non-default completion tier changes',
         credentialScope: 'sbc_catalog',
     )->assertCreated();
 
-    expect(ProductVariant::sole()->price_version)->toBe(2);
+    expect(automationCatalogVariants()->sole()->price_version)->toBe(2);
 });
 
 it('rejects malformed SBC completion pricing before writing any snapshot rows', function () {
@@ -443,8 +456,8 @@ it('rejects malformed SBC completion pricing before writing any snapshot rows', 
         'products.0.variants.0.configuration.completionPricing',
     ]);
 
-    expect(Product::count())->toBe(0)
-        ->and(ProductVariant::count())->toBe(0)
+    expect(automationCatalogProducts()->count())->toBe(0)
+        ->and(automationCatalogVariants()->count())->toBe(0)
         ->and(CatalogSyncRun::count())->toBe(0)
         ->and(IntegrationEvent::count())->toBe(0);
 });
@@ -454,7 +467,7 @@ it('rejects invalid catalog signatures without writing catalog rows', function (
         ->assertUnauthorized();
 
     expect($response->headers->get('Cache-Control'))->toContain('no-store')
-        ->and(Product::count())->toBe(0)
+        ->and(automationCatalogProducts()->count())->toBe(0)
         ->and(CatalogSyncRun::count())->toBe(0);
 });
 
@@ -469,7 +482,7 @@ it('fails closed when catalog signing credentials are not configured', function 
 
     $response->assertUnauthorized()->assertJsonPath('error.code', 'invalid_signature');
 
-    expect(Product::count())->toBe(0);
+    expect(automationCatalogProducts()->count())->toBe(0);
 });
 
 it('rejects a correctly signed snapshot outside the five minute freshness window', function () {
@@ -481,7 +494,7 @@ it('rejects a correctly signed snapshot outside the five minute freshness window
     $response->assertConflict()->assertJsonPath('error.code', 'stale_snapshot');
 
     expect($response->headers->get('Cache-Control'))->toContain('no-store')
-        ->and(Product::count())->toBe(0);
+        ->and(automationCatalogProducts()->count())->toBe(0);
 });
 
 it('rejects a signed header event that differs from the body event', function () {
@@ -492,7 +505,7 @@ it('rejects a signed header event that differs from the body event', function ()
 
     $response->assertUnprocessable()->assertJsonValidationErrors(['eventId']);
 
-    expect(Product::count())->toBe(0);
+    expect(automationCatalogProducts()->count())->toBe(0);
 });
 
 it('rejects replay of an already committed event and run', function () {
@@ -503,7 +516,7 @@ it('rejects replay of an already committed event and run', function () {
 
     $response->assertConflict()->assertJsonPath('error.code', 'catalog_snapshot_replayed');
 
-    expect(Product::count())->toBe(1)
+    expect(automationCatalogProducts()->count())->toBe(1)
         ->and(CatalogSyncRun::count())->toBe(1);
 });
 
@@ -518,7 +531,7 @@ it('rejects partial and undeclared snapshot fields before writing', function (st
 
     signedCatalogSnapshot($payload)->assertUnprocessable();
 
-    expect(Product::count())->toBe(0)
+    expect(automationCatalogProducts()->count())->toBe(0)
         ->and(CatalogSyncRun::count())->toBe(0);
 })->with(['partial', 'undeclared-field']);
 
@@ -534,7 +547,7 @@ it('rejects semantically inconsistent complete snapshot fields', function (strin
 
     signedCatalogSnapshot($payload)->assertUnprocessable();
 
-    expect(Product::count())->toBe(0)
+    expect(automationCatalogProducts()->count())->toBe(0)
         ->and(CatalogSyncRun::count())->toBe(0);
 })->with([
     'non-boolean-complete',
