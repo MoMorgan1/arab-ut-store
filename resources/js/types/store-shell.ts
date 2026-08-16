@@ -67,6 +67,7 @@ export type StoreShellTranslations = {
         payment_methods: string;
         copyright: string;
         ea_disclaimer: string;
+        verified_freelance: string;
     };
 };
 

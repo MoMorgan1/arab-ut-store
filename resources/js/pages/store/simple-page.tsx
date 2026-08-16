@@ -1,6 +1,7 @@
-import { Head, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 
 import StoreInformationPageContent from '@/components/store/store-information-page';
+import { StoreSeoHead } from '@/components/store/store-seo-head';
 import StoreLayout from '@/layouts/store-layout';
 import type { SimpleStorePageProps } from '@/types/store-shell';
 
@@ -28,7 +29,11 @@ export default function SimpleStorePage() {
             storeShell={storeShell}
             ui={ui}
         >
-            <Head title={page.title} />
+            <StoreSeoHead
+                title={page.title}
+                description={page.subtitle}
+                locale={locale}
+            />
             <StoreInformationPageContent
                 homeUrl={storeShell.homeUrl}
                 page={page}

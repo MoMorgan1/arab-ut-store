@@ -43,5 +43,6 @@ return [
         'payment_methods' => 'طرق الدفع عند الإطلاق',
         'copyright' => '© :year Arab UT. جميع الحقوق محفوظة.',
         'ea_disclaimer' => 'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
+        'verified_freelance' => 'موثّق رسميًا — وثيقة العمل الحر FL-621205220',
     ],
 ];

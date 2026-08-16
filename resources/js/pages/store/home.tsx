@@ -1,10 +1,11 @@
-import { Head, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 
 import { CoinsConfigurator } from '@/components/configurator/coins';
 import { FaqSection } from '@/components/store/faq-section';
 import { HeroStats } from '@/components/store/hero-stats';
 import { ReviewsSection } from '@/components/store/reviews-section';
 import { ServiceRail } from '@/components/store/service-rail';
+import { StoreSeoHead } from '@/components/store/store-seo-head';
 import StoreLayout from '@/layouts/store-layout';
 import { parseCoinsQuoteSchedules } from '@/lib/coins-quote-schedule';
 import type {
@@ -79,7 +80,11 @@ export default function StoreHome() {
             storeShell={storeShell}
             ui={ui}
         >
-            <Head title={store?.seo_title ?? ui.home_title} />
+            <StoreSeoHead
+                title={store?.seo_title ?? ui.home_title}
+                description={ui.service_notice}
+                locale={locale}
+            />
             {hasHomepageContract ? (
                 <>
                     <section

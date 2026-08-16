@@ -1,4 +1,4 @@
-import { Head, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 import {
     ChevronDown,
     CheckCircle2,
@@ -10,6 +10,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import { interpolate } from '@/components/configurator/coins/configurator-copy';
+import { StoreSeoHead } from '@/components/store/store-seo-head';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import StoreLayout from '@/layouts/store-layout';
@@ -77,7 +78,11 @@ export default function StoreCart() {
             storeShell={storeShell}
             ui={ui}
         >
-            <Head title={cartPage.translations.title} />
+            <StoreSeoHead
+                title={cartPage.translations.title}
+                description={cartPage.translations.eyebrow}
+                locale={locale}
+            />
             <section
                 aria-labelledby="store-cart-title"
                 className="store-cart-page"

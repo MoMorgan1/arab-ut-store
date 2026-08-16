@@ -88,13 +88,14 @@ const translations = {
         returns: 'Returns Policy',
         warranty: 'Warranty and Compensation',
         ea_backup_codes: 'EA Backup Codes',
-        terms: 'Terms of Service',
+        terms: 'Terms and Conditions',
         customer_service: 'Customer service',
         whatsapp: 'WhatsApp support',
         payment_methods: 'Payment methods at launch',
         copyright: 'Copyright © :year Arab UT. All rights reserved.',
         ea_disclaimer:
             'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
+        verified_freelance: 'Officially Verified — Freelance Document FL-621205220',
     },
 } satisfies StoreShellTranslations;
 
@@ -123,7 +124,7 @@ afterEach(() => {
 });
 
 describe('StoreFooter', () => {
-    it('renders the three-column WordPress hierarchy with real legal destinations', () => {
+    it('renders the three-column WordPress hierarchy with real legal destinations and freelance badge', () => {
         const footer = renderFooter();
         const importantLinks = within(footer).getByRole('navigation', {
             name: 'Important links',
@@ -140,12 +141,18 @@ describe('StoreFooter', () => {
             ['Returns Policy', '/en/returns'],
             ['Warranty and Compensation', '/en/warranty'],
             ['EA Backup Codes', '/en/ea-backup-codes'],
-            ['Terms of Service', '/en/terms'],
+            ['Terms and Conditions', '/en/terms'],
         ]) {
             expect(
                 within(importantLinks).getByRole('link', { name }),
             ).toHaveAttribute('href', href);
         }
+
+        expect(
+            within(footer).getByRole('link', {
+                name: 'Officially Verified — Freelance Document FL-621205220',
+            }),
+        ).toHaveAttribute('href', '/en/terms');
 
         expect(document.querySelectorAll('footer')).toHaveLength(1);
         expect(document.querySelector('a[href="#"]')).not.toBeInTheDocument();

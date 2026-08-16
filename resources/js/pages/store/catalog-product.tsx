@@ -1,9 +1,10 @@
-import { Head, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { CatalogAddControl } from '@/components/store/catalog/catalog-add-control';
 import { SbcCatalogCard } from '@/components/store/catalog/sbc-catalog-card';
 import { SbcProductConfigurator } from '@/components/store/catalog/sbc-product-configurator';
+import { StoreSeoHead } from '@/components/store/store-seo-head';
 import StoreLayout from '@/layouts/store-layout';
 import { formatMinorUnits } from '@/lib/money';
 import type { StoreCatalogProductPageProps } from '@/types/store-content';
@@ -27,7 +28,12 @@ export default function StoreCatalogProduct() {
             storeShell={props.storeShell}
             ui={props.ui}
         >
-            <Head title={product.name} />
+            <StoreSeoHead
+                title={product.name}
+                description={product.description}
+                locale={props.locale}
+                schemaType="Product"
+            />
             <main
                 className={[
                     'store-catalog-product',

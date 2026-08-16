@@ -1,4 +1,4 @@
-import { Head, router, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import {
     ChevronDown,
     Headphones,
@@ -10,6 +10,7 @@ import { useState } from 'react';
 
 import { CatalogAddControl } from '@/components/store/catalog/catalog-add-control';
 import { SbcCatalogCard } from '@/components/store/catalog/sbc-catalog-card';
+import { StoreSeoHead } from '@/components/store/store-seo-head';
 import StoreLayout from '@/layouts/store-layout';
 import { formatMinorUnits } from '@/lib/money';
 import type {
@@ -67,7 +68,11 @@ export default function StoreCategory() {
             storeShell={props.storeShell}
             ui={props.ui}
         >
-            <Head title={pageTitle} />
+            <StoreSeoHead
+                title={pageTitle}
+                description={props.servicePage.description}
+                locale={props.locale}
+            />
             <section
                 aria-labelledby="store-catalog-title"
                 className={[

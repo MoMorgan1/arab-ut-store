@@ -1,6 +1,7 @@
-import { Head, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 
 import { ReviewCard } from '@/components/store/reviews-section';
+import { StoreSeoHead } from '@/components/store/store-seo-head';
 import StoreLayout from '@/layouts/store-layout';
 import type { StoreReviewsPageProps } from '@/types/store-content';
 
@@ -20,7 +21,11 @@ export default function StoreReviews() {
             storeShell={props.storeShell}
             ui={props.ui}
         >
-            <Head title={props.reviewsPage.title} />
+            <StoreSeoHead
+                title={props.reviewsPage.title}
+                description={props.reviewsPage.eyebrow}
+                locale={props.locale}
+            />
             <main className="store-reviews-page" id="store-content">
                 <header className="store-catalog-hero">
                     <p>{props.reviewsPage.eyebrow}</p>

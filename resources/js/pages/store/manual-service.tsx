@@ -1,8 +1,9 @@
-import { Head, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 
 import { FutChampionsConfigurator } from '@/components/configurator/manual-services/fut-champions-configurator';
 import { ManualServiceSuggestions } from '@/components/configurator/manual-services/manual-service-suggestions';
 import { RivalsConfigurator } from '@/components/configurator/manual-services/rivals-configurator';
+import { StoreSeoHead } from '@/components/store/store-seo-head';
 import StoreLayout from '@/layouts/store-layout';
 import type {
     FutServiceTranslations,
@@ -31,7 +32,12 @@ export default function StoreManualService() {
             storeShell={props.storeShell}
             ui={props.ui}
         >
-            <Head title={manual.product.name} />
+            <StoreSeoHead
+                title={manual.product.name}
+                description={manual.product.description}
+                locale={props.locale}
+                schemaType="Product"
+            />
             <main className="manual-service-page" id="store-content">
                 <a className="manual-service-page__back" href={props.backUrl}>
                     {common.back}
