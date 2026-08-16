@@ -134,6 +134,7 @@ export type ProductTranslations = {
     unavailable_price: string;
     sbc: {
         backup_code: string;
+        backup_code_labels: [string, string, string];
         backup_codes: string;
         backup_help: string;
         credentials_title: string;

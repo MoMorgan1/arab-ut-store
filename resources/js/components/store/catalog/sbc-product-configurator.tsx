@@ -320,36 +320,6 @@ export function SbcProductConfigurator({
             {completionTiers.length > 1 ? (
                 <fieldset className="sbc-completion-tiers" disabled={locked}>
                     <legend>{translations.sbc.completion_legend}</legend>
-                    <div className="sbc-completion-tiers__cards">
-                        {completionTiers.map((tier) => (
-                            <label key={tier.completions}>
-                                <input
-                                    checked={
-                                        tier.completions === completionCount
-                                    }
-                                    name="sbc-completions"
-                                    onChange={() =>
-                                        setCompletionCount(tier.completions)
-                                    }
-                                    type="radio"
-                                    value={tier.completions}
-                                />
-                                <span>
-                                    {completionLabel(
-                                        translations.sbc.completion_option,
-                                        tier.completions,
-                                    )}
-                                </span>
-                                <strong>
-                                    {formatMinorUnits(
-                                        tier.price.amountMinor,
-                                        tier.price.currency,
-                                        locale,
-                                    )}
-                                </strong>
-                            </label>
-                        ))}
-                    </div>
                     <div className="sbc-completion-tiers__slider">
                         <div className="sbc-completion-tiers__slider-header">
                             <span>
@@ -494,11 +464,8 @@ export function SbcProductConfigurator({
                     <p>{translations.sbc.backup_help}</p>
                     <div>
                         {CODE_FIELDS.map((field, index) => {
-                            const number = String(index + 1);
-                            const label = translations.sbc.backup_code.replace(
-                                ':number',
-                                number,
-                            );
+                            const label =
+                                translations.sbc.backup_code_labels[index];
 
                             return (
                                 <div
@@ -509,6 +476,10 @@ export function SbcProductConfigurator({
                                         {label}
                                     </label>
                                     <input
+                                        aria-label={translations.sbc.backup_code.replace(
+                                            ':number',
+                                            String(index + 1),
+                                        )}
                                         aria-describedby={
                                             errors[field] === undefined
                                                 ? undefined

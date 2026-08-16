@@ -208,6 +208,7 @@ return [
             'backup_codes' => 'الأكواد الاحتياطية من EA',
             'backup_help' => 'أدخل ثلاثة أكواد مختلفة، كل كود 8 أرقام.',
             'backup_code' => 'الكود الاحتياطي :number',
+            'backup_code_labels' => ['الكود الأول', 'الكود الثاني', 'الكود الثالث'],
             'required_email' => 'أدخل بريد EA صحيحًا.',
             'required_password' => 'أدخل كلمة مرور EA.',
             'required_code' => 'أدخل كودًا احتياطيًا من 8 أرقام.',

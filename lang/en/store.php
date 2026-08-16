@@ -208,6 +208,7 @@ return [
             'backup_codes' => 'EA backup codes',
             'backup_help' => 'Enter three different eight-digit backup codes.',
             'backup_code' => 'Backup code :number',
+            'backup_code_labels' => ['First code', 'Second code', 'Third code'],
             'required_email' => 'Enter a valid EA email.',
             'required_password' => 'Enter your EA password.',
             'required_code' => 'Enter an eight-digit backup code.',

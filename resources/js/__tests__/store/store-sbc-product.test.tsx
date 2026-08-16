@@ -82,7 +82,9 @@ it('matches the compact SBC platform and three-code credential hierarchy', () =>
         'type',
         'password',
     );
-    expect(screen.getAllByLabelText(/Backup code [123]/)).toHaveLength(3);
+    expect(screen.getByText('First code')).toBeVisible();
+    expect(screen.getByText('Second code')).toBeVisible();
+    expect(screen.getByText('Third code')).toBeVisible();
     expect(screen.queryByText(/automatically deleted|24 hours/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /checkout|pay/i })).toBeNull();
     expect(screen.getByText('platform')).toBeVisible();
@@ -109,18 +111,25 @@ it('selects an exact repeatable completion bundle and preserves it across platfo
     expect(
         screen.getByRole('group', { name: 'Number of completions' }),
     ).toBeVisible();
-    expect(screen.getByRole('radio', { name: /5 completions/ })).toBeChecked();
+    const slider = screen.getByRole('slider', {
+        name: 'Number of completions',
+    });
+
+    expect(
+        screen.queryByRole('radio', { name: /5 completions/ }),
+    ).not.toBeInTheDocument();
+    expect(slider).toHaveValue('0');
     expect(
         document.querySelector('.sbc-product-summary > div:nth-child(2) dd'),
     ).toHaveTextContent('SAR 150.00');
 
-    fireEvent.click(screen.getByRole('radio', { name: /10 completions/ }));
+    fireEvent.change(slider, { target: { value: '1' } });
     expect(
         document.querySelector('.sbc-product-summary > div:nth-child(2) dd'),
     ).toHaveTextContent('SAR 285.00');
 
     fireEvent.click(screen.getByRole('radio', { name: /PlayStation \/ Xbox/ }));
-    expect(screen.getByRole('radio', { name: /10 completions/ })).toBeChecked();
+    expect(slider).toHaveValue('1');
     expect(
         document.querySelector('.sbc-product-summary > div:nth-child(2) dd'),
     ).toHaveTextContent('SAR 237.50');
@@ -143,7 +152,6 @@ it('exposes repeatable completion tiers as an accessible range control', () => {
 
     fireEvent.change(slider, { target: { value: '1' } });
 
-    expect(screen.getByRole('radio', { name: /10 completions/ })).toBeChecked();
     expect(slider).toHaveValue('1');
     expect(slider).toHaveAttribute(
         'aria-valuetext',
@@ -275,7 +283,7 @@ it('locks the selected platform and credentials while the add request is in flig
         .forEach((input) => expect(input).toBeDisabled());
     expect(screen.getByRole('radio', { name: /PC/ })).toBeDisabled();
     expect(
-        screen.getByRole('radio', { name: /10 completions/ }),
+        screen.getByRole('slider', { name: 'Number of completions' }),
     ).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Adding…' }));
     expect(mocks.submit).toHaveBeenCalledTimes(1);
@@ -418,6 +426,7 @@ function sbcProductProps() {
                 backup_codes: 'EA backup codes',
                 backup_help: 'Enter three different eight-digit codes.',
                 backup_code: 'Backup code :number',
+                backup_code_labels: ['First code', 'Second code', 'Third code'],
                 required_email: 'Enter a valid EA email.',
                 required_password: 'Enter your EA password.',
                 required_code: 'Enter an eight-digit code.',
