@@ -13,26 +13,37 @@ import type {
     RivalsServiceTranslations,
 } from '@/types/manual-services';
 
-const submitManualServiceCart = vi.hoisted(() => vi.fn());
-
-vi.mock('@/lib/manual-service-cart-api', () => ({ submitManualServiceCart }));
-vi.mock('@/lib/cart-added-event', () => ({ announceCartAddition: vi.fn() }));
+const fetchMock = vi.fn();
 
 beforeEach(() => {
-    submitManualServiceCart.mockReset().mockResolvedValue({
-        cartCount: 1,
-        cartItemId: '01K00000000000000000000000',
-        cartUrl: '/cart',
-    });
+    fetchMock.mockReset().mockResolvedValue(
+        new Response(
+            JSON.stringify({
+                data: {
+                    cartCount: 1,
+                    cartItemId: '01K00000000000000000000000',
+                    cartUrl: '/cart',
+                },
+            }),
+            { status: 201 },
+        ),
+    );
+    const csrf = document.createElement('meta');
+    csrf.name = 'csrf-token';
+    csrf.content = 'test-token';
+    document.head.append(csrf);
+    vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('crypto', { randomUUID: () => 'rivals-key' });
-    vi.stubGlobal('URL', {
-        ...URL,
-        createObjectURL: vi.fn(() => 'blob:rivals'),
-        revokeObjectURL: vi.fn(),
-    });
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:rivals');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
 });
 
-afterEach(cleanup);
+afterEach(() => {
+    cleanup();
+    document.querySelector('meta[name="csrf-token"]')?.remove();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+});
 
 it('calculates 5 to Elite as SAR 750 and never sends an urgent field', async () => {
     render(
@@ -96,10 +107,9 @@ it('calculates 5 to Elite as SAR 750 and never sends an urgent field', async () 
             .closest('form')!,
     );
 
-    await waitFor(() =>
-        expect(submitManualServiceCart).toHaveBeenCalledTimes(1),
-    );
-    const form = submitManualServiceCart.mock.calls[0]?.[1] as FormData;
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const form = request.body as FormData;
     expect(form.get('currentDivision')).toBe('5');
     expect(form.get('targetDivision')).toBe('elite');
     expect(form.has('urgent')).toBe(false);

@@ -13,26 +13,37 @@ import type {
     ManualServiceCommonTranslations,
 } from '@/types/manual-services';
 
-const submitManualServiceCart = vi.hoisted(() => vi.fn());
-
-vi.mock('@/lib/manual-service-cart-api', () => ({ submitManualServiceCart }));
-vi.mock('@/lib/cart-added-event', () => ({ announceCartAddition: vi.fn() }));
+const fetchMock = vi.fn();
 
 beforeEach(() => {
-    submitManualServiceCart.mockReset().mockResolvedValue({
-        cartCount: 1,
-        cartItemId: '01K00000000000000000000000',
-        cartUrl: '/cart',
-    });
+    fetchMock.mockReset().mockResolvedValue(
+        new Response(
+            JSON.stringify({
+                data: {
+                    cartCount: 1,
+                    cartItemId: '01K00000000000000000000000',
+                    cartUrl: '/cart',
+                },
+            }),
+            { status: 201 },
+        ),
+    );
+    const csrf = document.createElement('meta');
+    csrf.name = 'csrf-token';
+    csrf.content = 'test-token';
+    document.head.append(csrf);
+    vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('crypto', { randomUUID: () => 'attempt-key' });
-    vi.stubGlobal('URL', {
-        ...URL,
-        createObjectURL: vi.fn(() => 'blob:preview'),
-        revokeObjectURL: vi.fn(),
-    });
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
 });
 
-afterEach(cleanup);
+afterEach(() => {
+    cleanup();
+    document.querySelector('meta[name="csrf-token"]')?.remove();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+});
 
 it('submits the selected FUT rank, urgent option, exact credentials, and required image once', async () => {
     render(
@@ -94,10 +105,9 @@ it('submits the selected FUT rank, urgent option, exact credentials, and require
             .closest('form')!,
     );
 
-    await waitFor(() =>
-        expect(submitManualServiceCart).toHaveBeenCalledTimes(1),
-    );
-    const form = submitManualServiceCart.mock.calls[0]?.[1] as FormData;
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const form = request.body as FormData;
     expect(form.get('rank')).toBe('1');
     expect(form.get('urgent')).toBe('1');
     expect(form.get('matchesPlayed')).toBe('4');
