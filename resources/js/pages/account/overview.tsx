@@ -23,8 +23,12 @@ export default function AccountOverview() {
 
     // Filter recent orders to ensure activeOrder is never duplicated
     const visibleRecentOrders = props.recentOrders
-        .filter((order) => order.id !== props.activeOrder?.id)
-        .slice(0, 2);
+        .filter(
+            (order) =>
+                order.id !== props.activeOrder?.id &&
+                order.number !== props.activeOrder?.number,
+        )
+        .slice(0, 3);
 
     const ordersUrl =
         props.accountNavigation.find((n) => n.key === 'orders')?.url ??

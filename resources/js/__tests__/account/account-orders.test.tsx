@@ -8,9 +8,14 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
+import AccountOrderCard from '@/components/account/account-order-card';
 import AccountLiveOrder from '@/pages/account/live-order';
 import AccountOrders from '@/pages/account/orders';
-import type { AccountLiveOrderPageProps } from '@/types/account';
+import type {
+    AccountLiveOrderPageProps,
+    AccountOrder,
+    AccountTranslations,
+} from '@/types/account';
 
 const inertia = vi.hoisted(() => ({
     flushAll: vi.fn(),
@@ -231,12 +236,47 @@ it('resumes the existing Paylink payment from the canonical detail', async () =>
     expect(paymentNavigation.order).not.toHaveBeenCalled();
 });
 
-function order(id: string, number: string, status: string) {
+it('renders distinct classes for prominent and standard order cards without class name concatenation errors', () => {
+    const sampleOrder = order(
+        '01PROMINENT',
+        'UT-00000099',
+        'waiting_for_customer',
+    ) as unknown as AccountOrder;
+    const shell = shellProps();
+
+    const { container, rerender } = render(
+        <AccountOrderCard
+            locale="en"
+            order={sampleOrder}
+            prominent
+            translations={shell.accountUi as unknown as AccountTranslations}
+        />,
+    );
+
+    const prominentCard = container.querySelector('.account-order-card');
+    expect(prominentCard).not.toBeNull();
+    expect(prominentCard).toHaveClass('account-order-card');
+    expect(prominentCard).toHaveClass('account-order-card--prominent');
+
+    rerender(
+        <AccountOrderCard
+            locale="en"
+            order={sampleOrder}
+            prominent={false}
+            translations={shell.accountUi as unknown as AccountTranslations}
+        />,
+    );
+
+    expect(prominentCard).toHaveClass('account-order-card');
+    expect(prominentCard).not.toHaveClass('account-order-card--prominent');
+});
+
+function order(id: string, number: string, status: string): AccountOrder {
     return {
         id,
         source: 'live',
         number,
-        status,
+        status: status as AccountOrder['status'],
         placedAt: '2026-08-15T10:00:00+00:00',
         summary: 'FC 27 Coins service',
         itemCount: 1,

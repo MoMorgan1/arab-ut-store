@@ -29,11 +29,10 @@ final readonly class ReadAccountOverview
     public function for(User $user, string $locale): array
     {
         $activeOrder = $this->actionableOrder->for($user, $locale);
-        $activeOrderId = $activeOrder['id'] ?? null;
 
         return [
             'summary' => $this->summary($user),
-            'activeOrder' => $this->actionableOrder->for($user, $locale),
+            'activeOrder' => $activeOrder,
             'recentOrders' => $this->recentOrders($user, $locale),
             'loyalty' => $this->loyaltyProgress->for($user, $locale),
         ];

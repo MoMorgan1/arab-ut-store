@@ -235,3 +235,39 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
 
     fireEvent.click(screen.getByRole('button', { name: 'تسجيل الخروج' }));
 });
+
+it('never duplicates activeOrder inside recentOrders even if present in the recent list', () => {
+    mockPage.props.recentOrders = [
+        {
+            id: '01ACTIVE',
+            source: 'live',
+            number: 'UT-10000001',
+            status: 'waiting_for_customer',
+            placedAt: '2026-08-15T10:00:00+00:00',
+            summary: 'خدمة كوينز FC 27',
+            itemCount: 1,
+            total: { amountMinor: '12999', currency: 'SAR' },
+            detailUrl: '/orders/01ACTIVE',
+        },
+        {
+            id: '01RECENT',
+            source: 'live',
+            number: 'UT-10000000',
+            status: 'completed',
+            placedAt: '2026-08-14T10:00:00+00:00',
+            summary: 'خدمة SBC',
+            itemCount: 1,
+            total: { amountMinor: '98765', currency: 'SAR' },
+            detailUrl: '/orders/01RECENT',
+        },
+    ];
+
+    render(<AccountOverview />);
+
+    const recentOrders = screen.getByRole('region', { name: 'أحدث الطلبات' });
+
+    expect(
+        within(recentOrders).queryByTitle('UT-10000001'),
+    ).not.toBeInTheDocument();
+    expect(within(recentOrders).getByTitle('UT-10000000')).toBeVisible();
+});
