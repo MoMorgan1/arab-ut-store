@@ -39,6 +39,7 @@ export function SquadUpload({
                     accept="image/jpeg,image/png,image/webp"
                     aria-describedby={error ? 'manual-squad-error' : undefined}
                     aria-invalid={error !== undefined}
+                    name="squad-image"
                     onChange={(event) =>
                         onChange(event.currentTarget.files?.[0] ?? null)
                     }

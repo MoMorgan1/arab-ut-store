@@ -64,6 +64,7 @@ export function CredentialsFields({
                     <>
                         <TextField
                             label={translations.playstation_email}
+                            name="playstation-email"
                             onChange={(value) =>
                                 update('playstationEmail', value)
                             }
@@ -72,6 +73,7 @@ export function CredentialsFields({
                         />
                         <PasswordField
                             label={translations.playstation_password}
+                            name="playstation-password"
                             onChange={(value) =>
                                 update('playstationPassword', value)
                             }
@@ -90,12 +92,14 @@ export function CredentialsFields({
                     <>
                         <TextField
                             label={translations.ea_email}
+                            name="ea-email"
                             onChange={(value) => update('eaEmail', value)}
                             type="email"
                             value={credentials.eaEmail}
                         />
                         <PasswordField
                             label={translations.ea_password}
+                            name="ea-password"
                             onChange={(value) => update('eaPassword', value)}
                             onToggle={() =>
                                 setVisible((current) => ({
@@ -113,11 +117,13 @@ export function CredentialsFields({
                     <>
                         <TextField
                             label={translations.steam_username}
+                            name="steam-username"
                             onChange={(value) => update('steamUsername', value)}
                             value={credentials.steamUsername}
                         />
                         <PasswordField
                             label={translations.steam_password}
+                            name="steam-password"
                             onChange={(value) => update('steamPassword', value)}
                             onToggle={() =>
                                 setVisible((current) => ({
@@ -137,6 +143,7 @@ export function CredentialsFields({
                 help={translations.ea_codes_help}
                 label={translations.ea_codes}
                 numeric
+                namePrefix="ea-code"
                 onChange={(codes) => update('eaCodes', codes)}
                 translations={translations}
             />
@@ -145,6 +152,7 @@ export function CredentialsFields({
                     codes={credentials.playstationCodes}
                     help={translations.playstation_codes_help}
                     label={translations.playstation_codes}
+                    namePrefix="playstation-code"
                     onChange={(codes) => update('playstationCodes', codes)}
                     translations={translations}
                 />
@@ -155,11 +163,13 @@ export function CredentialsFields({
 
 function TextField({
     label,
+    name,
     onChange,
     type = 'text',
     value,
 }: {
     label: string;
+    name: string;
     onChange: (value: string) => void;
     type?: 'email' | 'text';
     value: string;
@@ -170,6 +180,7 @@ function TextField({
             <input
                 autoComplete="off"
                 dir="ltr"
+                name={name}
                 onChange={(event) => onChange(event.currentTarget.value)}
                 required
                 type={type}
@@ -181,6 +192,7 @@ function TextField({
 
 function PasswordField({
     label,
+    name,
     onChange,
     onToggle,
     show,
@@ -188,6 +200,7 @@ function PasswordField({
     value,
 }: {
     label: string;
+    name: string;
     onChange: (value: string) => void;
     onToggle: () => void;
     show: boolean;
@@ -201,6 +214,7 @@ function PasswordField({
                 <input
                     autoComplete="off"
                     dir="ltr"
+                    name={name}
                     onChange={(event) => onChange(event.currentTarget.value)}
                     required
                     type={show ? 'text' : 'password'}
@@ -230,6 +244,7 @@ function CodeFields({
     codes,
     help,
     label,
+    namePrefix,
     numeric = false,
     onChange,
     translations,
@@ -237,6 +252,7 @@ function CodeFields({
     codes: [string, string, string];
     help: string;
     label: string;
+    namePrefix: string;
     numeric?: boolean;
     onChange: (codes: [string, string, string]) => void;
     translations: ManualServiceCommonTranslations;
@@ -259,6 +275,7 @@ function CodeFields({
                             dir="ltr"
                             inputMode={numeric ? 'numeric' : 'text'}
                             maxLength={numeric ? 8 : 6}
+                            name={`${namePrefix}-${index + 1}`}
                             onChange={(event) => {
                                 const next: [string, string, string] = [
                                     ...codes,

@@ -224,6 +224,7 @@ export function FutChampionsConfigurator({
                 <label>
                     <input
                         checked={urgent}
+                        name="urgent"
                         onChange={(event) =>
                             setUrgent(event.currentTarget.checked)
                         }
@@ -239,6 +240,7 @@ export function FutChampionsConfigurator({
                     <input
                         max="100"
                         min="0"
+                        name="matches-played"
                         onChange={(event) =>
                             setMatchesPlayed(Number(event.currentTarget.value))
                         }
