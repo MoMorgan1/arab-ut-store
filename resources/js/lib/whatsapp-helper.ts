@@ -11,10 +11,7 @@ export type WhatsAppContext =
     | 'privacy'
     | 'general';
 
-const CONTEXT_MESSAGES: Record<
-    WhatsAppContext,
-    Record<StoreLocale, string>
-> = {
+const CONTEXT_MESSAGES: Record<WhatsAppContext, Record<StoreLocale, string>> = {
     coins: {
         ar: 'مرحباً متجر عرب التيميت، لدي استفسار بخصوص شحن كوينز FC 27.',
         en: 'Hello Arab UT Store, I have an inquiry about FC 27 Coins delivery.',
@@ -62,7 +59,8 @@ export function buildContextualWhatsAppUrl(
         return 'https://wa.me/966537998099';
     }
 
-    const message = CONTEXT_MESSAGES[context]?.[locale] || CONTEXT_MESSAGES.general[locale];
+    const message =
+        CONTEXT_MESSAGES[context]?.[locale] || CONTEXT_MESSAGES.general[locale];
     const encoded = encodeURIComponent(message);
     const separator = baseUrl.includes('?') ? '&' : '?';
 

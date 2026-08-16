@@ -82,7 +82,7 @@ export default function StoreHome() {
         >
             <StoreSeoHead
                 title={store?.seo_title ?? ui.home_title}
-                description={ui.service_notice}
+                description={ui.footer?.description}
                 locale={locale}
             />
             {hasHomepageContract ? (

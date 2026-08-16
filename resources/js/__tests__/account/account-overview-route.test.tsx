@@ -219,10 +219,9 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
     expect(
         screen.getAllByRole('navigation', { name: 'أقسام حسابي' })[0],
     ).toBeVisible();
-    expect(screen.getAllByRole('link', { name: 'نظرة عامة' })[0]).toHaveAttribute(
-        'aria-current',
-        'page',
-    );
+    expect(
+        screen.getAllByRole('link', { name: 'نظرة عامة' })[0],
+    ).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('button', { name: 'تسجيل الخروج' })).toBeVisible();
     expect(screen.getByText('UT-10000001')).toBeVisible();
     expect(screen.getByText('خدمة كوينز FC 27')).toBeVisible();

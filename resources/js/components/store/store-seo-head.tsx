@@ -3,7 +3,7 @@ import type { StoreLocale } from '@/types/store-shell';
 
 type StoreSeoHeadProps = {
     title: string;
-    description?: string;
+    description?: string | null;
     locale?: StoreLocale;
     canonicalUrl?: string;
     imageUrl?: string;
@@ -25,7 +25,9 @@ export function StoreSeoHead({
 }: StoreSeoHeadProps) {
     const metaDescription = description || DEFAULT_DESCRIPTIONS[locale];
     const brandName = locale === 'ar' ? 'متجر عرب التيميت' : 'Arab UT Store';
-    const formattedTitle = title.includes(brandName) ? title : `${title} | ${brandName}`;
+    const formattedTitle = title.includes(brandName)
+        ? title
+        : `${title} | ${brandName}`;
 
     const jsonLd = {
         '@context': 'https://schema.org',
@@ -50,16 +52,17 @@ export function StoreSeoHead({
             <meta property="og:description" content={metaDescription} />
             <meta property="og:type" content="website" />
             <meta property="og:site_name" content={brandName} />
-            <meta property="og:locale" content={locale === 'ar' ? 'ar_SA' : 'en_US'} />
+            <meta
+                property="og:locale"
+                content={locale === 'ar' ? 'ar_SA' : 'en_US'}
+            />
             <meta property="og:image" content={imageUrl} />
             <meta name="twitter:card" content="summary_large_image" />
             <meta name="twitter:title" content={formattedTitle} />
             <meta name="twitter:description" content={metaDescription} />
             <meta name="twitter:image" content={imageUrl} />
             {canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
-            <script type="application/ld+json">
-                {JSON.stringify(jsonLd)}
-            </script>
+            <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
         </Head>
     );
 }

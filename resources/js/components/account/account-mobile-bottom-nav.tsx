@@ -50,7 +50,9 @@ export function AccountMobileBottomNav({
                             aria-current={selected ? 'page' : undefined}
                             className={[
                                 'account-mobile-bottom-nav__item',
-                                selected ? 'account-mobile-bottom-nav__item--active' : '',
+                                selected
+                                    ? 'account-mobile-bottom-nav__item--active'
+                                    : '',
                             ]
                                 .filter(Boolean)
                                 .join(' ')}

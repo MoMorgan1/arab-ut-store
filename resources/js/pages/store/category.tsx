@@ -70,7 +70,10 @@ export default function StoreCategory() {
         >
             <StoreSeoHead
                 title={pageTitle}
-                description={props.servicePage.description}
+                description={
+                    props.servicePage.card_description ||
+                    props.servicePage.intro
+                }
                 locale={props.locale}
             />
             <section

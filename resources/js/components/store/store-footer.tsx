@@ -174,7 +174,9 @@ export function StoreFooter({ locale, shell, translations }: StoreFooterProps) {
                             aria-label={translations.footer.verified_freelance}
                         >
                             <ShieldCheckIcon />
-                            <span>{translations.footer.verified_freelance}</span>
+                            <span>
+                                {translations.footer.verified_freelance}
+                            </span>
                         </a>
                     </div>
                 ) : null}
