@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** @property array<string, mixed>|null $encrypted_payload */
+/**
+ * @property array<string, mixed>|null $encrypted_payload
+ * @property array<string, mixed>|null $masked_summary
+ * @property CarbonImmutable|null $deleted_at
+ */
 #[Hidden(['encrypted_payload'])]
 class OrderItemSecret extends DomainModel
 {

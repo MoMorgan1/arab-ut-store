@@ -4,6 +4,12 @@ namespace App\Models;
 
 use App\Enums\ServiceType;
 
+/**
+ * @property ServiceType $service_type
+ * @property int $version
+ * @property array<string, mixed> $configuration
+ * @property bool $is_active
+ */
 class ServicePriceSchedule extends DomainModel
 {
     /** @return array<string, string> */

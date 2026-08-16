@@ -324,22 +324,23 @@ final readonly class PlaceOrder
         }
 
         try {
-            $pricing = $service === ServiceType::FutChampions
-                ? $this->readManualServicePricing->futChampions(lock: true)
-                : $this->readManualServicePricing->rivals(lock: true);
-            $schedule = $pricing['schedule'];
+            if ($service === ServiceType::FutChampions) {
+                $pricing = $this->readManualServicePricing->futChampions(lock: true);
+                $schedule = $pricing['schedule'];
+                $total = $pricing['pricing']->priceForRank($configuration['rank'], $configuration['urgent']);
+            } else {
+                $pricing = $this->readManualServicePricing->rivals(lock: true);
+                $schedule = $pricing['schedule'];
+                $total = $pricing['pricing']->priceForRoute(
+                    $configuration['current_division'],
+                    $configuration['target_division'],
+                );
+            }
 
             if ($configuration['schedule_version'] !== $schedule->version
                 || $configuration['price_version'] !== $schedule->version) {
                 throw new CheckoutUnavailable('The manual-service price has changed.');
             }
-
-            $total = $service === ServiceType::FutChampions
-                ? $pricing['pricing']->priceForRank($configuration['rank'], $configuration['urgent'])
-                : $pricing['pricing']->priceForRoute(
-                    $configuration['current_division'],
-                    $configuration['target_division'],
-                );
         } catch (DomainException $exception) {
             throw new CheckoutUnavailable('The manual-service price has changed.', previous: $exception);
         }

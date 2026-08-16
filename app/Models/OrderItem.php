@@ -13,7 +13,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $total_halalah
  * @property string $name_ar
  * @property string $name_en
+ * @property ServiceType $service_type
+ * @property Platform $platform
  * @property OrderItemStatus $status
+ * @property int $quantity
+ * @property array<string, mixed>|null $configuration
  */
 class OrderItem extends DomainModel
 {

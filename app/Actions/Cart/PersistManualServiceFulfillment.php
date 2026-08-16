@@ -80,7 +80,7 @@ final readonly class PersistManualServiceFulfillment
         }
 
         $details = @getimagesize($path);
-        $type = is_array($details) ? ($details[2] ?? null) : null;
+        $type = is_array($details) ? $details[2] : null;
         $format = match ($type) {
             IMAGETYPE_JPEG => ['extension' => 'jpg', 'mime' => 'image/jpeg'],
             IMAGETYPE_PNG => ['extension' => 'png', 'mime' => 'image/png'],
@@ -93,6 +93,11 @@ final readonly class PersistManualServiceFulfillment
             throw new DomainException('The squad image could not be verified.');
         }
 
-        return [...$format, 'bytes' => $bytes, 'sha256' => $sha256];
+        return [
+            'extension' => $format['extension'],
+            'mime' => $format['mime'],
+            'bytes' => $bytes,
+            'sha256' => $sha256,
+        ];
     }
 }

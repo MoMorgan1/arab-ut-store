@@ -5,6 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $disk
+ * @property string $path
+ * @property string $mime_type
+ * @property int $bytes
+ * @property string $sha256
+ */
 #[Hidden(['path'])]
 class FulfillmentAttachment extends DomainModel
 {

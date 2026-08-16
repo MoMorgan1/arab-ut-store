@@ -130,19 +130,33 @@ final class ManualServiceProductController extends Controller
     private function product(?Product $product, ServiceType $service, string $slug): array
     {
         $locale = app()->getLocale();
-        $media = $product?->media->first();
+
+        if (! $product instanceof Product) {
+            return [
+                'id' => null,
+                'slug' => $slug,
+                'name' => trans("store.manual_services.{$service->value}.title"),
+                'description' => trans("store.manual_services.{$service->value}.intro"),
+                'image' => [
+                    'url' => "/images/store/services/{$this->imageName($service)}.webp",
+                    'alt' => trans("store.manual_services.{$service->value}.title"),
+                ],
+            ];
+        }
+
+        $media = $product->media->first();
 
         return [
-            'id' => $product?->public_id,
+            'id' => $product->public_id,
             'slug' => $slug,
-            'name' => $product?->{"name_{$locale}"} ?? trans("store.manual_services.{$service->value}.title"),
-            'description' => $product?->{"description_{$locale}"} ?? trans("store.manual_services.{$service->value}.intro"),
+            'name' => $product->{"name_{$locale}"},
+            'description' => $product->{"description_{$locale}"},
             'image' => [
                 'url' => $media instanceof ProductMedia
                     ? Storage::disk($media->disk)->url($media->path)
                     : "/images/store/services/{$this->imageName($service)}.webp",
                 'alt' => $media instanceof ProductMedia
-                    ? ($media->{"alt_{$locale}"} ?: $product?->{"name_{$locale}"})
+                    ? ($media->{"alt_{$locale}"} ?: $product->{"name_{$locale}"})
                     : trans("store.manual_services.{$service->value}.title"),
             ],
         ];
