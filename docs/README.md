@@ -15,6 +15,7 @@ Major planned areas still include the remaining service workflows, the broader o
 | [Discovery record](product/discovery-record.md) | Binding product decisions and the verified WordPress/Hostinger baseline | Complete |
 | [v1 product blueprint](product/v1-blueprint.md) | Approved MVP boundary, users, pages, service rules, admin scope, stack, integrations, and milestones | Approved |
 | [Workflow integration audit](architecture/workflow-integration-audit.md) | Findings and replacement contracts for catalog sync, pricing, fulfillment, and customer notifications | Complete |
+| [Coins pricing API and workflow](api/n8n-pricing-v1.md) | Signed Laravel contract plus the adaptive FFT/UTT v2 tier, fallback, quantity-curve, and stability rules | Implemented; n8n import/operator activation pending |
 | [MVP implementation plan](superpowers/plans/2026-08-08-arab-ut-mvp.md) | Test-first execution sequence with planned files, contracts, checks, and commits | In progress |
 | [Paylink checkout API](api/paylink-checkout-v1.md) | Checkout, callback, webhook, refund, and signed paid-order event contracts | Implemented; credentials/pilot pending |
 | [Paylink operations](operations/paylink-checkout.md) | Hostinger/Paylink setup, pilot, scheduler, and failure procedures | Ready for operator configuration |
