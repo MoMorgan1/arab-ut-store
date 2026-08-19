@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureChatEnabled;
 use App\Http\Middleware\EnsureVerifiedPasswordRecoveryEmail;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -39,7 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prependToPriorityList(AuthenticatesRequests::class, RequireCatalogCartJson::class);
         $middleware->prependToPriorityList(
             ThrottleRequests::class,
-            \App\Http\Middleware\EnsureChatEnabled::class,
+            EnsureChatEnabled::class,
         );
         $middleware->prependToPriorityList(
             ThrottleRequests::class,

@@ -28,7 +28,6 @@ class ChatConversation extends DomainModel
         });
     }
 
-
     /** @param Builder<ChatConversation> $query */
     public function scopeForOwner(Builder $query, ChatOwner $owner): void
     {

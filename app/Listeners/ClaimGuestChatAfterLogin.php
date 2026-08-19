@@ -8,7 +8,6 @@ use App\Models\User;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Throwable;
 
 final readonly class ClaimGuestChatAfterLogin

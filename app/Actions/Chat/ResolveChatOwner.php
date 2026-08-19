@@ -12,6 +12,7 @@ use RuntimeException;
 final class ResolveChatOwner
 {
     public const SESSION_KEY = 'arabut_chat_guest_token';
+
     public const ACTIVE_CONVERSATION_SESSION_KEY = 'arabut_chat_active_conversation';
 
     public function forRequest(Request $request): ChatOwner

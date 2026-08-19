@@ -10,8 +10,8 @@ beforeEach(function () {
 });
 
 test('guest conversation under old rotated APP_KEY is claimed upon direct user login without preceding chat call', function () {
-    $oldAppKey = 'base64:' . base64_encode(str_repeat('1', 32));
-    $newAppKey = 'base64:' . base64_encode(str_repeat('2', 32));
+    $oldAppKey = 'base64:'.base64_encode(str_repeat('1', 32));
+    $newAppKey = 'base64:'.base64_encode(str_repeat('2', 32));
 
     $rawToken = str_repeat('e', 64);
     $oldGuestKey = hash_hmac('sha256', $rawToken, $oldAppKey);

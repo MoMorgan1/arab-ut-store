@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Actions\Cart\ResolveCartOwner;
+use App\Actions\Chat\ResolveChatOwner;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -104,7 +105,7 @@ class AppServiceProvider extends ServiceProvider
                 return [Limit::none()];
             }
 
-            $owner = app(\App\Actions\Chat\ResolveChatOwner::class)->forRequest($request);
+            $owner = app(ResolveChatOwner::class)->forRequest($request);
 
             return [
                 Limit::perMinute(10)->by('chat-conversations:'.$owner->idempotencyScope()),
@@ -117,7 +118,7 @@ class AppServiceProvider extends ServiceProvider
                 return [Limit::none()];
             }
 
-            $owner = app(\App\Actions\Chat\ResolveChatOwner::class)->forRequest($request);
+            $owner = app(ResolveChatOwner::class)->forRequest($request);
 
             return [
                 Limit::perMinute(30)->by('chat-messages:'.$owner->idempotencyScope()),
@@ -130,7 +131,7 @@ class AppServiceProvider extends ServiceProvider
                 return [Limit::none()];
             }
 
-            $owner = app(\App\Actions\Chat\ResolveChatOwner::class)->forRequest($request);
+            $owner = app(ResolveChatOwner::class)->forRequest($request);
 
             return [
                 Limit::perMinute(60)->by('chat-read:'.$owner->idempotencyScope()),
