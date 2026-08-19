@@ -149,6 +149,7 @@ export async function fetchConversation(
 export async function sendChatMessage(
     conversationPublicId: string,
     content: string,
+    clientMessageId: string,
 ): Promise<{ message: ChatMessage; demoReply: ChatMessage | null }> {
     const token = csrfToken();
     const headers: Record<string, string> = {
@@ -170,7 +171,10 @@ export async function sendChatMessage(
                 credentials: 'same-origin',
                 cache: 'no-store',
                 headers,
-                body: JSON.stringify({ content }),
+                body: JSON.stringify({
+                    content,
+                    client_message_id: clientMessageId,
+                }),
             },
         );
     } catch {

@@ -1,15 +1,21 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useChat } from '@/hooks/use-chat';
 import { ChatComposer } from './chat-composer';
 import { ChatHeader } from './chat-header';
 import { ChatLauncher } from './chat-launcher';
 import { ChatMessageList } from './chat-message-list';
 
-type ChatWidgetProps = {
+export type ChatWidgetProps = {
+    enabled?: boolean;
+    demoAssistant?: boolean;
     locale?: string;
 };
 
-export const ChatWidget: React.FC<ChatWidgetProps> = ({ locale = 'ar' }) => {
+export const ChatWidget: React.FC<ChatWidgetProps> = ({
+    enabled,
+    demoAssistant,
+    locale = 'ar',
+}) => {
     const {
         isChatEnabled,
         isOpen,
@@ -17,7 +23,6 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ locale = 'ar' }) => {
         closeChat,
         messages,
         isLoading,
-        isSending,
         isAssistantTyping,
         isLoadingOlder,
         hasMore,
@@ -28,11 +33,42 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ locale = 'ar' }) => {
         sendMessage,
         retryMessage,
         loadOlderMessages,
-    } = useChat({ locale });
+    } = useChat({ enabled, demoAssistant, locale });
 
     const launcherRef = useRef<HTMLButtonElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
     const wasOpenRef = useRef(isOpen);
+
+    const [isVisible, setIsVisible] = useState(isOpen);
+
+    const isReducedMotion =
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Presence animation management
+    useEffect(() => {
+        if (isOpen) {
+            const raf = requestAnimationFrame(() => {
+                setIsVisible(true);
+            });
+
+            return () => cancelAnimationFrame(raf);
+        }
+
+        if (!isOpen && isVisible) {
+            const timeout = setTimeout(
+                () => {
+                    setIsVisible(false);
+                },
+                isReducedMotion ? 0 : 200,
+            );
+
+            return () => clearTimeout(timeout);
+        }
+    }, [isOpen, isVisible, isReducedMotion]);
+
+    const isMounted = isOpen || isVisible;
 
     // Focus restoration to launcher on close
     useEffect(() => {
@@ -61,7 +97,10 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ locale = 'ar' }) => {
     }
 
     return (
-        <div className="fixed end-5 bottom-5 z-50 font-sans" dir="auto">
+        <div
+            className="fixed right-4 bottom-4 z-50 font-sans sm:right-6 sm:bottom-6"
+            dir={locale === 'en' ? 'ltr' : 'rtl'}
+        >
             {/* Screen reader live announcements */}
             <div
                 aria-live="polite"
@@ -73,7 +112,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ locale = 'ar' }) => {
             </div>
 
             {/* Chat Panel / Sheet */}
-            {isOpen && (
+            {isMounted && (
                 <div
                     ref={panelRef}
                     role="dialog"
@@ -83,8 +122,10 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ locale = 'ar' }) => {
                             ? 'Arab UT Chat Assistant'
                             : 'شات مساعد عرب التيميت'
                     }
-                    className={`fixed inset-0 z-50 flex flex-col bg-[var(--arabut-navy)] transition-all duration-200 ease-out motion-reduce:transition-none sm:inset-auto sm:end-0 sm:bottom-20 sm:h-[650px] sm:max-h-[85vh] sm:w-[420px] sm:overflow-hidden sm:rounded-3xl sm:border sm:border-[var(--arabut-line)] sm:shadow-2xl ${
-                        isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+                    className={`fixed inset-0 z-50 flex flex-col bg-[var(--arabut-navy)] transition-all duration-200 ease-out motion-reduce:transition-none sm:inset-auto sm:right-0 sm:bottom-20 sm:h-[650px] sm:max-h-[85vh] sm:w-[420px] sm:overflow-hidden sm:rounded-3xl sm:border sm:border-[var(--arabut-line)] sm:shadow-2xl ${
+                        isVisible
+                            ? 'translate-y-0 opacity-100 sm:scale-100'
+                            : 'translate-y-full opacity-0 sm:translate-y-4 sm:scale-95'
                     }`}
                 >
                     {/* Header */}
@@ -119,7 +160,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ locale = 'ar' }) => {
 
                     {/* Composer */}
                     <ChatComposer
-                        isSending={isSending}
+                        disabled={isLoading}
                         locale={locale}
                         onSend={sendMessage}
                     />

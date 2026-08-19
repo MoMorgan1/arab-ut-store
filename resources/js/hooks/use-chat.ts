@@ -1,4 +1,3 @@
-import { usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ChatApiError,
@@ -9,14 +8,31 @@ import {
 import type { ChatConversation, ChatMessage } from '@/types/chat';
 
 export type UseChatOptions = {
+    enabled?: boolean;
+    demoAssistant?: boolean;
     locale?: string;
 };
 
+type QueueItem = {
+    tempId: string;
+    content: string;
+    clientMessageId: string;
+};
+
+function generateClientMessageId(): string {
+    if (
+        typeof crypto !== 'undefined' &&
+        typeof crypto.randomUUID === 'function'
+    ) {
+        return crypto.randomUUID();
+    }
+
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function useChat(options: UseChatOptions = {}) {
-    const { props } = usePage();
-    const chatConfig = props.chat;
-    const isChatEnabled = chatConfig?.enabled === true;
-    const pageLocale = (props.locale as string) || options.locale || 'ar';
+    const isChatEnabled = options.enabled === true;
+    const pageLocale = options.locale || 'ar';
 
     const [isOpen, setIsOpen] = useState(false);
     const [conversation, setConversation] = useState<ChatConversation | null>(
@@ -24,7 +40,6 @@ export function useChat(options: UseChatOptions = {}) {
     );
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [isSending, setIsSending] = useState(false);
     const [isAssistantTyping, setIsAssistantTyping] = useState(false);
     const [isLoadingOlder, setIsLoadingOlder] = useState(false);
     const [hasMore, setHasMore] = useState(false);
@@ -35,51 +50,94 @@ export function useChat(options: UseChatOptions = {}) {
         null,
     );
 
-    const activeConversationIdRef = useRef<string | null>(null);
     const isOpenRef = useRef(isOpen);
+    const conversationRef = useRef<ChatConversation | null>(conversation);
+    const messagesRef = useRef<ChatMessage[]>(messages);
+    const initializationPromiseRef = useRef<Promise<ChatConversation> | null>(
+        null,
+    );
+    const queueRef = useRef<QueueItem[]>([]);
+    const isProcessingQueueRef = useRef(false);
 
     useEffect(() => {
         isOpenRef.current = isOpen;
     }, [isOpen]);
 
+    useEffect(() => {
+        conversationRef.current = conversation;
+    }, [conversation]);
+
+    useEffect(() => {
+        messagesRef.current = messages;
+    }, [messages]);
+
     const announceStatus = useCallback((message: string) => {
         setStatusAnnouncement(message);
     }, []);
 
+    const getOrInitConversation =
+        useCallback(async (): Promise<ChatConversation> => {
+            if (conversationRef.current !== null) {
+                return conversationRef.current;
+            }
+
+            if (initializationPromiseRef.current !== null) {
+                return initializationPromiseRef.current;
+            }
+
+            setIsLoading(true);
+            setError(null);
+
+            const promise = fetchOrStartActiveConversation(pageLocale)
+                .then((data) => {
+                    setConversation(data);
+                    conversationRef.current = data;
+                    setMessages(data.messages);
+                    messagesRef.current = data.messages;
+                    setHasMore(data.hasMore);
+                    setOldestCursor(data.oldestCursor ?? null);
+
+                    return data;
+                })
+                .catch((err) => {
+                    const errorMessage =
+                        pageLocale === 'en'
+                            ? 'Failed to connect to chat. Please try again.'
+                            : 'تعذر الاتصال بالشات. يرجى المحاولة مرة أخرى.';
+                    setError(errorMessage);
+
+                    throw err;
+                })
+                .finally(() => {
+                    setIsLoading(false);
+                    initializationPromiseRef.current = null;
+                });
+
+            initializationPromiseRef.current = promise;
+
+            return promise;
+        }, [pageLocale]);
+
     const initializeChat = useCallback(async () => {
-        if (!isChatEnabled || isLoading || conversation !== null) {
+        if (!isChatEnabled || isLoading || conversationRef.current !== null) {
             return;
         }
 
-        setIsLoading(true);
-        setError(null);
-
         try {
-            const data = await fetchOrStartActiveConversation(pageLocale);
-            setConversation(data);
-            setMessages(data.messages);
-            setHasMore(data.hasMore);
-            setOldestCursor(data.oldestCursor ?? null);
-            activeConversationIdRef.current = data.publicId;
+            await getOrInitConversation();
         } catch {
-            const errorMessage =
-                pageLocale === 'en'
-                    ? 'Failed to connect to chat. Please try again.'
-                    : 'تعذر الاتصال بالشات. يرجى المحاولة مرة أخرى.';
-            setError(errorMessage);
-        } finally {
-            setIsLoading(false);
+            // Error state handled inside getOrInitConversation
         }
-    }, [isChatEnabled, isLoading, conversation, pageLocale]);
+    }, [isChatEnabled, isLoading, getOrInitConversation]);
 
     const openChat = useCallback(() => {
         setIsOpen(true);
         setUnreadCount(0);
 
-        if (conversation === null) {
+        if (conversationRef.current === null) {
             void initializeChat();
         }
-    }, [conversation, initializeChat]);
+    }, [initializeChat]);
 
     const closeChat = useCallback(() => {
         setIsOpen(false);
@@ -93,61 +151,47 @@ export function useChat(options: UseChatOptions = {}) {
         }
     }, [isOpen, closeChat, openChat]);
 
-    const sendMessage = useCallback(
-        async (content: string) => {
-            const trimmed = content.trim();
+    const processQueue = useCallback(async () => {
+        if (isProcessingQueueRef.current) {
+            return;
+        }
 
-            if (trimmed === '' || isSending) {
-                return;
+        isProcessingQueueRef.current = true;
+
+        while (queueRef.current.length > 0) {
+            const item = queueRef.current.shift()!;
+
+            let currentConv: ChatConversation;
+
+            try {
+                currentConv = await getOrInitConversation();
+            } catch {
+                setMessages((prev) =>
+                    prev.map((msg) =>
+                        msg.tempId === item.tempId
+                            ? { ...msg, clientStatus: 'error' }
+                            : msg,
+                    ),
+                );
+
+                continue;
             }
-
-            let currentConv = conversation;
-
-            if (currentConv === null) {
-                try {
-                    currentConv =
-                        await fetchOrStartActiveConversation(pageLocale);
-                    setConversation(currentConv);
-                    setMessages(currentConv.messages);
-                    setHasMore(currentConv.hasMore);
-                    setOldestCursor(currentConv.oldestCursor ?? null);
-                } catch {
-                    setError(
-                        pageLocale === 'en'
-                            ? 'Failed to start conversation.'
-                            : 'تعذر بدء المحادثة.',
-                    );
-
-                    return;
-                }
-            }
-
-            const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-            const optimisticMessage: ChatMessage = {
-                publicId: tempId,
-                conversationPublicId: currentConv.publicId,
-                senderType: 'customer',
-                messageType: 'text',
-                content: trimmed,
-                createdAt: new Date().toISOString(),
-                clientStatus: 'sending',
-                tempId,
-            };
-
-            setMessages((prev) => [...prev, optimisticMessage]);
-            setIsSending(true);
-            setError(null);
 
             try {
                 const result = await sendChatMessage(
                     currentConv.publicId,
-                    trimmed,
+                    item.content,
+                    item.clientMessageId,
                 );
 
                 setMessages((prev) =>
                     prev.map((msg) =>
-                        msg.tempId === tempId
-                            ? { ...result.message, clientStatus: 'sent' }
+                        msg.tempId === item.tempId
+                            ? {
+                                  ...result.message,
+                                  clientStatus: 'sent',
+                                  clientMessageId: item.clientMessageId,
+                              }
                             : msg,
                     ),
                 );
@@ -184,7 +228,7 @@ export function useChat(options: UseChatOptions = {}) {
             } catch (err) {
                 setMessages((prev) =>
                     prev.map((msg) =>
-                        msg.tempId === tempId
+                        msg.tempId === item.tempId
                             ? { ...msg, clientStatus: 'error' }
                             : msg,
                     ),
@@ -200,30 +244,85 @@ export function useChat(options: UseChatOptions = {}) {
                           ? 'Failed to send message. Please retry.'
                           : 'تعذر إرسال الرسالة. يرجى إعادة المحاولة.';
                 setError(errorMessage);
-            } finally {
-                setIsSending(false);
             }
+        }
+
+        isProcessingQueueRef.current = false;
+    }, [getOrInitConversation, pageLocale, announceStatus]);
+
+    const sendMessage = useCallback(
+        async (content: string) => {
+            const trimmed = content.trim();
+
+            if (trimmed === '') {
+                return;
+            }
+
+            const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+            const clientMessageId = generateClientMessageId();
+
+            const optimisticMessage: ChatMessage = {
+                publicId: tempId,
+                conversationPublicId: conversationRef.current?.publicId,
+                clientMessageId,
+                senderType: 'customer',
+                messageType: 'text',
+                content: trimmed,
+                createdAt: new Date().toISOString(),
+                clientStatus: 'sending',
+                tempId,
+            };
+
+            setMessages((prev) => [...prev, optimisticMessage]);
+            setError(null);
+
+            queueRef.current.push({
+                tempId,
+                content: trimmed,
+                clientMessageId,
+            });
+
+            void processQueue();
         },
-        [conversation, isSending, pageLocale, announceStatus],
+        [processQueue],
     );
 
     const retryMessage = useCallback(
         async (tempId: string) => {
-            const failedMsg = messages.find((m) => m.tempId === tempId);
+            const failedMsg = messagesRef.current.find(
+                (m) => m.tempId === tempId || m.publicId === tempId,
+            );
 
             if (failedMsg === undefined) {
                 return;
             }
 
-            setMessages((prev) => prev.filter((m) => m.tempId !== tempId));
-            await sendMessage(failedMsg.content);
+            const clientMessageId =
+                failedMsg.clientMessageId || generateClientMessageId();
+            const messageTempId = failedMsg.tempId || failedMsg.publicId;
+
+            setMessages((prev) =>
+                prev.map((m) =>
+                    m.tempId === messageTempId || m.publicId === messageTempId
+                        ? { ...m, clientStatus: 'sending', clientMessageId }
+                        : m,
+                ),
+            );
+
+            queueRef.current.push({
+                tempId: messageTempId,
+                content: failedMsg.content,
+                clientMessageId,
+            });
+
+            void processQueue();
         },
-        [messages, sendMessage],
+        [processQueue],
     );
 
     const loadOlderMessages = useCallback(async () => {
         if (
-            conversation === null ||
+            conversationRef.current === null ||
             isLoadingOlder ||
             !hasMore ||
             oldestCursor === null
@@ -235,7 +334,7 @@ export function useChat(options: UseChatOptions = {}) {
 
         try {
             const data = await fetchConversation(
-                conversation.publicId,
+                conversationRef.current.publicId,
                 oldestCursor,
                 50,
             );
@@ -251,7 +350,7 @@ export function useChat(options: UseChatOptions = {}) {
         } finally {
             setIsLoadingOlder(false);
         }
-    }, [conversation, isLoadingOlder, hasMore, oldestCursor, pageLocale]);
+    }, [isLoadingOlder, hasMore, oldestCursor, pageLocale]);
 
     return {
         isChatEnabled,
@@ -263,7 +362,6 @@ export function useChat(options: UseChatOptions = {}) {
         conversation,
         messages,
         isLoading,
-        isSending,
         isAssistantTyping,
         isLoadingOlder,
         hasMore,

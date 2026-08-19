@@ -42,7 +42,23 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const bottomSentinelRef = useRef<HTMLDivElement>(null);
     const [showScrollBottom, setShowScrollBottom] = useState(false);
-    const prevMessagesLengthRef = useRef(messages.length);
+
+    const prevOldestIdRef = useRef<string | null>(
+        messages[0]?.publicId ?? null,
+    );
+    const prevNewestIdRef = useRef<string | null>(
+        messages[messages.length - 1]?.publicId ?? null,
+    );
+    const scrollSnapshotRef = useRef<{
+        scrollHeight: number;
+        scrollTop: number;
+    } | null>(null);
+    const isInitialScrollDoneRef = useRef(false);
+
+    const isReducedMotion =
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const checkScrollPosition = () => {
         const container = scrollContainerRef.current;
@@ -59,40 +75,82 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     };
 
     const handleScrollToBottomClick = () => {
-        bottomSentinelRef.current?.scrollIntoView({ behavior: 'smooth' });
+        bottomSentinelRef.current?.scrollIntoView({
+            behavior: isReducedMotion ? 'auto' : 'smooth',
+        });
         setShowScrollBottom(false);
+    };
+
+    const handleLoadOlderClick = () => {
+        const container = scrollContainerRef.current;
+
+        if (container) {
+            scrollSnapshotRef.current = {
+                scrollHeight: container.scrollHeight,
+                scrollTop: container.scrollTop,
+            };
+        }
+
+        onLoadOlder();
     };
 
     useEffect(() => {
         const container = scrollContainerRef.current;
 
-        if (!container) {
+        if (!container || messages.length === 0) {
             return;
         }
 
-        const isNewMessage = messages.length > prevMessagesLengthRef.current;
-        prevMessagesLengthRef.current = messages.length;
+        const currentOldestId = messages[0]?.publicId ?? null;
+        const currentNewestId = messages[messages.length - 1]?.publicId ?? null;
 
-        if (isNewMessage) {
+        // Case 1: Initial load / mount
+        if (!isInitialScrollDoneRef.current && !isLoading) {
+            bottomSentinelRef.current?.scrollIntoView({ behavior: 'auto' });
+            isInitialScrollDoneRef.current = true;
+            prevOldestIdRef.current = currentOldestId;
+            prevNewestIdRef.current = currentNewestId;
+
+            return;
+        }
+
+        // Case 2: Prepending older messages -> preserve scroll anchor
+        if (
+            scrollSnapshotRef.current !== null &&
+            currentOldestId !== prevOldestIdRef.current
+        ) {
+            const { scrollHeight: oldHeight, scrollTop: oldTop } =
+                scrollSnapshotRef.current;
+            const newHeight = container.scrollHeight;
+            container.scrollTop = newHeight - oldHeight + oldTop;
+            scrollSnapshotRef.current = null;
+            prevOldestIdRef.current = currentOldestId;
+            prevNewestIdRef.current = currentNewestId;
+
+            return;
+        }
+
+        // Case 3: Appending new messages -> scroll to bottom if close
+        if (currentNewestId !== prevNewestIdRef.current) {
             const distanceFromBottom =
                 container.scrollHeight -
                 container.scrollTop -
                 container.clientHeight;
+            const lastMessage = messages[messages.length - 1];
 
-            if (distanceFromBottom < 180) {
+            if (
+                distanceFromBottom < 180 ||
+                lastMessage?.senderType === 'customer'
+            ) {
                 bottomSentinelRef.current?.scrollIntoView({
-                    behavior: 'smooth',
+                    behavior: isReducedMotion ? 'auto' : 'smooth',
                 });
             }
-        }
-    }, [messages.length, isAssistantTyping]);
 
-    // Initial scroll on mount or loading complete
-    useEffect(() => {
-        if (!isLoading && messages.length > 0) {
-            bottomSentinelRef.current?.scrollIntoView({ behavior: 'auto' });
+            prevOldestIdRef.current = currentOldestId;
+            prevNewestIdRef.current = currentNewestId;
         }
-    }, [isLoading, messages.length]);
+    }, [messages, isLoading, isAssistantTyping, isReducedMotion]);
 
     const clusters = groupChatMessages(messages);
 
@@ -111,7 +169,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                     <div className="flex justify-center pt-1 pb-2">
                         <button
                             type="button"
-                            onClick={onLoadOlder}
+                            onClick={handleLoadOlderClick}
                             disabled={isLoadingOlder}
                             className="rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-3 py-1 text-xs text-[var(--arabut-muted)] hover:text-[var(--arabut-ink)] disabled:opacity-50"
                         >
@@ -194,12 +252,14 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                         ? 'Failed to send'
                                                         : 'تعذر الإرسال'}
                                                 </span>
-                                                {message.tempId && (
+                                                {(message.tempId ||
+                                                    message.publicId) && (
                                                     <button
                                                         type="button"
                                                         onClick={() =>
                                                             onRetry(
-                                                                message.tempId!,
+                                                                message.tempId ||
+                                                                    message.publicId,
                                                             )
                                                         }
                                                         className="inline-flex items-center gap-0.5 underline hover:text-[var(--arabut-ink)]"

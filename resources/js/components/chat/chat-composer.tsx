@@ -3,7 +3,7 @@ import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 
 type ChatComposerProps = {
-    isSending: boolean;
+    disabled?: boolean;
     locale?: string;
     onSend: (content: string) => void;
 };
@@ -11,7 +11,7 @@ type ChatComposerProps = {
 const MAX_LENGTH = 4000;
 
 export const ChatComposer: React.FC<ChatComposerProps> = ({
-    isSending,
+    disabled = false,
     locale = 'ar',
     onSend,
 }) => {
@@ -36,7 +36,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
         const trimmed = content.trim();
 
-        if (trimmed === '' || isSending) {
+        if (trimmed === '' || disabled) {
             return;
         }
 
@@ -56,7 +56,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         }
     };
 
-    const canSubmit = content.trim().length > 0 && !isSending;
+    const canSubmit = content.trim().length > 0 && !disabled;
 
     return (
         <form
@@ -72,7 +72,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                     placeholder={placeholder}
                     rows={1}
                     maxLength={MAX_LENGTH}
-                    disabled={isSending}
+                    disabled={disabled}
                     dir="auto"
                     className="max-h-32 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-[var(--arabut-ink)] placeholder-[var(--arabut-muted)] focus:outline-none disabled:opacity-60"
                 />

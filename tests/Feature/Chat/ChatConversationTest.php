@@ -7,6 +7,7 @@ use App\Enums\Chat\ChatSenderType;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
     config()->set('chat.enabled', true);
@@ -160,4 +161,57 @@ test('history is bounded to 50 messages with cursor-based pagination metadata', 
         ->and($page2Data['hasMore'])->toBeFalse()
         ->and($page2Data['messages'][0]['content'])->toBe('Message number 1')
         ->and($page2Data['messages'][9]['content'])->toBe('Message number 10');
+});
+
+test('invalid pagination cursor returns 422 validation response', function () {
+    $user = User::factory()->create();
+    $conversation = ChatConversation::factory()->forUser($user)->create();
+
+    // Invalid format
+    $this->actingAs($user)->getJson(route('chat.conversations.show', [
+        'conversation' => $conversation->public_id,
+        'before_id' => 'invalid-not-ulid',
+    ]))->assertStatus(422);
+
+    // Foreign cursor belonging to another conversation
+    $otherConversation = ChatConversation::factory()->forUser($user)->create();
+    $otherMessage = ChatMessage::factory()->create([
+        'conversation_id' => $otherConversation->id,
+    ]);
+
+    $response = $this->actingAs($user)->getJson(route('chat.conversations.show', [
+        'conversation' => $conversation->public_id,
+        'before_id' => $otherMessage->public_id,
+    ]));
+
+    $response->assertStatus(422)
+        ->assertJsonPath('error.code', 'invalid_cursor');
+    expect($response->headers->get('Cache-Control'))->toContain('no-store');
+});
+
+test('message serialization does not produce N+1 queries', function () {
+    $user = User::factory()->create();
+    $conversation = ChatConversation::factory()->forUser($user)->create();
+
+    for ($i = 1; $i <= 30; $i++) {
+        ChatMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'sender_type' => ChatSenderType::Customer,
+            'message_type' => ChatMessageType::Text,
+            'content' => "Query count test {$i}",
+        ]);
+    }
+
+    DB::enableQueryLog();
+
+    $this->actingAs($user)->getJson(route('chat.conversations.show', [
+        'conversation' => $conversation->public_id,
+        'limit' => 30,
+    ]))->assertOk();
+
+    $queryCount = count(DB::getQueryLog());
+    DB::disableQueryLog();
+
+    // Query count should be constant (fetching user, conversation, bounded messages, session), NOT 30+ queries
+    expect($queryCount)->toBeLessThanOrEqual(6);
 });

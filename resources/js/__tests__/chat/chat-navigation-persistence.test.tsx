@@ -9,9 +9,9 @@ import {
 import type React from 'react';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ChatWidget } from '@/components/chat/chat-widget';
+import ChatRootLayout from '@/layouts/chat-root-layout';
 
-const page = vi.hoisted(() => ({
+const pageState = vi.hoisted(() => ({
     props: {
         chat: { enabled: true, demoAssistant: false },
         locale: 'ar',
@@ -19,18 +19,17 @@ const page = vi.hoisted(() => ({
 }));
 
 vi.mock('@inertiajs/react', () => ({
-    usePage: () => ({ props: page.props }),
+    usePage: () => ({ props: pageState.props }),
 }));
 
-// Root wrapper simulator matching resources/js/app.tsx withApp structure
+// Root layout wrapper simulator matching resources/js/app.tsx persistent layout structure
 const AppRootSimulator: React.FC<{ initialPageName: string }> = ({
     initialPageName,
 }) => {
     const [pageName, setPageName] = useState(initialPageName);
 
     return (
-        <div>
-            {/* The page content that unmounts/changes on Inertia navigation */}
+        <ChatRootLayout>
             <main data-testid="page-content">
                 <h1>{pageName}</h1>
                 <button
@@ -40,16 +39,13 @@ const AppRootSimulator: React.FC<{ initialPageName: string }> = ({
                     Navigate to next page
                 </button>
             </main>
-
-            {/* Root-mounted ChatWidget that survives page navigations */}
-            <ChatWidget locale="ar" />
-        </div>
+        </ChatRootLayout>
     );
 };
 
 describe('Chat Root Navigation Persistence', () => {
     beforeEach(() => {
-        page.props = {
+        pageState.props = {
             chat: { enabled: true, demoAssistant: false },
             locale: 'ar',
         };
@@ -62,7 +58,7 @@ describe('Chat Root Navigation Persistence', () => {
         vi.restoreAllMocks();
     });
 
-    it('proves the root-mounted chat widget and conversation state persist across Inertia page navigation', async () => {
+    it('proves ChatRootLayout and conversation state persist across Inertia page navigation', async () => {
         const mockConversation = {
             publicId: '01JMPERSISTENCE00000000001',
             status: 'open',
@@ -91,12 +87,10 @@ describe('Chat Root Navigation Persistence', () => {
 
         render(<AppRootSimulator initialPageName="Home Page" />);
 
-        // Verify initial page content
         expect(screen.getByTestId('page-content')).toHaveTextContent(
             'Home Page',
         );
 
-        // Open chat
         const launcher = screen.getByRole('button', { name: /فتح الشات/i });
         fireEvent.click(launcher);
 

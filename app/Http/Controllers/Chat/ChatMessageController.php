@@ -34,12 +34,12 @@ class ChatMessageController extends Controller
                     'code' => 'conversation_not_found',
                     'message' => 'The requested conversation was not found.',
                 ],
-            ], 404)->header('Cache-Control', 'no-store');
+            ], 404)->header('Cache-Control', 'no-store, private');
         }
 
         $validated = $request->validate([
             'content' => ['required', 'string', 'max:'.config('chat.max_message_length', 4000)],
-            'metadata' => ['nullable', 'array'],
+            'client_message_id' => ['required', 'string', 'max:64'],
         ]);
 
         $content = trim($validated['content']);
@@ -53,16 +53,16 @@ class ChatMessageController extends Controller
         $result = $this->createChatMessage->execute(
             $conversation,
             $content,
-            $validated['metadata'] ?? null,
+            $validated['client_message_id'],
         );
 
         return response()->json([
             'data' => [
-                'message' => $this->chatPresenter->message($result['message']),
+                'message' => $this->chatPresenter->message($result['message'], $conversation->public_id),
                 'demoReply' => $result['demoReply'] !== null
-                    ? $this->chatPresenter->message($result['demoReply'])
+                    ? $this->chatPresenter->message($result['demoReply'], $conversation->public_id)
                     : null,
             ],
-        ], 201)->header('Cache-Control', 'no-store');
+        ], 201)->header('Cache-Control', 'no-store, private');
     }
 }

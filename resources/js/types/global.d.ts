@@ -13,6 +13,7 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             auth: Auth;
+            locale?: string;
             chat?: ChatSharedProps;
             sidebarOpen: boolean;
             [key: string]: unknown;

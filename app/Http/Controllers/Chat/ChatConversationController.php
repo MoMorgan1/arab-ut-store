@@ -20,11 +20,16 @@ class ChatConversationController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'locale' => ['nullable', 'string', 'max:10'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
         $owner = $this->resolveChatOwner->forRequest($request);
-        $locale = is_string($request->input('locale')) ? (string) $request->input('locale') : null;
+        $locale = $validated['locale'] ?? null;
         $conversation = $this->createOrGetActiveConversation->execute($owner, $request, $locale);
 
-        $limit = min((int) ($request->query('limit', config('chat.default_page_size', 50))), 100);
+        $limit = isset($validated['limit']) ? (int) $validated['limit'] : (int) config('chat.default_page_size', 50);
         $bounded = $this->chatPresenter->loadBoundedMessages($conversation, limit: $limit);
 
         return response()->json([
@@ -34,7 +39,7 @@ class ChatConversationController extends Controller
                 $bounded['hasMore'],
                 $bounded['oldestCursor'],
             ),
-        ])->header('Cache-Control', 'no-store');
+        ])->header('Cache-Control', 'no-store, private');
     }
 
     public function show(Request $request, string $publicId): JsonResponse
@@ -52,11 +57,32 @@ class ChatConversationController extends Controller
                     'code' => 'conversation_not_found',
                     'message' => 'The requested conversation was not found.',
                 ],
-            ], 404)->header('Cache-Control', 'no-store');
+            ], 404)->header('Cache-Control', 'no-store, private');
         }
 
-        $limit = min((int) ($request->query('limit', config('chat.default_page_size', 50))), 100);
-        $beforeId = is_string($request->query('before_id')) ? (string) $request->query('before_id') : null;
+        $validated = $request->validate([
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'before_id' => ['nullable', 'string', 'size:26', 'regex:/^[0-9A-HJ-KM-NP-TV-Z]{26}$/i'],
+        ]);
+
+        $limit = isset($validated['limit']) ? (int) $validated['limit'] : (int) config('chat.default_page_size', 50);
+        $beforeId = $validated['before_id'] ?? null;
+
+        if ($beforeId !== null) {
+            $cursorExists = $conversation->messages()
+                ->where('public_id', $beforeId)
+                ->exists();
+
+            if (! $cursorExists) {
+                return response()->json([
+                    'error' => [
+                        'code' => 'invalid_cursor',
+                        'message' => 'The provided pagination cursor is invalid for this conversation.',
+                    ],
+                ], 422)->header('Cache-Control', 'no-store, private');
+            }
+        }
+
         $bounded = $this->chatPresenter->loadBoundedMessages($conversation, $beforeId, $limit);
 
         return response()->json([
@@ -66,6 +92,6 @@ class ChatConversationController extends Controller
                 $bounded['hasMore'],
                 $bounded['oldestCursor'],
             ),
-        ])->header('Cache-Control', 'no-store');
+        ])->header('Cache-Control', 'no-store, private');
     }
 }

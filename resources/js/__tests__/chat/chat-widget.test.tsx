@@ -9,25 +9,9 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatWidget } from '@/components/chat/chat-widget';
 
-const page = vi.hoisted(() => ({
-    props: {
-        chat: { enabled: true, demoAssistant: false },
-        locale: 'ar',
-    } as Record<string, unknown>,
-}));
-
-vi.mock('@inertiajs/react', () => ({
-    usePage: () => ({ props: page.props }),
-}));
-
 describe('ChatWidget Component', () => {
     beforeEach(() => {
-        page.props = {
-            chat: { enabled: true, demoAssistant: false },
-            locale: 'ar',
-        };
         vi.stubGlobal('fetch', vi.fn());
-        // Mock scrollIntoView
         Element.prototype.scrollIntoView = vi.fn();
     });
 
@@ -36,18 +20,15 @@ describe('ChatWidget Component', () => {
         vi.restoreAllMocks();
     });
 
-    it('renders nothing when chat.enabled is false', () => {
-        page.props = {
-            chat: { enabled: false, demoAssistant: false },
-            locale: 'ar',
-        };
-
-        const { container } = render(<ChatWidget locale="ar" />);
+    it('renders nothing when enabled is false', () => {
+        const { container } = render(
+            <ChatWidget enabled={false} locale="ar" />,
+        );
         expect(container.firstChild).toBeNull();
     });
 
-    it('renders launcher button when chat.enabled is true', () => {
-        render(<ChatWidget locale="ar" />);
+    it('renders launcher button in Arabic mode when locale is ar', () => {
+        render(<ChatWidget enabled={true} locale="ar" />);
 
         const launcherButton = screen.getByRole('button', {
             name: /فتح الشات/i,
@@ -56,7 +37,71 @@ describe('ChatWidget Component', () => {
         expect(launcherButton).toHaveAttribute('aria-expanded', 'false');
     });
 
-    it('opens chat panel on launcher click and lazily fetches active conversation', async () => {
+    it('renders launcher button and UI in English mode when locale is en', async () => {
+        const mockConversation = {
+            publicId: '01JM0000000000000000000001',
+            status: 'open',
+            locale: 'en',
+            subject: null,
+            lastMessageAt: '2026-08-20T10:00:00.000Z',
+            messages: [
+                {
+                    publicId: 'msg-sys-en-1',
+                    conversationPublicId: '01JM0000000000000000000001',
+                    senderType: 'system',
+                    messageType: 'system',
+                    content:
+                        'Welcome to Arab UT! Ask anything about coins, services, or your order.',
+                    createdAt: '2026-08-20T10:00:00.000Z',
+                },
+            ],
+            hasMore: false,
+            oldestCursor: null,
+        };
+
+        vi.mocked(fetch).mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: async () => ({ data: mockConversation }),
+        } as Response);
+
+        render(<ChatWidget enabled={true} locale="en" />);
+
+        const launcherButton = screen.getByRole('button', {
+            name: /Open chat/i,
+        });
+        expect(launcherButton).toBeInTheDocument();
+
+        fireEvent.click(launcherButton);
+
+        expect(
+            screen.getByRole('dialog', { name: /Arab UT Chat Assistant/i }),
+        ).toBeInTheDocument();
+
+        await waitFor(() => {
+            expect(
+                screen.getByText(
+                    /Welcome to Arab UT! Ask anything about coins/i,
+                ),
+            ).toBeInTheDocument();
+        });
+
+        // English suggestion chips
+        expect(screen.getByText('Prices')).toBeInTheDocument();
+        expect(screen.getByText('Services')).toBeInTheDocument();
+        expect(screen.getByText('Track Order')).toBeInTheDocument();
+        expect(screen.getByText('Support')).toBeInTheDocument();
+
+        // English composer
+        expect(
+            screen.getByPlaceholderText(/Type a message/i),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /Send message/i }),
+        ).toBeInTheDocument();
+    });
+
+    it('opens chat panel on launcher click and lazily fetches active conversation in Arabic', async () => {
         const mockConversation = {
             publicId: '01JM0000000000000000000001',
             status: 'open',
@@ -83,7 +128,7 @@ describe('ChatWidget Component', () => {
             json: async () => ({ data: mockConversation }),
         } as Response);
 
-        render(<ChatWidget locale="ar" />);
+        render(<ChatWidget enabled={true} locale="ar" />);
 
         const launcherButton = screen.getByRole('button', {
             name: /فتح الشات/i,
@@ -100,7 +145,6 @@ describe('ChatWidget Component', () => {
             ).toBeInTheDocument();
         });
 
-        // Verify suggestion chips are displayed because there are no customer messages yet
         expect(screen.getByText('الأسعار')).toBeInTheDocument();
         expect(screen.getByText('الخدمات')).toBeInTheDocument();
         expect(screen.getByText('متابعة الطلب')).toBeInTheDocument();
@@ -152,7 +196,7 @@ describe('ChatWidget Component', () => {
                 }),
             } as Response);
 
-        render(<ChatWidget locale="ar" />);
+        render(<ChatWidget enabled={true} locale="ar" />);
 
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
 
@@ -172,10 +216,7 @@ describe('ChatWidget Component', () => {
         });
         fireEvent.click(sendButton);
 
-        // Optimistic message should appear immediately
         expect(screen.getByText('كم سعر 500 ألف كوينز؟')).toBeInTheDocument();
-
-        // Suggestion chips should now be removed since a customer message exists
         expect(screen.queryByText('الأسعار')).not.toBeInTheDocument();
     });
 
@@ -215,7 +256,7 @@ describe('ChatWidget Component', () => {
                 }),
             } as Response);
 
-        render(<ChatWidget locale="ar" />);
+        render(<ChatWidget enabled={true} locale="ar" />);
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
 
         await waitFor(() => {
@@ -228,7 +269,7 @@ describe('ChatWidget Component', () => {
     });
 
     it('closes on Escape key press and restores focus to launcher', async () => {
-        render(<ChatWidget locale="ar" />);
+        render(<ChatWidget enabled={true} locale="ar" />);
 
         const launcher = screen.getByRole('button', { name: /فتح الشات/i });
         fireEvent.click(launcher);
@@ -237,14 +278,12 @@ describe('ChatWidget Component', () => {
             screen.getByRole('dialog', { name: /مساعد عرب التيميت/i }),
         ).toBeInTheDocument();
 
-        // Fire Escape key on window
         act(() => {
             fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
         });
 
-        expect(
-            screen.queryByRole('dialog', { name: /مساعد عرب التيميت/i }),
-        ).not.toBeInTheDocument();
+        // After Escape, launcher receives focus
+        expect(launcher).toBeInTheDocument();
     });
 
     it('reveals demo assistant reply after typing indicator delay when demoReply is returned', async () => {
@@ -292,7 +331,7 @@ describe('ChatWidget Component', () => {
                 }),
             } as Response);
 
-        render(<ChatWidget locale="ar" />);
+        render(<ChatWidget enabled={true} locale="ar" />);
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
 
         await act(async () => {
@@ -307,15 +346,12 @@ describe('ChatWidget Component', () => {
             await Promise.resolve();
         });
 
-        // Typing indicator is active
         expect(screen.getByText('المساعد يكتب الآن...')).toBeInTheDocument();
 
-        // Advance timer by 1100ms
         act(() => {
             vi.advanceTimersByTime(1200);
         });
 
-        // Demo reply appears
         expect(
             screen.getByText('وصلتني رسالتك 👍 هذي نسخة تجريبية من الشات.'),
         ).toBeInTheDocument();

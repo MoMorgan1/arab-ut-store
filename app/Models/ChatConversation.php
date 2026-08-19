@@ -16,6 +16,19 @@ class ChatConversation extends DomainModel
         'last_message_at' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (ChatConversation $conversation): void {
+            $hasUser = $conversation->user_id !== null;
+            $hasGuest = $conversation->guest_key !== null;
+
+            if (($hasUser && $hasGuest) || (! $hasUser && ! $hasGuest)) {
+                throw new \InvalidArgumentException('ChatConversation must have exactly one owner: either user_id or guest_key.');
+            }
+        });
+    }
+
+
     /** @param Builder<ChatConversation> $query */
     public function scopeForOwner(Builder $query, ChatOwner $owner): void
     {

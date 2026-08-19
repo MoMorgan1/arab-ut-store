@@ -7,6 +7,7 @@ export type ChatConversationStatus = 'open' | 'closed' | 'archived';
 export type ChatMessage = {
     publicId: string;
     conversationPublicId?: string;
+    clientMessageId?: string;
     senderType: ChatSenderType;
     messageType: ChatMessageType;
     content: string;

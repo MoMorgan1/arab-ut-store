@@ -17,7 +17,7 @@ class EnsureChatEnabled
                         'code' => 'chat_disabled',
                         'message' => 'Chat is currently disabled.',
                     ],
-                ], 404)->header('Cache-Control', 'no-store');
+                ], 404)->header('Cache-Control', 'no-store, private');
             }
 
             abort(404);

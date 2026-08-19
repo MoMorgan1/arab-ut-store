@@ -24,7 +24,7 @@ final class ChatPresenter
             'locale' => $conversation->locale,
             'subject' => $conversation->subject,
             'lastMessageAt' => $conversation->last_message_at?->toIso8601String(),
-            'messages' => $messages->map(fn (ChatMessage $message) => $this->message($message))->values()->all(),
+            'messages' => $messages->map(fn (ChatMessage $message) => $this->message($message, $conversation->public_id))->values()->all(),
             'hasMore' => $hasMore,
             'oldestCursor' => $oldestCursor,
         ];
@@ -33,11 +33,12 @@ final class ChatPresenter
     /**
      * @return array<string, mixed>
      */
-    public function message(ChatMessage $message): array
+    public function message(ChatMessage $message, ?string $conversationPublicId = null): array
     {
         return [
             'publicId' => $message->public_id,
-            'conversationPublicId' => $message->conversation?->public_id,
+            'conversationPublicId' => $conversationPublicId ?? $message->conversation?->public_id,
+            'clientMessageId' => $message->client_message_id,
             'senderType' => $message->sender_type->value,
             'messageType' => $message->message_type->value,
             'content' => $message->content,

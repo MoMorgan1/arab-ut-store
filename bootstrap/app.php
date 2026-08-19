@@ -61,6 +61,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request): bool => $request->is('api/*')
+                || $request->is('chat')
+                || $request->is('chat/*')
+                || $request->is('*/chat')
+                || $request->is('*/chat/*')
                 || $request->expectsJson()
                 || ($request->isMethod('POST') && (
                     $request->is('cart/items/coins') || $request->is('*/cart/items/coins')
@@ -75,6 +79,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 )),
         );
         $exceptions->respond(function (Response $exceptionResponse, Throwable $_exception, Request $request): Response {
+            if ($request->is('chat') || $request->is('chat/*') || $request->is('*/chat') || $request->is('*/chat/*')) {
+                $exceptionResponse->headers->set('Cache-Control', 'no-store, private');
+            }
+
             if ($request->is('cart/items/coins*') || $request->is('*/cart/items/coins*')
                 || $request->is('cart/items/catalog*') || $request->is('*/cart/items/catalog*')
                 || $request->is('cart/items/sbc*') || $request->is('*/cart/items/sbc*')

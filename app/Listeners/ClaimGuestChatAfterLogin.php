@@ -40,10 +40,6 @@ final readonly class ClaimGuestChatAfterLogin
             throw $failure;
         }
 
-        $session = $this->request->session();
-
-        DB::afterCommit(
-            fn () => $session->forget(ResolveChatOwner::SESSION_KEY),
-        );
+        $this->request->session()->forget(ResolveChatOwner::SESSION_KEY);
     }
 }

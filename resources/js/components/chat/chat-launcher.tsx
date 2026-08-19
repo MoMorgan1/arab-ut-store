@@ -29,7 +29,7 @@ export const ChatLauncher = React.forwardRef<
             aria-expanded={isOpen}
             aria-haspopup="dialog"
             aria-label={label}
-            className="group relative flex h-14 w-14 items-center justify-center rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] text-[var(--arabut-gold-bright)] shadow-2xl transition-transform duration-200 ease-out hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--arabut-focus)] active:scale-95 motion-reduce:transform-none"
+            className="group relative flex h-14 w-14 animate-in items-center justify-center rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] text-[var(--arabut-gold-bright)] shadow-2xl transition-transform duration-200 duration-300 ease-out zoom-in-90 fade-in hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--arabut-focus)] active:scale-95 motion-reduce:transform-none motion-reduce:animate-none"
         >
             <span className="sr-only">{label}</span>
 
@@ -48,7 +48,7 @@ export const ChatLauncher = React.forwardRef<
             {/* Unread badge */}
             {!isOpen && unreadCount > 0 && (
                 <span
-                    className="absolute -top-1 -right-1 flex h-5 min-w-5 animate-pulse items-center justify-center rounded-full bg-[var(--arabut-gold-bright)] px-1 text-xs font-black text-[var(--arabut-navy-deep)] shadow-lg motion-reduce:animate-none"
+                    className="absolute -top-1 -right-1 flex h-5 min-w-5 animate-[pulse_1.5s_ease-in-out_3] items-center justify-center rounded-full bg-[var(--arabut-gold-bright)] px-1 text-xs font-black text-[var(--arabut-navy-deep)] shadow-lg motion-reduce:animate-none"
                     aria-label={
                         isEn
                             ? `${unreadCount} unread messages`
