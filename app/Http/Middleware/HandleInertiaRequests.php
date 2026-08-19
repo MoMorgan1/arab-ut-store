@@ -89,6 +89,10 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'chat' => [
+                'enabled' => (bool) config('chat.enabled', false),
+                'demoAssistant' => (bool) config('chat.demo_assistant', false),
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

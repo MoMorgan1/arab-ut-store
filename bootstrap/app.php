@@ -39,6 +39,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prependToPriorityList(AuthenticatesRequests::class, RequireCatalogCartJson::class);
         $middleware->prependToPriorityList(
             ThrottleRequests::class,
+            \App\Http\Middleware\EnsureChatEnabled::class,
+        );
+        $middleware->prependToPriorityList(
+            ThrottleRequests::class,
             VerifyN8nSbcPricingReadSignature::class,
         );
         $middleware->redirectGuestsTo(fn (Request $request): string => $request->route('locale') === 'en'

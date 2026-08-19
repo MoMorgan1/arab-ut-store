@@ -98,5 +98,44 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('staff-payments', fn (Request $request): Limit => Limit::perMinute(10)
             ->by('staff-payments:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
+        RateLimiter::for('chat-conversations', function (Request $request): array {
+            if (! config('chat.enabled', false)) {
+                return [Limit::none()];
+            }
+
+            $owner = app(\App\Actions\Chat\ResolveChatOwner::class)->forRequest($request);
+
+            return [
+                Limit::perMinute(10)->by('chat-conversations:'.$owner->idempotencyScope()),
+                Limit::perMinute(30)->by('chat-conversations-ip:'.$request->ip()),
+            ];
+        });
+
+        RateLimiter::for('chat-messages', function (Request $request): array {
+            if (! config('chat.enabled', false)) {
+                return [Limit::none()];
+            }
+
+            $owner = app(\App\Actions\Chat\ResolveChatOwner::class)->forRequest($request);
+
+            return [
+                Limit::perMinute(30)->by('chat-messages:'.$owner->idempotencyScope()),
+                Limit::perMinute(60)->by('chat-messages-ip:'.$request->ip()),
+            ];
+        });
+
+        RateLimiter::for('chat-read', function (Request $request): array {
+            if (! config('chat.enabled', false)) {
+                return [Limit::none()];
+            }
+
+            $owner = app(\App\Actions\Chat\ResolveChatOwner::class)->forRequest($request);
+
+            return [
+                Limit::perMinute(60)->by('chat-read:'.$owner->idempotencyScope()),
+                Limit::perMinute(120)->by('chat-read-ip:'.$request->ip()),
+            ];
+        });
     }
 }

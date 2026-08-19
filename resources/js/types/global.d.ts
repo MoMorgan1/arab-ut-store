@@ -1,4 +1,5 @@
 import type { Auth } from '@/types/auth';
+import type { ChatSharedProps } from '@/types/chat';
 
 declare module 'react' {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -12,6 +13,7 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             auth: Auth;
+            chat?: ChatSharedProps;
             sidebarOpen: boolean;
             [key: string]: unknown;
         };
