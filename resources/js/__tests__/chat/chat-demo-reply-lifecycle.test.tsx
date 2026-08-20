@@ -561,9 +561,18 @@ describe('demo reply lifecycle', () => {
         expect(result.current.conversation?.publicId).toBe(
             'conv-recovered-new',
         );
-        expect(result.current.messages).toEqual([onboarding]);
+        expect(result.current.messages).toEqual([
+            onboarding,
+            expect.objectContaining({
+                content: 'Closed-thread question',
+                conversationPublicId: 'conv-recovered-new',
+                clientStatus: 'error',
+            }),
+        ]);
         expect(result.current.unreadCount).toBe(0);
-        expect(result.current.error).toBeNull();
+        expect(result.current.error).toBe(
+            "The conversation changed. Your unsent messages are saved. Choose Retry when you're ready.",
+        );
         expect(result.current.isAssistantTyping).toBe(false);
         expect(vi.getTimerCount()).toBe(0);
 
@@ -573,6 +582,141 @@ describe('demo reply lifecycle', () => {
                 (message) => message.publicId === 'old-delayed-reply',
             ),
         ).toBe(false);
+    });
+
+    it('preserves a closed-send item and queued tail as FIFO drafts until explicit retry', async () => {
+        const onboarding = assistantReply(
+            'closed-recovery-onboarding',
+            'Recovered conversation onboarding',
+        );
+        onboarding.conversationPublicId = 'conv-closed-recovered';
+        let acquisitionCount = 0;
+        let resolveClosedSend: ((response: Response) => void) | undefined;
+        const closedSendResponse = new Promise<Response>((resolve) => {
+            resolveClosedSend = resolve;
+        });
+        const messageRequests: Array<{
+            path: string;
+            body: { content: string; client_message_id: string };
+        }> = [];
+
+        vi.mocked(fetch).mockImplementation(async (url, init) => {
+            const path = String(url);
+
+            if (path === '/chat/conversations') {
+                acquisitionCount += 1;
+
+                return jsonResponse(
+                    acquisitionCount === 1
+                        ? conversation('conv-demo-old')
+                        : conversation('conv-closed-recovered', [onboarding]),
+                );
+            }
+
+            if (path.includes('/messages')) {
+                const body = JSON.parse(String(init?.body)) as {
+                    content: string;
+                    client_message_id: string;
+                };
+                messageRequests.push({ path, body });
+
+                if (messageRequests.length === 1) {
+                    return closedSendResponse;
+                }
+
+                return jsonResponse(
+                    {
+                        message: {
+                            publicId: 'retried-first-message',
+                            conversationPublicId: 'conv-closed-recovered',
+                            clientMessageId: body.client_message_id,
+                            senderType: 'customer',
+                            messageType: 'text',
+                            content: body.content,
+                            createdAt: '2026-08-20T10:02:00.000Z',
+                        },
+                        demoReply: null,
+                    },
+                    201,
+                );
+            }
+
+            throw new Error(`Unexpected chat request: ${path}`);
+        });
+        const { result } = renderHook(() =>
+            useChat({ enabled: true, locale: 'en' }),
+        );
+
+        act(() => result.current.openChat());
+        await flushAsyncWork();
+
+        act(() => void result.current.sendMessage('Failed first draft'));
+        await flushAsyncWork();
+        const firstDraft = result.current.messages[0];
+
+        act(() => void result.current.sendMessage('Queued second draft'));
+        await flushAsyncWork();
+        const secondDraft = result.current.messages[1];
+
+        expect(messageRequests).toHaveLength(1);
+
+        resolveClosedSend?.(errorResponse('conversation_closed', 409));
+        await flushAsyncWork();
+
+        expect(acquisitionCount).toBe(2);
+        expect(result.current.conversation?.publicId).toBe(
+            'conv-closed-recovered',
+        );
+        expect(messageRequests).toHaveLength(1);
+        expect(result.current.messages).toEqual([
+            onboarding,
+            expect.objectContaining({
+                content: 'Failed first draft',
+                tempId: firstDraft.tempId,
+                publicId: firstDraft.tempId,
+                clientMessageId: firstDraft.clientMessageId,
+                conversationPublicId: 'conv-closed-recovered',
+                clientStatus: 'error',
+            }),
+            expect.objectContaining({
+                content: 'Queued second draft',
+                tempId: secondDraft.tempId,
+                publicId: secondDraft.tempId,
+                clientMessageId: secondDraft.clientMessageId,
+                conversationPublicId: 'conv-closed-recovered',
+                clientStatus: 'error',
+            }),
+        ]);
+        expect(result.current.error).toBe(
+            "The conversation changed. Your unsent messages are saved. Choose Retry when you're ready.",
+        );
+
+        act(() => void result.current.retryMessage(firstDraft.tempId!));
+        await flushAsyncWork();
+
+        expect(messageRequests).toHaveLength(2);
+        expect(messageRequests[1]).toEqual({
+            path: '/chat/conversations/conv-closed-recovered/messages',
+            body: {
+                content: 'Failed first draft',
+                client_message_id: firstDraft.clientMessageId,
+            },
+        });
+        expect(result.current.messages).toEqual([
+            onboarding,
+            expect.objectContaining({
+                publicId: 'retried-first-message',
+                clientMessageId: firstDraft.clientMessageId,
+                content: 'Failed first draft',
+                clientStatus: 'sent',
+            }),
+            expect.objectContaining({
+                tempId: secondDraft.tempId,
+                clientMessageId: secondDraft.clientMessageId,
+                content: 'Queued second draft',
+                clientStatus: 'error',
+            }),
+        ]);
     });
 
     it('adopts a committed restart recovered after the response is lost', async () => {
@@ -615,6 +759,54 @@ describe('demo reply lifecycle', () => {
         expect(acquisitionCount).toBe(2);
         expect(result.current.conversation?.publicId).toBe(
             'conv-committed-new',
+        );
+        expect(result.current.messages).toEqual([onboarding]);
+        expect(result.current.error).toBeNull();
+        expect(result.current.statusAnnouncement?.message).toBe(
+            'New conversation started.',
+        );
+    });
+
+    it('reacquires and adopts a different active conversation after a valid-JSON restart 500', async () => {
+        const onboarding = assistantReply(
+            'server-error-onboarding',
+            'Recovered restart onboarding',
+        );
+        onboarding.conversationPublicId = 'conv-server-error-new';
+        let acquisitionCount = 0;
+
+        vi.mocked(fetch).mockImplementation(async (url) => {
+            const path = String(url);
+
+            if (path === '/chat/conversations') {
+                acquisitionCount += 1;
+
+                return jsonResponse(
+                    acquisitionCount === 1
+                        ? conversation('conv-demo-old')
+                        : conversation('conv-server-error-new', [onboarding]),
+                );
+            }
+
+            if (path === '/chat/conversations/restart') {
+                return errorResponse('chat_error', 500);
+            }
+
+            throw new Error(`Unexpected chat request: ${path}`);
+        });
+        const { result } = renderHook(() =>
+            useChat({ enabled: true, locale: 'en' }),
+        );
+
+        act(() => result.current.openChat());
+        await flushAsyncWork();
+        await act(async () => {
+            await result.current.restartChat();
+        });
+
+        expect(acquisitionCount).toBe(2);
+        expect(result.current.conversation?.publicId).toBe(
+            'conv-server-error-new',
         );
         expect(result.current.messages).toEqual([onboarding]);
         expect(result.current.error).toBeNull();
@@ -775,7 +967,16 @@ describe('demo reply lifecycle', () => {
         await flushAsyncWork();
 
         expect(result.current.conversation?.publicId).toBe('conv-race-new');
-        expect(result.current.messages).toEqual([onboarding]);
+        expect(result.current.messages).toEqual([
+            onboarding,
+            expect.objectContaining({
+                content: 'Trigger lifecycle recovery',
+                conversationPublicId: 'conv-race-new',
+                clientStatus: 'error',
+            }),
+        ]);
+        const recoveredMessages = result.current.messages;
+        const recoveryError = result.current.error;
 
         resolveOlder?.(
             jsonResponse(
@@ -793,8 +994,8 @@ describe('demo reply lifecycle', () => {
         await flushAsyncWork();
 
         expect(result.current.conversation?.publicId).toBe('conv-race-new');
-        expect(result.current.messages).toEqual([onboarding]);
-        expect(result.current.error).toBeNull();
+        expect(result.current.messages).toBe(recoveredMessages);
+        expect(result.current.error).toBe(recoveryError);
         expect(result.current.isLoadingOlder).toBe(false);
         expect(result.current.isRestarting).toBe(false);
     });

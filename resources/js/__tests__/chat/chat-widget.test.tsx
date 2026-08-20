@@ -616,7 +616,7 @@ describe('ChatWidget Component', () => {
 
         const alert = await screen.findByRole('alert');
         expect(alert).toHaveTextContent(
-            'Failed to start a new conversation. Please try again.',
+            'Failed to confirm the new conversation. Your current chat is unchanged. Please try again.',
         );
         expect(
             screen.getByText('Keep this conversation visible.'),

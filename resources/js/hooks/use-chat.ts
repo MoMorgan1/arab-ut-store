@@ -18,6 +18,7 @@ type QueueItem = {
     tempId: string;
     content: string;
     clientMessageId: string;
+    createdAt: string;
 };
 
 type StatusAnnouncement = {
@@ -30,7 +31,9 @@ type DemoReplyTimeoutId = ReturnType<typeof setTimeout>;
 function isAmbiguousRestartFailure(error: unknown): boolean {
     return (
         error instanceof ChatApiError &&
-        (error.code === 'network_error' || error.code === 'invalid_response')
+        (error.code === 'network_error' ||
+            error.code === 'invalid_response' ||
+            error.status >= 500)
     );
 }
 
@@ -377,7 +380,33 @@ export function useChat(options: UseChatOptions = {}) {
                             continue;
                         }
 
+                        const preservedQueueItems = [item, ...queueRef.current];
+                        const preservedDrafts: ChatMessage[] =
+                            preservedQueueItems.map((queueItem) => ({
+                                publicId: queueItem.tempId,
+                                conversationPublicId:
+                                    recoveredConversation.publicId,
+                                clientMessageId: queueItem.clientMessageId,
+                                senderType: 'customer',
+                                messageType: 'text',
+                                content: queueItem.content,
+                                createdAt: queueItem.createdAt,
+                                clientStatus: 'error',
+                                tempId: queueItem.tempId,
+                            }));
+
                         adoptConversation(recoveredConversation);
+                        const recoveredMessages = [
+                            ...recoveredConversation.messages,
+                            ...preservedDrafts,
+                        ];
+                        setMessages(recoveredMessages);
+                        messagesRef.current = recoveredMessages;
+                        showError(
+                            pageLocale === 'en'
+                                ? "The conversation changed. Your unsent messages are saved. Choose Retry when you're ready."
+                                : 'تغيّرت المحادثة. رسائلك اللي ما انرسلت محفوظة. اضغط إعادة المحاولة وقت ما تكون جاهز.',
+                        );
                         announceStatus(
                             pageLocale === 'en'
                                 ? 'Conversation updated.'
@@ -449,6 +478,7 @@ export function useChat(options: UseChatOptions = {}) {
 
             const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
             const clientMessageId = generateClientMessageId();
+            const createdAt = new Date().toISOString();
 
             const optimisticMessage: ChatMessage = {
                 publicId: tempId,
@@ -457,7 +487,7 @@ export function useChat(options: UseChatOptions = {}) {
                 senderType: 'customer',
                 messageType: 'text',
                 content: trimmed,
-                createdAt: new Date().toISOString(),
+                createdAt,
                 clientStatus: 'sending',
                 tempId,
             };
@@ -469,6 +499,7 @@ export function useChat(options: UseChatOptions = {}) {
                 tempId,
                 content: trimmed,
                 clientMessageId,
+                createdAt,
             });
 
             void processQueue();
@@ -502,6 +533,7 @@ export function useChat(options: UseChatOptions = {}) {
                 tempId: messageTempId,
                 content: failedMsg.content,
                 clientMessageId,
+                createdAt: failedMsg.createdAt,
             });
 
             void processQueue();
