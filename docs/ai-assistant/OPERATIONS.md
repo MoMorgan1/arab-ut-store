@@ -35,6 +35,11 @@ Disabling chat does not delete conversations or messages.
 Run these commands only from a repository or CI checkout with the PHP and Node
 development dependencies installed:
 
+For a clean repository checkout, run `composer setup`, then install Chromium
+with `npm run test:e2e:install`. Before `npm run test:e2e`, ensure port 8010 is
+not serving a stale or unintended application; stop that process or confirm it
+is the intended checkout first.
+
 ```powershell
 php artisan route:list --path=chat
 php artisan test tests/Feature/Chat

@@ -66,7 +66,9 @@ jobs:
             --exclude=.env \
             --exclude=database/database.sqlite \
             --exclude=node_modules \
+            --exclude=playwright-report \
             --exclude=tests \
+            --exclude=test-results \
             --exclude=vendor \
             --exclude=public/hot \
             --exclude=storage/logs \

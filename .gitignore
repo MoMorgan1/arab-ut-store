@@ -5,8 +5,10 @@
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
+/playwright-report
 /storage/*.key
 /storage/pail
+/test-results
 /resources/js/actions
 /resources/js/routes
 /resources/js/wayfinder

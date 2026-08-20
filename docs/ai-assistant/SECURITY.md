@@ -6,9 +6,13 @@
 ## Ownership and authorization
 
 - An authenticated conversation is owned by the authenticated user ID.
-- A guest receives a random 32-byte token stored only in the Laravel session.
-  The database stores its HMAC-SHA-256 derived with `APP_KEY`, not the bearer
-  token.
+- A guest receives a random 32-byte token stored in the Laravel session. The
+  chat ownership tables store only its HMAC-SHA-256 derived with `APP_KEY`, not
+  the raw bearer token. Laravel session storage retains the raw token, and its
+  at-rest confidentiality depends on the configured session driver and session
+  encryption boundary. The repository defaults are database-backed sessions
+  with encryption disabled; the production driver and encryption values were
+  not inspected.
 - Keys listed through `APP_PREVIOUS_KEYS` are accepted for rotation. Matching
   guest conversations are transactionally rekeyed to the current application
   key.
@@ -50,6 +54,7 @@ Proceed.
 | `AI-B05` | P2       | Conversation creation and onboarding-message creation are not one transaction.                                                       |
 | `AI-B06` | P2       | MariaDB migration lifecycle is CI-covered, but direct-query owner-invariant coverage remains absent.                                 |
 | `AI-B08` | P2       | Framework validation, throttle, and server errors do not share one chat error envelope; focused 429/500 no-store coverage is absent. |
+| `AI-B09` | P2       | The raw guest token remains in Laravel session storage; choose and harden its driver/encryption confidentiality boundary.            |
 | `AI-F04` | P3       | Scroll geometry and unread behavior lack precise automated assertions.                                                               |
 | `AI-F06` | P2       | iOS keyboard and safe-area behavior remain a manual-browser risk.                                                                    |
 | `AI-F07` | P2       | The composer lacks an explicit accessible name, and some secondary controls do not guarantee a 44px target.                          |
