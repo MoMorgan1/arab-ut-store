@@ -3,66 +3,27 @@
 namespace App\Actions\Chat;
 
 use App\Enums\Chat\ChatConversationStatus;
-use App\Enums\Chat\ChatMessageType;
-use App\Enums\Chat\ChatSenderType;
 use App\Models\ChatConversation;
 use App\ValueObjects\Chat\ChatOwner;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 final readonly class CreateOrGetActiveConversation
 {
+    public function __construct(private CreateChatConversation $createChatConversation) {}
+
     public function execute(ChatOwner $owner, Request $request, ?string $locale = null): ChatConversation
     {
         $sessionPointer = $request->session()->get(ResolveChatOwner::ACTIVE_CONVERSATION_SESSION_KEY);
+        $activePublicId = is_string($sessionPointer) && $sessionPointer !== ''
+            ? $sessionPointer
+            : null;
 
-        if (is_string($sessionPointer) && $sessionPointer !== '') {
-            $conversation = ChatConversation::query()
-                ->forOwner($owner)
-                ->open()
-                ->where('public_id', $sessionPointer)
-                ->first();
-
-            if ($conversation instanceof ChatConversation) {
-                return $conversation;
-            }
-        }
-
-        $latestConversation = ChatConversation::query()
-            ->forOwner($owner)
-            ->open()
-            ->orderByDesc('last_message_at')
-            ->orderByDesc('id')
-            ->first();
-
-        if ($latestConversation instanceof ChatConversation) {
-            $request->session()->put(
-                ResolveChatOwner::ACTIVE_CONVERSATION_SESSION_KEY,
-                $latestConversation->public_id,
-            );
-
-            return $latestConversation;
-        }
-
-        $effectiveLocale = in_array($locale, ['ar', 'en'], true) ? $locale : app()->getLocale();
-
-        $conversation = new ChatConversation([
-            'user_id' => $owner->userId(),
-            'guest_key' => $owner->guestKey(),
-            'status' => ChatConversationStatus::Open,
-            'locale' => $effectiveLocale,
-            'last_message_at' => now(),
-        ]);
-        $conversation->save();
-
-        $systemContent = $conversation->locale === 'en'
-            ? "Hello 👋 I'm the Arab UT assistant. Type your message, and you can sign in anytime if you'd like to track your orders."
-            : 'هلا 👋 أنا مساعد عرب التيميت. اكتب رسالتك، وبإمكانك تطلب تسجيل الدخول لاحقًا لو احتجت متابعة الطلبات.';
-
-        $conversation->messages()->create([
-            'sender_type' => ChatSenderType::System,
-            'message_type' => ChatMessageType::System,
-            'content' => $systemContent,
-        ]);
+        $conversation = DB::transaction(
+            fn (): ChatConversation => $this->acquire($owner, $activePublicId, $locale),
+            attempts: 3,
+        );
 
         $request->session()->put(
             ResolveChatOwner::ACTIVE_CONVERSATION_SESSION_KEY,
@@ -70,5 +31,116 @@ final readonly class CreateOrGetActiveConversation
         );
 
         return $conversation;
+    }
+
+    private function acquire(ChatOwner $owner, ?string $activePublicId, ?string $locale): ChatConversation
+    {
+        $pointed = $this->pointedOpenConversation($owner, $activePublicId);
+
+        if ($pointed instanceof ChatConversation) {
+            return $pointed;
+        }
+
+        $open = $this->canonicalOpenConversation($owner);
+
+        if ($open instanceof ChatConversation) {
+            return $open;
+        }
+
+        $inactive = $this->recentInactiveConversation($owner);
+
+        if ($inactive instanceof ChatConversation) {
+            return $this->reopen($inactive);
+        }
+
+        return $this->createOrRecoverWinner($owner, $locale);
+    }
+
+    private function pointedOpenConversation(ChatOwner $owner, ?string $activePublicId): ?ChatConversation
+    {
+        if ($activePublicId === null) {
+            return null;
+        }
+
+        return ChatConversation::query()
+            ->forOwner($owner)
+            ->open()
+            ->where('public_id', $activePublicId)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    private function recentInactiveConversation(ChatOwner $owner): ?ChatConversation
+    {
+        return ChatConversation::query()
+            ->forOwner($owner)
+            ->closedForInactivity()
+            ->where('last_message_at', '>=', now()->subDays((int) config('chat.reopen_within_days', 7)))
+            ->orderByDesc('last_message_at')
+            ->orderByDesc('id')
+            ->lockForUpdate()
+            ->first();
+    }
+
+    private function reopen(ChatConversation $conversation): ChatConversation
+    {
+        $conversation->forceFill([
+            'status' => ChatConversationStatus::Open,
+            'closed_at' => null,
+            'close_reason' => null,
+        ])->save();
+
+        return $conversation->refresh();
+    }
+
+    private function createOrRecoverWinner(ChatOwner $owner, ?string $locale): ChatConversation
+    {
+        try {
+            return $this->createChatConversation->execute(
+                $owner,
+                $locale ?? app()->getLocale(),
+            );
+        } catch (QueryException $exception) {
+            if (! $this->isActiveOwnerUniqueViolation($exception)) {
+                throw $exception;
+            }
+
+            $winner = $this->canonicalOpenConversation($owner);
+
+            if (! $winner instanceof ChatConversation) {
+                throw $exception;
+            }
+
+            return $winner;
+        }
+    }
+
+    private function canonicalOpenConversation(ChatOwner $owner): ?ChatConversation
+    {
+        return ChatConversation::query()
+            ->forOwner($owner)
+            ->open()
+            ->orderByDesc('last_message_at')
+            ->orderByDesc('id')
+            ->lockForUpdate()
+            ->first();
+    }
+
+    private function isActiveOwnerUniqueViolation(QueryException $exception): bool
+    {
+        $sqlState = $exception->errorInfo[0] ?? null;
+        $driverCode = (int) ($exception->errorInfo[1] ?? 0);
+        $message = $exception->getMessage();
+
+        if ($sqlState !== '23000') {
+            return false;
+        }
+
+        if ($driverCode === 1062) {
+            return str_contains($message, 'chat_conversations_active_owner_key_unique');
+        }
+
+        return $driverCode === 19
+            && str_contains($message, 'UNIQUE constraint failed: chat_conversations.active_owner_key');
     }
 }

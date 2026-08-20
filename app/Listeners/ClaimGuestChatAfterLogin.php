@@ -31,8 +31,19 @@ final readonly class ClaimGuestChatAfterLogin
             return;
         }
 
+        $sessionPointer = $this->request->session()->get(
+            ResolveChatOwner::ACTIVE_CONVERSATION_SESSION_KEY,
+        );
+        $activePublicId = is_string($sessionPointer) && $sessionPointer !== ''
+            ? $sessionPointer
+            : null;
+
         try {
-            $this->claimGuestChatConversations->execute($guestOwners, $event->user);
+            $this->claimGuestChatConversations->execute(
+                $guestOwners,
+                $event->user,
+                $activePublicId,
+            );
         } catch (Throwable $failure) {
             $this->guard->logout();
 
