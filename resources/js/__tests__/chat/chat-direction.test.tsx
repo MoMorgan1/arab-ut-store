@@ -143,6 +143,74 @@ describe('chat direction contracts', () => {
         },
     );
 
+    it.each(['ar', 'en'])(
+        'lets mixed-language system messages choose their own direction in %s',
+        (locale) => {
+            render(
+                <div dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                    <ChatMessageList
+                        messages={[
+                            {
+                                publicId: 'mixed-system-message',
+                                senderType: 'system',
+                                messageType: 'system',
+                                content: 'Welcome مرحبًا بك',
+                                createdAt: '2026-08-20T12:00:00.000Z',
+                            },
+                        ]}
+                        isLoading={false}
+                        isAssistantTyping={false}
+                        hasMore={false}
+                        isLoadingOlder={false}
+                        locale={locale}
+                        onLoadOlder={() => undefined}
+                        onSelectSuggestion={() => undefined}
+                        onRetry={() => undefined}
+                    />
+                </div>,
+            );
+
+            expect(
+                screen.getByText('Welcome مرحبًا بك').parentElement,
+            ).toHaveAttribute('dir', 'auto');
+        },
+    );
+
+    it.each(['ar', 'en'])(
+        'centers the scroll control physically without RTL clipping in %s',
+        (locale) => {
+            render(
+                <div dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                    <ChatMessageList
+                        messages={messages}
+                        isLoading={false}
+                        isAssistantTyping={false}
+                        hasMore={false}
+                        isLoadingOlder={false}
+                        locale={locale}
+                        onLoadOlder={() => undefined}
+                        onSelectSuggestion={() => undefined}
+                        onRetry={() => undefined}
+                    />
+                </div>,
+            );
+
+            const log = screen.getByRole('log');
+            Object.defineProperties(log, {
+                scrollHeight: { configurable: true, value: 500 },
+                scrollTop: { configurable: true, value: 0 },
+                clientHeight: { configurable: true, value: 100 },
+            });
+            fireEvent.scroll(log);
+
+            const scrollControl = screen.getByRole('button', {
+                name: locale === 'ar' ? 'الانتقال لأسفل' : 'Scroll to bottom',
+            });
+            expect(scrollControl).toHaveClass('left-1/2', '-translate-x-1/2');
+            expect(scrollControl).not.toHaveClass('start-1/2');
+        },
+    );
+
     it('gives load, retry, and scroll controls 44px hit targets', () => {
         const failedMessage: ChatMessage = {
             publicId: 'failed-message',

@@ -14,6 +14,32 @@ export type ChatWidgetProps = {
 };
 
 const CLOSE_TRANSITION_MS = 180;
+const FOCUSABLE_SELECTOR = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function mobileDialogQuery(surface: ChatSurface): string {
+    return surface === 'account'
+        ? '(max-width: 47.99rem)'
+        : '(max-width: 39.99rem)';
+}
+
+function matchesMobileDialog(surface: ChatSurface): boolean {
+    if (typeof window === 'undefined') {
+        return false;
+    }
+
+    if (typeof window.matchMedia === 'function') {
+        return window.matchMedia(mobileDialogQuery(surface)).matches;
+    }
+
+    return window.innerWidth <= (surface === 'account' ? 767 : 639);
+}
 
 export const ChatWidget: React.FC<ChatWidgetProps> = ({
     enabled,
@@ -35,6 +61,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         hasMore,
         unreadCount,
         error,
+        errorAnnouncementId,
         clearError,
         statusAnnouncement,
         canRestart,
@@ -46,14 +73,37 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
 
     const launcherRef = useRef<HTMLButtonElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
     const wasOpenRef = useRef(isOpen);
 
     const [isVisible, setIsVisible] = useState(isOpen);
+    const [isMobileDialog, setIsMobileDialog] = useState(() =>
+        matchesMobileDialog(surface),
+    );
 
     const isReducedMotion =
         typeof window !== 'undefined' &&
         typeof window.matchMedia === 'function' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    useEffect(() => {
+        const updateMobileDialog = () => {
+            setIsMobileDialog(matchesMobileDialog(surface));
+        };
+        const mediaQuery =
+            typeof window.matchMedia === 'function'
+                ? window.matchMedia(mobileDialogQuery(surface))
+                : null;
+
+        mediaQuery?.addEventListener('change', updateMobileDialog);
+        window.addEventListener('resize', updateMobileDialog);
+        updateMobileDialog();
+
+        return () => {
+            mediaQuery?.removeEventListener('change', updateMobileDialog);
+            window.removeEventListener('resize', updateMobileDialog);
+        };
+    }, [surface]);
 
     // Presence animation management
     useEffect(() => {
@@ -88,6 +138,12 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         wasOpenRef.current = isOpen;
     }, [isOpen]);
 
+    useEffect(() => {
+        if (isOpen && isMobileDialog) {
+            closeButtonRef.current?.focus({ preventScroll: true });
+        }
+    }, [isMobileDialog, isOpen]);
+
     // Handle Escape key
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -105,6 +161,49 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         return null;
     }
 
+    const handleDialogKeyDown = (
+        event: React.KeyboardEvent<HTMLDivElement>,
+    ) => {
+        if (!isOpen || !isMobileDialog || event.key !== 'Tab') {
+            return;
+        }
+
+        const panel = panelRef.current;
+
+        if (panel === null) {
+            return;
+        }
+
+        const focusableElements = Array.from(
+            panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+        ).filter((element) => element.getAttribute('aria-hidden') !== 'true');
+
+        if (focusableElements.length === 0) {
+            event.preventDefault();
+            closeButtonRef.current?.focus({ preventScroll: true });
+
+            return;
+        }
+
+        const first = focusableElements[0];
+        const last = focusableElements[focusableElements.length - 1];
+        const activeElement = document.activeElement;
+
+        if (
+            event.shiftKey &&
+            (activeElement === first || !panel.contains(activeElement))
+        ) {
+            event.preventDefault();
+            last.focus({ preventScroll: true });
+        } else if (
+            !event.shiftKey &&
+            (activeElement === last || !panel.contains(activeElement))
+        ) {
+            event.preventDefault();
+            first.focus({ preventScroll: true });
+        }
+    };
+
     return (
         <div
             className={`chat-widget-root fixed right-4 bottom-4 z-50 font-sans sm:right-6 sm:bottom-6 ${
@@ -119,7 +218,11 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                 className="sr-only"
                 role="status"
             >
-                {statusAnnouncement}
+                {statusAnnouncement !== null && (
+                    <span key={statusAnnouncement.id}>
+                        {statusAnnouncement.message}
+                    </span>
+                )}
             </div>
 
             {/* Chat Panel / Sheet */}
@@ -127,12 +230,13 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                 <div
                     ref={panelRef}
                     role="dialog"
-                    aria-modal="false"
+                    aria-modal={isOpen && isMobileDialog}
                     aria-label={
                         locale === 'en'
                             ? 'Arab UT Chat Assistant'
                             : 'شات مساعد عرب التيميت'
                     }
+                    onKeyDown={handleDialogKeyDown}
                     className={`chat-widget-dialog fixed inset-0 z-[70] flex origin-bottom flex-col bg-[var(--arabut-navy)] transition-[transform,opacity] motion-reduce:transition-none sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[650px] sm:max-h-[85vh] sm:w-[420px] sm:origin-bottom-right sm:overflow-hidden sm:rounded-3xl sm:border sm:border-[var(--arabut-line)] sm:shadow-2xl ${
                         isVisible
                             ? 'pointer-events-auto translate-y-0 scale-100 opacity-100 duration-[280ms] [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]'
@@ -142,6 +246,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                     {/* Header */}
                     <ChatHeader
                         canRestart={canRestart}
+                        closeButtonRef={closeButtonRef}
                         isRestarting={isRestarting}
                         locale={locale}
                         onClose={closeChat}
@@ -150,7 +255,12 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
 
                     {/* Error Banner if any */}
                     {error !== null && (
-                        <div className="flex items-center justify-between border-b border-[var(--arabut-danger)]/30 bg-[var(--arabut-danger)]/10 px-4 py-2 text-xs text-[var(--arabut-danger)]">
+                        <div
+                            key={errorAnnouncementId}
+                            aria-atomic="true"
+                            className="flex items-center justify-between border-b border-[var(--arabut-danger)]/30 bg-[var(--arabut-danger)]/10 px-4 py-2 text-xs text-[var(--arabut-danger)]"
+                            role="alert"
+                        >
                             <span>{error}</span>
                             <button
                                 type="button"

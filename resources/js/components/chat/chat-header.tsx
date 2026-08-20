@@ -3,6 +3,7 @@ import type React from 'react';
 
 type ChatHeaderProps = {
     canRestart: boolean;
+    closeButtonRef?: React.Ref<HTMLButtonElement>;
     isRestarting: boolean;
     locale?: string;
     onClose: () => void;
@@ -11,6 +12,7 @@ type ChatHeaderProps = {
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
     canRestart,
+    closeButtonRef,
     isRestarting,
     locale = 'ar',
     onClose,
@@ -83,6 +85,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
                 {/* Close / minimize button */}
                 <button
+                    ref={closeButtonRef}
                     type="button"
                     onClick={onClose}
                     aria-label={closeLabel}

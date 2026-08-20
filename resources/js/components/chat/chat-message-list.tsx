@@ -206,7 +206,10 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                 key={cluster.id}
                                 className="my-2 flex justify-center"
                             >
-                                <div className="max-w-[85%] rounded-xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)] px-3.5 py-2 text-center text-xs leading-relaxed text-[var(--arabut-muted)] shadow-sm">
+                                <div
+                                    dir="auto"
+                                    className="max-w-[85%] rounded-xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)] px-3.5 py-2 text-center text-xs leading-relaxed text-[var(--arabut-muted)] shadow-sm"
+                                >
                                     {cluster.messages.map((m) => (
                                         <p key={m.publicId}>{m.content}</p>
                                     ))}
@@ -345,7 +348,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                     type="button"
                     onClick={handleScrollToBottomClick}
                     aria-label={isEn ? 'Scroll to bottom' : 'الانتقال لأسفل'}
-                    className="absolute start-1/2 bottom-4 flex min-h-11 -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)]/95 px-3.5 py-2 text-xs font-semibold text-[var(--arabut-gold-bright)] shadow-xl backdrop-blur-sm transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] active:scale-95 motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
+                    className="absolute bottom-4 left-1/2 flex min-h-11 -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)]/95 px-3.5 py-2 text-xs font-semibold text-[var(--arabut-gold-bright)] shadow-xl backdrop-blur-sm transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] active:scale-95 motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
                 >
                     <ArrowDown aria-hidden="true" className="h-3.5 w-3.5" />
                     <span>{isEn ? 'New messages' : 'رسائل جديدة'}</span>

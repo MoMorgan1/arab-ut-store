@@ -20,6 +20,11 @@ type QueueItem = {
     clientMessageId: string;
 };
 
+type StatusAnnouncement = {
+    id: number;
+    message: string;
+};
+
 function generateClientMessageId(): string {
     if (
         typeof crypto !== 'undefined' &&
@@ -48,9 +53,9 @@ export function useChat(options: UseChatOptions = {}) {
     const [oldestCursor, setOldestCursor] = useState<string | null>(null);
     const [unreadCount, setUnreadCount] = useState(0);
     const [error, setError] = useState<string | null>(null);
-    const [statusAnnouncement, setStatusAnnouncement] = useState<string | null>(
-        null,
-    );
+    const [errorAnnouncementId, setErrorAnnouncementId] = useState(0);
+    const [statusAnnouncement, setStatusAnnouncement] =
+        useState<StatusAnnouncement | null>(null);
 
     const isOpenRef = useRef(isOpen);
     const conversationRef = useRef<ChatConversation | null>(conversation);
@@ -60,6 +65,7 @@ export function useChat(options: UseChatOptions = {}) {
     );
     const queueRef = useRef<QueueItem[]>([]);
     const isProcessingQueueRef = useRef(false);
+    const announcementIdRef = useRef(0);
 
     useEffect(() => {
         isOpenRef.current = isOpen;
@@ -74,7 +80,16 @@ export function useChat(options: UseChatOptions = {}) {
     }, [messages]);
 
     const announceStatus = useCallback((message: string) => {
-        setStatusAnnouncement(message);
+        announcementIdRef.current += 1;
+        setStatusAnnouncement({
+            id: announcementIdRef.current,
+            message,
+        });
+    }, []);
+
+    const showError = useCallback((message: string) => {
+        setError(message);
+        setErrorAnnouncementId((id) => id + 1);
     }, []);
 
     const getOrInitConversation =
@@ -106,7 +121,7 @@ export function useChat(options: UseChatOptions = {}) {
                         pageLocale === 'en'
                             ? 'Failed to connect to chat. Please try again.'
                             : 'تعذر الاتصال بالشات. يرجى المحاولة مرة أخرى.';
-                    setError(errorMessage);
+                    showError(errorMessage);
 
                     throw err;
                 })
@@ -118,7 +133,7 @@ export function useChat(options: UseChatOptions = {}) {
             initializationPromiseRef.current = promise;
 
             return promise;
-        }, [pageLocale]);
+        }, [pageLocale, showError]);
 
     const initializeChat = useCallback(async () => {
         if (!isChatEnabled || isLoading || conversationRef.current !== null) {
@@ -245,12 +260,12 @@ export function useChat(options: UseChatOptions = {}) {
                         : pageLocale === 'en'
                           ? 'Failed to send message. Please retry.'
                           : 'تعذر إرسال الرسالة. يرجى إعادة المحاولة.';
-                setError(errorMessage);
+                showError(errorMessage);
             }
         }
 
         isProcessingQueueRef.current = false;
-    }, [getOrInitConversation, pageLocale, announceStatus]);
+    }, [getOrInitConversation, pageLocale, announceStatus, showError]);
 
     const sendMessage = useCallback(
         async (content: string) => {
@@ -344,7 +359,7 @@ export function useChat(options: UseChatOptions = {}) {
             setHasMore(data.hasMore);
             setOldestCursor(data.oldestCursor ?? null);
         } catch {
-            setError(
+            showError(
                 pageLocale === 'en'
                     ? 'Failed to load older messages.'
                     : 'تعذر تحميل الرسائل السابقة.',
@@ -352,7 +367,7 @@ export function useChat(options: UseChatOptions = {}) {
         } finally {
             setIsLoadingOlder(false);
         }
-    }, [isLoadingOlder, hasMore, oldestCursor, pageLocale]);
+    }, [isLoadingOlder, hasMore, oldestCursor, pageLocale, showError]);
 
     const hasPendingSends = messages.some(
         (message) => message.clientStatus === 'sending',
@@ -392,15 +407,15 @@ export function useChat(options: UseChatOptions = {}) {
                     : 'بدأت محادثة جديدة.',
             );
         } catch {
-            setError(
+            const errorMessage =
                 pageLocale === 'en'
                     ? 'Failed to start a new conversation. Please try again.'
-                    : 'تعذر بدء محادثة جديدة. حاول مرة ثانية.',
-            );
+                    : 'تعذر بدء محادثة جديدة. حاول مرة ثانية.';
+            showError(errorMessage);
         } finally {
             setIsRestarting(false);
         }
-    }, [announceStatus, canRestart, pageLocale]);
+    }, [announceStatus, canRestart, pageLocale, showError]);
 
     return {
         isChatEnabled,
@@ -418,6 +433,7 @@ export function useChat(options: UseChatOptions = {}) {
         hasMore,
         unreadCount,
         error,
+        errorAnnouncementId,
         clearError: () => setError(null),
         statusAnnouncement,
         canRestart,
