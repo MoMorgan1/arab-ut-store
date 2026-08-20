@@ -1,6 +1,7 @@
 # Task 7 — Local documentation handoff report
 
-**Status:** Complete local documentation handoff; external release gates pending  
+**Status:** Complete local documentation handoff; external release gates pending
+
 **Date:** 2026-08-20
 
 ## Scope
