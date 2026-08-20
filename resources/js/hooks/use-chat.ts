@@ -71,6 +71,7 @@ export function useChat(options: UseChatOptions = {}) {
     const demoReplyTimeoutsRef = useRef<Set<DemoReplyTimeoutId>>(new Set());
     const pendingDemoReplyCountRef = useRef(0);
     const conversationGenerationRef = useRef(0);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
         isOpenRef.current = isOpen;
@@ -110,11 +111,22 @@ export function useChat(options: UseChatOptions = {}) {
         clearPendingDemoReplyTimers();
     }, [clearPendingDemoReplyTimers]);
 
-    useEffect(
-        () => () => {
+    useEffect(() => {
+        isMountedRef.current = true;
+
+        return () => {
+            isMountedRef.current = false;
+            queueRef.current = [];
+            isProcessingQueueRef.current = false;
             startConversationGeneration();
-        },
-        [startConversationGeneration],
+        };
+    }, [startConversationGeneration]);
+
+    const ownsAsyncGeneration = useCallback(
+        (generation: number) =>
+            isMountedRef.current &&
+            generation === conversationGenerationRef.current,
+        [],
     );
 
     const appendDeliveredDemoReply = useCallback(
@@ -261,15 +273,24 @@ export function useChat(options: UseChatOptions = {}) {
         }
 
         isProcessingQueueRef.current = true;
+        const queueProcessorGeneration = conversationGenerationRef.current;
 
-        while (queueRef.current.length > 0) {
+        while (
+            queueRef.current.length > 0 &&
+            ownsAsyncGeneration(queueProcessorGeneration)
+        ) {
             const item = queueRef.current.shift()!;
+            const queueItemGeneration = queueProcessorGeneration;
 
             let currentConv: ChatConversation;
 
             try {
                 currentConv = await getOrInitConversation();
             } catch {
+                if (!ownsAsyncGeneration(queueItemGeneration)) {
+                    continue;
+                }
+
                 setMessages((prev) =>
                     prev.map((msg) =>
                         msg.tempId === item.tempId
@@ -281,13 +302,20 @@ export function useChat(options: UseChatOptions = {}) {
                 continue;
             }
 
+            if (!ownsAsyncGeneration(queueItemGeneration)) {
+                continue;
+            }
+
             try {
-                const messageGeneration = conversationGenerationRef.current;
                 const result = await sendChatMessage(
                     currentConv.publicId,
                     item.content,
                     item.clientMessageId,
                 );
+
+                if (!ownsAsyncGeneration(queueItemGeneration)) {
+                    continue;
+                }
 
                 setMessages((prev) =>
                     prev.map((msg) =>
@@ -302,9 +330,13 @@ export function useChat(options: UseChatOptions = {}) {
                 );
 
                 if (result.demoReply !== null) {
-                    scheduleDemoReply(result.demoReply, messageGeneration);
+                    scheduleDemoReply(result.demoReply, queueItemGeneration);
                 }
             } catch (err) {
+                if (!ownsAsyncGeneration(queueItemGeneration)) {
+                    continue;
+                }
+
                 setMessages((prev) =>
                     prev.map((msg) =>
                         msg.tempId === item.tempId
@@ -326,8 +358,16 @@ export function useChat(options: UseChatOptions = {}) {
             }
         }
 
-        isProcessingQueueRef.current = false;
-    }, [getOrInitConversation, pageLocale, scheduleDemoReply, showError]);
+        if (ownsAsyncGeneration(queueProcessorGeneration)) {
+            isProcessingQueueRef.current = false;
+        }
+    }, [
+        getOrInitConversation,
+        ownsAsyncGeneration,
+        pageLocale,
+        scheduleDemoReply,
+        showError,
+    ]);
 
     const sendMessage = useCallback(
         async (content: string) => {
@@ -442,14 +482,19 @@ export function useChat(options: UseChatOptions = {}) {
         !hasPendingSends;
 
     const restartChat = useCallback(async () => {
-        if (!canRestart) {
+        if (!isMountedRef.current || !canRestart) {
             return;
         }
 
+        const restartGeneration = conversationGenerationRef.current;
         setIsRestarting(true);
 
         try {
             const data = await restartConversation(pageLocale);
+
+            if (!ownsAsyncGeneration(restartGeneration)) {
+                return;
+            }
 
             startConversationGeneration();
             queueRef.current = [];
@@ -469,18 +514,23 @@ export function useChat(options: UseChatOptions = {}) {
                     ? 'New conversation started.'
                     : 'بدأت محادثة جديدة.',
             );
+            setIsRestarting(false);
         } catch {
+            if (!ownsAsyncGeneration(restartGeneration)) {
+                return;
+            }
+
             const errorMessage =
                 pageLocale === 'en'
                     ? 'Failed to start a new conversation. Please try again.'
                     : 'تعذر بدء محادثة جديدة. حاول مرة ثانية.';
             showError(errorMessage);
-        } finally {
             setIsRestarting(false);
         }
     }, [
         announceStatus,
         canRestart,
+        ownsAsyncGeneration,
         pageLocale,
         showError,
         startConversationGeneration,

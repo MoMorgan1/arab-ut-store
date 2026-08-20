@@ -253,6 +253,7 @@ describe('demo reply lifecycle', () => {
         expect(result.current.conversation?.publicId).toBe(
             'conv-late-response-new',
         );
+        const replacementMessages = result.current.messages;
 
         resolveMessageResponse?.(
             jsonResponse(
@@ -275,6 +276,7 @@ describe('demo reply lifecycle', () => {
 
         expect(result.current.isAssistantTyping).toBe(false);
         expect(vi.getTimerCount()).toBe(0);
+        expect(result.current.messages).toBe(replacementMessages);
 
         act(() => vi.advanceTimersByTime(1100));
 
@@ -286,7 +288,317 @@ describe('demo reply lifecycle', () => {
         expect(result.current.messages).toEqual([onboarding]);
     });
 
-    it('clears pending delayed replies on unmount without a state update', async () => {
+    it('ignores an old send rejection after a successful generation transition', async () => {
+        const replacementMessage = assistantReply(
+            'rejection-onboarding',
+            'Replacement after rejected send',
+        );
+        replacementMessage.conversationPublicId = 'conv-rejection-new';
+        let rejectMessageRequest: ((reason?: unknown) => void) | undefined;
+        const pendingMessageRequest = new Promise<Response>((_, reject) => {
+            rejectMessageRequest = reject;
+        });
+
+        vi.mocked(fetch).mockImplementation(async (url) => {
+            const path = String(url);
+
+            if (path === '/chat/conversations') {
+                return jsonResponse(conversation('conv-demo-old'));
+            }
+
+            if (path.includes('/messages')) {
+                return pendingMessageRequest;
+            }
+
+            if (path === '/chat/conversations/restart') {
+                return jsonResponse(
+                    conversation('conv-rejection-new', [replacementMessage]),
+                );
+            }
+
+            throw new Error(`Unexpected chat request: ${path}`);
+        });
+        const { result } = renderHook(() =>
+            useChat({ enabled: true, locale: 'en' }),
+        );
+
+        act(() => result.current.openChat());
+        await flushAsyncWork();
+        const restartBeforePendingSend = result.current.restartChat;
+
+        act(() => void result.current.sendMessage('Rejected old question'));
+        await flushAsyncWork();
+        await act(async () => {
+            await restartBeforePendingSend();
+        });
+
+        const replacementMessages = result.current.messages;
+        const replacementErrorAnnouncementId =
+            result.current.errorAnnouncementId;
+        rejectMessageRequest?.(new Error('Old request failed.'));
+        await flushAsyncWork();
+
+        expect(result.current.messages).toBe(replacementMessages);
+        expect(result.current.error).toBeNull();
+        expect(result.current.errorAnnouncementId).toBe(
+            replacementErrorAnnouncementId,
+        );
+    });
+
+    it('ignores a send response after unmount and schedules no work', async () => {
+        let resolveMessageResponse: ((response: Response) => void) | undefined;
+        const pendingMessageResponse = new Promise<Response>((resolve) => {
+            resolveMessageResponse = resolve;
+        });
+
+        vi.mocked(fetch).mockImplementation(async (url) => {
+            const path = String(url);
+
+            if (path === '/chat/conversations') {
+                return jsonResponse(conversation('conv-demo-old'));
+            }
+
+            if (path.includes('/messages')) {
+                return pendingMessageResponse;
+            }
+
+            throw new Error(`Unexpected chat request: ${path}`);
+        });
+        const { result, unmount } = renderHook(() =>
+            useChat({ enabled: true, locale: 'en' }),
+        );
+
+        act(() => result.current.openChat());
+        await flushAsyncWork();
+        act(() => void result.current.sendMessage('Unmounted send'));
+        await flushAsyncWork();
+        unmount();
+
+        resolveMessageResponse?.(
+            jsonResponse(
+                {
+                    message: {
+                        publicId: 'unmounted-customer',
+                        conversationPublicId: 'conv-demo-old',
+                        clientMessageId: 'unmounted-client',
+                        senderType: 'customer',
+                        messageType: 'text',
+                        content: 'Unmounted send',
+                        createdAt: '2026-08-20T10:00:30.000Z',
+                    },
+                    demoReply: assistantReply(
+                        'unmounted-success-reply',
+                        'Reply must not schedule',
+                    ),
+                },
+                201,
+            ),
+        );
+        await flushAsyncWork();
+
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('leaves the last observable snapshot untouched when restart resolves after unmount', async () => {
+        let resolveRestartResponse: ((response: Response) => void) | undefined;
+        const pendingRestartResponse = new Promise<Response>((resolve) => {
+            resolveRestartResponse = resolve;
+        });
+
+        vi.mocked(fetch).mockImplementation(async (url) => {
+            const path = String(url);
+
+            if (path === '/chat/conversations') {
+                return jsonResponse(conversation('conv-demo-old'));
+            }
+
+            if (path === '/chat/conversations/restart') {
+                return pendingRestartResponse;
+            }
+
+            throw new Error(`Unexpected chat request: ${path}`);
+        });
+        const { result, unmount } = renderHook(() =>
+            useChat({ enabled: true, locale: 'en' }),
+        );
+
+        act(() => result.current.openChat());
+        await flushAsyncWork();
+
+        let restartRequest: Promise<void> | undefined;
+        act(() => {
+            restartRequest = result.current.restartChat();
+        });
+        expect(result.current.isRestarting).toBe(true);
+
+        const lastMountedSnapshot = result.current;
+        unmount();
+        resolveRestartResponse?.(
+            jsonResponse(conversation('conv-restart-after-unmount')),
+        );
+        await act(async () => {
+            await restartRequest;
+        });
+
+        expect(result.current).toBe(lastMountedSnapshot);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('keeps localized retry and error state for a current-generation failure', async () => {
+        vi.mocked(fetch).mockImplementation(async (url) => {
+            const path = String(url);
+
+            if (path === '/chat/conversations') {
+                return jsonResponse(conversation('conv-demo-old'));
+            }
+
+            if (path.includes('/messages')) {
+                throw new Error('Current request failed.');
+            }
+
+            throw new Error(`Unexpected chat request: ${path}`);
+        });
+        const { result } = renderHook(() =>
+            useChat({ enabled: true, locale: 'en' }),
+        );
+
+        act(() => result.current.openChat());
+        await flushAsyncWork();
+        act(() => void result.current.sendMessage('Current failed question'));
+        await flushAsyncWork();
+
+        expect(result.current.messages).toHaveLength(1);
+        expect(result.current.messages[0]).toMatchObject({
+            content: 'Current failed question',
+            clientStatus: 'error',
+        });
+        expect(result.current.error).toBe(
+            'Failed to send message. Please retry.',
+        );
+        expect(result.current.errorAnnouncementId).toBe(1);
+    });
+
+    it('keeps a new-generation send queue owned while an old processor finishes', async () => {
+        let resolveOldSend: ((response: Response) => void) | undefined;
+        let resolveNewSend: ((response: Response) => void) | undefined;
+        const oldSendResponse = new Promise<Response>((resolve) => {
+            resolveOldSend = resolve;
+        });
+        const newSendResponse = new Promise<Response>((resolve) => {
+            resolveNewSend = resolve;
+        });
+        let messageCallCount = 0;
+
+        vi.mocked(fetch).mockImplementation(async (url, init) => {
+            const path = String(url);
+
+            if (path === '/chat/conversations') {
+                return jsonResponse(conversation('conv-demo-old'));
+            }
+
+            if (path === '/chat/conversations/restart') {
+                return jsonResponse(conversation('conv-queue-new'));
+            }
+
+            if (path.includes('/messages')) {
+                messageCallCount += 1;
+
+                if (messageCallCount === 1) {
+                    return oldSendResponse;
+                }
+
+                if (messageCallCount === 2) {
+                    return newSendResponse;
+                }
+
+                const requestBody = JSON.parse(String(init?.body)) as {
+                    content: string;
+                    client_message_id: string;
+                };
+
+                return jsonResponse(
+                    {
+                        message: {
+                            publicId: 'third-current-message',
+                            conversationPublicId: 'conv-queue-new',
+                            clientMessageId: requestBody.client_message_id,
+                            senderType: 'customer',
+                            messageType: 'text',
+                            content: requestBody.content,
+                            createdAt: '2026-08-20T10:00:40.000Z',
+                        },
+                        demoReply: null,
+                    },
+                    201,
+                );
+            }
+
+            throw new Error(`Unexpected chat request: ${path}`);
+        });
+        const { result } = renderHook(() =>
+            useChat({ enabled: true, locale: 'en' }),
+        );
+
+        act(() => result.current.openChat());
+        await flushAsyncWork();
+        const restartBeforeOldSend = result.current.restartChat;
+
+        act(() => void result.current.sendMessage('Old generation send'));
+        await flushAsyncWork();
+        await act(async () => {
+            await restartBeforeOldSend();
+        });
+
+        act(() => void result.current.sendMessage('New generation second'));
+        await flushAsyncWork();
+        expect(messageCallCount).toBe(2);
+
+        resolveOldSend?.(
+            jsonResponse(
+                {
+                    message: {
+                        publicId: 'old-completed-message',
+                        conversationPublicId: 'conv-demo-old',
+                        clientMessageId: 'old-client',
+                        senderType: 'customer',
+                        messageType: 'text',
+                        content: 'Old generation send',
+                        createdAt: '2026-08-20T10:00:20.000Z',
+                    },
+                    demoReply: null,
+                },
+                201,
+            ),
+        );
+        await flushAsyncWork();
+
+        act(() => void result.current.sendMessage('New generation third'));
+        await flushAsyncWork();
+        expect(messageCallCount).toBe(2);
+
+        resolveNewSend?.(
+            jsonResponse(
+                {
+                    message: {
+                        publicId: 'second-current-message',
+                        conversationPublicId: 'conv-queue-new',
+                        clientMessageId: 'second-client',
+                        senderType: 'customer',
+                        messageType: 'text',
+                        content: 'New generation second',
+                        createdAt: '2026-08-20T10:00:30.000Z',
+                    },
+                    demoReply: null,
+                },
+                201,
+            ),
+        );
+        await flushAsyncWork();
+
+        expect(messageCallCount).toBe(3);
+    });
+
+    it('clears pending delayed reply timers on unmount', async () => {
         installChatFetch([
             assistantReply('unmounted-reply', 'Reply after unmount'),
         ]);
