@@ -1,5 +1,7 @@
 <?php
 
+use Symfony\Component\Yaml\Yaml;
+
 function deploymentFile(string $path): string
 {
     $contents = file_get_contents(dirname(__DIR__, 3).DIRECTORY_SEPARATOR.$path);
@@ -7,6 +9,19 @@ function deploymentFile(string $path): string
     expect($contents)->not->toBeFalse();
 
     return $contents;
+}
+
+function workflowStepRun(string $workflowPath, string $stepName): string
+{
+    $workflow = Yaml::parseFile(dirname(__DIR__, 3).DIRECTORY_SEPARATOR.$workflowPath);
+
+    foreach ($workflow['jobs']['mariadb-schema']['steps'] as $step) {
+        if (($step['name'] ?? null) === $stepName) {
+            return $step['run'];
+        }
+    }
+
+    throw new RuntimeException("Workflow step [{$stepName}] was not found.");
 }
 
 it('publishes one tested sha-bound release artifact from the main CI workflow', function () {
@@ -17,6 +32,22 @@ it('publishes one tested sha-bound release artifact from the main CI workflow', 
         ->toContain('public/build')
         ->toContain('release.tar.gz')
         ->toContain('if-no-files-found: error');
+});
+
+it('runs chat lifecycle and concurrency integration coverage in the MariaDB test command', function () {
+    $run = workflowStepRun(
+        '.github/workflows/tests.yml',
+        'Run focused domain and cart tests on MariaDB',
+    );
+    $arguments = preg_split('/\s+/', trim($run));
+
+    expect($arguments)
+        ->toContain('php')
+        ->toContain('vendor/bin/pest')
+        ->toContain('--configuration')
+        ->toContain('phpunit.mariadb.xml')
+        ->toContain('tests/Integration/ChatConversationLifecycleInvariantUpgradeTest.php')
+        ->toContain('tests/Integration/ChatConversationConcurrencyTest.php');
 });
 
 it('deploys production only after a successful main push test run', function () {
