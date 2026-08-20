@@ -2,10 +2,13 @@
 
 namespace App\Actions\Chat;
 
+use App\Enums\Chat\ChatConversationStatus;
 use App\Enums\Chat\ChatMessageType;
 use App\Enums\Chat\ChatSenderType;
+use App\Exceptions\Chat\ChatConversationWriteRejected;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
+use App\ValueObjects\Chat\ChatOwner;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -18,13 +21,14 @@ final readonly class CreateChatMessage
         ChatConversation $conversation,
         string $content,
         string $clientMessageId,
+        ChatOwner $owner,
     ): array {
         try {
             return DB::transaction(
-                fn (): array => $this->createOrRecover($conversation, $content, $clientMessageId),
+                fn (): array => $this->createOrRecover($conversation, $content, $clientMessageId, $owner),
             );
         } catch (QueryException $exception) {
-            return $this->recoverClientIdContention($conversation, $clientMessageId, $exception);
+            return $this->recoverClientIdContention($conversation, $clientMessageId, $owner, $exception);
         }
     }
 
@@ -33,22 +37,24 @@ final readonly class CreateChatMessage
         ChatConversation $conversation,
         string $content,
         string $clientMessageId,
+        ChatOwner $owner,
     ): array {
-        $existingMessage = $this->existingMessage($conversation, $clientMessageId);
+        $lockedConversation = $this->lockedWritableConversation($conversation, $owner);
+        $existingMessage = $this->existingMessage($lockedConversation, $clientMessageId);
 
         if ($existingMessage instanceof ChatMessage) {
             return $this->canonicalMessages($existingMessage);
         }
 
-        $customerMessage = $conversation->messages()->create([
+        $customerMessage = $lockedConversation->messages()->create([
             'client_message_id' => $clientMessageId,
             'sender_type' => ChatSenderType::Customer,
             'message_type' => ChatMessageType::Text,
             'content' => $content,
         ]);
 
-        $conversation->update(['last_message_at' => now()]);
-        $demoReply = $this->createDemoReply($conversation, $customerMessage);
+        $lockedConversation->update(['last_message_at' => now()]);
+        $demoReply = $this->createDemoReply($lockedConversation, $customerMessage);
 
         return [
             'message' => $customerMessage,
@@ -83,19 +89,55 @@ final readonly class CreateChatMessage
     private function recoverClientIdContention(
         ChatConversation $conversation,
         string $clientMessageId,
+        ChatOwner $owner,
         QueryException $exception,
     ): array {
         if (! $this->isClientIdUniqueViolation($exception)) {
             throw $exception;
         }
 
-        $existingMessage = $this->existingMessage($conversation, $clientMessageId);
+        return DB::transaction(function () use ($conversation, $clientMessageId, $owner, $exception): array {
+            $lockedConversation = $this->lockedWritableConversation($conversation, $owner);
+            $existingMessage = $this->existingMessage($lockedConversation, $clientMessageId);
 
-        if (! $existingMessage instanceof ChatMessage) {
-            throw $exception;
+            if (! $existingMessage instanceof ChatMessage) {
+                throw $exception;
+            }
+
+            return $this->canonicalMessages($existingMessage);
+        });
+    }
+
+    private function lockedWritableConversation(
+        ChatConversation $conversation,
+        ChatOwner $owner,
+    ): ChatConversation {
+        $locked = ChatConversation::query()
+            ->whereKey($conversation->getKey())
+            ->where('public_id', $conversation->public_id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $locked instanceof ChatConversation || ! $this->belongsToOwner($locked, $owner)) {
+            throw ChatConversationWriteRejected::notFound();
         }
 
-        return $this->canonicalMessages($existingMessage);
+        if ($locked->status !== ChatConversationStatus::Open) {
+            throw ChatConversationWriteRejected::closed();
+        }
+
+        return $locked;
+    }
+
+    private function belongsToOwner(ChatConversation $conversation, ChatOwner $owner): bool
+    {
+        if ($owner->userId() !== null) {
+            return $conversation->user_id === $owner->userId()
+                && $conversation->guest_key === null;
+        }
+
+        return $conversation->user_id === null
+            && $conversation->guest_key === $owner->guestKey();
     }
 
     private function existingMessage(

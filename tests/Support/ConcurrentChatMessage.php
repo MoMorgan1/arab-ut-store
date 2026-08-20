@@ -3,6 +3,7 @@
 use App\Actions\Chat\CreateChatMessage;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
+use App\ValueObjects\Chat\ChatOwner;
 use Illuminate\Contracts\Console\Kernel;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
@@ -45,6 +46,9 @@ try {
         $conversation,
         'Concurrent message content',
         $clientMessageId,
+        $conversation->user_id !== null
+            ? ChatOwner::user($conversation->user_id)
+            : ChatOwner::guest((string) $conversation->guest_key),
     );
 } catch (Throwable) {
     fwrite(STDERR, "Concurrent chat message worker failed during {$failureStage}.");

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Chat;
 use App\Actions\Chat\CreateChatMessage;
 use App\Actions\Chat\ResolveChatOwner;
 use App\Enums\Chat\ChatConversationStatus;
+use App\Exceptions\Chat\ChatConversationWriteRejected;
 use App\Http\Controllers\Controller;
 use App\Http\Presenters\ChatPresenter;
 use App\Models\ChatConversation;
@@ -30,22 +31,11 @@ class ChatMessageController extends Controller
             ->first();
 
         if (! $conversation instanceof ChatConversation) {
-            return response()->json([
-                'error' => [
-                    'code' => 'conversation_not_found',
-                    'message' => 'The requested conversation was not found.',
-                ],
-            ], 404)->header('Cache-Control', 'no-store, private');
+            return $this->conversationNotFoundResponse();
         }
 
         if ($conversation->status !== ChatConversationStatus::Open) {
-            return response()->json([
-                'error' => [
-                    'code' => 'conversation_closed',
-                    'message' => trans('chat.conversation_closed'),
-                    'details' => (object) [],
-                ],
-            ], 409)->header('Cache-Control', 'no-store, private');
+            return $this->conversationClosedResponse();
         }
 
         $validated = $request->validate([
@@ -61,11 +51,18 @@ class ChatMessageController extends Controller
             ]);
         }
 
-        $result = $this->createChatMessage->execute(
-            $conversation,
-            $content,
-            $validated['client_message_id'],
-        );
+        try {
+            $result = $this->createChatMessage->execute(
+                $conversation,
+                $content,
+                $validated['client_message_id'],
+                $owner,
+            );
+        } catch (ChatConversationWriteRejected $exception) {
+            return $exception->errorCode() === 'conversation_closed'
+                ? $this->conversationClosedResponse()
+                : $this->conversationNotFoundResponse();
+        }
 
         return response()->json([
             'data' => [
@@ -75,5 +72,26 @@ class ChatMessageController extends Controller
                     : null,
             ],
         ], 201)->header('Cache-Control', 'no-store, private');
+    }
+
+    private function conversationNotFoundResponse(): JsonResponse
+    {
+        return response()->json([
+            'error' => [
+                'code' => 'conversation_not_found',
+                'message' => 'The requested conversation was not found.',
+            ],
+        ], 404)->header('Cache-Control', 'no-store, private');
+    }
+
+    private function conversationClosedResponse(): JsonResponse
+    {
+        return response()->json([
+            'error' => [
+                'code' => 'conversation_closed',
+                'message' => trans('chat.conversation_closed'),
+                'details' => (object) [],
+            ],
+        ], 409)->header('Cache-Control', 'no-store, private');
     }
 }

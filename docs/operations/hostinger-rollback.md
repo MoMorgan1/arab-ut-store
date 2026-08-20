@@ -1,10 +1,16 @@
 # Hostinger rollback
 
-Application releases are recoverable without changing database history or exposing secrets.
+Application releases are recoverable without exposing secrets. Automatic failed-health recovery may reverse only the migration batch just applied by that failed release; manual rollback remains schema-forward.
 
 ## Automatic rollback
 
-`deploy/hostinger-release.sh` remembers the previous `current` target. If the new release does not return a successful `/up` response, it restores the prior `current` and `public_html` symlinks and exits nonzero so GitHub marks the deployment failed.
+`deploy/hostinger-release.sh` remembers the previous `current` target and checks for pending migrations before it runs `php artisan migrate --force`. If the new release does not return a successful `/up` response and a valid prior release exists:
+
+- with no migrations applied by the failed release, it restores the prior `current` and `public_html` symlinks;
+- with a new migration batch applied, it runs `php artisan migrate:rollback --force` from the failed release and restores the prior symlinks only after that rollback succeeds;
+- when migration rollback fails, it refuses to activate the older code and leaves the failed release active for operator recovery.
+
+Every failed-health branch exits nonzero so GitHub marks the deployment failed. With no valid prior release, the script leaves both the new schema and failed release active. A successful automatic schema rollback can discard migration-only metadata written during the failed release's activation window.
 
 ## Manual rollback
 
@@ -14,7 +20,7 @@ Application releases are recoverable without changing database history or exposi
 4. Reassert `public_html -> current/public`.
 5. Run `php artisan config:cache`, then verify `/up`, `/`, `/en`, and one Coins price.
 
-Do not run `migrate:rollback` as part of an application rollback. Database migrations are forward-only during deployment; rolling back code must use a release that remains compatible with the migrated schema.
+Do not run `migrate:rollback` during this manual procedure. Manual code rollback must use a release compatible with the current schema. The automatic failed-health branch above is narrower: it knows the current release introduced a new batch and reverses that batch before it restores prior code.
 
 ## Recovery beyond the retained releases
 

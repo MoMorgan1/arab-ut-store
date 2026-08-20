@@ -2,7 +2,7 @@
 
 **Lifecycle:** Local implementation verified; deployment evidence pending
 
-**Verified:** 2026-08-20
+**Verified:** 2026-08-21
 
 ## Lifecycle routes
 
@@ -25,6 +25,7 @@ The conversation controller accepts `locale` (up to 10 characters) and a `limit`
 - A `POST /chat/conversations` acquisition prefers the valid session pointer, then the canonical open row. An `inactive` closure may reopen when `last_message_at` is within `chat.reopen_within_days`; other close reasons never auto-reopen. Unique-key contention re-reads and returns the canonical open winner.
 - `POST /chat/conversations/restart` is transactional. It closes the current open row with `customer_started_new`, creates the replacement and onboarding message, then writes the new public ID to the session pointer. A failed replacement rolls the close and pointer update back.
 - `CreateChatConversation` creates the conversation and onboarding message in one transaction. A duplicate `client_message_id` returns the stored customer message and its linked demo reply rather than creating another reply.
+- `CreateChatMessage` locks and reloads the selected conversation inside the same transaction as duplicate lookup, customer-message insertion, `last_message_at`, and the optional demo reply. It revalidates both the resolved owner and `open` status before any write. A row still owned by the requester but closed by restart or maintenance returns `conversation_closed`; a missing row or a guest row claimed by another owner returns `conversation_not_found`.
 
 The first migration retains the exactly-one-owner database guard and cascade relationships. The lifecycle migration adds a nullable self-reference `chat_messages.reply_to_message_id`, with a unique index so one customer message has at most one reply.
 

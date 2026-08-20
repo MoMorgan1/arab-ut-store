@@ -165,7 +165,7 @@ if($operations -match 'only when `current` previously resolved to an existing re
 Output:
 
 ```text
-STATUS local-gate evidence scan: PASS
+STATUS evidence-boundary scan: PASS
 AUDIT disposition scan: PASS
 UX fixture-source scan: PASS
 Operations rollback/schedule scan: PASS

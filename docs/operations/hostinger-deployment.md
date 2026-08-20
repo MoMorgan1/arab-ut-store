@@ -9,7 +9,7 @@ Arab UT is deployed as one Laravel application on Hostinger PHP/MariaDB hosting.
 3. The `tests` workflow runs the complete test, static-analysis, and production-build gate.
 4. Only a successful `main` push produces the SHA-bound `hostinger-release-<sha>` artifact.
 5. `deploy-production` downloads that exact artifact, connects with the dedicated Hostinger deployment key, and runs `deploy/hostinger-release.sh`.
-6. The script installs production Composer packages, runs forward migrations, caches Laravel configuration/routes/views, atomically switches `current`, verifies `/up`, and retains the five newest releases.
+6. The script installs production Composer packages, detects pending migrations, runs the forward migration command, caches Laravel configuration/routes/views, atomically switches `current`, verifies `/up`, and retains the five newest releases. A failed-health release that applied migrations must roll back that new batch successfully before the script can restore prior code.
 
 GitHub environment secrets contain the SSH identity and pinned host key. The environment variables contain only the deploy root and public health-check URL. Application and database secrets stay in Hostinger's `shared/.env`; they are never copied into GitHub artifacts or the repository.
 
@@ -93,7 +93,7 @@ Then exercise PS/Xbox -> Normal -> Amount and confirm the displayed price change
 This checklist applies when the Phase 1 Completion changes are authorized for release. It is intentionally not evidence that those steps have already run.
 
 1. Wait for the release SHA's `ci` and `mariadb-schema` workflow jobs. The MariaDB job must complete the fresh, rollback, migrate lifecycle and chat lifecycle/concurrency integration tests.
-2. Deploy the SHA-bound artifact through the normal workflow. Do not run a schema rollback as part of application rollback; the release process uses forward migrations. If `/up` fails, the script restores a prior symlink only when a valid prior release exists. On a first deployment or missing/invalid prior release, it exits nonzero without automatic rollback and leaves the failed release as `current` for operator recovery.
+2. Deploy the SHA-bound artifact through the normal workflow. Before migrating, the script records whether the release has pending migrations. If `/up` then fails and a valid prior release exists, a release with no migration changes restores the prior symlinks directly; a release that applied migrations first runs `php artisan migrate:rollback --force` for that new batch, then restores prior code only after success. If schema rollback fails, older code is not restored and the failed release remains active for operator recovery. On a first deployment or missing/invalid prior release, the script performs no automatic schema or symlink rollback and leaves the failed release as `current`.
 3. Confirm `php artisan schedule:list` includes the hourly `chat:maintain-conversations` registration. Verify overlap prevention from `routes/console.php` and its focused feature test, not from `schedule:list`.
 4. Read-only check `/`, `/en`, `/login`, `/en/login`, `/cart`, and the authenticated account route. Do not create a production synthetic account.
 5. Inspect production `SESSION_DRIVER` and `SESSION_ENCRYPT` only through the approved secure read-only path. Never copy `.env`, session records, or secrets into logs, commits, or chat. Treat an encryption change as a separate approval because active sessions may be invalidated.

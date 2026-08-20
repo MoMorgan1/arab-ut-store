@@ -6,6 +6,8 @@ use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
@@ -128,6 +130,83 @@ test('owned closed conversation rejects a send before validating its content', f
     'English' => ['en', 'This conversation is closed. Start a new conversation to continue.'],
     'Arabic' => ['ar', 'المحادثة مقفلة. ابدأ محادثة جديدة للمتابعة.'],
 ]);
+
+test('a message send that loses to restart creates no rows and returns the closed contract', function () {
+    $user = User::factory()->create();
+    $conversation = ChatConversation::factory()->forUser($user)->create();
+    $clientMessageId = (string) Str::uuid();
+    $revoked = false;
+    $event = 'eloquent.retrieved: '.ChatConversation::class;
+
+    Event::listen($event, function (ChatConversation $retrieved) use ($conversation, &$revoked): void {
+        if ($revoked || $retrieved->id !== $conversation->id) {
+            return;
+        }
+
+        $revoked = true;
+        DB::table('chat_conversations')->where('id', $conversation->id)->update([
+            'status' => 'closed',
+            'closed_at' => now(),
+            'close_reason' => 'customer_started_new',
+            'updated_at' => now(),
+        ]);
+    });
+
+    try {
+        $response = $this->actingAs($user)
+            ->postJson(route('chat.messages.store', ['conversation' => $conversation->public_id]), [
+                'content' => 'This stale send must not persist.',
+                'client_message_id' => $clientMessageId,
+            ]);
+    } finally {
+        Event::forget($event);
+    }
+
+    $response->assertStatus(409)
+        ->assertHeader('Cache-Control', 'no-store, private')
+        ->assertJsonPath('error.code', 'conversation_closed');
+
+    expect(ChatMessage::query()->where('client_message_id', $clientMessageId)->exists())->toBeFalse();
+});
+
+test('a guest message send that loses to login claim creates no rows and returns not found', function () {
+    $rawToken = str_repeat('8', 64);
+    $guestKey = hash_hmac('sha256', $rawToken, (string) config('app.key'));
+    $conversation = ChatConversation::factory()->forGuest($guestKey)->create();
+    $claimingUser = User::factory()->create();
+    $clientMessageId = (string) Str::uuid();
+    $revoked = false;
+    $event = 'eloquent.retrieved: '.ChatConversation::class;
+
+    Event::listen($event, function (ChatConversation $retrieved) use ($conversation, $claimingUser, &$revoked): void {
+        if ($revoked || $retrieved->id !== $conversation->id) {
+            return;
+        }
+
+        $revoked = true;
+        DB::table('chat_conversations')->where('id', $conversation->id)->update([
+            'user_id' => $claimingUser->id,
+            'guest_key' => null,
+            'updated_at' => now(),
+        ]);
+    });
+
+    try {
+        $response = $this->withSession([ResolveChatOwner::SESSION_KEY => $rawToken])
+            ->postJson(route('chat.messages.store', ['conversation' => $conversation->public_id]), [
+                'content' => 'This stale guest send must not persist.',
+                'client_message_id' => $clientMessageId,
+            ]);
+    } finally {
+        Event::forget($event);
+    }
+
+    $response->assertNotFound()
+        ->assertHeader('Cache-Control', 'no-store, private')
+        ->assertJsonPath('error.code', 'conversation_not_found');
+
+    expect(ChatMessage::query()->where('client_message_id', $clientMessageId)->exists())->toBeFalse();
+});
 
 test('arbitrary client metadata is rejected or ignored and not stored', function () {
     $user = User::factory()->create();

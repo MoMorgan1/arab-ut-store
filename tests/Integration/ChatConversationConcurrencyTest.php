@@ -1,8 +1,12 @@
 <?php
 
+use App\Actions\Chat\ClaimGuestChatConversations;
+use App\Actions\Chat\RestartChatConversation;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
+use App\ValueObjects\Chat\ChatOwner;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
@@ -124,6 +128,90 @@ test('concurrent duplicate messages recover one canonical customer and demo repl
     }
 });
 
+test('a stale message worker that loses to restart writes nothing', function () {
+    if (! supportsConcurrentChatLocking()) {
+        $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL locking.');
+    }
+
+    expect(DB::transactionLevel())->toBe(0);
+    $user = User::factory()->create();
+    $owner = ChatOwner::user($user->id);
+    $conversation = ChatConversation::factory()->forUser($user)->create();
+    $clientMessageId = (string) Str::uuid();
+    $barriers = concurrentChatMessageBarrierPaths();
+    $worker = concurrentStaleChatMessageProcess(
+        $conversation->id,
+        'user',
+        (string) $user->id,
+        $clientMessageId,
+        $barriers['first_ready'],
+        $barriers['release'],
+    );
+
+    try {
+        $worker->start();
+        waitForConcurrentChatMessageBarrier($barriers['first_ready']);
+
+        $request = Request::create('/chat/conversations/restart', 'POST');
+        $request->setLaravelSession(app('session')->driver());
+        app(RestartChatConversation::class)->execute($owner, $request, 'en');
+        releaseConcurrentChatMessageWorkers($barriers['release']);
+        $worker->wait();
+        refreshConcurrentChatConnection();
+
+        expect($worker->isSuccessful())->toBeTrue($worker->getErrorOutput())
+            ->and(json_decode(trim($worker->getOutput()), true, flags: JSON_THROW_ON_ERROR))->toBe([
+                'outcome' => 'conversation_closed',
+            ])
+            ->and(ChatMessage::query()->where('client_message_id', $clientMessageId)->exists())->toBeFalse();
+    } finally {
+        cleanupConcurrentChatRaceArtifacts($barriers, $worker);
+    }
+});
+
+test('a stale guest message worker that loses to login claim writes nothing', function () {
+    if (! supportsConcurrentChatLocking()) {
+        $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL locking.');
+    }
+
+    expect(DB::transactionLevel())->toBe(0);
+    $guestKey = hash_hmac('sha256', bin2hex(random_bytes(32)), 'chat-concurrency-owner');
+    $guestOwner = ChatOwner::guest($guestKey);
+    $conversation = ChatConversation::factory()->forGuest($guestKey)->create();
+    $claimingUser = User::factory()->create();
+    $clientMessageId = (string) Str::uuid();
+    $barriers = concurrentChatMessageBarrierPaths();
+    $worker = concurrentStaleChatMessageProcess(
+        $conversation->id,
+        'guest',
+        $guestKey,
+        $clientMessageId,
+        $barriers['first_ready'],
+        $barriers['release'],
+    );
+
+    try {
+        $worker->start();
+        waitForConcurrentChatMessageBarrier($barriers['first_ready']);
+        app(ClaimGuestChatConversations::class)->execute(
+            [$guestOwner],
+            $claimingUser,
+            $conversation->public_id,
+        );
+        releaseConcurrentChatMessageWorkers($barriers['release']);
+        $worker->wait();
+        refreshConcurrentChatConnection();
+
+        expect($worker->isSuccessful())->toBeTrue($worker->getErrorOutput())
+            ->and(json_decode(trim($worker->getOutput()), true, flags: JSON_THROW_ON_ERROR))->toBe([
+                'outcome' => 'conversation_not_found',
+            ])
+            ->and(ChatMessage::query()->where('client_message_id', $clientMessageId)->exists())->toBeFalse();
+    } finally {
+        cleanupConcurrentChatRaceArtifacts($barriers, $worker);
+    }
+});
+
 function supportsConcurrentChatLocking(): bool
 {
     return in_array(DB::connection()->getDriverName(), ['mariadb', 'mysql'], true);
@@ -165,6 +253,34 @@ function concurrentChatMessageProcess(
         'extension=pdo_mysql',
         base_path('tests/Support/ConcurrentChatMessage.php'),
         (string) $conversationId,
+        $clientMessageId,
+        $readyPath,
+        $releasePath,
+    ], base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
+}
+
+function concurrentStaleChatMessageProcess(
+    int $conversationId,
+    string $ownerType,
+    string $ownerId,
+    string $clientMessageId,
+    string $readyPath,
+    string $releasePath,
+): Process {
+    return new Process([
+        PHP_BINARY,
+        '-d',
+        'extension_dir='.ini_get('extension_dir'),
+        '-d',
+        'extension=openssl',
+        '-d',
+        'extension=mbstring',
+        '-d',
+        'extension=pdo_mysql',
+        base_path('tests/Support/ConcurrentChatStaleMessage.php'),
+        (string) $conversationId,
+        $ownerType,
+        $ownerId,
         $clientMessageId,
         $readyPath,
         $releasePath,
@@ -273,6 +389,20 @@ function cleanupConcurrentChatMessageArtifacts(
             cleanupConcurrentChatMessageBarriers($barriers);
         }
     }
+}
+
+/** @param array{first_ready: string, second_ready: string, release: string} $barriers */
+function cleanupConcurrentChatRaceArtifacts(array $barriers, Process $worker): void
+{
+    if (is_dir(dirname($barriers['release'])) && ! file_exists($barriers['release'])) {
+        file_put_contents($barriers['release'], 'release', LOCK_EX);
+    }
+
+    if ($worker->isRunning()) {
+        $worker->stop(2);
+    }
+
+    cleanupConcurrentChatMessageBarriers($barriers);
 }
 
 /** @param array{first_ready: string, second_ready: string, release: string} $barriers */

@@ -40,8 +40,24 @@ ln -s "$env_file" "$release/.env"
 rm -rf "$release/storage"
 ln -s "$shared/storage" "$release/storage"
 
+previous_release="$(readlink -f "$current" 2>/dev/null || true)"
+
 cd "$release"
 composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+migrations_applied=false
+if php artisan migrate:status --pending=10 --no-ansi >/dev/null; then
+    :
+else
+    migration_status=$?
+
+    if [[ "$migration_status" -eq 10 ]]; then
+        migrations_applied=true
+    else
+        echo 'Unable to determine whether the release has pending migrations; deployment was cancelled before migration.' >&2
+        exit 1
+    fi
+fi
+
 php artisan migrate --force
 rm -rf "$release/public/storage"
 ln -sfn "$shared/storage/app/public" "$release/public/storage"
@@ -50,7 +66,6 @@ php artisan route:cache
 php artisan view:cache
 php artisan currency:refresh-display-rates
 
-previous_release="$(readlink -f "$current" 2>/dev/null || true)"
 next_link="$deploy_root/.current-$release_id"
 
 ln -s "$release" "$next_link"
@@ -78,13 +93,26 @@ done
 
 if [[ "$health_passed" != true ]]; then
     if [[ -n "$previous_release" && -d "$previous_release" ]]; then
+        if [[ "$migrations_applied" == true ]] && ! php artisan migrate:rollback --force; then
+            echo 'The release failed its health check and schema rollback failed; prior code was not restored, and the current release was left active for operator recovery.' >&2
+            exit 1
+        fi
+
         rollback_link="$deploy_root/.rollback-$release_id"
         ln -s "$previous_release" "$rollback_link"
         mv -Tf "$rollback_link" "$current"
         ln -sfn "$current/public" "$public_html"
+
+        if [[ "$migrations_applied" == true ]]; then
+            echo 'The release failed its health check; its migration batch was rolled back and the prior release was restored.' >&2
+            exit 1
+        fi
+
+        echo 'The release failed its health check and the prior release was restored.' >&2
+        exit 1
     fi
 
-    echo 'The release failed its health check and the prior release was restored.' >&2
+    echo 'The release failed its health check and no valid prior release was available; the current release was left active for operator recovery.' >&2
     exit 1
 fi
 
