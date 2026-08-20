@@ -5,10 +5,46 @@ use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 uses(TestCase::class);
+
+test('a worker timeout still drains its peer and removes readiness artifacts', function () {
+    $readinessBarrier = createConcurrentChatReadinessBarrier('cleanup-timeout');
+    touch($readinessBarrier['first_ready']);
+    touch($readinessBarrier['second_ready']);
+    $first = new Process([PHP_BINARY, '-r', 'usleep(1000000);'], timeout: 0.05);
+    $second = new Process([PHP_BINARY, '-r', 'usleep(1000000);'], timeout: 2);
+    $first->start();
+    $second->start();
+    usleep(100_000);
+
+    try {
+        expect(fn () => cleanupConcurrentChatReadinessBarrier($readinessBarrier, $first, $second))
+            ->toThrow(ProcessTimedOutException::class);
+        expect($first->isRunning())->toBeFalse()
+            ->and($second->isRunning())->toBeFalse()
+            ->and(is_dir($readinessBarrier['directory']))->toBeFalse();
+    } finally {
+        foreach ([$first, $second] as $process) {
+            if ($process->isRunning()) {
+                $process->stop(0);
+            }
+        }
+
+        foreach (['first_ready', 'second_ready', 'release'] as $pathKey) {
+            if (file_exists($readinessBarrier[$pathKey])) {
+                unlink($readinessBarrier[$pathKey]);
+            }
+        }
+
+        if (is_dir($readinessBarrier['directory'])) {
+            rmdir($readinessBarrier['directory']);
+        }
+    }
+});
 
 test('concurrent authenticated first acquisitions resolve to one active conversation', function () {
     if (! supportsConcurrentChatLocking()) {
@@ -48,8 +84,11 @@ test('concurrent authenticated first acquisitions resolve to one active conversa
             ->and(trim($second->getOutput()))->toBe(trim($first->getOutput()))
             ->and(ChatConversation::query()->where('active_owner_key', "user:{$user->id}")->count())->toBe(1);
     } finally {
-        cleanupConcurrentChatReadinessBarrier($readinessBarrier, $first, $second);
-        $user->delete();
+        try {
+            cleanupConcurrentChatReadinessBarrier($readinessBarrier, $first, $second);
+        } finally {
+            $user->delete();
+        }
     }
 });
 
@@ -92,8 +131,11 @@ test('concurrent guest first acquisitions resolve to one active conversation', f
             ->and(trim($second->getOutput()))->toBe(trim($first->getOutput()))
             ->and(ChatConversation::query()->where('active_owner_key', "guest:{$guestKey}")->count())->toBe(1);
     } finally {
-        cleanupConcurrentChatReadinessBarrier($readinessBarrier, $first, $second);
-        deleteConcurrentGuestConversation($guestKey);
+        try {
+            cleanupConcurrentChatReadinessBarrier($readinessBarrier, $first, $second);
+        } finally {
+            deleteConcurrentGuestConversation($guestKey);
+        }
     }
 });
 
@@ -151,10 +193,19 @@ test('concurrent duplicate messages replay the canonical customer and demo reply
             ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->where('sender_type', 'assistant')->count())->toBe(1)
             ->and(DB::table('chat_message_update_audits')->where('conversation_id', $conversation->id)->count())->toBe(1);
     } finally {
-        cleanupConcurrentChatReadinessBarrier($readinessBarrier, $first, $second);
-        removeChatMessageUpdateAudit();
-        $conversation->delete();
-        $user->delete();
+        try {
+            cleanupConcurrentChatReadinessBarrier($readinessBarrier, $first, $second);
+        } finally {
+            try {
+                removeChatMessageUpdateAudit();
+            } finally {
+                try {
+                    $conversation->delete();
+                } finally {
+                    $user->delete();
+                }
+            }
+        }
     }
 });
 
@@ -308,24 +359,33 @@ function cleanupConcurrentChatReadinessBarrier(
     ?Process $first,
     ?Process $second,
 ): void {
-    if (! file_exists($readinessBarrier['release'])) {
-        touch($readinessBarrier['release']);
-    }
+    try {
+        if (! file_exists($readinessBarrier['release'])) {
+            touch($readinessBarrier['release']);
+        }
 
-    foreach ([$first, $second] as $process) {
-        if ($process?->isRunning()) {
-            $process->wait();
+        try {
+            waitForConcurrentChatProcess($first);
+        } finally {
+            waitForConcurrentChatProcess($second);
+        }
+    } finally {
+        foreach (['first_ready', 'second_ready', 'release'] as $pathKey) {
+            if (file_exists($readinessBarrier[$pathKey])) {
+                unlink($readinessBarrier[$pathKey]);
+            }
+        }
+
+        if (is_dir($readinessBarrier['directory'])) {
+            rmdir($readinessBarrier['directory']);
         }
     }
+}
 
-    foreach (['first_ready', 'second_ready', 'release'] as $pathKey) {
-        if (file_exists($readinessBarrier[$pathKey])) {
-            unlink($readinessBarrier[$pathKey]);
-        }
-    }
-
-    if (is_dir($readinessBarrier['directory'])) {
-        rmdir($readinessBarrier['directory']);
+function waitForConcurrentChatProcess(?Process $process): void
+{
+    if ($process?->isRunning()) {
+        $process->wait();
     }
 }
 
