@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Chat\CloseChatConversation;
 use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatConversationStatus;
 use App\Models\ChatConversation;
@@ -73,8 +74,8 @@ test('chat maintenance closes inactive conversations and purges expired owner-sp
     $this->artisan('chat:maintain-conversations')
         ->expectsOutputToContain('Closed 1 inactive conversation(s).')
         ->expectsOutputToContain('Deleted 2 expired conversation(s).')
-        ->doesntExpectOutput($expiredGuestKey)
-        ->doesntExpectOutput($expiredGuestMessage)
+        ->doesntExpectOutputToContain($expiredGuestKey)
+        ->doesntExpectOutputToContain($expiredGuestMessage)
         ->assertSuccessful();
 
     expect($recentOpen->fresh()->status)->toBe(ChatConversationStatus::Open)
@@ -93,6 +94,47 @@ test('chat maintenance closes inactive conversations and purges expired owner-sp
         ->expectsOutputToContain('Deleted 0 expired conversation(s).')
         ->assertSuccessful();
 });
+
+test('inactive maintenance ignores a candidate refreshed before its locked close', function () {
+    Carbon::setTestNow('2026-08-20 12:00:00');
+
+    $conversation = ChatConversation::factory()->create([
+        'last_message_at' => now()->subHours(24),
+    ]);
+    $staleCandidate = $conversation->fresh();
+    $conversation->update(['last_message_at' => now()]);
+
+    $closed = app(CloseChatConversation::class)->closeIfInactive(
+        $staleCandidate,
+        now()->subHours(24),
+    );
+
+    expect($closed)->toBeFalse()
+        ->and($conversation->fresh()->status)->toBe(ChatConversationStatus::Open)
+        ->and($conversation->fresh()->last_message_at->equalTo(now()))->toBeTrue();
+});
+
+test('inactive maintenance preserves a stale candidate closed for a protected reason', function (ChatConversationCloseReason $reason) {
+    Carbon::setTestNow('2026-08-20 12:00:00');
+
+    $conversation = ChatConversation::factory()->create([
+        'last_message_at' => now()->subHours(24),
+    ]);
+    $staleCandidate = $conversation->fresh();
+    app(CloseChatConversation::class)->execute($conversation, $reason);
+
+    $closed = app(CloseChatConversation::class)->closeIfInactive(
+        $staleCandidate,
+        now()->subHours(24),
+    );
+
+    expect($closed)->toBeFalse()
+        ->and($conversation->fresh()->status)->toBe(ChatConversationStatus::Closed)
+        ->and($conversation->fresh()->close_reason)->toBe($reason);
+})->with([
+    'customer restart' => ChatConversationCloseReason::CustomerStartedNew,
+    'login claim' => ChatConversationCloseReason::SupersededByLoginClaim,
+]);
 
 test('chat maintenance is scheduled hourly without overlapping', function () {
     $events = collect(app(Schedule::class)->events())

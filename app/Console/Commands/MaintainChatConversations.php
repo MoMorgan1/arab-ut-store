@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Actions\Chat\CloseChatConversation;
-use App\Enums\Chat\ChatConversationCloseReason;
+use App\Enums\Chat\ChatConversationStatus;
 use App\Models\ChatConversation;
 use DateTimeInterface;
 use Illuminate\Console\Command;
@@ -34,10 +34,11 @@ final class MaintainChatConversations extends Command
         ChatConversation::query()
             ->open()
             ->where('last_message_at', '<=', $cutoff)
-            ->chunkById(200, function ($conversations) use ($closeChatConversation, &$closedCount): void {
+            ->chunkById(200, function ($conversations) use ($closeChatConversation, $cutoff, &$closedCount): void {
                 foreach ($conversations as $conversation) {
-                    $closeChatConversation->execute($conversation, ChatConversationCloseReason::Inactive);
-                    $closedCount++;
+                    if ($closeChatConversation->closeIfInactive($conversation, $cutoff)) {
+                        $closedCount++;
+                    }
                 }
             });
 
@@ -71,10 +72,14 @@ final class MaintainChatConversations extends Command
             ChatConversation::query()
                 ->where('status', 'closed')
                 ->where('closed_at', '<=', $cutoff),
-        )->chunkById(200, function ($conversations) use (&$deletedCount): void {
+        )->chunkById(200, function ($conversations) use ($ownerConstraint, $cutoff, &$deletedCount): void {
             foreach ($conversations as $conversation) {
-                $conversation->delete();
-                $deletedCount++;
+                $deletedCount += $ownerConstraint(
+                    ChatConversation::query()
+                        ->whereKey($conversation->id)
+                        ->where('status', ChatConversationStatus::Closed)
+                        ->where('closed_at', '<=', $cutoff),
+                )->delete();
             }
         });
     }
