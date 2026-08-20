@@ -31,7 +31,9 @@ npm test -- resources/js/__tests__/chat
 npm run test:e2e
 ```
 
-`composer ci:check` is the complete local PHP/frontend gate. The GitHub `mariadb-schema` job separately runs a fresh/rollback/migrate lifecycle and the chat invariant/concurrency integration tests against MariaDB. That CI result is pending for this handoff.
+`composer ci:check` is the complete local PHP/frontend gate. On 2026-08-21, `php C:\temp\arabut-composer\composer.phar ci:check` exited 0: Composer validation, configuration-cache clear, Pint, PHPStan (0 errors), Pest (851 tests, 33,142 assertions), Vitest (52 files, 369 tests), ESLint, Prettier, TypeScript, E2E TypeScript, and the Vite production build completed. The build emitted only existing runtime-resolved asset/font notices. `npm run test:e2e` also exited 0 with 7 Chromium tests passed in 42.2 seconds; the authenticated account test took 27.7 seconds.
+
+The GitHub `mariadb-schema` job separately runs a fresh/rollback/migrate lifecycle and the chat invariant/concurrency integration tests against MariaDB. That CI result is pending for this handoff.
 
 ## Deployment and rollback boundary
 
