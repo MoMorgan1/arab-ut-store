@@ -40,14 +40,18 @@ Hostinger Cron Jobs runs this PHP command every minute:
 
 Laravel then schedules exchange-rate refresh, paid-order event publication,
 guest-claim cleanup, and the hourly
-`chat:maintain-conversations` lifecycle/retention job. Confirm the scheduled
-commands after a domain or directory change with:
+`chat:maintain-conversations` lifecycle/retention job. Confirm that the command
+is registered after a domain or directory change with:
 
 ```bash
 cd <deploy-root>/current
 php artisan schedule:list
 php artisan schedule:run
 ```
+
+`php artisan schedule:list` establishes hourly registration, not overlap
+locking. The `withoutOverlapping()` contract is defined in `routes/console.php`
+and asserted by `tests/Feature/Console/MaintainChatConversationsTest.php`.
 
 ## Catalog and reviews
 
@@ -89,8 +93,8 @@ Then exercise PS/Xbox -> Normal -> Amount and confirm the displayed price change
 This checklist applies when the Phase 1 Completion changes are authorized for release. It is intentionally not evidence that those steps have already run.
 
 1. Wait for the release SHA's `ci` and `mariadb-schema` workflow jobs. The MariaDB job must complete the fresh, rollback, migrate lifecycle and chat lifecycle/concurrency integration tests.
-2. Deploy the SHA-bound artifact through the normal workflow. Do not run a schema rollback as part of application rollback; the release process uses forward migrations and restores the prior application symlink only if `/up` fails.
-3. Confirm `php artisan schedule:list` includes the hourly `chat:maintain-conversations` command with overlap prevention.
+2. Deploy the SHA-bound artifact through the normal workflow. Do not run a schema rollback as part of application rollback; the release process uses forward migrations. If `/up` fails, the script restores a prior symlink only when a valid prior release exists. On a first deployment or missing/invalid prior release, it exits nonzero without automatic rollback and leaves the failed release as `current` for operator recovery.
+3. Confirm `php artisan schedule:list` includes the hourly `chat:maintain-conversations` registration. Verify overlap prevention from `routes/console.php` and its focused feature test, not from `schedule:list`.
 4. Read-only check `/`, `/en`, `/login`, `/en/login`, `/cart`, and the authenticated account route. Do not create a production synthetic account.
 5. Inspect production `SESSION_DRIVER` and `SESSION_ENCRYPT` only through the approved secure read-only path. Never copy `.env`, session records, or secrets into logs, commits, or chat. Treat an encryption change as a separate approval because active sessions may be invalidated.
 6. Hand the deployed release to Mohamed for the Arabic/English, iPhone safe area, navigation/lifecycle, focus, touch-target, and browser-console manual acceptance gate.

@@ -19,7 +19,7 @@ The mobile sheet is modal: the page outside it is inert, focus is contained, and
 
 ## Local browser fixture
 
-`tests/Browser/storefront-smoke.spec.ts` uses the real local registration flow and a disposable local database. At 390px it verifies that the authenticated account launcher is above the mobile navigation, the sheet stacks above that navigation, and closing restores launcher focus. The same fixture visits `/en/my-account` and checks English `lang`/`dir` plus launcher geometry. It also exercises Arabic and English account chat behavior at 320px, 390px, 768px, and 1440px.
+`tests/Browser/storefront-smoke.spec.ts` uses the checkout's persistent local SQLite database and registers a real synthetic local user through `/register`; it does not create a production account. At 390px it verifies that the authenticated account launcher is above the mobile navigation, the sheet stacks above that navigation, and closing restores launcher focus. The same fixture visits `/en/my-account` and checks English `lang`/`dir` plus launcher geometry. It also exercises Arabic and English account chat behavior at 320px, 390px, 768px, and 1440px.
 
 This is local Chromium evidence, not production-browser evidence and not Safari/iPhone proof.
 

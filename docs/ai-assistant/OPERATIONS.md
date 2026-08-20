@@ -14,7 +14,7 @@ Do not change `SESSION_DRIVER` or `SESSION_ENCRYPT` as part of this release. The
 
 The release contains `php artisan chat:maintain-conversations`, scheduled hourly with `withoutOverlapping()`. It closes inactive open conversations and purges expired closed guest/authenticated history according to the four chat configuration keys. It reports counts only; it does not print message content or owner secrets.
 
-After a deployment, an authorized operator must confirm that the existing Hostinger per-minute `schedule:run` cron reaches the new release and that `php artisan schedule:list` shows the hourly maintenance command. This has not been checked in production.
+After a deployment, an authorized operator must confirm that the existing Hostinger per-minute `schedule:run` cron reaches the new release and that `php artisan schedule:list` shows the hourly maintenance command. `schedule:list` proves that hourly registration only; `routes/console.php` and `tests/Feature/Console/MaintainChatConversationsTest.php` establish `withoutOverlapping()`. This has not been checked in production.
 
 ## Local verification commands
 
@@ -35,7 +35,7 @@ npm run test:e2e
 
 ## Deployment and rollback boundary
 
-The deployment workflow packages only a successful `main` SHA, then `deploy/hostinger-release.sh` installs production dependencies, runs forward migrations, caches Laravel configuration/routes/views, atomically switches `current`, and health-checks `/up`. If `/up` fails, the script restores the previous application symlink. Application rollback must not run `php artisan migrate:rollback`; the chat migration is forward-only in the release process.
+The deployment workflow packages only a successful `main` SHA, then `deploy/hostinger-release.sh` installs production dependencies, runs forward migrations, caches Laravel configuration/routes/views, atomically switches `current`, and health-checks `/up`. If `/up` fails, the script restores the previous application symlink only when `current` previously resolved to an existing release directory. On a first deployment or when no valid prior release exists, the script exits nonzero without an automatic rollback, leaving the failed new release as `current`. Application rollback must not run `php artisan migrate:rollback`; the chat migration is forward-only in the release process.
 
 No push, deploy, production health check, or production route check was run for this handoff. Once an authorized deployment is complete, verify `/up`, `/`, `/en`, `/login`, `/en/login`, `/cart`, and the authenticated account route without creating a production synthetic account. Then complete Mohamed's manual acceptance gate in [UX.md](UX.md).
 
