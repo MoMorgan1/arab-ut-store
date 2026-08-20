@@ -1,7 +1,7 @@
 # AI assistant handbook
 
 **Lifecycle:** Implemented
-**Verified:** 2026-08-20
+**Verified:** 2026-08-21
 
 Start with [STATUS.md](STATUS.md). It identifies the verified application
 release, operational flags, open findings, owner acceptance, and exact next
@@ -13,7 +13,7 @@ task. Then use the relevant canonical document below.
 | Application flow and data | [ARCHITECTURE.md](ARCHITECTURE.md)   | Implemented                                              |
 | Ownership and safety      | [SECURITY.md](SECURITY.md)           | Implemented controls with recorded P2/P3 risks           |
 | Customer experience       | [UX.md](UX.md)                       | Implemented; owner acceptance pending                    |
-| Operations and release    | [OPERATIONS.md](OPERATIONS.md)       | Implemented                                              |
+| Operations and release    | [OPERATIONS.md](OPERATIONS.md)       | Implemented; external scheduler evidence pending         |
 | Audit evidence            | [AUDIT.md](AUDIT.md)                 | Implemented record                                       |
 | Incident history          | [INCIDENTS.md](INCIDENTS.md)         | Implemented record                                       |
 | Phases                    | [PHASES.md](PHASES.md)               | Mixed; state shown per phase                             |

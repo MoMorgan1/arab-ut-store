@@ -2,6 +2,8 @@
 
 namespace App\Actions\Chat;
 
+use App\Enums\Chat\ChatConversationCloseReason;
+use App\Enums\Chat\ChatConversationStatus;
 use App\Models\ChatConversation;
 use App\ValueObjects\Chat\ChatOwner;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -26,9 +28,15 @@ final class ResolveChatOwner
         $existingOwners = $this->existingGuestCandidatesForRequest($request);
 
         if ($existingOwners !== []) {
+            $sessionPointer = $request->session()->get(self::ACTIVE_CONVERSATION_SESSION_KEY);
+
             return count($existingOwners) === 1
                 ? $existingOwners[0]
-                : $this->rekeyGuestConversations($existingOwners[0], array_slice($existingOwners, 1));
+                : $this->rekeyGuestConversations(
+                    $existingOwners[0],
+                    array_slice($existingOwners, 1),
+                    is_string($sessionPointer) ? $sessionPointer : null,
+                );
         }
 
         $rawToken = bin2hex(random_bytes(32));
@@ -119,23 +127,72 @@ final class ResolveChatOwner
     }
 
     /** @param list<ChatOwner> $previousOwners */
-    private function rekeyGuestConversations(ChatOwner $currentOwner, array $previousOwners): ChatOwner
-    {
-        return DB::transaction(function () use ($currentOwner, $previousOwners): ChatOwner {
-            $previousKeys = array_values(array_filter(array_map(
+    private function rekeyGuestConversations(
+        ChatOwner $currentOwner,
+        array $previousOwners,
+        ?string $activePublicId = null,
+    ): ChatOwner {
+        return DB::transaction(function () use ($currentOwner, $previousOwners, $activePublicId): ChatOwner {
+            $candidateKeys = array_values(array_unique(array_filter(array_map(
                 fn (ChatOwner $owner): ?string => $owner->guestKey(),
-                $previousOwners,
-            )));
+                [$currentOwner, ...$previousOwners],
+            ))));
+            $currentGuestKey = $currentOwner->guestKey();
 
-            if ($previousKeys !== [] && $currentOwner->guestKey() !== null) {
-                ChatConversation::query()
-                    ->whereNull('user_id')
-                    ->whereIn('guest_key', $previousKeys)
-                    ->update([
-                        'guest_key' => $currentOwner->guestKey(),
-                        'updated_at' => now(),
-                    ]);
+            if ($candidateKeys === [] || $currentGuestKey === null) {
+                return $currentOwner;
             }
+
+            $conversations = ChatConversation::query()
+                ->whereNull('user_id')
+                ->whereIn('guest_key', $candidateKeys)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+            $openConversations = $conversations->filter(
+                fn (ChatConversation $conversation): bool => $conversation->status === ChatConversationStatus::Open,
+            );
+            $winner = $activePublicId !== null && $activePublicId !== ''
+                ? $openConversations->firstWhere('public_id', $activePublicId)
+                : null;
+
+            if (! $winner instanceof ChatConversation) {
+                $winner = $openConversations->reduce(
+                    function (?ChatConversation $newest, ChatConversation $candidate): ChatConversation {
+                        if (! $newest instanceof ChatConversation) {
+                            return $candidate;
+                        }
+
+                        $candidateActivity = $candidate->last_message_at?->getTimestamp() ?? PHP_INT_MIN;
+                        $newestActivity = $newest->last_message_at?->getTimestamp() ?? PHP_INT_MIN;
+
+                        return $candidateActivity > $newestActivity
+                            || ($candidateActivity === $newestActivity && $candidate->id > $newest->id)
+                                ? $candidate
+                                : $newest;
+                    },
+                );
+            }
+
+            foreach ($openConversations as $openConversation) {
+                if ($winner instanceof ChatConversation && $openConversation->id === $winner->id) {
+                    continue;
+                }
+
+                $openConversation->forceFill([
+                    'status' => ChatConversationStatus::Closed,
+                    'closed_at' => now(),
+                    'close_reason' => ChatConversationCloseReason::InvariantUpgradeDuplicate,
+                ])->save();
+            }
+
+            ChatConversation::query()
+                ->whereIn('id', $conversations->pluck('id'))
+                ->where('guest_key', '!=', $currentGuestKey)
+                ->update([
+                    'guest_key' => $currentGuestKey,
+                    'updated_at' => now(),
+                ]);
 
             return $currentOwner;
         }, attempts: 3);

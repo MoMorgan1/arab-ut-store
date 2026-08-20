@@ -1,5 +1,7 @@
 import type { ChatConversation, ChatMessage } from '@/types/chat';
 
+const INVALID_JSON = Symbol('invalid-chat-json');
+
 export class ChatApiError extends Error {
     readonly code: string;
     readonly status: number;
@@ -28,11 +30,13 @@ function csrfToken(): string | null {
     return token === undefined || token === '' ? null : token;
 }
 
-async function parseJsonPayload(response: Response): Promise<unknown> {
+async function parseJsonPayload(
+    response: Response,
+): Promise<unknown | typeof INVALID_JSON> {
     try {
         return await response.json();
     } catch {
-        return null;
+        return INVALID_JSON;
     }
 }
 
@@ -50,6 +54,34 @@ function extractErrorCode(payload: unknown): string {
     }
 
     return 'chat_error';
+}
+
+function hasDataPayload(payload: unknown): payload is { data: unknown } {
+    return typeof payload === 'object' && payload !== null && 'data' in payload;
+}
+
+function hasConversationData(
+    payload: unknown,
+): payload is { data: ChatConversation } {
+    if (!hasDataPayload(payload)) {
+        return false;
+    }
+
+    const conversation = payload.data;
+
+    return (
+        typeof conversation === 'object' &&
+        conversation !== null &&
+        'publicId' in conversation &&
+        typeof conversation.publicId === 'string' &&
+        'messages' in conversation &&
+        Array.isArray(conversation.messages) &&
+        'hasMore' in conversation &&
+        typeof conversation.hasMore === 'boolean' &&
+        'oldestCursor' in conversation &&
+        (conversation.oldestCursor === null ||
+            typeof conversation.oldestCursor === 'string')
+    );
 }
 
 export async function fetchOrStartActiveConversation(
@@ -81,12 +113,15 @@ export async function fetchOrStartActiveConversation(
 
     const payload = await parseJsonPayload(response);
 
-    if (
-        !response.ok ||
-        payload === null ||
-        typeof payload !== 'object' ||
-        !('data' in payload)
-    ) {
+    if (payload === INVALID_JSON) {
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid conversation response.',
+        );
+    }
+
+    if (!response.ok) {
         throw new ChatApiError(
             extractErrorCode(payload),
             response.status,
@@ -94,7 +129,15 @@ export async function fetchOrStartActiveConversation(
         );
     }
 
-    return (payload as { data: ChatConversation }).data;
+    if (!hasConversationData(payload)) {
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid conversation response.',
+        );
+    }
+
+    return payload.data;
 }
 
 export async function restartConversation(
@@ -126,12 +169,15 @@ export async function restartConversation(
 
     const payload = await parseJsonPayload(response);
 
-    if (
-        !response.ok ||
-        payload === null ||
-        typeof payload !== 'object' ||
-        !('data' in payload)
-    ) {
+    if (payload === INVALID_JSON) {
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid restart response.',
+        );
+    }
+
+    if (!response.ok) {
         throw new ChatApiError(
             extractErrorCode(payload),
             response.status,
@@ -139,7 +185,15 @@ export async function restartConversation(
         );
     }
 
-    return (payload as { data: ChatConversation }).data;
+    if (!hasConversationData(payload)) {
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid restart response.',
+        );
+    }
+
+    return payload.data;
 }
 
 export async function fetchConversation(
@@ -175,12 +229,15 @@ export async function fetchConversation(
 
     const payload = await parseJsonPayload(response);
 
-    if (
-        !response.ok ||
-        payload === null ||
-        typeof payload !== 'object' ||
-        !('data' in payload)
-    ) {
+    if (payload === INVALID_JSON) {
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid history response.',
+        );
+    }
+
+    if (!response.ok) {
         throw new ChatApiError(
             extractErrorCode(payload),
             response.status,
@@ -188,7 +245,15 @@ export async function fetchConversation(
         );
     }
 
-    return (payload as { data: ChatConversation }).data;
+    if (!hasConversationData(payload)) {
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid history response.',
+        );
+    }
+
+    return payload.data;
 }
 
 export async function sendChatMessage(
@@ -228,12 +293,15 @@ export async function sendChatMessage(
 
     const payload = await parseJsonPayload(response);
 
-    if (
-        !response.ok ||
-        payload === null ||
-        typeof payload !== 'object' ||
-        !('data' in payload)
-    ) {
+    if (payload === INVALID_JSON) {
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid message response.',
+        );
+    }
+
+    if (!response.ok) {
         throw new ChatApiError(
             extractErrorCode(payload),
             response.status,
@@ -241,9 +309,16 @@ export async function sendChatMessage(
         );
     }
 
-    return (
-        payload as {
-            data: { message: ChatMessage; demoReply: ChatMessage | null };
-        }
-    ).data;
+    if (!hasDataPayload(payload)) {
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid message response.',
+        );
+    }
+
+    return payload.data as {
+        message: ChatMessage;
+        demoReply: ChatMessage | null;
+    };
 }

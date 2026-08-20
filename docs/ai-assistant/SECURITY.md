@@ -1,7 +1,7 @@
 # Security
 
 **Lifecycle:** Implemented controls; one session decision remains open
-**Verified:** 2026-08-20
+**Verified:** 2026-08-21
 
 ## Ownership boundary
 
@@ -9,7 +9,11 @@ Authenticated chat ownership is the user ID. For guests,
 `ResolveChatOwner` creates a random 32-byte token and places its hex encoding
 in the Laravel session under `arabut_chat_guest_token`; `chat_conversations`
 stores only `hash_hmac('sha256', token, APP_KEY)`. Current and
-`APP_PREVIOUS_KEYS` HMACs permit transactional guest-key rekeying. On login,
+`APP_PREVIOUS_KEYS` HMACs permit transactional guest-key rekeying. Rotation
+locks every candidate conversation in ascending database-ID order, preserves a
+candidate-owned pointed open row (otherwise the newest activity/ID winner),
+closes other open candidates as `invariant_upgrade_duplicate`, and only then
+rekeys all matching history to the current HMAC. On login,
 `ClaimGuestChatConversations` moves matching guest conversations to the user
 inside a transaction and clears the raw session token only after a successful
 claim.

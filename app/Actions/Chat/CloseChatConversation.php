@@ -15,6 +15,10 @@ final readonly class CloseChatConversation
         return DB::transaction(function () use ($conversation, $reason): ChatConversation {
             $lockedConversation = ChatConversation::query()->lockForUpdate()->findOrFail($conversation->id);
 
+            if ($lockedConversation->status !== ChatConversationStatus::Open) {
+                return $lockedConversation;
+            }
+
             $lockedConversation->forceFill([
                 'status' => ChatConversationStatus::Closed,
                 'closed_at' => now(),

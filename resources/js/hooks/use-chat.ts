@@ -27,6 +27,13 @@ type StatusAnnouncement = {
 
 type DemoReplyTimeoutId = ReturnType<typeof setTimeout>;
 
+function isAmbiguousRestartFailure(error: unknown): boolean {
+    return (
+        error instanceof ChatApiError &&
+        (error.code === 'network_error' || error.code === 'invalid_response')
+    );
+}
+
 function generateClientMessageId(): string {
     if (
         typeof crypto !== 'undefined' &&
@@ -127,6 +134,27 @@ export function useChat(options: UseChatOptions = {}) {
             isMountedRef.current &&
             generation === conversationGenerationRef.current,
         [],
+    );
+
+    const adoptConversation = useCallback(
+        (conversationSnapshot: ChatConversation) => {
+            startConversationGeneration();
+            queueRef.current = [];
+            isProcessingQueueRef.current = false;
+            initializationPromiseRef.current = null;
+            setConversation(conversationSnapshot);
+            conversationRef.current = conversationSnapshot;
+            setMessages(conversationSnapshot.messages);
+            messagesRef.current = conversationSnapshot.messages;
+            setHasMore(conversationSnapshot.hasMore);
+            setOldestCursor(conversationSnapshot.oldestCursor ?? null);
+            setUnreadCount(0);
+            setError(null);
+            setIsAssistantTyping(false);
+            setIsLoadingOlder(false);
+            setIsRestarting(false);
+        },
+        [startConversationGeneration],
     );
 
     const appendDeliveredDemoReply = useCallback(
@@ -337,6 +365,46 @@ export function useChat(options: UseChatOptions = {}) {
                     continue;
                 }
 
+                if (
+                    err instanceof ChatApiError &&
+                    err.code === 'conversation_closed'
+                ) {
+                    try {
+                        const recoveredConversation =
+                            await fetchOrStartActiveConversation(pageLocale);
+
+                        if (!ownsAsyncGeneration(queueItemGeneration)) {
+                            continue;
+                        }
+
+                        adoptConversation(recoveredConversation);
+                        announceStatus(
+                            pageLocale === 'en'
+                                ? 'Conversation updated.'
+                                : 'تم تحديث المحادثة.',
+                        );
+                    } catch {
+                        if (!ownsAsyncGeneration(queueItemGeneration)) {
+                            continue;
+                        }
+
+                        setMessages((prev) =>
+                            prev.map((msg) =>
+                                msg.tempId === item.tempId
+                                    ? { ...msg, clientStatus: 'error' }
+                                    : msg,
+                            ),
+                        );
+                        showError(
+                            pageLocale === 'en'
+                                ? 'Failed to recover the current conversation. Please close and reopen chat.'
+                                : 'تعذر استعادة المحادثة الحالية. أغلق الشات وافتحه مرة ثانية.',
+                        );
+                    }
+
+                    continue;
+                }
+
                 setMessages((prev) =>
                     prev.map((msg) =>
                         msg.tempId === item.tempId
@@ -362,6 +430,8 @@ export function useChat(options: UseChatOptions = {}) {
             isProcessingQueueRef.current = false;
         }
     }, [
+        adoptConversation,
+        announceStatus,
         getOrInitConversation,
         ownsAsyncGeneration,
         pageLocale,
@@ -450,26 +520,46 @@ export function useChat(options: UseChatOptions = {}) {
         }
 
         setIsLoadingOlder(true);
+        const loadingGeneration = conversationGenerationRef.current;
+        const conversationPublicId = conversationRef.current.publicId;
 
         try {
             const data = await fetchConversation(
-                conversationRef.current.publicId,
+                conversationPublicId,
                 oldestCursor,
                 50,
             );
+
+            if (!ownsAsyncGeneration(loadingGeneration)) {
+                return;
+            }
+
             setMessages((prev) => [...data.messages, ...prev]);
             setHasMore(data.hasMore);
             setOldestCursor(data.oldestCursor ?? null);
         } catch {
+            if (!ownsAsyncGeneration(loadingGeneration)) {
+                return;
+            }
+
             showError(
                 pageLocale === 'en'
                     ? 'Failed to load older messages.'
                     : 'تعذر تحميل الرسائل السابقة.',
             );
         } finally {
-            setIsLoadingOlder(false);
+            if (ownsAsyncGeneration(loadingGeneration)) {
+                setIsLoadingOlder(false);
+            }
         }
-    }, [isLoadingOlder, hasMore, oldestCursor, pageLocale, showError]);
+    }, [
+        hasMore,
+        isLoadingOlder,
+        oldestCursor,
+        ownsAsyncGeneration,
+        pageLocale,
+        showError,
+    ]);
 
     const hasPendingSends = messages.some(
         (message) => message.clientStatus === 'sending',
@@ -487,37 +577,62 @@ export function useChat(options: UseChatOptions = {}) {
         }
 
         const restartGeneration = conversationGenerationRef.current;
+        const previousPublicId = conversationRef.current?.publicId ?? null;
         setIsRestarting(true);
 
         try {
-            const data = await restartConversation(pageLocale);
+            const restartedConversation = await restartConversation(pageLocale);
 
             if (!ownsAsyncGeneration(restartGeneration)) {
                 return;
             }
 
-            startConversationGeneration();
-            queueRef.current = [];
-            isProcessingQueueRef.current = false;
-            initializationPromiseRef.current = null;
-            setConversation(data);
-            conversationRef.current = data;
-            setMessages(data.messages);
-            messagesRef.current = data.messages;
-            setHasMore(data.hasMore);
-            setOldestCursor(data.oldestCursor ?? null);
-            setUnreadCount(0);
-            setError(null);
-            setIsAssistantTyping(false);
+            adoptConversation(restartedConversation);
             announceStatus(
                 pageLocale === 'en'
                     ? 'New conversation started.'
                     : 'بدأت محادثة جديدة.',
             );
-            setIsRestarting(false);
-        } catch {
+        } catch (error) {
             if (!ownsAsyncGeneration(restartGeneration)) {
                 return;
+            }
+
+            if (isAmbiguousRestartFailure(error)) {
+                let activeConversation: ChatConversation;
+
+                try {
+                    activeConversation =
+                        await fetchOrStartActiveConversation(pageLocale);
+                } catch {
+                    if (!ownsAsyncGeneration(restartGeneration)) {
+                        return;
+                    }
+
+                    showError(
+                        pageLocale === 'en'
+                            ? 'Failed to confirm the new conversation. Your current chat is unchanged. Please try again.'
+                            : 'تعذر التأكد من المحادثة الجديدة. الشات الحالي محفوظ. حاول مرة ثانية.',
+                    );
+                    setIsRestarting(false);
+
+                    return;
+                }
+
+                if (!ownsAsyncGeneration(restartGeneration)) {
+                    return;
+                }
+
+                if (activeConversation.publicId !== previousPublicId) {
+                    adoptConversation(activeConversation);
+                    announceStatus(
+                        pageLocale === 'en'
+                            ? 'New conversation started.'
+                            : 'بدأت محادثة جديدة.',
+                    );
+
+                    return;
+                }
             }
 
             const errorMessage =
@@ -528,12 +643,12 @@ export function useChat(options: UseChatOptions = {}) {
             setIsRestarting(false);
         }
     }, [
+        adoptConversation,
         announceStatus,
         canRestart,
         ownsAsyncGeneration,
         pageLocale,
         showError,
-        startConversationGeneration,
     ]);
 
     return {

@@ -57,6 +57,35 @@ async function effectiveOpacity(locator: Locator) {
     });
 }
 
+async function expectMinimumTouchTarget(locator: Locator) {
+    const box = await locator.boundingBox();
+
+    expect(box).not.toBeNull();
+
+    if (box === null) {
+        throw new Error('Expected rendered touch target');
+    }
+
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+
+    return box;
+}
+
+async function expectHitTestable(locator: Locator) {
+    expect(
+        await locator.evaluate((element) => {
+            const box = element.getBoundingClientRect();
+            const hit = document.elementFromPoint(
+                box.x + box.width / 2,
+                box.y + box.height / 2,
+            );
+
+            return hit === element || (hit !== null && element.contains(hit));
+        }),
+    ).toBe(true);
+}
+
 async function readSafeAreaInsetBottom(page: Page) {
     return page.evaluate(() => {
         const probe = document.createElement('div');
@@ -99,8 +128,7 @@ async function expectMobileAccountLauncherAboveNavigation(
         throw new Error('Expected rendered account launcher and navigation');
     }
 
-    expect(launcherBox.width).toBeGreaterThanOrEqual(44);
-    expect(launcherBox.height).toBeGreaterThanOrEqual(44);
+    await expectMinimumTouchTarget(launcher);
     expect(await effectiveOpacity(launcher)).toBeGreaterThan(0);
     expect(launcherBox.y + launcherBox.height).toBeLessThan(navBox.y);
 
@@ -140,21 +168,272 @@ async function expectMobileAccountLauncherAboveNavigation(
     expect(geometry.rootZIndex).toBe(70);
     expect(geometry.navigationZIndex).toBe(60);
     expect(geometry.rootZIndex).toBeGreaterThan(geometry.navigationZIndex);
-    expect(
-        await launcher.evaluate((element) => {
-            const box = element.getBoundingClientRect();
-            const hit = document.elementFromPoint(
-                box.x + box.width / 2,
-                box.y + box.height / 2,
-            );
-
-            return hit === element || (hit !== null && element.contains(hit));
-        }),
-    ).toBe(true);
+    await expectHitTestable(launcher);
 
     await expectNoHorizontalOverflow(page);
 
     return { accountNavigation, chatRoot, launcher, navBox };
+}
+
+async function expectAccountLocale(
+    page: Page,
+    path: string,
+    language: 'ar' | 'en',
+    direction: 'rtl' | 'ltr',
+) {
+    const response = await page.goto(path);
+
+    expect(response?.ok()).toBe(true);
+    expect(new URL(page.url()).pathname).toBe(path);
+    await expect(page.locator('html')).toHaveAttribute('lang', language);
+    await expect(page.locator('html')).toHaveAttribute('dir', direction);
+}
+
+async function verifyMobileAccountChat(
+    page: Page,
+    labels: {
+        launcher: string;
+        dialog: string;
+        close: string;
+        restart: string;
+    },
+    safeAreaInsetBottom: number,
+) {
+    const { accountNavigation, launcher } =
+        await expectMobileAccountLauncherAboveNavigation(
+            page,
+            labels.launcher,
+            safeAreaInsetBottom,
+        );
+
+    await launcher.click();
+
+    const dialog = page.getByRole('dialog', { name: labels.dialog });
+    const close = dialog.getByRole('button', { name: labels.close });
+    const restart = dialog.getByRole('button', { name: labels.restart });
+    const composer = dialog.getByRole('textbox');
+
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAttribute('aria-modal', 'true');
+    await expect.poll(() => effectiveOpacity(dialog)).toBeGreaterThan(0);
+    await expect(close).toBeFocused();
+    await expect(close).toBeEnabled();
+    await expect(restart).toBeEnabled();
+    await expect(composer).toBeVisible();
+    await close.click({ trial: true });
+    await restart.click({ trial: true });
+    await expectMinimumTouchTarget(close);
+    await expectMinimumTouchTarget(restart);
+    await expectMinimumTouchTarget(composer);
+    await expectHitTestable(dialog);
+
+    const dialogBox = await dialog.boundingBox();
+    const navBox = await accountNavigation.boundingBox();
+
+    expect(dialogBox).not.toBeNull();
+    expect(navBox).not.toBeNull();
+
+    if (dialogBox === null || navBox === null) {
+        throw new Error('Expected rendered mobile chat and navigation');
+    }
+
+    expect(dialogBox.x).toBeCloseTo(0, 0);
+    expect(dialogBox.y).toBeCloseTo(0, 0);
+    expect(dialogBox.width).toBeCloseTo(
+        await page.evaluate(() => innerWidth),
+        0,
+    );
+    expect(dialogBox.height).toBeCloseTo(
+        await page.evaluate(() => innerHeight),
+        0,
+    );
+
+    const layersAndMotion = await page.evaluate(() => {
+        const dialogElement = document.querySelector<HTMLElement>(
+            '.chat-widget-dialog',
+        );
+        const navigationElement = document.querySelector<HTMLElement>(
+            '.account-mobile-bottom-nav',
+        );
+
+        if (dialogElement === null || navigationElement === null) {
+            throw new Error('Expected chat dialog and account navigation');
+        }
+
+        const dialogStyles = window.getComputedStyle(dialogElement);
+
+        return {
+            dialog: Number.parseInt(dialogStyles.zIndex, 10),
+            navigation: Number.parseInt(
+                window.getComputedStyle(navigationElement).zIndex,
+                10,
+            ),
+            transitionProperty: dialogStyles.transitionProperty,
+        };
+    });
+
+    expect(layersAndMotion.dialog).toBeGreaterThan(layersAndMotion.navigation);
+    expect(layersAndMotion.transitionProperty).toBe('none');
+    expect(
+        await page.evaluate(
+            ({ x, y }) => {
+                const dialogElement = document.querySelector<HTMLElement>(
+                    '.chat-widget-dialog',
+                );
+                const hit = document.elementFromPoint(x, y);
+
+                return (
+                    dialogElement !== null &&
+                    hit !== null &&
+                    (hit === dialogElement || dialogElement.contains(hit))
+                );
+            },
+            {
+                x: navBox.x + navBox.width / 2,
+                y: navBox.y + navBox.height / 2,
+            },
+        ),
+    ).toBe(true);
+
+    await composer.focus();
+    await page.keyboard.press('Tab');
+    await expect(restart).toBeFocused();
+    await restart.focus();
+    await page.keyboard.press('Shift+Tab');
+    await expect(composer).toBeFocused();
+    await expectNoHorizontalOverflow(page);
+
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeAttached();
+    await expect(launcher).toBeFocused();
+}
+
+async function verifyDesktopAccountChat(
+    page: Page,
+    labels: {
+        launcher: string;
+        dialog: string;
+        close: string;
+        restart: string;
+    },
+) {
+    const accountNavigation = page.locator('.account-mobile-bottom-nav');
+    const chatRoot = page.locator('.chat-widget-root--account');
+    const launcher = chatRoot.locator(':scope > button');
+
+    await expect(accountNavigation).toBeHidden();
+    await expect(launcher).toBeVisible();
+    await expect(launcher).toBeEnabled();
+    await expect(launcher).toHaveAccessibleName(labels.launcher);
+    await expectMinimumTouchTarget(launcher);
+    await expectHitTestable(launcher);
+    expect(await effectiveOpacity(launcher)).toBeGreaterThan(0);
+
+    const launcherGeometry = await chatRoot.evaluate((element) => {
+        const styles = window.getComputedStyle(element);
+
+        return {
+            bottom: Number.parseFloat(styles.bottom),
+            right: Number.parseFloat(styles.right),
+            zIndex: Number.parseInt(styles.zIndex, 10),
+        };
+    });
+
+    expect(launcherGeometry.bottom).toBeCloseTo(24, 1);
+    expect(launcherGeometry.right).toBeCloseTo(24, 1);
+    expect(launcherGeometry.zIndex).toBe(50);
+
+    await launcher.click();
+
+    const dialog = page.getByRole('dialog', { name: labels.dialog });
+    const close = dialog.getByRole('button', { name: labels.close });
+    const restart = dialog.getByRole('button', { name: labels.restart });
+    const composer = dialog.getByRole('textbox');
+
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAttribute('aria-modal', 'false');
+    await expect(launcher).toBeFocused();
+    await expect.poll(() => effectiveOpacity(dialog)).toBeGreaterThan(0);
+    await close.click({ trial: true });
+    await restart.click({ trial: true });
+    await expectMinimumTouchTarget(close);
+    await expectMinimumTouchTarget(restart);
+    await expectMinimumTouchTarget(composer);
+    await expectHitTestable(dialog);
+
+    const dialogGeometry = await dialog.evaluate((element) => {
+        const styles = window.getComputedStyle(element);
+        const box = element.getBoundingClientRect();
+
+        return {
+            bottom: window.innerHeight - box.bottom,
+            right: window.innerWidth - box.right,
+            height: box.height,
+            width: box.width,
+            viewportHeight: window.innerHeight,
+            viewportWidth: window.innerWidth,
+            position: styles.position,
+            transitionProperty: styles.transitionProperty,
+            zIndex: Number.parseInt(styles.zIndex, 10),
+        };
+    });
+
+    expect(dialogGeometry.position).toBe('fixed');
+    expect(dialogGeometry.bottom).toBeCloseTo(96, 1);
+    expect(dialogGeometry.right).toBeCloseTo(24, 1);
+    expect(dialogGeometry.width).toBeLessThan(dialogGeometry.viewportWidth);
+    expect(dialogGeometry.height).toBeLessThan(dialogGeometry.viewportHeight);
+    expect(dialogGeometry.zIndex).toBe(70);
+    expect(dialogGeometry.transitionProperty).toBe('none');
+
+    const outsideCandidates = page.locator(
+        '.account-shell a[href], .account-shell button:not([disabled])',
+    );
+    const outsideIndex = await outsideCandidates.evaluateAll((elements) => {
+        const dialogElement = document.querySelector<HTMLElement>(
+            '.chat-widget-dialog',
+        );
+
+        if (dialogElement === null) {
+            return -1;
+        }
+
+        const dialogBox = dialogElement.getBoundingClientRect();
+
+        return elements.findIndex((element) => {
+            const candidate = element as HTMLElement;
+            const box = candidate.getBoundingClientRect();
+            const x = box.x + box.width / 2;
+            const y = box.y + box.height / 2;
+            const outsideDialog =
+                x < dialogBox.left ||
+                x > dialogBox.right ||
+                y < dialogBox.top ||
+                y > dialogBox.bottom;
+            const hit = document.elementFromPoint(x, y);
+
+            return (
+                box.width > 0 &&
+                box.height > 0 &&
+                outsideDialog &&
+                (hit === candidate || (hit !== null && candidate.contains(hit)))
+            );
+        });
+    });
+
+    expect(outsideIndex).toBeGreaterThanOrEqual(0);
+    const outsideAccountControl = outsideCandidates.nth(outsideIndex);
+
+    await expect(outsideAccountControl).toBeVisible();
+    await outsideAccountControl.click({ trial: true });
+    await outsideAccountControl.focus();
+    await expect(outsideAccountControl).toBeFocused();
+    await expect(dialog).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+
+    await close.click();
+    await expect(dialog).not.toBeAttached();
+    await expect(launcher).toBeFocused();
 }
 
 // Regression guard for the 2026-08-19 blank-storefront incident.
@@ -250,6 +529,7 @@ test('authenticated account keeps chat above mobile navigation', async ({
     context,
     page,
 }) => {
+    test.setTimeout(120_000);
     await page.setViewportSize({ width: 390, height: 844 });
     const expectCleanRuntime = observeRuntime(page);
     const safeAreaInsetBottom = 24;
@@ -281,174 +561,68 @@ test('authenticated account keeps chat above mobile navigation', async ({
             top: 0,
         },
     });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
 
-    const { accountNavigation, launcher } =
-        await expectMobileAccountLauncherAboveNavigation(
-            page,
-            'فتح الشات',
-            safeAreaInsetBottom,
-        );
+    const accountLocales = [
+        {
+            path: '/my-account',
+            language: 'ar',
+            direction: 'rtl',
+            labels: {
+                launcher: 'فتح الشات',
+                dialog: 'شات مساعد عرب التيميت',
+                close: 'إغلاق الشات',
+                restart: 'محادثة جديدة',
+            },
+        },
+        {
+            path: '/en/my-account',
+            language: 'en',
+            direction: 'ltr',
+            labels: {
+                launcher: 'Open chat',
+                dialog: 'Arab UT Chat Assistant',
+                close: 'Close chat',
+                restart: 'New conversation',
+            },
+        },
+    ] as const;
 
-    await launcher.click();
-
-    const dialog = page.getByRole('dialog', {
-        name: 'شات مساعد عرب التيميت',
-    });
-    const close = dialog.getByRole('button', { name: 'إغلاق الشات' });
-
-    await expect(dialog).toBeVisible();
-    await expect(dialog).toHaveAttribute('aria-modal', 'true');
-    await expect.poll(() => effectiveOpacity(dialog)).toBeGreaterThan(0);
-    await expect(accountNavigation).toBeVisible();
-    await expect(close).toBeFocused();
-    await expect(close).toBeVisible();
-    await expect(close).toBeEnabled();
-    await close.click({ trial: true });
-
-    const dialogBox = await dialog.boundingBox();
-    const openNavBox = await accountNavigation.boundingBox();
-    const closeBox = await close.boundingBox();
-
-    expect(dialogBox).not.toBeNull();
-    expect(openNavBox).not.toBeNull();
-    expect(closeBox).not.toBeNull();
-
-    if (dialogBox === null || openNavBox === null || closeBox === null) {
-        throw new Error(
-            'Expected rendered mobile chat dialog, navigation, and close control',
-        );
+    for (const width of [320, 390]) {
+        for (const locale of accountLocales) {
+            await page.setViewportSize({ width, height: 844 });
+            await expectAccountLocale(
+                page,
+                locale.path,
+                locale.language,
+                locale.direction,
+            );
+            await verifyMobileAccountChat(
+                page,
+                locale.labels,
+                safeAreaInsetBottom,
+            );
+        }
     }
-
-    expect(closeBox.width).toBeGreaterThanOrEqual(44);
-    expect(closeBox.height).toBeGreaterThanOrEqual(44);
-    expect(await effectiveOpacity(close)).toBeGreaterThan(0);
-    expect(dialogBox.x).toBeLessThanOrEqual(openNavBox.x);
-    expect(dialogBox.y).toBeLessThanOrEqual(openNavBox.y);
-    expect(dialogBox.x + dialogBox.width).toBeGreaterThanOrEqual(
-        openNavBox.x + openNavBox.width,
-    );
-    expect(dialogBox.y + dialogBox.height).toBeGreaterThanOrEqual(
-        openNavBox.y + openNavBox.height,
-    );
-
-    const layers = await page.evaluate(() => ({
-        dialog: Number.parseInt(
-            window.getComputedStyle(
-                document.querySelector<HTMLElement>('.chat-widget-dialog')!,
-            ).zIndex,
-            10,
-        ),
-        navigation: Number.parseInt(
-            window.getComputedStyle(
-                document.querySelector<HTMLElement>(
-                    '.account-mobile-bottom-nav',
-                )!,
-            ).zIndex,
-            10,
-        ),
-    }));
-
-    expect(layers.dialog).toBeGreaterThan(layers.navigation);
-    expect(
-        await page.evaluate(
-            ({ x, y }) => {
-                const dialogElement = document.querySelector<HTMLElement>(
-                    '.chat-widget-dialog',
-                );
-                const hit = document.elementFromPoint(x, y);
-
-                return (
-                    dialogElement !== null &&
-                    hit !== null &&
-                    (hit === dialogElement || dialogElement.contains(hit))
-                );
-            },
-            {
-                x: openNavBox.x + openNavBox.width / 2,
-                y: openNavBox.y + openNavBox.height / 2,
-            },
-        ),
-    ).toBe(true);
-
-    const restart = dialog.getByRole('button', { name: 'محادثة جديدة' });
-    const composer = dialog.getByRole('textbox');
-
-    await expect(restart).toBeEnabled();
-    await expect(composer).toBeVisible();
-
-    await composer.focus();
-    await page.keyboard.press('Tab');
-    await expect(restart).toBeFocused();
-
-    await restart.focus();
-    await page.keyboard.press('Shift+Tab');
-    await expect(composer).toBeFocused();
-
-    await expectNoHorizontalOverflow(page);
-    await page.keyboard.press('Escape');
-    await expect(dialog).not.toBeAttached();
-    await expect(launcher).toBeFocused();
-
-    await page.goto('/en/my-account');
-
-    expect(new URL(page.url()).pathname).toBe('/en/my-account');
-    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
-
-    const englishAccount = await expectMobileAccountLauncherAboveNavigation(
-        page,
-        'Open chat',
-        safeAreaInsetBottom,
-    );
 
     await cdpSession.send('Emulation.setSafeAreaInsetsOverride', {
         insets: { bottom: 0, left: 0, right: 0, top: 0 },
     });
     expect(await readSafeAreaInsetBottom(page)).toBeCloseTo(0, 1);
-    await page.setViewportSize({ width: 768, height: 844 });
-    await expect(englishAccount.accountNavigation).toBeHidden();
-    await expect(englishAccount.launcher).toBeVisible();
 
-    const desktopGeometry = await englishAccount.chatRoot.evaluate(
-        (element) => {
-            const styles = window.getComputedStyle(element);
-            const box = element.getBoundingClientRect();
+    for (const width of [768, 1440]) {
+        for (const locale of accountLocales) {
+            await page.setViewportSize({ width, height: 844 });
+            await expectAccountLocale(
+                page,
+                locale.path,
+                locale.language,
+                locale.direction,
+            );
+            await verifyDesktopAccountChat(page, locale.labels);
+        }
+    }
 
-            return {
-                bottom: Number.parseFloat(styles.bottom),
-                launcherBottom: window.innerHeight - box.bottom,
-                zIndex: Number.parseInt(styles.zIndex, 10),
-            };
-        },
-    );
-
-    expect(desktopGeometry.bottom).toBeCloseTo(24, 1);
-    expect(desktopGeometry.launcherBottom).toBeCloseTo(24, 1);
-    expect(desktopGeometry.zIndex).toBe(50);
-
-    await englishAccount.launcher.click();
-
-    const englishDialog = page.getByRole('dialog', {
-        name: 'Arab UT Chat Assistant',
-    });
-
-    await expect(englishDialog).toBeVisible();
-    await expect(englishDialog).toHaveAttribute('aria-modal', 'false');
-    await expect(englishAccount.launcher).toBeFocused();
-    await expectNoHorizontalOverflow(page);
-
-    const outsideAccountControl = page
-        .locator('.account-shell__sidebar')
-        .locator('.account-navigation__link[aria-current="page"]');
-
-    await expect(outsideAccountControl).toBeVisible();
-    await outsideAccountControl.click({ trial: true });
-    await outsideAccountControl.focus();
-    await expect(outsideAccountControl).toBeFocused();
-    await expect(englishDialog).toBeVisible();
-
-    await englishDialog.getByRole('button', { name: 'Close chat' }).click();
-    await expect(englishAccount.launcher).toBeFocused();
     await cdpSession.detach();
     expectCleanRuntime();
 });

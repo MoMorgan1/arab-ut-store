@@ -38,6 +38,14 @@ function jsonResponse(data: unknown, status = 200): Response {
     } as Response;
 }
 
+function errorResponse(code: string, status: number): Response {
+    return {
+        ok: false,
+        status,
+        json: async () => ({ error: { code } }),
+    } as Response;
+}
+
 function installChatFetch(
     demoReplies: ChatMessage[],
     restartedConversation?: ChatConversation,
@@ -476,6 +484,319 @@ describe('demo reply lifecycle', () => {
             'Failed to send message. Please retry.',
         );
         expect(result.current.errorAnnouncementId).toBe(1);
+    });
+
+    it('reacquires the canonical conversation after another tab closes the active thread', async () => {
+        const onboarding = assistantReply(
+            'replacement-onboarding',
+            'Replacement onboarding',
+        );
+        onboarding.conversationPublicId = 'conv-recovered-new';
+        const delayedReply = assistantReply(
+            'old-delayed-reply',
+            'Old delayed reply',
+        );
+        let acquisitionCount = 0;
+        let messageCount = 0;
+
+        vi.mocked(fetch).mockImplementation(async (url, init) => {
+            const path = String(url);
+
+            if (path === '/chat/conversations') {
+                acquisitionCount += 1;
+
+                return jsonResponse(
+                    acquisitionCount === 1
+                        ? conversation('conv-demo-old')
+                        : conversation('conv-recovered-new', [onboarding]),
+                );
+            }
+
+            if (path.includes('/messages')) {
+                messageCount += 1;
+
+                if (messageCount === 2) {
+                    return errorResponse('conversation_closed', 409);
+                }
+
+                const requestBody = JSON.parse(String(init?.body)) as {
+                    content: string;
+                    client_message_id: string;
+                };
+
+                return jsonResponse(
+                    {
+                        message: {
+                            publicId: 'old-customer-message',
+                            conversationPublicId: 'conv-demo-old',
+                            clientMessageId: requestBody.client_message_id,
+                            senderType: 'customer',
+                            messageType: 'text',
+                            content: requestBody.content,
+                            createdAt: '2026-08-20T10:00:30.000Z',
+                        },
+                        demoReply: delayedReply,
+                    },
+                    201,
+                );
+            }
+
+            throw new Error(`Unexpected chat request: ${path}`);
+        });
+        const { result } = renderHook(() =>
+            useChat({ enabled: true, locale: 'en' }),
+        );
+
+        act(() => result.current.openChat());
+        await flushAsyncWork();
+        act(() => void result.current.sendMessage('First old question'));
+        await flushAsyncWork();
+        expect(result.current.isAssistantTyping).toBe(true);
+        expect(vi.getTimerCount()).toBe(1);
+
+        act(() => void result.current.sendMessage('Closed-thread question'));
+        await flushAsyncWork();
+
+        expect(acquisitionCount).toBe(2);
+        expect(result.current.conversation?.publicId).toBe(
+            'conv-recovered-new',
+        );
+        expect(result.current.messages).toEqual([onboarding]);
+        expect(result.current.unreadCount).toBe(0);
+        expect(result.current.error).toBeNull();
+        expect(result.current.isAssistantTyping).toBe(false);
+        expect(vi.getTimerCount()).toBe(0);
+
+        act(() => vi.advanceTimersByTime(1100));
+        expect(
+            result.current.messages.some(
+                (message) => message.publicId === 'old-delayed-reply',
+            ),
+        ).toBe(false);
+    });
+
+    it('adopts a committed restart recovered after the response is lost', async () => {
+        const onboarding = assistantReply(
+            'committed-onboarding',
+            'Committed restart onboarding',
+        );
+        onboarding.conversationPublicId = 'conv-committed-new';
+        let acquisitionCount = 0;
+
+        vi.mocked(fetch).mockImplementation(async (url) => {
+            const path = String(url);
+
+            if (path === '/chat/conversations') {
+                acquisitionCount += 1;
+
+                return jsonResponse(
+                    acquisitionCount === 1
+                        ? conversation('conv-demo-old')
+                        : conversation('conv-committed-new', [onboarding]),
+                );
+            }
+
+            if (path === '/chat/conversations/restart') {
+                throw new Error('Restart response was lost.');
+            }
+
+            throw new Error(`Unexpected chat request: ${path}`);
+        });
+        const { result } = renderHook(() =>
+            useChat({ enabled: true, locale: 'en' }),
+        );
+
+        act(() => result.current.openChat());
+        await flushAsyncWork();
+        await act(async () => {
+            await result.current.restartChat();
+        });
+
+        expect(acquisitionCount).toBe(2);
+        expect(result.current.conversation?.publicId).toBe(
+            'conv-committed-new',
+        );
+        expect(result.current.messages).toEqual([onboarding]);
+        expect(result.current.error).toBeNull();
+        expect(result.current.statusAnnouncement?.message).toBe(
+            'New conversation started.',
+        );
+    });
+
+    it('preserves current state when an ambiguous restart failed before commit', async () => {
+        const existingMessage = assistantReply(
+            'existing-message',
+            'Existing conversation message',
+        );
+        const oldConversation = conversation('conv-demo-old', [
+            existingMessage,
+        ]);
+        let acquisitionCount = 0;
+
+        vi.mocked(fetch).mockImplementation(async (url) => {
+            const path = String(url);
+
+            if (path === '/chat/conversations') {
+                acquisitionCount += 1;
+
+                return jsonResponse(oldConversation);
+            }
+
+            if (path === '/chat/conversations/restart') {
+                throw new Error('Restart failed before commit.');
+            }
+
+            throw new Error(`Unexpected chat request: ${path}`);
+        });
+        const { result } = renderHook(() =>
+            useChat({ enabled: true, locale: 'en' }),
+        );
+
+        act(() => result.current.openChat());
+        await flushAsyncWork();
+        const originalConversation = result.current.conversation;
+        const originalMessages = result.current.messages;
+        await act(async () => {
+            await result.current.restartChat();
+        });
+
+        expect(acquisitionCount).toBe(2);
+        expect(result.current.conversation).toBe(originalConversation);
+        expect(result.current.messages).toBe(originalMessages);
+        expect(result.current.error).toBe(
+            'Failed to start a new conversation. Please try again.',
+        );
+    });
+
+    it('preserves current state and reports recovery failure after two network errors', async () => {
+        const oldConversation = conversation('conv-demo-old');
+        let acquisitionCount = 0;
+
+        vi.mocked(fetch).mockImplementation(async (url) => {
+            const path = String(url);
+
+            if (path === '/chat/conversations') {
+                acquisitionCount += 1;
+
+                if (acquisitionCount === 1) {
+                    return jsonResponse(oldConversation);
+                }
+
+                throw new Error('Recovery request failed.');
+            }
+
+            if (path === '/chat/conversations/restart') {
+                throw new Error('Restart request failed.');
+            }
+
+            throw new Error(`Unexpected chat request: ${path}`);
+        });
+        const { result } = renderHook(() =>
+            useChat({ enabled: true, locale: 'en' }),
+        );
+
+        act(() => result.current.openChat());
+        await flushAsyncWork();
+        const originalConversation = result.current.conversation;
+        const originalMessages = result.current.messages;
+        await act(async () => {
+            await result.current.restartChat();
+        });
+
+        expect(acquisitionCount).toBe(2);
+        expect(result.current.conversation).toBe(originalConversation);
+        expect(result.current.messages).toBe(originalMessages);
+        expect(result.current.error).toBe(
+            'Failed to confirm the new conversation. Your current chat is unchanged. Please try again.',
+        );
+    });
+
+    it('ignores stale older-history and restart outcomes after lifecycle recovery adopts a new generation', async () => {
+        const onboarding = assistantReply(
+            'race-onboarding',
+            'Recovered generation onboarding',
+        );
+        onboarding.conversationPublicId = 'conv-race-new';
+        const oldConversation = {
+            ...conversation('conv-demo-old'),
+            hasMore: true,
+            oldestCursor: 'oldest-old',
+        };
+        let acquisitionCount = 0;
+        let resolveOlder: ((response: Response) => void) | undefined;
+        let resolveRestart: ((response: Response) => void) | undefined;
+        const olderResponse = new Promise<Response>((resolve) => {
+            resolveOlder = resolve;
+        });
+        const restartResponse = new Promise<Response>((resolve) => {
+            resolveRestart = resolve;
+        });
+
+        vi.mocked(fetch).mockImplementation(async (url) => {
+            const path = String(url);
+
+            if (path === '/chat/conversations') {
+                acquisitionCount += 1;
+
+                return jsonResponse(
+                    acquisitionCount === 1
+                        ? oldConversation
+                        : conversation('conv-race-new', [onboarding]),
+                );
+            }
+
+            if (path.startsWith('/chat/conversations/conv-demo-old?')) {
+                return olderResponse;
+            }
+
+            if (path === '/chat/conversations/restart') {
+                return restartResponse;
+            }
+
+            if (path.includes('/messages')) {
+                return errorResponse('conversation_closed', 409);
+            }
+
+            throw new Error(`Unexpected chat request: ${path}`);
+        });
+        const { result } = renderHook(() =>
+            useChat({ enabled: true, locale: 'en' }),
+        );
+
+        act(() => result.current.openChat());
+        await flushAsyncWork();
+        const restartFromOldGeneration = result.current.restartChat;
+        act(() => void result.current.loadOlderMessages());
+        let oldRestartRequest: Promise<void> | undefined;
+        act(() => {
+            oldRestartRequest = restartFromOldGeneration();
+            void result.current.sendMessage('Trigger lifecycle recovery');
+        });
+        await flushAsyncWork();
+
+        expect(result.current.conversation?.publicId).toBe('conv-race-new');
+        expect(result.current.messages).toEqual([onboarding]);
+
+        resolveOlder?.(
+            jsonResponse(
+                conversation('conv-demo-old', [
+                    assistantReply('stale-older', 'Stale older message'),
+                ]),
+            ),
+        );
+        resolveRestart?.(
+            jsonResponse(conversation('conv-stale-restart-success')),
+        );
+        await act(async () => {
+            await oldRestartRequest;
+        });
+        await flushAsyncWork();
+
+        expect(result.current.conversation?.publicId).toBe('conv-race-new');
+        expect(result.current.messages).toEqual([onboarding]);
+        expect(result.current.error).toBeNull();
+        expect(result.current.isLoadingOlder).toBe(false);
+        expect(result.current.isRestarting).toBe(false);
     });
 
     it('keeps a new-generation send queue owned while an old processor finishes', async () => {

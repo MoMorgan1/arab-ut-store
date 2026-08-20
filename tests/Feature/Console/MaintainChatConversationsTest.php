@@ -8,6 +8,7 @@ use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 afterEach(function (): void {
     Carbon::setTestNow();
@@ -32,21 +33,21 @@ test('default maintenance cutoffs close inactive conversations and purge expired
     $retainedGuest = ChatConversation::factory()->forGuest($retainedGuestKey)->closed(
         ChatConversationCloseReason::Inactive,
         now()->subDays(29),
-    )->create();
+    )->create(['last_message_at' => now()->subDays(29)]);
     $expiredGuest = ChatConversation::factory()->forGuest($expiredGuestKey)->closed(
         ChatConversationCloseReason::Inactive,
         now()->subDays(30),
-    )->create();
+    )->create(['last_message_at' => now()->subDays(30)]);
 
     $user = User::factory()->create();
     $retainedUser = ChatConversation::factory()->forUser($user)->closed(
         ChatConversationCloseReason::Inactive,
         now()->subDays(179),
-    )->create();
+    )->create(['last_message_at' => now()->subDays(179)]);
     $expiredUser = ChatConversation::factory()->forUser(User::factory()->create())->closed(
         ChatConversationCloseReason::Inactive,
         now()->subDays(180),
-    )->create();
+    )->create(['last_message_at' => now()->subDays(180)]);
 
     $retainedGuestMessageRecord = ChatMessage::factory()->create([
         'conversation_id' => $retainedGuest->id,
@@ -101,6 +102,59 @@ test('inactive maintenance ignores a candidate refreshed before its locked close
     expect($closed)->toBeFalse()
         ->and($conversation->fresh()->status)->toBe(ChatConversationStatus::Open)
         ->and($conversation->fresh()->last_message_at->equalTo(now()))->toBeTrue();
+});
+
+test('retention follows last activity with closed_at then updated_at as legacy null fallbacks', function () {
+    Carbon::setTestNow('2026-08-20 12:00:00');
+
+    $expiredGuest = ChatConversation::factory()->forGuest(hash('sha256', 'activity-expired-guest'))->closed(
+        ChatConversationCloseReason::Inactive,
+        now()->subDay(),
+    )->create(['last_message_at' => now()->subDays(30)]);
+    $retainedGuest = ChatConversation::factory()->forGuest(hash('sha256', 'activity-retained-guest'))->closed(
+        ChatConversationCloseReason::Inactive,
+        now()->subDays(40),
+    )->create(['last_message_at' => now()->subDays(30)->addSecond()]);
+
+    $expiredUser = ChatConversation::factory()->forUser(User::factory()->create())->closed(
+        ChatConversationCloseReason::Inactive,
+        now()->subDay(),
+    )->create(['last_message_at' => now()->subDays(180)]);
+    $retainedUser = ChatConversation::factory()->forUser(User::factory()->create())->closed(
+        ChatConversationCloseReason::Inactive,
+        now()->subDays(190),
+    )->create(['last_message_at' => now()->subDays(180)->addSecond()]);
+
+    $closedAtFallback = ChatConversation::factory()->forGuest(hash('sha256', 'closed-at-fallback'))->closed(
+        ChatConversationCloseReason::Inactive,
+        now()->subDays(30),
+    )->create(['last_message_at' => null]);
+    DB::table('chat_conversations')->where('id', $closedAtFallback->id)->update([
+        'last_message_at' => null,
+        'closed_at' => now()->subDays(30),
+        'updated_at' => now(),
+    ]);
+
+    $updatedAtFallback = ChatConversation::factory()->forUser(User::factory()->create())->closed(
+        ChatConversationCloseReason::Inactive,
+        now()->subDay(),
+    )->create(['last_message_at' => null]);
+    DB::table('chat_conversations')->where('id', $updatedAtFallback->id)->update([
+        'last_message_at' => null,
+        'closed_at' => null,
+        'updated_at' => now()->subDays(180),
+    ]);
+
+    $this->artisan('chat:maintain-conversations')
+        ->expectsOutputToContain('Deleted 4 expired conversation(s).')
+        ->assertSuccessful();
+
+    expect($expiredGuest->fresh())->toBeNull()
+        ->and($retainedGuest->fresh())->not->toBeNull()
+        ->and($expiredUser->fresh())->toBeNull()
+        ->and($retainedUser->fresh())->not->toBeNull()
+        ->and($closedAtFallback->fresh())->toBeNull()
+        ->and($updatedAtFallback->fresh())->toBeNull();
 });
 
 test('inactive maintenance preserves a stale candidate closed for a protected reason', function (ChatConversationCloseReason $reason) {

@@ -63,12 +63,17 @@ final readonly class CreateOrGetActiveConversation
 
         $reopenAfter = now()->subDays(max(0, (int) config('chat.reopen_within_days', 7)));
         $inactiveConversation = ChatConversation::query()
-            ->forOwner($owner)->closedForInactivity()->where('closed_at', '>=', $reopenAfter)
-            ->orderByDesc('closed_at')->orderByDesc('id')->lockForUpdate()->first();
+            ->forOwner($owner)->closedForInactivity()->whereLastActivityAtOrAfter($reopenAfter)
+            ->orderByLastActivityDesc()->orderByDesc('id')->lockForUpdate()->first();
 
         if ($inactiveConversation instanceof ChatConversation) {
+            $lastActivity = $inactiveConversation->last_message_at
+                ?? $inactiveConversation->closed_at
+                ?? $inactiveConversation->updated_at;
+
             $inactiveConversation->forceFill([
                 'status' => ChatConversationStatus::Open,
+                'last_message_at' => $lastActivity,
                 'closed_at' => null,
                 'close_reason' => null,
             ])->save();

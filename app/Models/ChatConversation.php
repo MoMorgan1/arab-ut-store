@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatConversationStatus;
 use App\ValueObjects\Chat\ChatOwner;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -61,6 +62,30 @@ class ChatConversation extends DomainModel
     {
         $query->where('status', ChatConversationStatus::Closed)
             ->where('close_reason', ChatConversationCloseReason::Inactive);
+    }
+
+    /** @param Builder<ChatConversation> $query */
+    public function scopeWhereLastActivityAtOrAfter(Builder $query, DateTimeInterface $cutoff): void
+    {
+        $query->whereRaw(
+            'COALESCE(last_message_at, closed_at, updated_at) >= ?',
+            [$cutoff],
+        );
+    }
+
+    /** @param Builder<ChatConversation> $query */
+    public function scopeWhereLastActivityAtOrBefore(Builder $query, DateTimeInterface $cutoff): void
+    {
+        $query->whereRaw(
+            'COALESCE(last_message_at, closed_at, updated_at) <= ?',
+            [$cutoff],
+        );
+    }
+
+    /** @param Builder<ChatConversation> $query */
+    public function scopeOrderByLastActivityDesc(Builder $query): void
+    {
+        $query->orderByRaw('COALESCE(last_message_at, closed_at, updated_at) DESC');
     }
 
     /** @return BelongsTo<User, $this> */

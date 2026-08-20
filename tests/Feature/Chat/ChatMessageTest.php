@@ -98,6 +98,37 @@ test('duplicate request replays the canonical customer and demo reply without up
         ->and($conversation->fresh()->last_message_at->toIso8601String())->toBe($firstLastMessageAt->toIso8601String());
 });
 
+test('legacy unlinked customer replay returns no guessed demo reply', function () {
+    config()->set('chat.demo_assistant', true);
+
+    $conversation = ChatConversation::factory()->create();
+    $clientMessageId = (string) Str::uuid();
+    $legacyCustomer = ChatMessage::factory()->create([
+        'conversation_id' => $conversation->id,
+        'client_message_id' => $clientMessageId,
+        'sender_type' => 'customer',
+        'content' => 'Legacy customer message',
+    ]);
+    $unlinkedAssistant = ChatMessage::factory()->create([
+        'conversation_id' => $conversation->id,
+        'client_message_id' => null,
+        'reply_to_message_id' => null,
+        'sender_type' => 'assistant',
+        'content' => 'Historical unlinked demo reply',
+    ]);
+
+    $result = app(CreateChatMessage::class)->execute(
+        $conversation,
+        'Replayed content must not be associated heuristically.',
+        $clientMessageId,
+    );
+
+    expect($result['message']->is($legacyCustomer))->toBeTrue()
+        ->and($result['demoReply'])->toBeNull()
+        ->and($unlinkedAssistant->fresh()->reply_to_message_id)->toBeNull()
+        ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->count())->toBe(2);
+});
+
 test('posting to an owned closed conversation returns conversation_closed without reopening it', function () {
     $user = User::factory()->create();
     $conversation = ChatConversation::factory()->forUser($user)->closed(

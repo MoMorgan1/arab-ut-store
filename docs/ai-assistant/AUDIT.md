@@ -1,7 +1,8 @@
 # Phase 1 Completion audit
 
-**Lifecycle:** Implemented evidence; owner acceptance pending
-**Verified:** 2026-08-20
+**Lifecycle:** Repository fixes implemented; deployment, scheduler evidence,
+and owner acceptance pending
+**Verified:** 2026-08-21
 
 ## Release evidence
 
@@ -25,7 +26,6 @@ and checks returned
 | ID     | Resolution evidence                                                                                                                                                                    |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | AI-B03 | The active-owner generated key/index and acquisition retry recover concurrent first acquisition; MariaDB concurrent user/guest tests prove one open row.                               |
-| AI-B04 | Message processing locks the conversation and replays the existing customer message and linked demo reply; MariaDB duplicate-send tests compare canonical results.                     |
 | AI-B05 | Conversation and onboarding creation are one transaction; forced onboarding failure leaves no conversation.                                                                            |
 | AI-B06 | SQLite/MariaDB migration tests cover upgrade/down paths; CI runs MariaDB fresh/rollback/migrate, and production confirms schema, zero active duplicates, and `LOCK TABLES` permission. |
 | AI-B08 | `ChatErrorResponse` normalizes 409/422/429/500 responses with no-store cache control; focused tests cover validation, throttling, server error, and conflict.                          |
@@ -33,12 +33,15 @@ and checks returned
 
 ## Remaining findings and gates
 
-| ID     | Severity | State                                                                                                                                                              |
-| ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| AI-B09 | P2       | Open decision. Production database sessions are encrypted, but raw guest-token storage remains a Laravel-session boundary and no configuration change is approved. |
-| AI-F06 | P2       | Narrowed. Chromium checks account safe-area geometry; real iPhone/Safari keyboard and safe-area acceptance is Mohamed's pending gate.                              |
-| AI-F04 | P3       | Open test-precision item: scroll geometry and unread-state assertions remain incomplete.                                                                           |
+| ID     | Severity | State                                                                                                                                                                                                                                                                                                                                                   |
+| ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AI-B04 | P2       | Narrowed. Canonical replay includes explicit `reply_to_message_id` rows created after the lifecycle migration. Pre-migration unlinked assistant rows are excluded because concurrent historical inserts make timestamp/order association unprovable; regression coverage returns the legacy customer with `demoReply: null` and creates no association. |
+| AI-B09 | P2       | Open decision. Production database sessions are encrypted, but raw guest-token storage remains a Laravel-session boundary and no configuration change is approved.                                                                                                                                                                                      |
+| AI-F06 | P2       | Narrowed. Chromium checks account safe-area geometry; real iPhone/Safari keyboard and safe-area acceptance is Mohamed's pending gate.                                                                                                                                                                                                                   |
+| AI-F04 | P3       | Open test-precision item: scroll geometry and unread-state assertions remain incomplete.                                                                                                                                                                                                                                                                |
 
-No P0 or P1 finding is open. That is release evidence, not Phase 1 owner
-acceptance. Mohamed's manual checklist in [STATUS.md](STATUS.md) is still
-required; no Phase 2 work starts before it is accepted.
+No P0 or P1 finding is open. That is repository/release evidence, not a claim
+that this final-review wave is deployed or Phase 1 is accepted. Integration and
+deployment, recurring Hostinger scheduler evidence, and Mohamed's manual
+checklist in [STATUS.md](STATUS.md) are still required; no Phase 2 work starts
+before those gates are satisfied and acceptance is recorded.

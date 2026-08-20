@@ -1,7 +1,8 @@
 # Live status
 
-**Lifecycle:** Implemented; owner acceptance pending
-**Verified:** 2026-08-20
+**Lifecycle:** Repository implementation complete; deployment, scheduler
+evidence, and owner acceptance pending
+**Verified:** 2026-08-21
 
 ## Release snapshot
 
@@ -12,6 +13,8 @@
 | Final release checkpoint                                      | [tests 32410960971](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32410960971) and [deploy 32411415481](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32411415481) passed for that verified Phase 1 application SHA. The tests workflow passed CI, MariaDB lifecycle, seven Chromium checks, and release packaging. |
 | Production read-only evidence                                 | On 2026-08-20, `/up` returned 200; the release/current path resolved to that Phase 1 SHA; all four chat routes, including restart, were registered; `CHAT_SCHEMA_OK`, `ACTIVE_OWNER_DUPLICATE_GROUPS=0`, and `LOCK_TABLES_OK` were returned.                                                                                            |
 | Production session decision evidence                          | `SESSION_DRIVER=database`; `SESSION_ENCRYPT=true`.                                                                                                                                                                                                                                                                                      |
+| Final-review correction wave                                  | Implemented in the current repository revision. This task does not push or deploy it; production evidence remains tied to the SHA above.                                                                                                                                                                                                |
+| Recurring scheduler execution                                 | Not verified. The SSH account has no `crontab` command and this task has no hPanel/browser/API credentials; the required hPanel action is recorded below.                                                                                                                                                                               |
 
 On 2026-08-20, read-only production configuration observed
 `CHAT_ENABLED=true` and `CHAT_DEMO_ASSISTANT=true` for that Phase 1 release.
@@ -21,12 +24,27 @@ tools, streaming, operator inbox, or Phase 2 implementation.
 
 ## Phase status
 
-| Phase                                 | State                                                                                                         |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Phase 0 stabilization                 | Implemented.                                                                                                  |
-| Phase 1 deterministic chat foundation | Implemented.                                                                                                  |
-| Phase 1 Completion                    | Implemented and deployed; **not accepted** until Mohamed completes the manual account/iPhone checklist below. |
-| Phase 2 AI runtime/Luna               | Not started. Do not create or execute its implementation plan before Phase 1 acceptance.                      |
+| Phase                                 | State                                                                                                                                                                                                                                                             |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 0 stabilization                 | Implemented.                                                                                                                                                                                                                                                      |
+| Phase 1 deterministic chat foundation | Implemented.                                                                                                                                                                                                                                                      |
+| Phase 1 Completion                    | Repository implementation complete; the prior release was deployed, but this final-review wave still requires integration/deployment. **Not accepted** until recurring scheduler evidence exists and Mohamed completes the manual account/iPhone checklist below. |
+| Phase 2 AI runtime/Luna               | Not started. Do not create or execute its implementation plan before Phase 1 acceptance.                                                                                                                                                                          |
+
+## Remaining scheduler gate
+
+An authorized Hostinger operator must open **Websites → Dashboard → Cron
+Jobs**, add this custom command, select the manual `* * * * *` schedule in UTC,
+and verify execution/output in hPanel:
+
+```text
+/usr/bin/php /home/u372356793/domains/store.arab-ut.com/current/artisan schedule:run
+```
+
+Afterward, run and read `php artisan schedule:list` from the active release.
+The hourly application event is implemented; it is not proof of recurring
+Hostinger execution. Owner acceptance remains blocked until this evidence is
+recorded.
 
 ## Remaining owner gate
 
@@ -42,10 +60,12 @@ iPhone/Safari device:
 - iPhone zoom, keyboard/safe-area behavior, and touch targets are acceptable.
 
 This is an owner acceptance gate, not a failed automated check. The final
-Chromium fixture covers the synthetic authenticated account at 390px, safe-area
-geometry, focus, restart-control availability/keyboard order, both account
-locales, and console/overflow checks; it does not exercise replacement behavior
-and is not Safari proof. See [UX.md](UX.md) and [AUDIT.md](AUDIT.md).
+Chromium fixture keeps exactly seven tests; its synthetic authenticated account
+scenario covers both locales at 320/390px modal and 768/1440px nonmodal sizes,
+safe-area geometry/reset, focus, hit testing, restart-control availability,
+outside-panel actionability, and request/console/overflow checks. It does not
+exercise replacement behavior and is not Safari proof. See [UX.md](UX.md) and
+[AUDIT.md](AUDIT.md).
 
 ## Open decision
 

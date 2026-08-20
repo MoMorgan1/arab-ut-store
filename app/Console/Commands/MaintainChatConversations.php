@@ -71,14 +71,14 @@ final class MaintainChatConversations extends Command
         $ownerConstraint(
             ChatConversation::query()
                 ->where('status', 'closed')
-                ->where('closed_at', '<=', $cutoff),
+                ->whereLastActivityAtOrBefore($cutoff),
         )->chunkById(200, function ($conversations) use ($ownerConstraint, $cutoff, &$deletedCount): void {
             foreach ($conversations as $conversation) {
                 $deletedCount += $ownerConstraint(
                     ChatConversation::query()
                         ->whereKey($conversation->id)
                         ->where('status', ChatConversationStatus::Closed)
-                        ->where('closed_at', '<=', $cutoff),
+                        ->whereLastActivityAtOrBefore($cutoff),
                 )->delete();
             }
         });

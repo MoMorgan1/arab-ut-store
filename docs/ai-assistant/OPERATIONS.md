@@ -1,7 +1,8 @@
 # Operations
 
-**Lifecycle:** Implemented
-**Verified:** 2026-08-20
+**Lifecycle:** Application operations implemented; external scheduler evidence
+pending
+**Verified:** 2026-08-21
 
 ## Verified release
 
@@ -23,20 +24,45 @@ at `1fd83d37b990833cd451d7c3a7b48314976a9f6f`.
 `chat:maintain-conversations` is scheduled hourly with `withoutOverlapping()` in
 `routes/console.php`. It closes open conversations with `last_message_at` at or
 before `chat.auto_close_hours` (24 by default), then deletes closed guest rows
-at 30 days and closed authenticated rows at 180 days. Conversation deletion
-cascades its messages. The per-row recheck protects a guest row claimed during
-maintenance selection.
+at 30 days and closed authenticated rows at 180 days of last activity.
+`last_message_at` is authoritative; legacy nulls fall back to `closed_at`, then
+`updated_at`. Conversation deletion cascades its messages. The per-row recheck
+protects a guest row claimed during maintenance selection.
 
-Hostinger must be configured to invoke Laravel scheduling every minute. The
-visible user-crontab check did not verify that cadence
-(`SCHEDULER_CRON_EVERY_MINUTE=false`); do not treat it as production evidence.
-The hourly Laravel schedule for this command is verified in `routes/console.php`.
-Investigate only from the active release:
+Recurring Hostinger execution is an open external gate. The SSH account has no
+`crontab` command, and this task has no hPanel/browser/API credentials. An
+authorized operator must open **Websites → Dashboard → Cron Jobs**, add this
+custom command, choose the manual `* * * * *` schedule in UTC, and verify its
+execution/output in hPanel:
+
+```text
+/usr/bin/php /home/u372356793/domains/store.arab-ut.com/current/artisan schedule:run
+```
+
+Then, from the active release, run and read:
 
 ```bash
 php artisan schedule:list
-php artisan chat:maintain-conversations
 ```
+
+The hourly Laravel event is source/test verified; it is not evidence that
+Hostinger invokes `schedule:run` every minute. Phase 1 owner acceptance remains
+blocked until recurring execution evidence exists.
+
+## Partial lifecycle migration detection
+
+The deployed migration
+`2026_08_20_000002_add_chat_conversation_lifecycle.php` is immutable. After a
+failed migration, compare `php artisan migrate:status` with MariaDB's `SHOW
+CREATE TABLE chat_conversations` and `SHOW CREATE TABLE chat_messages`. The
+conversation table must contain the lifecycle columns, generated
+`active_owner_key`, and named unique index; the message table must contain its
+nullable reply link, foreign key, and unique index. If the migration ledger and
+schema disagree, stop deployment: do not edit/rerun the deployed migration or
+use `migrate:rollback`. Prepare a reviewed compensating forward migration or a
+reviewed manual repair, then rerun the invariant/schema checks. Production and
+CI applied this migration successfully; this procedure is for detecting a
+future partial installation.
 
 ## Safe disable and recovery
 

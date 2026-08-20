@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\Chat\ChatConversationCloseReason;
+use App\Enums\Chat\ChatConversationStatus;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
@@ -182,6 +184,63 @@ test('concurrent guest first acquisitions resolve to one active conversation', f
     }
 });
 
+test('a real process consolidates rotated guest open rows without losing pointed continuity', function () {
+    if (! supportsConcurrentChatLocking()) {
+        $this->markTestSkipped('The rotated-key process contract requires MariaDB/MySQL row locking.');
+    }
+
+    expect(DB::transactionLevel())->toBe(0);
+    $previousAppKey = 'base64:'.base64_encode(str_repeat('r', 32));
+    $currentAppKey = 'base64:'.base64_encode(str_repeat('s', 32));
+    $rawToken = str_repeat('c', 64);
+    $previousGuestKey = hash_hmac('sha256', $rawToken, $previousAppKey);
+    $currentGuestKey = hash_hmac('sha256', $rawToken, $currentAppKey);
+    deleteConcurrentGuestConversation($previousGuestKey);
+    deleteConcurrentGuestConversation($currentGuestKey);
+    $currentOpen = ChatConversation::factory()->forGuest($currentGuestKey)->create([
+        'last_message_at' => now(),
+    ]);
+    $pointedOpen = ChatConversation::factory()->forGuest($previousGuestKey)->create([
+        'last_message_at' => now()->subMinute(),
+    ]);
+    $history = ChatConversation::factory()->forGuest($previousGuestKey)->closed(
+        ChatConversationCloseReason::Inactive,
+        now()->subDay(),
+    )->create();
+    $messages = collect([$currentOpen, $pointedOpen, $history])
+        ->map(fn (ChatConversation $conversation): ChatMessage => ChatMessage::factory()->create([
+            'conversation_id' => $conversation->id,
+        ]));
+
+    try {
+        $process = rotatedGuestChatAcquireProcess(
+            $rawToken,
+            $currentAppKey,
+            $previousAppKey,
+            $pointedOpen->public_id,
+        );
+        $process->run();
+        refreshConcurrentChatConnection();
+
+        expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
+        $result = json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR);
+
+        expect($result['publicId'])->toBe($pointedOpen->public_id)
+            ->and($result['guestKey'])->toBe($currentGuestKey)
+            ->and($pointedOpen->fresh()->status)->toBe(ChatConversationStatus::Open)
+            ->and($pointedOpen->fresh()->guest_key)->toBe($currentGuestKey)
+            ->and($currentOpen->fresh()->status)->toBe(ChatConversationStatus::Closed)
+            ->and($currentOpen->fresh()->close_reason)->toBe(ChatConversationCloseReason::InvariantUpgradeDuplicate)
+            ->and($currentOpen->fresh()->guest_key)->toBe($currentGuestKey)
+            ->and($history->fresh()->guest_key)->toBe($currentGuestKey)
+            ->and(ChatConversation::query()->where('active_owner_key', "guest:{$currentGuestKey}")->count())->toBe(1)
+            ->and(ChatMessage::query()->whereIn('id', $messages->pluck('id'))->count())->toBe(3);
+    } finally {
+        deleteConcurrentGuestConversation($previousGuestKey);
+        deleteConcurrentGuestConversation($currentGuestKey);
+    }
+});
+
 test('concurrent duplicate messages replay the canonical customer and demo reply', function () {
     if (! supportsConcurrentChatLocking()) {
         $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL row locking.');
@@ -324,6 +383,26 @@ function concurrentChatAcquireProcess(
         $ownerIdentifier,
         $readyPath,
         $releasePath,
+    ], base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
+}
+
+function rotatedGuestChatAcquireProcess(
+    string $rawToken,
+    string $currentAppKey,
+    string $previousAppKey,
+    string $activePublicId,
+): Process {
+    return new Process([
+        PHP_BINARY,
+        '-d', 'extension_dir='.ini_get('extension_dir'),
+        '-d', 'extension=openssl',
+        '-d', 'extension=mbstring',
+        '-d', 'extension=pdo_mysql',
+        base_path('tests/Support/RotatedGuestChatAcquire.php'),
+        $rawToken,
+        $currentAppKey,
+        $previousAppKey,
+        $activePublicId,
     ], base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
 }
 

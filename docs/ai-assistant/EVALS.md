@@ -1,7 +1,7 @@
 # Evaluation
 
 **Lifecycle:** Planned
-**Verified:** 2026-08-20
+**Verified:** 2026-08-21
 
 No model, retrieval, tool, or assistant-quality evaluation harness is
 implemented.
@@ -16,8 +16,12 @@ Current automation tests the deterministic chat foundation only:
   validation, persistence, flags, and cache behavior.
 - `npm test -- resources/js/__tests__/chat` covers chat components, direction,
   grouping, queue/retry behavior, layout persistence, and scroll-node behavior.
-- `npm run test:e2e` runs the six-test Chromium storefront smoke, including one
-  390px chat open/close and overflow check.
+- `npm run test:e2e` runs exactly seven Chromium storefront checks. The single
+  authenticated account scenario reuses one synthetic local session across
+  Arabic/English at 320px and 390px full modal behavior and at 768px and
+  1440px anchored nonmodal behavior, including safe area, computed geometry,
+  hit testing, focus, outside-panel actionability, overflow, and runtime
+  request/console observation.
 
 ## Future evaluation categories
 

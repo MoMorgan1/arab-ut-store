@@ -1,16 +1,26 @@
 # Customer experience
 
 **Lifecycle:** Implemented; physical iPhone acceptance pending
-**Verified:** 2026-08-20
+**Verified:** 2026-08-21
 
 ## Conversation behavior
 
 The launcher initializes chat lazily. One owner has one open conversation.
 Hourly maintenance closes it after 24 hours without a message. A later open
-request reuses only an inactivity-closed conversation made within seven days.
+request reuses only an inactivity-closed conversation inside the seven-day
+last-activity window. Legacy null activity falls back to `closed_at`, then
+`updated_at`; reopen/reclose without a message does not refresh that anchor.
 New conversation calls `POST /chat/conversations/restart`: it closes the old
 open thread and returns a new public ID with onboarding. Explicitly restarted
 threads never reopen.
+
+If a send discovers that another tab or maintenance closed its conversation,
+the hook reacquires the canonical active conversation and replaces messages,
+cursors, unread state, queue ownership, and delayed-reply ownership as one new
+generation. If a restart response is lost or malformed, the hook reacquires:
+a different active public ID confirms success, the same ID preserves the
+current state and reports the restart failure, and a second failure preserves
+state with a localized recovery error.
 
 The widget preserves the active public ID across Inertia navigation and resolves
 it after refresh. Login claims matching guest history transactionally. Closed
@@ -27,11 +37,13 @@ the `sm` breakpoint. On account surfaces it remains full-screen through
 47.99rem and anchors only at 48rem.
 
 The Chromium fixture creates a synthetic local user, never a production user.
-It checks Arabic and English account pages, 390px safe-area geometry, 44px
-controls, layering, keyboard focus, Escape/focus restoration, restart-control
-availability and keyboard order, overflow, and runtime console errors. It does
-not invoke restart or prove replacement behavior; backend/component tests cover
-that behavior.
+Within one authenticated scenario it checks Arabic and English at 320px and
+390px as full modal dialogs, then at 768px and 1440px as anchored nonmodal
+panels. It covers nonzero safe-area geometry and reset, 44px controls, computed
+layer/position/size, hit testing, keyboard focus, Escape/focus restoration,
+outside-panel actionability, reduced motion, overflow, and runtime request/
+console errors. It does not invoke restart or prove replacement behavior;
+backend/component tests cover that behavior.
 
 ## Direction and accessibility
 
