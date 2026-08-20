@@ -2,9 +2,11 @@
 
 namespace Database\Factories;
 
+use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatConversationStatus;
 use App\Models\ChatConversation;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -23,6 +25,8 @@ class ChatConversationFactory extends Factory
             'user_id' => null,
             'guest_key' => hash_hmac('sha256', bin2hex(random_bytes(32)), (string) config('app.key')),
             'status' => ChatConversationStatus::Open,
+            'closed_at' => null,
+            'close_reason' => null,
             'locale' => 'ar',
             'subject' => null,
             'last_message_at' => now(),
@@ -42,6 +46,24 @@ class ChatConversationFactory extends Factory
         return $this->state(fn () => [
             'user_id' => null,
             'guest_key' => $guestKey,
+        ]);
+    }
+
+    public function open(): static
+    {
+        return $this->state(fn () => [
+            'status' => ChatConversationStatus::Open,
+            'closed_at' => null,
+            'close_reason' => null,
+        ]);
+    }
+
+    public function closed(ChatConversationCloseReason $reason, CarbonInterface $closedAt): static
+    {
+        return $this->state(fn () => [
+            'status' => ChatConversationStatus::Closed,
+            'closed_at' => $closedAt,
+            'close_reason' => $reason,
         ]);
     }
 }
