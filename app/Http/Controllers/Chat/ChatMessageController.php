@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Chat;
 
 use App\Actions\Chat\CreateChatMessage;
 use App\Actions\Chat\ResolveChatOwner;
+use App\Enums\Chat\ChatConversationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Presenters\ChatPresenter;
 use App\Models\ChatConversation;
@@ -35,6 +36,16 @@ class ChatMessageController extends Controller
                     'message' => 'The requested conversation was not found.',
                 ],
             ], 404)->header('Cache-Control', 'no-store, private');
+        }
+
+        if ($conversation->status !== ChatConversationStatus::Open) {
+            return response()->json([
+                'error' => [
+                    'code' => 'conversation_closed',
+                    'message' => trans('chat.conversation_closed'),
+                    'details' => (object) [],
+                ],
+            ], 409)->header('Cache-Control', 'no-store, private');
         }
 
         $validated = $request->validate([

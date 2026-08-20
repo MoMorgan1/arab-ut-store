@@ -1,9 +1,11 @@
 <?php
 
 use App\Actions\Chat\ResolveChatOwner;
+use App\Enums\Chat\ChatConversationCloseReason;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
@@ -55,14 +57,17 @@ test('guest can post message to own conversation with client_message_id and upda
     expect($conversation->fresh()->last_message_at->gt($oldTime))->toBeTrue();
 });
 
-test('duplicate request with same client_message_id returns existing message idempotently without duplicating DB records', function () {
+test('duplicate request returns the canonical customer and demo reply without changing activity twice', function () {
     config()->set('chat.demo_assistant', true);
 
     $user = User::factory()->create();
-    $conversation = ChatConversation::factory()->forUser($user)->create();
+    $firstSendAt = now()->startOfSecond()->addMinute();
+    $conversation = ChatConversation::factory()->forUser($user)->create([
+        'last_message_at' => $firstSendAt->subHour(),
+    ]);
     $clientMessageId = (string) Str::uuid();
 
-    // First send
+    Date::setTestNow($firstSendAt);
     $firstResponse = $this->actingAs($user)
         ->postJson(route('chat.messages.store', ['conversation' => $conversation->public_id]), [
             'content' => 'عايز كوينز',
@@ -71,11 +76,9 @@ test('duplicate request with same client_message_id returns existing message ide
 
     $firstResponse->assertCreated();
     $firstMessageId = $firstResponse->json('data.message.publicId');
+    $firstReplyId = $firstResponse->json('data.demoReply.publicId');
 
-    // Total messages now = 2 (1 customer + 1 demo reply)
-    expect(ChatMessage::query()->where('conversation_id', $conversation->id)->count())->toBe(2);
-
-    // Identical retry with same client_message_id
+    Date::setTestNow($firstSendAt->addMinute());
     $retryResponse = $this->actingAs($user)
         ->postJson(route('chat.messages.store', ['conversation' => $conversation->public_id]), [
             'content' => 'عايز كوينز',
@@ -84,10 +87,47 @@ test('duplicate request with same client_message_id returns existing message ide
 
     $retryResponse->assertCreated();
     expect($retryResponse->json('data.message.publicId'))->toBe($firstMessageId)
-        ->and($retryResponse->json('data.demoReply'))->toBeNull()
-        // DB count is still exactly 2 (no new customer message, no duplicate canned reply)
-        ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->count())->toBe(2);
+        ->and($retryResponse->json('data.demoReply.publicId'))->toBe($firstReplyId)
+        ->and($conversation->fresh()->last_message_at->equalTo($firstSendAt))->toBeTrue()
+        ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->count())->toBe(2)
+        ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->where('sender_type', 'customer')->count())->toBe(1)
+        ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->where('sender_type', 'assistant')->count())->toBe(1);
+
+    $customerMessage = ChatMessage::query()->where('public_id', $firstMessageId)->sole();
+    expect(ChatMessage::query()->where('public_id', $firstReplyId)->sole()->reply_to_message_id)
+        ->toBe($customerMessage->id);
+
+    Date::setTestNow();
 });
+
+test('owned closed conversation rejects a send before validating its content', function (string $locale, string $message) {
+    config()->set('store.default_locale', $locale);
+
+    $user = User::factory()->create();
+    $conversation = ChatConversation::factory()->forUser($user)->closed(
+        ChatConversationCloseReason::CustomerStartedNew,
+        now(),
+    )->create();
+
+    $response = $this->actingAs($user)
+        ->postJson(route('chat.messages.store', ['conversation' => $conversation->public_id]), []);
+
+    $response->assertStatus(409)
+        ->assertHeader('Cache-Control', 'no-store, private')
+        ->assertExactJson([
+            'error' => [
+                'code' => 'conversation_closed',
+                'message' => $message,
+                'details' => [],
+            ],
+        ]);
+
+    expect(json_decode($response->getContent())->error->details)->toEqual((object) [])
+        ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->count())->toBe(0);
+})->with([
+    'English' => ['en', 'This conversation is closed. Start a new conversation to continue.'],
+    'Arabic' => ['ar', 'المحادثة مقفلة. ابدأ محادثة جديدة للمتابعة.'],
+]);
 
 test('arbitrary client metadata is rejected or ignored and not stored', function () {
     $user = User::factory()->create();
@@ -131,37 +171,27 @@ test('guest cannot post to another guests conversation', function () {
     expect(ChatMessage::query()->where('conversation_id', $conversation->id)->count())->toBe(0);
 });
 
-test('empty, missing client_message_id, or oversized content is rejected with validation error', function () {
+test('invalid message input is rejected with the normalized validation error', function (array $payload) {
     $user = User::factory()->create();
     $conversation = ChatConversation::factory()->forUser($user)->create();
 
-    // Empty content
     $this->actingAs($user)
-        ->postJson(route('chat.messages.store', ['conversation' => $conversation->public_id]), [
-            'content' => '   ',
-            'client_message_id' => (string) Str::uuid(),
-        ])
+        ->postJson(route('chat.messages.store', ['conversation' => $conversation->public_id]), $payload)
         ->assertStatus(422)
-        ->assertJsonValidationErrors(['content']);
-
-    // Missing client_message_id
-    $this->actingAs($user)
-        ->postJson(route('chat.messages.store', ['conversation' => $conversation->public_id]), [
-            'content' => 'Valid message',
-        ])
-        ->assertStatus(422)
-        ->assertJsonValidationErrors(['client_message_id']);
-
-    // Oversized content (> 4000 characters)
-    $oversized = str_repeat('A', 4001);
-    $this->actingAs($user)
-        ->postJson(route('chat.messages.store', ['conversation' => $conversation->public_id]), [
-            'content' => $oversized,
-            'client_message_id' => (string) Str::uuid(),
-        ])
-        ->assertStatus(422)
-        ->assertJsonValidationErrors(['content']);
-});
+        ->assertJsonPath('error.code', 'validation_error');
+})->with([
+    'blank content' => [[
+        'content' => '   ',
+        'client_message_id' => (string) Str::uuid(),
+    ]],
+    'missing client message ID' => [[
+        'content' => 'Valid message',
+    ]],
+    'oversized content' => [[
+        'content' => str_repeat('A', 4001),
+        'client_message_id' => (string) Str::uuid(),
+    ]],
+]);
 
 test('non-blocking demo assistant generates canned reply immediately when enabled', function () {
     config()->set('chat.demo_assistant', true);

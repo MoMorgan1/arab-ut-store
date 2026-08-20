@@ -9,6 +9,7 @@ use App\Http\Middleware\RequireCoinsCartJson;
 use App\Http\Middleware\SetDisplayCurrency;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\VerifyN8nSbcPricingReadSignature;
+use App\Http\Responses\ChatErrorResponse;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -79,10 +80,12 @@ return Application::configure(basePath: dirname(__DIR__))
                     || $request->is('*/cart/items/*/credentials')
                 )),
         );
-        $exceptions->respond(function (Response $exceptionResponse, Throwable $_exception, Request $request): Response {
-            if ($request->is('chat') || $request->is('chat/*') || $request->is('*/chat') || $request->is('*/chat/*')) {
-                $exceptionResponse->headers->set('Cache-Control', 'no-store, private');
-            }
+        $exceptions->respond(function (Response $exceptionResponse, Throwable $exception, Request $request): Response {
+            $exceptionResponse = app(ChatErrorResponse::class)->render(
+                $exceptionResponse,
+                $exception,
+                $request,
+            );
 
             if ($request->is('cart/items/coins*') || $request->is('*/cart/items/coins*')
                 || $request->is('cart/items/catalog*') || $request->is('*/cart/items/catalog*')
