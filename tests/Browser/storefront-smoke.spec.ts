@@ -236,6 +236,7 @@ test('authenticated account keeps chat above mobile navigation', async ({
         ] as const) {
             const exercisesSecondaryControls =
                 width === 390 && language === 'en';
+            const exercisesMotionExit = width === 390 && language === 'ar';
 
             if (exercisesSecondaryControls) {
                 await page.route('**/chat/conversations', async (route) => {
@@ -300,7 +301,9 @@ test('authenticated account keeps chat above mobile navigation', async ({
             }
 
             await page.setViewportSize({ width, height: 844 });
-            await page.emulateMedia({ reducedMotion: 'reduce' });
+            await page.emulateMedia({
+                reducedMotion: exercisesMotionExit ? 'no-preference' : 'reduce',
+            });
             await page.goto(path);
 
             await expect(page.locator('html')).toHaveAttribute(
@@ -322,6 +325,7 @@ test('authenticated account keeps chat above mobile navigation', async ({
             const viewportLauncher = page.getByRole('button', {
                 name: launcherLabel,
             });
+            const launcherElement = page.locator('.chat-widget-root > button');
             await expect(viewportLauncher).toBeVisible();
             const launcherTarget = await viewportLauncher.boundingBox();
             expect(launcherTarget).not.toBeNull();
@@ -380,7 +384,7 @@ test('authenticated account keeps chat above mobile navigation', async ({
                 await viewportDialog.evaluate(
                     (element) => getComputedStyle(element).transitionProperty,
                 ),
-            ).toBe('none');
+            ).toBe(exercisesMotionExit ? 'transform, opacity' : 'none');
 
             const textarea = viewportDialog.getByRole('textbox', {
                 name: inputLabel,
@@ -436,6 +440,7 @@ test('authenticated account keeps chat above mobile navigation', async ({
 
             if (width < 768) {
                 await expect(viewportDialog).toBeFocused();
+                await expect(launcherElement).toHaveAttribute('inert', '');
                 expect(
                     await page
                         .getByRole('main')
@@ -506,8 +511,23 @@ test('authenticated account keeps chat above mobile navigation', async ({
             ).toBeLessThanOrEqual(1);
 
             await close.click();
+
+            if (exercisesMotionExit) {
+                await expect(viewportDialog).toBeAttached();
+                await expect(launcherElement).toHaveAttribute('inert', '');
+                expect(
+                    await page
+                        .getByRole('main')
+                        .evaluate(
+                            (element) => element.closest('[inert]') !== null,
+                        ),
+                ).toBe(true);
+                await expect(launcherElement).not.toBeFocused();
+            }
+
             await expect(viewportDialog).not.toBeAttached();
             await expect(viewportLauncher).toBeFocused();
+            await expect(launcherElement).not.toHaveAttribute('inert');
             expect(
                 await page
                     .getByRole('main')

@@ -43,6 +43,25 @@ function subscribeToMobileSheet(onStoreChange: () => void): () => void {
     return () => mediaQuery.removeEventListener('change', onStoreChange);
 }
 
+function ChatStatusRegion({
+    id,
+    message,
+}: {
+    id: number;
+    message: string | null;
+}) {
+    return (
+        <div
+            aria-live="polite"
+            aria-atomic="true"
+            className="sr-only"
+            role="status"
+        >
+            {message !== null && <span key={id}>{message}</span>}
+        </div>
+    );
+}
+
 export const ChatWidget: React.FC<ChatWidgetProps> = ({
     enabled,
     demoAssistant,
@@ -65,6 +84,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         error,
         clearError,
         statusAnnouncement,
+        statusAnnouncementId,
         sendMessage,
         retryMessage,
         loadOlderMessages,
@@ -75,6 +95,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
     const panelRef = useRef<HTMLDivElement>(null);
     const rootRef = useRef<HTMLDivElement>(null);
     const wasOpenRef = useRef(isOpen);
+    const wasModalPresenceRef = useRef(false);
 
     const [isVisible, setIsVisible] = useState(isOpen);
     const isMobileSheet = useSyncExternalStore(
@@ -111,6 +132,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
     }, [isOpen, isVisible, isReducedMotion]);
 
     const isMounted = isOpen || isVisible;
+    const isModalPresence = isMobileSheet && isMounted;
 
     useEffect(() => {
         if (isOpen && isMobileSheet) {
@@ -119,46 +141,61 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
     }, [isOpen, isMobileSheet]);
 
     useEffect(() => {
-        if (!isOpen || !isMobileSheet) {
+        if (!isModalPresence) {
             return;
         }
 
         const root = rootRef.current;
         const parent = root?.parentElement;
+        const panel = panelRef.current;
 
-        if (!root || !parent) {
+        if (!root || !parent || !panel) {
             return;
         }
 
-        const siblings = Array.from(parent.children).filter(
-            (element): element is HTMLElement =>
-                element instanceof HTMLElement && element !== root,
-        );
+        const outsideElements = new Set([
+            ...Array.from(parent.children).filter(
+                (element): element is HTMLElement =>
+                    element instanceof HTMLElement && element !== root,
+            ),
+            ...Array.from(root.children).filter(
+                (element): element is HTMLElement =>
+                    element instanceof HTMLElement && element !== panel,
+            ),
+        ]);
         const alreadyInert = new Set(
-            siblings.filter((element) => element.hasAttribute('inert')),
+            Array.from(outsideElements).filter((element) =>
+                element.hasAttribute('inert'),
+            ),
         );
 
-        for (const sibling of siblings) {
-            sibling.setAttribute('inert', '');
+        for (const element of outsideElements) {
+            element.setAttribute('inert', '');
         }
 
         return () => {
-            for (const sibling of siblings) {
-                if (!alreadyInert.has(sibling)) {
-                    sibling.removeAttribute('inert');
+            for (const element of outsideElements) {
+                if (!alreadyInert.has(element)) {
+                    element.removeAttribute('inert');
                 }
             }
         };
-    }, [isOpen, isMobileSheet]);
+    }, [isModalPresence]);
 
     // Focus restoration to launcher on close
     useEffect(() => {
-        if (wasOpenRef.current && !isOpen) {
+        if (
+            (isMobileSheet &&
+                wasModalPresenceRef.current &&
+                !isModalPresence) ||
+            (!isMobileSheet && wasOpenRef.current && !isOpen)
+        ) {
             launcherRef.current?.focus();
         }
 
         wasOpenRef.current = isOpen;
-    }, [isOpen]);
+        wasModalPresenceRef.current = isModalPresence;
+    }, [isOpen, isMobileSheet, isModalPresence]);
 
     // Handle Escape and contain keyboard focus in the mobile full sheet.
     useEffect(() => {
@@ -169,7 +206,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                 return;
             }
 
-            if (e.key !== 'Tab' || !isOpen || !isMobileSheet) {
+            if (e.key !== 'Tab' || !isModalPresence) {
                 return;
             }
 
@@ -212,7 +249,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         window.addEventListener('keydown', handleKeyDown);
 
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, isMobileSheet, closeChat]);
+    }, [isOpen, isModalPresence, closeChat]);
 
     if (!isChatEnabled) {
         return null;
@@ -226,23 +263,20 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
             }`}
             dir={locale === 'en' ? 'ltr' : 'rtl'}
         >
-            {/* Screen reader live announcements */}
-            <div
-                aria-live="polite"
-                aria-atomic="true"
-                className="sr-only"
-                role="status"
-            >
-                {statusAnnouncement}
-            </div>
+            {!isMounted && (
+                <ChatStatusRegion
+                    id={statusAnnouncementId}
+                    message={statusAnnouncement}
+                />
+            )}
 
             {/* Chat Panel / Sheet */}
             {isMounted && (
                 <div
                     ref={panelRef}
                     role="dialog"
-                    aria-modal={isMobileSheet}
-                    tabIndex={isMobileSheet ? -1 : undefined}
+                    aria-modal={isModalPresence}
+                    tabIndex={isModalPresence ? -1 : undefined}
                     aria-label={
                         locale === 'en'
                             ? 'Arab UT Chat Assistant'
@@ -254,6 +288,11 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                             : 'pointer-events-none translate-y-3 scale-[0.98] opacity-0 duration-[180ms] [transition-timing-function:cubic-bezier(0.7,0,0.84,0)] md:scale-[0.96]'
                     }`}
                 >
+                    <ChatStatusRegion
+                        id={statusAnnouncementId}
+                        message={statusAnnouncement}
+                    />
+
                     {/* Header */}
                     <ChatHeader
                         locale={locale}

@@ -144,6 +144,72 @@ describe('useChat restart race isolation', () => {
         expect(result.current.hasMore).toBe(true);
     });
 
+    it('discards an old queued item after deferred initialization without posting to the replacement conversation', async () => {
+        const initialization = deferred<Response>();
+        const restart = deferred<Response>();
+        const messageCalls: string[] = [];
+
+        vi.mocked(fetch).mockImplementation((input) => {
+            const path = String(input);
+
+            if (path === '/chat/conversations') {
+                return initialization.promise;
+            }
+
+            if (path === '/chat/conversations/restart') {
+                return restart.promise;
+            }
+
+            if (path.includes('/messages')) {
+                messageCalls.push(path);
+
+                return Promise.resolve(
+                    response({
+                        data: {
+                            message: {
+                                publicId: 'ghost-server-message',
+                                conversationPublicId: 'conversation-new',
+                                senderType: 'customer',
+                                messageType: 'text',
+                                content: 'Ghost queued message',
+                                createdAt: '2026-08-20T11:01:00.000Z',
+                            },
+                            demoReply: null,
+                        },
+                    }),
+                );
+            }
+
+            throw new Error(`Unexpected fetch: ${path}`);
+        });
+
+        const { result } = renderHook(() =>
+            useChat({ enabled: true, locale: 'en' }),
+        );
+        const staleRestart = result.current.restartChat;
+
+        act(() => result.current.openChat());
+        act(() => void result.current.sendMessage('Ghost queued message'));
+
+        let restartRun!: Promise<void>;
+        act(() => {
+            restartRun = staleRestart();
+        });
+        restart.resolve(response({ data: restartedConversation }));
+        await act(async () => restartRun);
+
+        initialization.resolve(response({ data: initialConversation }));
+        await act(async () => Promise.resolve());
+        await act(async () => Promise.resolve());
+
+        expect(messageCalls).toEqual([]);
+        expect(
+            result.current.messages.map((message) => message.publicId),
+        ).toEqual(['new-onboarding']);
+        expect(result.current.isAssistantTyping).toBe(false);
+        expect(result.current.canRestart).toBe(true);
+    });
+
     it('does not let an old send completion unlock restart while a new send is pending', async () => {
         const oldSend = deferred<Response>();
         const newSend = deferred<Response>();

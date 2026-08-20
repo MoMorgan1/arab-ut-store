@@ -489,6 +489,73 @@ describe('ChatWidget Component', () => {
         },
     );
 
+    it.each([
+        ['en', 'Failed to start a new conversation. Please try again.'],
+        ['ar', 'تعذر بدء محادثة جديدة. حاول مرة أخرى.'],
+    ])(
+        'creates a fresh live-region event for consecutive identical failures in %s',
+        async (locale, failureMessage) => {
+            const conversation = {
+                publicId: `conversation-repeat-${locale}`,
+                status: 'open',
+                locale,
+                messages: [],
+                hasMore: false,
+                oldestCursor: null,
+            };
+            const failedResponse = {
+                ok: false,
+                status: 500,
+                json: async () => ({
+                    error: { code: 'chat_unavailable' },
+                }),
+            } as Response;
+
+            vi.mocked(fetch)
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ data: conversation }),
+                } as Response)
+                .mockResolvedValueOnce(failedResponse)
+                .mockResolvedValueOnce(failedResponse);
+
+            render(<ChatWidget enabled={true} locale={locale} />);
+            fireEvent.click(
+                screen.getByRole('button', {
+                    name: locale === 'en' ? /Open chat/i : /فتح الشات/i,
+                }),
+            );
+
+            const restart = await screen.findByRole('button', {
+                name: locale === 'en' ? /New conversation/i : /محادثة جديدة/i,
+            });
+            await waitFor(() => expect(restart).toBeEnabled());
+            fireEvent.click(restart);
+
+            const liveStatus = screen.getByRole('status');
+            await waitFor(() =>
+                expect(liveStatus).toHaveTextContent(failureMessage),
+            );
+            const firstEvent = liveStatus.firstElementChild;
+            expect(firstEvent).not.toBeNull();
+
+            await waitFor(() => expect(restart).toBeEnabled());
+            fireEvent.click(restart);
+            await waitFor(() =>
+                expect(liveStatus.firstElementChild).not.toBe(firstEvent),
+            );
+            expect(liveStatus).toHaveTextContent(failureMessage);
+            expect(screen.queryAllByRole('status')).toHaveLength(1);
+            expect(screen.queryAllByRole('alert')).toHaveLength(0);
+            expect(
+                screen
+                    .getAllByText(failureMessage)
+                    .filter((element) => !element.closest('.sr-only')),
+            ).toHaveLength(1);
+        },
+    );
+
     it('treats the mobile sheet as modal, traps focus, inerts the page, and restores the launcher', async () => {
         stubMatchMedia(true);
         vi.mocked(fetch).mockResolvedValueOnce({
@@ -527,6 +594,7 @@ describe('ChatWidget Component', () => {
         );
         expect(dialog).toHaveFocus();
         expect(screen.getByTestId('covered-page')).toHaveAttribute('inert');
+        expect(launcher).toHaveAttribute('inert');
 
         const restart = await screen.findByRole('button', {
             name: /New conversation/i,
@@ -544,8 +612,18 @@ describe('ChatWidget Component', () => {
         fireEvent.click(
             within(dialog).getByRole('button', { name: /Close chat/i }),
         );
+        expect(dialog).toBeInTheDocument();
+        expect(screen.getByTestId('covered-page')).toHaveAttribute('inert');
+        expect(launcher).toHaveAttribute('inert');
+        expect(launcher).not.toHaveFocus();
+
+        launcher.focus();
+        fireEvent.keyDown(window, { key: 'Tab' });
+        expect(restart).toHaveFocus();
+
         await waitFor(() => expect(dialog).not.toBeInTheDocument());
         expect(screen.getByTestId('covered-page')).not.toHaveAttribute('inert');
+        expect(launcher).not.toHaveAttribute('inert');
         expect(launcher).toHaveFocus();
     });
 

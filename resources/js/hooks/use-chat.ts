@@ -50,9 +50,10 @@ export function useChat(options: UseChatOptions = {}) {
     const [oldestCursor, setOldestCursor] = useState<string | null>(null);
     const [unreadCount, setUnreadCount] = useState(0);
     const [error, setError] = useState<string | null>(null);
-    const [statusAnnouncement, setStatusAnnouncement] = useState<string | null>(
-        null,
-    );
+    const [statusAnnouncement, setStatusAnnouncement] = useState<{
+        id: number;
+        message: string | null;
+    }>({ id: 0, message: null });
 
     const isOpenRef = useRef(isOpen);
     const conversationRef = useRef<ChatConversation | null>(conversation);
@@ -78,7 +79,10 @@ export function useChat(options: UseChatOptions = {}) {
     }, [messages]);
 
     const announceStatus = useCallback((message: string) => {
-        setStatusAnnouncement(message);
+        setStatusAnnouncement((current) => ({
+            id: current.id + 1,
+            message,
+        }));
     }, []);
 
     const getOrInitConversation =
@@ -205,7 +209,25 @@ export function useChat(options: UseChatOptions = {}) {
                 continue;
             }
 
+            if (
+                item.generation !== conversationGenerationRef.current ||
+                conversationRef.current?.publicId !== currentConv.publicId
+            ) {
+                if (item.generation === conversationGenerationRef.current) {
+                    setPendingSendCount((count) => Math.max(0, count - 1));
+                }
+
+                continue;
+            }
+
             try {
+                if (
+                    item.generation !== conversationGenerationRef.current ||
+                    conversationRef.current?.publicId !== currentConv.publicId
+                ) {
+                    continue;
+                }
+
                 const result = await sendChatMessage(
                     currentConv.publicId,
                     item.content,
@@ -511,7 +533,8 @@ export function useChat(options: UseChatOptions = {}) {
         unreadCount,
         error,
         clearError: () => setError(null),
-        statusAnnouncement,
+        statusAnnouncement: statusAnnouncement.message,
+        statusAnnouncementId: statusAnnouncement.id,
         sendMessage,
         retryMessage,
         loadOlderMessages,
