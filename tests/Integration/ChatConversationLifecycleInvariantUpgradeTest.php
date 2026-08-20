@@ -30,6 +30,23 @@ test('lifecycle migration keeps the newest duplicate owner conversation open', f
     });
 });
 
+test('lifecycle migration keeps the higher ID open when duplicate owner timestamps are equal', function () {
+    withLegacyChatDatabase(function (): void {
+        $lastMessageAt = now();
+        $lowerId = seedLegacyConversation(userId: 8, guestKey: null, lastMessageAt: $lastMessageAt);
+        $higherId = seedLegacyConversation(userId: 8, guestKey: null, lastMessageAt: $lastMessageAt);
+
+        chatLifecycleMigration()->up();
+
+        expect(DB::table('chat_conversations')->where('id', $higherId)->value('active_owner_key'))
+            ->toBe('user:8')
+            ->and(DB::table('chat_conversations')->where('id', $lowerId)->value('status'))
+            ->toBe('closed')
+            ->and(DB::table('chat_conversations')->where('id', $lowerId)->value('close_reason'))
+            ->toBe('invariant_upgrade_duplicate');
+    });
+});
+
 test('lifecycle migration derives guest ownership and permits a historical guest key to be reused', function () {
     withLegacyChatDatabase(function (): void {
         $guestKey = hash('sha256', 'historical-chat-guest-key');
