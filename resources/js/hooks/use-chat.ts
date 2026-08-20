@@ -37,6 +37,61 @@ function isAmbiguousRestartFailure(error: unknown): boolean {
     );
 }
 
+function collectRecoveryDrafts(
+    localMessages: ChatMessage[],
+    pendingQueueItems: QueueItem[],
+    conversationPublicId: string,
+): ChatMessage[] {
+    const candidateDrafts: ChatMessage[] = [
+        ...localMessages
+            .filter(
+                (message) =>
+                    message.senderType === 'customer' &&
+                    message.clientStatus === 'error',
+            )
+            .map((message) => ({
+                ...message,
+                conversationPublicId,
+                clientStatus: 'error' as const,
+            })),
+        ...pendingQueueItems.map((queueItem) => ({
+            publicId: queueItem.tempId,
+            conversationPublicId,
+            clientMessageId: queueItem.clientMessageId,
+            senderType: 'customer' as const,
+            messageType: 'text' as const,
+            content: queueItem.content,
+            createdAt: queueItem.createdAt,
+            clientStatus: 'error' as const,
+            tempId: queueItem.tempId,
+        })),
+    ];
+    const seenTempIds = new Set<string>();
+    const seenClientMessageIds = new Set<string>();
+
+    return candidateDrafts.filter((draft) => {
+        const duplicateTempId =
+            draft.tempId !== undefined && seenTempIds.has(draft.tempId);
+        const duplicateClientMessageId =
+            draft.clientMessageId !== undefined &&
+            seenClientMessageIds.has(draft.clientMessageId);
+
+        if (duplicateTempId || duplicateClientMessageId) {
+            return false;
+        }
+
+        if (draft.tempId !== undefined) {
+            seenTempIds.add(draft.tempId);
+        }
+
+        if (draft.clientMessageId !== undefined) {
+            seenClientMessageIds.add(draft.clientMessageId);
+        }
+
+        return true;
+    });
+}
+
 function generateClientMessageId(): string {
     if (
         typeof crypto !== 'undefined' &&
@@ -83,6 +138,15 @@ export function useChat(options: UseChatOptions = {}) {
     const conversationGenerationRef = useRef(0);
     const isMountedRef = useRef(true);
 
+    const updateMessages = useCallback(
+        (updater: (currentMessages: ChatMessage[]) => ChatMessage[]) => {
+            const nextMessages = updater(messagesRef.current);
+            messagesRef.current = nextMessages;
+            setMessages(nextMessages);
+        },
+        [],
+    );
+
     useEffect(() => {
         isOpenRef.current = isOpen;
     }, [isOpen]);
@@ -90,10 +154,6 @@ export function useChat(options: UseChatOptions = {}) {
     useEffect(() => {
         conversationRef.current = conversation;
     }, [conversation]);
-
-    useEffect(() => {
-        messagesRef.current = messages;
-    }, [messages]);
 
     const announceStatus = useCallback((message: string) => {
         announcementIdRef.current += 1;
@@ -162,7 +222,10 @@ export function useChat(options: UseChatOptions = {}) {
 
     const appendDeliveredDemoReply = useCallback(
         (demoReply: ChatMessage) => {
-            setMessages((previousMessages) => [...previousMessages, demoReply]);
+            updateMessages((previousMessages) => [
+                ...previousMessages,
+                demoReply,
+            ]);
 
             if (!isOpenRef.current) {
                 setUnreadCount((count) => count + 1);
@@ -174,7 +237,7 @@ export function useChat(options: UseChatOptions = {}) {
                     : 'وصلت رسالة جديدة من المساعد.',
             );
         },
-        [announceStatus, pageLocale],
+        [announceStatus, pageLocale, updateMessages],
     );
 
     const finishDemoReply = useCallback(
@@ -322,7 +385,7 @@ export function useChat(options: UseChatOptions = {}) {
                     continue;
                 }
 
-                setMessages((prev) =>
+                updateMessages((prev) =>
                     prev.map((msg) =>
                         msg.tempId === item.tempId
                             ? { ...msg, clientStatus: 'error' }
@@ -348,7 +411,7 @@ export function useChat(options: UseChatOptions = {}) {
                     continue;
                 }
 
-                setMessages((prev) =>
+                updateMessages((prev) =>
                     prev.map((msg) =>
                         msg.tempId === item.tempId
                             ? {
@@ -380,20 +443,11 @@ export function useChat(options: UseChatOptions = {}) {
                             continue;
                         }
 
-                        const preservedQueueItems = [item, ...queueRef.current];
-                        const preservedDrafts: ChatMessage[] =
-                            preservedQueueItems.map((queueItem) => ({
-                                publicId: queueItem.tempId,
-                                conversationPublicId:
-                                    recoveredConversation.publicId,
-                                clientMessageId: queueItem.clientMessageId,
-                                senderType: 'customer',
-                                messageType: 'text',
-                                content: queueItem.content,
-                                createdAt: queueItem.createdAt,
-                                clientStatus: 'error',
-                                tempId: queueItem.tempId,
-                            }));
+                        const preservedDrafts = collectRecoveryDrafts(
+                            messagesRef.current,
+                            [item, ...queueRef.current],
+                            recoveredConversation.publicId,
+                        );
 
                         adoptConversation(recoveredConversation);
                         const recoveredMessages = [
@@ -417,7 +471,7 @@ export function useChat(options: UseChatOptions = {}) {
                             continue;
                         }
 
-                        setMessages((prev) =>
+                        updateMessages((prev) =>
                             prev.map((msg) =>
                                 msg.tempId === item.tempId
                                     ? { ...msg, clientStatus: 'error' }
@@ -434,7 +488,7 @@ export function useChat(options: UseChatOptions = {}) {
                     continue;
                 }
 
-                setMessages((prev) =>
+                updateMessages((prev) =>
                     prev.map((msg) =>
                         msg.tempId === item.tempId
                             ? { ...msg, clientStatus: 'error' }
@@ -466,6 +520,7 @@ export function useChat(options: UseChatOptions = {}) {
         pageLocale,
         scheduleDemoReply,
         showError,
+        updateMessages,
     ]);
 
     const sendMessage = useCallback(
@@ -492,7 +547,7 @@ export function useChat(options: UseChatOptions = {}) {
                 tempId,
             };
 
-            setMessages((prev) => [...prev, optimisticMessage]);
+            updateMessages((prev) => [...prev, optimisticMessage]);
             setError(null);
 
             queueRef.current.push({
@@ -504,7 +559,7 @@ export function useChat(options: UseChatOptions = {}) {
 
             void processQueue();
         },
-        [processQueue],
+        [processQueue, updateMessages],
     );
 
     const retryMessage = useCallback(
@@ -521,7 +576,7 @@ export function useChat(options: UseChatOptions = {}) {
                 failedMsg.clientMessageId || generateClientMessageId();
             const messageTempId = failedMsg.tempId || failedMsg.publicId;
 
-            setMessages((prev) =>
+            updateMessages((prev) =>
                 prev.map((m) =>
                     m.tempId === messageTempId || m.publicId === messageTempId
                         ? { ...m, clientStatus: 'sending', clientMessageId }
@@ -538,7 +593,7 @@ export function useChat(options: UseChatOptions = {}) {
 
             void processQueue();
         },
-        [processQueue],
+        [processQueue, updateMessages],
     );
 
     const loadOlderMessages = useCallback(async () => {
@@ -566,7 +621,7 @@ export function useChat(options: UseChatOptions = {}) {
                 return;
             }
 
-            setMessages((prev) => [...data.messages, ...prev]);
+            updateMessages((prev) => [...data.messages, ...prev]);
             setHasMore(data.hasMore);
             setOldestCursor(data.oldestCursor ?? null);
         } catch {
@@ -591,6 +646,7 @@ export function useChat(options: UseChatOptions = {}) {
         ownsAsyncGeneration,
         pageLocale,
         showError,
+        updateMessages,
     ]);
 
     const hasPendingSends = messages.some(

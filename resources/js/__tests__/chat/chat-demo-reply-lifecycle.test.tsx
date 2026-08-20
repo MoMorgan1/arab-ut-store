@@ -719,6 +719,208 @@ describe('demo reply lifecycle', () => {
         ]);
     });
 
+    it('preserves prior error drafts when a later queued send adopts the canonical conversation', async () => {
+        const firstOnboarding = assistantReply(
+            'first-adoption-onboarding',
+            'First recovered conversation',
+        );
+        firstOnboarding.conversationPublicId = 'conv-recovered-first';
+        const secondOnboarding = assistantReply(
+            'second-adoption-onboarding',
+            'Second recovered conversation',
+        );
+        secondOnboarding.conversationPublicId = 'conv-recovered-second';
+        let acquisitionCount = 0;
+        let resolveFirstRecovery: ((response: Response) => void) | undefined;
+        const firstRecoveryResponse = new Promise<Response>((resolve) => {
+            resolveFirstRecovery = resolve;
+        });
+        const messageRequests: Array<{
+            path: string;
+            body: { content: string; client_message_id: string };
+        }> = [];
+
+        vi.mocked(fetch).mockImplementation(async (url, init) => {
+            const path = String(url);
+
+            if (path === '/chat/conversations') {
+                acquisitionCount += 1;
+
+                if (acquisitionCount === 1) {
+                    return jsonResponse(conversation('conv-demo-old'));
+                }
+
+                if (acquisitionCount === 2) {
+                    return firstRecoveryResponse;
+                }
+
+                return jsonResponse(
+                    acquisitionCount === 3
+                        ? conversation('conv-recovered-first', [
+                              firstOnboarding,
+                          ])
+                        : conversation('conv-recovered-second', [
+                              secondOnboarding,
+                          ]),
+                );
+            }
+
+            if (path.includes('/messages')) {
+                const body = JSON.parse(String(init?.body)) as {
+                    content: string;
+                    client_message_id: string;
+                };
+                messageRequests.push({ path, body });
+
+                if (
+                    messageRequests.length <= 2 ||
+                    messageRequests.length === 4
+                ) {
+                    return errorResponse('conversation_closed', 409);
+                }
+
+                return jsonResponse(
+                    {
+                        message: {
+                            publicId:
+                                messageRequests.length === 3
+                                    ? 'retried-first-draft'
+                                    : 'retried-second-draft',
+                            conversationPublicId:
+                                messageRequests.length === 3
+                                    ? 'conv-recovered-first'
+                                    : 'conv-recovered-second',
+                            clientMessageId: body.client_message_id,
+                            senderType: 'customer',
+                            messageType: 'text',
+                            content: body.content,
+                            createdAt:
+                                messageRequests.length === 3
+                                    ? '2026-08-20T10:03:00.000Z'
+                                    : '2026-08-20T10:04:00.000Z',
+                        },
+                        demoReply: null,
+                    },
+                    201,
+                );
+            }
+
+            throw new Error(`Unexpected chat request: ${path}`);
+        });
+        const { result } = renderHook(() =>
+            useChat({ enabled: true, locale: 'en' }),
+        );
+
+        act(() => result.current.openChat());
+        await flushAsyncWork();
+
+        act(() => void result.current.sendMessage('Earlier failed draft'));
+        await flushAsyncWork();
+        const firstDraft = result.current.messages[0];
+
+        act(() => void result.current.sendMessage('Later queued draft'));
+        await flushAsyncWork();
+        const secondDraft = result.current.messages[1];
+
+        resolveFirstRecovery?.(errorResponse('chat_unavailable', 503));
+        await flushAsyncWork();
+
+        expect(acquisitionCount).toBe(3);
+        expect(messageRequests).toHaveLength(2);
+        expect(result.current.conversation?.publicId).toBe(
+            'conv-recovered-first',
+        );
+        expect(result.current.messages).toEqual([
+            firstOnboarding,
+            expect.objectContaining({
+                publicId: firstDraft.tempId,
+                tempId: firstDraft.tempId,
+                clientMessageId: firstDraft.clientMessageId,
+                content: 'Earlier failed draft',
+                createdAt: firstDraft.createdAt,
+                conversationPublicId: 'conv-recovered-first',
+                clientStatus: 'error',
+            }),
+            expect.objectContaining({
+                publicId: secondDraft.tempId,
+                tempId: secondDraft.tempId,
+                clientMessageId: secondDraft.clientMessageId,
+                content: 'Later queued draft',
+                createdAt: secondDraft.createdAt,
+                conversationPublicId: 'conv-recovered-first',
+                clientStatus: 'error',
+            }),
+        ]);
+
+        act(() => void result.current.retryMessage(firstDraft.tempId!));
+        await flushAsyncWork();
+
+        expect(messageRequests[2]).toEqual({
+            path: '/chat/conversations/conv-recovered-first/messages',
+            body: {
+                content: 'Earlier failed draft',
+                client_message_id: firstDraft.clientMessageId,
+            },
+        });
+        expect(result.current.messages).toEqual([
+            firstOnboarding,
+            expect.objectContaining({
+                publicId: 'retried-first-draft',
+                clientMessageId: firstDraft.clientMessageId,
+                clientStatus: 'sent',
+            }),
+            expect.objectContaining({
+                tempId: secondDraft.tempId,
+                clientMessageId: secondDraft.clientMessageId,
+                clientStatus: 'error',
+            }),
+        ]);
+
+        act(() => void result.current.retryMessage(secondDraft.tempId!));
+        await flushAsyncWork();
+
+        expect(messageRequests[3]).toEqual({
+            path: '/chat/conversations/conv-recovered-first/messages',
+            body: {
+                content: 'Later queued draft',
+                client_message_id: secondDraft.clientMessageId,
+            },
+        });
+        expect(result.current.conversation?.publicId).toBe(
+            'conv-recovered-second',
+        );
+        expect(result.current.messages).toEqual([
+            secondOnboarding,
+            expect.objectContaining({
+                publicId: secondDraft.tempId,
+                tempId: secondDraft.tempId,
+                clientMessageId: secondDraft.clientMessageId,
+                createdAt: secondDraft.createdAt,
+                conversationPublicId: 'conv-recovered-second',
+                clientStatus: 'error',
+            }),
+        ]);
+
+        act(() => void result.current.retryMessage(secondDraft.tempId!));
+        await flushAsyncWork();
+
+        expect(messageRequests[4]).toEqual({
+            path: '/chat/conversations/conv-recovered-second/messages',
+            body: {
+                content: 'Later queued draft',
+                client_message_id: secondDraft.clientMessageId,
+            },
+        });
+        expect(result.current.messages).toEqual([
+            secondOnboarding,
+            expect.objectContaining({
+                publicId: 'retried-second-draft',
+                clientMessageId: secondDraft.clientMessageId,
+                clientStatus: 'sent',
+            }),
+        ]);
+    });
+
     it('adopts a committed restart recovered after the response is lost', async () => {
         const onboarding = assistantReply(
             'committed-onboarding',
