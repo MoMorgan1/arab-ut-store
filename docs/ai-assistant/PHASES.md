@@ -1,21 +1,26 @@
 # Delivery phases
 
-**Lifecycle:** Implemented
+**Lifecycle:** Current state recorded
 **Verified:** 2026-08-20
 
-| Phase                                 | Lifecycle   | State and boundary                                                                                                                                                                                                       |
-| ------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase 0 stabilization                 | Implemented | Canonical audit, blank-screen regression coverage, Chromium release gate, incident record, and this handbook are implemented. Automated release evidence is green; Mohamed's manual acceptance remains pending.          |
-| Phase 1 deterministic chat foundation | Implemented | Persistent bilingual shell, owner-safe conversation/history storage, guest claim and key rotation, optimistic FIFO sends, retry, pagination, and optional demo reply are implemented.                                    |
-| Phase 1 Completion                    | Planned     | Fix account mobile launcher overlap; add one-open-conversation invariant, restart, 24-hour close, seven-day reopen, 30/180-day retention, concurrency/error/accessibility hardening, and authenticated browser coverage. |
-| Phase 2 AI runtime/Luna               | Planned     | OpenAI Responses API with `gpt-5.6-luna`, `store: false`, durable turns/runs, 1.5-second coalescing, direct POST streaming, bounded context/cost, and tester-only rollout are designed but not implemented.              |
-| Retrieval                             | Planned     | Approved sources, freshness, citation UX, deletion, storage, and evaluation require design approval.                                                                                                                     |
-| Tools                                 | Planned     | Owner authorization, least privilege, confirmation, idempotency, audit, and failure contracts require design approval.                                                                                                   |
-| Admin inbox and human handoff         | Planned     | Roles, queue behavior, privacy, operator workflow, notifications, and service expectations require discovery and approval.                                                                                               |
-| Realtime                              | Planned     | No transport or presence stack is selected; it follows approved support workflow requirements rather than preceding them.                                                                                                |
+| Phase                                   | State                                              | Boundary                                                                                                                                                                                                                 |
+| --------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase 0 stabilization                   | Implemented                                        | Release audit, CI/MariaDB workflow, and Chromium smoke are in place.                                                                                                                                                     |
+| Phase 1 deterministic chat foundation   | Implemented                                        | Persistent bilingual widget, owner-scoped storage, guest claim/rekey, messages, retry, pagination, and demo reply.                                                                                                       |
+| Phase 1 Completion                      | Implemented and deployed; owner acceptance pending | One-open-owner invariant, close/reopen/restart, 30/180-day retention, normalized errors, maintenance, account placement, and authenticated Chromium coverage are included in `e7f230d2ea01dc456aef1a51035f4d88f39542e2`. |
+| Phase 2 AI runtime/Luna                 | Not started                                        | No Phase 2 plan or implementation is authorized until Mohamed accepts the deployed Phase 1 release.                                                                                                                      |
+| Retrieval, tools, admin inbox, realtime | Not started                                        | Separate discovery and owner approval are required.                                                                                                                                                                      |
 
-The approved design is
-[`2026-08-20-ai-assistant-phases-1-2-design.md`](../superpowers/specs/2026-08-20-ai-assistant-phases-1-2-design.md).
-Phase 1 Completion requires its own implementation plan and production/manual
-acceptance. Only then may Phase 2 receive and execute its implementation plan.
-Later phases remain behind their own Discovery and approval gates.
+## Phase 1 acceptance handoff
+
+Mohamed accepts only after testing a real account on the deployed release:
+
+1. Account launcher is visible above the mobile navigation.
+2. Open sheet covers navigation and closes to the focused launcher.
+3. Arabic, English, and mixed-language messages work as intended.
+4. New conversation yields a distinct public ID; refresh, navigation, and login
+   continuity work; an old explicit thread stays closed.
+5. iPhone zoom, safe area, keyboard, and touch targets are acceptable.
+
+Automation is green evidence, not a replacement for this visual/device gate.
+See [STATUS.md](STATUS.md), [UX.md](UX.md), and [AUDIT.md](AUDIT.md).

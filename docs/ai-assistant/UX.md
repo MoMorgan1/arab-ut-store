@@ -1,55 +1,45 @@
 # Customer experience
 
-**Lifecycle:** Implemented
+**Lifecycle:** Implemented; physical iPhone acceptance pending
 **Verified:** 2026-08-20
 
-## Layout and direction
+## Conversation behavior
 
-- Customer messages are physically right-aligned and assistant messages are
-  physically left-aligned in both Arabic RTL and English LTR pages. The message
-  row fixes physical geometry with `dir="ltr"`; each bubble uses `dir="auto"`
-  so mixed-language content selects its own text direction.
-- The typing indicator remains physically left.
-- On mobile, the open chat is a full-screen fixed sheet. From the `sm`
-  breakpoint, it becomes a bottom-right anchored panel measuring 420px wide and
-  up to 650px or 85vh high.
-- The composer textarea is 16px on mobile to avoid iOS input zoom, becomes 14px
-  at the `lg` breakpoint, has a 44px minimum height, and auto-grows to 120px.
+The launcher initializes chat lazily. One owner has one open conversation.
+Hourly maintenance closes it after 24 hours without a message. A later open
+request reuses only an inactivity-closed conversation made within seven days.
+New conversation calls `POST /chat/conversations/restart`: it closes the old
+open thread and returns a new public ID with onboarding. Explicitly restarted
+threads never reopen.
 
-## Arabic and English copy intent
+The widget preserves the active public ID across Inertia navigation and resolves
+it after refresh. Login claims matching guest history transactionally. Closed
+history has no customer-facing picker in this release.
 
-Arabic is the default storefront language and uses the familiar Arab UT voice.
-English communicates the same actions and limitations rather than introducing
-a different product promise. The onboarding text invites a message and explains
-that sign-in can support later order tracking. The current demo reply identifies
-the experience as a foundation demo; it must not be represented as a smart or
-human answer.
+## Account and mobile placement
 
-## Interaction and accessibility behavior
+`ChatRootLayout` marks the account surface so `chat-widget-root--account` uses
+a bottom offset of the account navigation height plus
+`env(safe-area-inset-bottom)` and appears above `.account-mobile-bottom-nav`.
+The open mobile chat is a fixed full-screen dialog; closing restores focus to
+the launcher. At `sm` and above it becomes a bottom-right panel.
 
-- Opening is lazy: no conversation request is made until the customer opens the
-  widget.
-- `Escape` closes the open panel. Closing restores focus to the launcher.
-  Sending returns focus to the composer.
-- The launcher, close button, send button, dialog, message log, and status
-  announcements expose semantics. The known accessible-name and secondary
-  touch-target gaps remain recorded as `AI-F07`.
-- Panel, launcher, typing, and scroll behavior respect reduced-motion signals
-  where implemented. Smooth scrolling becomes immediate when reduced motion is
-  requested.
-- Older messages prepend while preserving the scroll anchor. Customer sends are
-  optimistic, FIFO, and retry with the same client message ID.
+The Chromium fixture creates a synthetic local user, never a production user.
+It checks Arabic and English account pages, 390px safe-area geometry, 44px
+controls, layering, keyboard focus, Escape/focus restoration, restart, overflow,
+and runtime console errors.
 
-## Mohamed manual device checklist
+## Direction and accessibility
 
-Owner acceptance is `Pending Mohamed manual test`. Check Arabic RTL and English
-LTR at 320px, 390px, 768px, and 1440px, including:
+- Customer bubbles are physically right and assistant bubbles physically left
+  in Arabic RTL and English LTR; bubbles use `dir="auto"` for mixed-language text.
+- The composer has a persistent accessible name, 16px mobile text, a 44px
+  minimum height, and grows up to 120px.
+- Launcher, close, send, restart, retry, suggestion, older-message, dismiss,
+  and scroll controls have 44px minimum touch dimensions. Dialog/live
+  semantics, visible focus, and reduced-motion classes are present.
 
-- launcher and panel open/close, visible focus, keyboard order, and `Escape`;
-- physical customer-right and assistant/typing-left placement, including a
-  mixed-language outgoing message;
-- composer focus, iPhone keyboard zoom, home-indicator/safe-area clearance, and
-  44px touch targets;
-- send, retry, older-history loading, scroll preservation, unread state,
-  navigation persistence, and full refresh continuity;
-- reduced motion, no horizontal overflow, and no browser console errors.
+`AI-F06` is narrowed, not closed: Chromium exercises emulated safe-area layout,
+but Mohamed must accept real iPhone/Safari keyboard and home-indicator behavior.
+`AI-F04` remains a P3 test-precision item for scroll geometry and unread state.
+See [STATUS.md](STATUS.md) for the acceptance list.

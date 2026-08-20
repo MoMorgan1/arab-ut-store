@@ -1,65 +1,45 @@
 # Decision record
 
-**Lifecycle:** Implemented
+**Lifecycle:** Implemented record
 **Verified:** 2026-08-20
 
-## 2026-08-20 — Provider and Phase 2 deferred
+## 2026-08-20 — Close/reopen/restart lifecycle
 
-No model provider, model, prompt runtime, RAG, tool calling, streaming, realtime
-support, or admin inbox is selected or implemented in Phase 0. Phase 2 is the
-next discovery/design task and requires Mohamed's approval before
-implementation.
+An owner may have one open conversation. Inactive threads close after 24 hours
+and may reopen only within seven days. New conversation closes the old open
+thread and creates a new one, so an explicitly closed thread does not reopen.
+Retention is 30 days for closed guest history and 180 days for closed
+authenticated history. The lifecycle migration, actions, and hourly
+`chat:maintain-conversations` command implement this decision.
 
-This records the Phase 0 boundary at that time. It was superseded for future
-work by the approved decisions below; it remains true that Phase 0 implemented
-no provider runtime.
+## 2026-08-20 — Database is the active-owner authority
 
-## 2026-08-20 — Phase 1 lifecycle completion before AI
+The generated `active_owner_key` plus unique index is the MariaDB one-open-owner
+invariant; SQLite has equivalent trigger/index behavior. The migration backfills
+rows, closes historical duplicates, and takes a write table lock while
+installing the MariaDB generated column/index. Production found no active owner
+duplicates and confirmed `LOCK TABLES` permission.
 
-Phase 1 is hardened rather than rebuilt. Conversations auto-close after 24
-hours, inactivity closures may reopen within seven days, explicit restarts
-never reopen, guest history is retained 30 days, and authenticated history 180
-days. Closed history is support-only in this version. A unique active-owner
-boundary enforces one open conversation. The account launcher is moved above
-the mobile account navigation and receives an authenticated browser regression.
+## 2026-08-20 — Account launcher and browser evidence
 
-## 2026-08-20 — OpenAI Luna through direct Laravel streaming
+The account chat root is above the mobile navigation with safe-area spacing.
+Chromium regression coverage uses a synthetic local account and emulated safe
+area; it does not create production users. Mohamed retains final physical
+iPhone/Safari and real-account acceptance.
 
-Phase 2 uses a provider-neutral `AgentModel` boundary with an OpenAI Responses
-API adapter configured for `gpt-5.6-luna`, `store: false`, and streaming. The
-existing Hostinger deployment has no permanent queue worker, so v1 uses an
-owner-scoped POST stream after a server-verified 1.5-second quiet window. A
-production-path feasibility gate must prove incremental delivery and disconnect
-recovery. If Hostinger buffers the response, rollout stops for a new
-infrastructure/product decision; cosmetic streaming is not accepted.
+## 2026-08-20 — Session boundary remains unchanged
 
-No live tools, RAG, commerce actions, or public AI rollout are included in
-Phase 2. Deployment begins disabled, then moves to an authenticated tester
-allowlist only after secure API configuration.
+Production read-only evidence: database sessions with encryption enabled. Chat
+tables retain only an HMAC guest key; the raw token remains in the Laravel
+session. No session configuration change is made: it can invalidate active
+sessions, and nonproduction defaults are not inferred from production. `AI-B09`
+remains open pending an owner security decision.
 
-## 2026-08-20 — Chromium-only automated smoke
+## 2026-08-20 — Phase 2 stays behind acceptance
 
-The release smoke is deliberately limited to Playwright Chromium with a small
-six-test matrix and one CI worker. It blocks release packaging when the real
-Laravel/Vite application does not mount cleanly, but it does not claim Safari,
-checkout, or broad end-to-end coverage.
+No provider runtime, model, prompt, RAG, tool, streaming transport, operator
+inbox, or Phase 2 plan starts with this release. Phase 1 owner acceptance is a
+prerequisite.
 
-## 2026-08-20 — Mohamed owns visual acceptance
-
-Automated checks guard mounts, runtime errors, core landmarks, mobile chat
-open/close, focus restoration, and overflow. Mohamed remains the final owner of
-Arabic/English visual and real-device acceptance, including iPhone behavior.
-
-## 2026-08-20 — Physical message alignment
-
-Customer messages remain physically right and assistant messages physically
-left in both Arabic and English. Bubble text direction remains automatic so
-mixed-language content is readable. Locale direction must not mirror message
-ownership.
-
-## 2026-08-20 — Canonical status routing
-
-Future assistant work reads [STATUS.md](STATUS.md) first and then the relevant
-document in [README.md](README.md). Historical plans and specs do not override
-the newest explicit owner decision, canonical status, or verified
-implementation.
+Historical plans do not override [STATUS.md](STATUS.md), this record, current
+source, or a newer explicit owner decision.

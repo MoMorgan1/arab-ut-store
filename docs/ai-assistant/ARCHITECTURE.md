@@ -3,57 +3,61 @@
 **Lifecycle:** Implemented
 **Verified:** 2026-08-20
 
-## Request and rendering flow
+The persistent Inertia `ChatRootLayout` renders `ChatWidget` on storefront,
+authentication, and account surfaces. `HandleInertiaRequests` shares
+`chat.enabled` and `chat.demoAssistant`; when disabled, the widget does not
+render and `EnsureChatEnabled` returns the no-store `chat_disabled` 404.
 
-1. `resources/js/app.tsx` asks `resources/js/lib/page-layout.ts` for the
-   application layout. `ChatRootLayout` is the outer layout for storefront and
-   authentication pages, so the widget state survives Inertia page navigation.
-2. `app/Http/Middleware/HandleInertiaRequests.php` shares
-   `chat.enabled` and `chat.demoAssistant` from `config/chat.php` on every
-   Inertia response.
-3. `ChatRootLayout` passes those values and the current locale to `ChatWidget`.
-   A disabled widget renders nothing. Opening an enabled widget lazily starts or
-   reloads the active conversation through `useChat` and `chat-api.ts`.
-4. The three chat routes pass through `EnsureChatEnabled`, `NoStore`, and their
-   named rate limiters before the chat controllers run.
-5. Controllers resolve the current owner, validate input, scope conversation
-   access by owner and public ID, invoke chat actions, and serialize bounded
-   results with `ChatPresenter`.
-6. Actions create or recover the active conversation, persist customer and demo
-   messages, rekey rotated guest ownership, and claim guest conversations after
-   login.
-7. `ChatConversation` and `ChatMessage` persist to `chat_conversations` and
-   `chat_messages` as defined by
-   `database/migrations/2026_08_20_000001_create_chat_tables.php`.
+## HTTP boundary
 
-## Routes
+All routes in `routes/chat.php` use `EnsureChatEnabled`, `NoStore`, and
+`SetChatLocale`.
 
-| Method | Path                                          | Name                       | Controller action                  |
-| ------ | --------------------------------------------- | -------------------------- | ---------------------------------- |
-| `POST` | `/chat/conversations`                         | `chat.conversations.store` | `ChatConversationController@store` |
-| `GET`  | `/chat/conversations/{conversation}`          | `chat.conversations.show`  | `ChatConversationController@show`  |
-| `POST` | `/chat/conversations/{conversation}/messages` | `chat.messages.store`      | `ChatMessageController@store`      |
+| Method | Route name                   | Path                                          | Throttle             |
+| ------ | ---------------------------- | --------------------------------------------- | -------------------- |
+| POST   | `chat.conversations.store`   | `/chat/conversations`                         | `chat-conversations` |
+| POST   | `chat.conversations.restart` | `/chat/conversations/restart`                 | `chat-conversations` |
+| GET    | `chat.conversations.show`    | `/chat/conversations/{conversation}`          | `chat-read`          |
+| POST   | `chat.messages.store`        | `/chat/conversations/{conversation}/messages` | `chat-messages`      |
 
-These routes are registered once from `routes/web.php`; there is no separate
-locale-prefixed chat route.
+Creation returns the owner's existing open conversation or reopens their most
+recent inactivity-closed conversation inside the configured reopen window.
+Restart closes the owner's open conversation with `customer_started_new` and
+creates a replacement in one transaction. Reads and writes first scope by the
+resolved owner, then public ID; a public ID is never authorization.
+
+## Data model and lifecycle
+
+`2026_08_20_000001_create_chat_tables.php` creates `chat_conversations` and
+`chat_messages`. `2026_08_20_000002_add_chat_conversation_lifecycle.php` adds
+`closed_at`, `close_reason`, `active_owner_key`, and the one-to-one assistant
+`reply_to_message_id` relationship.
+
+- A conversation has exactly one owner: `user_id` or HMAC `guest_key`.
+- The generated `active_owner_key` is unique only for `status=open`, enforcing
+  one open conversation per owner in MariaDB; SQLite uses an equivalent index
+  and triggers. The migration backfills it and closes older duplicates with
+  `invariant_upgrade_duplicate`.
+- The message unique key `(conversation_id, client_message_id)` gives retry
+  idempotency. The linked assistant reply is returned for a recovered retry.
+- `CreateChatConversation` creates the conversation and its system onboarding
+  message in the same database transaction.
+
+`CreateOrGetActiveConversation` stores its public-ID pointer in the Laravel
+session. It reopens only inactivity closures made within the window; explicit
+restarts are never candidates for reopening. `CreateChatMessage` locks the
+conversation, rejects a closed conversation, and optionally creates the
+deterministic demo reply.
 
 ## Configuration
 
-| Environment flag      | Config key            | Default | Implemented effect                                                                                                   |
-| --------------------- | --------------------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
-| `CHAT_ENABLED`        | `chat.enabled`        | `false` | Shows the widget through shared Inertia data and permits the routes; disabled routes return a no-store 404 response. |
-| `CHAT_DEMO_ASSISTANT` | `chat.demo_assistant` | `false` | Persists and returns the canned assistant reply after a new customer message.                                        |
+`config/chat.php` provides these keys: `chat.enabled`, `chat.demo_assistant`,
+`chat.max_message_length` (4000), `chat.default_page_size` (50),
+`chat.auto_close_hours` (24), `chat.reopen_within_days` (7),
+`chat.guest_retention_days` (30), and `chat.user_retention_days` (180). The
+four durations have corresponding `CHAT_*` environment variables; the two
+feature flags default to `false`.
 
-`chat.max_message_length` is `4000`, and `chat.default_page_size` is `50`.
-The controller accepts a bounded history limit from `1` through `100`.
-
-## Persistence boundary
-
-`chat_conversations.public_id` and `chat_messages.public_id` are external
-identifiers. Internal numeric IDs drive relations and message ordering. A
-conversation has exactly one authenticated `user_id` or guest HMAC
-`guest_key`. Messages cascade with their conversation, and
-`(conversation_id, client_message_id)` is unique for retry idempotency.
-
-No model provider, prompt runtime, retrieval store, live tool, streaming
-transport, realtime operator channel, or assistant-admin API is implemented.
+`ChatErrorResponse` converts chat validation, conflict, rate-limit, and server
+failures into no-store JSON error envelopes. Error codes are documented in
+[SECURITY.md](SECURITY.md). Operations and rollback are in [OPERATIONS.md](OPERATIONS.md).

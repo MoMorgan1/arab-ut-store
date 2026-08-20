@@ -3,90 +3,58 @@
 **Lifecycle:** Implemented
 **Verified:** 2026-08-20
 
-## Production flags
+## Verified release
 
-| Flag                  | Production state | Effect                                                                                                           |
-| --------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `CHAT_ENABLED`        | `true`           | Shares `chat.enabled=true`, renders the launcher, and permits chat routes.                                       |
-| `CHAT_DEMO_ASSISTANT` | `true`           | Shares `chat.demoAssistant=true` and stores the deterministic demo reply for each newly stored customer message. |
+The current deployed SHA is `e7f230d2ea01dc456aef1a51035f4d88f39542e2`.
+[tests 32410960971](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32410960971)
+and [deploy 32411415481](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32411415481)
+passed for it. Production read-only verification returned `/up -> 200`, found
+all four chat routes, and reported `CHAT_SCHEMA_OK`,
+`ACTIVE_OWNER_DUPLICATE_GROUPS=0`, and `LOCK_TABLES_OK`.
 
-These states were observed through read-only production HTML after application
-release `fdba471af2fef38905581a309bf8b0e9119ab41b`; no secret value is recorded.
-Both flags default to `false` in `config/chat.php` and `.env.example`.
+The GitHub tests workflow is authoritative for MariaDB lifecycle and release
+packaging. Its earlier backend checkpoint was [tests
+32398600493](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32398600493)
+at `1fd83d37b990833cd451d7c3a7b48314976a9f6f`.
 
-## Safe disable
+## Maintenance
 
-1. Through the approved secure server-access path, set `CHAT_ENABLED=false` in
-   the existing shared production environment. Set `CHAT_DEMO_ASSISTANT=false`
-   as well when disabling the demo behavior. Do not copy the environment file or
-   any secret into chat, logs, commits, or workflow output.
-2. From the active release directory, run `php artisan config:cache` so the
-   cached configuration uses the changed flags.
-3. Verify the storefront HTML exposes `chat.enabled=false`, the launcher is
-   absent, and `POST /chat/conversations` returns a no-store 404 without creating
-   chat state.
-4. Record the operational change and the evidence. Re-enable only after the
-   incident owner approves it and the same checks pass with the intended state.
+`chat:maintain-conversations` is scheduled hourly with `withoutOverlapping()` in
+`routes/console.php`. It closes open conversations with `last_message_at` at or
+before `chat.auto_close_hours` (24 by default), then deletes closed guest rows
+at 30 days and closed authenticated rows at 180 days. Conversation deletion
+cascades its messages. The per-row recheck protects a guest row claimed during
+maintenance selection.
 
-Disabling chat does not delete conversations or messages.
+Hostinger runs Laravel scheduling every minute. Investigate only from the active
+release:
 
-## Focused repository and CI commands
+```bash
+php artisan schedule:list
+php artisan chat:maintain-conversations
+```
 
-Run these commands only from a repository or CI checkout with the PHP and Node
-development dependencies installed:
+## Safe disable and recovery
 
-For a clean repository checkout, run `composer setup`, then install Chromium
-with `npm run test:e2e:install`. Before `npm run test:e2e`, ensure port 8010 is
-not serving a stale or unintended application; stop that process or confirm it
-is the intended checkout first.
+To contain a chat incident, use approved secure server access to set
+`CHAT_ENABLED=false` in the shared environment, run `php artisan config:cache`,
+then verify the launcher is absent and a route returns no-store `chat_disabled` 404. This does not delete chat data. Do not print environment files, session
+records, or secrets.
+
+Deploys are forward-only. `deploy/hostinger-release.sh` migrates before atomically
+switching `current`, checks `/up`, and restores the previous release path when
+health fails. Do not run `migrate:rollback`; follow [the Hostinger rollback
+runbook](../operations/hostinger-rollback.md).
+
+## Local and CI verification
 
 ```powershell
 php artisan route:list --path=chat
-php artisan test tests/Feature/Chat
-npm test -- resources/js/__tests__/chat
+composer ci:check
 npm run test:e2e
 ```
 
-These are not deployed-release commands. The packaged release excludes
-`tests/`, `node_modules/`, and `vendor/`; deployment then installs Composer
-production dependencies with `--no-dev` and does not install Node dependencies.
-
-In CI, `npm run test:e2e` always launches the configured Laravel server on port
-8010 with `CHAT_ENABLED=true` and `CHAT_DEMO_ASSISTANT=true`, then runs Chromium
-only. Outside CI, Playwright may reuse an existing server on port 8010. When it
-does, Playwright does not launch the configured process or apply those two flag
-values; the existing server's configuration governs the smoke. The command must
-not target production.
-
-## Deployed-release health checks
-
-Use read-only HTTP checks against the deployed release. At minimum, verify
-`GET /up`, `GET /`, and `GET /en` return successful responses, and confirm the
-storefront pages use the expected Arabic RTL and English LTR direction. The
-deployment script itself uses `/up` for its activation health gate.
-
-## CI and deployment dependency
-
-The `tests` workflow runs `composer ci:check`, installs Playwright Chromium, and
-runs `npm run test:e2e` before validating deployment scripts and packaging a
-SHA-bound release artifact. On smoke failure, its GitHub Actions run exposes the
-log and uploads `playwright-report-<sha>` from `playwright-report/` for seven
-days.
-
-`deploy-production` runs only after a successful `tests` workflow for a push to
-`main`. It downloads the artifact for that exact SHA and invokes
-`deploy/hostinger-release.sh`, which migrates forward, caches configuration,
-routes, and views, atomically switches the active release, checks `/up`, and
-restores the prior release automatically if health fails.
-
-Verified release evidence is recorded in [STATUS.md](STATUS.md). General
-deployment details live in the [Hostinger deployment
-runbook](../operations/hostinger-deployment.md).
-
-## Incident and rollback routing
-
-Record assistant incidents in [INCIDENTS.md](INCIDENTS.md), preserve the active
-and last known-good application SHAs, and disable chat first when that safely
-contains the issue. For an application rollback, follow the [Hostinger rollback
-runbook](../operations/hostinger-rollback.md). Do not run `migrate:rollback` as
-part of an application rollback.
+`composer ci:check` includes PHP validation, formatting, static analysis, tests,
+and frontend CI checks. `npm run test:e2e` is Playwright Chromium. In CI it
+starts the configured Laravel server with chat flags enabled; outside CI it can
+reuse port 8010 and must never target production.
