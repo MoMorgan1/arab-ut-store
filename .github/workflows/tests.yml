@@ -155,6 +155,9 @@ jobs:
           tests/Integration/ActiveCartInvariantUpgradeTest.php
           tests/Integration/CoinsCartConcurrencyTest.php
           tests/Integration/GuestCartClaimPurgeConcurrencyTest.php
+          tests/Integration/ChatConversationLifecycleInvariantUpgradeTest.php
+          tests/Integration/ChatConversationConcurrencyTest.php
+          tests/Integration/MaintainChatConversationsConcurrencyTest.php
           tests/Unit/Cart/CartOwnerTest.php
           tests/Unit/Enums/OrderItemStatusTest.php
           tests/Unit/Enums/PlatformTest.php
