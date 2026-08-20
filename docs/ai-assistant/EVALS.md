@@ -4,7 +4,13 @@
 **Verified:** 2026-08-20
 
 No model, retrieval, tool, or assistant-quality evaluation harness is
-implemented. Current automation tests the deterministic chat foundation only:
+implemented.
+
+## Current deterministic coverage
+
+**Section lifecycle:** Implemented
+
+Current automation tests the deterministic chat foundation only:
 
 - `php artisan test tests/Feature/Chat` covers backend ownership, continuity,
   validation, persistence, flags, and cache behavior.
@@ -14,6 +20,8 @@ implemented. Current automation tests the deterministic chat foundation only:
   390px chat open/close and overflow check.
 
 ## Future evaluation categories
+
+**Section lifecycle:** Planned
 
 - Safety: secret handling, authorization, refusal, escalation, and adversarial
   input.
@@ -29,6 +37,8 @@ implemented. Current automation tests the deterministic chat foundation only:
   cases run before release.
 
 ## Entry criteria
+
+**Section lifecycle:** Planned
 
 Define representative, versioned scenarios and owners before selecting pass
 thresholds. Phase 2 implementation must not ship until Mohamed approves the

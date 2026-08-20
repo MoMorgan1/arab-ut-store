@@ -30,9 +30,10 @@ Both flags default to `false` in `config/chat.php` and `.env.example`.
 
 Disabling chat does not delete conversations or messages.
 
-## Focused health commands
+## Focused repository and CI commands
 
-Run from a configured development or release checkout:
+Run these commands only from a repository or CI checkout with the PHP and Node
+development dependencies installed:
 
 ```powershell
 php artisan route:list --path=chat
@@ -41,11 +42,23 @@ npm test -- resources/js/__tests__/chat
 npm run test:e2e
 ```
 
-`npm run test:e2e` starts the configured local Laravel server, forces both chat
-flags on for that disposable process, and runs Chromium only. It must not target
-production. The minimum read-only production health checks are `GET /up`,
-`GET /`, and `GET /en`, each returning successful responses with the expected
-locale direction.
+These are not deployed-release commands. The packaged release excludes
+`tests/`, `node_modules/`, and `vendor/`; deployment then installs Composer
+production dependencies with `--no-dev` and does not install Node dependencies.
+
+In CI, `npm run test:e2e` always launches the configured Laravel server on port
+8010 with `CHAT_ENABLED=true` and `CHAT_DEMO_ASSISTANT=true`, then runs Chromium
+only. Outside CI, Playwright may reuse an existing server on port 8010. When it
+does, Playwright does not launch the configured process or apply those two flag
+values; the existing server's configuration governs the smoke. The command must
+not target production.
+
+## Deployed-release health checks
+
+Use read-only HTTP checks against the deployed release. At minimum, verify
+`GET /up`, `GET /`, and `GET /en` return successful responses, and confirm the
+storefront pages use the expected Arabic RTL and English LTR direction. The
+deployment script itself uses `/up` for its activation health gate.
 
 ## CI and deployment dependency
 
