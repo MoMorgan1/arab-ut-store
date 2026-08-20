@@ -15,14 +15,17 @@ test('a worker timeout still drains its peer and removes readiness artifacts', f
     $readinessBarrier = createConcurrentChatReadinessBarrier('cleanup-timeout');
     touch($readinessBarrier['first_ready']);
     touch($readinessBarrier['second_ready']);
-    $first = new Process([PHP_BINARY, '-r', 'usleep(1000000);'], timeout: 0.05);
-    $second = new Process([PHP_BINARY, '-r', 'usleep(1000000);'], timeout: 0.05);
-    $first->start();
-    $second->start();
-    usleep(100_000);
+    $first = new Process([PHP_BINARY, '-r', 'usleep(1000000);'], timeout: null);
+    $second = new Process([PHP_BINARY, '-r', 'usleep(1000000);'], timeout: null);
     $retainedFailure = null;
 
     try {
+        $first->start();
+        $second->start();
+        $first->setTimeout(0.05);
+        $second->setTimeout(0.05);
+        usleep(100_000);
+
         try {
             cleanupConcurrentChatReadinessBarrier($readinessBarrier, $first, $second);
         } catch (ProcessTimedOutException $failure) {
