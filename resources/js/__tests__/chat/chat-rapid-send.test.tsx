@@ -194,6 +194,7 @@ describe('Rapid Consecutive Messages & Idempotency', () => {
             name: /إعادة المحاولة/i,
         });
         expect(retryBtn).toBeInTheDocument();
+        expect(retryBtn).toHaveClass('min-h-11');
 
         // Click retry
         fireEvent.click(retryBtn);

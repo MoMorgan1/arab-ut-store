@@ -19,7 +19,7 @@ const pageState = vi.hoisted(() => ({
 }));
 
 vi.mock('@inertiajs/react', () => ({
-    usePage: () => ({ props: pageState.props }),
+    usePage: () => ({ component: 'store/home', props: pageState.props }),
 }));
 
 // Root layout wrapper simulator matching resources/js/app.tsx persistent layout structure

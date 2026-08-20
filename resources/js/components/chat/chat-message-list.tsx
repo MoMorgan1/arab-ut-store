@@ -162,7 +162,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                 role="log"
                 aria-live="polite"
                 tabIndex={0}
-                className="flex-1 space-y-4 overflow-y-auto p-4 focus-visible:outline-none"
+                className="flex-1 space-y-4 overflow-y-auto p-4 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--arabut-focus)]"
             >
                 {/* Older messages loader button */}
                 {hasMore && (
@@ -171,12 +171,12 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                             type="button"
                             onClick={handleLoadOlderClick}
                             disabled={isLoadingOlder}
-                            className="rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-3 py-1 text-xs text-[var(--arabut-muted)] hover:text-[var(--arabut-ink)] disabled:opacity-50"
+                            className="min-h-11 rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-3 py-1 text-xs text-[var(--arabut-muted)] hover:text-[var(--arabut-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isLoadingOlder
                                 ? isEn
-                                    ? 'Loading older messages...'
-                                    : 'جاري تحميل الرسائل السابقة...'
+                                    ? 'Loading older messages…'
+                                    : 'جاري تحميل الرسائل السابقة…'
                                 : isEn
                                   ? 'Load older messages'
                                   : 'تحميل الرسائل السابقة'}
@@ -187,8 +187,8 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                 {/* Initial loading state */}
                 {isLoading && (
                     <div className="flex h-32 items-center justify-center">
-                        <span className="animate-pulse text-sm text-[var(--arabut-muted)]">
-                            {isEn ? 'Loading chat...' : 'جاري فتح الشات...'}
+                        <span className="animate-pulse text-sm text-[var(--arabut-muted)] motion-reduce:animate-none">
+                            {isEn ? 'Loading chat…' : 'جاري فتح الشات…'}
                         </span>
                     </div>
                 )}
@@ -248,7 +248,10 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                         {/* Status / retry for customer messages */}
                                         {isCustomer && isError && (
                                             <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--arabut-danger)]">
-                                                <AlertCircle className="h-3.5 w-3.5" />
+                                                <AlertCircle
+                                                    className="h-3.5 w-3.5"
+                                                    aria-hidden="true"
+                                                />
                                                 <span>
                                                     {isEn
                                                         ? 'Failed to send'
@@ -264,9 +267,12 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                                     message.publicId,
                                                             )
                                                         }
-                                                        className="inline-flex items-center gap-0.5 underline hover:text-[var(--arabut-ink)]"
+                                                        className="inline-flex min-h-11 items-center gap-1 px-1 underline hover:text-[var(--arabut-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)]"
                                                     >
-                                                        <RefreshCw className="h-3 w-3" />
+                                                        <RefreshCw
+                                                            className="h-3 w-3"
+                                                            aria-hidden="true"
+                                                        />
                                                         {isEn
                                                             ? 'Retry'
                                                             : 'إعادة المحاولة'}
@@ -317,7 +323,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                     onClick={() =>
                                         onSelectSuggestion(suggestion)
                                     }
-                                    className="rounded-xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-3 py-1.5 text-xs text-[var(--arabut-ink)] transition-colors hover:border-[var(--arabut-gold)]/50 hover:bg-[var(--arabut-navy-active)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] active:scale-95"
+                                    className="min-h-11 rounded-xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-3 py-1.5 text-xs text-[var(--arabut-ink)] transition-colors hover:border-[var(--arabut-gold)]/50 hover:bg-[var(--arabut-navy-active)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] active:scale-95 motion-reduce:transform-none motion-reduce:transition-none"
                                 >
                                     {suggestion}
                                 </button>
@@ -335,9 +341,9 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                     type="button"
                     onClick={handleScrollToBottomClick}
                     aria-label={isEn ? 'Scroll to bottom' : 'الانتقال لأسفل'}
-                    className="absolute start-1/2 bottom-4 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)]/95 px-3.5 py-1.5 text-xs font-semibold text-[var(--arabut-gold-bright)] shadow-xl backdrop-blur-sm transition-transform hover:scale-105 active:scale-95"
+                    className="absolute start-1/2 bottom-4 flex min-h-11 -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)]/95 px-3.5 py-1.5 text-xs font-semibold text-[var(--arabut-gold-bright)] shadow-xl backdrop-blur-sm transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] active:scale-95 motion-reduce:transform-none motion-reduce:transition-none"
                 >
-                    <ArrowDown className="h-3.5 w-3.5" />
+                    <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
                     <span>{isEn ? 'New messages' : 'رسائل جديدة'}</span>
                 </button>
             )}

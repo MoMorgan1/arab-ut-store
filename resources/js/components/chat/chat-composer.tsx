@@ -19,7 +19,8 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const isEn = locale === 'en';
 
-    const placeholder = isEn ? 'Type a message...' : 'اكتب رسالتك هنا...';
+    const placeholder = isEn ? 'Type a message…' : 'اكتب رسالتك هنا…';
+    const inputLabel = isEn ? 'Message input' : 'حقل كتابة الرسالة';
     const sendLabel = isEn ? 'Send message' : 'إرسال الرسالة';
 
     useEffect(() => {
@@ -61,7 +62,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
     return (
         <form
             onSubmit={handleSubmit}
-            className="border-t border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)]/90 p-3 backdrop-blur-md"
+            className="chat-composer border-t border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)]/90 p-3 backdrop-blur-md"
         >
             <div className="relative flex items-end gap-2 rounded-2xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] p-1.5 focus-within:border-[var(--arabut-gold)]/60 focus-within:ring-1 focus-within:ring-[var(--arabut-gold)]/60">
                 <textarea
@@ -74,6 +75,9 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                     maxLength={MAX_LENGTH}
                     disabled={disabled}
                     dir="auto"
+                    aria-label={inputLabel}
+                    name="chat_message"
+                    autoComplete="off"
                     className="max-h-32 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-base text-[var(--arabut-ink)] placeholder-[var(--arabut-muted)] focus:outline-none disabled:opacity-60 lg:text-sm"
                 />
 
@@ -81,7 +85,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                     type="submit"
                     disabled={!canSubmit}
                     aria-label={sendLabel}
-                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--arabut-gold-bright)] text-[var(--arabut-navy-deep)] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--arabut-gold-bright)] text-[var(--arabut-navy-deep)] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none"
                 >
                     <Send className="h-5 w-5" aria-hidden="true" />
                 </button>

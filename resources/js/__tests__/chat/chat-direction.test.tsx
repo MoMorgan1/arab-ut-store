@@ -41,18 +41,37 @@ describe('chat direction contracts', () => {
     });
 
     it.each([
-        ['ar', /إرسال الرسالة/i],
-        ['en', /Send message/i],
-    ])('keeps the send icon unmirrored in %s', (locale, sendLabel) => {
-        render(<ChatComposer locale={locale} onSend={() => undefined} />);
+        ['ar', /إرسال الرسالة/i, 'حقل كتابة الرسالة'],
+        ['en', /Send message/i, 'Message input'],
+    ])(
+        'keeps the composer accessible and the send icon unmirrored in %s',
+        (locale, sendLabel, inputLabel) => {
+            render(<ChatComposer locale={locale} onSend={() => undefined} />);
 
-        const sendIcon = screen
-            .getByRole('button', { name: sendLabel })
-            .querySelector('svg');
+            expect(screen.getByRole('textbox')).toHaveAttribute(
+                'aria-label',
+                inputLabel,
+            );
+            expect(screen.getByRole('textbox')).toHaveAttribute(
+                'name',
+                'chat_message',
+            );
+            expect(screen.getByRole('textbox')).toHaveAttribute(
+                'autocomplete',
+                'off',
+            );
+            expect(screen.getByRole('textbox').closest('form')).toHaveClass(
+                'chat-composer',
+            );
 
-        expect(sendIcon).not.toBeNull();
-        expect(sendIcon).not.toHaveClass('rotate-180');
-    });
+            const sendIcon = screen
+                .getByRole('button', { name: sendLabel })
+                .querySelector('svg');
+
+            expect(sendIcon).not.toBeNull();
+            expect(sendIcon).not.toHaveClass('rotate-180');
+        },
+    );
 
     it.each(['ar', 'en'])(
         'uses a mobile-safe composer font size in %s',

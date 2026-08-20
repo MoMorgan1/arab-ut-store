@@ -4,6 +4,8 @@ export type ChatMessageType = 'text' | 'system';
 
 export type ChatConversationStatus = 'open' | 'closed' | 'archived';
 
+export type ChatSurface = 'store' | 'account';
+
 export type ChatMessage = {
     publicId: string;
     conversationPublicId?: string;

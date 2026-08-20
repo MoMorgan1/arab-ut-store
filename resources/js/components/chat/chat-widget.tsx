@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useChat } from '@/hooks/use-chat';
+import type { ChatSurface } from '@/types/chat';
 import { ChatComposer } from './chat-composer';
 import { ChatHeader } from './chat-header';
 import { ChatLauncher } from './chat-launcher';
@@ -9,6 +10,7 @@ export type ChatWidgetProps = {
     enabled?: boolean;
     demoAssistant?: boolean;
     locale?: string;
+    surface?: ChatSurface;
 };
 
 const CLOSE_TRANSITION_MS = 180;
@@ -17,6 +19,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
     enabled,
     demoAssistant,
     locale = 'ar',
+    surface = 'store',
 }) => {
     const {
         isChatEnabled,
@@ -27,6 +30,8 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         isLoading,
         isAssistantTyping,
         isLoadingOlder,
+        isRestarting,
+        canRestart,
         hasMore,
         unreadCount,
         error,
@@ -35,6 +40,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         sendMessage,
         retryMessage,
         loadOlderMessages,
+        restartChat,
     } = useChat({ enabled, demoAssistant, locale });
 
     const launcherRef = useRef<HTMLButtonElement>(null);
@@ -100,7 +106,9 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
 
     return (
         <div
-            className="fixed right-4 bottom-4 z-50 font-sans sm:right-6 sm:bottom-6"
+            className={`chat-widget-root fixed right-4 bottom-4 z-50 font-sans ${
+                surface === 'account' ? 'chat-widget-root--account' : ''
+            }`}
             dir={locale === 'en' ? 'ltr' : 'rtl'}
         >
             {/* Screen reader live announcements */}
@@ -124,14 +132,20 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                             ? 'Arab UT Chat Assistant'
                             : 'شات مساعد عرب التيميت'
                     }
-                    className={`fixed inset-0 z-50 flex origin-bottom flex-col bg-[var(--arabut-navy)] transition-[transform,opacity] motion-reduce:transition-none sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[650px] sm:max-h-[85vh] sm:w-[420px] sm:origin-bottom-right sm:overflow-hidden sm:rounded-3xl sm:border sm:border-[var(--arabut-line)] sm:shadow-2xl ${
+                    className={`chat-widget-dialog fixed inset-0 z-[70] flex origin-bottom flex-col overscroll-contain bg-[var(--arabut-navy)] transition-[transform,opacity] motion-reduce:transition-none md:inset-auto md:right-6 md:bottom-24 md:h-[650px] md:max-h-[85vh] md:w-[420px] md:origin-bottom-right md:overflow-hidden md:rounded-3xl md:border md:border-[var(--arabut-line)] md:shadow-2xl ${
                         isVisible
                             ? 'pointer-events-auto translate-y-0 scale-100 opacity-100 duration-[280ms] [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]'
-                            : 'pointer-events-none translate-y-3 scale-[0.98] opacity-0 duration-[180ms] [transition-timing-function:cubic-bezier(0.7,0,0.84,0)] sm:scale-[0.96]'
+                            : 'pointer-events-none translate-y-3 scale-[0.98] opacity-0 duration-[180ms] [transition-timing-function:cubic-bezier(0.7,0,0.84,0)] md:scale-[0.96]'
                     }`}
                 >
                     {/* Header */}
-                    <ChatHeader locale={locale} onClose={closeChat} />
+                    <ChatHeader
+                        locale={locale}
+                        canRestart={canRestart}
+                        isRestarting={isRestarting}
+                        onClose={closeChat}
+                        onRestart={restartChat}
+                    />
 
                     {/* Error Banner if any */}
                     {error !== null && (
@@ -140,7 +154,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                             <button
                                 type="button"
                                 onClick={clearError}
-                                className="underline hover:opacity-80"
+                                className="min-h-11 px-2 underline hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)]"
                             >
                                 {locale === 'en' ? 'Dismiss' : 'إغلاق'}
                             </button>
@@ -162,7 +176,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
 
                     {/* Composer */}
                     <ChatComposer
-                        disabled={isLoading}
+                        disabled={isLoading || isRestarting}
                         locale={locale}
                         onSend={sendMessage}
                     />

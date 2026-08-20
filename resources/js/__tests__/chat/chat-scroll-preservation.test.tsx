@@ -84,6 +84,7 @@ describe('Chat Scroll Preservation', () => {
             name: /Load older messages/i,
         });
         expect(loadOlderBtn).toBeInTheDocument();
+        expect(loadOlderBtn).toHaveClass('min-h-11');
 
         // Click load older
         fireEvent.click(loadOlderBtn);
@@ -93,5 +94,46 @@ describe('Chat Scroll Preservation', () => {
         });
 
         expect(screen.getByText('Recent message 50')).toBeInTheDocument();
+    });
+
+    it('gives the floating scroll control a 44px target', async () => {
+        const message = {
+            publicId: 'msg-scroll-target',
+            conversationPublicId: 'conv-scroll-target',
+            senderType: 'assistant' as const,
+            messageType: 'text' as const,
+            content: 'Scrollable message',
+            createdAt: '2026-08-20T10:50:00Z',
+        };
+
+        vi.mocked(fetch).mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                data: {
+                    publicId: 'conv-scroll-target',
+                    status: 'open',
+                    locale: 'en',
+                    messages: [message],
+                    hasMore: false,
+                    oldestCursor: null,
+                },
+            }),
+        } as Response);
+
+        render(<ChatWidget enabled={true} locale="en" />);
+        fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+
+        const log = await screen.findByRole('log');
+        Object.defineProperties(log, {
+            clientHeight: { configurable: true, value: 100 },
+            scrollHeight: { configurable: true, value: 500 },
+            scrollTop: { configurable: true, value: 0, writable: true },
+        });
+        fireEvent.scroll(log);
+
+        expect(
+            screen.getByRole('button', { name: /Scroll to bottom/i }),
+        ).toHaveClass('min-h-11');
     });
 });

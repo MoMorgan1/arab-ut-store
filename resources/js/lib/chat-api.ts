@@ -52,8 +52,10 @@ function extractErrorCode(payload: unknown): string {
     return 'chat_error';
 }
 
-export async function fetchOrStartActiveConversation(
-    locale?: string,
+async function postConversation(
+    endpoint: string,
+    locale: string | undefined,
+    failureMessage: string,
 ): Promise<ChatConversation> {
     const token = csrfToken();
     const headers: Record<string, string> = {
@@ -68,7 +70,7 @@ export async function fetchOrStartActiveConversation(
     let response: Response;
 
     try {
-        response = await fetch('/chat/conversations', {
+        response = await fetch(endpoint, {
             method: 'POST',
             credentials: 'same-origin',
             cache: 'no-store',
@@ -90,11 +92,31 @@ export async function fetchOrStartActiveConversation(
         throw new ChatApiError(
             extractErrorCode(payload),
             response.status,
-            'Failed to start chat conversation.',
+            failureMessage,
         );
     }
 
     return (payload as { data: ChatConversation }).data;
+}
+
+export async function fetchOrStartActiveConversation(
+    locale?: string,
+): Promise<ChatConversation> {
+    return postConversation(
+        '/chat/conversations',
+        locale,
+        'Failed to start chat conversation.',
+    );
+}
+
+export async function restartConversation(
+    locale: string,
+): Promise<ChatConversation> {
+    return postConversation(
+        '/chat/conversations/restart',
+        locale,
+        'Failed to restart chat conversation.',
+    );
 }
 
 export async function fetchConversation(
