@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
+require __DIR__.'/ConcurrentChatReadinessBarrier.php';
 
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
@@ -27,6 +28,8 @@ try {
 
         waitForRestartCommit($barrierKey);
     }
+
+    waitForConcurrentChatRelease($argv[4] ?? '', $argv[5] ?? '');
 
     $result = $app->make(CreateChatMessage::class)->execute(
         $conversation,

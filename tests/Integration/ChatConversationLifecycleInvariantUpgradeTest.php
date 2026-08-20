@@ -100,7 +100,7 @@ test('lifecycle migration rollback restores the legacy schema and can be applied
     });
 });
 
-test('lifecycle migration completes a real MariaDB down up and remigration lifecycle', function () {
+test('lifecycle migration enforces every owner and reply invariant through a real MariaDB remigration', function () {
     if (! in_array(DB::connection()->getDriverName(), ['mariadb', 'mysql'], true)) {
         $this->markTestSkipped('The generated-column lifecycle requires MariaDB/MySQL.');
     }
@@ -109,29 +109,95 @@ test('lifecycle migration completes a real MariaDB down up and remigration lifec
     DB::table('chat_conversations')->delete();
     $migration = chatLifecycleMigration();
     $user = User::factory()->create();
+    $guestKey = str_repeat('b', 64);
     $invariantInstalled = true;
 
     try {
         $migration->down();
         $invariantInstalled = false;
-        DB::table('chat_conversations')->insert(legacyConversationAttributes(
+
+        $olderUserConversation = seedLegacyConversation(
+            userId: $user->id,
+            guestKey: null,
+            lastMessageAt: now()->subHours(2),
+        );
+        $newerUserConversation = seedLegacyConversation(
+            userId: $user->id,
+            guestKey: null,
+            lastMessageAt: now()->subHour(),
+        );
+        $olderGuestConversation = seedLegacyConversation(
+            userId: null,
+            guestKey: $guestKey,
+            lastMessageAt: now()->subHours(2),
+        );
+        $newerGuestConversation = seedLegacyConversation(
+            userId: null,
+            guestKey: $guestKey,
+            lastMessageAt: now()->subHour(),
+        );
+        seedLegacyConversation(
+            userId: null,
+            guestKey: $guestKey,
+            lastMessageAt: now()->subDays(2),
+            status: 'closed',
+        );
+
+        $migration->up();
+        $invariantInstalled = true;
+
+        expect(DB::table('chat_conversations')->where('id', $newerUserConversation)->value('active_owner_key'))
+            ->toBe("user:{$user->id}")
+            ->and(DB::table('chat_conversations')->where('id', $olderUserConversation)->value('status'))
+            ->toBe('closed')
+            ->and(DB::table('chat_conversations')->where('id', $olderUserConversation)->value('close_reason'))
+            ->toBe('invariant_upgrade_duplicate')
+            ->and(DB::table('chat_conversations')->where('id', $newerGuestConversation)->value('active_owner_key'))
+            ->toBe("guest:{$guestKey}")
+            ->and(DB::table('chat_conversations')->where('id', $olderGuestConversation)->value('status'))
+            ->toBe('closed')
+            ->and(DB::table('chat_conversations')->where('id', $olderGuestConversation)->value('close_reason'))
+            ->toBe('invariant_upgrade_duplicate');
+
+        expect(fn () => DB::table('chat_conversations')->insert(legacyConversationAttributes(
             userId: $user->id,
             guestKey: null,
             lastMessageAt: now(),
-        ));
+        )))->toThrow(QueryException::class);
+        expect(fn () => DB::table('chat_conversations')->insert(legacyConversationAttributes(
+            userId: null,
+            guestKey: $guestKey,
+            lastMessageAt: now(),
+        )))->toThrow(QueryException::class);
 
-        $migration->up();
-        $invariantInstalled = true;
+        DB::table('chat_conversations')->where('id', $newerGuestConversation)->update(['status' => 'closed']);
+        $replacementGuestConversation = seedLegacyConversation(
+            userId: null,
+            guestKey: $guestKey,
+            lastMessageAt: now(),
+        );
 
-        expect(DB::table('chat_conversations')->value('active_owner_key'))->toBe("user:{$user->id}");
+        expect(DB::table('chat_conversations')->where('id', $replacementGuestConversation)->value('active_owner_key'))
+            ->toBe("guest:{$guestKey}");
+
+        $customerMessage = seedLegacyMessage($newerUserConversation, 'Original');
+        seedLegacyMessage($newerUserConversation, 'First reply', $customerMessage);
+        expect(fn () => seedLegacyMessage($newerUserConversation, 'Second reply', $customerMessage))
+            ->toThrow(QueryException::class);
 
         $migration->down();
         $invariantInstalled = false;
-        expect(Schema::hasColumn('chat_conversations', 'active_owner_key'))->toBeFalse();
+        expect(Schema::hasColumns('chat_conversations', ['active_owner_key', 'closed_at', 'close_reason']))
+            ->toBeFalse()
+            ->and(Schema::hasColumn('chat_messages', 'reply_to_message_id'))
+            ->toBeFalse();
 
         $migration->up();
         $invariantInstalled = true;
-        expect(DB::table('chat_conversations')->value('active_owner_key'))->toBe("user:{$user->id}");
+        expect(DB::table('chat_conversations')->where('id', $newerUserConversation)->value('active_owner_key'))
+            ->toBe("user:{$user->id}")
+            ->and(DB::table('chat_conversations')->where('id', $replacementGuestConversation)->value('active_owner_key'))
+            ->toBe("guest:{$guestKey}");
     } finally {
         if (! $invariantInstalled) {
             $migration->up();

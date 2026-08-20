@@ -25,7 +25,7 @@ final class ChatErrorResponse
         }
 
         if ($status === 429) {
-            return $this->error('rate_limited', 'rate_limited', 429);
+            return $this->error('rate_limited', 'rate_limited', 429, $this->safeRateLimitHeaders($response));
         }
 
         if ($status >= 500) {
@@ -37,7 +37,8 @@ final class ChatErrorResponse
         return $response;
     }
 
-    private function error(string $code, string $message, int $status): Response
+    /** @param array<string, list<string>> $headers */
+    private function error(string $code, string $message, int $status, array $headers = []): Response
     {
         return response()->json([
             'error' => [
@@ -45,7 +46,21 @@ final class ChatErrorResponse
                 'message' => trans("chat.{$message}"),
                 'details' => (object) [],
             ],
-        ], $status)->header('Cache-Control', 'no-store, private');
+        ], $status, $headers)->header('Cache-Control', 'no-store, private');
+    }
+
+    /** @return array<string, list<string>> */
+    private function safeRateLimitHeaders(Response $response): array
+    {
+        $safeHeaders = [];
+
+        foreach ($response->headers->all() as $name => $values) {
+            if ($name === 'retry-after' || str_starts_with($name, 'x-ratelimit-')) {
+                $safeHeaders[$name] = array_map('strval', $values);
+            }
+        }
+
+        return $safeHeaders;
     }
 
     private function isChatRequest(Request $request): bool

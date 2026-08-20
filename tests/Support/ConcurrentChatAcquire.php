@@ -9,6 +9,7 @@ use Illuminate\Session\ArraySessionHandler;
 use Illuminate\Session\Store;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
+require __DIR__.'/ConcurrentChatReadinessBarrier.php';
 
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
@@ -25,6 +26,8 @@ try {
     if ($ownerType === 'user') {
         $request->setUserResolver(fn (): ?User => User::find((int) $ownerIdentifier));
     }
+
+    waitForConcurrentChatRelease($argv[3] ?? '', $argv[4] ?? '');
 
     echo $app->make(CreateOrGetActiveConversation::class)->execute($owner, $request, 'ar')->public_id;
 } catch (Throwable) {

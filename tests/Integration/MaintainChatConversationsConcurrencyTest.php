@@ -39,9 +39,10 @@ test('maintenance does not delete an expired guest candidate claimed during its 
     $readyPath = $barrierDirectory.DIRECTORY_SEPARATOR.'ready';
     $releasePath = $barrierDirectory.DIRECTORY_SEPARATOR.'release';
     $maintainer = concurrentChatMaintenanceProcess($readyPath, $releasePath, '2026-08-20 12:00:00');
-    $maintainer->start();
+    $user = null;
 
     try {
+        $maintainer->start();
         waitForChatMaintenanceBarrier($readyPath);
 
         $user = User::factory()->create();
@@ -56,19 +57,37 @@ test('maintenance does not delete an expired guest candidate claimed during its 
             ->and($conversation->fresh()->guest_key)->toBeNull()
             ->and($message->fresh())->not->toBeNull();
     } finally {
-        if (! file_exists($releasePath)) {
-            touch($releasePath);
-        }
+        try {
+            if (! file_exists($releasePath)) {
+                touch($releasePath);
+            }
 
-        $maintainer->wait();
+            if ($maintainer->isStarted()) {
+                $maintainer->wait();
+            }
+        } finally {
+            try {
+                refreshChatMaintenanceConnection();
 
-        foreach ([$readyPath, $releasePath] as $path) {
-            if (file_exists($path)) {
-                unlink($path);
+                try {
+                    ChatConversation::query()->whereKey($conversation->id)->delete();
+                } finally {
+                    if ($user instanceof User) {
+                        $user->delete();
+                    }
+                }
+            } finally {
+                foreach ([$readyPath, $releasePath] as $path) {
+                    if (file_exists($path)) {
+                        unlink($path);
+                    }
+                }
+
+                if (is_dir($barrierDirectory)) {
+                    rmdir($barrierDirectory);
+                }
             }
         }
-
-        rmdir($barrierDirectory);
     }
 });
 

@@ -24,18 +24,18 @@ return new class extends Migration
             $table->unique('reply_to_message_id');
         });
 
-        $this->backfillOpenOwnerKeysAndCloseDuplicates();
-
         $driver = DB::connection()->getDriverName();
 
-        if ($driver === 'sqlite') {
-            $this->installSqliteInvariant();
+        if (in_array($driver, ['mariadb', 'mysql'], true)) {
+            $this->installMariaDbInvariant();
 
             return;
         }
 
-        if (in_array($driver, ['mariadb', 'mysql'], true)) {
-            $this->installMariaDbInvariant();
+        $this->backfillOpenOwnerKeysAndCloseDuplicates();
+
+        if ($driver === 'sqlite') {
+            $this->installSqliteInvariant();
         }
     }
 
@@ -48,8 +48,11 @@ return new class extends Migration
             DB::statement('DROP TRIGGER IF EXISTS chat_conversations_derive_active_owner_update');
             DB::statement('DROP INDEX IF EXISTS chat_conversations_active_owner_key_unique');
         } elseif (in_array($driver, ['mariadb', 'mysql'], true)) {
-            DB::statement('ALTER TABLE chat_conversations DROP INDEX chat_conversations_active_owner_key_unique');
-            DB::statement('ALTER TABLE chat_conversations MODIFY active_owner_key VARCHAR(255) NULL');
+            DB::statement(<<<'SQL'
+                ALTER TABLE chat_conversations
+                DROP INDEX chat_conversations_active_owner_key_unique,
+                MODIFY active_owner_key VARCHAR(255) NULL
+                SQL);
         }
 
         Schema::table('chat_messages', function (Blueprint $table): void {
@@ -146,17 +149,24 @@ return new class extends Migration
 
     private function installMariaDbInvariant(): void
     {
-        DB::statement(<<<'SQL'
-            ALTER TABLE chat_conversations
-            MODIFY active_owner_key VARCHAR(255)
-            GENERATED ALWAYS AS (
-                CASE
-                    WHEN status = 'open' AND user_id IS NOT NULL THEN CONCAT('user:', user_id)
-                    WHEN status = 'open' AND guest_key IS NOT NULL THEN CONCAT('guest:', guest_key)
-                    ELSE NULL
-                END
-            ) STORED
-            SQL);
-        DB::statement('ALTER TABLE chat_conversations ADD UNIQUE INDEX chat_conversations_active_owner_key_unique (active_owner_key)');
+        DB::statement('LOCK TABLES chat_conversations WRITE');
+
+        try {
+            $this->backfillOpenOwnerKeysAndCloseDuplicates();
+            DB::statement(<<<'SQL'
+                ALTER TABLE chat_conversations
+                MODIFY active_owner_key VARCHAR(255)
+                GENERATED ALWAYS AS (
+                    CASE
+                        WHEN status = 'open' AND user_id IS NOT NULL THEN CONCAT('user:', user_id)
+                        WHEN status = 'open' AND guest_key IS NOT NULL THEN CONCAT('guest:', guest_key)
+                        ELSE NULL
+                    END
+                ) STORED,
+                ADD UNIQUE INDEX chat_conversations_active_owner_key_unique (active_owner_key)
+                SQL);
+        } finally {
+            DB::statement('UNLOCK TABLES');
+        }
     }
 };

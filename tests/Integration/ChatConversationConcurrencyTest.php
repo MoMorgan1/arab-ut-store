@@ -17,12 +17,27 @@ test('concurrent authenticated first acquisitions resolve to one active conversa
 
     expect(DB::transactionLevel())->toBe(0);
     $user = User::factory()->create();
+    $readinessBarrier = createConcurrentChatReadinessBarrier('authenticated-acquire');
+    $first = null;
+    $second = null;
 
     try {
-        $first = concurrentChatAcquireProcess('user', (string) $user->id);
-        $second = concurrentChatAcquireProcess('user', (string) $user->id);
+        $first = concurrentChatAcquireProcess(
+            'user',
+            (string) $user->id,
+            $readinessBarrier['first_ready'],
+            $readinessBarrier['release'],
+        );
+        $second = concurrentChatAcquireProcess(
+            'user',
+            (string) $user->id,
+            $readinessBarrier['second_ready'],
+            $readinessBarrier['release'],
+        );
         $first->start();
         $second->start();
+        waitForConcurrentChatReadiness($readinessBarrier);
+        releaseConcurrentChatWorkers($readinessBarrier);
         $first->wait();
         $second->wait();
         refreshConcurrentChatConnection();
@@ -33,6 +48,7 @@ test('concurrent authenticated first acquisitions resolve to one active conversa
             ->and(trim($second->getOutput()))->toBe(trim($first->getOutput()))
             ->and(ChatConversation::query()->where('active_owner_key', "user:{$user->id}")->count())->toBe(1);
     } finally {
+        cleanupConcurrentChatReadinessBarrier($readinessBarrier, $first, $second);
         $user->delete();
     }
 });
@@ -45,12 +61,27 @@ test('concurrent guest first acquisitions resolve to one active conversation', f
     expect(DB::transactionLevel())->toBe(0);
     $guestKey = hash_hmac('sha256', 'concurrent-guest-chat-owner', 'synthetic-concurrency-key');
     deleteConcurrentGuestConversation($guestKey);
+    $readinessBarrier = createConcurrentChatReadinessBarrier('guest-acquire');
+    $first = null;
+    $second = null;
 
     try {
-        $first = concurrentChatAcquireProcess('guest', $guestKey);
-        $second = concurrentChatAcquireProcess('guest', $guestKey);
+        $first = concurrentChatAcquireProcess(
+            'guest',
+            $guestKey,
+            $readinessBarrier['first_ready'],
+            $readinessBarrier['release'],
+        );
+        $second = concurrentChatAcquireProcess(
+            'guest',
+            $guestKey,
+            $readinessBarrier['second_ready'],
+            $readinessBarrier['release'],
+        );
         $first->start();
         $second->start();
+        waitForConcurrentChatReadiness($readinessBarrier);
+        releaseConcurrentChatWorkers($readinessBarrier);
         $first->wait();
         $second->wait();
         refreshConcurrentChatConnection();
@@ -61,6 +92,7 @@ test('concurrent guest first acquisitions resolve to one active conversation', f
             ->and(trim($second->getOutput()))->toBe(trim($first->getOutput()))
             ->and(ChatConversation::query()->where('active_owner_key', "guest:{$guestKey}")->count())->toBe(1);
     } finally {
+        cleanupConcurrentChatReadinessBarrier($readinessBarrier, $first, $second);
         deleteConcurrentGuestConversation($guestKey);
     }
 });
@@ -76,13 +108,32 @@ test('concurrent duplicate messages replay the canonical customer and demo reply
         'last_message_at' => now()->subMinute(),
     ]);
     $clientMessageId = (string) Str::uuid();
+    $readinessBarrier = createConcurrentChatReadinessBarrier('duplicate-send');
+    $first = null;
+    $second = null;
 
     try {
         installChatMessageUpdateAudit();
-        $first = concurrentChatMessageProcess((string) $conversation->id, $clientMessageId);
-        $second = concurrentChatMessageProcess((string) $conversation->id, $clientMessageId);
+        $first = concurrentChatMessageProcess(
+            (string) $conversation->id,
+            $clientMessageId,
+            readinessBarrier: [
+                'ready' => $readinessBarrier['first_ready'],
+                'release' => $readinessBarrier['release'],
+            ],
+        );
+        $second = concurrentChatMessageProcess(
+            (string) $conversation->id,
+            $clientMessageId,
+            readinessBarrier: [
+                'ready' => $readinessBarrier['second_ready'],
+                'release' => $readinessBarrier['release'],
+            ],
+        );
         $first->start();
         $second->start();
+        waitForConcurrentChatReadiness($readinessBarrier);
+        releaseConcurrentChatWorkers($readinessBarrier);
         $first->wait();
         $second->wait();
         refreshConcurrentChatConnection();
@@ -100,6 +151,7 @@ test('concurrent duplicate messages replay the canonical customer and demo reply
             ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->where('sender_type', 'assistant')->count())->toBe(1)
             ->and(DB::table('chat_message_update_audits')->where('conversation_id', $conversation->id)->count())->toBe(1);
     } finally {
+        cleanupConcurrentChatReadinessBarrier($readinessBarrier, $first, $second);
         removeChatMessageUpdateAudit();
         $conversation->delete();
         $user->delete();
@@ -161,8 +213,12 @@ function deleteConcurrentGuestConversation(string $guestKey): void
         ->delete();
 }
 
-function concurrentChatAcquireProcess(string $ownerType, string $ownerIdentifier): Process
-{
+function concurrentChatAcquireProcess(
+    string $ownerType,
+    string $ownerIdentifier,
+    string $readyPath,
+    string $releasePath,
+): Process {
     return new Process([
         PHP_BINARY,
         '-d', 'extension_dir='.ini_get('extension_dir'),
@@ -172,11 +228,18 @@ function concurrentChatAcquireProcess(string $ownerType, string $ownerIdentifier
         base_path('tests/Support/ConcurrentChatAcquire.php'),
         $ownerType,
         $ownerIdentifier,
+        $readyPath,
+        $releasePath,
     ], base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
 }
 
-function concurrentChatMessageProcess(string $conversationId, string $clientMessageId, ?string $barrierKey = null): Process
-{
+/** @param array{ready: string, release: string}|null $readinessBarrier */
+function concurrentChatMessageProcess(
+    string $conversationId,
+    string $clientMessageId,
+    ?string $restartBarrierKey = null,
+    ?array $readinessBarrier = null,
+): Process {
     $command = [
         PHP_BINARY,
         '-d', 'extension_dir='.ini_get('extension_dir'),
@@ -188,11 +251,82 @@ function concurrentChatMessageProcess(string $conversationId, string $clientMess
         $clientMessageId,
     ];
 
-    if ($barrierKey !== null) {
-        $command[] = $barrierKey;
+    if ($restartBarrierKey !== null || $readinessBarrier !== null) {
+        $command[] = $restartBarrierKey ?? '';
+    }
+
+    if ($readinessBarrier !== null) {
+        $command[] = $readinessBarrier['ready'];
+        $command[] = $readinessBarrier['release'];
     }
 
     return new Process($command, base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
+}
+
+/** @return array{directory: string, first_ready: string, second_ready: string, release: string} */
+function createConcurrentChatReadinessBarrier(string $scenario): array
+{
+    $directory = storage_path('framework/testing/chat-'.$scenario.'-'.bin2hex(random_bytes(8)));
+
+    if (! mkdir($directory, 0777, true) && ! is_dir($directory)) {
+        throw new RuntimeException("Unable to create the {$scenario} readiness barrier.");
+    }
+
+    return [
+        'directory' => $directory,
+        'first_ready' => $directory.DIRECTORY_SEPARATOR.'first-ready',
+        'second_ready' => $directory.DIRECTORY_SEPARATOR.'second-ready',
+        'release' => $directory.DIRECTORY_SEPARATOR.'release',
+    ];
+}
+
+/** @param array{first_ready: string, second_ready: string} $readinessBarrier */
+function waitForConcurrentChatReadiness(array $readinessBarrier): void
+{
+    $deadline = microtime(true) + 20;
+
+    while (! file_exists($readinessBarrier['first_ready']) || ! file_exists($readinessBarrier['second_ready'])) {
+        if (microtime(true) >= $deadline) {
+            throw new RuntimeException('Timed out waiting for both concurrent chat workers.');
+        }
+
+        usleep(25_000);
+    }
+}
+
+/** @param array{release: string} $readinessBarrier */
+function releaseConcurrentChatWorkers(array $readinessBarrier): void
+{
+    if (! touch($readinessBarrier['release'])) {
+        throw new RuntimeException('Unable to release the concurrent chat workers.');
+    }
+}
+
+/** @param array{directory: string, first_ready: string, second_ready: string, release: string} $readinessBarrier */
+function cleanupConcurrentChatReadinessBarrier(
+    array $readinessBarrier,
+    ?Process $first,
+    ?Process $second,
+): void {
+    if (! file_exists($readinessBarrier['release'])) {
+        touch($readinessBarrier['release']);
+    }
+
+    foreach ([$first, $second] as $process) {
+        if ($process?->isRunning()) {
+            $process->wait();
+        }
+    }
+
+    foreach (['first_ready', 'second_ready', 'release'] as $pathKey) {
+        if (file_exists($readinessBarrier[$pathKey])) {
+            unlink($readinessBarrier[$pathKey]);
+        }
+    }
+
+    if (is_dir($readinessBarrier['directory'])) {
+        rmdir($readinessBarrier['directory']);
+    }
 }
 
 function concurrentChatRestartProcess(string $conversationId, ?string $barrierKey = null): Process

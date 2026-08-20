@@ -2,12 +2,12 @@
 
 use App\Http\Middleware\SetChatLocale;
 use App\Models\ChatConversation;
-use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 beforeEach(function () {
     config()->set('chat.enabled', true);
@@ -85,28 +85,44 @@ test('429 throttle responses use the chat rate_limited envelope with private no-
         ->assertJsonPath('error.code', 'rate_limited')
         ->assertJsonPath('error.message', 'Too many chat requests. Please try again shortly.')
         ->assertJsonPath('error.details', []);
-    expect($response->headers->get('Cache-Control'))->toBe('no-store, private');
+    expect($response->headers->get('Cache-Control'))->toBe('no-store, private')
+        ->and($response->headers->get('Retry-After'))->not->toBeNull()
+        ->and($response->headers->get('X-RateLimit-Limit'))->toBe('30')
+        ->and($response->headers->get('X-RateLimit-Remaining'))->toBe('0');
+});
+
+test('framework 429 errors forward only safe retry guidance', function () {
+    $sentinel = 'SENTINEL: never forward this response header';
+
+    Route::post('/chat/testing/rate-limited', static function () use ($sentinel): void {
+        throw new TooManyRequestsHttpException(37, headers: [
+            'X-RateLimit-Limit' => '30',
+            'X-RateLimit-Remaining' => '0',
+            'X-Internal-Sentinel' => $sentinel,
+        ]);
+    })->middleware(SetChatLocale::class);
+
+    $response = $this->postJson('/chat/testing/rate-limited');
+
+    $response->assertStatus(429)
+        ->assertJsonPath('error.code', 'rate_limited')
+        ->assertJsonPath('error.message', trans('chat.rate_limited'))
+        ->assertJsonPath('error.details', []);
+    expect($response->headers->get('Cache-Control'))->toBe('no-store, private')
+        ->and($response->headers->get('Retry-After'))->toBe('37')
+        ->and($response->headers->get('X-RateLimit-Limit'))->toBe('30')
+        ->and($response->headers->get('X-RateLimit-Remaining'))->toBe('0')
+        ->and($response->headers->has('X-Internal-Sentinel'))->toBeFalse();
 });
 
 test('unexpected chat failures use a sanitized unavailable envelope with private no-store cache control', function () {
-    $user = User::factory()->create();
-    $conversation = ChatConversation::factory()->forUser($user)->create();
     $sentinel = 'SENTINEL: never expose this database failure';
 
-    ChatMessage::creating(static function () use ($sentinel): void {
+    Route::post('/chat/testing/unavailable', static function () use ($sentinel): void {
         throw new RuntimeException($sentinel);
-    });
+    })->middleware(SetChatLocale::class);
 
-    try {
-        $response = $this->actingAs($user)->postJson(route('chat.messages.store', [
-            'conversation' => $conversation->public_id,
-        ]), [
-            'content' => 'This request triggers an internal failure.',
-            'client_message_id' => (string) Str::uuid(),
-        ]);
-    } finally {
-        ChatMessage::flushEventListeners();
-    }
+    $response = $this->postJson('/chat/testing/unavailable');
 
     $response->assertStatus(500)
         ->assertJsonPath('error.code', 'chat_unavailable')

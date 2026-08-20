@@ -120,7 +120,7 @@ test('posting to an owned closed conversation returns conversation_closed withou
         ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->exists())->toBeFalse();
 });
 
-test('message creation rechecks the locked conversation lifecycle before inserting', function () {
+test('a stale conversation snapshot cannot accept a message after the conversation closes', function () {
     $user = User::factory()->create();
     $conversation = ChatConversation::factory()->forUser($user)->create();
     $staleConversation = $conversation->fresh();
@@ -139,37 +139,36 @@ test('message creation rechecks the locked conversation lifecycle before inserti
         ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->exists())->toBeFalse();
 });
 
-test('an Arabic conversation returns the Arabic closed-conversation message', function () {
+test('closed conversation errors use the conversation locale', function (
+    string $locale,
+    string $content,
+    string $expectedMessage,
+) {
     $user = User::factory()->create();
     $conversation = ChatConversation::factory()->forUser($user)->closed(
         ChatConversationCloseReason::CustomerStartedNew,
         now()->subMinute(),
-    )->create(['locale' => 'ar']);
+    )->create(['locale' => $locale]);
 
     $this->actingAs($user)
         ->postJson(route('chat.messages.store', ['conversation' => $conversation->public_id]), [
-            'content' => 'أرسل رسالة',
+            'content' => $content,
             'client_message_id' => (string) Str::uuid(),
         ])
         ->assertConflict()
-        ->assertJsonPath('error.message', 'المحادثة مقفلة. ابدأ محادثة جديدة للمتابعة.');
-});
-
-test('an English conversation returns the English closed-conversation message', function () {
-    $user = User::factory()->create();
-    $conversation = ChatConversation::factory()->forUser($user)->closed(
-        ChatConversationCloseReason::CustomerStartedNew,
-        now()->subMinute(),
-    )->create(['locale' => 'en']);
-
-    $this->actingAs($user)
-        ->postJson(route('chat.messages.store', ['conversation' => $conversation->public_id]), [
-            'content' => 'Send a message',
-            'client_message_id' => (string) Str::uuid(),
-        ])
-        ->assertConflict()
-        ->assertJsonPath('error.message', 'This conversation is closed. Start a new conversation to continue.');
-});
+        ->assertJsonPath('error.message', $expectedMessage);
+})->with([
+    'Arabic conversation' => [
+        'ar',
+        'أرسل رسالة',
+        'المحادثة مقفلة. ابدأ محادثة جديدة للمتابعة.',
+    ],
+    'English conversation' => [
+        'en',
+        'Send a message',
+        'This conversation is closed. Start a new conversation to continue.',
+    ],
+]);
 
 test('arbitrary client metadata is rejected or ignored and not stored', function () {
     $user = User::factory()->create();

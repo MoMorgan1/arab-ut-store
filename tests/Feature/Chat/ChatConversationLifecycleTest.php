@@ -4,21 +4,27 @@ use App\Actions\Chat\CreateChatConversation;
 use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatConversationStatus;
 use App\Models\ChatConversation;
-use App\Models\ChatMessage;
 use App\Models\User;
 use App\ValueObjects\Chat\ChatOwner;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
     config()->set('chat.enabled', true);
+    Carbon::setTestNow('2026-08-20 12:00:00');
 });
 
-test('inactive thread reopens within seven days but explicit restart never reopens', function () {
-    config()->set('chat.reopen_within_days', 7);
+afterEach(function (): void {
+    Carbon::setTestNow();
+});
+
+test('inactive thread reopens at the default seven-day cutoff but explicit restart never reopens', function () {
     $user = User::factory()->create();
     $inactive = ChatConversation::factory()->forUser($user)->closed(
         ChatConversationCloseReason::Inactive,
-        now()->subDays(2),
-    )->create(['last_message_at' => now()->subDays(2)]);
+        now()->subDays(7),
+    )->create(['last_message_at' => now()->subDays(7)]);
 
     $this->actingAs($user)->postJson(route('chat.conversations.store'))
         ->assertOk()
@@ -34,13 +40,12 @@ test('inactive thread reopens within seven days but explicit restart never reope
         ->toBe(ChatConversationCloseReason::CustomerStartedNew);
 });
 
-test('inactive thread closed more than seven days ago is replaced', function () {
-    config()->set('chat.reopen_within_days', 7);
+test('inactive thread beyond the default seven-day cutoff is replaced', function () {
     $user = User::factory()->create();
     $inactive = ChatConversation::factory()->forUser($user)->closed(
         ChatConversationCloseReason::Inactive,
-        now()->subDays(8),
-    )->create(['last_message_at' => now()->subDays(8)]);
+        now()->subDays(7)->subSecond(),
+    )->create(['last_message_at' => now()->subDays(7)->subSecond()]);
 
     $response = $this->actingAs($user)->postJson(route('chat.conversations.store'));
 
@@ -86,11 +91,29 @@ test('closed conversations with reasons other than inactivity never reopen', fun
 test('creating a conversation rolls back when onboarding cannot be saved', function () {
     $user = User::factory()->create();
 
-    ChatMessage::creating(static function (): void {
-        throw new RuntimeException('Onboarding storage failed.');
-    });
+    if (in_array(DB::connection()->getDriverName(), ['mariadb', 'mysql'], true)) {
+        DB::unprepared(<<<'SQL'
+            CREATE TRIGGER chat_messages_fail_onboarding_insert
+            BEFORE INSERT ON chat_messages
+            FOR EACH ROW
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Onboarding storage failed.'
+            SQL);
+    } else {
+        DB::unprepared(<<<'SQL'
+            CREATE TRIGGER chat_messages_fail_onboarding_insert
+            BEFORE INSERT ON chat_messages
+            BEGIN
+                SELECT RAISE(ABORT, 'Onboarding storage failed.');
+            END
+            SQL);
+    }
 
-    expect(fn () => app(CreateChatConversation::class)->execute(ChatOwner::user($user->id), 'ar'))
-        ->toThrow(RuntimeException::class, 'Onboarding storage failed.')
-        ->and(ChatConversation::query()->where('user_id', $user->id)->exists())->toBeFalse();
+    try {
+        expect(fn () => app(CreateChatConversation::class)->execute(ChatOwner::user($user->id), 'ar'))
+            ->toThrow(QueryException::class);
+    } finally {
+        DB::statement('DROP TRIGGER IF EXISTS chat_messages_fail_onboarding_insert');
+    }
+
+    expect(ChatConversation::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });

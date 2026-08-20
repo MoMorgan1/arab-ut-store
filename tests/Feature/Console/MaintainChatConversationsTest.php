@@ -13,19 +13,8 @@ afterEach(function (): void {
     Carbon::setTestNow();
 });
 
-test('chat maintenance uses the approved lifecycle and retention defaults', function () {
-    expect(config('chat.auto_close_hours'))->toBe(24)
-        ->and(config('chat.reopen_within_days'))->toBe(7)
-        ->and(config('chat.guest_retention_days'))->toBe(30)
-        ->and(config('chat.user_retention_days'))->toBe(180);
-});
-
-test('chat maintenance closes inactive conversations and purges expired owner-specific conversations', function () {
+test('default maintenance cutoffs close inactive conversations and purge expired owner-specific conversations', function () {
     Carbon::setTestNow('2026-08-20 12:00:00');
-
-    config()->set('chat.auto_close_hours', 24);
-    config()->set('chat.guest_retention_days', 30);
-    config()->set('chat.user_retention_days', 180);
 
     $recentOpenGuestKey = hash('sha256', 'recent-open-guest');
     $inactiveOpenGuestKey = hash('sha256', 'inactive-open-guest');
