@@ -25,7 +25,7 @@ final readonly class CreateChatMessage
             return DB::transaction(function () use ($conversation, $content, $clientMessageId): array {
                 $lockedConversation = ChatConversation::query()
                     ->whereKey($conversation->id)
-                    ->sharedLock()
+                    ->lockForUpdate()
                     ->firstOrFail();
 
                 if ($lockedConversation->status !== ChatConversationStatus::Open) {
@@ -61,7 +61,7 @@ final readonly class CreateChatMessage
                         ? 'Got your message 👍 This is the chat foundation demo. Smart replies and tools will be connected in later phases.'
                         : 'وصلتني رسالتك 👍 هذي نسخة تجريبية من الشات. قريبًا بنربط الردود الذكية والطلبات.';
 
-                    $demoReply = $conversation->messages()->create([
+                    $demoReply = $lockedConversation->messages()->create([
                         'reply_to_message_id' => $customerMessage->id,
                         'sender_type' => ChatSenderType::Assistant,
                         'message_type' => ChatMessageType::Text,

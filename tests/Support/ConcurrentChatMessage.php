@@ -3,6 +3,7 @@
 use App\Actions\Chat\CreateChatMessage;
 use App\Models\ChatConversation;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
@@ -13,9 +14,19 @@ $app->make(Kernel::class)->bootstrap();
 try {
     $conversationId = (int) ($argv[1] ?? 0);
     $clientMessageId = $argv[2] ?? '';
+    $barrierKey = $argv[3] ?? null;
     $conversation = ChatConversation::query()->findOrFail($conversationId);
 
     config()->set('chat.demo_assistant', true);
+
+    if (is_string($barrierKey) && $barrierKey !== '') {
+        DB::table('chat_restart_barriers')->insert([
+            'race_key' => $barrierKey,
+            'sender_ready_at' => now(),
+        ]);
+
+        waitForRestartCommit($barrierKey);
+    }
 
     $result = $app->make(CreateChatMessage::class)->execute(
         $conversation,
@@ -34,4 +45,22 @@ try {
     fwrite(STDERR, 'Concurrent chat message failed.');
 
     exit(1);
+}
+
+function waitForRestartCommit(string $barrierKey): void
+{
+    foreach (range(1, 100) as $_) {
+        $committed = DB::table('chat_restart_barriers')
+            ->where('race_key', $barrierKey)
+            ->whereNotNull('restart_committed_at')
+            ->exists();
+
+        if ($committed) {
+            return;
+        }
+
+        usleep(100_000);
+    }
+
+    throw new RuntimeException('Timed out waiting for the restart barrier.');
 }

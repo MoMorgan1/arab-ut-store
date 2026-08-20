@@ -106,17 +106,19 @@ test('concurrent duplicate messages replay the canonical customer and demo reply
     }
 });
 
-test('a concurrent restart serializes with a message send and does not insert into the closed conversation', function () {
+test('a stale controller-style send rejects after a restart commits before the action lifecycle check', function () {
     if (! supportsConcurrentChatLocking()) {
         $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL row locking.');
     }
 
     $user = User::factory()->create();
     $conversation = ChatConversation::factory()->forUser($user)->create();
+    $barrierKey = 'chat-restart-race-'.Str::uuid();
 
     try {
-        $send = concurrentChatMessageProcess((string) $conversation->id, (string) Str::uuid());
-        $restart = concurrentChatRestartProcess((string) $conversation->id);
+        installChatRestartBarrier();
+        $send = concurrentChatMessageProcess((string) $conversation->id, (string) Str::uuid(), $barrierKey);
+        $restart = concurrentChatRestartProcess((string) $conversation->id, $barrierKey);
         $send->start();
         $restart->start();
         $send->wait();
@@ -130,11 +132,11 @@ test('a concurrent restart serializes with a message send and does not insert in
         $restartResult = json_decode($restart->getOutput(), true, flags: JSON_THROW_ON_ERROR);
 
         expect($restartResult['status'])->toBe('restarted')
-            ->and($sendResult['status'])->toBeIn(['sent', 'conversation_closed'])
+            ->and($sendResult['status'])->toBe('conversation_closed')
             ->and($conversation->fresh()->status->value)->toBe('closed')
-            ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->count())
-            ->toBe($sendResult['status'] === 'sent' ? 2 : 0);
+            ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->count())->toBe(0);
     } finally {
+        removeChatRestartBarrier();
         ChatConversation::query()->where('user_id', $user->id)->delete();
         $user->delete();
     }
@@ -173,9 +175,9 @@ function concurrentChatAcquireProcess(string $ownerType, string $ownerIdentifier
     ], base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
 }
 
-function concurrentChatMessageProcess(string $conversationId, string $clientMessageId): Process
+function concurrentChatMessageProcess(string $conversationId, string $clientMessageId, ?string $barrierKey = null): Process
 {
-    return new Process([
+    $command = [
         PHP_BINARY,
         '-d', 'extension_dir='.ini_get('extension_dir'),
         '-d', 'extension=openssl',
@@ -184,12 +186,18 @@ function concurrentChatMessageProcess(string $conversationId, string $clientMess
         base_path('tests/Support/ConcurrentChatMessage.php'),
         $conversationId,
         $clientMessageId,
-    ], base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
+    ];
+
+    if ($barrierKey !== null) {
+        $command[] = $barrierKey;
+    }
+
+    return new Process($command, base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
 }
 
-function concurrentChatRestartProcess(string $conversationId): Process
+function concurrentChatRestartProcess(string $conversationId, ?string $barrierKey = null): Process
 {
-    return new Process([
+    $command = [
         PHP_BINARY,
         '-d', 'extension_dir='.ini_get('extension_dir'),
         '-d', 'extension=openssl',
@@ -197,7 +205,13 @@ function concurrentChatRestartProcess(string $conversationId): Process
         '-d', 'extension=pdo_mysql',
         base_path('tests/Support/ConcurrentChatRestart.php'),
         $conversationId,
-    ], base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
+    ];
+
+    if ($barrierKey !== null) {
+        $command[] = $barrierKey;
+    }
+
+    return new Process($command, base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
 }
 
 function installChatMessageUpdateAudit(): void
@@ -208,9 +222,7 @@ function installChatMessageUpdateAudit(): void
         AFTER UPDATE ON chat_conversations
         FOR EACH ROW
         BEGIN
-            IF NOT (OLD.last_message_at <=> NEW.last_message_at) THEN
-                INSERT INTO chat_message_update_audits (conversation_id) VALUES (NEW.id);
-            END IF;
+            INSERT INTO chat_message_update_audits (conversation_id) VALUES (NEW.id);
         END
         SQL);
 }
@@ -219,6 +231,22 @@ function removeChatMessageUpdateAudit(): void
 {
     DB::statement('DROP TRIGGER IF EXISTS chat_message_update_audit');
     DB::statement('DROP TABLE IF EXISTS chat_message_update_audits');
+}
+
+function installChatRestartBarrier(): void
+{
+    DB::statement(<<<'SQL'
+        CREATE TABLE chat_restart_barriers (
+            race_key VARCHAR(64) PRIMARY KEY,
+            sender_ready_at TIMESTAMP NULL,
+            restart_committed_at TIMESTAMP NULL
+        )
+        SQL);
+}
+
+function removeChatRestartBarrier(): void
+{
+    DB::statement('DROP TABLE IF EXISTS chat_restart_barriers');
 }
 
 /** @return array<string, string> */
