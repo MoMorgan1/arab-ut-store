@@ -83,10 +83,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                     aria-label={sendLabel}
                     className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--arabut-gold-bright)] text-[var(--arabut-navy-deep)] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                    <Send
-                        className={`h-5 w-5 ${isEn ? '' : 'rotate-180'}`}
-                        aria-hidden="true"
-                    />
+                    <Send className="h-5 w-5" aria-hidden="true" />
                 </button>
             </div>
 

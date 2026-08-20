@@ -216,7 +216,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                     return (
                         <div
                             key={cluster.id}
-                            className={`flex flex-col gap-1 ${isCustomer ? 'items-end' : 'items-start'}`}
+                            className="flex w-full flex-col gap-1"
                         >
                             {cluster.messages.map((message, idx) => {
                                 const isLastInCluster =
@@ -229,7 +229,8 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                 return (
                                     <div
                                         key={message.publicId}
-                                        className={`group relative max-w-[82%] text-start ${isCustomer ? 'items-end' : 'items-start'}`}
+                                        dir="auto"
+                                        className={`group relative max-w-[82%] text-start ${isCustomer ? 'ml-auto' : 'mr-auto'}`}
                                     >
                                         <div
                                             className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed transition-opacity ${
