@@ -5,12 +5,30 @@ import {
     render,
     screen,
     waitFor,
+    within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatWidget } from '@/components/chat/chat-widget';
 
 describe('ChatWidget Component', () => {
+    const stubMatchMedia = (mobile: boolean) => {
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn((query: string) => ({
+                matches: query.includes('max-width') ? mobile : false,
+                media: query,
+                onchange: null,
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+                addListener: vi.fn(),
+                removeListener: vi.fn(),
+                dispatchEvent: vi.fn(),
+            })),
+        );
+    };
+
     beforeEach(() => {
+        stubMatchMedia(false);
         vi.stubGlobal('fetch', vi.fn());
         Element.prototype.scrollIntoView = vi.fn();
     });
@@ -18,6 +36,7 @@ describe('ChatWidget Component', () => {
     afterEach(() => {
         cleanup();
         vi.useRealTimers();
+        vi.unstubAllGlobals();
         vi.restoreAllMocks();
     });
 
@@ -374,8 +393,8 @@ describe('ChatWidget Component', () => {
             status: 'open',
             locale: 'ar',
             messages: [],
-            hasMore: false,
-            oldestCursor: null,
+            hasMore: true,
+            oldestCursor: 'oldest-message',
         };
 
         vi.mocked(fetch)
@@ -395,6 +414,21 @@ describe('ChatWidget Component', () => {
         await waitFor(() => expect(restart).toBeEnabled());
         fireEvent.click(restart);
         expect(restart).toBeDisabled();
+        expect(screen.getByRole('textbox')).toBeDisabled();
+        expect(
+            screen.getByRole('button', { name: /تحميل الرسائل السابقة/i }),
+        ).toBeDisabled();
+
+        for (const suggestion of [
+            'الأسعار',
+            'الخدمات',
+            'متابعة الطلب',
+            'الدعم',
+        ]) {
+            expect(
+                screen.getByRole('button', { name: suggestion }),
+            ).toBeDisabled();
+        }
 
         resolveRestart({
             ok: true,
@@ -402,6 +436,138 @@ describe('ChatWidget Component', () => {
             json: async () => ({ data: conversation }),
         } as Response);
         await waitFor(() => expect(restart).toBeEnabled());
+    });
+
+    it.each([
+        ['en', 'Failed to start a new conversation. Please try again.'],
+        ['ar', 'تعذر بدء محادثة جديدة. حاول مرة أخرى.'],
+    ])(
+        'announces one localized restart failure in %s',
+        async (locale, failureMessage) => {
+            const conversation = {
+                publicId: `conversation-${locale}`,
+                status: 'open',
+                locale,
+                messages: [],
+                hasMore: false,
+                oldestCursor: null,
+            };
+
+            vi.mocked(fetch)
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ data: conversation }),
+                } as Response)
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: 500,
+                    json: async () => ({
+                        error: { code: 'chat_unavailable' },
+                    }),
+                } as Response);
+
+            render(<ChatWidget enabled={true} locale={locale} />);
+            fireEvent.click(
+                screen.getByRole('button', {
+                    name: locale === 'en' ? /Open chat/i : /فتح الشات/i,
+                }),
+            );
+
+            const restart = await screen.findByRole('button', {
+                name: locale === 'en' ? /New conversation/i : /محادثة جديدة/i,
+            });
+            await waitFor(() => expect(restart).toBeEnabled());
+            fireEvent.click(restart);
+
+            const liveStatus = screen.getByRole('status');
+            await waitFor(() =>
+                expect(liveStatus).toHaveTextContent(failureMessage),
+            );
+            expect(screen.queryAllByRole('status')).toHaveLength(1);
+            expect(screen.queryAllByRole('alert')).toHaveLength(0);
+        },
+    );
+
+    it('treats the mobile sheet as modal, traps focus, inerts the page, and restores the launcher', async () => {
+        stubMatchMedia(true);
+        vi.mocked(fetch).mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                data: {
+                    publicId: 'mobile-modal-conversation',
+                    status: 'open',
+                    locale: 'en',
+                    messages: [],
+                    hasMore: false,
+                    oldestCursor: null,
+                },
+            }),
+        } as Response);
+
+        render(
+            <>
+                <main data-testid="covered-page">
+                    <button type="button">Covered action</button>
+                </main>
+                <ChatWidget enabled={true} locale="en" />
+            </>,
+        );
+
+        const launcher = screen.getByRole('button', { name: /Open chat/i });
+        launcher.focus();
+        fireEvent.click(launcher);
+
+        const dialog = screen.getByRole('dialog', {
+            name: /Arab UT Chat Assistant/i,
+        });
+        await waitFor(() =>
+            expect(dialog).toHaveAttribute('aria-modal', 'true'),
+        );
+        expect(dialog).toHaveFocus();
+        expect(screen.getByTestId('covered-page')).toHaveAttribute('inert');
+
+        const restart = await screen.findByRole('button', {
+            name: /New conversation/i,
+        });
+        await waitFor(() => expect(restart).toBeEnabled());
+        const textbox = screen.getByRole('textbox');
+
+        fireEvent.keyDown(window, { key: 'Tab' });
+        expect(restart).toHaveFocus();
+        fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+        expect(textbox).toHaveFocus();
+        fireEvent.keyDown(window, { key: 'Tab' });
+        expect(restart).toHaveFocus();
+
+        fireEvent.click(
+            within(dialog).getByRole('button', { name: /Close chat/i }),
+        );
+        await waitFor(() => expect(dialog).not.toBeInTheDocument());
+        expect(screen.getByTestId('covered-page')).not.toHaveAttribute('inert');
+        expect(launcher).toHaveFocus();
+    });
+
+    it('keeps the desktop panel non-modal without inerting or stealing focus', () => {
+        stubMatchMedia(false);
+        render(
+            <>
+                <main data-testid="desktop-page">Desktop page</main>
+                <ChatWidget enabled={true} locale="en" />
+            </>,
+        );
+
+        const launcher = screen.getByRole('button', { name: /Open chat/i });
+        launcher.focus();
+        fireEvent.click(launcher);
+
+        expect(screen.getByRole('dialog')).toHaveAttribute(
+            'aria-modal',
+            'false',
+        );
+        expect(screen.getByTestId('desktop-page')).not.toHaveAttribute('inert');
+        expect(launcher).toHaveFocus();
     });
 
     it('disables restart while a customer message is pending', async () => {

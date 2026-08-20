@@ -146,4 +146,62 @@ describe('chat direction contracts', () => {
             expect(typingFrame).toHaveClass('w-full', 'justify-start');
         },
     );
+
+    it('locks load, retry, and suggestion mutations while a restart is active', () => {
+        const failedMessage: ChatMessage = {
+            publicId: 'failed-message',
+            tempId: 'failed-message',
+            senderType: 'customer',
+            messageType: 'text',
+            content: 'Failed message',
+            createdAt: '2026-08-20T12:00:00.000Z',
+            clientStatus: 'error',
+        };
+
+        const { rerender } = render(
+            <ChatMessageList
+                messages={[failedMessage]}
+                isLoading={false}
+                isAssistantTyping={false}
+                hasMore={true}
+                isLoadingOlder={false}
+                interactionLocked={true}
+                locale="en"
+                onLoadOlder={() => undefined}
+                onSelectSuggestion={() => undefined}
+                onRetry={() => undefined}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: /Load older messages/i }),
+        ).toBeDisabled();
+        expect(screen.getByRole('button', { name: /Retry/i })).toBeDisabled();
+
+        rerender(
+            <ChatMessageList
+                messages={[]}
+                isLoading={false}
+                isAssistantTyping={false}
+                hasMore={false}
+                isLoadingOlder={false}
+                interactionLocked={true}
+                locale="en"
+                onLoadOlder={() => undefined}
+                onSelectSuggestion={() => undefined}
+                onRetry={() => undefined}
+            />,
+        );
+
+        for (const suggestion of [
+            'Prices',
+            'Services',
+            'Track Order',
+            'Support',
+        ]) {
+            expect(
+                screen.getByRole('button', { name: suggestion }),
+            ).toBeDisabled();
+        }
+    });
 });

@@ -18,6 +18,7 @@ type QueueItem = {
     tempId: string;
     content: string;
     clientMessageId: string;
+    generation: number;
 };
 
 function generateClientMessageId(): string {
@@ -61,6 +62,8 @@ export function useChat(options: UseChatOptions = {}) {
     );
     const queueRef = useRef<QueueItem[]>([]);
     const isProcessingQueueRef = useRef(false);
+    const isRestartingRef = useRef(false);
+    const conversationGenerationRef = useRef(0);
 
     useEffect(() => {
         isOpenRef.current = isOpen;
@@ -90,9 +93,16 @@ export function useChat(options: UseChatOptions = {}) {
 
             setIsLoading(true);
             setError(null);
+            const requestGeneration = conversationGenerationRef.current;
 
             const promise = fetchOrStartActiveConversation(pageLocale)
                 .then((data) => {
+                    if (
+                        requestGeneration !== conversationGenerationRef.current
+                    ) {
+                        return conversationRef.current ?? data;
+                    }
+
                     setConversation(data);
                     conversationRef.current = data;
                     setMessages(data.messages);
@@ -107,13 +117,25 @@ export function useChat(options: UseChatOptions = {}) {
                         pageLocale === 'en'
                             ? 'Failed to connect to chat. Please try again.'
                             : 'تعذر الاتصال بالشات. يرجى المحاولة مرة أخرى.';
-                    setError(errorMessage);
+
+                    if (
+                        requestGeneration === conversationGenerationRef.current
+                    ) {
+                        setError(errorMessage);
+                    }
 
                     throw err;
                 })
                 .finally(() => {
-                    setIsLoading(false);
-                    initializationPromiseRef.current = null;
+                    if (
+                        requestGeneration === conversationGenerationRef.current
+                    ) {
+                        setIsLoading(false);
+                    }
+
+                    if (initializationPromiseRef.current === promise) {
+                        initializationPromiseRef.current = null;
+                    }
                 });
 
             initializationPromiseRef.current = promise;
@@ -169,14 +191,16 @@ export function useChat(options: UseChatOptions = {}) {
             try {
                 currentConv = await getOrInitConversation();
             } catch {
-                setMessages((prev) =>
-                    prev.map((msg) =>
-                        msg.tempId === item.tempId
-                            ? { ...msg, clientStatus: 'error' }
-                            : msg,
-                    ),
-                );
-                setPendingSendCount((count) => Math.max(0, count - 1));
+                if (item.generation === conversationGenerationRef.current) {
+                    setMessages((prev) =>
+                        prev.map((msg) =>
+                            msg.tempId === item.tempId
+                                ? { ...msg, clientStatus: 'error' }
+                                : msg,
+                        ),
+                    );
+                    setPendingSendCount((count) => Math.max(0, count - 1));
+                }
 
                 continue;
             }
@@ -187,6 +211,13 @@ export function useChat(options: UseChatOptions = {}) {
                     item.content,
                     item.clientMessageId,
                 );
+                const operationIsCurrent =
+                    item.generation === conversationGenerationRef.current &&
+                    conversationRef.current?.publicId === currentConv.publicId;
+
+                if (!operationIsCurrent) {
+                    continue;
+                }
 
                 setMessages((prev) =>
                     prev.map((msg) =>
@@ -209,6 +240,15 @@ export function useChat(options: UseChatOptions = {}) {
                     );
 
                     setTimeout(() => {
+                        if (
+                            item.generation !==
+                                conversationGenerationRef.current ||
+                            conversationRef.current?.publicId !==
+                                currentConv.publicId
+                        ) {
+                            return;
+                        }
+
                         setIsAssistantTyping(false);
 
                         if (result.demoReply !== null) {
@@ -230,6 +270,13 @@ export function useChat(options: UseChatOptions = {}) {
                     }, 1100);
                 }
             } catch (err) {
+                if (
+                    item.generation !== conversationGenerationRef.current ||
+                    conversationRef.current?.publicId !== currentConv.publicId
+                ) {
+                    continue;
+                }
+
                 setMessages((prev) =>
                     prev.map((msg) =>
                         msg.tempId === item.tempId
@@ -248,9 +295,11 @@ export function useChat(options: UseChatOptions = {}) {
                           ? 'Failed to send message. Please retry.'
                           : 'تعذر إرسال الرسالة. يرجى إعادة المحاولة.';
                 setError(errorMessage);
+            } finally {
+                if (item.generation === conversationGenerationRef.current) {
+                    setPendingSendCount((count) => Math.max(0, count - 1));
+                }
             }
-
-            setPendingSendCount((count) => Math.max(0, count - 1));
         }
 
         isProcessingQueueRef.current = false;
@@ -260,7 +309,7 @@ export function useChat(options: UseChatOptions = {}) {
         async (content: string) => {
             const trimmed = content.trim();
 
-            if (trimmed === '') {
+            if (trimmed === '' || isRestartingRef.current) {
                 return;
             }
 
@@ -286,6 +335,7 @@ export function useChat(options: UseChatOptions = {}) {
                 tempId,
                 content: trimmed,
                 clientMessageId,
+                generation: conversationGenerationRef.current,
             });
             setPendingSendCount((count) => count + 1);
 
@@ -296,6 +346,10 @@ export function useChat(options: UseChatOptions = {}) {
 
     const retryMessage = useCallback(
         async (tempId: string) => {
+            if (isRestartingRef.current) {
+                return;
+            }
+
             const failedMsg = messagesRef.current.find(
                 (m) => m.tempId === tempId || m.publicId === tempId,
             );
@@ -320,6 +374,7 @@ export function useChat(options: UseChatOptions = {}) {
                 tempId: messageTempId,
                 content: failedMsg.content,
                 clientMessageId,
+                generation: conversationGenerationRef.current,
             });
             setPendingSendCount((count) => count + 1);
 
@@ -331,6 +386,7 @@ export function useChat(options: UseChatOptions = {}) {
     const loadOlderMessages = useCallback(async () => {
         if (
             conversationRef.current === null ||
+            isRestartingRef.current ||
             isLoadingOlder ||
             !hasMore ||
             oldestCursor === null
@@ -339,49 +395,80 @@ export function useChat(options: UseChatOptions = {}) {
         }
 
         setIsLoadingOlder(true);
+        const conversationPublicId = conversationRef.current.publicId;
+        const operationGeneration = conversationGenerationRef.current;
 
         try {
             const data = await fetchConversation(
-                conversationRef.current.publicId,
+                conversationPublicId,
                 oldestCursor,
                 50,
             );
+
+            if (
+                operationGeneration !== conversationGenerationRef.current ||
+                conversationRef.current?.publicId !== conversationPublicId
+            ) {
+                return;
+            }
+
             setMessages((prev) => [...data.messages, ...prev]);
             setHasMore(data.hasMore);
             setOldestCursor(data.oldestCursor ?? null);
         } catch {
-            setError(
-                pageLocale === 'en'
-                    ? 'Failed to load older messages.'
-                    : 'تعذر تحميل الرسائل السابقة.',
-            );
+            if (
+                operationGeneration === conversationGenerationRef.current &&
+                conversationRef.current?.publicId === conversationPublicId
+            ) {
+                setError(
+                    pageLocale === 'en'
+                        ? 'Failed to load older messages.'
+                        : 'تعذر تحميل الرسائل السابقة.',
+                );
+            }
         } finally {
-            setIsLoadingOlder(false);
+            if (
+                operationGeneration === conversationGenerationRef.current &&
+                conversationRef.current?.publicId === conversationPublicId
+            ) {
+                setIsLoadingOlder(false);
+            }
         }
     }, [isLoadingOlder, hasMore, oldestCursor, pageLocale]);
 
     const canRestart =
         !isLoading &&
+        !isLoadingOlder &&
         !isRestarting &&
         !isAssistantTyping &&
         pendingSendCount === 0;
 
     const restartChat = useCallback(async () => {
-        if (!canRestart) {
+        if (!canRestart || isRestartingRef.current) {
             return;
         }
 
+        const restartGeneration = conversationGenerationRef.current;
+        isRestartingRef.current = true;
         setIsRestarting(true);
 
         try {
             const data = await restartConversation(pageLocale);
 
+            if (restartGeneration !== conversationGenerationRef.current) {
+                return;
+            }
+
+            conversationGenerationRef.current += 1;
             setConversation(data);
             conversationRef.current = data;
             setMessages(data.messages);
             messagesRef.current = data.messages;
             setHasMore(data.hasMore);
             setOldestCursor(data.oldestCursor ?? null);
+            setIsLoading(false);
+            setIsLoadingOlder(false);
+            setIsAssistantTyping(false);
             setUnreadCount(0);
             setError(null);
             queueRef.current = [];
@@ -392,12 +479,16 @@ export function useChat(options: UseChatOptions = {}) {
                     : 'بدأت محادثة جديدة.',
             );
         } catch {
-            setError(
-                pageLocale === 'en'
-                    ? 'Failed to start a new conversation. Please try again.'
-                    : 'تعذر بدء محادثة جديدة. حاول مرة أخرى.',
-            );
+            if (restartGeneration === conversationGenerationRef.current) {
+                const errorMessage =
+                    pageLocale === 'en'
+                        ? 'Failed to start a new conversation. Please try again.'
+                        : 'تعذر بدء محادثة جديدة. حاول مرة أخرى.';
+                setError(errorMessage);
+                announceStatus(errorMessage);
+            }
         } finally {
+            isRestartingRef.current = false;
             setIsRestarting(false);
         }
     }, [announceStatus, canRestart, pageLocale]);

@@ -1,4 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+    useEffect,
+    useRef,
+    useState,
+    useSyncExternalStore,
+} from 'react';
 import { useChat } from '@/hooks/use-chat';
 import type { ChatSurface } from '@/types/chat';
 import { ChatComposer } from './chat-composer';
@@ -14,6 +19,29 @@ export type ChatWidgetProps = {
 };
 
 const CLOSE_TRANSITION_MS = 180;
+const MOBILE_SHEET_QUERY = '(max-width: 47.99rem)';
+
+function mobileSheetMatches(): boolean {
+    return (
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia(MOBILE_SHEET_QUERY).matches
+    );
+}
+
+function subscribeToMobileSheet(onStoreChange: () => void): () => void {
+    if (
+        typeof window === 'undefined' ||
+        typeof window.matchMedia !== 'function'
+    ) {
+        return () => undefined;
+    }
+
+    const mediaQuery = window.matchMedia(MOBILE_SHEET_QUERY);
+    mediaQuery.addEventListener('change', onStoreChange);
+
+    return () => mediaQuery.removeEventListener('change', onStoreChange);
+}
 
 export const ChatWidget: React.FC<ChatWidgetProps> = ({
     enabled,
@@ -45,9 +73,15 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
 
     const launcherRef = useRef<HTMLButtonElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
+    const rootRef = useRef<HTMLDivElement>(null);
     const wasOpenRef = useRef(isOpen);
 
     const [isVisible, setIsVisible] = useState(isOpen);
+    const isMobileSheet = useSyncExternalStore(
+        subscribeToMobileSheet,
+        mobileSheetMatches,
+        () => false,
+    );
 
     const isReducedMotion =
         typeof window !== 'undefined' &&
@@ -78,6 +112,45 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
 
     const isMounted = isOpen || isVisible;
 
+    useEffect(() => {
+        if (isOpen && isMobileSheet) {
+            panelRef.current?.focus({ preventScroll: true });
+        }
+    }, [isOpen, isMobileSheet]);
+
+    useEffect(() => {
+        if (!isOpen || !isMobileSheet) {
+            return;
+        }
+
+        const root = rootRef.current;
+        const parent = root?.parentElement;
+
+        if (!root || !parent) {
+            return;
+        }
+
+        const siblings = Array.from(parent.children).filter(
+            (element): element is HTMLElement =>
+                element instanceof HTMLElement && element !== root,
+        );
+        const alreadyInert = new Set(
+            siblings.filter((element) => element.hasAttribute('inert')),
+        );
+
+        for (const sibling of siblings) {
+            sibling.setAttribute('inert', '');
+        }
+
+        return () => {
+            for (const sibling of siblings) {
+                if (!alreadyInert.has(sibling)) {
+                    sibling.removeAttribute('inert');
+                }
+            }
+        };
+    }, [isOpen, isMobileSheet]);
+
     // Focus restoration to launcher on close
     useEffect(() => {
         if (wasOpenRef.current && !isOpen) {
@@ -87,18 +160,59 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         wasOpenRef.current = isOpen;
     }, [isOpen]);
 
-    // Handle Escape key
+    // Handle Escape and contain keyboard focus in the mobile full sheet.
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && isOpen) {
                 closeChat();
+
+                return;
+            }
+
+            if (e.key !== 'Tab' || !isOpen || !isMobileSheet) {
+                return;
+            }
+
+            const panel = panelRef.current;
+
+            if (!panel) {
+                return;
+            }
+
+            const focusableElements = Array.from(
+                panel.querySelectorAll<HTMLElement>(
+                    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+                ),
+            ).filter(
+                (element) => element.getAttribute('aria-hidden') !== 'true',
+            );
+
+            if (focusableElements.length === 0) {
+                e.preventDefault();
+                panel.focus({ preventScroll: true });
+
+                return;
+            }
+
+            const first = focusableElements[0];
+            const last = focusableElements[focusableElements.length - 1];
+            const activeElement = document.activeElement;
+
+            if (
+                activeElement === panel ||
+                !panel.contains(activeElement) ||
+                (!e.shiftKey && activeElement === last) ||
+                (e.shiftKey && activeElement === first)
+            ) {
+                e.preventDefault();
+                (e.shiftKey ? last : first).focus({ preventScroll: true });
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
 
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, closeChat]);
+    }, [isOpen, isMobileSheet, closeChat]);
 
     if (!isChatEnabled) {
         return null;
@@ -106,6 +220,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
 
     return (
         <div
+            ref={rootRef}
             className={`chat-widget-root fixed right-4 bottom-4 z-50 font-sans ${
                 surface === 'account' ? 'chat-widget-root--account' : ''
             }`}
@@ -126,7 +241,8 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                 <div
                     ref={panelRef}
                     role="dialog"
-                    aria-modal="false"
+                    aria-modal={isMobileSheet}
+                    tabIndex={isMobileSheet ? -1 : undefined}
                     aria-label={
                         locale === 'en'
                             ? 'Arab UT Chat Assistant'
@@ -168,6 +284,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                         isAssistantTyping={isAssistantTyping}
                         hasMore={hasMore}
                         isLoadingOlder={isLoadingOlder}
+                        interactionLocked={isRestarting}
                         locale={locale}
                         onLoadOlder={loadOlderMessages}
                         onSelectSuggestion={sendMessage}

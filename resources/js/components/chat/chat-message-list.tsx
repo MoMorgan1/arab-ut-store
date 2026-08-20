@@ -11,6 +11,7 @@ type ChatMessageListProps = {
     isAssistantTyping: boolean;
     hasMore: boolean;
     isLoadingOlder: boolean;
+    interactionLocked?: boolean;
     locale?: string;
     onLoadOlder: () => void;
     onSelectSuggestion: (text: string) => void;
@@ -28,6 +29,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     isAssistantTyping,
     hasMore,
     isLoadingOlder,
+    interactionLocked = false,
     locale = 'ar',
     onLoadOlder,
     onSelectSuggestion,
@@ -170,7 +172,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                         <button
                             type="button"
                             onClick={handleLoadOlderClick}
-                            disabled={isLoadingOlder}
+                            disabled={isLoadingOlder || interactionLocked}
                             className="min-h-11 rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-3 py-1 text-xs text-[var(--arabut-muted)] hover:text-[var(--arabut-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isLoadingOlder
@@ -261,13 +263,16 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                     message.publicId) && (
                                                     <button
                                                         type="button"
+                                                        disabled={
+                                                            interactionLocked
+                                                        }
                                                         onClick={() =>
                                                             onRetry(
                                                                 message.tempId ||
                                                                     message.publicId,
                                                             )
                                                         }
-                                                        className="inline-flex min-h-11 items-center gap-1 px-1 underline hover:text-[var(--arabut-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)]"
+                                                        className="inline-flex min-h-11 items-center gap-1 px-1 underline hover:text-[var(--arabut-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
                                                         <RefreshCw
                                                             className="h-3 w-3"
@@ -320,10 +325,11 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                 <button
                                     key={suggestion}
                                     type="button"
+                                    disabled={interactionLocked}
                                     onClick={() =>
                                         onSelectSuggestion(suggestion)
                                     }
-                                    className="min-h-11 rounded-xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-3 py-1.5 text-xs text-[var(--arabut-ink)] transition-colors hover:border-[var(--arabut-gold)]/50 hover:bg-[var(--arabut-navy-active)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] active:scale-95 motion-reduce:transform-none motion-reduce:transition-none"
+                                    className="min-h-11 rounded-xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-3 py-1.5 text-xs text-[var(--arabut-ink)] transition-colors hover:border-[var(--arabut-gold)]/50 hover:bg-[var(--arabut-navy-active)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none motion-reduce:transition-none"
                                 >
                                     {suggestion}
                                 </button>

@@ -190,7 +190,7 @@ test('authenticated account keeps chat above mobile navigation', async ({
     await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
     await assertLauncherAboveNavigation();
 
-    for (const width of [320, 768, 1440]) {
+    for (const width of [320, 390, 768, 1440]) {
         for (const {
             path,
             language,
@@ -200,6 +200,10 @@ test('authenticated account keeps chat above mobile navigation', async ({
             inputLabel,
             restartLabel,
             closeLabel,
+            sendLabel,
+            retryLabel,
+            loadOlderLabel,
+            scrollLabel,
         } of [
             {
                 path: '/my-account',
@@ -210,6 +214,10 @@ test('authenticated account keeps chat above mobile navigation', async ({
                 inputLabel: 'حقل كتابة الرسالة',
                 restartLabel: 'محادثة جديدة',
                 closeLabel: 'إغلاق الشات',
+                sendLabel: 'إرسال الرسالة',
+                retryLabel: 'إعادة المحاولة',
+                loadOlderLabel: 'تحميل الرسائل السابقة',
+                scrollLabel: 'الانتقال لأسفل',
             },
             {
                 path: '/en/my-account',
@@ -220,8 +228,77 @@ test('authenticated account keeps chat above mobile navigation', async ({
                 inputLabel: 'Message input',
                 restartLabel: 'New conversation',
                 closeLabel: 'Close chat',
+                sendLabel: 'Send message',
+                retryLabel: 'Retry',
+                loadOlderLabel: 'Load older messages',
+                scrollLabel: 'Scroll to bottom',
             },
         ] as const) {
+            const exercisesSecondaryControls =
+                width === 390 && language === 'en';
+
+            if (exercisesSecondaryControls) {
+                await page.route('**/chat/conversations', async (route) => {
+                    const request = route.request();
+
+                    if (
+                        request.method() === 'POST' &&
+                        new URL(request.url()).pathname ===
+                            '/chat/conversations'
+                    ) {
+                        await route.fulfill({
+                            status: 200,
+                            contentType: 'application/json',
+                            body: JSON.stringify({
+                                data: {
+                                    publicId: 'browser-secondary-controls',
+                                    status: 'open',
+                                    locale: 'en',
+                                    messages: [
+                                        ...Array.from(
+                                            { length: 24 },
+                                            (_, index) => ({
+                                                publicId: `browser-assistant-${index}`,
+                                                conversationPublicId:
+                                                    'browser-secondary-controls',
+                                                senderType: 'assistant',
+                                                messageType: 'text',
+                                                content: `Browser assistant message ${index + 1}`,
+                                                createdAt: `2026-08-20T${String(
+                                                    8 + Math.floor(index / 4),
+                                                ).padStart(2, '0')}:${String(
+                                                    (index % 4) * 10,
+                                                ).padStart(2, '0')}:00.000Z`,
+                                            }),
+                                        ),
+                                        {
+                                            publicId: 'browser-failed-message',
+                                            tempId: 'browser-failed-message',
+                                            conversationPublicId:
+                                                'browser-secondary-controls',
+                                            clientMessageId:
+                                                'browser-failed-client',
+                                            senderType: 'customer',
+                                            messageType: 'text',
+                                            content: 'Browser failed message',
+                                            createdAt:
+                                                '2026-08-20T14:00:00.000Z',
+                                            clientStatus: 'error',
+                                        },
+                                    ],
+                                    hasMore: true,
+                                    oldestCursor: 'browser-assistant-0',
+                                },
+                            }),
+                        });
+
+                        return;
+                    }
+
+                    await route.continue();
+                });
+            }
+
             await page.setViewportSize({ width, height: 844 });
             await page.emulateMedia({ reducedMotion: 'reduce' });
             await page.goto(path);
@@ -258,6 +335,25 @@ test('authenticated account keeps chat above mobile navigation', async ({
 
             if (width < 768) {
                 await assertLauncherAboveNavigation();
+                const [rootZIndex, navigationZIndex] = await Promise.all([
+                    page
+                        .locator('.chat-widget-root')
+                        .evaluate((element) =>
+                            Number.parseInt(
+                                getComputedStyle(element).zIndex,
+                                10,
+                            ),
+                        ),
+                    page
+                        .locator('.account-mobile-bottom-nav')
+                        .evaluate((element) =>
+                            Number.parseInt(
+                                getComputedStyle(element).zIndex,
+                                10,
+                            ),
+                        ),
+                ]);
+                expect(rootZIndex).toBeGreaterThan(navigationZIndex);
             } else {
                 await expect(
                     page.locator('.account-mobile-bottom-nav'),
@@ -269,6 +365,17 @@ test('authenticated account keeps chat above mobile navigation', async ({
                 name: dialogLabel,
             });
             await expect(viewportDialog).toBeVisible();
+            await expect(viewportDialog).toHaveAttribute(
+                'aria-modal',
+                width < 768 ? 'true' : 'false',
+            );
+            expect(
+                await page.evaluate(
+                    () =>
+                        document.documentElement.scrollWidth -
+                        window.innerWidth,
+                ),
+            ).toBeLessThanOrEqual(1);
             expect(
                 await viewportDialog.evaluate(
                     (element) => getComputedStyle(element).transitionProperty,
@@ -287,11 +394,101 @@ test('authenticated account keeps chat above mobile navigation', async ({
             const close = viewportDialog.getByRole('button', {
                 name: closeLabel,
             });
+            const send = viewportDialog.getByRole('button', {
+                name: sendLabel,
+            });
 
-            for (const control of [textarea, restart, close]) {
+            const requiredControls = [textarea, restart, close, send];
+
+            if (exercisesSecondaryControls) {
+                const loadOlder = viewportDialog.getByRole('button', {
+                    name: loadOlderLabel,
+                });
+                const retry = viewportDialog.getByRole('button', {
+                    name: retryLabel,
+                });
+                requiredControls.push(loadOlder, retry);
+
+                const log = viewportDialog.getByRole('log');
+                await log.evaluate((element) => {
+                    element.scrollTop = 0;
+                    element.dispatchEvent(new Event('scroll'));
+                });
+                const scroll = viewportDialog.getByRole('button', {
+                    name: scrollLabel,
+                });
+                await expect(scroll).toBeVisible();
+                requiredControls.push(scroll);
+            } else {
+                for (const suggestion of await viewportDialog
+                    .locator('button:not([aria-label])')
+                    .all()) {
+                    requiredControls.push(suggestion);
+                }
+            }
+
+            for (const control of requiredControls) {
                 const box = await control.boundingBox();
                 expect(box).not.toBeNull();
+                expect(box!.width).toBeGreaterThanOrEqual(44);
                 expect(box!.height).toBeGreaterThanOrEqual(44);
+            }
+
+            if (width < 768) {
+                await expect(viewportDialog).toBeFocused();
+                expect(
+                    await page
+                        .getByRole('main')
+                        .evaluate(
+                            (element) => element.closest('[inert]') !== null,
+                        ),
+                ).toBe(true);
+
+                await page.keyboard.press('Tab');
+                await expect(restart).toBeFocused();
+                expect(
+                    await restart.evaluate(
+                        (element) => getComputedStyle(element).outlineStyle,
+                    ),
+                ).not.toBe('none');
+                await page.keyboard.press('Shift+Tab');
+                await expect(textarea).toBeFocused();
+                await page.keyboard.press('Tab');
+                await expect(restart).toBeFocused();
+
+                const navigation = page.locator('.account-mobile-bottom-nav');
+                const navBox = await navigation.boundingBox();
+                expect(navBox).not.toBeNull();
+                expect(
+                    await viewportDialog.evaluate(
+                        (dialogElement, { x, y }) => {
+                            const hit = document.elementFromPoint(x, y);
+
+                            return hit !== null && dialogElement.contains(hit);
+                        },
+                        {
+                            x: navBox!.x + navBox!.width / 2,
+                            y: navBox!.y + navBox!.height / 2,
+                        },
+                    ),
+                ).toBe(true);
+            } else {
+                expect(
+                    await page
+                        .getByRole('main')
+                        .evaluate(
+                            (element) => element.closest('[inert]') === null,
+                        ),
+                ).toBe(true);
+                await restart.focus();
+                await page.keyboard.press('Tab');
+                await page.keyboard.press('Shift+Tab');
+                await expect(restart).toBeFocused();
+                expect(
+                    await restart.evaluate(
+                        (element) => getComputedStyle(element).outlineStyle,
+                    ),
+                ).not.toBe('none');
             }
 
             await restart.hover();
@@ -300,11 +497,27 @@ test('authenticated account keeps chat above mobile navigation', async ({
                     name: restartLabel,
                 }),
             ).toBeVisible();
+            expect(
+                await page.evaluate(
+                    () =>
+                        document.documentElement.scrollWidth -
+                        window.innerWidth,
+                ),
+            ).toBeLessThanOrEqual(1);
 
             await close.click();
             await expect(viewportDialog).not.toBeAttached();
             await expect(viewportLauncher).toBeFocused();
+            expect(
+                await page
+                    .getByRole('main')
+                    .evaluate((element) => element.closest('[inert]') === null),
+            ).toBe(true);
             await page.emulateMedia({ reducedMotion: 'no-preference' });
+
+            if (exercisesSecondaryControls) {
+                await page.unroute('**/chat/conversations');
+            }
         }
     }
 
