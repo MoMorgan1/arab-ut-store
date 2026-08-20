@@ -3,6 +3,7 @@
 use App\Actions\Chat\CreateChatMessage;
 use App\Models\ChatConversation;
 use Illuminate\Contracts\Console\Kernel;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 
@@ -23,9 +24,12 @@ try {
     );
 
     echo json_encode([
+        'status' => 'sent',
         'customerPublicId' => $result['message']->public_id,
         'replyPublicId' => $result['demoReply']?->public_id,
     ], JSON_THROW_ON_ERROR);
+} catch (ConflictHttpException) {
+    echo json_encode(['status' => 'conversation_closed'], JSON_THROW_ON_ERROR);
 } catch (Throwable) {
     fwrite(STDERR, 'Concurrent chat message failed.');
 

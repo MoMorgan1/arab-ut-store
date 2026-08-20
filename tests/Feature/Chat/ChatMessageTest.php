@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Chat\CreateChatMessage;
 use App\Actions\Chat\ResolveChatOwner;
 use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatConversationStatus;
@@ -7,6 +8,7 @@ use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 beforeEach(function () {
     config()->set('chat.enabled', true);
@@ -113,8 +115,60 @@ test('posting to an owned closed conversation returns conversation_closed withou
         ->assertJsonPath('error.code', 'conversation_closed')
         ->assertJsonPath('error.message', trans('chat.conversation_closed'));
     expect($response->headers->get('Cache-Control'))->toContain('no-store')
+        ->and($response->json('error.details'))->toBeNull()
         ->and($conversation->fresh()->status)->toBe(ChatConversationStatus::Closed)
         ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->exists())->toBeFalse();
+});
+
+test('message creation rechecks the locked conversation lifecycle before inserting', function () {
+    $user = User::factory()->create();
+    $conversation = ChatConversation::factory()->forUser($user)->create();
+    $staleConversation = $conversation->fresh();
+
+    $conversation->update([
+        'status' => ChatConversationStatus::Closed,
+        'closed_at' => now(),
+        'close_reason' => ChatConversationCloseReason::CustomerStartedNew,
+    ]);
+
+    expect(fn () => app(CreateChatMessage::class)->execute(
+        $staleConversation,
+        'A stale send must not insert.',
+        (string) Str::uuid(),
+    ))->toThrow(ConflictHttpException::class)
+        ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->exists())->toBeFalse();
+});
+
+test('an Arabic conversation returns the Arabic closed-conversation message', function () {
+    $user = User::factory()->create();
+    $conversation = ChatConversation::factory()->forUser($user)->closed(
+        ChatConversationCloseReason::CustomerStartedNew,
+        now()->subMinute(),
+    )->create(['locale' => 'ar']);
+
+    $this->actingAs($user)
+        ->postJson(route('chat.messages.store', ['conversation' => $conversation->public_id]), [
+            'content' => 'أرسل رسالة',
+            'client_message_id' => (string) Str::uuid(),
+        ])
+        ->assertConflict()
+        ->assertJsonPath('error.message', 'المحادثة مقفلة. ابدأ محادثة جديدة للمتابعة.');
+});
+
+test('an English conversation returns the English closed-conversation message', function () {
+    $user = User::factory()->create();
+    $conversation = ChatConversation::factory()->forUser($user)->closed(
+        ChatConversationCloseReason::CustomerStartedNew,
+        now()->subMinute(),
+    )->create(['locale' => 'en']);
+
+    $this->actingAs($user)
+        ->postJson(route('chat.messages.store', ['conversation' => $conversation->public_id]), [
+            'content' => 'Send a message',
+            'client_message_id' => (string) Str::uuid(),
+        ])
+        ->assertConflict()
+        ->assertJsonPath('error.message', 'This conversation is closed. Start a new conversation to continue.');
 });
 
 test('arbitrary client metadata is rejected or ignored and not stored', function () {

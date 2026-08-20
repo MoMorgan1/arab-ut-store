@@ -2,12 +2,14 @@
 
 namespace App\Actions\Chat;
 
+use App\Enums\Chat\ChatConversationStatus;
 use App\Enums\Chat\ChatMessageType;
 use App\Enums\Chat\ChatSenderType;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 final readonly class CreateChatMessage
 {
@@ -21,7 +23,16 @@ final readonly class CreateChatMessage
     ): array {
         try {
             return DB::transaction(function () use ($conversation, $content, $clientMessageId): array {
-                $existingMessage = $conversation->messages()
+                $lockedConversation = ChatConversation::query()
+                    ->whereKey($conversation->id)
+                    ->sharedLock()
+                    ->firstOrFail();
+
+                if ($lockedConversation->status !== ChatConversationStatus::Open) {
+                    throw new ConflictHttpException;
+                }
+
+                $existingMessage = $lockedConversation->messages()
                     ->where('client_message_id', $clientMessageId)
                     ->first();
 
@@ -34,19 +45,19 @@ final readonly class CreateChatMessage
                     ];
                 }
 
-                $customerMessage = $conversation->messages()->create([
+                $customerMessage = $lockedConversation->messages()->create([
                     'client_message_id' => $clientMessageId,
                     'sender_type' => ChatSenderType::Customer,
                     'message_type' => ChatMessageType::Text,
                     'content' => $content,
                 ]);
 
-                $conversation->update(['last_message_at' => now()]);
+                $lockedConversation->update(['last_message_at' => now()]);
 
                 $demoReply = null;
 
                 if (config('chat.demo_assistant', false) === true) {
-                    $demoReplyContent = $conversation->locale === 'en'
+                    $demoReplyContent = $lockedConversation->locale === 'en'
                         ? 'Got your message 👍 This is the chat foundation demo. Smart replies and tools will be connected in later phases.'
                         : 'وصلتني رسالتك 👍 هذي نسخة تجريبية من الشات. قريبًا بنربط الردود الذكية والطلبات.';
 

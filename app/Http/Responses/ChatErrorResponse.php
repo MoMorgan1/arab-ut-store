@@ -16,6 +16,10 @@ final class ChatErrorResponse
 
         $status = $response->getStatusCode();
 
+        if ($status === 409) {
+            return $this->error('conversation_closed', 'conversation_closed', 409);
+        }
+
         if ($status === 422) {
             return $this->error('validation_error', 'validation_error', 422);
         }

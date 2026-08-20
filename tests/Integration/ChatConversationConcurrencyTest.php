@@ -78,6 +78,7 @@ test('concurrent duplicate messages replay the canonical customer and demo reply
     $clientMessageId = (string) Str::uuid();
 
     try {
+        installChatMessageUpdateAudit();
         $first = concurrentChatMessageProcess((string) $conversation->id, $clientMessageId);
         $second = concurrentChatMessageProcess((string) $conversation->id, $clientMessageId);
         $first->start();
@@ -96,9 +97,45 @@ test('concurrent duplicate messages replay the canonical customer and demo reply
             ->and($firstResult['customerPublicId'])->not->toBe('')
             ->and($firstResult['replyPublicId'])->not->toBe('')
             ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->where('sender_type', 'customer')->count())->toBe(1)
-            ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->where('sender_type', 'assistant')->count())->toBe(1);
+            ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->where('sender_type', 'assistant')->count())->toBe(1)
+            ->and(DB::table('chat_message_update_audits')->where('conversation_id', $conversation->id)->count())->toBe(1);
     } finally {
+        removeChatMessageUpdateAudit();
         $conversation->delete();
+        $user->delete();
+    }
+});
+
+test('a concurrent restart serializes with a message send and does not insert into the closed conversation', function () {
+    if (! supportsConcurrentChatLocking()) {
+        $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL row locking.');
+    }
+
+    $user = User::factory()->create();
+    $conversation = ChatConversation::factory()->forUser($user)->create();
+
+    try {
+        $send = concurrentChatMessageProcess((string) $conversation->id, (string) Str::uuid());
+        $restart = concurrentChatRestartProcess((string) $conversation->id);
+        $send->start();
+        $restart->start();
+        $send->wait();
+        $restart->wait();
+        refreshConcurrentChatConnection();
+
+        expect($send->isSuccessful())->toBeTrue($send->getErrorOutput())
+            ->and($restart->isSuccessful())->toBeTrue($restart->getErrorOutput());
+
+        $sendResult = json_decode($send->getOutput(), true, flags: JSON_THROW_ON_ERROR);
+        $restartResult = json_decode($restart->getOutput(), true, flags: JSON_THROW_ON_ERROR);
+
+        expect($restartResult['status'])->toBe('restarted')
+            ->and($sendResult['status'])->toBeIn(['sent', 'conversation_closed'])
+            ->and($conversation->fresh()->status->value)->toBe('closed')
+            ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->count())
+            ->toBe($sendResult['status'] === 'sent' ? 2 : 0);
+    } finally {
+        ChatConversation::query()->where('user_id', $user->id)->delete();
         $user->delete();
     }
 });
@@ -148,6 +185,40 @@ function concurrentChatMessageProcess(string $conversationId, string $clientMess
         $conversationId,
         $clientMessageId,
     ], base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
+}
+
+function concurrentChatRestartProcess(string $conversationId): Process
+{
+    return new Process([
+        PHP_BINARY,
+        '-d', 'extension_dir='.ini_get('extension_dir'),
+        '-d', 'extension=openssl',
+        '-d', 'extension=mbstring',
+        '-d', 'extension=pdo_mysql',
+        base_path('tests/Support/ConcurrentChatRestart.php'),
+        $conversationId,
+    ], base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
+}
+
+function installChatMessageUpdateAudit(): void
+{
+    DB::statement('CREATE TABLE chat_message_update_audits (conversation_id BIGINT UNSIGNED NOT NULL)');
+    DB::unprepared(<<<'SQL'
+        CREATE TRIGGER chat_message_update_audit
+        AFTER UPDATE ON chat_conversations
+        FOR EACH ROW
+        BEGIN
+            IF NOT (OLD.last_message_at <=> NEW.last_message_at) THEN
+                INSERT INTO chat_message_update_audits (conversation_id) VALUES (NEW.id);
+            END IF;
+        END
+        SQL);
+}
+
+function removeChatMessageUpdateAudit(): void
+{
+    DB::statement('DROP TRIGGER IF EXISTS chat_message_update_audit');
+    DB::statement('DROP TABLE IF EXISTS chat_message_update_audits');
 }
 
 /** @return array<string, string> */

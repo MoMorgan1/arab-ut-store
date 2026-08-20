@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Middleware\SetChatLocale;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 beforeEach(function () {
     config()->set('chat.enabled', true);
@@ -50,9 +53,20 @@ test('422 validation error responses receive no-store private cache control head
     expect($response->headers->get('Cache-Control'))->toBe('no-store, private');
 });
 
+test('English chat validation errors use the requested valid locale before throttling', function () {
+    $response = $this->postJson(route('chat.conversations.store'), [
+        'locale' => 'en',
+        'limit' => 0,
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonPath('error.code', 'validation_error')
+        ->assertJsonPath('error.message', 'The submitted chat data is invalid.');
+});
+
 test('429 throttle responses use the chat rate_limited envelope with private no-store cache control', function () {
     $user = User::factory()->create();
-    $conversation = ChatConversation::factory()->forUser($user)->create();
+    $conversation = ChatConversation::factory()->forUser($user)->create(['locale' => 'en']);
 
     $rateLimitKey = md5('chat-messages'.'chat-messages:user:'.$user->id);
 
@@ -69,7 +83,7 @@ test('429 throttle responses use the chat rate_limited envelope with private no-
 
     $response->assertStatus(429)
         ->assertJsonPath('error.code', 'rate_limited')
-        ->assertJsonPath('error.message', trans('chat.rate_limited'))
+        ->assertJsonPath('error.message', 'Too many chat requests. Please try again shortly.')
         ->assertJsonPath('error.details', []);
     expect($response->headers->get('Cache-Control'))->toBe('no-store, private');
 });
@@ -97,6 +111,23 @@ test('unexpected chat failures use a sanitized unavailable envelope with private
     $response->assertStatus(500)
         ->assertJsonPath('error.code', 'chat_unavailable')
         ->assertJsonPath('error.message', trans('chat.unavailable'))
+        ->assertJsonPath('error.details', []);
+    expect($response->headers->get('Cache-Control'))->toBe('no-store, private')
+        ->and($response->getContent())->not->toContain($sentinel);
+});
+
+test('framework 409 errors use the sanitized localized conversation_closed envelope', function () {
+    $sentinel = 'SENTINEL: never expose this conflict';
+
+    Route::post('/chat/testing/conflict', static function () use ($sentinel): void {
+        throw new ConflictHttpException($sentinel);
+    })->middleware(SetChatLocale::class);
+
+    $response = $this->postJson('/chat/testing/conflict');
+
+    $response->assertConflict()
+        ->assertJsonPath('error.code', 'conversation_closed')
+        ->assertJsonPath('error.message', 'المحادثة مقفلة. ابدأ محادثة جديدة للمتابعة.')
         ->assertJsonPath('error.details', []);
     expect($response->headers->get('Cache-Control'))->toBe('no-store, private')
         ->and($response->getContent())->not->toContain($sentinel);
