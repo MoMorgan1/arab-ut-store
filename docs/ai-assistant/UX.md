@@ -22,12 +22,16 @@ history has no customer-facing picker in this release.
 a bottom offset of the account navigation height plus
 `env(safe-area-inset-bottom)` and appears above `.account-mobile-bottom-nav`.
 The open mobile chat is a fixed full-screen dialog; closing restores focus to
-the launcher. At `sm` and above it becomes a bottom-right panel.
+the launcher. On storefront/auth surfaces it becomes a bottom-right panel at
+the `sm` breakpoint. On account surfaces it remains full-screen through
+47.99rem and anchors only at 48rem.
 
 The Chromium fixture creates a synthetic local user, never a production user.
 It checks Arabic and English account pages, 390px safe-area geometry, 44px
-controls, layering, keyboard focus, Escape/focus restoration, restart, overflow,
-and runtime console errors.
+controls, layering, keyboard focus, Escape/focus restoration, restart-control
+availability and keyboard order, overflow, and runtime console errors. It does
+not invoke restart or prove replacement behavior; backend/component tests cover
+that behavior.
 
 ## Direction and accessibility
 

@@ -5,12 +5,14 @@ Node.js is used in GitHub Actions to build Vite assets, not on the server.
 
 ## Verified chat release
 
-The deployed candidate is `e7f230d2ea01dc456aef1a51035f4d88f39542e2`.
+The verified Phase 1 application SHA observed/deployed on 2026-08-20 was
+`e7f230d2ea01dc456aef1a51035f4d88f39542e2`.
 [tests 32410960971](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32410960971)
 passed CI, MariaDB, Chromium, and package gates; [deploy
 32411415481](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32411415481)
-passed for the same SHA. Read-only production checks verified `/up -> 200`,
-the current release path, four chat routes, `CHAT_SCHEMA_OK`,
+passed for that SHA. Read-only production checks on 2026-08-20 verified
+`/up -> 200`, the release/current path for that Phase 1 SHA, four chat routes,
+`CHAT_SCHEMA_OK`,
 `ACTIVE_OWNER_DUPLICATE_GROUPS=0`, and `LOCK_TABLES_OK`.
 
 ## Release flow
@@ -22,8 +24,9 @@ the current release path, four chat routes, `CHAT_SCHEMA_OK`,
 4. `deploy/hostinger-release.sh` installs production Composer dependencies,
    migrates forward, caches configuration/routes/views, atomically switches
    `current`, and checks `/up`.
-5. On health failure it restores the previous release symlink and retains the
-   five newest release directories.
+5. On health failure it restores code only when a valid prior release directory
+   exists. Only after successful activation does it prune to the five newest
+   release directories.
 
 Application/database secrets remain only in `shared/.env`; do not copy them to
 logs, artifacts, commits, or chat.
@@ -43,8 +46,11 @@ logs, artifacts, commits, or chat.
 
 ## Scheduler and chat maintenance
 
-Hostinger Cron Jobs invokes `artisan schedule:run` every minute. Laravel
-schedules `chat:maintain-conversations` hourly with overlap prevention. It
+Hostinger must be configured to invoke `artisan schedule:run` every minute. A
+visible user-crontab check did not verify that cadence
+(`SCHEDULER_CRON_EVERY_MINUTE=false`). Laravel schedules
+`chat:maintain-conversations` hourly with overlap prevention; that application
+schedule is verified in `routes/console.php`. It
 closes stale open conversations after the configured 24-hour default and purges
 closed guest/authenticated conversations at the configured 30/180-day defaults.
 

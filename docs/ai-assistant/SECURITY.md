@@ -34,20 +34,28 @@ without approval because active sessions can be invalidated.
 
 ## Error contract
 
-| HTTP status | Error code               | Meaning                                                                           |
-| ----------- | ------------------------ | --------------------------------------------------------------------------------- |
-| 404         | `chat_disabled`          | Feature flag is disabled.                                                         |
-| 404         | `conversation_not_found` | The owner cannot access the requested public ID.                                  |
-| 409         | `conversation_closed`    | A write targeted a closed conversation.                                           |
-| 422         | `invalid_cursor`         | Cursor does not belong to that conversation.                                      |
-| 422         | `validation_error`       | Request validation failed.                                                        |
-| 429         | `rate_limited`           | A chat limiter rejected the request; safe retry/rate-limit headers are preserved. |
-| 500         | `chat_unavailable`       | A chat server failure was normalized.                                             |
+`ChatErrorResponse` normalizes framework/exception responses only. Its 409
+`conversation_closed`, 422 `validation_error`, 429 `rate_limited`, and 500
+`chat_unavailable` JSON responses have `error.code`, localized
+`error.message`, and an empty `error.details` object. The 429 response also
+copies safe `Retry-After` and `X-RateLimit-*` headers. Each is
+`Cache-Control: no-store, private`.
 
-All normalized errors have `error.code`, localized `error.message`, and an
-empty `error.details` object. Input limits are a locale string of 10 characters,
-history limits 1–100, content up to 4000 characters after a nonblank check, and
-`client_message_id` up to 64 characters.
+The following responses are built directly by middleware/controllers and do
+**not** include `error.details`; their fixed message is part of the current
+contract:
+
+| HTTP status | Error code               | Message/source                                                                                                        |
+| ----------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| 404         | `chat_disabled`          | `Chat is currently disabled.` from `EnsureChatEnabled`.                                                               |
+| 404         | `conversation_not_found` | `The requested conversation was not found.` from either chat controller.                                              |
+| 409         | `conversation_closed`    | Localized `chat.conversation_closed` from `ChatMessageController` when its pre-write status check finds a closed row. |
+| 422         | `invalid_cursor`         | `The provided pagination cursor is invalid for this conversation.` from `ChatConversationController`.                 |
+
+These direct responses also set `Cache-Control: no-store, private`. Input
+limits are a locale string of 10 characters, history limits 1–100, content up
+to 4000 characters after a nonblank check, and `client_message_id` up to 64
+characters.
 
 Audit resolution evidence is in [AUDIT.md](AUDIT.md). Future model/tool
 boundaries remain planned and require separate owner approval.

@@ -5,16 +5,18 @@
 
 ## Release snapshot
 
-| Item                                      | Evidence                                                                                                                                                                                                                                                                                                          |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Deployed candidate and current `main` SHA | `e7f230d2ea01dc456aef1a51035f4d88f39542e2`                                                                                                                                                                                                                                                                        |
-| Backend/MariaDB release checkpoint        | [tests 32398600493](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32398600493) and [deploy 32399022501](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32399022501) passed for `1fd83d37b990833cd451d7c3a7b48314976a9f6f`.                                                                     |
-| Final release checkpoint                  | [tests 32410960971](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32410960971) and [deploy 32411415481](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32411415481) passed for the current SHA. The tests workflow passed CI, MariaDB lifecycle, seven Chromium checks, and release packaging. |
-| Production read-only evidence             | `/up` returned 200; `current` resolves to the current SHA; all four chat routes, including restart, are registered; `CHAT_SCHEMA_OK`, `ACTIVE_OWNER_DUPLICATE_GROUPS=0`, and `LOCK_TABLES_OK` were returned.                                                                                                      |
-| Production session decision evidence      | `SESSION_DRIVER=database`; `SESSION_ENCRYPT=true`.                                                                                                                                                                                                                                                                |
+| Item                                                          | Evidence                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Verified Phase 1 application SHA observed/deployed 2026-08-20 | `e7f230d2ea01dc456aef1a51035f4d88f39542e2`                                                                                                                                                                                                                                                                                              |
+| Backend/MariaDB release checkpoint                            | [tests 32398600493](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32398600493) and [deploy 32399022501](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32399022501) passed for `1fd83d37b990833cd451d7c3a7b48314976a9f6f`.                                                                                           |
+| Final release checkpoint                                      | [tests 32410960971](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32410960971) and [deploy 32411415481](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32411415481) passed for that verified Phase 1 application SHA. The tests workflow passed CI, MariaDB lifecycle, seven Chromium checks, and release packaging. |
+| Production read-only evidence                                 | On 2026-08-20, `/up` returned 200; the release/current path resolved to that Phase 1 SHA; all four chat routes, including restart, were registered; `CHAT_SCHEMA_OK`, `ACTIVE_OWNER_DUPLICATE_GROUPS=0`, and `LOCK_TABLES_OK` were returned.                                                                                            |
+| Production session decision evidence                          | `SESSION_DRIVER=database`; `SESSION_ENCRYPT=true`.                                                                                                                                                                                                                                                                                      |
 
-`CHAT_ENABLED=true` and `CHAT_DEMO_ASSISTANT=true` are enabled in the verified
-release. The application has no provider runtime, OpenAI credential, RAG,
+On 2026-08-20, read-only production configuration observed
+`CHAT_ENABLED=true` and `CHAT_DEMO_ASSISTANT=true` for that Phase 1 release.
+This observation does not describe repository or nonproduction defaults. The
+application has no provider runtime, OpenAI credential, RAG,
 tools, streaming, operator inbox, or Phase 2 implementation.
 
 ## Phase status
@@ -41,8 +43,9 @@ iPhone/Safari device:
 
 This is an owner acceptance gate, not a failed automated check. The final
 Chromium fixture covers the synthetic authenticated account at 390px, safe-area
-geometry, focus, restart, both account locales, and console/overflow checks;
-it is not Safari proof. See [UX.md](UX.md) and [AUDIT.md](AUDIT.md).
+geometry, focus, restart-control availability/keyboard order, both account
+locales, and console/overflow checks; it does not exercise replacement behavior
+and is not Safari proof. See [UX.md](UX.md) and [AUDIT.md](AUDIT.md).
 
 ## Open decision
 

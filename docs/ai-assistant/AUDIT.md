@@ -5,17 +5,19 @@
 
 ## Release evidence
 
-The deployed candidate is `e7f230d2ea01dc456aef1a51035f4d88f39542e2`.
+The verified Phase 1 application SHA observed/deployed on 2026-08-20 was
+`e7f230d2ea01dc456aef1a51035f4d88f39542e2`.
 [tests 32410960971](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32410960971)
 passed CI, MariaDB lifecycle, seven Chromium checks, and packaging; [deploy
 32411415481](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32411415481)
-activated the matching release. The earlier backend checkpoint was [tests
+activated that Phase 1 release. The earlier backend checkpoint was [tests
 32398600493](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32398600493)
 and [deploy 32399022501](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32399022501)
 for `1fd83d37b990833cd451d7c3a7b48314976a9f6f`.
 
-Read-only production evidence: `/up` returned 200, the release/current path
-matches the final SHA, four chat routes are registered, and checks returned
+Read-only production evidence on 2026-08-20: `/up` returned 200, the
+release/current path matched that Phase 1 SHA, four chat routes were registered,
+and checks returned
 `CHAT_SCHEMA_OK`, `ACTIVE_OWNER_DUPLICATE_GROUPS=0`, and `LOCK_TABLES_OK`.
 
 ## Resolved findings
