@@ -16,15 +16,22 @@ test('a worker timeout still drains its peer and removes readiness artifacts', f
     touch($readinessBarrier['first_ready']);
     touch($readinessBarrier['second_ready']);
     $first = new Process([PHP_BINARY, '-r', 'usleep(1000000);'], timeout: 0.05);
-    $second = new Process([PHP_BINARY, '-r', 'usleep(1000000);'], timeout: 2);
+    $second = new Process([PHP_BINARY, '-r', 'usleep(1000000);'], timeout: 0.05);
     $first->start();
     $second->start();
     usleep(100_000);
+    $retainedFailure = null;
 
     try {
-        expect(fn () => cleanupConcurrentChatReadinessBarrier($readinessBarrier, $first, $second))
-            ->toThrow(ProcessTimedOutException::class);
-        expect($first->isRunning())->toBeFalse()
+        try {
+            cleanupConcurrentChatReadinessBarrier($readinessBarrier, $first, $second);
+        } catch (ProcessTimedOutException $failure) {
+            $retainedFailure = $failure;
+        }
+
+        expect($retainedFailure)->toBeInstanceOf(ProcessTimedOutException::class)
+            ->and($retainedFailure?->getProcess())->toBe($first)
+            ->and($first->isRunning())->toBeFalse()
             ->and($second->isRunning())->toBeFalse()
             ->and(is_dir($readinessBarrier['directory']))->toBeFalse();
     } finally {
@@ -38,6 +45,39 @@ test('a worker timeout still drains its peer and removes readiness artifacts', f
             if (file_exists($readinessBarrier[$pathKey])) {
                 unlink($readinessBarrier[$pathKey]);
             }
+        }
+
+        if (is_dir($readinessBarrier['directory'])) {
+            rmdir($readinessBarrier['directory']);
+        }
+    }
+});
+
+test('an artifact removal failure does not skip later readiness cleanup', function () {
+    $readinessBarrier = createConcurrentChatReadinessBarrier('cleanup-artifact-failure');
+    mkdir($readinessBarrier['first_ready']);
+    touch($readinessBarrier['second_ready']);
+    $retainedFailure = null;
+
+    try {
+        try {
+            cleanupConcurrentChatReadinessBarrier($readinessBarrier, null, null);
+        } catch (Throwable $failure) {
+            $retainedFailure = $failure;
+        }
+
+        expect($retainedFailure)->not->toBeNull()
+            ->and(file_exists($readinessBarrier['second_ready']))->toBeFalse()
+            ->and(file_exists($readinessBarrier['release']))->toBeFalse();
+    } finally {
+        foreach (['second_ready', 'release'] as $pathKey) {
+            if (file_exists($readinessBarrier[$pathKey])) {
+                unlink($readinessBarrier[$pathKey]);
+            }
+        }
+
+        if (is_dir($readinessBarrier['first_ready'])) {
+            rmdir($readinessBarrier['first_ready']);
         }
 
         if (is_dir($readinessBarrier['directory'])) {
@@ -359,26 +399,62 @@ function cleanupConcurrentChatReadinessBarrier(
     ?Process $first,
     ?Process $second,
 ): void {
+    $firstFailure = null;
+
+    if (! file_exists($readinessBarrier['release'])) {
+        $firstFailure = retainFirstConcurrentChatCleanupFailure(
+            $firstFailure,
+            fn () => releaseConcurrentChatWorkers($readinessBarrier),
+        );
+    }
+
+    foreach ([$first, $second] as $process) {
+        $firstFailure = retainFirstConcurrentChatCleanupFailure(
+            $firstFailure,
+            fn () => waitForConcurrentChatProcess($process),
+        );
+    }
+
+    foreach (['first_ready', 'second_ready', 'release'] as $pathKey) {
+        $firstFailure = retainFirstConcurrentChatCleanupFailure(
+            $firstFailure,
+            fn () => removeConcurrentChatReadinessArtifact($readinessBarrier[$pathKey]),
+        );
+    }
+
+    $firstFailure = retainFirstConcurrentChatCleanupFailure(
+        $firstFailure,
+        fn () => removeConcurrentChatReadinessDirectory($readinessBarrier['directory']),
+    );
+
+    if ($firstFailure !== null) {
+        throw $firstFailure;
+    }
+}
+
+function retainFirstConcurrentChatCleanupFailure(?Throwable $firstFailure, Closure $cleanupAttempt): ?Throwable
+{
     try {
-        if (! file_exists($readinessBarrier['release'])) {
-            touch($readinessBarrier['release']);
-        }
+        $cleanupAttempt();
+    } catch (Throwable $failure) {
+        // Cleanup continues, and the original failure is rethrown after every attempt.
+        return $firstFailure ?? $failure;
+    }
 
-        try {
-            waitForConcurrentChatProcess($first);
-        } finally {
-            waitForConcurrentChatProcess($second);
-        }
-    } finally {
-        foreach (['first_ready', 'second_ready', 'release'] as $pathKey) {
-            if (file_exists($readinessBarrier[$pathKey])) {
-                unlink($readinessBarrier[$pathKey]);
-            }
-        }
+    return $firstFailure;
+}
 
-        if (is_dir($readinessBarrier['directory'])) {
-            rmdir($readinessBarrier['directory']);
-        }
+function removeConcurrentChatReadinessArtifact(string $path): void
+{
+    if (file_exists($path) && ! unlink($path)) {
+        throw new RuntimeException("Unable to remove concurrent chat readiness artifact: {$path}");
+    }
+}
+
+function removeConcurrentChatReadinessDirectory(string $directory): void
+{
+    if (is_dir($directory) && ! rmdir($directory)) {
+        throw new RuntimeException("Unable to remove concurrent chat readiness directory: {$directory}");
     }
 }
 
