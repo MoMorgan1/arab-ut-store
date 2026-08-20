@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\Chat\ChatMessageType;
 use App\Enums\Chat\ChatSenderType;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ChatMessage extends DomainModel
 {
@@ -19,5 +20,17 @@ class ChatMessage extends DomainModel
     public function conversation(): BelongsTo
     {
         return $this->belongsTo(ChatConversation::class, 'conversation_id');
+    }
+
+    /** @return BelongsTo<ChatMessage, $this> */
+    public function replyTo(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reply_to_message_id');
+    }
+
+    /** @return HasOne<ChatMessage, $this> */
+    public function reply(): HasOne
+    {
+        return $this->hasOne(self::class, 'reply_to_message_id');
     }
 }

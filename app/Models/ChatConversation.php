@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatConversationStatus;
 use App\ValueObjects\Chat\ChatOwner;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,6 +15,8 @@ class ChatConversation extends DomainModel
     protected $casts = [
         'status' => ChatConversationStatus::class,
         'last_message_at' => 'datetime',
+        'closed_at' => 'datetime',
+        'close_reason' => ChatConversationCloseReason::class,
     ];
 
     protected static function booted(): void
@@ -24,6 +27,11 @@ class ChatConversation extends DomainModel
 
             if (($hasUser && $hasGuest) || (! $hasUser && ! $hasGuest)) {
                 throw new \InvalidArgumentException('ChatConversation must have exactly one owner: either user_id or guest_key.');
+            }
+
+            if ($conversation->status === ChatConversationStatus::Open
+                && ($conversation->closed_at !== null || $conversation->close_reason !== null)) {
+                throw new \InvalidArgumentException('An open conversation cannot have close metadata.');
             }
         });
     }
@@ -46,6 +54,13 @@ class ChatConversation extends DomainModel
     public function scopeOpen(Builder $query): void
     {
         $query->where('status', ChatConversationStatus::Open);
+    }
+
+    /** @param Builder<ChatConversation> $query */
+    public function scopeClosedForInactivity(Builder $query): void
+    {
+        $query->where('status', ChatConversationStatus::Closed)
+            ->where('close_reason', ChatConversationCloseReason::Inactive);
     }
 
     /** @return BelongsTo<User, $this> */
