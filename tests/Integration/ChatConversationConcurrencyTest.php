@@ -1,13 +1,17 @@
 <?php
 
 use App\Actions\Chat\ClaimGuestChatConversations;
+use App\Actions\Chat\CreateChatMessage;
 use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatConversationStatus;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
 use App\ValueObjects\Chat\ChatOwner;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\Events\TransactionRolledBack;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
@@ -397,6 +401,51 @@ test('a stale guest send rejects after login claim commits before the action own
     }
 });
 
+test('duplicate contention recovery cannot replay a message after guest ownership is revoked', function () {
+    $guestKey = hash_hmac('sha256', bin2hex(random_bytes(32)), 'chat-contention-owner');
+    $conversation = ChatConversation::factory()->forGuest($guestKey)->create();
+    $user = User::factory()->create();
+    $clientMessageId = (string) Str::uuid();
+    $ownershipRevoked = false;
+
+    try {
+        installSyntheticChatMessageContentionTrigger();
+        Event::listen(TransactionRolledBack::class, function () use (
+            &$ownershipRevoked,
+            $clientMessageId,
+            $conversation,
+            $user,
+        ): void {
+            if ($ownershipRevoked) {
+                return;
+            }
+
+            $ownershipRevoked = true;
+            ChatMessage::factory()->customer()->for($conversation, 'conversation')->create([
+                'client_message_id' => $clientMessageId,
+                'content' => 'Canonical message created after contention.',
+            ]);
+            $conversation->update([
+                'user_id' => $user->id,
+                'guest_key' => null,
+            ]);
+        });
+
+        expect(fn () => app(CreateChatMessage::class)->execute(
+            $conversation,
+            'Trigger synthetic client-message contention.',
+            $clientMessageId,
+            ChatOwner::guest($guestKey),
+        ))->toThrow(ModelNotFoundException::class)
+            ->and($ownershipRevoked)->toBeTrue();
+    } finally {
+        Event::forget(TransactionRolledBack::class);
+        removeSyntheticChatMessageContentionTrigger();
+        ChatConversation::query()->where('user_id', $user->id)->orWhere('guest_key', $guestKey)->delete();
+        $user->delete();
+    }
+});
+
 test('a login claim blocks while a message write holds the conversation row lock', function () {
     if (! supportsConcurrentChatLocking()) {
         $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL row locking.');
@@ -406,8 +455,7 @@ test('a login claim blocks while a message write holds the conversation row lock
     $conversation = ChatConversation::factory()->forGuest($guestKey)->create();
     $user = User::factory()->create();
     $clientMessageId = (string) Str::uuid();
-    $namedLock = 'chat-message-'.$clientMessageId;
-    $claimSignal = createConcurrentChatSignal('claim-lock');
+    $namedLock = 'chat-message-pause-'.$clientMessageId;
     $send = null;
     $claim = null;
     $namedLockHeld = false;
@@ -419,26 +467,30 @@ test('a login claim blocks while a message write holds the conversation row lock
 
         $send = concurrentChatMessageProcess((string) $conversation->id, $clientMessageId);
         $send->start();
-        waitForChatMessageInsertPause($clientMessageId);
+        waitForChatMessageInsertPause('chat-message-ready-'.$clientMessageId);
 
-        $claim = concurrentChatClaimProcess($guestKey, (string) $user->id, $conversation->public_id, $claimSignal['ready']);
+        $claim = concurrentChatClaimProcess($guestKey, (string) $user->id, $conversation->public_id, 1);
         $claim->start();
-        waitForConcurrentChatSignal($claimSignal['ready']);
-        $claimBlocked = processRemainsRunningFor($claim, 2.0);
+        $claim->wait();
 
-        expect($claimBlocked)->toBeTrue($claim->getErrorOutput())
+        expect($claim->isSuccessful())->toBeTrue($claim->getErrorOutput())
+            ->and(json_decode($claim->getOutput(), true, flags: JSON_THROW_ON_ERROR))->toBe([
+                'status' => 'lock_wait_timeout',
+            ])
             ->and($conversation->fresh()->guest_key)->toBe($guestKey);
 
         releaseConcurrentChatNamedLock($namedLock);
         $namedLockHeld = false;
         $send->wait();
-        $claim->wait();
         refreshConcurrentChatConnection();
+        app(ClaimGuestChatConversations::class)->execute(
+            [ChatOwner::guest($guestKey)],
+            $user,
+            $conversation->public_id,
+        );
 
         expect($send->isSuccessful())->toBeTrue($send->getErrorOutput())
-            ->and($claim->isSuccessful())->toBeTrue($claim->getErrorOutput())
             ->and(json_decode($send->getOutput(), true, flags: JSON_THROW_ON_ERROR)['status'])->toBe('sent')
-            ->and(json_decode($claim->getOutput(), true, flags: JSON_THROW_ON_ERROR))->toBe(['status' => 'claimed'])
             ->and($conversation->fresh()->user_id)->toBe($user->id)
             ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->count())->toBe(2);
     } finally {
@@ -460,7 +512,6 @@ test('a login claim blocks while a message write holds the conversation row lock
 
         foreach ([
             fn () => removeChatMessageInsertPauseTrigger(),
-            fn () => removeConcurrentChatSignal($claimSignal),
             fn () => ChatConversation::query()->where('user_id', $user->id)->orWhere('guest_key', $guestKey)->delete(),
             fn () => $user->delete(),
         ] as $cleanupAttempt) {
@@ -696,7 +747,7 @@ function concurrentChatClaimProcess(
     string $guestKey,
     string $userId,
     string $activePublicId,
-    string $readyPath,
+    int $lockWaitTimeout,
 ): Process {
     return new Process([
         PHP_BINARY,
@@ -708,7 +759,7 @@ function concurrentChatClaimProcess(
         $guestKey,
         $userId,
         $activePublicId,
-        $readyPath,
+        (string) $lockWaitTimeout,
     ], base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
 }
 
@@ -731,19 +782,55 @@ function removeChatMessageUpdateAudit(): void
     DB::statement('DROP TABLE IF EXISTS chat_message_update_audits');
 }
 
+function installSyntheticChatMessageContentionTrigger(): void
+{
+    if (DB::connection()->getDriverName() === 'sqlite') {
+        DB::unprepared(<<<'SQL'
+            CREATE TRIGGER fail_synthetic_chat_message_contention
+            BEFORE INSERT ON chat_messages
+            FOR EACH ROW
+            WHEN NEW.content = 'Trigger synthetic client-message contention.'
+            BEGIN
+                SELECT RAISE(ABORT, 'uq_chat_messages_client_id');
+            END;
+            SQL);
+
+        return;
+    }
+
+    DB::unprepared(<<<'SQL'
+        CREATE TRIGGER fail_synthetic_chat_message_contention
+        BEFORE INSERT ON chat_messages
+        FOR EACH ROW
+        BEGIN
+            IF NEW.content = 'Trigger synthetic client-message contention.' THEN
+                SIGNAL SQLSTATE '23000' SET MESSAGE_TEXT = 'uq_chat_messages_client_id';
+            END IF;
+        END
+        SQL);
+}
+
+function removeSyntheticChatMessageContentionTrigger(): void
+{
+    DB::statement('DROP TRIGGER IF EXISTS fail_synthetic_chat_message_contention');
+}
+
 function installChatMessageInsertPauseTrigger(): void
 {
-    DB::statement('CREATE TABLE chat_message_insert_barriers (client_message_id VARCHAR(64) PRIMARY KEY) ENGINE=MyISAM');
     DB::unprepared(<<<'SQL'
         CREATE TRIGGER pause_chat_message_insert
         BEFORE INSERT ON chat_messages
         FOR EACH ROW
         BEGIN
-            DECLARE acquired_lock INT;
+            DECLARE acquired_ready_lock INT;
+            DECLARE acquired_pause_lock INT;
             IF NEW.client_message_id IS NOT NULL THEN
-                INSERT INTO chat_message_insert_barriers (client_message_id) VALUES (NEW.client_message_id);
-                SET acquired_lock = GET_LOCK(CONCAT('chat-message-', NEW.client_message_id), 20);
-                IF acquired_lock <> 1 THEN
+                SET acquired_ready_lock = GET_LOCK(CONCAT('chat-message-ready-', NEW.client_message_id), 0);
+                IF acquired_ready_lock <> 1 THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Unable to signal the chat message insert barrier.';
+                END IF;
+                SET acquired_pause_lock = GET_LOCK(CONCAT('chat-message-pause-', NEW.client_message_id), 20);
+                IF acquired_pause_lock <> 1 THEN
                     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Timed out waiting for the chat message insert barrier.';
                 END IF;
             END IF;
@@ -754,14 +841,13 @@ function installChatMessageInsertPauseTrigger(): void
 function removeChatMessageInsertPauseTrigger(): void
 {
     DB::statement('DROP TRIGGER IF EXISTS pause_chat_message_insert');
-    DB::statement('DROP TABLE IF EXISTS chat_message_insert_barriers');
 }
 
-function waitForChatMessageInsertPause(string $clientMessageId): void
+function waitForChatMessageInsertPause(string $readyLock): void
 {
     $deadline = microtime(true) + 20;
 
-    while (! DB::table('chat_message_insert_barriers')->where('client_message_id', $clientMessageId)->exists()) {
+    while (DB::selectOne('SELECT IS_USED_LOCK(?) AS connection_id', [$readyLock])->connection_id === null) {
         if (microtime(true) >= $deadline) {
             throw new RuntimeException('Timed out waiting for the chat message insert barrier.');
         }
@@ -780,56 +866,6 @@ function acquireConcurrentChatNamedLock(string $lockName): bool
 function releaseConcurrentChatNamedLock(string $lockName): void
 {
     DB::selectOne('SELECT RELEASE_LOCK(?) AS released_lock', [$lockName]);
-}
-
-/** @return array{directory: string, ready: string} */
-function createConcurrentChatSignal(string $scenario): array
-{
-    $directory = storage_path('framework/testing/chat-'.$scenario.'-'.bin2hex(random_bytes(8)));
-
-    if (! mkdir($directory, 0777, true) && ! is_dir($directory)) {
-        throw new RuntimeException("Unable to create the {$scenario} signal directory.");
-    }
-
-    return [
-        'directory' => $directory,
-        'ready' => $directory.DIRECTORY_SEPARATOR.'ready',
-    ];
-}
-
-function waitForConcurrentChatSignal(string $readyPath): void
-{
-    $deadline = microtime(true) + 20;
-
-    while (! file_exists($readyPath)) {
-        if (microtime(true) >= $deadline) {
-            throw new RuntimeException('Timed out waiting for the concurrent chat signal.');
-        }
-
-        usleep(25_000);
-    }
-}
-
-function processRemainsRunningFor(Process $process, float $seconds): bool
-{
-    $deadline = microtime(true) + $seconds;
-
-    while (microtime(true) < $deadline) {
-        if (! $process->isRunning()) {
-            return false;
-        }
-
-        usleep(25_000);
-    }
-
-    return $process->isRunning();
-}
-
-/** @param array{directory: string, ready: string} $signal */
-function removeConcurrentChatSignal(array $signal): void
-{
-    removeConcurrentChatReadinessArtifact($signal['ready']);
-    removeConcurrentChatReadinessDirectory($signal['directory']);
 }
 
 function installChatLifecycleBarrier(): void
