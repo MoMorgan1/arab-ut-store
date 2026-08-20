@@ -70,31 +70,58 @@ test('concurrent duplicate messages recover one canonical customer and demo repl
         'last_message_at' => $originalActivity,
     ]);
     $clientMessageId = (string) Str::uuid();
-    $first = concurrentChatMessageProcess($conversation->id, $clientMessageId);
-    $second = concurrentChatMessageProcess($conversation->id, $clientMessageId);
+    $barriers = concurrentChatMessageBarrierPaths();
+    $audit = concurrentChatMessageAuditNames();
+    $first = null;
+    $second = null;
 
-    $first->start();
-    $second->start();
-    $first->wait();
-    $second->wait();
-    refreshConcurrentChatConnection();
+    try {
+        installConcurrentChatMessageUpdateAudit($audit, $conversation->id);
+        $first = concurrentChatMessageProcess(
+            $conversation->id,
+            $clientMessageId,
+            $barriers['first_ready'],
+            $barriers['release'],
+        );
+        $second = concurrentChatMessageProcess(
+            $conversation->id,
+            $clientMessageId,
+            $barriers['second_ready'],
+            $barriers['release'],
+        );
 
-    expect($first->isSuccessful())->toBeTrue($first->getErrorOutput())
-        ->and($second->isSuccessful())->toBeTrue($second->getErrorOutput());
+        $first->start();
+        $second->start();
+        waitForConcurrentChatMessageBarrier($barriers['first_ready']);
+        waitForConcurrentChatMessageBarrier($barriers['second_ready']);
+        releaseConcurrentChatMessageWorkers($barriers['release']);
+        $first->wait();
+        $second->wait();
+        refreshConcurrentChatConnection();
 
-    $firstOutput = json_decode(trim($first->getOutput()), true, flags: JSON_THROW_ON_ERROR);
-    $secondOutput = json_decode(trim($second->getOutput()), true, flags: JSON_THROW_ON_ERROR);
-    $customer = ChatMessage::query()->where('client_message_id', $clientMessageId)->sole();
-    $reply = ChatMessage::query()->where('reply_to_message_id', $customer->id)->sole();
+        expect($first->isSuccessful())->toBeTrue($first->getErrorOutput())
+            ->and($second->isSuccessful())->toBeTrue($second->getErrorOutput());
 
-    expect($firstOutput)->toBe($secondOutput)
-        ->and($firstOutput)->toBe([
-            'customerPublicId' => $customer->public_id,
-            'replyPublicId' => $reply->public_id,
-        ])
-        ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->where('sender_type', 'customer')->count())->toBe(1)
-        ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->where('sender_type', 'assistant')->count())->toBe(1)
-        ->and($conversation->fresh()->last_message_at->gt($originalActivity))->toBeTrue();
+        $firstOutput = json_decode(trim($first->getOutput()), true, flags: JSON_THROW_ON_ERROR);
+        $secondOutput = json_decode(trim($second->getOutput()), true, flags: JSON_THROW_ON_ERROR);
+        $customer = ChatMessage::query()->where('client_message_id', $clientMessageId)->sole();
+        $reply = ChatMessage::query()->where('reply_to_message_id', $customer->id)->sole();
+        $activityUpdateCount = (int) DB::table($audit['table'])
+            ->where('conversation_id', $conversation->id)
+            ->value('update_count');
+
+        expect($firstOutput)->toBe($secondOutput)
+            ->and($firstOutput)->toBe([
+                'customerPublicId' => $customer->public_id,
+                'replyPublicId' => $reply->public_id,
+            ])
+            ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->where('sender_type', 'customer')->count())->toBe(1)
+            ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->where('sender_type', 'assistant')->count())->toBe(1)
+            ->and($activityUpdateCount)->toBe(1)
+            ->and($conversation->fresh()->last_message_at->gt($originalActivity))->toBeTrue();
+    } finally {
+        cleanupConcurrentChatMessageArtifacts($barriers, $audit, $first, $second);
+    }
 });
 
 function supportsConcurrentChatLocking(): bool
@@ -120,8 +147,12 @@ function concurrentChatAcquireProcess(string $ownerType, string $ownerId): Proce
     ], base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
 }
 
-function concurrentChatMessageProcess(int $conversationId, string $clientMessageId): Process
-{
+function concurrentChatMessageProcess(
+    int $conversationId,
+    string $clientMessageId,
+    string $readyPath,
+    string $releasePath,
+): Process {
     return new Process([
         PHP_BINARY,
         '-d',
@@ -135,7 +166,129 @@ function concurrentChatMessageProcess(int $conversationId, string $clientMessage
         base_path('tests/Support/ConcurrentChatMessage.php'),
         (string) $conversationId,
         $clientMessageId,
+        $readyPath,
+        $releasePath,
     ], base_path(), concurrentChatDatabaseEnvironment(), timeout: 30);
+}
+
+/** @return array{first_ready: string, second_ready: string, release: string} */
+function concurrentChatMessageBarrierPaths(): array
+{
+    $directory = storage_path('framework/testing/chat-message-'.bin2hex(random_bytes(8)));
+
+    if (! mkdir($directory, 0777, true) && ! is_dir($directory)) {
+        throw new RuntimeException('Unable to create the concurrent chat message barrier directory.');
+    }
+
+    return [
+        'first_ready' => $directory.DIRECTORY_SEPARATOR.'first-ready',
+        'second_ready' => $directory.DIRECTORY_SEPARATOR.'second-ready',
+        'release' => $directory.DIRECTORY_SEPARATOR.'release',
+    ];
+}
+
+/** @return array{table: string, trigger: string} */
+function concurrentChatMessageAuditNames(): array
+{
+    $suffix = bin2hex(random_bytes(8));
+
+    return [
+        'table' => 'chat_message_activity_audit_'.$suffix,
+        'trigger' => 'chat_message_activity_trigger_'.$suffix,
+    ];
+}
+
+/** @param array{table: string, trigger: string} $audit */
+function installConcurrentChatMessageUpdateAudit(array $audit, int $conversationId): void
+{
+    DB::statement(<<<SQL
+        CREATE TABLE `{$audit['table']}` (
+            conversation_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+            update_count INT UNSIGNED NOT NULL DEFAULT 0
+        ) ENGINE=InnoDB
+        SQL);
+    DB::table($audit['table'])->insert([
+        'conversation_id' => $conversationId,
+        'update_count' => 0,
+    ]);
+    DB::statement(<<<SQL
+        CREATE TRIGGER `{$audit['trigger']}`
+        AFTER UPDATE ON `chat_conversations`
+        FOR EACH ROW
+        UPDATE `{$audit['table']}`
+        SET update_count = update_count + 1
+        WHERE conversation_id = NEW.id
+          AND NOT (NEW.last_message_at <=> OLD.last_message_at)
+        SQL);
+}
+
+function waitForConcurrentChatMessageBarrier(string $path): void
+{
+    $deadline = microtime(true) + 20;
+
+    while (! file_exists($path)) {
+        if (microtime(true) >= $deadline) {
+            throw new RuntimeException('Timed out waiting for concurrent chat message worker '.basename($path).'.');
+        }
+
+        usleep(25_000);
+    }
+}
+
+function releaseConcurrentChatMessageWorkers(string $path): void
+{
+    if (file_put_contents($path, 'release', LOCK_EX) === false) {
+        throw new RuntimeException('Unable to release concurrent chat message workers.');
+    }
+}
+
+/**
+ * @param  array{first_ready: string, second_ready: string, release: string}  $barriers
+ * @param  array{table: string, trigger: string}  $audit
+ */
+function cleanupConcurrentChatMessageArtifacts(
+    array $barriers,
+    array $audit,
+    ?Process $first,
+    ?Process $second,
+): void {
+    if (is_dir(dirname($barriers['release'])) && ! file_exists($barriers['release'])) {
+        file_put_contents($barriers['release'], 'release', LOCK_EX);
+    }
+
+    foreach ([$first, $second] as $process) {
+        if ($process?->isRunning() === true) {
+            $process->stop(2);
+        }
+    }
+
+    refreshConcurrentChatConnection();
+
+    try {
+        DB::statement("DROP TRIGGER IF EXISTS `{$audit['trigger']}`");
+    } finally {
+        try {
+            DB::statement("DROP TABLE IF EXISTS `{$audit['table']}`");
+        } finally {
+            cleanupConcurrentChatMessageBarriers($barriers);
+        }
+    }
+}
+
+/** @param array{first_ready: string, second_ready: string, release: string} $barriers */
+function cleanupConcurrentChatMessageBarriers(array $barriers): void
+{
+    foreach ($barriers as $path) {
+        if (file_exists($path)) {
+            unlink($path);
+        }
+    }
+
+    $directory = dirname($barriers['release']);
+
+    if (is_dir($directory)) {
+        rmdir($directory);
+    }
 }
 
 function refreshConcurrentChatConnection(): void
