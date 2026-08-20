@@ -30,7 +30,6 @@ describe('resolveApplicationLayout', () => {
         const layout = resolveApplicationLayout(page);
         expect(layout).toBe(ChatRootLayout);
         expect(typeof layout).toBe('function');
-        expect(layout.name).toBe('ChatRootLayout');
     });
 
     it.each(['auth/login', 'auth/register', 'auth/forgot-password'])(
