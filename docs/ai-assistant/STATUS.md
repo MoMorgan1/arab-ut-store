@@ -1,81 +1,33 @@
 # Live status
 
-**Lifecycle:** Implemented
-**Verified:** 2026-08-20
+**Lifecycle:** Pre-deployment Phase 1 Completion handoff
 
-## Release snapshot
+**Verified locally:** 2026-08-20
 
-| Item                                      | Status                                                                                                                                                                                                                |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Last verified main/production release SHA | `8fb90688cf635547c4e6f20452aaf489c3edf215`                                                                                                                                                                            |
-| Approved design revision SHA              | `eb3f0be25cdc2a90238e4f0827abdc61b83e3e7f` — documentation-only source for the current planned work                                                                                                                   |
-| Latest verified tests workflow            | [Successful](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32376102979): full PHP/frontend/static/Vite gate, MariaDB lifecycle, strengthened Chromium smoke, release packaging, and artifact-hygiene checks |
-| Latest verified production deployment     | [Successful](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32376545588)                                                                                                                                     |
-| Read-only production HTML                 | 2026-08-20: `/`, `/en`, `/login`, `/en/login`, and `/cart` each returned HTTP 200 with current assets; `chat.enabled=true`; `chat.demoAssistant=true`                                                                 |
-| Operational flags                         | `CHAT_ENABLED=true`; `CHAT_DEMO_ASSISTANT=true`; no AI runtime flag or OpenAI credential is deployed                                                                                                                  |
-| P0/P1 release gate                        | Proceed; no unresolved P0 or P1 audit finding                                                                                                                                                                         |
-| Owner acceptance                          | Phase 1 Completion requested: account launcher and conversation-lifetime issues remain to be implemented and manually accepted                                                                                        |
+## Current state
 
-The verified production release, approved design revision, and later
-`STATUS.md`-only commit are distinct. This status update records the design
-commit as evidence: neither documentation commit changes the application
-runtime nor claims a new browser verification of it.
+Phase 1 Completion is implemented in the local repository but is not marked deployed or production-implemented. The canonical implementation adds one-open conversation enforcement, lifecycle/retention maintenance, restart behavior, safe chat errors, account-surface hardening, and local authenticated browser coverage. The authoritative design is [2026-08-20-ai-assistant-phases-1-2-design.md](../superpowers/specs/2026-08-20-ai-assistant-phases-1-2-design.md).
 
-## Current phase and approved design
+| Evidence area                                            | State                                                                |
+| -------------------------------------------------------- | -------------------------------------------------------------------- |
+| Local routes, configuration, migrations, actions, and UI | Verified from source in this handoff.                                |
+| Local focused chat/lifecycle/browser gates               | To be recorded with their exact command output in the Task 7 report. |
+| MariaDB CI migration and concurrency gate                | Pending GitHub CI; no CI run is claimed.                             |
+| Production `SESSION_DRIVER` / `SESSION_ENCRYPT`          | Pending approved read-only inspection.                               |
+| Deployment and release packaging                         | Pending authorized push and deployment.                              |
+| Production route health                                  | Pending authorized read-only checks.                                 |
+| Mohamed manual acceptance                                | Pending deployed-release review.                                     |
 
-Current phase: **Phase 1 Completion — design complete, implementation plan not
-yet written**.
+## Audit state
 
-Mohamed approved the conversation-lifecycle policy and Hostinger-native direct
-streaming direction. The binding design is
-[`2026-08-20-ai-assistant-phases-1-2-design.md`](../superpowers/specs/2026-08-20-ai-assistant-phases-1-2-design.md).
+`AI-B03`, `AI-B04`, `AI-B05`, `AI-B06`, `AI-B08`, `AI-F06`, and `AI-F07` have local implementation evidence in [AUDIT.md](AUDIT.md). `AI-B09` remains open until the production session-storage confidentiality boundary is inspected and an approved decision is made. `AI-F04` remains an automated precision gap; the Chromium fixture does not prove Safari/iPhone acceptance.
 
-It specifies:
+## External approval checkpoints
 
-- the mobile account launcher layering fix;
-- one open conversation per owner;
-- 24-hour inactivity close and seven-day reopen;
-- 30-day guest and 180-day authenticated retention;
-- explicit New conversation behavior;
-- Phase 1 concurrency/error/accessibility hardening;
-- OpenAI Responses API with `gpt-5.6-luna`, `store: false`, durable turns/runs,
-  1.5-second coalescing, direct POST streaming, and authenticated-tester rollout
-  for Phase 2.
+- Do not inspect or change production session configuration without the approved secure read-only path and a separate decision for any change.
+- Do not push, deploy, or create a production synthetic account as part of the local documentation handoff.
+- After an authorized release, verify `/`, `/en`, `/login`, `/en/login`, `/cart`, and an authenticated account route. Then Mohamed performs the [manual acceptance checklist](UX.md).
 
-No Phase 1 Completion or Phase 2 production code is implemented by the design
-revision.
+## Exact next action
 
-## Open audit findings
-
-| ID       | Severity | Current state                                                                                                                                                                                |
-| -------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AI-B03` | P2       | Open-conversation creation concurrency remains unguarded.                                                                                                                                    |
-| `AI-B04` | P2       | Duplicate contention and lost-response demo-reply recovery remain open.                                                                                                                      |
-| `AI-B05` | P2       | Conversation plus onboarding-message creation remains non-atomic.                                                                                                                            |
-| `AI-B06` | P2       | MariaDB migration lifecycle passed CI; a direct-query owner-constraint regression remains open.                                                                                              |
-| `AI-B08` | P2       | Chat 429/500 error-envelope and no-store coverage remains open.                                                                                                                              |
-| `AI-B09` | P2       | Chat tables are HMAC-only, but the raw guest token remains in Laravel session storage; production driver/encryption values are unverified and the confidentiality boundary needs a decision. |
-| `AI-F04` | P3       | Scroll geometry and unread-state assertions remain open.                                                                                                                                     |
-| `AI-F06` | P2       | iOS keyboard and safe-area acceptance remains open.                                                                                                                                          |
-| `AI-F07` | P2       | Composer accessible naming and some 44px secondary targets remain open.                                                                                                                      |
-
-`AI-F08` is mitigated by the release-blocking Chromium application smoke. Its
-remaining cross-browser and visual limits are handled by the manual owner gate,
-not treated as proof of Safari behavior.
-
-Full evidence and severity reasoning remain in [AUDIT.md](AUDIT.md); this status
-does not redefine those findings.
-
-## Open decisions and next gate
-
-- Inspect production `SESSION_DRIVER` / `SESSION_ENCRYPT` securely; any change
-  that invalidates customer sessions requires separate approval.
-- Before real Luna testing, Mohamed provisions an OpenAI API project with
-  billing/model access and stores its key through the secure Hostinger path.
-- The production-path fake-provider gate must prove Hostinger sends incremental
-  deltas and recovers after disconnect. Buffering stops Phase 2 rollout.
-
-**Exact next action:** Mohamed reviews the written design spec. After explicit
-approval, write the Phase 1 Completion implementation plan. Implement, deploy,
-and manually accept Phase 1 before writing or executing the Phase 2
-implementation plan. Phase 2 public rollout remains a separate decision.
+An authorized release owner should run the complete local/CI gates, arrange the approved deployment, collect read-only production health evidence, and hand the deployed build to Mohamed for manual acceptance. Phase 2 remains blocked behind that acceptance.

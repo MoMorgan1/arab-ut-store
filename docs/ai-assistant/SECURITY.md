@@ -1,74 +1,31 @@
 # Security
 
-**Lifecycle:** Implemented
+**Lifecycle:** Local implementation verified; production configuration pending
+
 **Verified:** 2026-08-20
 
-## Ownership and authorization
+## Ownership boundary
 
-- An authenticated conversation is owned by the authenticated user ID.
-- A guest receives a random 32-byte token stored in the Laravel session. The
-  chat ownership tables store only its HMAC-SHA-256 derived with `APP_KEY`, not
-  the raw bearer token. Laravel session storage retains the raw token, and its
-  at-rest confidentiality depends on the configured session driver and session
-  encryption boundary. The repository defaults are database-backed sessions
-  with encryption disabled; the production driver and encryption values were
-  not inspected.
-- Keys listed through `APP_PREVIOUS_KEYS` are accepted for rotation. Matching
-  guest conversations are transactionally rekeyed to the current application
-  key.
-- After successful login, conversations matching the current or previous guest
-  HMACs are transactionally claimed by the user. The raw guest token is cleared
-  only after the claim succeeds; claim failure logs the user back out.
-- A conversation public ID is not authorization. Both read and write
-  controllers apply the current owner scope before matching `public_id`, and a
-  cross-owner request receives the same not-found boundary.
+- Authenticated conversations are scoped to one `user_id`; guests are scoped to an HMAC-SHA-256 `guest_key`. Both chat controllers apply `forOwner()` before looking up a public ID, so a public ID is not an authorization credential.
+- `ResolveChatOwner` generates a random 32-byte guest token and keeps the raw token in Laravel session storage. Chat tables store only the HMAC derived from `APP_KEY`; `APP_PREVIOUS_KEYS` candidates allow transactional rekeying.
+- At login, guest conversations are claimed in a transaction. The selected active guest conversation keeps its public ID; any conflicting open user or guest conversations close with `superseded_by_login_claim` before ownership changes.
+- The schema and model guard require exactly one owner, and the lifecycle migration adds a unique open-owner key. Direct database writes are covered by the local invariant regression in `tests/Integration/ChatConversationLifecycleInvariantUpgradeTest.php`.
 
-## Input, traffic, and storage controls
+## Request and persistence controls
 
-- Conversation creation accepts an optional locale string of at most 10
-  characters and a history limit from 1 through 100. Only `ar` and `en` affect
-  the seeded conversation locale; other values fall back to the application
-  locale.
-- Message creation requires non-blank string content of at most 4000 characters
-  and a string `client_message_id` of at most 64 characters.
-- Rate limits are owner- and IP-scoped per minute: conversation creation allows
-  10 per owner and 30 per IP, message creation allows 30 per owner and 60 per
-  IP, and reads allow 60 per owner and 120 per IP.
-- Chat routes use `NoStore` response middleware, which enforces a
-  `Cache-Control: no-store` directive on downstream responses. Disabled and
-  chat exception responses independently set a no-store directive.
-- Database constraints enforce unique public IDs, exactly one conversation
-  owner, cascading message ownership, and unique per-conversation client
-  message IDs.
+- Owner/IP limiters are 10/30 per minute for acquisition or restart, 30/60 for messages, and 60/120 for reads.
+- Private chat responses use no-store cache control. Validation, throttling, and unexpected errors use a localized JSON `error` envelope without stack traces or owner/session data.
+- `(conversation_id, client_message_id)` prevents duplicate customer messages; `reply_to_message_id` is unique, preventing more than one linked reply to a customer message. The duplicate-key recovery path returns the canonical stored message/reply pair.
+- `chat:maintain-conversations` deletes only closed rows beyond the configured retention threshold. Existing cascading foreign keys delete their messages.
 
-## Audit state
+## Security evidence state
 
-The canonical [Phase 1 audit](AUDIT.md) found no unresolved P0 production
-blocker or P1 security/data-integrity blocker and set the release gate to
-Proceed.
+Local source and focused tests close the prior code-level findings `AI-B03`, `AI-B04`, `AI-B05`, `AI-B06`, and `AI-B08`. The MariaDB migration and concurrency checks are defined in the repository CI workflow but have not been observed in CI for this handoff.
 
-| Audit ID | Severity | Remaining risk                                                                                                                       |
-| -------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `AI-B03` | P2       | Concurrent first requests can create multiple owner-valid open conversations.                                                        |
-| `AI-B04` | P2       | Concurrent duplicate client IDs can produce a transient failure, and lost-response retry does not return the stored demo reply.      |
-| `AI-B05` | P2       | Conversation creation and onboarding-message creation are not one transaction.                                                       |
-| `AI-B06` | P2       | MariaDB migration lifecycle is CI-covered, but direct-query owner-invariant coverage remains absent.                                 |
-| `AI-B08` | P2       | Framework validation, throttle, and server errors do not share one chat error envelope; focused 429/500 no-store coverage is absent. |
-| `AI-B09` | P2       | The raw guest token remains in Laravel session storage; choose and harden its driver/encryption confidentiality boundary.            |
-| `AI-F04` | P3       | Scroll geometry and unread behavior lack precise automated assertions.                                                               |
-| `AI-F06` | P2       | iOS keyboard and safe-area behavior remain a manual-browser risk.                                                                    |
-| `AI-F07` | P2       | The composer lacks an explicit accessible name, and some secondary controls do not guarantee a 44px target.                          |
-
-`AI-F08` is mitigated by the Chromium application smoke in release
-`fdba471af2fef38905581a309bf8b0e9119ab41b`; Safari and full visual/device
-acceptance remain outside that automated smoke.
+`AI-B09` remains open. Repository defaults are `SESSION_DRIVER=database` and `SESSION_ENCRYPT=false`, while the raw guest token remains in the Laravel session. Production session-driver and encryption values were not inspected. Inspecting or changing them is an external, security-sensitive approval checkpoint; session encryption must not be enabled silently because it may invalidate active sessions.
 
 ## Future model and tool boundary
 
 **Section lifecycle:** Planned
 
-Order credentials, payment secrets, production keys, session tokens, and other
-sensitive data must never be exposed to a future model. Any future access to
-order or account data requires an approved, owner-authorized tool boundary with
-least-privilege output, audit logging, and confirmation rules documented in
-[TOOLS.md](TOOLS.md).
+No provider credential, order data, payment secret, session token, or customer credential may enter a future model context. Any later data access requires an approved owner-authorized, least-privilege tool boundary with audit logging and confirmation rules in [TOOLS.md](TOOLS.md).

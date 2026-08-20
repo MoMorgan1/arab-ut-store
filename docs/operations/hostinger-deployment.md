@@ -38,7 +38,10 @@ Hostinger Cron Jobs runs this PHP command every minute:
 /usr/bin/php /home/<account>/domains/<website>/current/artisan schedule:run
 ```
 
-Laravel then schedules exchange-rate refresh, paid-order event publication, and guest-claim cleanup. Confirm it after a domain or directory change with:
+Laravel then schedules exchange-rate refresh, paid-order event publication,
+guest-claim cleanup, and the hourly
+`chat:maintain-conversations` lifecycle/retention job. Confirm the scheduled
+commands after a domain or directory change with:
 
 ```bash
 cd <deploy-root>/current
@@ -80,3 +83,14 @@ GET /en -> 200, English/LTR
 ```
 
 Then exercise PS/Xbox -> Normal -> Amount and confirm the displayed price changes synchronously without a quote request or refreshing message. Check the browser console, asset responses, overflow, auth pages, cart, service routes, and footer links before completing the release.
+
+## Chat Phase 1 Completion release checklist
+
+This checklist applies when the Phase 1 Completion changes are authorized for release. It is intentionally not evidence that those steps have already run.
+
+1. Wait for the release SHA's `ci` and `mariadb-schema` workflow jobs. The MariaDB job must complete the fresh, rollback, migrate lifecycle and chat lifecycle/concurrency integration tests.
+2. Deploy the SHA-bound artifact through the normal workflow. Do not run a schema rollback as part of application rollback; the release process uses forward migrations and restores the prior application symlink only if `/up` fails.
+3. Confirm `php artisan schedule:list` includes the hourly `chat:maintain-conversations` command with overlap prevention.
+4. Read-only check `/`, `/en`, `/login`, `/en/login`, `/cart`, and the authenticated account route. Do not create a production synthetic account.
+5. Inspect production `SESSION_DRIVER` and `SESSION_ENCRYPT` only through the approved secure read-only path. Never copy `.env`, session records, or secrets into logs, commits, or chat. Treat an encryption change as a separate approval because active sessions may be invalidated.
+6. Hand the deployed release to Mohamed for the Arabic/English, iPhone safe area, navigation/lifecycle, focus, touch-target, and browser-console manual acceptance gate.

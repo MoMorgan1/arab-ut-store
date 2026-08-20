@@ -1,55 +1,34 @@
 # Customer experience
 
-**Lifecycle:** Implemented
+**Lifecycle:** Local implementation verified; deployed owner acceptance pending
+
 **Verified:** 2026-08-20
 
-## Layout and direction
+## Account placement and responsive behavior
 
-- Customer messages are physically right-aligned and assistant messages are
-  physically left-aligned in both Arabic RTL and English LTR pages. The message
-  row fixes physical geometry with `dir="ltr"`; each bubble uses `dir="auto"`
-  so mixed-language content selects its own text direction.
-- The typing indicator remains physically left.
-- On mobile, the open chat is a full-screen fixed sheet. From the `sm`
-  breakpoint, it becomes a bottom-right anchored panel measuring 420px wide and
-  up to 650px or 85vh high.
-- The composer textarea is 16px on mobile to avoid iOS input zoom, becomes 14px
-  at the `lg` breakpoint, has a 44px minimum height, and auto-grows to 120px.
+- `ChatRootLayout` identifies `account/*` Inertia pages and passes the account surface to `ChatWidget`. On mobile, `.chat-widget-root--account` is placed above the account navigation with a safe-area-aware `88px` bottom offset and a `z-index` of 70. The account navigation uses `z-index` 60.
+- The open mobile sheet is a fixed full-screen dialog at `z-index` 70. The desktop panel begins at the `md` breakpoint and is physically right-anchored, 420px wide, and at most 650px/85vh high.
+- The launcher remains physically bottom-right in Arabic RTL and English LTR. Customer bubbles stay physically right and assistant/typing bubbles stay physically left; bubble text uses automatic direction for mixed language.
+- The mobile composer has a safe-area-aware bottom padding, a 16px text size, a 44px minimum height, and a 120px auto-growth ceiling.
 
-## Arabic and English copy intent
+## Conversation controls
 
-Arabic is the default storefront language and uses the familiar Arab UT voice.
-English communicates the same actions and limitations rather than introducing
-a different product promise. The onboarding text invites a message and explains
-that sign-in can support later order tracking. The current demo reply identifies
-the experience as a foundation demo; it must not be represented as a smart or
-human answer.
+Opening is lazy. The localized **New conversation / محادثة جديدة** control is disabled while a restart or send is in progress, then calls `POST /chat/conversations/restart`. It replaces the current visible conversation only after the replacement succeeds. Closing does not restart a conversation; it returns focus to the launcher. `Escape` also closes the widget.
 
-## Interaction and accessibility behavior
+The mobile sheet is modal: the page outside it is inert, focus is contained, and focus returns to the launcher on close. Desktop remains a non-modal panel. The composer has an explicit localized accessible name. Close, restart, send, retry, load-older, and scroll controls use 44px minimum targets. Motion-related transitions respect reduced-motion preferences.
 
-- Opening is lazy: no conversation request is made until the customer opens the
-  widget.
-- `Escape` closes the open panel. Closing restores focus to the launcher.
-  Sending returns focus to the composer.
-- The launcher, close button, send button, dialog, message log, and status
-  announcements expose semantics. The known accessible-name and secondary
-  touch-target gaps remain recorded as `AI-F07`.
-- Panel, launcher, typing, and scroll behavior respect reduced-motion signals
-  where implemented. Smooth scrolling becomes immediate when reduced motion is
-  requested.
-- Older messages prepend while preserving the scroll anchor. Customer sends are
-  optimistic, FIFO, and retry with the same client message ID.
+## Local browser fixture
 
-## Mohamed manual device checklist
+`tests/Browser/storefront-smoke.spec.ts` uses the real local registration flow and a disposable local database. At 390px it verifies that the authenticated account launcher is above the mobile navigation, the sheet stacks above that navigation, and closing restores launcher focus. The same fixture visits `/en/my-account` and checks English `lang`/`dir` plus launcher geometry. It also exercises Arabic and English account chat behavior at 320px, 390px, 768px, and 1440px.
 
-Owner acceptance is `Pending Mohamed manual test`. Check Arabic RTL and English
-LTR at 320px, 390px, 768px, and 1440px, including:
+This is local Chromium evidence, not production-browser evidence and not Safari/iPhone proof.
 
-- launcher and panel open/close, visible focus, keyboard order, and `Escape`;
-- physical customer-right and assistant/typing-left placement, including a
-  mixed-language outgoing message;
-- composer focus, iPhone keyboard zoom, home-indicator/safe-area clearance, and
-  44px touch targets;
-- send, retry, older-history loading, scroll preservation, unread state,
-  navigation persistence, and full refresh continuity;
-- reduced motion, no horizontal overflow, and no browser console errors.
+## Mohamed manual acceptance gate
+
+Acceptance remains pending until Mohamed confirms the deployed release:
+
+- account launcher is visible above navigation; the full sheet covers it and closes back to the focused launcher;
+- Arabic, English, and mixed-language messages preserve their intended direction and physical alignment;
+- New conversation creates a new public ID; refresh, navigation, and login preserve the current allowed conversation;
+- iPhone zoom, safe area, keyboard behavior, touch targets, reduced motion, overflow, focus, and browser-console behavior are acceptable;
+- an explicit old conversation does not automatically reopen.

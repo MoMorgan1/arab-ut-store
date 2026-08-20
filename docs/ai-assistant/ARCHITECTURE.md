@@ -1,59 +1,70 @@
 # Architecture
 
-**Lifecycle:** Implemented
+**Lifecycle:** Local implementation verified; deployment evidence pending
+
 **Verified:** 2026-08-20
 
-## Request and rendering flow
+## Lifecycle routes
 
-1. `resources/js/app.tsx` asks `resources/js/lib/page-layout.ts` for the
-   application layout. `ChatRootLayout` is the outer layout for storefront and
-   authentication pages, so the widget state survives Inertia page navigation.
-2. `app/Http/Middleware/HandleInertiaRequests.php` shares
-   `chat.enabled` and `chat.demoAssistant` from `config/chat.php` on every
-   Inertia response.
-3. `ChatRootLayout` passes those values and the current locale to `ChatWidget`.
-   A disabled widget renders nothing. Opening an enabled widget lazily starts or
-   reloads the active conversation through `useChat` and `chat-api.ts`.
-4. The three chat routes pass through `EnsureChatEnabled`, `NoStore`, and their
-   named rate limiters before the chat controllers run.
-5. Controllers resolve the current owner, validate input, scope conversation
-   access by owner and public ID, invoke chat actions, and serialize bounded
-   results with `ChatPresenter`.
-6. Actions create or recover the active conversation, persist customer and demo
-   messages, rekey rotated guest ownership, and claim guest conversations after
-   login.
-7. `ChatConversation` and `ChatMessage` persist to `chat_conversations` and
-   `chat_messages` as defined by
-   `database/migrations/2026_08_20_000001_create_chat_tables.php`.
+`routes/chat.php` registers these non-localized routes behind `EnsureChatEnabled`, `NoStore`, and the named limiter shown below.
 
-## Routes
+| Method | Path                                          | Name                         | Limiter              | Behavior                                                                                                                        |
+| ------ | --------------------------------------------- | ---------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/chat/conversations`                         | `chat.conversations.store`   | `chat-conversations` | Returns the owner's open conversation, reopens a recent inactivity closure, or creates a conversation and onboarding message.   |
+| `POST` | `/chat/conversations/restart`                 | `chat.conversations.restart` | `chat-conversations` | Closes the owner's current open conversation as `customer_started_new`, creates a replacement, and updates the session pointer. |
+| `GET`  | `/chat/conversations/{conversation}`          | `chat.conversations.show`    | `chat-read`          | Returns owner-scoped bounded history.                                                                                           |
+| `POST` | `/chat/conversations/{conversation}/messages` | `chat.messages.store`        | `chat-messages`      | Stores one customer message and, when enabled, its deterministic demo reply.                                                    |
 
-| Method | Path                                          | Name                       | Controller action                  |
-| ------ | --------------------------------------------- | -------------------------- | ---------------------------------- |
-| `POST` | `/chat/conversations`                         | `chat.conversations.store` | `ChatConversationController@store` |
-| `GET`  | `/chat/conversations/{conversation}`          | `chat.conversations.show`  | `ChatConversationController@show`  |
-| `POST` | `/chat/conversations/{conversation}/messages` | `chat.messages.store`      | `ChatMessageController@store`      |
+The conversation controller accepts `locale` (up to 10 characters) and a `limit` from `1` through `100`; an omitted limit uses `chat.default_page_size` (`50`). Reads also accept a 26-character `before_id` cursor. The message controller accepts non-blank `content` up to `chat.max_message_length` (`4000`) and `client_message_id` up to 64 characters.
 
-These routes are registered once from `routes/web.php`; there is no separate
-locale-prefixed chat route.
+## Conversation lifecycle
 
-## Configuration
+`chat_conversations.status` uses `open`, `closed`, and the reserved `archived` vocabulary. The lifecycle migration adds `closed_at`, `close_reason`, and `active_owner_key`.
 
-| Environment flag      | Config key            | Default | Implemented effect                                                                                                   |
-| --------------------- | --------------------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
-| `CHAT_ENABLED`        | `chat.enabled`        | `false` | Shows the widget through shared Inertia data and permits the routes; disabled routes return a no-store 404 response. |
-| `CHAT_DEMO_ASSISTANT` | `chat.demo_assistant` | `false` | Persists and returns the canned assistant reply after a new customer message.                                        |
+- A user may have at most one open conversation. `active_owner_key` is unique while a row is open and is `NULL` once the row is closed. The migration derives it from `user:<id>` or `guest:<hmac>` and reconciles historical duplicates by retaining the newest `last_message_at` (then highest numeric ID) as open; older rows close with `invariant_upgrade_duplicate`.
+- A `POST /chat/conversations` acquisition prefers the valid session pointer, then the canonical open row. An `inactive` closure may reopen when `last_message_at` is within `chat.reopen_within_days`; other close reasons never auto-reopen. Unique-key contention re-reads and returns the canonical open winner.
+- `POST /chat/conversations/restart` is transactional. It closes the current open row with `customer_started_new`, creates the replacement and onboarding message, then writes the new public ID to the session pointer. A failed replacement rolls the close and pointer update back.
+- `CreateChatConversation` creates the conversation and onboarding message in one transaction. A duplicate `client_message_id` returns the stored customer message and its linked demo reply rather than creating another reply.
 
-`chat.max_message_length` is `4000`, and `chat.default_page_size` is `50`.
-The controller accepts a bounded history limit from `1` through `100`.
+The first migration retains the exactly-one-owner database guard and cascade relationships. The lifecycle migration adds a nullable self-reference `chat_messages.reply_to_message_id`, with a unique index so one customer message has at most one reply.
 
-## Persistence boundary
+## Maintenance and retention
 
-`chat_conversations.public_id` and `chat_messages.public_id` are external
-identifiers. Internal numeric IDs drive relations and message ordering. A
-conversation has exactly one authenticated `user_id` or guest HMAC
-`guest_key`. Messages cascade with their conversation, and
-`(conversation_id, client_message_id)` is unique for retry idempotency.
+`php artisan chat:maintain-conversations` closes rows whose `last_message_at` is at least `chat.auto_close_hours` old, using the `inactive` reason. It purges only closed guest rows at `chat.guest_retention_days` and only closed authenticated rows at `chat.user_retention_days`, in 200-row chunks. Conversation deletion cascades to messages through the existing foreign key.
 
-No model provider, prompt runtime, retrieval store, live tool, streaming
-transport, realtime operator channel, or assistant-admin API is implemented.
+`routes/console.php` schedules this command hourly with `withoutOverlapping()`. It reports only closed/purged counts. The repository does not prove that Hostinger's scheduler is currently invoking it; that is a deployment checkpoint.
+
+## Configuration defaults
+
+| Environment flag            | Config key                  | Repository default | Local effect                                                                              |
+| --------------------------- | --------------------------- | ------------------ | ----------------------------------------------------------------------------------------- |
+| `CHAT_ENABLED`              | `chat.enabled`              | `false`            | Renders no widget and returns a no-store `chat_disabled` 404 from chat routes when false. |
+| `CHAT_DEMO_ASSISTANT`       | `chat.demo_assistant`       | `false`            | Adds the deterministic demo reply after a newly stored customer message.                  |
+| `CHAT_AUTO_CLOSE_HOURS`     | `chat.auto_close_hours`     | `24`               | Inactivity closure threshold.                                                             |
+| `CHAT_REOPEN_WITHIN_DAYS`   | `chat.reopen_within_days`   | `7`                | Window for reopening only an inactivity closure.                                          |
+| `CHAT_GUEST_RETENTION_DAYS` | `chat.guest_retention_days` | `30`               | Closed guest-history purge threshold.                                                     |
+| `CHAT_USER_RETENTION_DAYS`  | `chat.user_retention_days`  | `180`              | Closed authenticated-history purge threshold.                                             |
+
+Production values for these flags have not been inspected in this handoff.
+
+## Safe error and cache contract
+
+Chat exceptions are normalized by `ChatErrorResponse`; normal responses and explicit controller errors use the same private, non-cacheable boundary.
+
+| Code                     | Status | Meaning                                                      |
+| ------------------------ | ------ | ------------------------------------------------------------ |
+| `validation_error`       | `422`  | Request validation failed.                                   |
+| `invalid_cursor`         | `422`  | The history cursor is absent from the selected conversation. |
+| `conversation_not_found` | `404`  | The public ID is not available to the current owner.         |
+| `chat_disabled`          | `404`  | Chat is disabled.                                            |
+| `conversation_closed`    | `409`  | A message was sent to a non-open conversation.               |
+| `rate_limited`           | `429`  | The chat limiter rejected the request.                       |
+| `chat_unavailable`       | `500`  | An unexpected server failure was sanitized.                  |
+
+The feature, controller, and exception paths set `Cache-Control: no-store, private`; route middleware also enforces `no-store` downstream.
+
+## Boundary
+
+This is still deterministic chat. No model provider, streaming transport, agent turns/runs, RAG, tools, realtime operator channel, or administrator API is implemented. The approved Phase 2 design remains planned in [the phase design](../superpowers/specs/2026-08-20-ai-assistant-phases-1-2-design.md).
+
+Local source and tests establish the implementation described above. They do not establish a deployed migration, production route health, production flag values, or production scheduler operation.
