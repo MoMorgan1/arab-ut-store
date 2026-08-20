@@ -25,6 +25,8 @@ type StatusAnnouncement = {
     message: string;
 };
 
+type DemoReplyTimeoutId = ReturnType<typeof setTimeout>;
+
 function generateClientMessageId(): string {
     if (
         typeof crypto !== 'undefined' &&
@@ -66,6 +68,9 @@ export function useChat(options: UseChatOptions = {}) {
     const queueRef = useRef<QueueItem[]>([]);
     const isProcessingQueueRef = useRef(false);
     const announcementIdRef = useRef(0);
+    const demoReplyTimeoutsRef = useRef<Set<DemoReplyTimeoutId>>(new Set());
+    const pendingDemoReplyCountRef = useRef(0);
+    const conversationGenerationRef = useRef(0);
 
     useEffect(() => {
         isOpenRef.current = isOpen;
@@ -91,6 +96,88 @@ export function useChat(options: UseChatOptions = {}) {
         setError(message);
         setErrorAnnouncementId((id) => id + 1);
     }, []);
+
+    const clearPendingDemoReplyTimers = useCallback(() => {
+        demoReplyTimeoutsRef.current.forEach((timeoutId) => {
+            clearTimeout(timeoutId);
+        });
+        demoReplyTimeoutsRef.current.clear();
+        pendingDemoReplyCountRef.current = 0;
+    }, []);
+
+    const startConversationGeneration = useCallback(() => {
+        conversationGenerationRef.current += 1;
+        clearPendingDemoReplyTimers();
+    }, [clearPendingDemoReplyTimers]);
+
+    useEffect(
+        () => () => {
+            startConversationGeneration();
+        },
+        [startConversationGeneration],
+    );
+
+    const appendDeliveredDemoReply = useCallback(
+        (demoReply: ChatMessage) => {
+            setMessages((previousMessages) => [...previousMessages, demoReply]);
+
+            if (!isOpenRef.current) {
+                setUnreadCount((count) => count + 1);
+            }
+
+            announceStatus(
+                pageLocale === 'en'
+                    ? 'New message from assistant.'
+                    : 'وصلت رسالة جديدة من المساعد.',
+            );
+        },
+        [announceStatus, pageLocale],
+    );
+
+    const finishDemoReply = useCallback(
+        (
+            timeoutId: DemoReplyTimeoutId,
+            scheduledGeneration: number,
+            demoReply: ChatMessage,
+        ) => {
+            if (scheduledGeneration !== conversationGenerationRef.current) {
+                demoReplyTimeoutsRef.current.delete(timeoutId);
+
+                return;
+            }
+
+            if (!demoReplyTimeoutsRef.current.delete(timeoutId)) {
+                return;
+            }
+
+            pendingDemoReplyCountRef.current -= 1;
+            setIsAssistantTyping(pendingDemoReplyCountRef.current > 0);
+            appendDeliveredDemoReply(demoReply);
+        },
+        [appendDeliveredDemoReply],
+    );
+
+    const scheduleDemoReply = useCallback(
+        (demoReply: ChatMessage, scheduledGeneration: number) => {
+            if (scheduledGeneration !== conversationGenerationRef.current) {
+                return;
+            }
+
+            pendingDemoReplyCountRef.current += 1;
+            setIsAssistantTyping(true);
+            announceStatus(
+                pageLocale === 'en'
+                    ? 'Assistant is typing...'
+                    : 'المساعد يكتب الآن...',
+            );
+
+            const timeoutId = setTimeout(() => {
+                finishDemoReply(timeoutId, scheduledGeneration, demoReply);
+            }, 1100);
+            demoReplyTimeoutsRef.current.add(timeoutId);
+        },
+        [announceStatus, finishDemoReply, pageLocale],
+    );
 
     const getOrInitConversation =
         useCallback(async (): Promise<ChatConversation> => {
@@ -195,6 +282,7 @@ export function useChat(options: UseChatOptions = {}) {
             }
 
             try {
+                const messageGeneration = conversationGenerationRef.current;
                 const result = await sendChatMessage(
                     currentConv.publicId,
                     item.content,
@@ -214,33 +302,7 @@ export function useChat(options: UseChatOptions = {}) {
                 );
 
                 if (result.demoReply !== null) {
-                    setIsAssistantTyping(true);
-                    announceStatus(
-                        pageLocale === 'en'
-                            ? 'Assistant is typing...'
-                            : 'المساعد يكتب الآن...',
-                    );
-
-                    setTimeout(() => {
-                        setIsAssistantTyping(false);
-
-                        if (result.demoReply !== null) {
-                            setMessages((prev) => [
-                                ...prev,
-                                result.demoReply as ChatMessage,
-                            ]);
-
-                            if (!isOpenRef.current) {
-                                setUnreadCount((c) => c + 1);
-                            }
-
-                            announceStatus(
-                                pageLocale === 'en'
-                                    ? 'New message from assistant.'
-                                    : 'وصلت رسالة جديدة من المساعد.',
-                            );
-                        }
-                    }, 1100);
+                    scheduleDemoReply(result.demoReply, messageGeneration);
                 }
             } catch (err) {
                 setMessages((prev) =>
@@ -265,7 +327,7 @@ export function useChat(options: UseChatOptions = {}) {
         }
 
         isProcessingQueueRef.current = false;
-    }, [getOrInitConversation, pageLocale, announceStatus, showError]);
+    }, [getOrInitConversation, pageLocale, scheduleDemoReply, showError]);
 
     const sendMessage = useCallback(
         async (content: string) => {
@@ -389,6 +451,7 @@ export function useChat(options: UseChatOptions = {}) {
         try {
             const data = await restartConversation(pageLocale);
 
+            startConversationGeneration();
             queueRef.current = [];
             isProcessingQueueRef.current = false;
             initializationPromiseRef.current = null;
@@ -415,7 +478,13 @@ export function useChat(options: UseChatOptions = {}) {
         } finally {
             setIsRestarting(false);
         }
-    }, [announceStatus, canRestart, pageLocale, showError]);
+    }, [
+        announceStatus,
+        canRestart,
+        pageLocale,
+        showError,
+        startConversationGeneration,
+    ]);
 
     return {
         isChatEnabled,
