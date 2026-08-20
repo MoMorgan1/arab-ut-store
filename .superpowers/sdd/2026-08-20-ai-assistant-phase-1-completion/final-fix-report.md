@@ -187,3 +187,12 @@ The Vite build emitted only the existing runtime-resolved image/font notices.
 - The report itself is committed in a follow-up documentation commit; its hash
   is returned in the final handoff because a commit cannot contain its own
   stable hash.
+
+## Post-review evidence correction
+
+The Task 7 E1 Operations matcher was updated after final scoped review so it
+asserts the migration-aware failed-health branches documented by the final fix:
+direct prior-code restore with no migration batch, schema rollback before old
+code when a batch was applied, refusal to restore old code when schema rollback
+fails, and the no-valid-prior-release branch. The literal E1 script was rerun
+successfully before publication.
