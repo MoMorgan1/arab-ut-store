@@ -26,6 +26,7 @@ function observeRuntime(page: Page) {
     return () => expect(failures).toEqual([]);
 }
 
+// Regression guard for the 2026-08-19 blank-storefront incident.
 for (const path of ['/', '/en', '/cart']) {
     test(`storefront ${path} mounts`, async ({ page }) => {
         const expectCleanRuntime = observeRuntime(page);

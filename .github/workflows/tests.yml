@@ -37,6 +37,22 @@ jobs:
       - name: Run CI Checks
         run: composer ci:check
 
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser smoke
+        id: browser-smoke
+        run: npm run test:e2e
+
+      - name: Upload Playwright report on smoke failure
+        if: ${{ failure() && steps.browser-smoke.outcome == 'failure' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-report-${{ github.sha }}
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Validate deployment scripts
         run: bash -n deploy/*.sh
 
