@@ -6,13 +6,13 @@ pending
 
 ## Verified release
 
-The verified Phase 1 application SHA observed/deployed on 2026-08-20 was
-`e7f230d2ea01dc456aef1a51035f4d88f39542e2`.
-[tests 32410960971](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32410960971)
-and [deploy 32411415481](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32411415481)
-passed for that SHA. Production read-only verification returned `/up -> 200`, found
-all four chat routes, and reported `CHAT_SCHEMA_OK`,
-`ACTIVE_OWNER_DUPLICATE_GROUPS=0`, and `LOCK_TABLES_OK`.
+The verified final Phase 1 application SHA deployed on 2026-08-21 is
+`1dfebf625bf68cea5069037a5115278e19c3cc09`.
+[tests 32427300165](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427300165)
+and [deploy 32427591352](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427591352)
+passed for that SHA. Production read-only verification returned 200 for the
+health and five public routes, found all four chat routes, and listed the
+hourly Laravel maintenance event.
 
 The GitHub tests workflow is authoritative for MariaDB lifecycle and release
 packaging. Its earlier backend checkpoint was [tests

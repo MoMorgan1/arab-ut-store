@@ -6,15 +6,14 @@ the server.
 
 ## Verified chat release
 
-The verified Phase 1 application SHA observed/deployed on 2026-08-20 was
-`e7f230d2ea01dc456aef1a51035f4d88f39542e2`.
-[tests 32410960971](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32410960971)
+The verified final Phase 1 application SHA deployed on 2026-08-21 is
+`1dfebf625bf68cea5069037a5115278e19c3cc09`.
+[tests 32427300165](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427300165)
 passed CI, MariaDB, seven Chromium checks, and package gates; [deploy
-32411415481](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32411415481)
-passed for that SHA. Read-only production checks on 2026-08-20 verified
-`/up -> 200`, the release/current path for that Phase 1 SHA, four chat routes,
-`CHAT_SCHEMA_OK`,
-`ACTIVE_OWNER_DUPLICATE_GROUPS=0`, and `LOCK_TABLES_OK`.
+32427591352](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427591352)
+passed for that SHA. Read-only production checks verified the active release,
+four chat routes, the hourly Laravel maintenance event, and 200 responses for
+`/up`, `/`, `/en`, `/login`, `/en/login`, and `/cart`.
 
 Recurring scheduler execution was not verified by that release evidence. The
 required hPanel action is below.
