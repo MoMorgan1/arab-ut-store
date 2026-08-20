@@ -3,8 +3,10 @@
 **Lifecycle:** Planned
 **Verified:** 2026-08-20
 
-No model provider, model, prompt contract, agent loop, streaming protocol, or
-runtime API has been selected or implemented.
+The Phase 2 design selects OpenAI Responses API with model `gpt-5.6-luna`
+behind a provider-neutral boundary. No model adapter, prompt contract, agent
+loop, streaming protocol, runtime API, or production credential is implemented
+yet.
 
 ## Present decisions and constraints
 
@@ -18,16 +20,27 @@ runtime API has been selected or implemented.
   order credentials, payment secrets, production keys, or raw guest tokens.
 - Deterministic storage and customer-visible failure behavior remain outside
   provider-specific adapters.
+- Laravel remains durable memory and sends `store: false`; OpenAI project-level
+  retention is verified separately and is not inferred from that request flag.
+- Hostinger direct POST streaming is the selected v1 approach, subject to a
+  real buffering/disconnect feasibility gate before a production tester is
+  enabled.
+- Initial limits are 24 recent messages, 500 output tokens, low reasoning
+  effort, one provider call, a five-second connect timeout, and a 45-second
+  total provider timeout. Changes require evaluation evidence.
 
 ## Open questions
 
-- Which provider and model meet the approved Arabic/English quality, safety,
-  latency, cost, and data-handling requirements?
-- What turn state is stored, for how long, and what may be replayed on retry?
-- What response and failure states belong in the existing message model?
+- Does Hostinger deliver incremental deltas and continue terminal persistence
+  after a browser disconnect under the approved PHP path?
+- What are the production OpenAI project's effective retention controls and
+  model access?
+- What is the production Laravel session driver/encryption boundary, and does
+  changing it justify a separate customer-session invalidation window?
 
 ## Entry criteria
 
-Begin implementation only after Mohamed approves Phase 2 discovery/design,
-including the provider decision, data boundary, budgets, failure behavior,
-evaluation gate, operating cost, and rollback plan.
+The approved direction is specified in
+[`2026-08-20-ai-assistant-phases-1-2-design.md`](../superpowers/specs/2026-08-20-ai-assistant-phases-1-2-design.md).
+Write and approve the Phase 1 Completion implementation plan first. Phase 2
+implementation begins only after Phase 1 is deployed and manually accepted.
