@@ -17,6 +17,7 @@ describe('ChatWidget Component', () => {
 
     afterEach(() => {
         cleanup();
+        vi.useRealTimers();
         vi.restoreAllMocks();
     });
 
@@ -35,6 +36,57 @@ describe('ChatWidget Component', () => {
         });
         expect(launcherButton).toBeInTheDocument();
         expect(launcherButton).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    // Regression: owner acceptance on 2026-08-20 found the launcher too subtle,
+    // the desktop panel detached from it, and the close transition too slow.
+    it('uses the approved prominent desktop launcher geometry', () => {
+        render(<ChatWidget enabled={true} locale="ar" />);
+
+        const launcherButton = screen.getByRole('button', {
+            name: /فتح الشات/i,
+        });
+
+        expect(launcherButton).toHaveClass(
+            'h-14',
+            'w-14',
+            'sm:h-[62px]',
+            'sm:w-[62px]',
+        );
+        expect(launcherButton.className).toContain(
+            'bg-[linear-gradient(145deg,color-mix(in_srgb,var(--arabut-gold-bright)_84%,transparent),color-mix(in_srgb,var(--arabut-gold)_72%,transparent))]',
+        );
+        expect(launcherButton).toHaveClass('backdrop-blur-xl');
+    });
+
+    it('anchors the desktop panel one spacing step above the launcher', () => {
+        render(<ChatWidget enabled={true} locale="ar" />);
+
+        fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
+
+        expect(
+            screen.getByRole('dialog', { name: /مساعد عرب التيميت/i }),
+        ).toHaveClass('sm:right-6', 'sm:bottom-24', 'sm:origin-bottom-right');
+    });
+
+    it('keeps the panel mounted only for the faster close transition', () => {
+        vi.useFakeTimers();
+        render(<ChatWidget enabled={true} locale="ar" />);
+
+        fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
+        act(() => vi.runOnlyPendingTimers());
+
+        fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+
+        expect(
+            screen.getByRole('dialog', { name: /مساعد عرب التيميت/i }),
+        ).toBeInTheDocument();
+
+        act(() => vi.advanceTimersByTime(180));
+
+        expect(
+            screen.queryByRole('dialog', { name: /مساعد عرب التيميت/i }),
+        ).not.toBeInTheDocument();
     });
 
     it('renders launcher button and UI in English mode when locale is en', async () => {

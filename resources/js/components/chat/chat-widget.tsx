@@ -11,6 +11,8 @@ export type ChatWidgetProps = {
     locale?: string;
 };
 
+const CLOSE_TRANSITION_MS = 180;
+
 export const ChatWidget: React.FC<ChatWidgetProps> = ({
     enabled,
     demoAssistant,
@@ -61,7 +63,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                 () => {
                     setIsVisible(false);
                 },
-                isReducedMotion ? 0 : 200,
+                isReducedMotion ? 0 : CLOSE_TRANSITION_MS,
             );
 
             return () => clearTimeout(timeout);
@@ -122,10 +124,10 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                             ? 'Arab UT Chat Assistant'
                             : 'شات مساعد عرب التيميت'
                     }
-                    className={`fixed inset-0 z-50 flex flex-col bg-[var(--arabut-navy)] transition-all duration-200 ease-out motion-reduce:transition-none sm:inset-auto sm:right-0 sm:bottom-20 sm:h-[650px] sm:max-h-[85vh] sm:w-[420px] sm:overflow-hidden sm:rounded-3xl sm:border sm:border-[var(--arabut-line)] sm:shadow-2xl ${
+                    className={`fixed inset-0 z-50 flex origin-bottom flex-col bg-[var(--arabut-navy)] transition-[transform,opacity] motion-reduce:transition-none sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[650px] sm:max-h-[85vh] sm:w-[420px] sm:origin-bottom-right sm:overflow-hidden sm:rounded-3xl sm:border sm:border-[var(--arabut-line)] sm:shadow-2xl ${
                         isVisible
-                            ? 'translate-y-0 opacity-100 sm:scale-100'
-                            : 'translate-y-full opacity-0 sm:translate-y-4 sm:scale-95'
+                            ? 'pointer-events-auto translate-y-0 scale-100 opacity-100 duration-[280ms] [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]'
+                            : 'pointer-events-none translate-y-3 scale-[0.98] opacity-0 duration-[180ms] [transition-timing-function:cubic-bezier(0.7,0,0.84,0)] sm:scale-[0.96]'
                     }`}
                 >
                     {/* Header */}
