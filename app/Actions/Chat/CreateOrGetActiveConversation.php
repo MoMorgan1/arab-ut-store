@@ -49,11 +49,7 @@ final readonly class CreateOrGetActiveConversation
 
         $inactive = $this->recentInactiveConversation($owner);
 
-        if ($inactive instanceof ChatConversation) {
-            return $this->reopen($inactive);
-        }
-
-        return $this->createOrRecoverWinner($owner, $locale);
+        return $this->mutateOrRecoverWinner($owner, $inactive, $locale);
     }
 
     private function pointedOpenConversation(ChatOwner $owner, ?string $activePublicId): ?ChatConversation
@@ -93,9 +89,16 @@ final readonly class CreateOrGetActiveConversation
         return $conversation->refresh();
     }
 
-    private function createOrRecoverWinner(ChatOwner $owner, ?string $locale): ChatConversation
-    {
+    private function mutateOrRecoverWinner(
+        ChatOwner $owner,
+        ?ChatConversation $inactive,
+        ?string $locale,
+    ): ChatConversation {
         try {
+            if ($inactive instanceof ChatConversation) {
+                return $this->reopen($inactive);
+            }
+
             return $this->createChatConversation->execute(
                 $owner,
                 $locale ?? app()->getLocale(),

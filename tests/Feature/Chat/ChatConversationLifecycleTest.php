@@ -7,6 +7,10 @@ use App\Enums\Chat\ChatConversationStatus;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     config()->set('chat.enabled', true);
@@ -83,6 +87,112 @@ test('conversation and onboarding message creation roll back together', function
         ->and(ChatMessage::query()->count())->toBe(0);
 });
 
+test('named active owner contention during creation returns the canonical winner', function () {
+    $user = User::factory()->create();
+    $winnerPublicId = (string) Str::ulid();
+    $insertWinnerAfterOpenLookup = true;
+
+    DB::listen(function (QueryExecuted $query) use (
+        &$insertWinnerAfterOpenLookup,
+        $user,
+        $winnerPublicId,
+    ): void {
+        if (! $insertWinnerAfterOpenLookup
+            || ! str_starts_with(ltrim(strtolower($query->sql)), 'select')
+            || ! str_contains($query->sql, 'chat_conversations')) {
+            return;
+        }
+
+        $insertWinnerAfterOpenLookup = false;
+        insertChatContentionWinner($user, $winnerPublicId);
+    });
+
+    $response = $this->actingAs($user)->postJson(route('chat.conversations.store'));
+
+    $response->assertOk()->assertJsonPath('data.publicId', $winnerPublicId);
+    expect($insertWinnerAfterOpenLookup)->toBeFalse()
+        ->and(ChatConversation::query()->where('active_owner_key', "user:{$user->id}")->count())->toBe(1)
+        ->and(ChatConversation::query()->where('user_id', $user->id)->count())->toBe(1);
+});
+
+test('named active owner contention during reopen returns the canonical winner', function () {
+    $user = User::factory()->create();
+    $inactive = ChatConversation::factory()->forUser($user)->closed(
+        ChatConversationCloseReason::Inactive,
+        now()->subDay(),
+    )->create(['last_message_at' => now()->subDay()]);
+    $winnerPublicId = (string) Str::ulid();
+    $insertWinnerBeforeReopen = true;
+
+    ChatConversation::saving(function (ChatConversation $conversation) use (
+        &$insertWinnerBeforeReopen,
+        $inactive,
+        $user,
+        $winnerPublicId,
+    ): void {
+        if (! $insertWinnerBeforeReopen
+            || $conversation->getKey() !== $inactive->getKey()
+            || $conversation->status !== ChatConversationStatus::Open) {
+            return;
+        }
+
+        $insertWinnerBeforeReopen = false;
+        insertChatContentionWinner($user, $winnerPublicId);
+    });
+
+    $response = $this->actingAs($user)->postJson(route('chat.conversations.store'));
+
+    $response->assertOk()->assertJsonPath('data.publicId', $winnerPublicId);
+    expect($insertWinnerBeforeReopen)->toBeFalse()
+        ->and($inactive->fresh()->status)->toBe(ChatConversationStatus::Closed)
+        ->and($inactive->fresh()->close_reason)->toBe(ChatConversationCloseReason::Inactive)
+        ->and(ChatConversation::query()->where('active_owner_key', "user:{$user->id}")->count())->toBe(1);
+});
+
+test('unrelated query failure during reopen propagates even when an open winner exists', function () {
+    $user = User::factory()->create();
+    $inactive = ChatConversation::factory()->forUser($user)->closed(
+        ChatConversationCloseReason::Inactive,
+        now()->subDay(),
+    )->create(['last_message_at' => now()->subDay()]);
+    $insertFailureOnce = true;
+
+    ChatConversation::saving(function (ChatConversation $conversation) use (
+        &$insertFailureOnce,
+        $inactive,
+        $user,
+    ): void {
+        if (! $insertFailureOnce
+            || $conversation->getKey() !== $inactive->getKey()
+            || $conversation->status !== ChatConversationStatus::Open) {
+            return;
+        }
+
+        $insertFailureOnce = false;
+        insertChatContentionWinner($user, (string) Str::ulid());
+        DB::table('chat_conversations')->insert([
+            'public_id' => $inactive->public_id,
+            'user_id' => $user->id,
+            'guest_key' => null,
+            'status' => ChatConversationStatus::Closed->value,
+            'locale' => 'ar',
+            'last_message_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    });
+
+    $this->actingAs($user);
+    $this->withoutExceptionHandling();
+
+    expect(fn () => $this->postJson(route('chat.conversations.store')))
+        ->toThrow(QueryException::class);
+
+    expect($insertFailureOnce)->toBeFalse()
+        ->and($inactive->fresh()->status)->toBe(ChatConversationStatus::Closed)
+        ->and(ChatConversation::query()->where('active_owner_key', "user:{$user->id}")->count())->toBe(0);
+});
+
 test('restart is scoped to the resolved owner even when the session points elsewhere', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
@@ -105,6 +215,31 @@ test('restart is scoped to the resolved owner even when the session points elsew
         ->and($other->fresh()->close_reason)->toBeNull();
 });
 
+test('restart rolls back the close and preserves the pointer when replacement onboarding fails', function () {
+    $user = User::factory()->create();
+    $current = ChatConversation::factory()->forUser($user)->create();
+    $currentPublicId = $current->public_id;
+
+    ChatMessage::creating(static function (): void {
+        throw new RuntimeException('Synthetic replacement onboarding failure.');
+    });
+
+    $this->actingAs($user)->withSession([
+        ResolveChatOwner::ACTIVE_CONVERSATION_SESSION_KEY => $currentPublicId,
+    ]);
+    $this->withoutExceptionHandling();
+
+    expect(fn () => $this->postJson(route('chat.conversations.restart'), ['locale' => 'en']))
+        ->toThrow(RuntimeException::class, 'Synthetic replacement onboarding failure.');
+
+    $current->refresh();
+    expect($current->status)->toBe(ChatConversationStatus::Open)
+        ->and($current->closed_at)->toBeNull()
+        ->and($current->close_reason)->toBeNull()
+        ->and(ChatConversation::query()->where('user_id', $user->id)->count())->toBe(1)
+        ->and(session()->get(ResolveChatOwner::ACTIVE_CONVERSATION_SESSION_KEY))->toBe($currentPublicId);
+});
+
 test('closing an already closed conversation is idempotent', function () {
     $conversation = ChatConversation::factory()->create();
     $action = app(CloseChatConversation::class);
@@ -118,3 +253,17 @@ test('closing an already closed conversation is idempotent', function () {
         ->and($second->close_reason)->toBe(ChatConversationCloseReason::CustomerStartedNew)
         ->and($second->closed_at?->equalTo($firstClosedAt))->toBeTrue();
 });
+
+function insertChatContentionWinner(User $user, string $publicId): void
+{
+    DB::table('chat_conversations')->insert([
+        'public_id' => $publicId,
+        'user_id' => $user->id,
+        'guest_key' => null,
+        'status' => ChatConversationStatus::Open->value,
+        'locale' => 'ar',
+        'last_message_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+}
