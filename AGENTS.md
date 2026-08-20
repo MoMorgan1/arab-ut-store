@@ -76,3 +76,10 @@ Before calling UI work complete, verify Arabic RTL and English LTR at 320px, 390
 - Move quickly without hiding decisions or making the process difficult to follow.
 - Optimize for a maintainable result Mohamed is proud to show.
 - Never request passwords, private keys, or production secrets in chat. Use an approved secure access method.
+
+## AI assistant source of truth
+
+Before changing chat, support, model, RAG, tool, or admin-inbox behavior, read
+`docs/ai-assistant/STATUS.md`, then the relevant canonical document linked from
+`docs/ai-assistant/README.md`. Historical plans and specs do not override the
+newest explicit owner decision or canonical status.
