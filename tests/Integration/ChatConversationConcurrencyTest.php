@@ -2,32 +2,37 @@
 
 use App\Models\ChatConversation;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(TestCase::class);
 
 test('concurrent authenticated first acquisitions resolve to one active conversation', function () {
     if (! supportsConcurrentChatLocking()) {
         $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL row locking.');
     }
 
+    expect(DB::transactionLevel())->toBe(0);
     $user = User::factory()->create();
-    $first = concurrentChatAcquireProcess('user', (string) $user->id);
-    $second = concurrentChatAcquireProcess('user', (string) $user->id);
-    $first->start();
-    $second->start();
-    $first->wait();
-    $second->wait();
-    refreshConcurrentChatConnection();
 
-    expect($first->isSuccessful())->toBeTrue($first->getErrorOutput())
-        ->and($second->isSuccessful())->toBeTrue($second->getErrorOutput())
-        ->and(trim($first->getOutput()))->not->toBe('')
-        ->and(trim($second->getOutput()))->toBe(trim($first->getOutput()))
-        ->and(ChatConversation::query()->where('active_owner_key', "user:{$user->id}")->count())->toBe(1);
+    try {
+        $first = concurrentChatAcquireProcess('user', (string) $user->id);
+        $second = concurrentChatAcquireProcess('user', (string) $user->id);
+        $first->start();
+        $second->start();
+        $first->wait();
+        $second->wait();
+        refreshConcurrentChatConnection();
+
+        expect($first->isSuccessful())->toBeTrue($first->getErrorOutput())
+            ->and($second->isSuccessful())->toBeTrue($second->getErrorOutput())
+            ->and(trim($first->getOutput()))->not->toBe('')
+            ->and(trim($second->getOutput()))->toBe(trim($first->getOutput()))
+            ->and(ChatConversation::query()->where('active_owner_key', "user:{$user->id}")->count())->toBe(1);
+    } finally {
+        $user->delete();
+    }
 });
 
 test('concurrent guest first acquisitions resolve to one active conversation', function () {
@@ -35,20 +40,27 @@ test('concurrent guest first acquisitions resolve to one active conversation', f
         $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL row locking.');
     }
 
+    expect(DB::transactionLevel())->toBe(0);
     $guestKey = hash_hmac('sha256', 'concurrent-guest-chat-owner', 'synthetic-concurrency-key');
-    $first = concurrentChatAcquireProcess('guest', $guestKey);
-    $second = concurrentChatAcquireProcess('guest', $guestKey);
-    $first->start();
-    $second->start();
-    $first->wait();
-    $second->wait();
-    refreshConcurrentChatConnection();
+    deleteConcurrentGuestConversation($guestKey);
 
-    expect($first->isSuccessful())->toBeTrue($first->getErrorOutput())
-        ->and($second->isSuccessful())->toBeTrue($second->getErrorOutput())
-        ->and(trim($first->getOutput()))->not->toBe('')
-        ->and(trim($second->getOutput()))->toBe(trim($first->getOutput()))
-        ->and(ChatConversation::query()->where('active_owner_key', "guest:{$guestKey}")->count())->toBe(1);
+    try {
+        $first = concurrentChatAcquireProcess('guest', $guestKey);
+        $second = concurrentChatAcquireProcess('guest', $guestKey);
+        $first->start();
+        $second->start();
+        $first->wait();
+        $second->wait();
+        refreshConcurrentChatConnection();
+
+        expect($first->isSuccessful())->toBeTrue($first->getErrorOutput())
+            ->and($second->isSuccessful())->toBeTrue($second->getErrorOutput())
+            ->and(trim($first->getOutput()))->not->toBe('')
+            ->and(trim($second->getOutput()))->toBe(trim($first->getOutput()))
+            ->and(ChatConversation::query()->where('active_owner_key', "guest:{$guestKey}")->count())->toBe(1);
+    } finally {
+        deleteConcurrentGuestConversation($guestKey);
+    }
 });
 
 function supportsConcurrentChatLocking(): bool
@@ -60,6 +72,14 @@ function refreshConcurrentChatConnection(): void
 {
     DB::purge();
     DB::reconnect();
+}
+
+function deleteConcurrentGuestConversation(string $guestKey): void
+{
+    ChatConversation::query()
+        ->whereNull('user_id')
+        ->where('guest_key', $guestKey)
+        ->delete();
 }
 
 function concurrentChatAcquireProcess(string $ownerType, string $ownerIdentifier): Process

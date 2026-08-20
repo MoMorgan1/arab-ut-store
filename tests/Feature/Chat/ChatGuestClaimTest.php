@@ -87,3 +87,45 @@ test('login preserves the pointed active guest conversation and closes the prior
         ->and($userConversation->fresh()->close_reason)->toBe(ChatConversationCloseReason::SupersededByLoginClaim)
         ->and(session()->get(ResolveChatOwner::ACTIVE_CONVERSATION_SESSION_KEY))->toBe($guestConversation->public_id);
 });
+
+test('login claims rotated guest history while preserving the pointed guest conversation', function () {
+    $previousAppKey = 'base64:'.base64_encode(str_repeat('1', 32));
+    $currentAppKey = 'base64:'.base64_encode(str_repeat('2', 32));
+    $rawToken = str_repeat('8', 64);
+    $currentGuestKey = hash_hmac('sha256', $rawToken, $currentAppKey);
+    $previousGuestKey = hash_hmac('sha256', $rawToken, $previousAppKey);
+    $user = User::factory()->create();
+    $userConversation = ChatConversation::factory()->forUser($user)->create();
+    $winner = ChatConversation::factory()->forGuest($currentGuestKey)->create();
+    $loser = ChatConversation::factory()->forGuest($previousGuestKey)->create();
+    $history = ChatConversation::factory()->forGuest($previousGuestKey)->closed(
+        ChatConversationCloseReason::Inactive,
+        now()->subDay(),
+    )->create();
+
+    config()->set('app.key', $currentAppKey);
+    config()->set('app.previous_keys', [$previousAppKey]);
+
+    $response = $this->withSession([
+        ResolveChatOwner::SESSION_KEY => $rawToken,
+        ResolveChatOwner::ACTIVE_CONVERSATION_SESSION_KEY => $winner->public_id,
+    ])->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $response->assertRedirect('/my-account');
+    expect($winner->fresh()->user_id)->toBe($user->id)
+        ->and($winner->fresh()->guest_key)->toBeNull()
+        ->and($winner->fresh()->status)->toBe(ChatConversationStatus::Open)
+        ->and($loser->fresh()->user_id)->toBe($user->id)
+        ->and($loser->fresh()->guest_key)->toBeNull()
+        ->and($loser->fresh()->status)->toBe(ChatConversationStatus::Closed)
+        ->and($loser->fresh()->close_reason)->toBe(ChatConversationCloseReason::SupersededByLoginClaim)
+        ->and($history->fresh()->user_id)->toBe($user->id)
+        ->and($history->fresh()->guest_key)->toBeNull()
+        ->and($history->fresh()->status)->toBe(ChatConversationStatus::Closed)
+        ->and($userConversation->fresh()->status)->toBe(ChatConversationStatus::Closed)
+        ->and($userConversation->fresh()->close_reason)->toBe(ChatConversationCloseReason::SupersededByLoginClaim)
+        ->and(session()->get(ResolveChatOwner::ACTIVE_CONVERSATION_SESSION_KEY))->toBe($winner->public_id);
+});
