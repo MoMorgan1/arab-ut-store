@@ -216,7 +216,8 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                     return (
                         <div
                             key={cluster.id}
-                            className="flex w-full flex-col gap-1"
+                            dir="ltr"
+                            className={`flex w-full flex-col gap-1 ${isCustomer ? 'items-end' : 'items-start'}`}
                         >
                             {cluster.messages.map((message, idx) => {
                                 const isLastInCluster =
@@ -230,7 +231,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                     <div
                                         key={message.publicId}
                                         dir="auto"
-                                        className={`group relative max-w-[82%] text-start ${isCustomer ? 'ml-auto' : 'mr-auto'}`}
+                                        className="group relative max-w-[82%] text-start"
                                     >
                                         <div
                                             className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed transition-opacity ${
@@ -297,7 +298,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
                 {/* Assistant typing indicator */}
                 {isAssistantTyping && (
-                    <div className="flex items-start">
+                    <div dir="ltr" className="flex w-full justify-start">
                         <TypingIndicator locale={locale} />
                     </div>
                 )}

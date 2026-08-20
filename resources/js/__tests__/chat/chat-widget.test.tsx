@@ -38,9 +38,9 @@ describe('ChatWidget Component', () => {
         expect(launcherButton).toHaveAttribute('aria-expanded', 'false');
     });
 
-    // Regression: owner acceptance on 2026-08-20 found the launcher too subtle,
-    // the desktop panel detached from it, and the close transition too slow.
-    it('uses the approved prominent desktop launcher geometry', () => {
+    // Regression: owner mobile acceptance on 2026-08-20 found the gold orb
+    // visually excessive after the first launcher polish.
+    it('uses the approved quiet launcher geometry', () => {
         render(<ChatWidget enabled={true} locale="ar" />);
 
         const launcherButton = screen.getByRole('button', {
@@ -50,13 +50,15 @@ describe('ChatWidget Component', () => {
         expect(launcherButton).toHaveClass(
             'h-14',
             'w-14',
-            'sm:h-[62px]',
-            'sm:w-[62px]',
+            'sm:h-[60px]',
+            'sm:w-[60px]',
         );
         expect(launcherButton.className).toContain(
-            'bg-[linear-gradient(145deg,color-mix(in_srgb,var(--arabut-gold-bright)_84%,transparent),color-mix(in_srgb,var(--arabut-gold)_72%,transparent))]',
+            'bg-[color:color-mix(in_srgb,var(--arabut-navy-raised)_88%,transparent)]',
         );
-        expect(launcherButton).toHaveClass('backdrop-blur-xl');
+        expect(launcherButton).toHaveClass('backdrop-blur-md');
+        expect(launcherButton.className).not.toContain('linear-gradient');
+        expect(launcherButton.querySelector('.lucide-sparkles')).toBeNull();
     });
 
     it('anchors the desktop panel one spacing step above the launcher', () => {

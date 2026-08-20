@@ -74,7 +74,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                     maxLength={MAX_LENGTH}
                     disabled={disabled}
                     dir="auto"
-                    className="max-h-32 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-[var(--arabut-ink)] placeholder-[var(--arabut-muted)] focus:outline-none disabled:opacity-60"
+                    className="max-h-32 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-base text-[var(--arabut-ink)] placeholder-[var(--arabut-muted)] focus:outline-none disabled:opacity-60 lg:text-sm"
                 />
 
                 <button

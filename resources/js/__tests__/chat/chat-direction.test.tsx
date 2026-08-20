@@ -25,6 +25,10 @@ function messageFrame(content: string): HTMLElement | null {
     return screen.getByText(content).parentElement?.parentElement ?? null;
 }
 
+function messageCluster(content: string): HTMLElement | null {
+    return messageFrame(content)?.parentElement ?? null;
+}
+
 // Regression from Mohamed's 2026-08-20 mobile acceptance screenshot.
 describe('chat direction contracts', () => {
     beforeEach(() => {
@@ -51,6 +55,18 @@ describe('chat direction contracts', () => {
     });
 
     it.each(['ar', 'en'])(
+        'uses a mobile-safe composer font size in %s',
+        (locale) => {
+            render(<ChatComposer locale={locale} onSend={() => undefined} />);
+
+            expect(screen.getByRole('textbox')).toHaveClass(
+                'text-base',
+                'lg:text-sm',
+            );
+        },
+    );
+
+    it.each(['ar', 'en'])(
         'keeps customer messages physically right and assistant messages physically left in %s',
         (locale) => {
             render(
@@ -71,11 +87,44 @@ describe('chat direction contracts', () => {
 
             const customerFrame = messageFrame('Customer message');
             const assistantFrame = messageFrame('Assistant message');
+            const customerCluster = messageCluster('Customer message');
+            const assistantCluster = messageCluster('Assistant message');
 
-            expect(customerFrame).toHaveClass('ml-auto');
-            expect(assistantFrame).toHaveClass('mr-auto');
+            expect(customerCluster).toHaveAttribute('dir', 'ltr');
+            expect(assistantCluster).toHaveAttribute('dir', 'ltr');
+            expect(customerCluster).toHaveClass('items-end');
+            expect(assistantCluster).toHaveClass('items-start');
             expect(customerFrame).toHaveAttribute('dir', 'auto');
             expect(assistantFrame).toHaveAttribute('dir', 'auto');
+        },
+    );
+
+    it.each(['ar', 'en'])(
+        'keeps the assistant typing indicator physically left in %s',
+        (locale) => {
+            const { container } = render(
+                <div dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                    <ChatMessageList
+                        messages={[]}
+                        isLoading={false}
+                        isAssistantTyping={true}
+                        hasMore={false}
+                        isLoadingOlder={false}
+                        locale={locale}
+                        onLoadOlder={() => undefined}
+                        onSelectSuggestion={() => undefined}
+                        onRetry={() => undefined}
+                    />
+                </div>,
+            );
+
+            const typingIndicator = container.querySelector(
+                '[aria-hidden="true"]',
+            );
+            const typingFrame = typingIndicator?.parentElement;
+
+            expect(typingFrame).toHaveAttribute('dir', 'ltr');
+            expect(typingFrame).toHaveClass('w-full', 'justify-start');
         },
     );
 });
