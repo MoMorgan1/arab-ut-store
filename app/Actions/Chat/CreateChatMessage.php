@@ -7,6 +7,7 @@ use App\Enums\Chat\ChatMessageType;
 use App\Enums\Chat\ChatSenderType;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
+use App\ValueObjects\Chat\ChatOwner;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
@@ -20,10 +21,12 @@ final readonly class CreateChatMessage
         ChatConversation $conversation,
         string $content,
         string $clientMessageId,
+        ChatOwner $owner,
     ): array {
         try {
-            return DB::transaction(function () use ($conversation, $content, $clientMessageId): array {
+            return DB::transaction(function () use ($conversation, $content, $clientMessageId, $owner): array {
                 $lockedConversation = ChatConversation::query()
+                    ->forOwner($owner)
                     ->whereKey($conversation->id)
                     ->lockForUpdate()
                     ->firstOrFail();

@@ -1,10 +1,12 @@
 <?php
 
+use App\Actions\Chat\ClaimGuestChatConversations;
 use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatConversationStatus;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
+use App\ValueObjects\Chat\ChatOwner;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Exception\ProcessTimedOutException;
@@ -321,7 +323,7 @@ test('a stale controller-style send rejects after a restart commits before the a
     $barrierKey = 'chat-restart-race-'.Str::uuid();
 
     try {
-        installChatRestartBarrier();
+        installChatLifecycleBarrier();
         $send = concurrentChatMessageProcess((string) $conversation->id, (string) Str::uuid(), $barrierKey);
         $restart = concurrentChatRestartProcess((string) $conversation->id, $barrierKey);
         $send->start();
@@ -341,7 +343,55 @@ test('a stale controller-style send rejects after a restart commits before the a
             ->and($conversation->fresh()->status->value)->toBe('closed')
             ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->count())->toBe(0);
     } finally {
-        removeChatRestartBarrier();
+        removeChatLifecycleBarrier();
+        ChatConversation::query()->where('user_id', $user->id)->delete();
+        $user->delete();
+    }
+});
+
+test('a stale guest send rejects after login claim commits before the action owner check', function () {
+    if (! supportsConcurrentChatLocking()) {
+        $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL row locking.');
+    }
+
+    $guestKey = hash_hmac('sha256', bin2hex(random_bytes(32)), 'chat-concurrency-owner');
+    $conversation = ChatConversation::factory()->forGuest($guestKey)->create();
+    $user = User::factory()->create();
+    $barrierKey = 'chat-claim-race-'.Str::uuid();
+    $send = null;
+
+    try {
+        installChatLifecycleBarrier();
+        $send = concurrentChatMessageProcess((string) $conversation->id, (string) Str::uuid(), $barrierKey);
+        $send->start();
+        waitForChatSenderReady($barrierKey);
+
+        app(ClaimGuestChatConversations::class)->execute(
+            [ChatOwner::guest($guestKey)],
+            $user,
+            $conversation->public_id,
+        );
+        DB::table('chat_lifecycle_barriers')->where('race_key', $barrierKey)->update([
+            'lifecycle_committed_at' => now(),
+        ]);
+
+        $send->wait();
+        refreshConcurrentChatConnection();
+
+        expect($send->isSuccessful())->toBeTrue($send->getErrorOutput())
+            ->and(json_decode($send->getOutput(), true, flags: JSON_THROW_ON_ERROR))->toBe([
+                'status' => 'conversation_not_found',
+            ])
+            ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->exists())->toBeFalse();
+    } finally {
+        if ($send?->isRunning()) {
+            DB::table('chat_lifecycle_barriers')->where('race_key', $barrierKey)->update([
+                'lifecycle_committed_at' => now(),
+            ]);
+            $send->wait();
+        }
+
+        removeChatLifecycleBarrier();
         ChatConversation::query()->where('user_id', $user->id)->delete();
         $user->delete();
     }
@@ -410,7 +460,7 @@ function rotatedGuestChatAcquireProcess(
 function concurrentChatMessageProcess(
     string $conversationId,
     string $clientMessageId,
-    ?string $restartBarrierKey = null,
+    ?string $lifecycleBarrierKey = null,
     ?array $readinessBarrier = null,
 ): Process {
     $command = [
@@ -424,8 +474,8 @@ function concurrentChatMessageProcess(
         $clientMessageId,
     ];
 
-    if ($restartBarrierKey !== null || $readinessBarrier !== null) {
-        $command[] = $restartBarrierKey ?? '';
+    if ($lifecycleBarrierKey !== null || $readinessBarrier !== null) {
+        $command[] = $lifecycleBarrierKey ?? '';
     }
 
     if ($readinessBarrier !== null) {
@@ -585,20 +635,33 @@ function removeChatMessageUpdateAudit(): void
     DB::statement('DROP TABLE IF EXISTS chat_message_update_audits');
 }
 
-function installChatRestartBarrier(): void
+function installChatLifecycleBarrier(): void
 {
     DB::statement(<<<'SQL'
-        CREATE TABLE chat_restart_barriers (
+        CREATE TABLE chat_lifecycle_barriers (
             race_key VARCHAR(64) PRIMARY KEY,
             sender_ready_at TIMESTAMP NULL,
-            restart_committed_at TIMESTAMP NULL
+            lifecycle_committed_at TIMESTAMP NULL
         )
         SQL);
 }
 
-function removeChatRestartBarrier(): void
+function removeChatLifecycleBarrier(): void
 {
-    DB::statement('DROP TABLE IF EXISTS chat_restart_barriers');
+    DB::statement('DROP TABLE IF EXISTS chat_lifecycle_barriers');
+}
+
+function waitForChatSenderReady(string $barrierKey): void
+{
+    $deadline = microtime(true) + 20;
+
+    while (! DB::table('chat_lifecycle_barriers')->where('race_key', $barrierKey)->whereNotNull('sender_ready_at')->exists()) {
+        if (microtime(true) >= $deadline) {
+            throw new RuntimeException('Timed out waiting for the chat sender readiness barrier.');
+        }
+
+        usleep(25_000);
+    }
 }
 
 /** @return array<string, string> */

@@ -31,8 +31,8 @@ try {
     );
 
     if (is_string($barrierKey) && $barrierKey !== '') {
-        DB::table('chat_restart_barriers')->where('race_key', $barrierKey)->update([
-            'restart_committed_at' => now(),
+        DB::table('chat_lifecycle_barriers')->where('race_key', $barrierKey)->update([
+            'lifecycle_committed_at' => now(),
         ]);
     }
 
@@ -49,7 +49,7 @@ try {
 function waitForStaleSendLookup(string $barrierKey): void
 {
     foreach (range(1, 100) as $_) {
-        $ready = DB::table('chat_restart_barriers')->where('race_key', $barrierKey)->exists();
+        $ready = DB::table('chat_lifecycle_barriers')->where('race_key', $barrierKey)->exists();
 
         if ($ready) {
             return;

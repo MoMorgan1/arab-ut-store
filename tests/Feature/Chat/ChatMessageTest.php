@@ -7,6 +7,8 @@ use App\Enums\Chat\ChatConversationStatus;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
+use App\ValueObjects\Chat\ChatOwner;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
@@ -166,7 +168,28 @@ test('a stale conversation snapshot cannot accept a message after the conversati
         $staleConversation,
         'A stale send must not insert.',
         (string) Str::uuid(),
+        ChatOwner::user($user->id),
     ))->toThrow(ConflictHttpException::class)
+        ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->exists())->toBeFalse();
+});
+
+test('a stale guest owner cannot write after the conversation is claimed by a user', function () {
+    $guestKey = hash_hmac('sha256', 'stale-guest-owner', (string) config('app.key'));
+    $conversation = ChatConversation::factory()->forGuest($guestKey)->create();
+    $staleConversation = $conversation->fresh();
+    $user = User::factory()->create();
+
+    $conversation->update([
+        'user_id' => $user->id,
+        'guest_key' => null,
+    ]);
+
+    expect(fn () => app(CreateChatMessage::class)->execute(
+        $staleConversation,
+        'A revoked guest must not insert.',
+        (string) Str::uuid(),
+        ChatOwner::guest($guestKey),
+    ))->toThrow(ModelNotFoundException::class)
         ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->exists())->toBeFalse();
 });
 

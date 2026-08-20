@@ -8,6 +8,7 @@ use App\Enums\Chat\ChatConversationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Presenters\ChatPresenter;
 use App\Models\ChatConversation;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -30,12 +31,7 @@ class ChatMessageController extends Controller
             ->first();
 
         if (! $conversation instanceof ChatConversation) {
-            return response()->json([
-                'error' => [
-                    'code' => 'conversation_not_found',
-                    'message' => 'The requested conversation was not found.',
-                ],
-            ], 404)->header('Cache-Control', 'no-store, private');
+            return $this->conversationNotFoundResponse();
         }
 
         if ($conversation->status !== ChatConversationStatus::Open) {
@@ -60,11 +56,16 @@ class ChatMessageController extends Controller
             ]);
         }
 
-        $result = $this->createChatMessage->execute(
-            $conversation,
-            $content,
-            $validated['client_message_id'],
-        );
+        try {
+            $result = $this->createChatMessage->execute(
+                $conversation,
+                $content,
+                $validated['client_message_id'],
+                $owner,
+            );
+        } catch (ModelNotFoundException) {
+            return $this->conversationNotFoundResponse();
+        }
 
         return response()->json([
             'data' => [
@@ -74,5 +75,15 @@ class ChatMessageController extends Controller
                     : null,
             ],
         ], 201)->header('Cache-Control', 'no-store, private');
+    }
+
+    private function conversationNotFoundResponse(): JsonResponse
+    {
+        return response()->json([
+            'error' => [
+                'code' => 'conversation_not_found',
+                'message' => 'The requested conversation was not found.',
+            ],
+        ], 404)->header('Cache-Control', 'no-store, private');
     }
 }
