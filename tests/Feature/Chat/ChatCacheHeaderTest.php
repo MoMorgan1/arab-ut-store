@@ -1,7 +1,10 @@
 <?php
 
 use App\Models\ChatConversation;
+use App\Models\ChatMessage;
 use App\Models\User;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     config()->set('chat.enabled', true);
@@ -40,8 +43,63 @@ test('422 validation error responses receive no-store private cache control head
         'content' => '',
     ]);
 
-    $response->assertStatus(422);
-    expect($response->headers->get('Cache-Control'))->toContain('no-store');
+    $response->assertStatus(422)
+        ->assertJsonPath('error.code', 'validation_error')
+        ->assertJsonPath('error.message', trans('chat.validation_error'))
+        ->assertJsonPath('error.details', []);
+    expect($response->headers->get('Cache-Control'))->toBe('no-store, private');
+});
+
+test('429 throttle responses use the chat rate_limited envelope with private no-store cache control', function () {
+    $user = User::factory()->create();
+    $conversation = ChatConversation::factory()->forUser($user)->create();
+
+    $rateLimitKey = md5('chat-messages'.'chat-messages:user:'.$user->id);
+
+    foreach (range(1, 30) as $_) {
+        RateLimiter::hit($rateLimitKey, 60);
+    }
+
+    $response = $this->actingAs($user)->postJson(route('chat.messages.store', [
+        'conversation' => $conversation->public_id,
+    ]), [
+        'content' => 'This request should be throttled.',
+        'client_message_id' => (string) Str::uuid(),
+    ]);
+
+    $response->assertStatus(429)
+        ->assertJsonPath('error.code', 'rate_limited')
+        ->assertJsonPath('error.message', trans('chat.rate_limited'))
+        ->assertJsonPath('error.details', []);
+    expect($response->headers->get('Cache-Control'))->toBe('no-store, private');
+});
+
+test('unexpected chat failures use a sanitized unavailable envelope with private no-store cache control', function () {
+    $user = User::factory()->create();
+    $conversation = ChatConversation::factory()->forUser($user)->create();
+    $sentinel = 'SENTINEL: never expose this database failure';
+
+    ChatMessage::creating(static function () use ($sentinel): void {
+        throw new RuntimeException($sentinel);
+    });
+
+    try {
+        $response = $this->actingAs($user)->postJson(route('chat.messages.store', [
+            'conversation' => $conversation->public_id,
+        ]), [
+            'content' => 'This request triggers an internal failure.',
+            'client_message_id' => (string) Str::uuid(),
+        ]);
+    } finally {
+        ChatMessage::flushEventListeners();
+    }
+
+    $response->assertStatus(500)
+        ->assertJsonPath('error.code', 'chat_unavailable')
+        ->assertJsonPath('error.message', trans('chat.unavailable'))
+        ->assertJsonPath('error.details', []);
+    expect($response->headers->get('Cache-Control'))->toBe('no-store, private')
+        ->and($response->getContent())->not->toContain($sentinel);
 });
 
 test('404 disabled chat responses receive no-store private cache control header', function () {
