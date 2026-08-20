@@ -71,6 +71,306 @@ describe('ChatWidget Component', () => {
         ).toHaveClass('sm:right-6', 'sm:bottom-24', 'sm:origin-bottom-right');
     });
 
+    it('marks the account root and keeps its dialog above account navigation', () => {
+        const { container } = render(
+            <ChatWidget enabled={true} locale="ar" surface="account" />,
+        );
+
+        const root = container.querySelector('.chat-widget-root--account');
+        expect(root).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
+
+        expect(
+            screen.getByRole('dialog', { name: /مساعد عرب التيميت/i }),
+        ).toHaveClass('chat-widget-dialog', 'z-[70]');
+    });
+
+    it('renders one accessible 44px New conversation control', () => {
+        render(<ChatWidget enabled={true} locale="en" />);
+        fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+
+        const restart = screen.getByRole('button', {
+            name: /New conversation/i,
+        });
+
+        expect(restart).toHaveClass('h-11', 'w-11');
+        expect(screen.getByRole('tooltip')).toHaveTextContent(
+            'New conversation',
+        );
+    });
+
+    it('gives the error dismissal control a 44px hit target', async () => {
+        vi.mocked(fetch).mockResolvedValueOnce({
+            ok: false,
+            status: 500,
+            json: async () => ({ error: { code: 'chat_unavailable' } }),
+        } as Response);
+
+        render(<ChatWidget enabled={true} locale="en" />);
+        fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+
+        expect(
+            await screen.findByRole('button', { name: 'Dismiss' }),
+        ).toHaveClass('min-h-11');
+    });
+
+    it('disables New conversation while a customer message is pending', async () => {
+        const mockConversation = {
+            publicId: 'conv-pending-send',
+            status: 'open',
+            locale: 'en',
+            messages: [],
+            hasMore: false,
+            oldestCursor: null,
+        };
+        let resolveSend: ((response: Response) => void) | undefined;
+        const pendingSend = new Promise<Response>((resolve) => {
+            resolveSend = resolve;
+        });
+
+        vi.mocked(fetch)
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                json: async () => ({ data: mockConversation }),
+            } as Response)
+            .mockReturnValueOnce(pendingSend);
+
+        render(<ChatWidget enabled={true} locale="en" />);
+        fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+
+        await waitFor(() => {
+            expect(
+                screen.getByRole('button', { name: /New conversation/i }),
+            ).toBeEnabled();
+        });
+
+        fireEvent.change(screen.getByRole('textbox'), {
+            target: { value: 'Pending message' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /Send message/i }));
+
+        expect(
+            screen.getByRole('button', { name: /New conversation/i }),
+        ).toBeDisabled();
+
+        resolveSend?.({
+            ok: true,
+            status: 201,
+            json: async () => ({
+                data: {
+                    message: {
+                        publicId: 'sent-message',
+                        conversationPublicId: 'conv-pending-send',
+                        senderType: 'customer',
+                        messageType: 'text',
+                        content: 'Pending message',
+                        createdAt: '2026-08-20T10:01:00.000Z',
+                    },
+                    demoReply: null,
+                },
+            }),
+        } as Response);
+    });
+
+    it('disables New conversation while older messages are loading', async () => {
+        const mockConversation = {
+            publicId: 'conv-loading-older',
+            status: 'open',
+            locale: 'en',
+            messages: [
+                {
+                    publicId: 'newest-message',
+                    conversationPublicId: 'conv-loading-older',
+                    senderType: 'assistant',
+                    messageType: 'text',
+                    content: 'Newest message',
+                    createdAt: '2026-08-20T10:01:00.000Z',
+                },
+            ],
+            hasMore: true,
+            oldestCursor: 'newest-message',
+        };
+        let resolveOlder: ((response: Response) => void) | undefined;
+        const pendingOlder = new Promise<Response>((resolve) => {
+            resolveOlder = resolve;
+        });
+
+        vi.mocked(fetch)
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                json: async () => ({ data: mockConversation }),
+            } as Response)
+            .mockReturnValueOnce(pendingOlder);
+
+        render(<ChatWidget enabled={true} locale="en" />);
+        fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+
+        await screen.findByText('Newest message');
+        fireEvent.click(
+            screen.getByRole('button', { name: /Load older messages/i }),
+        );
+
+        expect(
+            screen.getByRole('button', { name: /New conversation/i }),
+        ).toBeDisabled();
+
+        resolveOlder?.({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                data: {
+                    ...mockConversation,
+                    messages: [],
+                    hasMore: false,
+                    oldestCursor: null,
+                },
+            }),
+        } as Response);
+
+        await waitFor(() => {
+            expect(
+                screen.getByRole('button', { name: /New conversation/i }),
+            ).toBeEnabled();
+        });
+    });
+
+    it('restarts into the returned onboarding state and stays disabled during restart', async () => {
+        const currentConversation = {
+            publicId: 'conv-current',
+            status: 'open',
+            locale: 'en',
+            messages: [
+                {
+                    publicId: 'current-message',
+                    conversationPublicId: 'conv-current',
+                    senderType: 'customer',
+                    messageType: 'text',
+                    content: 'Old conversation message',
+                    createdAt: '2026-08-20T10:00:00.000Z',
+                },
+            ],
+            hasMore: true,
+            oldestCursor: 'current-message',
+        };
+        const restartedConversation = {
+            publicId: 'conv-restarted',
+            status: 'open',
+            locale: 'en',
+            messages: [
+                {
+                    publicId: 'new-onboarding',
+                    conversationPublicId: 'conv-restarted',
+                    senderType: 'system',
+                    messageType: 'system',
+                    content: 'Welcome to your new conversation.',
+                    createdAt: '2026-08-20T10:02:00.000Z',
+                },
+            ],
+            hasMore: false,
+            oldestCursor: null,
+        };
+        let resolveRestart: ((response: Response) => void) | undefined;
+        const pendingRestart = new Promise<Response>((resolve) => {
+            resolveRestart = resolve;
+        });
+
+        vi.mocked(fetch).mockImplementation((url, init) => {
+            if (String(url) === '/chat/conversations/restart') {
+                expect(init?.method).toBe('POST');
+                expect(JSON.parse(String(init?.body))).toEqual({
+                    locale: 'en',
+                });
+
+                return pendingRestart;
+            }
+
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: async () => ({ data: currentConversation }),
+            } as Response);
+        });
+
+        render(<ChatWidget enabled={true} locale="en" />);
+        fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+
+        expect(
+            await screen.findByText('Old conversation message'),
+        ).toBeInTheDocument();
+
+        const restart = screen.getByRole('button', {
+            name: /New conversation/i,
+        });
+        fireEvent.click(restart);
+
+        expect(restart).toBeDisabled();
+        expect(restart).toHaveAttribute('aria-busy', 'true');
+
+        resolveRestart?.({
+            ok: true,
+            status: 200,
+            json: async () => ({ data: restartedConversation }),
+        } as Response);
+
+        expect(
+            await screen.findByText('Welcome to your new conversation.'),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText('Old conversation message'),
+        ).not.toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'New conversation started.',
+        );
+    });
+
+    it('disables suggestion sends while a restart is pending', async () => {
+        const mockConversation = {
+            publicId: 'conv-suggestions',
+            status: 'open',
+            locale: 'en',
+            messages: [],
+            hasMore: false,
+            oldestCursor: null,
+        };
+        let resolveRestart: ((response: Response) => void) | undefined;
+        const pendingRestart = new Promise<Response>((resolve) => {
+            resolveRestart = resolve;
+        });
+
+        vi.mocked(fetch).mockImplementation((url) => {
+            if (String(url) === '/chat/conversations/restart') {
+                return pendingRestart;
+            }
+
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: async () => ({ data: mockConversation }),
+            } as Response);
+        });
+
+        render(<ChatWidget enabled={true} locale="en" />);
+        fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+
+        const restart = await screen.findByRole('button', {
+            name: /New conversation/i,
+        });
+        await waitFor(() => expect(restart).toBeEnabled());
+        fireEvent.click(restart);
+
+        expect(screen.getByRole('textbox')).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Prices' })).toBeDisabled();
+
+        resolveRestart?.({
+            ok: true,
+            status: 200,
+            json: async () => ({ data: mockConversation }),
+        } as Response);
+    });
+
     it('keeps the panel mounted only for the faster close transition', () => {
         vi.useFakeTimers();
         render(<ChatWidget enabled={true} locale="ar" />);
@@ -401,6 +701,9 @@ describe('ChatWidget Component', () => {
         });
 
         expect(screen.getByText('المساعد يكتب الآن...')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /محادثة جديدة/i }),
+        ).toBeDisabled();
 
         act(() => {
             vi.advanceTimersByTime(1200);

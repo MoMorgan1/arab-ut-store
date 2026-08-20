@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatComposer } from '@/components/chat/chat-composer';
 import { ChatMessageList } from '@/components/chat/chat-message-list';
@@ -66,6 +66,21 @@ describe('chat direction contracts', () => {
         },
     );
 
+    it.each([
+        ['ar', 'اكتب رسالتك'],
+        ['en', 'Type your message'],
+    ])(
+        'gives the composer an explicit accessible name in %s',
+        (locale, name) => {
+            render(<ChatComposer locale={locale} onSend={() => undefined} />);
+
+            expect(screen.getByRole('textbox')).toHaveAccessibleName(name);
+            expect(screen.getByRole('textbox').closest('form')).toHaveClass(
+                'chat-composer--mobile-safe',
+            );
+        },
+    );
+
     it.each(['ar', 'en'])(
         'keeps customer messages physically right and assistant messages physically left in %s',
         (locale) => {
@@ -127,4 +142,68 @@ describe('chat direction contracts', () => {
             expect(typingFrame).toHaveClass('w-full', 'justify-start');
         },
     );
+
+    it('gives load, retry, and scroll controls 44px hit targets', () => {
+        const failedMessage: ChatMessage = {
+            publicId: 'failed-message',
+            tempId: 'failed-message',
+            senderType: 'customer',
+            messageType: 'text',
+            content: 'Failed message',
+            createdAt: '2026-08-20T12:00:00.000Z',
+            clientStatus: 'error',
+        };
+
+        render(
+            <ChatMessageList
+                messages={[failedMessage]}
+                isLoading={false}
+                isAssistantTyping={false}
+                hasMore={true}
+                isLoadingOlder={false}
+                locale="en"
+                onLoadOlder={() => undefined}
+                onSelectSuggestion={() => undefined}
+                onRetry={() => undefined}
+            />,
+        );
+
+        const log = screen.getByRole('log');
+        Object.defineProperties(log, {
+            scrollHeight: { configurable: true, value: 500 },
+            scrollTop: { configurable: true, value: 0 },
+            clientHeight: { configurable: true, value: 100 },
+        });
+        fireEvent.scroll(log);
+
+        expect(
+            screen.getByRole('button', { name: /Load older messages/i }),
+        ).toHaveClass('min-h-11');
+        expect(screen.getByRole('button', { name: /Retry/i })).toHaveClass(
+            'min-h-11',
+        );
+        expect(
+            screen.getByRole('button', { name: /Scroll to bottom/i }),
+        ).toHaveClass('min-h-11');
+    });
+
+    it('gives suggestion controls 44px hit targets', () => {
+        render(
+            <ChatMessageList
+                messages={[]}
+                isLoading={false}
+                isAssistantTyping={false}
+                hasMore={false}
+                isLoadingOlder={false}
+                locale="en"
+                onLoadOlder={() => undefined}
+                onSelectSuggestion={() => undefined}
+                onRetry={() => undefined}
+            />,
+        );
+
+        expect(screen.getByRole('button', { name: 'Prices' })).toHaveClass(
+            'min-h-11',
+        );
+    });
 });

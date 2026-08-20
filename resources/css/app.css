@@ -10824,6 +10824,25 @@
 }
 
 @media (max-width: 47.99rem) {
+    .chat-widget-root--account {
+        bottom: calc(88px + env(safe-area-inset-bottom));
+        z-index: 70;
+    }
+
+    .chat-widget-root--account .chat-widget-dialog {
+        inset: 0;
+        width: auto;
+        height: auto;
+        max-height: none;
+        overflow: hidden;
+        border: 0;
+        border-radius: 0;
+    }
+
+    .chat-composer--mobile-safe {
+        padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    }
+
     html {
         scroll-padding-bottom: calc(110px + env(safe-area-inset-bottom));
     }
@@ -10930,6 +10949,13 @@
         box-shadow:
             0 6px 18px rgb(214 175 71 / 10%),
             0 1px 0 rgb(255 255 255 / 12%) inset;
+    }
+}
+
+@media (min-width: 48rem) {
+    .chat-widget-root--account {
+        bottom: 1.5rem;
+        z-index: 50;
     }
 }
 

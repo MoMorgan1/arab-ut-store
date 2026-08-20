@@ -3,6 +3,7 @@ import {
     ChatApiError,
     fetchConversation,
     fetchOrStartActiveConversation,
+    restartConversation,
     sendChatMessage,
 } from '@/lib/chat-api';
 import type { ChatConversation, ChatMessage } from '@/types/chat';
@@ -42,6 +43,7 @@ export function useChat(options: UseChatOptions = {}) {
     const [isLoading, setIsLoading] = useState(false);
     const [isAssistantTyping, setIsAssistantTyping] = useState(false);
     const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+    const [isRestarting, setIsRestarting] = useState(false);
     const [hasMore, setHasMore] = useState(false);
     const [oldestCursor, setOldestCursor] = useState<string | null>(null);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -352,6 +354,54 @@ export function useChat(options: UseChatOptions = {}) {
         }
     }, [isLoadingOlder, hasMore, oldestCursor, pageLocale]);
 
+    const hasPendingSends = messages.some(
+        (message) => message.clientStatus === 'sending',
+    );
+    const canRestart =
+        !isLoading &&
+        !isLoadingOlder &&
+        !isRestarting &&
+        !isAssistantTyping &&
+        !hasPendingSends;
+
+    const restartChat = useCallback(async () => {
+        if (!canRestart) {
+            return;
+        }
+
+        setIsRestarting(true);
+
+        try {
+            const data = await restartConversation(pageLocale);
+
+            queueRef.current = [];
+            isProcessingQueueRef.current = false;
+            initializationPromiseRef.current = null;
+            setConversation(data);
+            conversationRef.current = data;
+            setMessages(data.messages);
+            messagesRef.current = data.messages;
+            setHasMore(data.hasMore);
+            setOldestCursor(data.oldestCursor ?? null);
+            setUnreadCount(0);
+            setError(null);
+            setIsAssistantTyping(false);
+            announceStatus(
+                pageLocale === 'en'
+                    ? 'New conversation started.'
+                    : 'بدأت محادثة جديدة.',
+            );
+        } catch {
+            setError(
+                pageLocale === 'en'
+                    ? 'Failed to start a new conversation. Please try again.'
+                    : 'تعذر بدء محادثة جديدة. حاول مرة ثانية.',
+            );
+        } finally {
+            setIsRestarting(false);
+        }
+    }, [announceStatus, canRestart, pageLocale]);
+
     return {
         isChatEnabled,
         isOpen,
@@ -364,11 +414,14 @@ export function useChat(options: UseChatOptions = {}) {
         isLoading,
         isAssistantTyping,
         isLoadingOlder,
+        isRestarting,
         hasMore,
         unreadCount,
         error,
         clearError: () => setError(null),
         statusAnnouncement,
+        canRestart,
+        restartChat,
         sendMessage,
         retryMessage,
         loadOlderMessages,

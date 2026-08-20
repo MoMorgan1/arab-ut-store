@@ -6,6 +6,7 @@ import type { ChatMessage } from '@/types/chat';
 import { TypingIndicator } from './typing-indicator';
 
 type ChatMessageListProps = {
+    disabled?: boolean;
     messages: ChatMessage[];
     isLoading: boolean;
     isAssistantTyping: boolean;
@@ -23,6 +24,7 @@ const SUGGESTIONS = {
 };
 
 export const ChatMessageList: React.FC<ChatMessageListProps> = ({
+    disabled = false,
     messages,
     isLoading,
     isAssistantTyping,
@@ -162,7 +164,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                 role="log"
                 aria-live="polite"
                 tabIndex={0}
-                className="flex-1 space-y-4 overflow-y-auto p-4 focus-visible:outline-none"
+                className="flex-1 space-y-4 overflow-y-auto p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--arabut-focus)]"
             >
                 {/* Older messages loader button */}
                 {hasMore && (
@@ -170,8 +172,8 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                         <button
                             type="button"
                             onClick={handleLoadOlderClick}
-                            disabled={isLoadingOlder}
-                            className="rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-3 py-1 text-xs text-[var(--arabut-muted)] hover:text-[var(--arabut-ink)] disabled:opacity-50"
+                            disabled={disabled || isLoadingOlder}
+                            className="inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-4 py-2 text-xs text-[var(--arabut-muted)] hover:text-[var(--arabut-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isLoadingOlder
                                 ? isEn
@@ -248,7 +250,10 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                         {/* Status / retry for customer messages */}
                                         {isCustomer && isError && (
                                             <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--arabut-danger)]">
-                                                <AlertCircle className="h-3.5 w-3.5" />
+                                                <AlertCircle
+                                                    aria-hidden="true"
+                                                    className="h-3.5 w-3.5"
+                                                />
                                                 <span>
                                                     {isEn
                                                         ? 'Failed to send'
@@ -264,9 +269,13 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                                     message.publicId,
                                                             )
                                                         }
-                                                        className="inline-flex items-center gap-0.5 underline hover:text-[var(--arabut-ink)]"
+                                                        disabled={disabled}
+                                                        className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 underline hover:text-[var(--arabut-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
-                                                        <RefreshCw className="h-3 w-3" />
+                                                        <RefreshCw
+                                                            aria-hidden="true"
+                                                            className="h-3 w-3"
+                                                        />
                                                         {isEn
                                                             ? 'Retry'
                                                             : 'إعادة المحاولة'}
@@ -317,7 +326,8 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                     onClick={() =>
                                         onSelectSuggestion(suggestion)
                                     }
-                                    className="rounded-xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-3 py-1.5 text-xs text-[var(--arabut-ink)] transition-colors hover:border-[var(--arabut-gold)]/50 hover:bg-[var(--arabut-navy-active)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] active:scale-95"
+                                    disabled={disabled}
+                                    className="min-h-11 rounded-xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-3 py-2 text-xs text-[var(--arabut-ink)] transition-colors hover:border-[var(--arabut-gold)]/50 hover:bg-[var(--arabut-navy-active)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none"
                                 >
                                     {suggestion}
                                 </button>
@@ -335,9 +345,9 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                     type="button"
                     onClick={handleScrollToBottomClick}
                     aria-label={isEn ? 'Scroll to bottom' : 'الانتقال لأسفل'}
-                    className="absolute start-1/2 bottom-4 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)]/95 px-3.5 py-1.5 text-xs font-semibold text-[var(--arabut-gold-bright)] shadow-xl backdrop-blur-sm transition-transform hover:scale-105 active:scale-95"
+                    className="absolute start-1/2 bottom-4 flex min-h-11 -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)]/95 px-3.5 py-2 text-xs font-semibold text-[var(--arabut-gold-bright)] shadow-xl backdrop-blur-sm transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] active:scale-95 motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
                 >
-                    <ArrowDown className="h-3.5 w-3.5" />
+                    <ArrowDown aria-hidden="true" className="h-3.5 w-3.5" />
                     <span>{isEn ? 'New messages' : 'رسائل جديدة'}</span>
                 </button>
             )}

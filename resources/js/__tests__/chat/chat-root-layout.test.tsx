@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ChatRootLayout from '@/layouts/chat-root-layout';
 
 const pageState = vi.hoisted(() => ({
+    component: 'store/home',
     props: {
         locale: 'en',
         chat: { enabled: true, demoAssistant: false },
@@ -19,13 +20,14 @@ vi.mock('@inertiajs/react', () => ({
             );
         }
 
-        return { props: pageState.props };
+        return { component: pageState.component, props: pageState.props };
     },
 }));
 
 describe('ChatRootLayout & Inertia Context', () => {
     beforeEach(() => {
         pageState.inContext = true;
+        pageState.component = 'store/home';
         pageState.props = {
             locale: 'en',
             chat: { enabled: true, demoAssistant: false },
@@ -82,6 +84,20 @@ describe('ChatRootLayout & Inertia Context', () => {
 
         const launcher = screen.getByRole('button', { name: /فتح الشات/i });
         expect(launcher).toBeInTheDocument();
+    });
+
+    it('uses the account-safe chat surface for account page components', () => {
+        pageState.component = 'account/overview';
+
+        const { container } = render(
+            <ChatRootLayout>
+                <div>Account overview</div>
+            </ChatRootLayout>,
+        );
+
+        expect(
+            container.querySelector('.chat-widget-root--account'),
+        ).toBeInTheDocument();
     });
 
     it('fails if rendered outside Inertia PageContext', () => {

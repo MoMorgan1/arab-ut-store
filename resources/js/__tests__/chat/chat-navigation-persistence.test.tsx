@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ChatRootLayout from '@/layouts/chat-root-layout';
 
 const pageState = vi.hoisted(() => ({
+    component: 'store/home',
     props: {
         chat: { enabled: true, demoAssistant: false },
         locale: 'ar',
@@ -19,7 +20,7 @@ const pageState = vi.hoisted(() => ({
 }));
 
 vi.mock('@inertiajs/react', () => ({
-    usePage: () => ({ props: pageState.props }),
+    usePage: () => ({ component: pageState.component, props: pageState.props }),
 }));
 
 // Root layout wrapper simulator matching resources/js/app.tsx persistent layout structure
@@ -45,6 +46,7 @@ const AppRootSimulator: React.FC<{ initialPageName: string }> = ({
 
 describe('Chat Root Navigation Persistence', () => {
     beforeEach(() => {
+        pageState.component = 'store/home';
         pageState.props = {
             chat: { enabled: true, demoAssistant: false },
             locale: 'ar',

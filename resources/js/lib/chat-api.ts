@@ -97,6 +97,51 @@ export async function fetchOrStartActiveConversation(
     return (payload as { data: ChatConversation }).data;
 }
 
+export async function restartConversation(
+    locale: string,
+): Promise<ChatConversation> {
+    const token = csrfToken();
+    const headers: Record<string, string> = {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+    };
+
+    if (token !== null) {
+        headers['X-CSRF-TOKEN'] = token;
+    }
+
+    let response: Response;
+
+    try {
+        response = await fetch('/chat/conversations/restart', {
+            method: 'POST',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers,
+            body: JSON.stringify({ locale }),
+        });
+    } catch {
+        throw new ChatApiError('network_error', 0, 'Network request failed.');
+    }
+
+    const payload = await parseJsonPayload(response);
+
+    if (
+        !response.ok ||
+        payload === null ||
+        typeof payload !== 'object' ||
+        !('data' in payload)
+    ) {
+        throw new ChatApiError(
+            extractErrorCode(payload),
+            response.status,
+            'Failed to restart chat conversation.',
+        );
+    }
+
+    return (payload as { data: ChatConversation }).data;
+}
+
 export async function fetchConversation(
     conversationPublicId: string,
     beforeId?: string,

@@ -20,6 +20,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
     const isEn = locale === 'en';
 
     const placeholder = isEn ? 'Type a message...' : 'اكتب رسالتك هنا...';
+    const inputLabel = isEn ? 'Type your message' : 'اكتب رسالتك';
     const sendLabel = isEn ? 'Send message' : 'إرسال الرسالة';
 
     useEffect(() => {
@@ -61,7 +62,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
     return (
         <form
             onSubmit={handleSubmit}
-            className="border-t border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)]/90 p-3 backdrop-blur-md"
+            className="chat-composer--mobile-safe border-t border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)]/90 p-3 backdrop-blur-md"
         >
             <div className="relative flex items-end gap-2 rounded-2xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] p-1.5 focus-within:border-[var(--arabut-gold)]/60 focus-within:ring-1 focus-within:ring-[var(--arabut-gold)]/60">
                 <textarea
@@ -73,6 +74,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                     rows={1}
                     maxLength={MAX_LENGTH}
                     disabled={disabled}
+                    aria-label={inputLabel}
                     dir="auto"
                     className="max-h-32 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-base text-[var(--arabut-ink)] placeholder-[var(--arabut-muted)] focus:outline-none disabled:opacity-60 lg:text-sm"
                 />
