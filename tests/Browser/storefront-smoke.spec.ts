@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 function observeRuntime(page: Page) {
     const failures: string[] = [];
@@ -41,9 +41,44 @@ async function expectNoHorizontalOverflow(page: Page) {
     expect(overflow).toBeLessThanOrEqual(1);
 }
 
+async function effectiveOpacity(locator: Locator) {
+    return locator.evaluate((element) => {
+        let opacity = 1;
+        let current: Element | null = element;
+
+        while (current !== null) {
+            opacity *= Number.parseFloat(
+                window.getComputedStyle(current).opacity,
+            );
+            current = current.parentElement;
+        }
+
+        return opacity;
+    });
+}
+
+async function readSafeAreaInsetBottom(page: Page) {
+    return page.evaluate(() => {
+        const probe = document.createElement('div');
+
+        probe.style.position = 'fixed';
+        probe.style.paddingBottom = 'env(safe-area-inset-bottom)';
+        document.body.append(probe);
+
+        const value = Number.parseFloat(
+            window.getComputedStyle(probe).paddingBottom,
+        );
+
+        probe.remove();
+
+        return value;
+    });
+}
+
 async function expectMobileAccountLauncherAboveNavigation(
     page: Page,
     accessibleName: string,
+    expectedSafeAreaInsetBottom: number,
 ) {
     const accountNavigation = page.locator('.account-mobile-bottom-nav');
     const chatRoot = page.locator('.chat-widget-root--account');
@@ -64,8 +99,12 @@ async function expectMobileAccountLauncherAboveNavigation(
         throw new Error('Expected rendered account launcher and navigation');
     }
 
+    expect(launcherBox.width).toBeGreaterThanOrEqual(44);
+    expect(launcherBox.height).toBeGreaterThanOrEqual(44);
+    expect(await effectiveOpacity(launcher)).toBeGreaterThan(0);
     expect(launcherBox.y + launcherBox.height).toBeLessThan(navBox.y);
 
+    const safeAreaInsetBottom = await readSafeAreaInsetBottom(page);
     const geometry = await page.evaluate(() => {
         const root = document.querySelector<HTMLElement>(
             '.chat-widget-root--account',
@@ -73,17 +112,6 @@ async function expectMobileAccountLauncherAboveNavigation(
         const navigation = document.querySelector<HTMLElement>(
             '.account-mobile-bottom-nav',
         );
-        const safeAreaProbe = document.createElement('div');
-
-        safeAreaProbe.style.position = 'fixed';
-        safeAreaProbe.style.paddingBottom = 'env(safe-area-inset-bottom)';
-        document.body.append(safeAreaProbe);
-
-        const safeAreaInsetBottom = Number.parseFloat(
-            window.getComputedStyle(safeAreaProbe).paddingBottom,
-        );
-
-        safeAreaProbe.remove();
 
         if (root === null || navigation === null) {
             throw new Error('Expected account chat and navigation surfaces');
@@ -97,16 +125,16 @@ async function expectMobileAccountLauncherAboveNavigation(
             rootZIndex: Number.parseInt(rootStyles.zIndex, 10),
             navigationBottom: Number.parseFloat(navigationStyles.bottom),
             navigationZIndex: Number.parseInt(navigationStyles.zIndex, 10),
-            safeAreaInsetBottom,
         };
     });
 
+    expect(safeAreaInsetBottom).toBeCloseTo(expectedSafeAreaInsetBottom, 1);
     expect(geometry.rootBottom).toBeCloseTo(
-        88 + geometry.safeAreaInsetBottom,
+        88 + expectedSafeAreaInsetBottom,
         1,
     );
     expect(geometry.navigationBottom).toBeCloseTo(
-        10 + geometry.safeAreaInsetBottom,
+        10 + expectedSafeAreaInsetBottom,
         1,
     );
     expect(geometry.rootZIndex).toBe(70);
@@ -219,10 +247,12 @@ test('mobile home opens and closes chat without overflow', async ({ page }) => {
 });
 
 test('authenticated account keeps chat above mobile navigation', async ({
+    context,
     page,
 }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const expectCleanRuntime = observeRuntime(page);
+    const safeAreaInsetBottom = 24;
     const syntheticId = randomUUID();
     const password = `ArabUT-${syntheticId}-Aa1!`;
 
@@ -241,8 +271,23 @@ test('authenticated account keeps chat above mobile navigation', async ({
     await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
 
-    const { launcher, navBox } =
-        await expectMobileAccountLauncherAboveNavigation(page, 'فتح الشات');
+    const cdpSession = await context.newCDPSession(page);
+
+    await cdpSession.send('Emulation.setSafeAreaInsetsOverride', {
+        insets: {
+            bottom: safeAreaInsetBottom,
+            left: 0,
+            right: 0,
+            top: 0,
+        },
+    });
+
+    const { accountNavigation, launcher } =
+        await expectMobileAccountLauncherAboveNavigation(
+            page,
+            'فتح الشات',
+            safeAreaInsetBottom,
+        );
 
     await launcher.click();
 
@@ -253,23 +298,37 @@ test('authenticated account keeps chat above mobile navigation', async ({
 
     await expect(dialog).toBeVisible();
     await expect(dialog).toHaveAttribute('aria-modal', 'true');
+    await expect.poll(() => effectiveOpacity(dialog)).toBeGreaterThan(0);
+    await expect(accountNavigation).toBeVisible();
     await expect(close).toBeFocused();
+    await expect(close).toBeVisible();
+    await expect(close).toBeEnabled();
+    await close.click({ trial: true });
 
     const dialogBox = await dialog.boundingBox();
+    const openNavBox = await accountNavigation.boundingBox();
+    const closeBox = await close.boundingBox();
 
     expect(dialogBox).not.toBeNull();
+    expect(openNavBox).not.toBeNull();
+    expect(closeBox).not.toBeNull();
 
-    if (dialogBox === null) {
-        throw new Error('Expected rendered mobile chat dialog');
+    if (dialogBox === null || openNavBox === null || closeBox === null) {
+        throw new Error(
+            'Expected rendered mobile chat dialog, navigation, and close control',
+        );
     }
 
-    expect(dialogBox.x).toBeLessThanOrEqual(navBox.x);
-    expect(dialogBox.y).toBeLessThanOrEqual(navBox.y);
+    expect(closeBox.width).toBeGreaterThanOrEqual(44);
+    expect(closeBox.height).toBeGreaterThanOrEqual(44);
+    expect(await effectiveOpacity(close)).toBeGreaterThan(0);
+    expect(dialogBox.x).toBeLessThanOrEqual(openNavBox.x);
+    expect(dialogBox.y).toBeLessThanOrEqual(openNavBox.y);
     expect(dialogBox.x + dialogBox.width).toBeGreaterThanOrEqual(
-        navBox.x + navBox.width,
+        openNavBox.x + openNavBox.width,
     );
     expect(dialogBox.y + dialogBox.height).toBeGreaterThanOrEqual(
-        navBox.y + navBox.height,
+        openNavBox.y + openNavBox.height,
     );
 
     const layers = await page.evaluate(() => ({
@@ -305,8 +364,8 @@ test('authenticated account keeps chat above mobile navigation', async ({
                 );
             },
             {
-                x: navBox.x + navBox.width / 2,
-                y: navBox.y + navBox.height / 2,
+                x: openNavBox.x + openNavBox.width / 2,
+                y: openNavBox.y + openNavBox.height / 2,
             },
         ),
     ).toBe(true);
@@ -339,8 +398,13 @@ test('authenticated account keeps chat above mobile navigation', async ({
     const englishAccount = await expectMobileAccountLauncherAboveNavigation(
         page,
         'Open chat',
+        safeAreaInsetBottom,
     );
 
+    await cdpSession.send('Emulation.setSafeAreaInsetsOverride', {
+        insets: { bottom: 0, left: 0, right: 0, top: 0 },
+    });
+    expect(await readSafeAreaInsetBottom(page)).toBeCloseTo(0, 1);
     await page.setViewportSize({ width: 768, height: 844 });
     await expect(englishAccount.accountNavigation).toBeHidden();
     await expect(englishAccount.launcher).toBeVisible();
@@ -373,7 +437,18 @@ test('authenticated account keeps chat above mobile navigation', async ({
     await expect(englishAccount.launcher).toBeFocused();
     await expectNoHorizontalOverflow(page);
 
+    const outsideAccountControl = page
+        .locator('.account-shell__sidebar')
+        .locator('.account-navigation__link[aria-current="page"]');
+
+    await expect(outsideAccountControl).toBeVisible();
+    await outsideAccountControl.click({ trial: true });
+    await outsideAccountControl.focus();
+    await expect(outsideAccountControl).toBeFocused();
+    await expect(englishDialog).toBeVisible();
+
     await englishDialog.getByRole('button', { name: 'Close chat' }).click();
     await expect(englishAccount.launcher).toBeFocused();
+    await cdpSession.detach();
     expectCleanRuntime();
 });
