@@ -9,6 +9,9 @@ use App\Models\ChatMessage;
 use App\Models\User;
 use App\ValueObjects\Chat\ChatOwner;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\Events\TransactionRolledBack;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
@@ -123,6 +126,7 @@ test('legacy unlinked customer replay returns no guessed demo reply', function (
         $conversation,
         'Replayed content must not be associated heuristically.',
         $clientMessageId,
+        ChatOwner::guest((string) $conversation->guest_key),
     );
 
     expect($result['message']->is($legacyCustomer))->toBeTrue()
@@ -191,6 +195,49 @@ test('a stale guest owner cannot write after the conversation is claimed by a us
         ChatOwner::guest($guestKey),
     ))->toThrow(ModelNotFoundException::class)
         ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->exists())->toBeFalse();
+});
+
+test('duplicate contention recovery cannot replay a message after guest ownership is revoked', function () {
+    $guestKey = hash_hmac('sha256', 'contended-stale-guest-owner', (string) config('app.key'));
+    $conversation = ChatConversation::factory()->forGuest($guestKey)->create();
+    $user = User::factory()->create();
+    $clientMessageId = (string) Str::uuid();
+    $ownershipRevoked = false;
+
+    installSyntheticChatMessageContentionTrigger();
+    Event::listen(TransactionRolledBack::class, function () use (
+        &$ownershipRevoked,
+        $clientMessageId,
+        $conversation,
+        $user,
+    ): void {
+        if ($ownershipRevoked) {
+            return;
+        }
+
+        $ownershipRevoked = true;
+        ChatMessage::factory()->customer()->for($conversation, 'conversation')->create([
+            'client_message_id' => $clientMessageId,
+            'content' => 'Canonical message created after contention.',
+        ]);
+        $conversation->update([
+            'user_id' => $user->id,
+            'guest_key' => null,
+        ]);
+    });
+
+    try {
+        expect(fn () => app(CreateChatMessage::class)->execute(
+            $conversation,
+            'Trigger synthetic client-message contention.',
+            $clientMessageId,
+            ChatOwner::guest($guestKey),
+        ))->toThrow(ModelNotFoundException::class)
+            ->and($ownershipRevoked)->toBeTrue();
+    } finally {
+        Event::forget(TransactionRolledBack::class);
+        removeSyntheticChatMessageContentionTrigger();
+    }
 });
 
 test('closed conversation errors use the conversation locale', function (
@@ -320,3 +367,36 @@ test('non-blocking demo assistant generates canned reply immediately when enable
         ->and($data['demoReply']['content'])->toContain('وصلتني رسالتك 👍')
         ->and(ChatMessage::query()->where('conversation_id', $conversation->id)->count())->toBe(2);
 });
+
+function installSyntheticChatMessageContentionTrigger(): void
+{
+    if (DB::connection()->getDriverName() === 'sqlite') {
+        DB::unprepared(<<<'SQL'
+            CREATE TRIGGER fail_synthetic_chat_message_contention
+            BEFORE INSERT ON chat_messages
+            FOR EACH ROW
+            WHEN NEW.content = 'Trigger synthetic client-message contention.'
+            BEGIN
+                SELECT RAISE(ABORT, 'uq_chat_messages_client_id');
+            END;
+            SQL);
+
+        return;
+    }
+
+    DB::unprepared(<<<'SQL'
+        CREATE TRIGGER fail_synthetic_chat_message_contention
+        BEFORE INSERT ON chat_messages
+        FOR EACH ROW
+        BEGIN
+            IF NEW.content = 'Trigger synthetic client-message contention.' THEN
+                SIGNAL SQLSTATE '23000' SET MESSAGE_TEXT = 'uq_chat_messages_client_id';
+            END IF;
+        END
+        SQL);
+}
+
+function removeSyntheticChatMessageContentionTrigger(): void
+{
+    DB::statement('DROP TRIGGER IF EXISTS fail_synthetic_chat_message_contention');
+}

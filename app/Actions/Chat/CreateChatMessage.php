@@ -23,17 +23,11 @@ final readonly class CreateChatMessage
         string $clientMessageId,
         ChatOwner $owner,
     ): array {
-        try {
-            return DB::transaction(function () use ($conversation, $content, $clientMessageId, $owner): array {
-                $lockedConversation = ChatConversation::query()
-                    ->forOwner($owner)
-                    ->whereKey($conversation->id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
+        $conversationId = (int) $conversation->getKey();
 
-                if ($lockedConversation->status !== ChatConversationStatus::Open) {
-                    throw new ConflictHttpException;
-                }
+        try {
+            return DB::transaction(function () use ($conversationId, $content, $clientMessageId, $owner): array {
+                $lockedConversation = $this->lockOwnedOpenConversation($conversationId, $owner);
 
                 $existingMessage = $lockedConversation->messages()
                     ->where('client_message_id', $clientMessageId)
@@ -82,10 +76,13 @@ final readonly class CreateChatMessage
                 throw $exception;
             }
 
-            $existingMessage = $conversation->messages()
-                ->where('client_message_id', $clientMessageId)
-                ->with('reply')
-                ->first();
+            $existingMessage = DB::transaction(function () use ($conversationId, $clientMessageId, $owner): ?ChatMessage {
+                return $this->lockOwnedOpenConversation($conversationId, $owner)
+                    ->messages()
+                    ->where('client_message_id', $clientMessageId)
+                    ->with('reply')
+                    ->first();
+            });
 
             if (! $existingMessage instanceof ChatMessage) {
                 throw $exception;
@@ -96,6 +93,21 @@ final readonly class CreateChatMessage
                 'demoReply' => $existingMessage->reply,
             ];
         }
+    }
+
+    private function lockOwnedOpenConversation(int $conversationId, ChatOwner $owner): ChatConversation
+    {
+        $conversation = ChatConversation::query()
+            ->forOwner($owner)
+            ->whereKey($conversationId)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        if ($conversation->status !== ChatConversationStatus::Open) {
+            throw new ConflictHttpException;
+        }
+
+        return $conversation;
     }
 
     private function isClientMessageIdContention(QueryException $exception): bool
