@@ -92,6 +92,10 @@ Round 1 documentation corrections:
 `dba7ed1d0bb87c4f69f8eba023da2f82e39d0d49`
 (`docs(chat): correct release evidence boundaries`).
 
+Round 2 report-only reproducibility update:
+`5e775d2f10c138bc33fe326e00c040811a78ce7a` and
+`6f47f207a199d75a9e105d7b0a456ea69a993692`.
+
 ## Round 1 correction evidence
 
 ### Corrected claim sources
