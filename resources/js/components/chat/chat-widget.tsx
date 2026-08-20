@@ -94,13 +94,31 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
             typeof window.matchMedia === 'function'
                 ? window.matchMedia(mobileDialogQuery(surface))
                 : null;
+        let removeMediaQueryListener = () => {};
 
-        mediaQuery?.addEventListener('change', updateMobileDialog);
+        if (
+            typeof mediaQuery?.addEventListener === 'function' &&
+            typeof mediaQuery.removeEventListener === 'function'
+        ) {
+            mediaQuery.addEventListener('change', updateMobileDialog);
+            removeMediaQueryListener = () => {
+                mediaQuery.removeEventListener('change', updateMobileDialog);
+            };
+        } else if (
+            typeof mediaQuery?.addListener === 'function' &&
+            typeof mediaQuery.removeListener === 'function'
+        ) {
+            mediaQuery.addListener(updateMobileDialog);
+            removeMediaQueryListener = () => {
+                mediaQuery.removeListener(updateMobileDialog);
+            };
+        }
+
         window.addEventListener('resize', updateMobileDialog);
         updateMobileDialog();
 
         return () => {
-            mediaQuery?.removeEventListener('change', updateMobileDialog);
+            removeMediaQueryListener();
             window.removeEventListener('resize', updateMobileDialog);
         };
     }, [surface]);

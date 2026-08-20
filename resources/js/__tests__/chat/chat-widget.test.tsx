@@ -46,6 +46,7 @@ describe('ChatWidget Component', () => {
         cleanup();
         vi.useRealTimers();
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     it('renders nothing when enabled is false', () => {
@@ -234,6 +235,95 @@ describe('ChatWidget Component', () => {
             expect(launcher).toHaveFocus();
         },
     );
+
+    it('supports legacy-only MediaQueryList registration, changes, and cleanup', () => {
+        const listeners = new Set<(event: MediaQueryListEvent) => void>();
+        const mediaState = { matches: false };
+        const addListener = vi.fn(
+            (listener: (event: MediaQueryListEvent) => void) => {
+                listeners.add(listener);
+            },
+        );
+        const removeListener = vi.fn(
+            (listener: (event: MediaQueryListEvent) => void) => {
+                listeners.delete(listener);
+            },
+        );
+        const legacyAccountQuery = {
+            get matches() {
+                return mediaState.matches;
+            },
+            media: '(max-width: 47.99rem)',
+            onchange: null,
+            addListener,
+            removeListener,
+            dispatchEvent: vi.fn(() => true),
+        } as unknown as MediaQueryList;
+        const reducedMotionQuery = {
+            matches: false,
+            media: '(prefers-reduced-motion: reduce)',
+        } as MediaQueryList;
+
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn((query: string) =>
+                query === '(max-width: 47.99rem)'
+                    ? legacyAccountQuery
+                    : reducedMotionQuery,
+            ),
+        );
+        vi.mocked(fetch).mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                data: {
+                    publicId: 'conv-legacy-media-query',
+                    status: 'open',
+                    locale: 'en',
+                    subject: null,
+                    lastMessageAt: '2026-08-20T10:00:00.000Z',
+                    messages: [],
+                    hasMore: false,
+                    oldestCursor: null,
+                },
+            }),
+        } as Response);
+
+        const { unmount } = render(
+            <ChatWidget enabled={true} locale="en" surface="account" />,
+        );
+
+        expect(addListener).toHaveBeenCalledTimes(1);
+        const registeredListener = addListener.mock.calls[0]?.[0];
+        expect(registeredListener).toBeTypeOf('function');
+
+        fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+        expect(screen.getByRole('dialog')).toHaveAttribute(
+            'aria-modal',
+            'false',
+        );
+
+        mediaState.matches = true;
+        act(() => {
+            listeners.forEach((listener) =>
+                listener({
+                    matches: true,
+                    media: legacyAccountQuery.media,
+                } as MediaQueryListEvent),
+            );
+        });
+
+        expect(screen.getByRole('dialog')).toHaveAttribute(
+            'aria-modal',
+            'true',
+        );
+
+        unmount();
+
+        expect(removeListener).toHaveBeenCalledTimes(1);
+        expect(removeListener).toHaveBeenCalledWith(registeredListener);
+        expect(listeners.size).toBe(0);
+    });
 
     it('renders one accessible 44px New conversation control', () => {
         render(<ChatWidget enabled={true} locale="en" />);
