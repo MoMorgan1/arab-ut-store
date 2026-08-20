@@ -1,7 +1,7 @@
 <?php
 
 use App\Actions\Chat\ResolveChatOwner;
-use App\Enums\Chat\ChatConversationStatus;
+use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatMessageType;
 use App\Enums\Chat\ChatSenderType;
 use App\Models\ChatConversation;
@@ -95,30 +95,20 @@ test('authenticated user can access own conversation but cannot access another u
         ->assertJsonPath('error.code', 'conversation_not_found');
 });
 
-test('multiple conversations preference order: prefers session pointer then latest open conversation', function () {
+test('a session pointer to a closed conversation is ignored when acquiring a conversation', function () {
     $user = User::factory()->create();
 
-    $olderConversation = ChatConversation::factory()->forUser($user)->create([
-        'status' => ChatConversationStatus::Open,
-        'last_message_at' => now()->subHours(2),
-    ]);
-    $newerConversation = ChatConversation::factory()->forUser($user)->create([
-        'status' => ChatConversationStatus::Open,
-        'last_message_at' => now()->subHour(),
-    ]);
+    $closedConversation = ChatConversation::factory()->forUser($user)->closed(
+        ChatConversationCloseReason::CustomerStartedNew,
+        now()->subMinute(),
+    )->create();
 
-    // Without session pointer: resolves the latest open conversation
-    $response = $this->actingAs($user)->postJson(route('chat.conversations.store'));
-    $response->assertOk()
-        ->assertJsonPath('data.publicId', $newerConversation->public_id);
-
-    // With explicit session pointer to the older open conversation: prefers the pointed conversation
-    $pointerResponse = $this->actingAs($user)
-        ->withSession([ResolveChatOwner::ACTIVE_CONVERSATION_SESSION_KEY => $olderConversation->public_id])
+    $response = $this->actingAs($user)
+        ->withSession([ResolveChatOwner::ACTIVE_CONVERSATION_SESSION_KEY => $closedConversation->public_id])
         ->postJson(route('chat.conversations.store'));
 
-    $pointerResponse->assertOk()
-        ->assertJsonPath('data.publicId', $olderConversation->public_id);
+    $response->assertOk();
+    expect($response->json('data.publicId'))->not->toBe($closedConversation->public_id);
 });
 
 test('history is bounded to 50 messages with cursor-based pagination metadata', function () {
@@ -174,7 +164,10 @@ test('invalid pagination cursor returns 422 validation response', function () {
     ]))->assertStatus(422);
 
     // Foreign cursor belonging to another conversation
-    $otherConversation = ChatConversation::factory()->forUser($user)->create();
+    $otherConversation = ChatConversation::factory()->forUser($user)->closed(
+        ChatConversationCloseReason::CustomerStartedNew,
+        now()->subMinute(),
+    )->create();
     $otherMessage = ChatMessage::factory()->create([
         'conversation_id' => $otherConversation->id,
     ]);

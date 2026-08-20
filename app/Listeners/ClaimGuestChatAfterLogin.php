@@ -32,7 +32,12 @@ final readonly class ClaimGuestChatAfterLogin
         }
 
         try {
-            $this->claimGuestChatConversations->execute($guestOwners, $event->user);
+            $activePublicId = $this->request->session()->get(ResolveChatOwner::ACTIVE_CONVERSATION_SESSION_KEY);
+            $this->claimGuestChatConversations->execute(
+                $guestOwners,
+                $event->user,
+                is_string($activePublicId) ? $activePublicId : null,
+            );
         } catch (Throwable $failure) {
             $this->guard->logout();
 

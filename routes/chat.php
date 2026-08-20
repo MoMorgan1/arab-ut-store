@@ -11,6 +11,10 @@ Route::middleware([EnsureChatEnabled::class, NoStore::class])->group(function ()
         ->middleware(['throttle:chat-conversations'])
         ->name('chat.conversations.store');
 
+    Route::post('/chat/conversations/restart', [ChatConversationController::class, 'restart'])
+        ->middleware(['throttle:chat-conversations'])
+        ->name('chat.conversations.restart');
+
     Route::get('/chat/conversations/{conversation}', [ChatConversationController::class, 'show'])
         ->middleware(['throttle:chat-read'])
         ->name('chat.conversations.show');

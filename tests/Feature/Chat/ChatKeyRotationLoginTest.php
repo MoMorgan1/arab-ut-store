@@ -34,7 +34,10 @@ test('guest conversation under old rotated APP_KEY is claimed upon direct user l
     ]);
 
     // User logs in directly via POST /login with the guest session token
-    $loginResponse = $this->withSession([ResolveChatOwner::SESSION_KEY => $rawToken])
+    $loginResponse = $this->withSession([
+        ResolveChatOwner::SESSION_KEY => $rawToken,
+        ResolveChatOwner::ACTIVE_CONVERSATION_SESSION_KEY => $conversation->public_id,
+    ])
         ->post(route('login'), [
             'email' => $user->email,
             'password' => 'password123',
@@ -53,4 +56,5 @@ test('guest conversation under old rotated APP_KEY is claimed upon direct user l
 
     // Verify guest session token was cleared
     expect(session()->has(ResolveChatOwner::SESSION_KEY))->toBeFalse();
+    expect(session()->get(ResolveChatOwner::ACTIVE_CONVERSATION_SESSION_KEY))->toBe($conversation->public_id);
 });
