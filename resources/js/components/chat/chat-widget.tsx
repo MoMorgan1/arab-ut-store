@@ -46,12 +46,15 @@ function subscribeToMobileSheet(onStoreChange: () => void): () => void {
 function ChatStatusRegion({
     id,
     message,
+    regionRef,
 }: {
     id: number;
     message: string | null;
+    regionRef: React.RefObject<HTMLDivElement | null>;
 }) {
     return (
         <div
+            ref={regionRef}
             aria-live="polite"
             aria-atomic="true"
             className="sr-only"
@@ -94,6 +97,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
     const launcherRef = useRef<HTMLButtonElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
     const rootRef = useRef<HTMLDivElement>(null);
+    const liveRegionRef = useRef<HTMLDivElement>(null);
     const wasOpenRef = useRef(isOpen);
     const wasModalPresenceRef = useRef(false);
 
@@ -148,8 +152,9 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         const root = rootRef.current;
         const parent = root?.parentElement;
         const panel = panelRef.current;
+        const liveRegion = liveRegionRef.current;
 
-        if (!root || !parent || !panel) {
+        if (!root || !parent || !panel || !liveRegion) {
             return;
         }
 
@@ -160,7 +165,9 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
             ),
             ...Array.from(root.children).filter(
                 (element): element is HTMLElement =>
-                    element instanceof HTMLElement && element !== panel,
+                    element instanceof HTMLElement &&
+                    element !== panel &&
+                    element !== liveRegion,
             ),
         ]);
         const alreadyInert = new Set(
@@ -263,12 +270,11 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
             }`}
             dir={locale === 'en' ? 'ltr' : 'rtl'}
         >
-            {!isMounted && (
-                <ChatStatusRegion
-                    id={statusAnnouncementId}
-                    message={statusAnnouncement}
-                />
-            )}
+            <ChatStatusRegion
+                id={statusAnnouncementId}
+                message={statusAnnouncement}
+                regionRef={liveRegionRef}
+            />
 
             {/* Chat Panel / Sheet */}
             {isMounted && (
@@ -288,11 +294,6 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                             : 'pointer-events-none translate-y-3 scale-[0.98] opacity-0 duration-[180ms] [transition-timing-function:cubic-bezier(0.7,0,0.84,0)] md:scale-[0.96]'
                     }`}
                 >
-                    <ChatStatusRegion
-                        id={statusAnnouncementId}
-                        message={statusAnnouncement}
-                    />
-
                     {/* Header */}
                     <ChatHeader
                         locale={locale}

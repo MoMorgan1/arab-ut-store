@@ -556,6 +556,80 @@ describe('ChatWidget Component', () => {
         },
     );
 
+    it('keeps one populated live-region node stable across mobile close and reopen', async () => {
+        stubMatchMedia(true);
+        const conversation = {
+            publicId: 'stable-live-region-conversation',
+            status: 'open',
+            locale: 'en',
+            messages: [],
+            hasMore: false,
+            oldestCursor: null,
+        };
+        const failureMessage =
+            'Failed to start a new conversation. Please try again.';
+
+        vi.mocked(fetch)
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                json: async () => ({ data: conversation }),
+            } as Response)
+            .mockResolvedValueOnce({
+                ok: false,
+                status: 500,
+                json: async () => ({
+                    error: { code: 'chat_unavailable' },
+                }),
+            } as Response);
+
+        render(
+            <>
+                <main data-testid="stable-live-covered-page">Page</main>
+                <ChatWidget enabled={true} locale="en" />
+            </>,
+        );
+
+        const launcher = screen.getByRole('button', { name: /Open chat/i });
+        fireEvent.click(launcher);
+        const dialog = screen.getByRole('dialog');
+        const restart = await screen.findByRole('button', {
+            name: /New conversation/i,
+        });
+        await waitFor(() => expect(restart).toBeEnabled());
+        fireEvent.click(restart);
+
+        const stableStatus = screen.getByRole('status');
+        await waitFor(() =>
+            expect(stableStatus).toHaveTextContent(failureMessage),
+        );
+        const stableEvent = stableStatus.firstElementChild;
+        expect(stableEvent).not.toBeNull();
+        expect(stableStatus).not.toHaveAttribute('inert');
+
+        fireEvent.click(
+            within(dialog).getByRole('button', { name: /Close chat/i }),
+        );
+        expect(screen.getByRole('status')).toBe(stableStatus);
+        expect(stableStatus.firstElementChild).toBe(stableEvent);
+        expect(stableStatus).not.toHaveAttribute('inert');
+
+        await waitFor(() => expect(dialog).not.toBeInTheDocument());
+        expect(screen.getByRole('status')).toBe(stableStatus);
+        expect(stableStatus.firstElementChild).toBe(stableEvent);
+        expect(stableStatus).not.toHaveAttribute('inert');
+
+        fireEvent.click(launcher);
+        await waitFor(() => expect(screen.getByRole('dialog')).toBeVisible());
+        expect(screen.getByRole('status')).toBe(stableStatus);
+        expect(stableStatus.firstElementChild).toBe(stableEvent);
+        expect(stableStatus).not.toHaveAttribute('inert');
+        expect(screen.getByTestId('stable-live-covered-page')).toHaveAttribute(
+            'inert',
+        );
+        expect(launcher).toHaveAttribute('inert');
+    });
+
     it('treats the mobile sheet as modal, traps focus, inerts the page, and restores the launcher', async () => {
         stubMatchMedia(true);
         vi.mocked(fetch).mockResolvedValueOnce({

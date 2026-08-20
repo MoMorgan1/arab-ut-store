@@ -127,6 +127,7 @@ test('mobile home opens and closes chat without overflow', async ({ page }) => {
 test('authenticated account keeps chat above mobile navigation', async ({
     page,
 }) => {
+    test.setTimeout(60_000);
     await page.setViewportSize({ width: 390, height: 844 });
     const expectCleanRuntime = observeRuntime(page);
     const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -326,6 +327,16 @@ test('authenticated account keeps chat above mobile navigation', async ({
                 name: launcherLabel,
             });
             const launcherElement = page.locator('.chat-widget-root > button');
+            const liveStatus = page.locator(
+                '.chat-widget-root > [role="status"]',
+            );
+
+            if (exercisesMotionExit) {
+                await liveStatus.evaluate((element) => {
+                    element.setAttribute('data-stability-probe', 'round-3');
+                });
+            }
+
             await expect(viewportLauncher).toBeVisible();
             const launcherTarget = await viewportLauncher.boundingBox();
             expect(launcherTarget).not.toBeNull();
@@ -369,6 +380,15 @@ test('authenticated account keeps chat above mobile navigation', async ({
                 name: dialogLabel,
             });
             await expect(viewportDialog).toBeVisible();
+
+            if (exercisesMotionExit) {
+                await expect(liveStatus).toHaveAttribute(
+                    'data-stability-probe',
+                    'round-3',
+                );
+            }
+
+            await expect(liveStatus).not.toHaveAttribute('inert');
             await expect(viewportDialog).toHaveAttribute(
                 'aria-modal',
                 width < 768 ? 'true' : 'false',
@@ -513,21 +533,52 @@ test('authenticated account keeps chat above mobile navigation', async ({
             await close.click();
 
             if (exercisesMotionExit) {
-                await expect(viewportDialog).toBeAttached();
-                await expect(launcherElement).toHaveAttribute('inert', '');
-                expect(
-                    await page
-                        .getByRole('main')
-                        .evaluate(
-                            (element) => element.closest('[inert]') !== null,
-                        ),
-                ).toBe(true);
-                await expect(launcherElement).not.toBeFocused();
+                const exitState = await page.evaluate(() => {
+                    const dialogElement = document.querySelector(
+                        '.chat-widget-dialog',
+                    );
+                    const launcher = document.querySelector(
+                        '.chat-widget-root > button',
+                    );
+                    const main = document.querySelector('main');
+                    const status = document.querySelector(
+                        '.chat-widget-root > [role="status"]',
+                    );
+
+                    return {
+                        dialogAttached: dialogElement !== null,
+                        launcherInert: launcher?.hasAttribute('inert') ?? false,
+                        launcherFocused: document.activeElement === launcher,
+                        mainInert: main?.closest('[inert]') !== null,
+                        statusInert: status?.hasAttribute('inert') ?? true,
+                        statusProbe:
+                            status?.getAttribute('data-stability-probe') ??
+                            null,
+                    };
+                });
+
+                expect(exitState).toEqual({
+                    dialogAttached: true,
+                    launcherInert: true,
+                    launcherFocused: false,
+                    mainInert: true,
+                    statusInert: false,
+                    statusProbe: 'round-3',
+                });
             }
 
             await expect(viewportDialog).not.toBeAttached();
             await expect(viewportLauncher).toBeFocused();
             await expect(launcherElement).not.toHaveAttribute('inert');
+            await expect(liveStatus).not.toHaveAttribute('inert');
+
+            if (exercisesMotionExit) {
+                await expect(liveStatus).toHaveAttribute(
+                    'data-stability-probe',
+                    'round-3',
+                );
+            }
+
             expect(
                 await page
                     .getByRole('main')
