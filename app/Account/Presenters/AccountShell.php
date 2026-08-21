@@ -2,6 +2,7 @@
 
 namespace App\Account\Presenters;
 
+use App\Enums\UserRole;
 use App\Models\User;
 
 final class AccountShell
@@ -51,6 +52,9 @@ final class AccountShell
                     ),
                 ],
             ],
+            'adminUrl' => in_array($user->role, [UserRole::Admin, UserRole::Staff], true)
+                ? route('admin.overview', absolute: false)
+                : null,
             'logoutUrl' => route('logout', absolute: false),
         ];
     }

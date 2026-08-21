@@ -14,6 +14,7 @@ return [
         'security' => 'Security',
         'support' => 'Support',
         'logout' => 'Log out',
+        'admin' => 'Admin dashboard',
     ],
     'bottom_nav' => [
         'home' => 'Home',

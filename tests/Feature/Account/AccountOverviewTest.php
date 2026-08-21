@@ -4,6 +4,7 @@ use App\Account\Queries\ResolveLiveActionableOrder;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Enums\UserRole;
 use App\Models\LoyaltyTier;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -246,4 +247,16 @@ test('account projections do not expose order secrets or provider payloads', fun
         ->not->toContain('never-serialize-provider-secret')
         ->not->toContain('configuration')
         ->not->toContain('provider_metadata');
+});
+
+test('the account shell exposes the admin dashboard link only to privileged roles', function (): void {
+    $customer = User::factory()->create();
+
+    accountOverview($customer)
+        ->assertInertia(fn ($page) => $page->where('adminUrl', null));
+
+    $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+    accountOverview($admin)
+        ->assertInertia(fn ($page) => $page->where('adminUrl', '/admin'));
 });

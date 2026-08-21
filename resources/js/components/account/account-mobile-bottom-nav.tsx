@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import {
     LayoutDashboard,
     PackageSearch,
+    ShieldCheck,
     UserRound,
     WalletCards,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ const destinationIcons: Record<string, LucideIcon> = {
 };
 
 type AccountMobileBottomNavProps = {
+    adminUrl?: string | null;
     bottomNav?: { home: string; account: string };
     current: AccountDestination;
     items: AccountNavigationItem[];
@@ -37,6 +39,7 @@ const ALLOWED_KEYS: AccountDestination[] = [
 ];
 
 export function AccountMobileBottomNav({
+    adminUrl,
     bottomNav,
     current,
     items,
@@ -119,6 +122,19 @@ export function AccountMobileBottomNav({
                         </Link>
                     );
                 })}
+                {adminUrl ? (
+                    <Link
+                        className="account-mobile-bottom-nav__item"
+                        href={adminUrl}
+                    >
+                        <span className="account-mobile-bottom-nav__icon-wrap">
+                            <ShieldCheck aria-hidden="true" />
+                        </span>
+                        <span className="account-mobile-bottom-nav__label">
+                            {translations.admin}
+                        </span>
+                    </Link>
+                ) : null}
             </div>
         </nav>
     );
