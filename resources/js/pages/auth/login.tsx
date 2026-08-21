@@ -116,8 +116,11 @@ export default function Login({
 
                             {method === 'email' ? (
                                 <>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="email">
+                                    <div className="auth-form__field auth-form__field--floating grid gap-2">
+                                        <Label
+                                            className="auth-form__floating-label"
+                                            htmlFor="email"
+                                        >
                                             {authUi.fields.email}
                                         </Label>
                                         <Input
@@ -128,7 +131,7 @@ export default function Login({
                                             autoFocus
                                             autoComplete="email"
                                             placeholder="email@example.com"
-                                            className="h-10"
+                                            className="auth-form__control"
                                             aria-describedby={
                                                 errors.email
                                                     ? 'email-error'
@@ -143,8 +146,8 @@ export default function Login({
                                         />
                                     </div>
 
-                                    <div className="grid gap-2">
-                                        <div className="flex items-center">
+                                    <div className="auth-form__field grid gap-2">
+                                        <div className="auth-form__field-heading flex items-center">
                                             <Label htmlFor="password">
                                                 {authUi.fields.password}
                                             </Label>
@@ -153,7 +156,7 @@ export default function Login({
                                                     href={
                                                         authRoutes.forgotPasswordUrl
                                                     }
-                                                    className="auth-inline-link ms-auto"
+                                                    className="auth-inline-link auth-form__field-action ms-auto"
                                                 >
                                                     {
                                                         authUi.login
@@ -168,7 +171,7 @@ export default function Login({
                                             required
                                             autoComplete="current-password"
                                             placeholder={authUi.fields.password}
-                                            className="h-10"
+                                            className="auth-form__control"
                                             aria-describedby={
                                                 errors.password
                                                     ? 'password-error'

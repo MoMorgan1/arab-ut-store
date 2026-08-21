@@ -423,7 +423,7 @@ afterEach(() => {
 });
 
 describe('Coins credentials flow', () => {
-    it('matches the WordPress fulfillment fields and requires balance only for Fast console', async () => {
+    it('matches the WordPress fulfillment fields for standard delivery', async () => {
         render(<StoreHome />);
         await reachCredentials();
 
@@ -450,8 +450,9 @@ describe('Coins credentials flow', () => {
         );
         expect(termsLink).toHaveClass('coins-policy-link');
         expect(warrantyLink).toHaveClass('coins-policy-link');
+    });
 
-        cleanup();
+    it('requires balance before reviewing Fast console delivery', async () => {
         render(<StoreHome />);
         await reachFastConsoleCredentials();
         fillCredentials();

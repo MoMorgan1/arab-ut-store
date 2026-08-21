@@ -329,6 +329,8 @@
     }
 
     .auth-shell__form-card {
+        --auth-form-surface: rgb(28 24 20);
+
         display: flex;
         flex-direction: column;
         gap: clamp(1.5rem, 3vw, 2rem);
@@ -567,6 +569,11 @@
         box-shadow: inset 0 1px rgb(255 255 255 / 2%);
     }
 
+    .auth-shell .auth-form__control {
+        height: 2.75rem;
+        min-height: 2.75rem;
+    }
+
     .auth-shell [data-slot='input'][type='email'],
     .auth-shell [data-slot='input'][type='password'] {
         direction: ltr;
@@ -783,6 +790,45 @@
         .auth-shell__grid:not(.auth-shell__grid--focused)
             .auth-shell__benefits {
             order: 2;
+        }
+    }
+
+    @media (min-width: 48.0625rem) and (pointer: fine) {
+        .auth-shell .auth-form__control {
+            height: 2.5rem;
+            min-height: 2.5rem;
+        }
+
+        .auth-form__field--floating {
+            position: relative;
+            display: block;
+        }
+
+        .auth-shell .auth-form__floating-label {
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline-start: 0.75rem;
+            z-index: 1;
+            padding-inline: 0.25rem;
+            transform: translateY(-50%);
+            background: var(--auth-form-surface);
+            font-size: 0.8125rem;
+            line-height: 1rem;
+        }
+
+        .auth-form__field--floating > [role='alert'] {
+            margin-block-start: 0.5rem;
+        }
+
+        .auth-form__field-heading {
+            min-height: 1.4375rem;
+        }
+
+        .auth-form__field-heading [data-slot='label'],
+        .auth-form__field-action {
+            /* 23px heading + 8px gap + 40px control matches the annotated row. */
+            min-height: 0;
+            line-height: 1.4375rem;
         }
     }
 
