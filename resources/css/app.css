@@ -491,7 +491,9 @@
     .auth-social-login {
         display: grid;
         gap: 0.85rem;
-        margin-top: 0.9rem;
+        /* The parent form already separates rows with a 1.5rem flex gap;
+           pull this block back so the net distance stays one rhythm unit. */
+        margin-top: -0.75rem;
     }
 
     .auth-social-login__divider {
