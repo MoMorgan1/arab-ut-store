@@ -26,6 +26,7 @@ test('a guest can initialize and fetch an active conversation with seeded onboar
                 'locale',
                 'subject',
                 'lastMessageAt',
+                'assistantMode',
                 'messages' => [
                     '*' => [
                         'publicId',
@@ -47,6 +48,7 @@ test('a guest can initialize and fetch an active conversation with seeded onboar
     $data = $response->json('data');
     expect($data['status'])->toBe('open')
         ->and($data['locale'])->toBe('ar')
+        ->and($data['assistantMode'])->toBe('none')
         ->and($data['messages'])->toHaveCount(1)
         ->and($data['messages'][0]['senderType'])->toBe('system')
         ->and($data['messages'][0]['messageType'])->toBe('system')

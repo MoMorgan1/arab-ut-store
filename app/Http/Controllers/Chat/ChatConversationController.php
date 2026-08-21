@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Chat;
 
+use App\Actions\AI\ResolveAssistantMode;
 use App\Actions\Chat\CreateOrGetActiveConversation;
 use App\Actions\Chat\ResolveChatOwner;
 use App\Actions\Chat\RestartChatConversation;
@@ -17,6 +18,7 @@ class ChatConversationController extends Controller
         private readonly ResolveChatOwner $resolveChatOwner,
         private readonly CreateOrGetActiveConversation $createOrGetActiveConversation,
         private readonly RestartChatConversation $restartChatConversation,
+        private readonly ResolveAssistantMode $resolveAssistantMode,
         private readonly ChatPresenter $chatPresenter,
     ) {}
 
@@ -30,6 +32,7 @@ class ChatConversationController extends Controller
         $owner = $this->resolveChatOwner->forRequest($request);
         $locale = $validated['locale'] ?? null;
         $conversation = $this->createOrGetActiveConversation->execute($owner, $request, $locale);
+        $assistantMode = $this->resolveAssistantMode->for($owner);
 
         $limit = isset($validated['limit']) ? (int) $validated['limit'] : (int) config('chat.default_page_size', 50);
         $bounded = $this->chatPresenter->loadBoundedMessages($conversation, limit: $limit);
@@ -38,6 +41,8 @@ class ChatConversationController extends Controller
             'data' => $this->chatPresenter->conversation(
                 $conversation,
                 $bounded['messages'],
+                $assistantMode,
+                null,
                 $bounded['hasMore'],
                 $bounded['oldestCursor'],
             ),
@@ -86,11 +91,14 @@ class ChatConversationController extends Controller
         }
 
         $bounded = $this->chatPresenter->loadBoundedMessages($conversation, $beforeId, $limit);
+        $assistantMode = $this->resolveAssistantMode->for($owner);
 
         return response()->json([
             'data' => $this->chatPresenter->conversation(
                 $conversation,
                 $bounded['messages'],
+                $assistantMode,
+                null,
                 $bounded['hasMore'],
                 $bounded['oldestCursor'],
             ),
@@ -106,6 +114,7 @@ class ChatConversationController extends Controller
 
         $owner = $this->resolveChatOwner->forRequest($request);
         $conversation = $this->restartChatConversation->execute($owner, $request, $validated['locale'] ?? null);
+        $assistantMode = $this->resolveAssistantMode->for($owner);
         $limit = isset($validated['limit']) ? (int) $validated['limit'] : (int) config('chat.default_page_size', 50);
         $bounded = $this->chatPresenter->loadBoundedMessages($conversation, limit: $limit);
 
@@ -113,6 +122,8 @@ class ChatConversationController extends Controller
             'data' => $this->chatPresenter->conversation(
                 $conversation,
                 $bounded['messages'],
+                $assistantMode,
+                null,
                 $bounded['hasMore'],
                 $bounded['oldestCursor'],
             ),
