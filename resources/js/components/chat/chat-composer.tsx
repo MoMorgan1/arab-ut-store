@@ -64,10 +64,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             onSubmit={handleSubmit}
             className="chat-composer--mobile-safe border-t border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)]/90 p-3 backdrop-blur-md"
         >
-            <div
-                dir="ltr"
-                className="relative flex items-end gap-2 rounded-2xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] p-1.5 focus-within:border-[var(--arabut-gold)]/60 focus-within:ring-1 focus-within:ring-[var(--arabut-gold)]/60"
-            >
+            <div className="relative flex items-end gap-2 rounded-2xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] p-1.5 focus-within:border-[var(--arabut-gold)]/60 focus-within:ring-1 focus-within:ring-[var(--arabut-gold)]/60">
                 <textarea
                     ref={textareaRef}
                     value={content}

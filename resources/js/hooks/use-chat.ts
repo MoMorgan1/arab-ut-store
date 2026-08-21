@@ -1240,8 +1240,6 @@ export function useChat(options: UseChatOptions = {}) {
             const restartedConversation = await restartConversation(pageLocale);
 
             if (!ownsAsyncGeneration(restartGeneration)) {
-                setIsRestarting(false);
-
                 return;
             }
 
@@ -1264,8 +1262,6 @@ export function useChat(options: UseChatOptions = {}) {
                         await fetchOrStartActiveConversation(pageLocale);
                 } catch {
                     if (!ownsAsyncGeneration(restartGeneration)) {
-                        setIsRestarting(false);
-
                         return;
                     }
 
@@ -1280,8 +1276,6 @@ export function useChat(options: UseChatOptions = {}) {
                 }
 
                 if (!ownsAsyncGeneration(restartGeneration)) {
-                    setIsRestarting(false);
-
                     return;
                 }
 

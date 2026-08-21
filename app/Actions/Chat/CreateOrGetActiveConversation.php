@@ -50,7 +50,7 @@ final readonly class CreateOrGetActiveConversation
                 ->forOwner($owner)->open()->where('public_id', $sessionPointer)->lockForUpdate()->first();
 
             if ($pointedConversation instanceof ChatConversation) {
-                return $this->syncLocale($pointedConversation, $locale);
+                return $pointedConversation;
             }
         }
 
@@ -58,7 +58,7 @@ final readonly class CreateOrGetActiveConversation
             ->forOwner($owner)->open()->orderByDesc('last_message_at')->orderByDesc('id')->lockForUpdate()->first();
 
         if ($activeConversation instanceof ChatConversation) {
-            return $this->syncLocale($activeConversation, $locale);
+            return $activeConversation;
         }
 
         $reopenAfter = now()->subDays(max(0, (int) config('chat.reopen_within_days', 7)));
@@ -78,19 +78,10 @@ final readonly class CreateOrGetActiveConversation
                 'close_reason' => null,
             ])->save();
 
-            return $this->syncLocale($inactiveConversation, $locale);
+            return $inactiveConversation;
         }
 
         return $this->createChatConversation->execute($owner, $locale);
-    }
-
-    private function syncLocale(ChatConversation $conversation, string $locale): ChatConversation
-    {
-        if ($conversation->locale !== $locale) {
-            $conversation->forceFill(['locale' => $locale])->save();
-        }
-
-        return $conversation;
     }
 
     private function isActiveOwnerUniqueViolation(QueryException $failure): bool

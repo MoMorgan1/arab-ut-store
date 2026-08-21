@@ -15,8 +15,6 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 beforeEach(function () {
     config()->set('chat.enabled', true);
     config()->set('chat.demo_assistant', false);
-    config()->set('ai-assistant.enabled', false);
-    config()->set('ai-assistant.rollout', 'disabled');
 });
 
 test('guest can post message to own conversation with client_message_id and updates last_message_at', function () {

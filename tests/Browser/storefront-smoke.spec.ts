@@ -517,7 +517,7 @@ test('desktop login uses the annotated compact credential rhythm', async ({
     await expect(emailInput).toBeVisible();
     await expect(passwordInput).toBeVisible();
     await expect(
-        page.getByText('البريد الإلكتروني', { exact: true }),
+        emailField.getByText('البريد الإلكتروني', { exact: true }),
     ).toBeVisible();
     await expect(emailField).toHaveCSS('height', '40px');
     const passwordFieldHeight = await passwordField.evaluate(
