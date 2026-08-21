@@ -2,7 +2,6 @@
 
 namespace App\Admin\Audit;
 
-use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 final readonly class StaffAuditEvent
@@ -47,13 +46,24 @@ final readonly class StaffAuditEvent
 
             if (is_array($value)) {
                 $this->assertMetadataIsSafe($value);
+
+                continue;
+            }
+
+            if (! $this->isJsonSafeMetadataValue($value)) {
+                throw new InvalidArgumentException('Audit metadata values must be JSON-safe.');
             }
         }
     }
 
     private function isForbiddenMetadataKey(string $key): bool
     {
-        $normalized = Str::snake($key);
+        $camelSeparated = preg_replace(
+            '/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/',
+            '_',
+            $key,
+        );
+        $normalized = trim((string) preg_replace('/[^a-z0-9]+/', '_', strtolower($camelSeparated ?? $key)), '_');
 
         foreach (self::FORBIDDEN_METADATA_KEY_PARTS as $forbidden) {
             if (preg_match('/(?:^|_)'.preg_quote($forbidden, '/').'(?:_|$)/', $normalized) === 1) {
@@ -62,5 +72,18 @@ final readonly class StaffAuditEvent
         }
 
         return false;
+    }
+
+    private function isJsonSafeMetadataValue(mixed $value): bool
+    {
+        if ($value === null || is_bool($value) || is_int($value)) {
+            return true;
+        }
+
+        if (is_float($value)) {
+            return is_finite($value);
+        }
+
+        return is_string($value) && preg_match('//u', $value) === 1;
     }
 }
