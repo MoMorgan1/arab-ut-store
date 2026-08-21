@@ -9,6 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AgentTurn extends DomainModel
 {
+    /**
+     * The quiet window is sub-second; store this model's dates with milliseconds.
+     *
+     * @var string
+     */
+    protected $dateFormat = 'Y-m-d H:i:s.v';
+
     /** @return array<string, string> */
     protected function casts(): array
     {

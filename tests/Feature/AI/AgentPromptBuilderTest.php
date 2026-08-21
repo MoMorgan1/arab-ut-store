@@ -139,6 +139,9 @@ test('sensitive prompt patterns fail before a model request is built', function 
     '13 digit payment card boundary' => '4222 2222 2222 2',
     'payment card candidate' => '4242 4242 4242 4242',
     '19 digit payment card boundary' => '4000 0000 0000 0000 006',
+    'Arabic-Indic payment card' => '٤٤٤٤ ٣٣٣٣ ٢٢٢٢ ١١١١',
+    'Eastern Arabic-Indic payment card' => '۴۴۴۴-۳۳۳۳-۲۲۲۲-۱۱۱۱',
+    'Arabic-Indic three backup groups' => '١٢٣٤٥٦٧٨ ٢٣٤٥٦٧٨٩ ٣٤٥٦٧٨٩٠',
 ]);
 
 test('near misses do not block ordinary support content', function (string $ordinaryContent): void {
@@ -160,4 +163,6 @@ test('near misses do not block ordinary support content', function (string $ordi
     'repeated eight digit group' => 'References 12345678 12345678 12345678',
     'invalid Luhn candidate' => '4242 4242 4242 4241',
     '20 digit Luhn-like sequence' => '42424242424242424242',
+    'Arabic order number' => 'طلبي رقم ١٢٣٤٥ ما وصل',
+    'short Arabic digits' => 'رقمي ٠٥٥٥٥',
 ]);

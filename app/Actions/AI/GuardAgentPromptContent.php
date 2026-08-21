@@ -12,13 +12,22 @@ final class GuardAgentPromptContent
         'رمز احتياطي', 'رموز احتياطية', 'مفتاح API', 'رمز التحقق',
     ];
 
+    private const DIGIT_NORMALIZATION = [
+        '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
+        '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
+        '۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4',
+        '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9',
+    ];
+
     public function execute(string $content): void
     {
-        if ($this->containsCredentialLabel($content)
-            || preg_match('/\bBearer\s+\S+/iu', $content) === 1
-            || preg_match('/\bsk-[A-Za-z0-9_-]{16,}/iu', $content) === 1
-            || $this->containsBackupCodeSet($content)
-            || $this->containsPaymentCard($content)) {
+        $normalized = strtr($content, self::DIGIT_NORMALIZATION);
+
+        if ($this->containsCredentialLabel($normalized)
+            || preg_match('/\bBearer\s+\S+/iu', $normalized) === 1
+            || preg_match('/\bsk-[A-Za-z0-9_-]{16,}/iu', $normalized) === 1
+            || $this->containsBackupCodeSet($normalized)
+            || $this->containsPaymentCard($normalized)) {
             throw new SensitiveAgentContentException;
         }
     }
