@@ -16,12 +16,7 @@ final class EnsureAdminMfa
         abort_unless($user instanceof User, 401);
 
         if (! $user->hasEnabledTwoFactorAuthentication()) {
-            return redirect()->to(route(
-                $request->route('locale') === 'en'
-                    ? 'localized.admin.security.mfa'
-                    : 'admin.security.mfa',
-                absolute: false,
-            ));
+            return redirect()->to(route('admin.security.mfa', absolute: false));
         }
 
         return $next($request);

@@ -9,6 +9,7 @@ import {
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
+import { englishAdminUi } from '@/__tests__/admin/admin-test-fixtures';
 import { AdminMfaApiError } from '@/lib/admin-mfa-api';
 import AdminMfaPage from '@/pages/admin/security/mfa';
 import type { AdminMfaPageProps } from '@/types/admin';
@@ -37,51 +38,12 @@ vi.mock('@inertiajs/react', () => ({
 }));
 
 const adminUi: AdminMfaPageProps['adminUi'] = {
-    brand: 'عرب التيميت',
-    common: { cancel: 'إلغاء', retry: 'حاول مرة أخرى' },
-    mfa: {
-        confirm: 'أكّد تفعيل التحقق',
-        confirmCode: 'رمز تطبيق المصادقة',
-        confirming: 'جاري تأكيد الرمز…',
-        configured: 'التحقق بخطوتين مفعّل',
-        configuredDescription:
-            'حسابك محمي الآن ويمكنك الدخول إلى لوحة الإدارة.',
-        confirmRegenerate: 'استبدل رموز الاسترداد',
-        description:
-            'استخدم تطبيق المصادقة لحماية حسابك قبل الدخول إلى لوحة الإدارة.',
-        enable: 'ابدأ إعداد التحقق',
-        enabling: 'جاري إنشاء رمز الإعداد…',
-        eyebrow: 'أمان لوحة الإدارة',
-        failed: 'تعذر إكمال طلب الأمان. لم تتغير إعدادات حسابك.',
-        headTitle: 'حماية حساب الإدارة',
-        hideRecoveryCodes: 'أخفِ رموز الاسترداد',
-        invalidCode: 'الرمز غير صحيح أو انتهت صلاحيته.',
-        openAccountSecurity: 'افتح أمان الحساب',
-        qrAlt: 'رمز QR لإضافة حساب عرب التيميت إلى تطبيق المصادقة',
-        recoveryTitle: 'رموز الاسترداد',
-        recoveryWarning: 'احفظ هذه الرموز في مكان آمن.',
-        regenerateDescription: 'ستتوقف الرموز الحالية فورًا.',
-        regenerateRecoveryCodes: 'أنشئ رموز استرداد جديدة',
-        regenerateTitle: 'استبدال رموز الاسترداد؟',
-        regenerating: 'جاري إنشاء رموز جديدة…',
-        scanDescription: 'افتح تطبيق المصادقة وامسح الرمز.',
-        scanTitle: 'امسح رمز QR',
-        sessionExpired: 'انتهت جلسة الدخول. سجّل الدخول من جديد.',
-        signIn: 'سجّل الدخول من جديد',
-        accessDenied: 'لم يعد حسابك مؤهلًا لإدارة إعدادات الأمان.',
-        returnToStore: 'ارجع إلى المتجر',
-        passwordConfirmationExpired:
-            'انتهى تأكيد كلمة المرور. أكّدها من جديد للمتابعة.',
-        confirmPasswordAgain: 'أكّد كلمة المرور',
-        rateLimited: 'أرسلت محاولات كثيرة. انتظر دقيقة قبل المحاولة مرة أخرى.',
-        retryAfterWait: 'أعد تحميل الصفحة بعد دقيقة',
-        setupPassword: 'أعدّ كلمة المرور أولًا',
-        setupPasswordDescription: 'أضف كلمة مرور من أمان الحساب.',
-        showRecoveryCodes: 'اعرض رموز الاسترداد',
-        startDescription: 'سننشئ رمز QR خاص بهذا الحساب.',
-        startTitle: 'اربط تطبيق المصادقة',
-        title: 'فعّل التحقق بخطوتين',
+    brand: englishAdminUi.brand,
+    common: {
+        cancel: englishAdminUi.common.cancel,
+        retry: englishAdminUi.common.retry,
     },
+    mfa: englishAdminUi.mfa,
 };
 
 const routes = {
@@ -108,15 +70,17 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-it('renders the Arabic-first start state with explicit accessible actions', () => {
+it('renders the English start state with explicit accessible actions', () => {
     renderPage({ enabled: false, confirmed: false });
 
-    expect(screen.getByRole('main')).toHaveAttribute('dir', 'rtl');
+    expect(screen.getByRole('main')).toHaveAttribute('dir', 'ltr');
     expect(
-        screen.getByRole('heading', { name: 'فعّل التحقق بخطوتين' }),
+        screen.getByRole('heading', {
+            name: adminUi.mfa.title,
+        }),
     ).toBeVisible();
     expect(
-        screen.getByRole('button', { name: 'ابدأ إعداد التحقق' }),
+        screen.getByRole('button', { name: adminUi.mfa.enable }),
     ).toHaveClass('min-h-11');
     expect(screen.queryByText('recovery-one')).not.toBeInTheDocument();
 });
@@ -130,7 +94,7 @@ it('enables MFA, shows the QR confirmation state, and confirms a six-digit code'
     api.confirmAdminMfa.mockResolvedValue(undefined);
     renderPage({ enabled: false, confirmed: false });
 
-    fireEvent.click(screen.getByRole('button', { name: 'ابدأ إعداد التحقق' }));
+    fireEvent.click(screen.getByRole('button', { name: adminUi.mfa.enable }));
 
     expect(
         await screen.findByRole('img', { name: adminUi.mfa.qrAlt }),
@@ -139,9 +103,9 @@ it('enables MFA, shows the QR confirmation state, and confirms a six-digit code'
         'otpauth://must-not-render',
     );
 
-    const code = screen.getByLabelText('رمز تطبيق المصادقة');
+    const code = screen.getByLabelText(adminUi.mfa.confirmCode);
     fireEvent.change(code, { target: { value: '123456' } });
-    fireEvent.click(screen.getByRole('button', { name: 'أكّد تفعيل التحقق' }));
+    fireEvent.click(screen.getByRole('button', { name: adminUi.mfa.confirm }));
 
     await waitFor(() =>
         expect(api.confirmAdminMfa).toHaveBeenCalledWith(
@@ -150,7 +114,9 @@ it('enables MFA, shows the QR confirmation state, and confirms a six-digit code'
         ),
     );
     expect(
-        await screen.findByRole('heading', { name: 'التحقق بخطوتين مفعّل' }),
+        await screen.findByRole('heading', {
+            name: adminUi.mfa.configured,
+        }),
     ).toBeVisible();
 });
 
@@ -165,8 +131,8 @@ it('completes async enrollment after StrictMode replays effect setup and cleanup
         <StrictMode>
             <AdminMfaPage
                 adminUi={adminUi}
-                direction="rtl"
-                locale="ar"
+                direction="ltr"
+                locale="en"
                 mfa={{
                     confirmed: false,
                     enabled: false,
@@ -177,15 +143,13 @@ it('completes async enrollment after StrictMode replays effect setup and cleanup
         </StrictMode>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'ابدأ إعداد التحقق' }));
+    fireEvent.click(screen.getByRole('button', { name: adminUi.mfa.enable }));
 
     expect(
         await screen.findByRole('img', { name: adminUi.mfa.qrAlt }),
     ).toBeVisible();
-    expect(screen.getByLabelText('رمز تطبيق المصادقة')).not.toBeDisabled();
-    expect(
-        screen.queryByText('جاري إنشاء رمز الإعداد…'),
-    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText(adminUi.mfa.confirmCode)).not.toBeDisabled();
+    expect(screen.queryByText(adminUi.mfa.enabling)).not.toBeInTheDocument();
 });
 
 it('reveals recovery codes only on request and clears them on route change', async () => {
@@ -197,7 +161,9 @@ it('reveals recovery codes only on request and clears them on route change', asy
 
     expect(screen.queryByText('recovery-one')).not.toBeInTheDocument();
     fireEvent.click(
-        screen.getByRole('button', { name: 'اعرض رموز الاسترداد' }),
+        screen.getByRole('button', {
+            name: adminUi.mfa.showRecoveryCodes,
+        }),
     );
 
     expect(await screen.findByText('recovery-one')).toBeVisible();
@@ -221,9 +187,9 @@ it('places an invalid authenticator-code error beside the code field', async () 
     );
     renderPage({ enabled: true, confirmed: false });
 
-    const code = await screen.findByLabelText('رمز تطبيق المصادقة');
+    const code = await screen.findByLabelText(adminUi.mfa.confirmCode);
     fireEvent.change(code, { target: { value: '000000' } });
-    fireEvent.click(screen.getByRole('button', { name: 'أكّد تفعيل التحقق' }));
+    fireEvent.click(screen.getByRole('button', { name: adminUi.mfa.confirm }));
 
     expect(await screen.findByText(adminUi.mfa.invalidCode)).toHaveAttribute(
         'id',
@@ -241,19 +207,27 @@ it('requires explicit regeneration confirmation before replacing codes', async (
     renderPage({ enabled: true, confirmed: true });
 
     fireEvent.click(
-        screen.getByRole('button', { name: 'اعرض رموز الاسترداد' }),
+        screen.getByRole('button', {
+            name: adminUi.mfa.showRecoveryCodes,
+        }),
     );
     expect(await screen.findByText('recovery-one')).toBeVisible();
     fireEvent.click(
-        screen.getByRole('button', { name: 'أنشئ رموز استرداد جديدة' }),
+        screen.getByRole('button', {
+            name: adminUi.mfa.regenerateRecoveryCodes,
+        }),
     );
 
     expect(api.regenerateAdminMfaRecoveryCodes).not.toHaveBeenCalled();
     expect(
-        screen.getByRole('heading', { name: 'استبدال رموز الاسترداد؟' }),
+        screen.getByRole('heading', {
+            name: adminUi.mfa.regenerateTitle,
+        }),
     ).toBeVisible();
     fireEvent.click(
-        screen.getByRole('button', { name: 'استبدل رموز الاسترداد' }),
+        screen.getByRole('button', {
+            name: adminUi.mfa.confirmRegenerate,
+        }),
     );
 
     expect(await screen.findByText('new-recovery-code')).toBeVisible();
@@ -271,14 +245,20 @@ it('forgets invalidated codes after regeneration and retries only the failed cod
     renderPage({ enabled: true, confirmed: true });
 
     fireEvent.click(
-        screen.getByRole('button', { name: 'اعرض رموز الاسترداد' }),
+        screen.getByRole('button', {
+            name: adminUi.mfa.showRecoveryCodes,
+        }),
     );
     expect(await screen.findByText('old-invalidated-code')).toBeVisible();
     fireEvent.click(
-        screen.getByRole('button', { name: 'أنشئ رموز استرداد جديدة' }),
+        screen.getByRole('button', {
+            name: adminUi.mfa.regenerateRecoveryCodes,
+        }),
     );
     fireEvent.click(
-        screen.getByRole('button', { name: 'استبدل رموز الاسترداد' }),
+        screen.getByRole('button', {
+            name: adminUi.mfa.confirmRegenerate,
+        }),
     );
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -287,11 +267,11 @@ it('forgets invalidated codes after regeneration and retries only the failed cod
     expect(screen.queryByText('old-invalidated-code')).not.toBeInTheDocument();
     expect(
         screen.queryByRole('heading', {
-            name: 'استبدال رموز الاسترداد؟',
+            name: adminUi.mfa.regenerateTitle,
         }),
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'حاول مرة أخرى' }));
+    fireEvent.click(screen.getByRole('button', { name: adminUi.common.retry }));
 
     expect(await screen.findByText('new-recovery-code')).toBeVisible();
     expect(api.regenerateAdminMfaRecoveryCodes).toHaveBeenCalledTimes(1);
@@ -312,21 +292,27 @@ it('reconciles with GET only when a committed regeneration response is lost', as
     renderPage({ enabled: true, confirmed: true });
 
     fireEvent.click(
-        screen.getByRole('button', { name: 'اعرض رموز الاسترداد' }),
+        screen.getByRole('button', {
+            name: adminUi.mfa.showRecoveryCodes,
+        }),
     );
     expect(await screen.findByText('old-invalidated-code')).toBeVisible();
     fireEvent.click(
-        screen.getByRole('button', { name: 'أنشئ رموز استرداد جديدة' }),
+        screen.getByRole('button', {
+            name: adminUi.mfa.regenerateRecoveryCodes,
+        }),
     );
     fireEvent.click(
-        screen.getByRole('button', { name: 'استبدل رموز الاسترداد' }),
+        screen.getByRole('button', {
+            name: adminUi.mfa.confirmRegenerate,
+        }),
     );
 
     expect(api.regenerateAdminMfaRecoveryCodes).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('old-invalidated-code')).not.toBeInTheDocument();
     expect(
         screen.queryByRole('heading', {
-            name: 'استبدال رموز الاسترداد؟',
+            name: adminUi.mfa.regenerateTitle,
         }),
     ).not.toBeInTheDocument();
 
@@ -338,7 +324,7 @@ it('reconciles with GET only when a committed regeneration response is lost', as
     expect(await screen.findByRole('alert')).toHaveTextContent(
         adminUi.mfa.failed,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'حاول مرة أخرى' }));
+    fireEvent.click(screen.getByRole('button', { name: adminUi.common.retry }));
 
     expect(await screen.findByText('rotated-recovery-code')).toBeVisible();
     expect(api.regenerateAdminMfaRecoveryCodes).toHaveBeenCalledTimes(1);
@@ -355,11 +341,11 @@ it('shows a recoverable failure state and retries the failed operation', async (
     });
     renderPage({ enabled: false, confirmed: false });
 
-    fireEvent.click(screen.getByRole('button', { name: 'ابدأ إعداد التحقق' }));
+    fireEvent.click(screen.getByRole('button', { name: adminUi.mfa.enable }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
         adminUi.mfa.failed,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'حاول مرة أخرى' }));
+    fireEvent.click(screen.getByRole('button', { name: adminUi.common.retry }));
 
     expect(
         await screen.findByRole('img', { name: adminUi.mfa.qrAlt }),
@@ -373,21 +359,21 @@ it.each([
         401,
         adminUi.mfa.sessionExpired,
         adminUi.mfa.signIn,
-        '/login',
+        '/en/login',
     ],
     [
         'forbidden',
         403,
         adminUi.mfa.accessDenied,
         adminUi.mfa.returnToStore,
-        '/',
+        '/en',
     ],
     [
         'password_confirmation_required',
         423,
         adminUi.mfa.passwordConfirmationExpired,
         adminUi.mfa.confirmPasswordAgain,
-        '/admin/security/mfa',
+        '/en/admin/security/mfa',
     ],
 ] as const)(
     'offers a safe %s recovery destination instead of repeating the failed request',
@@ -398,7 +384,7 @@ it.each([
         renderPage({ enabled: false, confirmed: false });
 
         fireEvent.click(
-            screen.getByRole('button', { name: 'ابدأ إعداد التحقق' }),
+            screen.getByRole('button', { name: adminUi.mfa.enable }),
         );
 
         expect(await screen.findByRole('alert')).toHaveTextContent(message);
@@ -418,7 +404,7 @@ it('explains throttling without offering an immediate retry loop', async () => {
     );
     renderPage({ enabled: false, confirmed: false });
 
-    fireEvent.click(screen.getByRole('button', { name: 'ابدأ إعداد التحقق' }));
+    fireEvent.click(screen.getByRole('button', { name: adminUi.mfa.enable }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
         adminUi.mfa.rateLimited,
@@ -428,21 +414,25 @@ it('explains throttling without offering an immediate retry loop', async () => {
     ).not.toBeInTheDocument();
     expect(
         screen.getByRole('link', { name: adminUi.mfa.retryAfterWait }),
-    ).toHaveAttribute('href', '/admin/security/mfa');
+    ).toHaveAttribute('href', '/en/admin/security/mfa');
     expect(
         screen.queryByRole('button', { name: adminUi.mfa.enable }),
     ).not.toBeInTheDocument();
 });
 
-it('provides localized password-setup guidance without attempting MFA requests', () => {
+it('provides English password-setup guidance without attempting MFA requests', () => {
     renderPage({ passwordConfigured: false, enabled: false, confirmed: false });
 
     expect(
-        screen.getByRole('heading', { name: 'أعدّ كلمة المرور أولًا' }),
+        screen.getByRole('heading', {
+            name: adminUi.mfa.setupPassword,
+        }),
     ).toBeVisible();
     expect(
-        screen.getByRole('link', { name: 'افتح أمان الحساب' }),
-    ).toHaveAttribute('href', '/my-account/security');
+        screen.getByRole('link', {
+            name: adminUi.mfa.openAccountSecurity,
+        }),
+    ).toHaveAttribute('href', '/en/my-account/security');
     expect(api.enableAdminMfa).not.toHaveBeenCalled();
 });
 
@@ -453,8 +443,8 @@ function renderPage(
     return render(
         <AdminMfaPage
             adminUi={adminUi}
-            direction="rtl"
-            locale="ar"
+            direction="ltr"
+            locale="en"
             mfa={{
                 passwordConfigured: true,
                 routes,

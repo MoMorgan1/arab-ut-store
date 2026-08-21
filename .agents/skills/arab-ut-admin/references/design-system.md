@@ -33,11 +33,13 @@ fonts, generic white analytics cards, decorative charts, or excessive motion.
 - Mutation loading is explicit; financial/destructive success is never
   optimistic.
 - Respect reduced motion and preserve zoom to 200%.
-- Validate Arabic RTL and English LTR at 320, 390, 768, and 1440 CSS pixels.
+- The Admin surface is English-only (owner decision, 2026-08-21); validate
+  English LTR at 320, 390, 768, and 1440 CSS pixels.
 
 ## Copy
 
-- Arabic is native, concise, and operational—not a literal English translation.
+- Admin copy is concise, operational English. Arabic remains native for the
+  storefront and customer account—not a literal English translation.
 - Buttons use verb + object. Confirmations name the exact object and consequence.
 - Errors explain what happened and the safe next action without leaking internal
   identifiers or cross-owner existence.

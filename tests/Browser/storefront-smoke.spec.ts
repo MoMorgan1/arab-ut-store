@@ -650,7 +650,7 @@ test('authenticated account keeps chat above mobile navigation', async ({
     expectCleanRuntime();
 });
 
-test('authenticated Admin overview is operable in Arabic and English across required widths', async ({
+test('authenticated Admin overview is operable in English across required widths', async ({
     context,
     page,
 }) => {
@@ -690,19 +690,6 @@ test('authenticated Admin overview is operable in Arabic and English across requ
         const locales = [
             {
                 path: '/admin?range=7',
-                language: 'ar',
-                direction: 'rtl',
-                heading: 'لوحة العمليات',
-                open: 'فتح قائمة الإدارة',
-                close: 'إغلاق قائمة الإدارة',
-                dialog: 'عرب التيميت',
-                overview: 'نظرة عامة',
-                security: 'أمان الحساب',
-                range7: 'آخر 7 أيام',
-                range30: 'آخر 30 يومًا',
-            },
-            {
-                path: '/en/admin?range=7',
                 language: 'en',
                 direction: 'ltr',
                 heading: 'Operations dashboard',
@@ -806,10 +793,7 @@ test('authenticated Admin overview is operable in Arabic and English across requ
                     );
                     await expectMinimumTouchTarget(
                         dialog.getByRole('button', {
-                            name:
-                                locale.language === 'ar'
-                                    ? 'تسجيل الخروج'
-                                    : 'Log out',
+                            name: 'Log out',
                         }),
                     );
                     await expect(

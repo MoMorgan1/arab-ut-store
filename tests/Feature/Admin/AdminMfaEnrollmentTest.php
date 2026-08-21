@@ -23,8 +23,8 @@ test('the Admin MFA page exposes only safe booleans and relative endpoint URLs',
         ->assertHeader('Cache-Control', 'no-store, private')
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/security/mfa')
-            ->where('locale', $locale)
-            ->where('direction', $locale === 'en' ? 'ltr' : 'rtl')
+            ->where('locale', 'en')
+            ->where('direction', 'ltr')
             ->where('auth', null)
             ->where('mfa.passwordConfigured', true)
             ->where('mfa.enabled', true)
@@ -46,8 +46,8 @@ test('the Admin MFA page exposes only safe booleans and relative endpoint URLs',
             (string) $user->getRawOriginal('password'),
         );
 })->with([
-    'Arabic' => ['ar', '/admin/security/mfa'],
-    'English' => ['en', '/en/admin/security/mfa'],
+    'Canonical' => ['en', '/admin/security/mfa'],
+    'English alias' => ['en', '/en/admin/security/mfa'],
 ]);
 
 test('the MFA page requires a recent password confirmation', function (): void {
@@ -149,7 +149,7 @@ test('active Customers retain Fortify MFA management access', function (): void 
     expect($customer->fresh()->two_factor_secret)->toBeString();
 });
 
-function adminMfaUser(UserRole $role, bool $confirmed, string $locale = 'ar'): User
+function adminMfaUser(UserRole $role, bool $confirmed, string $locale = 'en'): User
 {
     $secret = app(TwoFactorAuthenticationProvider::class)->generateSecretKey();
     $user = User::factory()->create([

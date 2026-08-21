@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Admin\Presenters\AdminOverviewPage;
 use App\Admin\Presenters\AdminShell;
@@ -231,9 +231,9 @@ test('the Admin shell exposes only safe identity exact permissions and implement
         expect($serializedShell)->not->toContain($forbiddenField);
     }
 })->with([
-    'Arabic Admin' => [
+    'English Admin' => [
         UserRole::Admin,
-        'ar',
+        'en',
         [
             'dashboard.view',
             'orders.view',
@@ -267,7 +267,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
             'orders.cancel',
             'order_credentials.view',
         ],
-        ['/en/admin', '/en/admin/security/mfa'],
+        ['/admin', '/admin/security/mfa'],
     ],
 ]);
 
@@ -285,13 +285,13 @@ test('the page presenter composes exact localized range URLs and active state', 
         ->and($page['overview']['rangeDays'])->toBe($days)
         ->and($page['rangeOptions'])->toBe($expectedOptions);
 })->with([
-    'Arabic seven days' => ['ar', 7, [
-        ['days' => 7, 'label' => 'آخر 7 أيام', 'url' => '/admin?range=7', 'active' => true],
-        ['days' => 30, 'label' => 'آخر 30 يومًا', 'url' => '/admin?range=30', 'active' => false],
+    'English seven days' => ['en', 7, [
+        ['days' => 7, 'label' => 'Last 7 days', 'url' => '/admin?range=7', 'active' => true],
+        ['days' => 30, 'label' => 'Last 30 days', 'url' => '/admin?range=30', 'active' => false],
     ]],
     'English thirty days' => ['en', 30, [
-        ['days' => 7, 'label' => 'Last 7 days', 'url' => '/en/admin?range=7', 'active' => false],
-        ['days' => 30, 'label' => 'Last 30 days', 'url' => '/en/admin?range=30', 'active' => true],
+        ['days' => 7, 'label' => 'Last 7 days', 'url' => '/admin?range=7', 'active' => false],
+        ['days' => 30, 'label' => 'Last 30 days', 'url' => '/admin?range=30', 'active' => true],
     ]],
 ]);
 
@@ -309,16 +309,16 @@ test('confirmed privileged actors can open localized private overview routes', f
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/overview', false)
             ->where('auth', null)
-            ->where('locale', $locale)
-            ->where('direction', $locale === 'en' ? 'ltr' : 'rtl')
+            ->where('locale', 'en')
+            ->where('direction', 'ltr')
             ->where('overview.rangeDays', 30));
 })->with([
-    'Arabic Admin' => [UserRole::Admin, 'ar', '/admin?range=30'],
+    'Canonical Admin' => [UserRole::Admin, 'en', '/admin?range=30'],
     'English Staff' => [UserRole::Staff, 'en', '/en/admin?range=30'],
 ]);
 
 test('guests and nonprivileged accounts cannot enter the Admin overview', function (): void {
-    $this->get('/admin')->assertRedirect('/login');
+    $this->get('/admin')->assertRedirect('/en/login');
 
     $customer = User::factory()->create(['role' => UserRole::Customer]);
     $this->actingAs($customer)->get('/admin')->assertForbidden();
@@ -412,7 +412,7 @@ function explainAdminOverviewQuery(array $queries, string $marker): string
         ->implode(' | ');
 }
 
-function adminOverviewActor(UserRole $role, string $locale = 'ar'): User
+function adminOverviewActor(UserRole $role, string $locale = 'en'): User
 {
     $actor = User::factory()->create([
         'role' => $role,
@@ -501,7 +501,7 @@ function seedLiteralAdminOverviewFixture(User $actor): void
         'method' => 'paylink',
         'status' => 'failed',
         'amount_halalah' => 250,
-        'reason_ar' => 'سبب اختباري آمن',
+        'reason_ar' => 'Ø³Ø¨Ø¨ Ø§Ø®ØªØ¨Ø§Ø±ÙŠ Ø¢Ù…Ù†',
         'reason_en' => 'Safe synthetic reason',
         'provider_metadata' => ['providerPayload' => 'must-never-load'],
         'created_at' => now()->subDay(),

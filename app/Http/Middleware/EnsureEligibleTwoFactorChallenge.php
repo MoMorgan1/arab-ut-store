@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ final class EnsureEligibleTwoFactorChallenge
             ? User::query()->find($challengedUserId)
             : null;
 
-        $locale = $challengedUser?->preferred_locale === 'en' ? 'en' : 'ar';
+        $locale = $this->challengeLocale($challengedUser);
         app()->setLocale($locale);
 
         if (! $this->isEligible($challengedUser)) {
@@ -33,6 +34,18 @@ final class EnsureEligibleTwoFactorChallenge
         }
 
         return $next($request);
+    }
+
+    private function challengeLocale(?User $user): string
+    {
+        // Owner decision (2026-08-21): the Admin surface is English-only.
+        // Only privileged roles can enable TOTP, so their challenge renders
+        // in English; every other challenged user keeps locale behavior.
+        if ($user !== null && $user->role !== UserRole::Customer) {
+            return 'en';
+        }
+
+        return $user?->preferred_locale === 'en' ? 'en' : 'ar';
     }
 
     private function isEligible(?User $user): bool

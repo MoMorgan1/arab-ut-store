@@ -42,5 +42,5 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
         });
 };
 
-$registerAdminRoutes('admin', 'admin.');
+$registerAdminRoutes('admin', 'admin.', 'en');
 $registerAdminRoutes('en/admin', 'localized.admin.', 'en');

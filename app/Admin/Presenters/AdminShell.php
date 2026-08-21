@@ -17,8 +17,6 @@ final class AdminShell
      */
     public function for(User $actor, string $locale): array
     {
-        $localized = $locale === 'en';
-
         return [
             'adminIdentity' => [
                 'name' => $actor->name,
@@ -28,12 +26,12 @@ final class AdminShell
                 [
                     'key' => 'overview',
                     'label' => (string) trans('admin.navigation.overview', locale: $locale),
-                    'url' => route($localized ? 'localized.admin.overview' : 'admin.overview', absolute: false),
+                    'url' => route('admin.overview', absolute: false),
                 ],
                 [
                     'key' => 'security',
                     'label' => (string) trans('admin.navigation.security', locale: $locale),
-                    'url' => route($localized ? 'localized.admin.security.mfa' : 'admin.security.mfa', absolute: false),
+                    'url' => route('admin.security.mfa', absolute: false),
                 ],
             ],
             'permissions' => array_values(array_map(

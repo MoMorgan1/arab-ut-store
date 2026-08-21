@@ -131,9 +131,9 @@ test('ineligible pending privileged challenges clear the session on both challen
         ? $request->get(route('two-factor.login'))
         : $request->post(route('two-factor.login.store'), ['code' => '000000']);
 
-    $response->assertRedirect(route('login'))
+    $response->assertRedirect(route('localized.login', ['locale' => 'en']))
         ->assertSessionHasErrors([
-            'email' => trans('auth_ui.two_factor_challenge.invalid_code', [], 'ar'),
+            'email' => trans('auth_ui.two_factor_challenge.invalid_code', [], 'en'),
         ]);
     expect(session()->has('login.id'))->toBeFalse()
         ->and(session()->has('login.remember'))->toBeFalse();
@@ -175,7 +175,7 @@ test('English ineligible challenges redirect to the localized login with generic
     'POST' => ['POST'],
 ]);
 
-test('failed TOTP challenges use the pending users locale and mode-specific copy', function (
+test('failed TOTP challenges use English error copy for privileged users', function (
     string $locale,
     string $field,
     string $translation,
@@ -187,7 +187,7 @@ test('failed TOTP challenges use the pending users locale and mode-specific copy
         ->post(route('two-factor.login.store'), [$field => 'invalid-code'])
         ->assertRedirect(route('two-factor.login'))
         ->assertSessionHasErrors([
-            $field => trans("auth_ui.two_factor_challenge.{$translation}", [], $locale),
+            $field => trans("auth_ui.two_factor_challenge.{$translation}", [], 'en'),
         ]);
 })->with([
     'Arabic authenticator code' => ['ar', 'code', 'invalid_code'],
@@ -196,9 +196,8 @@ test('failed TOTP challenges use the pending users locale and mode-specific copy
     'English recovery code' => ['en', 'recovery_code', 'invalid_recovery_code'],
 ]);
 
-test('the challenge page follows the privileged users preferred locale', function (
+test('the challenge page renders in English regardless of the privileged user preferred locale', function (
     string $locale,
-    string $direction,
 ) {
     ['user' => $staff] = confirmedTotpUser(UserRole::Staff);
     $staff->update(['preferred_locale' => $locale]);
@@ -207,11 +206,11 @@ test('the challenge page follows the privileged users preferred locale', functio
         ->get(route('two-factor.login'))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('auth/two-factor-challenge')
-            ->where('locale', $locale)
-            ->where('direction', $direction));
+            ->where('locale', 'en')
+            ->where('direction', 'ltr'));
 })->with([
-    'Arabic' => ['ar', 'rtl'],
-    'English' => ['en', 'ltr'],
+    'Arabic' => ['ar'],
+    'English' => ['en'],
 ]);
 
 /** @return array{user: User, secret: string} */

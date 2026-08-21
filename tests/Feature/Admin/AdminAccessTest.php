@@ -22,6 +22,7 @@ beforeEach(function (): void {
     ];
 
     Route::get('/__tests/admin-admission', fn () => response('admitted'))
+        ->defaults('locale', 'en')
         ->middleware($middleware)
         ->name('tests.admin.admission');
     Route::get('/en/__tests/admin-admission', fn () => response('admitted'))
@@ -36,7 +37,7 @@ beforeEach(function (): void {
 test('guests cannot enter the Admin MFA enrollment route', function (string $path, string $login): void {
     $this->get($path)->assertRedirect($login);
 })->with([
-    'Arabic' => ['/admin/security/mfa', '/login'],
+    'Canonical' => ['/admin/security/mfa', '/en/login'],
     'English' => ['/en/admin/security/mfa', '/en/login'],
 ]);
 
@@ -77,7 +78,7 @@ test('passwordless Staff are sent to the localized account security setup', func
 
     $this->actingAs($staff)->get($path)->assertRedirect($destination);
 })->with([
-    'Arabic' => ['ar', '/admin/security/mfa', '/my-account/security'],
+    'Canonical' => ['en', '/admin/security/mfa', '/en/my-account/security'],
     'English' => ['en', '/en/admin/security/mfa', '/en/my-account/security'],
 ]);
 
@@ -92,8 +93,8 @@ test('ordinary Admin routes send unconfirmed Staff through localized MFA enrollm
         ->get($path)
         ->assertRedirect($destination);
 })->with([
-    'Arabic' => ['ar', '/__tests/admin-admission', '/admin/security/mfa'],
-    'English' => ['en', '/en/__tests/admin-admission', '/en/admin/security/mfa'],
+    'Canonical' => ['en', '/__tests/admin-admission', '/admin/security/mfa'],
+    'English' => ['en', '/en/__tests/admin-admission', '/admin/security/mfa'],
 ]);
 
 test('confirmed Admin and Staff can enter ordinary private Admin responses', function (UserRole $role): void {
@@ -125,8 +126,8 @@ test('Admin enrollment routes retain the complete localized admission middleware
             'password.confirm',
         );
 })->with([
-    'Arabic' => ['admin.security.mfa'],
-    'English' => ['localized.admin.security.mfa'],
+    'Canonical' => ['admin.security.mfa'],
+    'English alias' => ['localized.admin.security.mfa'],
 ]);
 
 test('every Fortify MFA management route is private and independently throttled', function (string $routeName): void {
@@ -162,7 +163,7 @@ test('Fortify challenge routes preserve the eligibility boundary and challenge t
     'challenge submission' => ['two-factor.login.store'],
 ]);
 
-function privilegedUser(UserRole $role, bool $confirmed, string $locale = 'ar'): User
+function privilegedUser(UserRole $role, bool $confirmed, string $locale = 'en'): User
 {
     $user = User::factory()->create([
         'role' => $role,

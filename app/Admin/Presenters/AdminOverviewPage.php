@@ -15,8 +15,6 @@ final readonly class AdminOverviewPage
     /** @return array<string, mixed> */
     public function for(User $actor, string $locale, int $days): array
     {
-        $routeName = $locale === 'en' ? 'localized.admin.overview' : 'admin.overview';
-
         return [
             'locale' => $locale,
             'direction' => $locale === 'en' ? 'ltr' : 'rtl',
@@ -24,8 +22,8 @@ final readonly class AdminOverviewPage
             ...$this->shell->for($actor, $locale),
             'overview' => $this->overview->for($actor, $days),
             'rangeOptions' => [
-                $this->rangeOption($routeName, $locale, 7, $days),
-                $this->rangeOption($routeName, $locale, 30, $days),
+                $this->rangeOption('admin.overview', $locale, 7, $days),
+                $this->rangeOption('admin.overview', $locale, 30, $days),
             ],
         ];
     }

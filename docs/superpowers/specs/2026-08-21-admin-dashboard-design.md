@@ -22,6 +22,11 @@ workflow, ticketing model, or realtime transport.
 
 ## Owner decisions
 
+- On 2026-08-21, Mohamed superseded the earlier bilingual Admin contract: the
+  Admin dashboard surface is English-only. Arabic remains the storefront and
+  customer-account default. Local Thmanyah typography is retained for the
+  Admin. Privileged TOTP challenges render in English; customer flows are
+  unchanged.
 - On 2026-08-21, Mohamed superseded the earlier broad Staff matrix: this is an
   Admin-first near-MVP, not a feature-complete Staff dashboard.
 - Admin retains all 19 planned permissions and remains the owner/full operator.

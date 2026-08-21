@@ -44,7 +44,9 @@ canonical design explicitly adopts these foundations.
   allowlists. Never fetch an unbounded dataset for browser-side processing.
 - Automation-authoritative catalog fields remain read-only until an approved
   authority-transition design exists.
-- Arabic RTL and English LTR are equal release targets.
+- The Admin dashboard is English-only (owner decision, 2026-08-21). Arabic
+  remains the storefront and customer-account default. Thmanyah typography is
+  retained; verify English LTR at 320, 390, 768, and 1440 CSS pixels.
 
 ## Reference routing
 

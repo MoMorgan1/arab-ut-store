@@ -52,34 +52,6 @@ vi.mock('@inertiajs/react', () => ({
     usePage: () => ({ props: inertia.props, url: inertia.url }),
 }));
 
-const arabicUi = {
-    ...englishAdminUi,
-    brand: 'عرب التيميت',
-    overview: {
-        capturedRevenue: 'الإيراد المحصل',
-        description: 'ملخص واضح للطلبات والمدفوعات التي تحتاج إلى متابعة.',
-        failedPayments: 'مدفوعات فاشلة',
-        failedRefunds: 'استردادات فاشلة',
-        headTitle: 'نظرة عامة على العمليات',
-        inProgressOrders: 'طلبات قيد التنفيذ',
-        noAudit: 'لا توجد نشاطات إدارية حديثة.',
-        noUnresolved: 'لا توجد طلبات مفتوحة.',
-        oldestUnresolved: 'أقدم طلب مفتوح',
-        pendingPayments: 'مدفوعات معلقة',
-        range7: 'آخر 7 أيام',
-        range30: 'آخر 30 يومًا',
-        receivedOrders: 'طلبات مستلمة',
-        recentAudit: 'آخر نشاطات الإدارة',
-        title: 'لوحة العمليات',
-        waitingForCustomer: 'بانتظار العميل',
-    },
-    statuses: {
-        received: 'مستلم',
-        in_progress: 'قيد التنفيذ',
-        waiting_for_customer: 'بانتظار العميل',
-    },
-};
-
 function pageProps(
     overrides: Partial<AdminOverviewPageProps> = {},
 ): AdminOverviewPageProps {
@@ -169,45 +141,6 @@ describe('Admin operational overview', () => {
         expect(text.indexOf('Failed payments')).toBeLessThan(
             text.indexOf('Captured revenue'),
         );
-    });
-
-    it('renders Arabic natively with locale-aware values and dates', () => {
-        inertia.props = pageProps({
-            locale: 'ar',
-            direction: 'rtl',
-            adminUi: arabicUi,
-            rangeOptions: [
-                {
-                    days: 7,
-                    label: 'آخر 7 أيام',
-                    url: '/admin?range=7',
-                    active: true,
-                },
-                {
-                    days: 30,
-                    label: 'آخر 30 يومًا',
-                    url: '/admin?range=30',
-                    active: false,
-                },
-            ],
-        });
-
-        const { container } = render(<AdminOverviewPage />);
-
-        expect(container.firstElementChild).toHaveAttribute('dir', 'rtl');
-        expect(screen.getByText('طلبات مستلمة')).toBeVisible();
-        expect(
-            screen.getByText(new Intl.NumberFormat('ar').format(12)),
-        ).toBeVisible();
-        expect(
-            screen.getByText(
-                new Intl.DateTimeFormat('ar', {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                    timeZone: 'UTC',
-                }).format(new Date('2026-08-20T10:00:00.000000Z')),
-            ),
-        ).toBeVisible();
     });
 
     it('preserves signed 64-bit revenue precision when formatting minor units', () => {

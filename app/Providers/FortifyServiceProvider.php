@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Enums\UserRole;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\PrivateNoStore;
 use App\Http\Responses\LocalizedFailedTwoFactorLoginResponse;
@@ -120,11 +121,17 @@ class FortifyServiceProvider extends ServiceProvider
         ));
 
         Fortify::twoFactorChallengeView(function (Request $request) {
-            $preferredLocale = User::query()
+            $challengedUser = User::query()
                 ->whereKey($request->session()->get('login.id'))
-                ->value('preferred_locale');
+                ->first();
 
-            $locale = $preferredLocale === 'en' ? 'en' : 'ar';
+            // Owner decision (2026-08-21): the Admin surface is English-only.
+            // Only privileged roles can enable TOTP, so their challenge renders
+            // in English; every other challenged user keeps locale behavior.
+            $locale = $challengedUser !== null
+                && $challengedUser->role !== UserRole::Customer
+                ? 'en'
+                : ($challengedUser?->preferred_locale === 'en' ? 'en' : 'ar');
             app()->setLocale($locale);
 
             return Inertia::render(
