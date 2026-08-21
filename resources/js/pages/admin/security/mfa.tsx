@@ -208,9 +208,7 @@ export default function AdminMfaPage({
             className="min-h-dvh touch-manipulation overflow-x-hidden bg-[var(--arabut-navy-deep)] pt-[max(2rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(2rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] text-[var(--arabut-ink)] [color-scheme:dark] sm:px-6 sm:py-12"
             dir={direction}
         >
-            <Head title={copy.headTitle}>
-                <meta content="#080705" name="theme-color" />
-            </Head>
+            <Head title={copy.headTitle} />
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
                 <header className="flex items-center justify-between gap-4 border-b border-[var(--arabut-line)] pb-5">
                     <div className="flex min-w-0 items-center gap-3">
