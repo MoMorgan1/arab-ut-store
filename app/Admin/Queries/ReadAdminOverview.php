@@ -2,16 +2,20 @@
 
 namespace App\Admin\Queries;
 
+use App\Admin\Support\CapturedRevenueAmount;
 use App\Enums\AdminPermission;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Models\User;
 use DateTimeInterface;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class ReadAdminOverview
 {
+    public function __construct(private readonly CapturedRevenueAmount $capturedRevenueAmount) {}
+
     /**
      * @return array{
      *     rangeDays: int,
@@ -44,6 +48,11 @@ final class ReadAdminOverview
     private function orderMetrics(DateTimeInterface $windowStartsAt, DateTimeInterface $windowEndsAt): array
     {
         $metrics = DB::table('orders')
+            ->whereIn('status', [
+                OrderStatus::Received->value,
+                OrderStatus::InProgress->value,
+                OrderStatus::WaitingForCustomer->value,
+            ])
             ->whereBetween('placed_at', [$windowStartsAt, $windowEndsAt])
             ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS received', [OrderStatus::Received->value])
             ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS in_progress', [OrderStatus::InProgress->value])
@@ -66,6 +75,17 @@ final class ReadAdminOverview
     private function paymentOverview(DateTimeInterface $windowStartsAt, DateTimeInterface $windowEndsAt): array
     {
         $metrics = DB::table('payments')
+            ->where(function (Builder $query) use ($windowStartsAt, $windowEndsAt): void {
+                $query->where(function (Builder $pendingOrFailed) use ($windowStartsAt, $windowEndsAt): void {
+                    $pendingOrFailed
+                        ->whereIn('status', [PaymentStatus::Pending->value, PaymentStatus::Failed->value])
+                        ->whereBetween('created_at', [$windowStartsAt, $windowEndsAt]);
+                })->orWhere(function (Builder $captured) use ($windowStartsAt, $windowEndsAt): void {
+                    $captured
+                        ->whereIn('status', [PaymentStatus::Paid->value, PaymentStatus::Refunded->value])
+                        ->whereBetween('paid_at', [$windowStartsAt, $windowEndsAt]);
+                });
+            })
             ->selectRaw('SUM(CASE WHEN status = ? AND created_at BETWEEN ? AND ? THEN 1 ELSE 0 END) AS pending', [
                 PaymentStatus::Pending->value, $windowStartsAt, $windowEndsAt,
             ])
@@ -83,7 +103,7 @@ final class ReadAdminOverview
                 'failed' => (int) $metrics->failed,
             ],
             'capturedRevenue' => [
-                'amountMinor' => (string) ((int) $metrics->captured),
+                'amountMinor' => $this->capturedRevenueAmount->fromDatabase($metrics->captured),
                 'currency' => 'SAR',
             ],
         ];
@@ -102,10 +122,11 @@ final class ReadAdminOverview
     private function oldestUnresolvedOrder(DateTimeInterface $windowEndsAt): ?array
     {
         $order = DB::table('orders')
-            ->whereNotIn('status', [
-                OrderStatus::Completed->value,
-                OrderStatus::Cancelled->value,
-                OrderStatus::Refunded->value,
+            ->whereIn('status', [
+                OrderStatus::PendingPayment->value,
+                OrderStatus::Received->value,
+                OrderStatus::InProgress->value,
+                OrderStatus::WaitingForCustomer->value,
             ])
             ->whereRaw('COALESCE(placed_at, created_at) <= ?', [$windowEndsAt])
             ->select(['public_id', 'order_number', 'status'])

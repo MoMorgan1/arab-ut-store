@@ -23,7 +23,7 @@ final class OverviewController extends Controller
         ]);
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
-        Gate::authorize(AdminPermission::DashboardView->value);
+        Gate::forUser($actor)->authorize(AdminPermission::DashboardView->value);
         $locale = $request->route('locale') === 'en' ? 'en' : 'ar';
 
         return Inertia::render('admin/overview', [

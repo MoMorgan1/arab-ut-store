@@ -3,6 +3,7 @@
 use App\Admin\Presenters\AdminOverviewPage;
 use App\Admin\Presenters\AdminShell;
 use App\Admin\Queries\ReadAdminOverview;
+use App\Admin\Support\CapturedRevenueAmount;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
@@ -101,6 +102,29 @@ test('the overview includes the exact lower date boundary and excludes older or 
     expect(app(ReadAdminOverview::class)->for($admin, 7)['orders']['received'])->toBe(1);
 });
 
+test('the main overview queries use the named search indexes instead of full table scans on SQLite', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-08-21 12:00:00', 'UTC'));
+    $admin = adminOverviewActor(UserRole::Admin);
+    seedLiteralAdminOverviewFixture($admin);
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    app(ReadAdminOverview::class)->for($admin, 7);
+
+    $queries = DB::getQueryLog();
+    DB::disableQueryLog();
+    $orderMetricsPlan = explainAdminOverviewQuery($queries, ' as received');
+    $paymentPlan = explainAdminOverviewQuery($queries, ' as pending');
+    $oldestOrderPlan = explainAdminOverviewQuery($queries, ' as activity_at');
+
+    expect($orderMetricsPlan)->toContain('idx_orders_admin_status_activity')
+        ->and(strtoupper($orderMetricsPlan))->not->toContain('SCAN ORDERS')
+        ->and($paymentPlan)->toContain('idx_payments_admin_status_paid')
+        ->and(strtoupper($paymentPlan))->not->toContain('SCAN PAYMENTS')
+        ->and($oldestOrderPlan)->toContain('SEARCH orders USING INDEX orders_status_index')
+        ->and(strtoupper($oldestOrderPlan))->not->toContain('SCAN ORDERS');
+});
+
 test('captured revenue includes only paid and refunded payments in the selected paid window', function (): void {
     Carbon::setTestNow(Carbon::parse('2026-08-21 12:00:00', 'UTC'));
     $admin = adminOverviewActor(UserRole::Admin);
@@ -117,6 +141,17 @@ test('captured revenue includes only paid and refunded payments in the selected 
         'currency' => 'SAR',
     ]);
 });
+
+test('captured revenue normalization preserves exact database decimal strings', function (
+    int|string|null $databaseAmount,
+    string $expected,
+): void {
+    expect(app(CapturedRevenueAmount::class)->fromDatabase($databaseAmount))->toBe($expected);
+})->with([
+    'empty aggregate' => [null, '0'],
+    'portable SQLite integer' => [1250, '1250'],
+    'MariaDB decimal beyond PHP integer range' => ['18446744073709551614', '18446744073709551614'],
+]);
 
 test('Staff receive no global audit events while Admin receive at most five safe event fields', function (): void {
     Carbon::setTestNow(Carbon::parse('2026-08-21 12:00:00', 'UTC'));
@@ -295,8 +330,20 @@ test('guests and nonprivileged accounts cannot enter the Admin overview', functi
 
 test('the overview controller independently authorizes dashboard permission', function (): void {
     $customer = User::factory()->create(['role' => UserRole::Customer]);
+    $this->actingAs($customer);
     $request = Request::create('/admin', 'GET');
     $request->setUserResolver(fn (): User => $customer);
+
+    expect(fn () => app(OverviewController::class)($request))
+        ->toThrow(AuthorizationException::class);
+});
+
+test('the overview controller authorizes the actor resolved from its request', function (): void {
+    $ambientAdmin = adminOverviewActor(UserRole::Admin);
+    $resolvedCustomer = User::factory()->create(['role' => UserRole::Customer]);
+    $this->actingAs($ambientAdmin);
+    $request = Request::create('/admin', 'GET');
+    $request->setUserResolver(fn (): User => $resolvedCustomer);
 
     expect(fn () => app(OverviewController::class)($request))
         ->toThrow(AuthorizationException::class);
@@ -347,6 +394,22 @@ function assertAdminOverviewLifecycleIndexes(bool $expected): void
         ->and(Schema::hasIndex('payments', 'idx_payments_admin_status_paid'))->toBe($expected)
         ->and(Schema::hasIndex('refunds', 'idx_refunds_admin_status_created'))->toBe($expected)
         ->and(Schema::hasIndex('staff_audit_logs', 'idx_staff_audits_admin_created'))->toBe($expected);
+}
+
+/** @param list<array{query: string, bindings: array<int, mixed>, time: float}> $queries */
+function explainAdminOverviewQuery(array $queries, string $marker): string
+{
+    $loggedQuery = collect($queries)->first(
+        fn (array $query): bool => str_contains(strtolower($query['query']), $marker),
+    );
+
+    if (! is_array($loggedQuery)) {
+        throw new RuntimeException("Missing overview query marker [{$marker}].");
+    }
+
+    return collect(DB::select('EXPLAIN QUERY PLAN '.$loggedQuery['query'], $loggedQuery['bindings']))
+        ->pluck('detail')
+        ->implode(' | ');
 }
 
 function adminOverviewActor(UserRole $role, string $locale = 'ar'): User
