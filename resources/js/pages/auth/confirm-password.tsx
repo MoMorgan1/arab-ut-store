@@ -53,7 +53,7 @@ export default function ConfirmPassword({
 
                         <div className="flex items-center">
                             <Button
-                                className="auth-form__submit h-11 w-full"
+                                className="auth-form__submit h-10 w-full"
                                 disabled={processing}
                                 data-test="confirm-password-button"
                             >

@@ -558,7 +558,7 @@
     }
 
     .auth-shell [data-slot='input'] {
-        min-height: 2.75rem;
+        min-height: 2.5rem;
         border-color: rgb(237 228 208 / 20%);
         border-radius: 0.625rem;
         background: rgb(8 7 5 / 76%);
@@ -581,7 +581,7 @@
     }
 
     .auth-shell .auth-form__submit {
-        min-height: 2.75rem;
+        min-height: 2.5rem;
         /* Bind the primary action to the credential fields above it
            (net 0.75rem against the form's 1rem row rhythm). */
         margin-block-start: -0.25rem;

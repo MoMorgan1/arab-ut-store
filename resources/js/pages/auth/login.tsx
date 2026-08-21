@@ -128,7 +128,7 @@ export default function Login({
                                             autoFocus
                                             autoComplete="email"
                                             placeholder="email@example.com"
-                                            className="h-11"
+                                            className="h-10"
                                             aria-describedby={
                                                 errors.email
                                                     ? 'email-error'
@@ -168,7 +168,7 @@ export default function Login({
                                             required
                                             autoComplete="current-password"
                                             placeholder={authUi.fields.password}
-                                            className="h-11"
+                                            className="h-10"
                                             aria-describedby={
                                                 errors.password
                                                     ? 'password-error'
@@ -191,13 +191,13 @@ export default function Login({
                                         />
                                     </div>
 
-                                    <div className="flex min-h-11 items-center gap-3">
+                                    <div className="flex min-h-10 items-center gap-3">
                                         <Checkbox
                                             id="remember"
                                             name="remember"
                                         />
                                         <Label
-                                            className="flex min-h-11 flex-1 cursor-pointer items-center"
+                                            className="flex min-h-10 flex-1 cursor-pointer items-center"
                                             htmlFor="remember"
                                         >
                                             {authUi.fields.remember}
@@ -206,7 +206,7 @@ export default function Login({
 
                                     <Button
                                         type="submit"
-                                        className="auth-form__submit h-11 w-full"
+                                        className="auth-form__submit h-10 w-full"
                                         disabled={processing}
                                         data-test="login-button"
                                     >
@@ -273,7 +273,7 @@ export default function Login({
                                                 )
                                             }
                                             placeholder="501234567"
-                                            className="h-11"
+                                            className="h-10"
                                         />
                                     </div>
 
@@ -305,11 +305,11 @@ export default function Login({
                                                         ),
                                                     )
                                                 }
-                                                className="h-11"
+                                                className="h-10"
                                             />
                                             <Button
                                                 type="button"
-                                                className="auth-form__submit h-11 w-full"
+                                                className="auth-form__submit h-10 w-full"
                                                 disabled={
                                                     phoneBusy ||
                                                     phoneCode.length !== 6
@@ -321,7 +321,7 @@ export default function Login({
                                             </Button>
                                             <button
                                                 type="button"
-                                                className="auth-inline-link min-h-11"
+                                                className="auth-inline-link min-h-10"
                                                 onClick={() => {
                                                     setPhoneCodeSent(false);
                                                     setPhoneCode('');
@@ -334,7 +334,7 @@ export default function Login({
                                     ) : (
                                         <Button
                                             type="button"
-                                            className="auth-form__submit h-11 w-full"
+                                            className="auth-form__submit h-10 w-full"
                                             disabled={
                                                 phoneBusy ||
                                                 internationalPhone.length < 9

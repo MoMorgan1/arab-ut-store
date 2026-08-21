@@ -76,7 +76,7 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                         autoComplete="given-name"
                                         name="first_name"
                                         placeholder={authUi.fields.first_name}
-                                        className="h-11"
+                                        className="h-10"
                                         aria-describedby={
                                             errors.first_name
                                                 ? 'first-name-error'
@@ -105,7 +105,7 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                         autoComplete="family-name"
                                         name="last_name"
                                         placeholder={authUi.fields.last_name}
-                                        className="h-11"
+                                        className="h-10"
                                         aria-describedby={
                                             errors.last_name
                                                 ? 'last-name-error'
@@ -133,7 +133,7 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                     autoComplete="email"
                                     name="email"
                                     placeholder="email@example.com"
-                                    className="h-11"
+                                    className="h-10"
                                     aria-describedby={
                                         errors.email ? 'email-error' : undefined
                                     }
@@ -157,7 +157,7 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                     name="password"
                                     placeholder={authUi.fields.password}
                                     passwordrules={passwordRules}
-                                    className="h-11"
+                                    className="h-10"
                                     onChange={(event) => {
                                         setPassword(event.currentTarget.value);
 
@@ -218,7 +218,7 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                         authUi.fields.password_confirmation
                                     }
                                     passwordrules={passwordRules}
-                                    className="h-11"
+                                    className="h-10"
                                     aria-describedby={
                                         errors.password_confirmation
                                             ? 'password-confirmation-error'
@@ -239,7 +239,7 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
 
                             <Button
                                 type="submit"
-                                className="auth-form__submit mt-2 h-11 w-full"
+                                className="auth-form__submit mt-2 h-10 w-full"
                                 data-test="register-user-button"
                                 disabled={processing}
                             >

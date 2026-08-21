@@ -451,7 +451,7 @@ describe('storefront authentication shell', () => {
         expect(screen.getByLabelText('كلمة المرور')).toHaveClass('pr-11');
         expect(
             screen.getByText(arabicAuthUi.fields.remember).closest('label'),
-        ).toHaveClass('min-h-11', 'flex-1');
+        ).toHaveClass('min-h-10', 'flex-1');
     });
 
     it('renders English registration form first with the localized benefits', () => {
