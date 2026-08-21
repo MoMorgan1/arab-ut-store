@@ -1,10 +1,9 @@
 <?php
 
 use App\Contracts\AI\AgentModelResolver;
-use App\Enums\AI\AgentErrorCode;
 use App\Enums\AI\AgentProvider;
-use App\Exceptions\AI\AgentConfigurationException;
 use App\Services\AI\FakeAgentModel;
+use App\Services\AI\OpenAiResponsesAgentModel;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -20,15 +19,15 @@ test('resolver defers fake adapter construction until fake resolution is request
         ->and(app()->resolved(FakeAgentModel::class))->toBeTrue();
 });
 
-test('unsupported providers fail closed without constructing the fake adapter', function () {
-    try {
-        app(AgentModelResolver::class)->resolve(AgentProvider::OpenAi);
-    } catch (AgentConfigurationException $exception) {
-        expect($exception->errorCode)->toBe(AgentErrorCode::ConfigurationInvalid)
-            ->and(app()->resolved(FakeAgentModel::class))->toBeFalse();
+test('resolver defers openai adapter construction until openai resolution is requested', function () {
+    expect(app()->resolved(OpenAiResponsesAgentModel::class))->toBeFalse()
+        ->and(app()->resolved(FakeAgentModel::class))->toBeFalse();
 
-        return;
-    }
+    $resolver = app(AgentModelResolver::class);
 
-    $this->fail('Expected unsupported provider resolution to throw.');
+    expect($resolver)->toBeInstanceOf(AgentModelResolver::class)
+        ->and(app()->resolved(OpenAiResponsesAgentModel::class))->toBeFalse()
+        ->and($resolver->resolve(AgentProvider::OpenAi))->toBeInstanceOf(OpenAiResponsesAgentModel::class)
+        ->and(app()->resolved(OpenAiResponsesAgentModel::class))->toBeTrue()
+        ->and(app()->resolved(FakeAgentModel::class))->toBeFalse();
 });

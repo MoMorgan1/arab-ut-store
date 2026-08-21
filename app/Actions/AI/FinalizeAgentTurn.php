@@ -11,6 +11,7 @@ use App\Models\AgentRun;
 use App\Models\AgentTurn;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
+use App\Services\AI\EstimateAgentRunCost;
 use App\Support\AI\AgentRuntimeConfig;
 use App\ValueObjects\AI\AgentModelEvent;
 use App\ValueObjects\AI\AgentUsage;
@@ -21,6 +22,7 @@ final readonly class FinalizeAgentTurn
 {
     public function __construct(
         private AgentRuntimeConfig $config,
+        private EstimateAgentRunCost $costEstimator,
     ) {}
 
     public function execute(
@@ -87,6 +89,7 @@ final readonly class FinalizeAgentTurn
                 'output_tokens' => $usage->outputTokens,
                 'reasoning_tokens' => $usage->reasoningTokens,
                 'total_tokens' => $usage->totalTokens,
+                'estimated_cost_usd' => $this->costEstimator->for($usage),
                 'completed_at' => now(),
             ])->save();
 

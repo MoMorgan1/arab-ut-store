@@ -12,6 +12,11 @@ permissions:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    env:
+      AI_ASSISTANT_ENABLED: true
+      AI_ASSISTANT_ROLLOUT: public
+      AI_MODEL_PROVIDER: fake
+      OPENAI_API_KEY: ''
 
     steps:
       - name: Checkout code
@@ -36,6 +41,9 @@ jobs:
 
       - name: Run CI Checks
         run: composer ci:check
+
+      - name: Verify explicit stream-handler transport
+        run: php artisan test tests/Integration/AI/OpenAiStreamHandlerTransportTest.php
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
