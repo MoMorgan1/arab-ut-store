@@ -11043,6 +11043,25 @@
     }
 }
 
+/* Restart tooltip: hover previews; only keyboard focus keeps it visible,
+   so a mouse click on the button never leaves it stuck behind the panel. */
+.chat-restart-tooltip {
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 150ms;
+}
+
+.chat-restart-group:hover .chat-restart-tooltip,
+.chat-restart-button:focus-visible ~ .chat-restart-tooltip {
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chat-restart-tooltip {
+        transition: none;
+    }
+}
+
 @supports not (
     (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
 ) {
