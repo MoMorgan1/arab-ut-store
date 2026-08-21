@@ -5,8 +5,9 @@
 > superpowers:executing-plans to implement this plan task-by-task. Steps use
 > checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deliver a secure, bilingual, MFA-enforced Arab UT Admin entry point
-with centralized permissions/auditing and a real operational overview.
+**Goal:** Deliver a secure, bilingual, MFA-enforced Arab UT Admin-first
+near-MVP entry point with centralized permissions/auditing and a real
+operational overview.
 
 **Architecture:** Extend the existing Laravel/Inertia monolith. Fortify owns
 TOTP enrollment and challenge, native Laravel Gates consume the fixed
@@ -27,8 +28,10 @@ an Arabic-first React shell that reuses the verified Arab UT design system.
   by TOTP; Google/WhatsApp attempts fail with generic customer-safe copy.
 - Sensitive Admin actions require recent password confirmation; this plan
   establishes the reusable boundary but adds no financial/credential action.
-- Use the exact 19-permission matrix in the spec and
-  `.agents/skills/arab-ut-admin/references/permissions.md`.
+- Keep all 19 enum abilities. Admin receives all 19; Staff receives exactly
+  `dashboard.view`, `orders.view`, `orders.update`, `orders.cancel`, and
+  `order_credentials.view`, as recorded by the superseding 2026-08-21 owner
+  decision in the spec and Admin skill.
 - Customer and ServiceAccount receive no Admin permission.
 - Laravel is the authorization/business boundary; React permissions are display
   projections only.
@@ -281,6 +284,14 @@ git commit -m "feat(admin): enforce privileged TOTP authentication"
 
 ### Task 2: Central Permission Matrix and Secret-Safe Audit Foundation
 
+> **Superseding scope note (2026-08-21):** Task 2 was initially implemented and
+> tested with a broader 13-permission Staff allowlist. Mohamed subsequently
+> narrowed the near-MVP to an Admin-first dashboard. Task 2A replaces only that
+> Staff allowlist with the exact five permissions below while retaining the 19
+> enum abilities, full Admin access, and the original Task 2 audit foundation.
+> Historical Task 2 test evidence remains historical; Task 2A records new
+> RED/GREEN and mutation evidence for the superseding decision.
+
 **Files:**
 
 - Create: `app/Enums/AdminPermission.php`
@@ -305,7 +316,8 @@ git commit -m "feat(admin): enforce privileged TOTP authentication"
 
 - [ ] **Step 1: Write the failing permission matrix dataset**
 
-Use a dataset containing every exact permission/role boolean from the spec.
+Use a dataset containing every exact permission/role boolean from the current
+spec. Assert the enum contains exactly the approved 19 string values.
 Assert inactive privileged users, Customer, and ServiceAccount are always
 denied even when a matrix row would otherwise allow.
 
@@ -329,15 +341,7 @@ private const STAFF = [
     AdminPermission::OrdersView,
     AdminPermission::OrdersUpdate,
     AdminPermission::OrdersCancel,
-    AdminPermission::OrdersRefund,
     AdminPermission::OrderCredentialsView,
-    AdminPermission::CustomersView,
-    AdminPermission::CustomersUpdateStatus,
-    AdminPermission::PaymentsView,
-    AdminPermission::PaymentsRefund,
-    AdminPermission::WalletView,
-    AdminPermission::WalletAdjust,
-    AdminPermission::CatalogView,
 ];
 ```
 
@@ -346,8 +350,8 @@ Admin receives all enum cases. Register one Gate per case in
 
 - [ ] **Step 4: Verify permission GREEN and mutation checks**
 
-Run the full permission dataset. Temporarily removing one Staff permission must
-fail its dataset row; restore and rerun GREEN.
+Run the full permission dataset. Mutation-prove one removed Staff permission
+and one retained Staff permission, restore the exact matrix, and rerun GREEN.
 
 - [ ] **Step 5: Write failing audit action tests**
 

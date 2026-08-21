@@ -9,12 +9,12 @@ Staff account
 
 ## Outcome
 
-Arab UT gains an Arabic-first, English-capable operations dashboard inside the
-existing Laravel/Inertia application. Authorized staff can operate orders,
-view explicitly revealed full fulfillment credentials, process supported
-refunds, inspect customers and wallet ledgers, and perform idempotent wallet
-adjustments. Only the Admin role can manage catalog/pricing controls, staff
-access, audit history, and settings.
+Arab UT gains an Admin-first, near-MVP operations dashboard inside the existing
+Laravel/Inertia application, with Arabic-first and English-capable interfaces.
+Admin remains the owner and full operator across the planned dashboard scope.
+Staff is limited to the implemented overview, order visibility, legal
+non-financial order-status operations including cancellation, and explicit
+fulfillment-credential reveal.
 
 The dashboard is not the AI support operator inbox described in
 `docs/ai-assistant/ADMIN-INBOX.md`. It does not add an AI runtime, handoff
@@ -22,13 +22,15 @@ workflow, ticketing model, or realtime transport.
 
 ## Owner decisions
 
-- Admin and Staff may see orders, full fulfillment credentials, payments,
-  customers, and wallet data.
-- Admin and Staff may perform approved operational actions, including legal
-  order transitions, supported refunds, customer activation changes, and
-  wallet adjustments.
-- Settings, staff access, global audit history, and catalog/pricing management
-  are Admin-only.
+- On 2026-08-21, Mohamed superseded the earlier broad Staff matrix: this is an
+  Admin-first near-MVP, not a feature-complete Staff dashboard.
+- Admin retains all 19 planned permissions and remains the owner/full operator.
+- Staff receives exactly five permissions: overview, order view, legal order
+  status updates, order cancellation, and explicit credential reveal.
+- Refund/payment operations, customer administration, wallet, catalog/pricing,
+  audit history, staff management, and settings are Admin-only.
+- The chatbox/operator inbox remains deferred until it is separately completed
+  and working; it has no Admin permission or placeholder in this scope.
 - TOTP MFA is mandatory for all Admin and Staff accounts.
 - Sensitive actions require recent password confirmation in addition to the
   authenticated MFA session.
@@ -118,6 +120,9 @@ The overview answers operational questions with bounded aggregate queries:
 - oldest unresolved order;
 - recent operational audit events visible to the current role.
 
+Staff can use the operational overview, but global audit events remain visible
+only to Admin.
+
 No metric is included only because it is easy to count. Charts are omitted
 until a time-series question and sufficient data justify them.
 
@@ -141,6 +146,8 @@ until a time-series question and sufficient data justify them.
 - Each transition locks the order and affected items, validates current state,
   writes order status history and staff audit records, and returns a conflict
   for stale submissions.
+- Staff may perform the legal non-financial transitions above, including
+  cancellation. Refund/payment actions remain Admin-only.
 - Bulk destructive or financial order actions are not in v1.
 
 ### Credential reveal
@@ -166,6 +173,7 @@ until a time-series question and sufficient data justify them.
 
 ### Refunds and payments
 
+- Refund and payment views/actions are Admin-only in the near-MVP.
 - Reuse `RefundPaylinkOrder`; do not reimplement gateway logic.
 - Only supported full Paylink refunds are exposed in v1.
 - The form requires the exact amount, a staff reason, recent password
@@ -178,7 +186,7 @@ until a time-series question and sufficient data justify them.
 
 - Server-side paginated list and detail pages for identity, account activity,
   order summary, wallet summary, and recent history.
-- Staff may suspend/reactivate a customer with a reason. The mutation locks the
+- Admin may suspend/reactivate a customer with a reason. The mutation locks the
   user row and is audited.
 - v1 does not directly overwrite email, phone, password, verification state, or
   social identity. Those require the existing verification workflows or a
@@ -186,6 +194,7 @@ until a time-series question and sufficient data justify them.
 
 ### Wallet
 
+- Wallet views and adjustments are Admin-only in the near-MVP.
 - Customer and global wallet-ledger views use the immutable existing entries.
 - Adjustment input is a positive SAR minor-unit amount, `credit` or `debit`
   direction, allowlisted reason code, optional case reference matching
@@ -220,7 +229,8 @@ until a time-series question and sufficient data justify them.
 
 ### Catalog and pricing
 
-- Staff receives read-only catalog, variant, sync-run, and pricing visibility.
+- Catalog, variant, sync-run, and pricing visibility are Admin-only in the
+  near-MVP.
 - Admin may use only explicitly designed pricing/schedule actions that preserve
   price versions and current checkout validation.
 - Automation-authoritative product/category fields are read-only in v1; no
@@ -246,15 +256,15 @@ until a time-series question and sufficient data justify them.
 | `orders.view`             | yes   | yes   |
 | `orders.update`           | yes   | yes   |
 | `orders.cancel`           | yes   | yes   |
-| `orders.refund`           | yes   | yes   |
+| `orders.refund`           | yes   | no    |
 | `order_credentials.view`  | yes   | yes   |
-| `customers.view`          | yes   | yes   |
-| `customers.update_status` | yes   | yes   |
-| `payments.view`           | yes   | yes   |
-| `payments.refund`         | yes   | yes   |
-| `wallet.view`             | yes   | yes   |
-| `wallet.adjust`           | yes   | yes   |
-| `catalog.view`            | yes   | yes   |
+| `customers.view`          | yes   | no    |
+| `customers.update_status` | yes   | no    |
+| `payments.view`           | yes   | no    |
+| `payments.refund`         | yes   | no    |
+| `wallet.view`             | yes   | no    |
+| `wallet.adjust`           | yes   | no    |
+| `catalog.view`            | yes   | no    |
 | `catalog.manage`          | yes   | no    |
 | `audit.view`              | yes   | no    |
 | `staff.view`              | yes   | no    |
@@ -373,16 +383,19 @@ receives any Admin permission. The Admin role is the owner-level role in v1.
    plan.
 2. MFA, permission, middleware, audit, route, and test foundations.
 3. Admin shell and operational overview.
-4. Orders list/detail, legal transitions, credential reveal, and refunds.
-5. Customers and activation controls.
-6. Wallet views and idempotent adjustments.
-7. Catalog/pricing visibility and approved owner mutations.
-8. Team access, global audit list, and typed owner settings.
+4. Orders list/detail, Staff-safe legal transitions, credential reveal, and
+   Admin-only refunds.
+5. Admin-only customers and activation controls.
+6. Admin-only wallet views and idempotent adjustments.
+7. Admin-only catalog/pricing visibility and approved owner mutations.
+8. Admin-only team access, global audit list, and typed owner settings.
 9. Final responsive/accessibility/security/browser review and release handoff.
 
 ## Explicitly deferred
 
 - AI runtime, retrieval, tools, realtime transport, and support operator inbox.
+- Admin/staff chatbox integration until the separate chatbox is complete and
+  receives a new owner decision.
 - Custom/dynamic role creation and direct per-user permission editing.
 - Partial or arbitrary provider refunds.
 - Bulk destructive or financial actions.

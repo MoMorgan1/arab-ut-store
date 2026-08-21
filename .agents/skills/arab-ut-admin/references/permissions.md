@@ -8,15 +8,15 @@
 | `orders.view`             | yes   | yes   |
 | `orders.update`           | yes   | yes   |
 | `orders.cancel`           | yes   | yes   |
-| `orders.refund`           | yes   | yes   |
+| `orders.refund`           | yes   | no    |
 | `order_credentials.view`  | yes   | yes   |
-| `customers.view`          | yes   | yes   |
-| `customers.update_status` | yes   | yes   |
-| `payments.view`           | yes   | yes   |
-| `payments.refund`         | yes   | yes   |
-| `wallet.view`             | yes   | yes   |
-| `wallet.adjust`           | yes   | yes   |
-| `catalog.view`            | yes   | yes   |
+| `customers.view`          | yes   | no    |
+| `customers.update_status` | yes   | no    |
+| `payments.view`           | yes   | no    |
+| `payments.refund`         | yes   | no    |
+| `wallet.view`             | yes   | no    |
+| `wallet.adjust`           | yes   | no    |
+| `catalog.view`            | yes   | no    |
 | `catalog.manage`          | yes   | no    |
 | `audit.view`              | yes   | no    |
 | `staff.view`              | yes   | no    |
@@ -41,5 +41,8 @@ Customer and ServiceAccount receive none.
 
 - v1 roles are fixed and code-defined; do not install a dynamic permission
   package or add direct per-user permission editing.
+- The Admin-first near-MVP limits Staff to the five approved overview, order
+  operation, and credential-reveal permissions above. Any Staff expansion
+  requires a new explicit owner decision before code or documentation changes.
 - Role changes are Admin-only, require recent password confirmation, prevent the
   acting Admin from removing the last active Admin, and are audited.

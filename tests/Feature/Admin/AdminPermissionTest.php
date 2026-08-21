@@ -6,6 +6,13 @@ use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 
+test('the admin permission enum contains exactly the approved nineteen abilities', function (): void {
+    expect(array_map(
+        static fn (AdminPermission $permission): string => $permission->value,
+        AdminPermission::cases(),
+    ))->toBe(adminPermissionAbilities());
+});
+
 test('the central matrix preserves every approved role permission decision', function (
     UserRole $role,
     string $ability,
@@ -40,6 +47,28 @@ function adminPermissionMatrix(): array
         'orders.view',
         'orders.update',
         'orders.cancel',
+        'order_credentials.view',
+    ];
+    $matrix = [];
+
+    foreach (adminPermissionAbilities() as $ability) {
+        $matrix["admin {$ability}"] = [UserRole::Admin, $ability, true];
+        $matrix["staff {$ability}"] = [UserRole::Staff, $ability, in_array($ability, $staffAbilities, true)];
+        $matrix["customer {$ability}"] = [UserRole::Customer, $ability, false];
+        $matrix["service account {$ability}"] = [UserRole::ServiceAccount, $ability, false];
+    }
+
+    return $matrix;
+}
+
+/** @return list<string> */
+function adminPermissionAbilities(): array
+{
+    return [
+        'dashboard.view',
+        'orders.view',
+        'orders.update',
+        'orders.cancel',
         'orders.refund',
         'order_credentials.view',
         'customers.view',
@@ -49,9 +78,6 @@ function adminPermissionMatrix(): array
         'wallet.view',
         'wallet.adjust',
         'catalog.view',
-    ];
-    $allAbilities = [
-        ...$staffAbilities,
         'catalog.manage',
         'audit.view',
         'staff.view',
@@ -59,16 +85,6 @@ function adminPermissionMatrix(): array
         'settings.view',
         'settings.manage',
     ];
-    $matrix = [];
-
-    foreach ($allAbilities as $ability) {
-        $matrix["admin {$ability}"] = [UserRole::Admin, $ability, true];
-        $matrix["staff {$ability}"] = [UserRole::Staff, $ability, in_array($ability, $staffAbilities, true)];
-        $matrix["customer {$ability}"] = [UserRole::Customer, $ability, false];
-        $matrix["service account {$ability}"] = [UserRole::ServiceAccount, $ability, false];
-    }
-
-    return $matrix;
 }
 
 /** @return array<string, array{UserRole, string}> */

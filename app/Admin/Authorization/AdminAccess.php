@@ -14,15 +14,7 @@ final class AdminAccess
         AdminPermission::OrdersView,
         AdminPermission::OrdersUpdate,
         AdminPermission::OrdersCancel,
-        AdminPermission::OrdersRefund,
         AdminPermission::OrderCredentialsView,
-        AdminPermission::CustomersView,
-        AdminPermission::CustomersUpdateStatus,
-        AdminPermission::PaymentsView,
-        AdminPermission::PaymentsRefund,
-        AdminPermission::WalletView,
-        AdminPermission::WalletAdjust,
-        AdminPermission::CatalogView,
     ];
 
     public function allows(User $user, AdminPermission $permission): bool
