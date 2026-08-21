@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
@@ -31,6 +32,21 @@ function observeRuntime(page: Page) {
     });
 
     return () => expect(failures).toEqual([]);
+}
+
+function mutateLocalBrowserUser(email: string, action: 'promote' | 'delete') {
+    const encodedEmail = Buffer.from(email).toString('base64');
+    const lookup = `base64_decode('${encodedEmail}')`;
+    const guard = `if (!app()->environment(['local', 'testing']) || config('database.default') !== 'sqlite') { throw new \\RuntimeException('Browser Admin fixtures require a local SQLite environment.'); } `;
+    const mutation =
+        action === 'promote'
+            ? `${guard}$user = \\App\\Models\\User::where('email', ${lookup})->firstOrFail(); $user->forceFill(['role' => \\App\\Enums\\UserRole::Admin, 'two_factor_secret' => \\Laravel\\Fortify\\Fortify::currentEncrypter()->encrypt(\\Illuminate\\Support\\Str::random(32)), 'two_factor_confirmed_at' => now()])->save();`
+            : `${guard}\\App\\Models\\User::where('email', ${lookup})->delete();`;
+
+    execFileSync('php', ['artisan', 'tinker', '--execute', mutation], {
+        cwd: process.cwd(),
+        stdio: 'pipe',
+    });
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
@@ -454,6 +470,13 @@ for (const { path, language, direction } of [
         await expect(page.locator('#app')).not.toBeEmpty();
         await expect(page.getByRole('banner')).toBeVisible();
         await expect(page.getByRole('main')).toBeVisible();
+        expect(
+            await page
+                .locator('meta[name="theme-color"]')
+                .evaluateAll((elements) =>
+                    elements.map((element) => element.getAttribute('content')),
+                ),
+        ).toEqual(['#0d0b08']);
         await expect(
             page.locator(
                 path === '/cart'
@@ -625,4 +648,250 @@ test('authenticated account keeps chat above mobile navigation', async ({
 
     await cdpSession.detach();
     expectCleanRuntime();
+});
+
+test('authenticated Admin overview is operable in Arabic and English across required widths', async ({
+    context,
+    page,
+}) => {
+    test.setTimeout(180_000);
+    const expectCleanRuntime = observeRuntime(page);
+    const syntheticId = randomUUID();
+    const email = `${syntheticId}@example.test`;
+    const password = `ArabUT-${syntheticId}-Aa1!`;
+    const safeAreaInsetBottom = 24;
+
+    try {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto('/register');
+        await page.locator('#first_name').fill('Admin');
+        await page.locator('#last_name').fill('Browser Acceptance Owner');
+        await page.locator('#email').fill(email);
+        await page.locator('#password').fill(password);
+        await page.locator('#password_confirmation').fill(password);
+        await Promise.all([
+            page.waitForURL((url) => url.pathname === '/my-account'),
+            page.locator('[data-test="register-user-button"]').click(),
+        ]);
+
+        mutateLocalBrowserUser(email, 'promote');
+
+        const cdpSession = await context.newCDPSession(page);
+        await cdpSession.send('Emulation.setSafeAreaInsetsOverride', {
+            insets: {
+                bottom: safeAreaInsetBottom,
+                left: 0,
+                right: 0,
+                top: 0,
+            },
+        });
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+
+        const locales = [
+            {
+                path: '/admin?range=7',
+                language: 'ar',
+                direction: 'rtl',
+                heading: 'لوحة العمليات',
+                open: 'فتح قائمة الإدارة',
+                close: 'إغلاق قائمة الإدارة',
+                dialog: 'عرب التيميت',
+                overview: 'نظرة عامة',
+                security: 'أمان الحساب',
+                range7: 'آخر 7 أيام',
+                range30: 'آخر 30 يومًا',
+            },
+            {
+                path: '/en/admin?range=7',
+                language: 'en',
+                direction: 'ltr',
+                heading: 'Operations dashboard',
+                open: 'Open Admin navigation',
+                close: 'Close Admin navigation',
+                dialog: 'Arab UT',
+                overview: 'Overview',
+                security: 'MFA Security',
+                range7: 'Last 7 days',
+                range30: 'Last 30 days',
+            },
+        ] as const;
+
+        for (const width of [320, 390, 768, 1440]) {
+            await page.setViewportSize({ width, height: 900 });
+
+            for (const locale of locales) {
+                const response = await page.goto(locale.path);
+
+                expect(response?.ok()).toBe(true);
+                await expect(page.locator('html')).toHaveClass(
+                    /admin-document/,
+                );
+                expect(
+                    await page
+                        .locator('meta[name="theme-color"]')
+                        .evaluateAll((elements) =>
+                            elements.map((element) =>
+                                element.getAttribute('content'),
+                            ),
+                        ),
+                ).toEqual(['#080705']);
+                await expect(page.locator('html')).toHaveAttribute(
+                    'lang',
+                    locale.language,
+                );
+                await expect(page.locator('html')).toHaveAttribute(
+                    'dir',
+                    locale.direction,
+                );
+                await expect(
+                    page.getByRole('heading', {
+                        level: 1,
+                        name: locale.heading,
+                    }),
+                ).toBeVisible();
+                await expect(page.locator('.admin-kpi-strip dd')).toHaveCount(
+                    7,
+                );
+                await expect(
+                    page.getByRole('link', { name: locale.range7 }),
+                ).toHaveAttribute('aria-current', 'page');
+                await expect(page.locator('.chat-widget-root')).toHaveCount(0);
+                await expectNoHorizontalOverflow(page);
+
+                await page.evaluate(() => {
+                    document.body.style.zoom = '2';
+                });
+                await expectNoHorizontalOverflow(page);
+                await page.evaluate(() => {
+                    document.body.style.zoom = '';
+                });
+
+                if (width < 768) {
+                    const trigger = page.getByRole('button', {
+                        name: locale.open,
+                    });
+                    await expect(trigger).toBeVisible();
+                    await expectMinimumTouchTarget(trigger);
+                    await expectHitTestable(trigger);
+                    await trigger.focus();
+                    await expect(trigger).toBeFocused();
+                    expect(
+                        await trigger.evaluate(
+                            (element) =>
+                                window.getComputedStyle(element).outlineStyle,
+                        ),
+                    ).not.toBe('none');
+
+                    await trigger.click();
+
+                    const dialog = page.getByRole('dialog', {
+                        name: locale.dialog,
+                    });
+                    const close = dialog.getByRole('button', {
+                        name: locale.close,
+                    });
+                    await expect(dialog).toBeVisible();
+                    await expect(dialog).toHaveAttribute('aria-modal', 'true');
+                    await expect(page.locator('#app')).toHaveAttribute(
+                        'inert',
+                        '',
+                    );
+                    await expect(close).toBeFocused();
+                    await expectMinimumTouchTarget(close);
+                    await expectMinimumTouchTarget(
+                        dialog.getByRole('link', { name: locale.overview }),
+                    );
+                    await expectMinimumTouchTarget(
+                        dialog.getByRole('link', { name: locale.security }),
+                    );
+                    await expectMinimumTouchTarget(
+                        dialog.getByRole('button', {
+                            name:
+                                locale.language === 'ar'
+                                    ? 'تسجيل الخروج'
+                                    : 'Log out',
+                        }),
+                    );
+                    await expect(
+                        dialog.getByRole('link', { name: locale.overview }),
+                    ).toHaveAttribute('aria-current', 'page');
+                    await expect(dialog.getByRole('link')).toHaveCount(2);
+
+                    const sheetBehavior = await dialog.evaluate((element) => {
+                        const styles = window.getComputedStyle(element);
+
+                        return {
+                            paddingBottom: Number.parseFloat(
+                                styles.paddingBottom,
+                            ),
+                            transitionDuration: styles.transitionDuration,
+                        };
+                    });
+                    expect(sheetBehavior.paddingBottom).toBeGreaterThanOrEqual(
+                        safeAreaInsetBottom,
+                    );
+                    expect(sheetBehavior.transitionDuration).toMatch(
+                        /^(0s|0\.0*1ms|1e-0?5s)$/,
+                    );
+
+                    for (let index = 0; index < 6; index += 1) {
+                        await page.keyboard.press('Tab');
+                        expect(
+                            await dialog.evaluate((element) =>
+                                element.contains(document.activeElement),
+                            ),
+                        ).toBe(true);
+                    }
+
+                    await page.keyboard.press('Escape');
+                    await expect(dialog).not.toBeAttached();
+                    await expect(trigger).toBeFocused();
+                    await expect(page.locator('#app')).not.toHaveAttribute(
+                        'inert',
+                        '',
+                    );
+                } else {
+                    await expect(
+                        page.getByRole('button', { name: locale.open }),
+                    ).toBeHidden();
+                    const sidebar = page.locator('.admin-sidebar');
+                    await expect(sidebar).toBeVisible();
+                    await expect(sidebar.getByRole('link')).toHaveCount(2);
+                    await expect(
+                        sidebar.getByRole('link', { name: locale.overview }),
+                    ).toHaveAttribute('aria-current', 'page');
+                    await expectMinimumTouchTarget(
+                        sidebar.getByRole('link', { name: locale.overview }),
+                    );
+                    await expectMinimumTouchTarget(sidebar.getByRole('button'));
+                }
+
+                const range30 = page.getByRole('link', {
+                    name: locale.range30,
+                });
+                await expectMinimumTouchTarget(range30);
+                await expectHitTestable(range30);
+                await Promise.all([
+                    page.waitForURL(
+                        (url) =>
+                            url.pathname === locale.path.split('?')[0] &&
+                            url.searchParams.get('range') === '30',
+                    ),
+                    range30.click(),
+                ]);
+                await expect(
+                    page.getByRole('link', { name: locale.range30 }),
+                ).toHaveAttribute('aria-current', 'page');
+                await expectNoHorizontalOverflow(page);
+            }
+        }
+
+        await cdpSession.send('Emulation.setSafeAreaInsetsOverride', {
+            insets: { bottom: 0, left: 0, right: 0, top: 0 },
+        });
+        await cdpSession.detach();
+        expectCleanRuntime();
+    } finally {
+        mutateLocalBrowserUser(email, 'delete');
+    }
 });

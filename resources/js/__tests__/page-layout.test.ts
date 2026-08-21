@@ -1,7 +1,28 @@
 import { describe, expect, it } from 'vitest';
+import AdminLayout from '@/layouts/admin-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import ChatRootLayout from '@/layouts/chat-root-layout';
-import { resolveApplicationLayout, usesAuthLayout } from '@/lib/page-layout';
+import {
+    resolveApplicationLayout,
+    usesAdminLayout,
+    usesAuthLayout,
+} from '@/lib/page-layout';
+
+describe('usesAdminLayout', () => {
+    it.each(['admin/overview', 'admin/security/mfa'])(
+        'uses the privileged Admin shell for %s',
+        (page) => {
+            expect(usesAdminLayout(page)).toBe(true);
+        },
+    );
+
+    it.each(['store/home', 'account/overview', 'auth/login'])(
+        'does not apply the Admin shell to %s',
+        (page) => {
+            expect(usesAdminLayout(page)).toBe(false);
+        },
+    );
+});
 
 describe('usesAuthLayout', () => {
     it.each(['account/overview', 'account/orders', 'account/profile'])(
@@ -38,6 +59,16 @@ describe('resolveApplicationLayout', () => {
             const layout = resolveApplicationLayout(page);
             expect(Array.isArray(layout)).toBe(true);
             expect(layout).toEqual([ChatRootLayout, AuthLayout]);
+        },
+    );
+
+    it.each(['admin/overview', 'admin/security/mfa'])(
+        'resolves %s to nested [ChatRootLayout, AdminLayout] array',
+        (page) => {
+            expect(resolveApplicationLayout(page)).toEqual([
+                ChatRootLayout,
+                AdminLayout,
+            ]);
         },
     );
 

@@ -11,7 +11,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { AdminMfaApiError } from '@/lib/admin-mfa-api';
 import AdminMfaPage from '@/pages/admin/security/mfa';
-import type { AdminMfaPageProps, AdminTranslations } from '@/types/admin';
+import type { AdminMfaPageProps } from '@/types/admin';
 
 const api = vi.hoisted(() => ({
     confirmAdminMfa: vi.fn(),
@@ -36,7 +36,7 @@ vi.mock('@inertiajs/react', () => ({
     },
 }));
 
-const adminUi: AdminTranslations = {
+const adminUi: AdminMfaPageProps['adminUi'] = {
     brand: 'عرب التيميت',
     common: { cancel: 'إلغاء', retry: 'حاول مرة أخرى' },
     mfa: {

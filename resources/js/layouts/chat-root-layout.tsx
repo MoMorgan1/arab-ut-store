@@ -9,6 +9,10 @@ export default function ChatRootLayout({ children }: { children: ReactNode }) {
     const chatConfig = props.chat;
     const surface = page.component.startsWith('account/') ? 'account' : 'store';
 
+    if (page.component.startsWith('admin/')) {
+        return children;
+    }
+
     return (
         <>
             {children}
