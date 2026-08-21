@@ -485,6 +485,20 @@ test('operational lookup columns are indexed', function (string $table, array $c
     'notification outbox' => ['notification_deliveries', ['status', 'available_at']],
 ]);
 
+test('Admin overview lookups use the named composite indexes without replacing domain indexes', function (
+    string $table,
+    string $index,
+    array $columns,
+): void {
+    expect(Schema::hasIndex($table, $index))->toBeTrue("Missing Admin overview index [{$index}]")
+        ->and(Schema::hasIndex($table, $columns))->toBeTrue("Wrong columns for Admin overview index [{$index}]");
+})->with([
+    'orders by status and activity' => ['orders', 'idx_orders_admin_status_activity', ['status', 'placed_at', 'id']],
+    'payments by status and paid time' => ['payments', 'idx_payments_admin_status_paid', ['status', 'paid_at', 'id']],
+    'refunds by status and creation time' => ['refunds', 'idx_refunds_admin_status_created', ['status', 'created_at', 'id']],
+    'staff audits by creation time' => ['staff_audit_logs', 'idx_staff_audits_admin_created', ['created_at', 'id']],
+]);
+
 test('Paylink refund provider identities and idempotency are uniquely enforced', function () {
     expect(Schema::hasColumns('refunds', [
         'idempotency_key',

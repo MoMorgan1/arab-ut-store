@@ -585,7 +585,7 @@ Seed mixed statuses/dates and assert literal results for:
     'refunds' => ['failed' => 1],
     'capturedRevenue' => ['amountMinor' => '1250', 'currency' => 'SAR'],
     'oldestUnresolvedOrder' => [
-        'id' => '01K5ADMINOVERVIEW000000001',
+        'id' => '01K5ADM1N0V3RV13W000000001',
         'number' => 'AUT-OLDEST-1001',
         'status' => 'received',
         'placedAt' => '2026-08-20T10:00:00+00:00',

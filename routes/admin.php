@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\Admin\Security\AdminMfaController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureAdminAccess;
@@ -31,8 +32,12 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     }
                 });
 
-            Route::middleware(EnsureAdminMfa::class)->group(function (): void {
-                // Ordinary Admin routes are added here by their approved slices.
+            Route::middleware(EnsureAdminMfa::class)->group(function () use ($locale): void {
+                $route = Route::get('/', OverviewController::class)->name('overview');
+
+                if ($locale !== null) {
+                    $route->defaults('locale', $locale);
+                }
             });
         });
 };
