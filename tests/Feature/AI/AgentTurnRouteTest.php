@@ -304,6 +304,38 @@ test('missing-provider case fails turn safely with configuration_invalid, zero r
 });
 
 test('safe 429 rate limiting with nondefault validated limits is observed exactly', function () {
+    test('ip rate limiting enforces its own validated ceiling independently', function () {
+        config()->set('chat.enabled', true);
+        config()->set('ai-assistant.enabled', true);
+        config()->set('ai-assistant.rollout', 'authenticated_testers');
+        config()->set('ai-assistant.provider', 'fake');
+        config()->set('ai-assistant.fake_delta_delay_ms', 0);
+        config()->set('ai-assistant.turn_rate_limit_per_minute', 6);
+        config()->set('ai-assistant.turn_ip_rate_limit_per_minute', 3);
+        $user = User::factory()->create();
+        config()->set('ai-assistant.test_user_ids', [$user->id]);
+        $conversation = ChatConversation::factory()->forUser($user)->create();
+        ChatMessage::factory()->count(6)->customer()->agentEligible()
+            ->for($conversation, 'conversation')->create([
+                'created_at' => now()->subSeconds(2),
+            ]);
+
+        foreach (range(1, 3) as $_) {
+            $res = $this->actingAs($user)->postJson(route('chat.agent-turns.store', [
+                'conversation' => $conversation->public_id,
+            ]));
+            if (str_contains((string) $res->headers->get('Content-Type'), 'text/event-stream')) {
+                $res->streamedContent();
+            }
+            expect($res->getStatusCode())->not->toBe(429)
+                ->and($res->headers->get('X-RateLimit-Limit'))->toBe('3');
+        }
+
+        $blocked = $this->actingAs($user)->postJson(route('chat.agent-turns.store', [
+            'conversation' => $conversation->public_id,
+        ]));
+        $blocked->assertStatus(429);
+    });
     config()->set('chat.enabled', true);
     config()->set('ai-assistant.enabled', true);
     config()->set('ai-assistant.rollout', 'authenticated_testers');
@@ -318,11 +350,16 @@ test('safe 429 rate limiting with nondefault validated limits is observed exactl
             'created_at' => now()->subSeconds(2),
         ]);
 
-    foreach (range(1, 3) as $_) {
+    foreach (['2', '1', '0'] as $expectedRemaining) {
         $res = $this->actingAs($user)->postJson(route('chat.agent-turns.store', [
             'conversation' => $conversation->public_id,
         ]));
-        expect($res->getStatusCode())->not->toBe(429);
+        if (str_contains((string) $res->headers->get('Content-Type'), 'text/event-stream')) {
+            $res->streamedContent();
+        }
+        expect($res->getStatusCode())->not->toBe(429)
+            ->and($res->headers->get('X-RateLimit-Limit'))->toBe('3')
+            ->and($res->headers->get('X-RateLimit-Remaining'))->toBe($expectedRemaining);
     }
 
     $response = $this->actingAs($user)->postJson(route('chat.agent-turns.store', [

@@ -145,5 +145,5 @@ test('run records usage latency and pricing version without sensitive payloads o
         ->and($run->reasoning_tokens)->toBe(15)
         ->and($run->total_tokens)->toBe(150)
         ->and($run->pricing_version)->toBe('openai-gpt-5.6-luna-2026-08-21')
-        ->and($run->provider_response_id)->toStartWith('resp_real_usage_test');
+        ->and($run->provider_response_id)->toBe('resp_real_usage_test-1');
 });

@@ -19,7 +19,9 @@ use App\ValueObjects\AI\AgentModelRequest;
 use App\ValueObjects\AI\AgentUsage;
 use App\ValueObjects\AI\AppStreamEvent;
 use App\ValueObjects\Chat\ChatOwner;
+use Illuminate\Support\Facades\DB;
 use Tests\Support\AI\DeadlineAdvancingSleeper;
+use Tests\Support\AI\RecordingAgentSleeper;
 use Tests\Support\AI\ScriptedAgentModel;
 use Tests\Support\AI\ScriptedAgentModelResolver;
 
@@ -80,7 +82,14 @@ test('automatic 429 retry sleeps outside lock and succeeds on attempt two', func
     };
     app()->instance(AgentModelResolver::class, new ScriptedAgentModelResolver($scriptedModel));
 
+    $sleeper = new RecordingAgentSleeper;
+    app()->instance(AgentSleeper::class, $sleeper);
+    $baselineTransactionLevel = DB::transactionLevel();
+
     $events = iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner));
+
+    expect($sleeper->levelsAtSleep)->not->toBeEmpty()
+        ->and($sleeper->levelsAtSleep)->each->toBe($baselineTransactionLevel);
 
     $freshTurn = $turn->fresh();
     expect($freshTurn->status)->toBe(AgentTurnStatus::Completed)
