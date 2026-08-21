@@ -75,18 +75,25 @@ export default function AdminLayout({ children }: PropsWithChildren) {
 
     return (
         <div
-            className="admin-shell"
+            className="min-h-dvh overflow-x-clip bg-background [font-family:'Thmanyah_Sans',Tahoma,Arial,sans-serif] text-foreground"
             dir={page.props.direction}
             lang={page.props.locale}
         >
-            <a className="admin-skip-link" href="#admin-main-content">
+            <a
+                className="fixed start-4 top-4 z-50 min-h-[44px] -translate-y-[200%] rounded-md bg-primary px-4 py-2.5 font-bold text-primary-foreground transition-transform focus-visible:translate-y-0 focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:duration-[0.01ms]"
+                href="#admin-main-content"
+            >
                 {skipLabel}
             </a>
             <AdminMobileNavigation {...navigationProps} />
-            <div className="admin-shell__grid">
+            <div className="md:grid md:grid-cols-[16rem_minmax(0,1fr)]">
                 <AdminSidebar {...navigationProps} />
-                <main id="admin-main-content" tabIndex={-1}>
-                    {children}
+                <main
+                    className="min-w-0 p-6 px-[max(1rem,env(safe-area-inset-right))] pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] md:p-8"
+                    id="admin-main-content"
+                    tabIndex={-1}
+                >
+                    <div className="mx-auto w-full max-w-7xl">{children}</div>
                 </main>
             </div>
         </div>

@@ -1,7 +1,7 @@
 @php($isStoreRoute = str_starts_with($page['component'] ?? '', 'store/'))
 @php($isAdminRoute = str_starts_with($page['component'] ?? '', 'admin/'))
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" @class(['dark' => ($appearance ?? 'system') == 'dark', 'store-document' => $isStoreRoute, 'admin-document' => $isAdminRoute])>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" @class(['dark' => $isAdminRoute || ($appearance ?? 'system') == 'dark', 'store-document' => $isStoreRoute, 'admin-document' => $isAdminRoute])>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -9,7 +9,7 @@
         @if ($isStoreRoute)
             <meta name="theme-color" content="#0d0b08">
         @elseif ($isAdminRoute)
-            <meta name="theme-color" content="#080705">
+            <meta name="theme-color" content="#09090b">
         @endif
 
         {{-- Inline script to detect system dark mode preference and apply it immediately --}}
@@ -42,7 +42,7 @@
             }
 
             html.admin-document {
-                background-color: #080705;
+                background-color: #09090b;
             }
         </style>
 

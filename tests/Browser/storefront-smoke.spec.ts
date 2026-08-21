@@ -721,7 +721,7 @@ test('authenticated Admin overview is operable in English across required widths
                                 element.getAttribute('content'),
                             ),
                         ),
-                ).toEqual(['#080705']);
+                ).toEqual(['#09090b']);
                 await expect(page.locator('html')).toHaveAttribute(
                     'lang',
                     locale.language,

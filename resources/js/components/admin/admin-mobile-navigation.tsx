@@ -47,45 +47,54 @@ export default function AdminMobileNavigation({
 
     return (
         <Dialog.Root onOpenChange={changeOpen} open={open}>
-            <div className="admin-mobile-bar">
-                <div className="admin-mobile-brand">
+            <div className="flex min-h-[calc(3rem+env(safe-area-inset-top))] items-center justify-between gap-4 border-b border-border bg-card px-[max(1rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] pl-[max(1rem,env(safe-area-inset-left))] md:hidden">
+                <div className="flex items-center gap-3">
                     <img
                         alt=""
                         height="40"
                         src="/images/arabut-logo-header.webp"
                         width="40"
+                        className="h-10 w-10 shrink-0 object-contain"
                     />
-                    <span translate="no">{adminUi.brand}</span>
+                    <span
+                        className="font-display text-lg font-bold tracking-tight text-foreground"
+                        translate="no"
+                    >
+                        {adminUi.brand}
+                    </span>
                 </div>
                 <Dialog.Trigger asChild>
                     <button
                         aria-label={adminUi.navigation.open}
-                        className="admin-mobile-navigation__trigger"
+                        className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-border hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                         type="button"
                     >
-                        <Menu aria-hidden="true" />
+                        <Menu aria-hidden="true" className="h-5 w-5" />
                     </button>
                 </Dialog.Trigger>
             </div>
             <Dialog.Portal>
-                <Dialog.Overlay className="admin-mobile-navigation__overlay" />
+                <Dialog.Overlay className="fixed inset-0 z-40 bg-black/70 opacity-0 transition-opacity duration-200 data-[state=open]:opacity-100 motion-reduce:transition-none motion-reduce:duration-[0.01ms]" />
                 <Dialog.Content
                     aria-describedby={undefined}
                     aria-modal="true"
-                    className="admin-mobile-navigation__sheet"
+                    className="fixed inset-y-0 start-0 z-50 flex w-[21rem] max-w-[calc(100vw-2.5rem)] transform flex-col gap-6 overflow-y-auto overscroll-contain border-e border-border bg-sidebar p-[max(1rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] text-sidebar-foreground transition-transform duration-200 data-[state=closed]:-translate-x-full data-[direction=rtl]:data-[state=closed]:translate-x-full data-[state=open]:translate-x-0 motion-reduce:transition-none motion-reduce:duration-[0.01ms]"
                     data-direction={direction}
                 >
-                    <header className="admin-mobile-navigation__header">
-                        <Dialog.Title translate="no">
+                    <header className="flex min-h-[44px] items-center justify-between gap-4 border-b border-border pb-4">
+                        <Dialog.Title
+                            className="font-display text-lg font-bold tracking-tight text-sidebar-foreground"
+                            translate="no"
+                        >
                             {adminUi.brand}
                         </Dialog.Title>
                         <Dialog.Close asChild>
                             <button
                                 aria-label={adminUi.navigation.close}
-                                className="admin-mobile-navigation__close"
+                                className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-border hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                                 type="button"
                             >
-                                <X aria-hidden="true" />
+                                <X aria-hidden="true" className="h-5 w-5" />
                             </button>
                         </Dialog.Close>
                     </header>
@@ -95,7 +104,7 @@ export default function AdminMobileNavigation({
                         navigation={navigation}
                         onNavigate={() => setOpen(false)}
                     />
-                    <div className="admin-mobile-navigation__session">
+                    <div className="mt-auto flex flex-col gap-4 border-t border-border pt-4">
                         <AdminActorIdentity
                             direction={direction}
                             identity={adminIdentity}

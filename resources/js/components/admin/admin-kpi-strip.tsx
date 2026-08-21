@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
+import { cn } from '@/lib/utils';
 import type {
     AdminMoney,
     AdminOverviewPageProps,
@@ -35,17 +36,40 @@ export default function AdminKpiStrip({
     const metrics = buildAdminKpis(locale, overview, translations);
 
     return (
-        <dl className="admin-kpi-strip">
+        <dl className="admin-kpi-strip grid grid-cols-2 gap-4 lg:grid-cols-4">
             {metrics.map((metric) => {
                 const Icon = metric.icon;
 
                 return (
-                    <div data-tone={metric.tone} key={metric.key}>
-                        <dt>
-                            <Icon aria-hidden="true" />
+                    <div
+                        className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4"
+                        data-tone={metric.tone}
+                        key={metric.key}
+                    >
+                        <dt
+                            className={cn(
+                                'flex items-center gap-2 text-sm font-medium',
+                                metric.tone === 'danger'
+                                    ? 'text-status-danger'
+                                    : 'text-muted-foreground',
+                            )}
+                        >
+                            <Icon
+                                aria-hidden="true"
+                                className="h-4 w-4 shrink-0"
+                            />
                             <span>{metric.label}</span>
                         </dt>
-                        <dd>{metric.value}</dd>
+                        <dd
+                            className={cn(
+                                'text-xl font-bold tracking-tight tabular-nums',
+                                metric.tone === 'revenue'
+                                    ? 'text-primary'
+                                    : 'text-foreground',
+                            )}
+                        >
+                            {metric.value}
+                        </dd>
                     </div>
                 );
             })}

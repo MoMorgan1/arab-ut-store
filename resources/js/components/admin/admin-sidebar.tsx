@@ -36,8 +36,8 @@ export function AdminNavigationList({
     onNavigate,
 }: NavigationListProps) {
     return (
-        <nav aria-label={adminUi.brand} className="admin-navigation">
-            <ul>
+        <nav aria-label={adminUi.brand} className="w-full">
+            <ul className="flex flex-col gap-1">
                 {navigation.map((item) => {
                     const Icon = navigationIcons[item.key];
                     const selected = item.key === current;
@@ -46,12 +46,17 @@ export function AdminNavigationList({
                         <li key={item.key}>
                             <Link
                                 aria-current={selected ? 'page' : undefined}
-                                className="admin-navigation__link"
+                                className="flex min-h-[44px] items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground"
                                 href={item.url}
                                 onClick={onNavigate}
                             >
-                                <Icon aria-hidden="true" />
-                                <span>{item.label}</span>
+                                <Icon
+                                    aria-hidden="true"
+                                    className="h-[18px] w-[18px] shrink-0"
+                                />
+                                <span className="min-w-0 [overflow-wrap:anywhere]">
+                                    {item.label}
+                                </span>
                             </Link>
                         </li>
                     );
@@ -78,13 +83,20 @@ export function AdminActorIdentity({
               : 'Staff';
 
     return (
-        <div className="admin-identity">
-            <span aria-hidden="true" className="admin-identity__mark">
+        <div className="flex min-w-0 items-center gap-3">
+            <span
+                aria-hidden="true"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border bg-accent text-sm font-bold text-foreground"
+            >
                 {identity.name.trim().charAt(0).toUpperCase() || 'A'}
             </span>
-            <span className="admin-identity__copy">
-                <strong>{identity.name}</strong>
-                <small>{role}</small>
+            <span className="flex min-w-0 flex-col gap-0.5">
+                <strong className="min-w-0 text-sm leading-snug font-semibold [overflow-wrap:anywhere] text-sidebar-foreground">
+                    {identity.name}
+                </strong>
+                <small className="text-xs text-sidebar-foreground/70">
+                    {role}
+                </small>
             </span>
         </div>
     );
@@ -107,12 +119,12 @@ export function AdminLogoutButton({
 
     return (
         <button
-            className="admin-navigation__logout"
+            className="flex min-h-[44px] w-full cursor-pointer items-center justify-start gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
             onClick={logout}
             type="button"
         >
-            <LogOut aria-hidden="true" />
-            <span>{label}</span>
+            <LogOut aria-hidden="true" className="h-[18px] w-[18px] shrink-0" />
+            <span className="min-w-0 [overflow-wrap:anywhere]">{label}</span>
         </button>
     );
 }
@@ -126,22 +138,28 @@ export default function AdminSidebar({
     navigation,
 }: AdminNavigationProps) {
     return (
-        <aside className="admin-sidebar">
-            <div className="admin-brand">
+        <aside className="admin-sidebar sticky top-0 hidden h-dvh w-64 flex-col gap-6 overflow-y-auto border-e border-sidebar-border bg-sidebar p-[max(1.25rem,env(safe-area-inset-top))_1rem_max(1.25rem,env(safe-area-inset-bottom))] text-sidebar-foreground md:flex">
+            <div className="flex items-center gap-3 border-b border-sidebar-border pb-4">
                 <img
                     alt=""
-                    height="48"
+                    height="40"
                     src="/images/arabut-logo-header.webp"
-                    width="48"
+                    width="40"
+                    className="h-10 w-10 shrink-0 object-contain"
                 />
-                <span translate="no">{adminUi.brand}</span>
+                <span
+                    className="font-display text-lg font-bold tracking-tight text-sidebar-foreground"
+                    translate="no"
+                >
+                    {adminUi.brand}
+                </span>
             </div>
             <AdminNavigationList
                 adminUi={adminUi}
                 current={current}
                 navigation={navigation}
             />
-            <div className="admin-sidebar__session">
+            <div className="mt-auto flex flex-col gap-4 border-t border-sidebar-border pt-4">
                 <AdminActorIdentity
                     direction={direction}
                     identity={adminIdentity}
