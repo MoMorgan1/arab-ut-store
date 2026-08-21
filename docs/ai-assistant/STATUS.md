@@ -1,6 +1,6 @@
 # Live status
 
-**Lifecycle:** Implementation and deployment complete; scheduler evidence and
+**Lifecycle:** Implementation, deployment, and scheduler evidence complete;
 owner acceptance pending
 **Verified:** 2026-08-21
 
@@ -8,14 +8,15 @@ owner acceptance pending
 
 | Item                                                       | Evidence                                                                                                                                                                                                                                                                                                            |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Verified final Phase 1 application SHA deployed 2026-08-21 | `1dfebf625bf68cea5069037a5115278e19c3cc09`                                                                                                                                                                                                                                                                          |
+| Verified final Phase 1 application SHA deployed 2026-08-21 | `d77385a44e7ac1413aab419f79d38fc2040be650`                                                                                                                                                                                                                                                                          |
 | Backend/MariaDB release checkpoint                         | [tests 32398600493](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32398600493) and [deploy 32399022501](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32399022501) passed for `1fd83d37b990833cd451d7c3a7b48314976a9f6f`.                                                                       |
 | UI/account release checkpoint                              | [tests 32410960971](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32410960971) and [deploy 32411415481](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32411415481) passed for `e7f230d2ea01dc456aef1a51035f4d88f39542e2`.                                                                       |
-| Final Phase 1 release checkpoint                           | [tests 32427300165](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427300165) and [deploy 32427591352](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427591352) passed for the final SHA. The tests workflow passed CI, MariaDB lifecycle/concurrency, seven Chromium checks, and packaging. |
-| Production read-only evidence                              | On 2026-08-21, `/up`, `/`, `/en`, `/login`, `/en/login`, and `/cart` returned 200; the active release resolved to the final SHA; all four chat routes were registered; Laravel listed the hourly maintenance event.                                                                                                 |
+| Final-review release checkpoint                            | [tests 32427300165](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427300165) and [deploy 32427591352](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427591352) passed for `1dfebf625bf68cea5069037a5115278e19c3cc09`.                                                                       |
+| Owner-revalidation release checkpoint                      | [tests 32429880313](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32429880313) and [deploy 32430144972](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32430144972) passed for the final SHA. The tests workflow passed CI, MariaDB lifecycle/concurrency, seven Chromium checks, and packaging. |
+| Production read-only evidence                              | On 2026-08-21, the active release resolved to the final SHA; all four chat routes were registered; Laravel listed the minute order publisher and hourly maintenance event; the six health/public routes returned 200 in the preceding final-review deployment check.                                                |
 | Production session decision evidence                       | `SESSION_DRIVER=database`; `SESSION_ENCRYPT=true`.                                                                                                                                                                                                                                                                  |
 | Final-review correction wave                               | Integrated and deployed in the final Phase 1 SHA above.                                                                                                                                                                                                                                                             |
-| Recurring scheduler execution                              | Not verified. The SSH account has no `crontab` command and this task has no hPanel/browser/API credentials; the required hPanel action is recorded below.                                                                                                                                                           |
+| Recurring scheduler execution                              | Verified from owner-provided hPanel evidence: exact custom command, manual `* * * * *` schedule, and successful `orders:publish-paid-events` output at `2026-08-21 10:14:01`. A read-only `schedule:list` on the active final release confirmed the minute publisher and hourly chat maintenance event.             |
 
 On 2026-08-21, read-only production configuration observed
 `CHAT_ENABLED=true` and `CHAT_DEMO_ASSISTANT=true` for the final Phase 1 release.
@@ -25,27 +26,27 @@ tools, streaming, operator inbox, or Phase 2 implementation.
 
 ## Phase status
 
-| Phase                                 | State                                                                                                                                                               |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase 0 stabilization                 | Implemented.                                                                                                                                                        |
-| Phase 1 deterministic chat foundation | Implemented.                                                                                                                                                        |
-| Phase 1 Completion                    | Implementation and deployment complete. **Not accepted** until recurring scheduler evidence exists and Mohamed completes the manual account/iPhone checklist below. |
-| Phase 2 AI runtime/Luna               | Not started. Do not create or execute its implementation plan before Phase 1 acceptance.                                                                            |
+| Phase                                 | State                                                                                                                                            |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase 0 stabilization                 | Implemented.                                                                                                                                     |
+| Phase 1 deterministic chat foundation | Implemented.                                                                                                                                     |
+| Phase 1 Completion                    | Implementation, deployment, and scheduler evidence complete. **Not accepted** until Mohamed completes the manual account/iPhone checklist below. |
+| Phase 2 AI runtime/Luna               | Not started. Do not create or execute its implementation plan before Phase 1 acceptance.                                                         |
 
-## Remaining scheduler gate
+## Scheduler evidence
 
-An authorized Hostinger operator must open **Websites → Dashboard → Cron
-Jobs**, add this custom command, select the manual `* * * * *` schedule in UTC,
-and verify execution/output in hPanel:
+Owner-provided hPanel screenshots on 2026-08-21 show this exact custom command
+running every minute:
 
 ```text
 /usr/bin/php /home/u372356793/domains/store.arab-ut.com/current/artisan schedule:run
 ```
 
-Afterward, run and read `php artisan schedule:list` from the active release.
-The hourly application event is implemented; it is not proof of recurring
-Hostinger execution. Owner acceptance remains blocked until this evidence is
-recorded.
+The hPanel output recorded `orders:publish-paid-events` as `DONE` at
+`2026-08-21 10:14:01`. A subsequent read-only `php artisan schedule:list` from
+the active `d77385a44e7ac1413aab419f79d38fc2040be650` release listed the minute
+publisher and hourly `chat:maintain-conversations` event. This closes the
+external scheduler gate.
 
 ## Remaining owner gate
 

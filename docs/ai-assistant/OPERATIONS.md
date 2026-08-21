@@ -1,15 +1,14 @@
 # Operations
 
-**Lifecycle:** Application operations implemented; external scheduler evidence
-pending
+**Lifecycle:** Application operations and external scheduler evidence verified
 **Verified:** 2026-08-21
 
 ## Verified release
 
 The verified final Phase 1 application SHA deployed on 2026-08-21 is
-`1dfebf625bf68cea5069037a5115278e19c3cc09`.
-[tests 32427300165](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427300165)
-and [deploy 32427591352](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427591352)
+`d77385a44e7ac1413aab419f79d38fc2040be650`.
+[tests 32429880313](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32429880313)
+and [deploy 32430144972](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32430144972)
 passed for that SHA. Production read-only verification returned 200 for the
 health and five public routes, found all four chat routes, and listed the
 hourly Laravel maintenance event.
@@ -29,25 +28,24 @@ at 30 days and closed authenticated rows at 180 days of last activity.
 `updated_at`. Conversation deletion cascades its messages. The per-row recheck
 protects a guest row claimed during maintenance selection.
 
-Recurring Hostinger execution is an open external gate. The SSH account has no
-`crontab` command, and this task has no hPanel/browser/API credentials. An
-authorized operator must open **Websites → Dashboard → Cron Jobs**, add this
-custom command, choose the manual `* * * * *` schedule in UTC, and verify its
-execution/output in hPanel:
+Owner-provided hPanel evidence on 2026-08-21 shows this exact custom command at
+the manual `* * * * *` schedule in UTC:
 
 ```text
 /usr/bin/php /home/u372356793/domains/store.arab-ut.com/current/artisan schedule:run
 ```
 
-Then, from the active release, run and read:
+The hPanel output recorded `orders:publish-paid-events` as `DONE` at
+`2026-08-21 10:14:01`, proving recurring `schedule:run` execution. A subsequent
+read-only check from the active release ran:
 
 ```bash
 php artisan schedule:list
 ```
 
-The hourly Laravel event is source/test verified; it is not evidence that
-Hostinger invokes `schedule:run` every minute. Phase 1 owner acceptance remains
-blocked until recurring execution evidence exists.
+The output listed `orders:publish-paid-events` every minute and
+`chat:maintain-conversations` hourly. The scheduler gate is closed; owner device
+acceptance remains separate.
 
 ## Partial lifecycle migration detection
 

@@ -7,16 +7,16 @@ the server.
 ## Verified chat release
 
 The verified final Phase 1 application SHA deployed on 2026-08-21 is
-`1dfebf625bf68cea5069037a5115278e19c3cc09`.
-[tests 32427300165](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427300165)
+`d77385a44e7ac1413aab419f79d38fc2040be650`.
+[tests 32429880313](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32429880313)
 passed CI, MariaDB, seven Chromium checks, and package gates; [deploy
-32427591352](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427591352)
+32430144972](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32430144972)
 passed for that SHA. Read-only production checks verified the active release,
 four chat routes, the hourly Laravel maintenance event, and 200 responses for
 `/up`, `/`, `/en`, `/login`, `/en/login`, and `/cart`.
 
-Recurring scheduler execution was not verified by that release evidence. The
-required hPanel action is below.
+Recurring scheduler execution was verified separately from owner-provided
+hPanel evidence, as recorded below.
 
 ## Release flow
 
@@ -63,9 +63,8 @@ and purges closed guest/authenticated history at 30/180 days of last activity.
 `last_message_at` is authoritative; legacy nulls fall back to `closed_at`, then
 `updated_at`.
 
-The recurring Hostinger trigger is still an external gate. The SSH account has
-no `crontab` command, and this task has no hPanel/browser/API credentials. An
-authorized operator must:
+Owner-provided hPanel evidence on 2026-08-21 verifies that an authorized
+operator completed these steps:
 
 1. Open **Websites → Dashboard → Cron Jobs** in hPanel.
 2. Add this custom command:
@@ -75,12 +74,14 @@ authorized operator must:
     ```
 
 3. Select the manual `* * * * *` schedule in UTC.
-4. Verify recurring execution and output in hPanel.
-5. From the active release, run and read `php artisan schedule:list`.
+4. Verified recurring output in hPanel: `orders:publish-paid-events` completed
+   at `2026-08-21 10:14:01`.
+5. A subsequent read-only `php artisan schedule:list` from active release
+   `d77385a44e7ac1413aab419f79d38fc2040be650` listed the minute publisher and
+   hourly `chat:maintain-conversations` event.
 
-Source and automated tests prove the Laravel hourly event, not the external
-one-minute trigger. Do not claim owner acceptance until recurring execution
-evidence is recorded.
+This closes the recurring scheduler gate. Owner device acceptance remains a
+separate product gate.
 
 ## Partial lifecycle migration detection
 
