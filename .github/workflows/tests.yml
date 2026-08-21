@@ -161,6 +161,7 @@ jobs:
           tests/Feature/AI/AgentRuntimeSchemaTest.php
           tests/Feature/AI/AgentMessageEligibilityTest.php
           tests/Integration/AgentRuntimeInvariantUpgradeTest.php
+          tests/Integration/AgentTurnConcurrencyTest.php
           tests/Unit/Cart/CartOwnerTest.php
           tests/Unit/Enums/OrderItemStatusTest.php
           tests/Unit/Enums/PlatformTest.php
