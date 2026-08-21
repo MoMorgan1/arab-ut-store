@@ -4,9 +4,21 @@ namespace App\Models;
 
 use App\Enums\AI\AgentErrorCode;
 use App\Enums\AI\AgentTurnStatus;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property AgentTurnStatus $status
+ * @property int $attempt_count
+ * @property CarbonImmutable|null $debounce_until
+ * @property CarbonImmutable|null $started_at
+ * @property CarbonImmutable|null $completed_at
+ * @property AgentErrorCode|null $terminal_error_code
+ * @property int $first_customer_message_id
+ * @property int $last_customer_message_id
+ * @property int|null $assistant_message_id
+ */
 class AgentTurn extends DomainModel
 {
     /**
