@@ -14,7 +14,6 @@ export default function ChatRootLayout({ children }: { children: ReactNode }) {
             {children}
             <ChatWidget
                 enabled={chatConfig?.enabled}
-                demoAssistant={chatConfig?.demoAssistant}
                 locale={locale}
                 surface={surface}
             />

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Chat\AgentTurnController;
 use App\Http\Controllers\Chat\ChatConversationController;
 use App\Http\Controllers\Chat\ChatMessageController;
 use App\Http\Middleware\EnsureChatEnabled;
@@ -23,4 +24,16 @@ Route::middleware([EnsureChatEnabled::class, NoStore::class])->group(function ()
     Route::post('/chat/conversations/{conversation}/messages', [ChatMessageController::class, 'store'])
         ->middleware([SetChatLocale::class, 'throttle:chat-messages'])
         ->name('chat.messages.store');
+
+    Route::post('/chat/conversations/{conversation}/agent-turns', [AgentTurnController::class, 'store'])
+        ->middleware([SetChatLocale::class, 'throttle:agent-turns'])
+        ->name('chat.agent-turns.store');
+
+    Route::get('/chat/conversations/{conversation}/agent-turns/{turn}', [AgentTurnController::class, 'show'])
+        ->middleware([SetChatLocale::class, 'throttle:chat-read'])
+        ->name('chat.agent-turns.show');
+
+    Route::post('/chat/conversations/{conversation}/agent-turns/{turn}/retry', [AgentTurnController::class, 'retry'])
+        ->middleware([SetChatLocale::class, 'throttle:agent-turns'])
+        ->name('chat.agent-turns.retry');
 });

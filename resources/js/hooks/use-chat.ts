@@ -1,16 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ChatApiError,
+    fetchAgentTurn,
     fetchConversation,
     fetchOrStartActiveConversation,
     restartConversation,
+    retryAgentTurn,
     sendChatMessage,
+    startAgentTurn,
 } from '@/lib/chat-api';
-import type { ChatConversation, ChatMessage } from '@/types/chat';
+import type { AgentTurnStartResult } from '@/lib/chat-api';
+import type {
+    AgentTurnState,
+    AppStreamEvent,
+    ChatConversation,
+    ChatMessage,
+} from '@/types/chat';
 
 export type UseChatOptions = {
     enabled?: boolean;
-    demoAssistant?: boolean;
     locale?: string;
 };
 
@@ -114,6 +122,10 @@ export function useChat(options: UseChatOptions = {}) {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isAssistantTyping, setIsAssistantTyping] = useState(false);
+    const [isStreaming, setIsStreaming] = useState(false);
+    const [retryableTurn, setRetryableTurn] = useState<AgentTurnState | null>(
+        null,
+    );
     const [isLoadingOlder, setIsLoadingOlder] = useState(false);
     const [isRestarting, setIsRestarting] = useState(false);
     const [hasMore, setHasMore] = useState(false);
@@ -137,6 +149,19 @@ export function useChat(options: UseChatOptions = {}) {
     const pendingDemoReplyCountRef = useRef(0);
     const conversationGenerationRef = useRef(0);
     const isMountedRef = useRef(true);
+
+    const isStreamingRef = useRef(false);
+    const streamingTurnIdRef = useRef<string | null>(null);
+    const quietTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pollingTurnIdRef = useRef<string | null>(null);
+    const nextStartScheduledForTurnRef = useRef<string | null>(null);
+    const streamAbortControllerRef = useRef<AbortController | null>(null);
+    const triggerAgentTurnRef = useRef<
+        ((generation: number, retryTurnId?: string) => Promise<void>) | null
+    >(null);
+    const [isQuietWaiting, setIsQuietWaiting] = useState(false);
+    const [isPollingTurn, setIsPollingTurn] = useState(false);
 
     const updateMessages = useCallback(
         (updater: (currentMessages: ChatMessage[]) => ChatMessage[]) => {
@@ -176,10 +201,37 @@ export function useChat(options: UseChatOptions = {}) {
         pendingDemoReplyCountRef.current = 0;
     }, []);
 
+    const clearAgentState = useCallback(() => {
+        if (quietTimerRef.current !== null) {
+            clearTimeout(quietTimerRef.current);
+            quietTimerRef.current = null;
+        }
+
+        if (pollingTimerRef.current !== null) {
+            clearTimeout(pollingTimerRef.current);
+            pollingTimerRef.current = null;
+        }
+
+        if (streamAbortControllerRef.current !== null) {
+            streamAbortControllerRef.current.abort();
+            streamAbortControllerRef.current = null;
+        }
+
+        streamingTurnIdRef.current = null;
+        pollingTurnIdRef.current = null;
+        nextStartScheduledForTurnRef.current = null;
+        isStreamingRef.current = false;
+        setIsStreaming(false);
+        setIsQuietWaiting(false);
+        setIsPollingTurn(false);
+        setRetryableTurn(null);
+    }, []);
+
     const startConversationGeneration = useCallback(() => {
         conversationGenerationRef.current += 1;
         clearPendingDemoReplyTimers();
-    }, [clearPendingDemoReplyTimers]);
+        clearAgentState();
+    }, [clearPendingDemoReplyTimers, clearAgentState]);
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -199,9 +251,465 @@ export function useChat(options: UseChatOptions = {}) {
         [],
     );
 
+    const handleTerminalTurnBacklog = useCallback(
+        (turn: AgentTurnState, generation: number) => {
+            if (!ownsAsyncGeneration(generation)) {
+                return;
+            }
+
+            if (turn.hasPendingMessages) {
+                if (
+                    queueRef.current.length === 0 &&
+                    !isProcessingQueueRef.current
+                ) {
+                    if (
+                        nextStartScheduledForTurnRef.current !== turn.publicId
+                    ) {
+                        nextStartScheduledForTurnRef.current = turn.publicId;
+                        void triggerAgentTurnRef.current?.(generation);
+                    }
+                }
+            } else {
+                nextStartScheduledForTurnRef.current = null;
+            }
+        },
+        [ownsAsyncGeneration],
+    );
+
+    const startPollingTurn = useCallback(
+        (
+            conversationPublicId: string,
+            turnPublicId: string,
+            generation: number,
+        ) => {
+            if (!ownsAsyncGeneration(generation)) {
+                return;
+            }
+
+            if (pollingTimerRef.current !== null) {
+                clearTimeout(pollingTimerRef.current);
+                pollingTimerRef.current = null;
+            }
+
+            pollingTurnIdRef.current = turnPublicId;
+            setIsPollingTurn(true);
+
+            const poll = async () => {
+                if (
+                    !ownsAsyncGeneration(generation) ||
+                    pollingTurnIdRef.current !== turnPublicId
+                ) {
+                    return;
+                }
+
+                try {
+                    const turnState = await fetchAgentTurn(
+                        conversationPublicId,
+                        turnPublicId,
+                    );
+
+                    if (
+                        !ownsAsyncGeneration(generation) ||
+                        pollingTurnIdRef.current !== turnPublicId
+                    ) {
+                        return;
+                    }
+
+                    if (
+                        turnState.status === 'waiting' ||
+                        turnState.status === 'running'
+                    ) {
+                        pollingTimerRef.current = setTimeout(poll, 1000);
+                    } else {
+                        pollingTurnIdRef.current = null;
+                        setIsPollingTurn(false);
+                        streamingTurnIdRef.current = null;
+                        isStreamingRef.current = false;
+                        setIsStreaming(false);
+
+                        if (turnState.status === 'completed') {
+                            if (turnState.message !== null) {
+                                const completedMsg = turnState.message;
+                                const streamTempId = `stream-${turnPublicId}`;
+                                updateMessages((prev) => {
+                                    const hasStream = prev.some(
+                                        (m) =>
+                                            m.publicId === streamTempId ||
+                                            (m.streamStatus === 'streaming' &&
+                                                m.tempId === streamTempId),
+                                    );
+
+                                    if (hasStream) {
+                                        return prev.map((m) =>
+                                            m.publicId === streamTempId ||
+                                            (m.streamStatus === 'streaming' &&
+                                                m.tempId === streamTempId)
+                                                ? {
+                                                      ...completedMsg,
+                                                      streamStatus: undefined,
+                                                  }
+                                                : m,
+                                        );
+                                    }
+
+                                    if (
+                                        prev.some(
+                                            (m) =>
+                                                m.publicId ===
+                                                completedMsg.publicId,
+                                        )
+                                    ) {
+                                        return prev;
+                                    }
+
+                                    return [...prev, completedMsg];
+                                });
+
+                                if (!isOpenRef.current) {
+                                    setUnreadCount((c) => c + 1);
+                                }
+
+                                announceStatus(
+                                    pageLocale === 'en'
+                                        ? 'New message from assistant.'
+                                        : 'وصلت رسالة جديدة من المساعد.',
+                                );
+                            }
+
+                            setRetryableTurn(null);
+                            handleTerminalTurnBacklog(turnState, generation);
+                        } else if (turnState.status === 'failed') {
+                            updateMessages((prev) =>
+                                prev.filter(
+                                    (m) => m.streamStatus !== 'streaming',
+                                ),
+                            );
+
+                            if (turnState.retryable) {
+                                setRetryableTurn(turnState);
+                            } else {
+                                setRetryableTurn(null);
+                            }
+
+                            handleTerminalTurnBacklog(turnState, generation);
+                        } else if (turnState.status === 'cancelled') {
+                            updateMessages((prev) =>
+                                prev.filter(
+                                    (m) => m.streamStatus !== 'streaming',
+                                ),
+                            );
+                            setRetryableTurn(null);
+                            nextStartScheduledForTurnRef.current = null;
+                        }
+                    }
+                } catch {
+                    if (
+                        !ownsAsyncGeneration(generation) ||
+                        pollingTurnIdRef.current !== turnPublicId
+                    ) {
+                        return;
+                    }
+
+                    pollingTimerRef.current = setTimeout(poll, 1000);
+                }
+            };
+
+            void poll();
+        },
+        [
+            announceStatus,
+            handleTerminalTurnBacklog,
+            ownsAsyncGeneration,
+            pageLocale,
+            updateMessages,
+        ],
+    );
+
+    const triggerAgentTurn = useCallback(
+        async (triggeredGeneration: number, retryTurnId?: string) => {
+            if (!ownsAsyncGeneration(triggeredGeneration)) {
+                return;
+            }
+
+            if (queueRef.current.length > 0 || isProcessingQueueRef.current) {
+                return;
+            }
+
+            if (isStreamingRef.current || pollingTurnIdRef.current !== null) {
+                return;
+            }
+
+            const currentConv = conversationRef.current;
+
+            if (currentConv === null || currentConv.assistantMode !== 'agent') {
+                return;
+            }
+
+            const conversationPublicId = currentConv.publicId;
+            const abortController = new AbortController();
+            streamAbortControllerRef.current = abortController;
+
+            const onEvent = (event: AppStreamEvent) => {
+                if (!ownsAsyncGeneration(triggeredGeneration)) {
+                    return;
+                }
+
+                if (event.event === 'turn.created') {
+                    const turn = event.data.turn;
+                    streamingTurnIdRef.current = turn.publicId;
+                    isStreamingRef.current = true;
+                    setIsStreaming(true);
+                    setRetryableTurn(null);
+
+                    const streamTempId = `stream-${turn.publicId}`;
+                    const streamingMessage: ChatMessage = {
+                        publicId: streamTempId,
+                        tempId: streamTempId,
+                        conversationPublicId,
+                        senderType: 'assistant',
+                        messageType: 'text',
+                        content: '',
+                        createdAt: new Date().toISOString(),
+                        streamStatus: 'streaming',
+                    };
+
+                    updateMessages((prev) => {
+                        if (
+                            prev.some(
+                                (m) =>
+                                    m.streamStatus === 'streaming' ||
+                                    m.publicId === streamTempId,
+                            )
+                        ) {
+                            return prev;
+                        }
+
+                        return [...prev, streamingMessage];
+                    });
+
+                    announceStatus(
+                        pageLocale === 'en'
+                            ? 'Assistant is responding.'
+                            : 'المساعد يرد الآن.',
+                    );
+                } else if (event.event === 'response.delta') {
+                    const { turnPublicId, delta } = event.data;
+                    const streamTempId = `stream-${turnPublicId}`;
+
+                    updateMessages((prev) =>
+                        prev.map((msg) => {
+                            if (
+                                msg.publicId === streamTempId ||
+                                (msg.streamStatus === 'streaming' &&
+                                    msg.tempId === streamTempId)
+                            ) {
+                                const newContent = (msg.content + delta).slice(
+                                    0,
+                                    4000,
+                                );
+
+                                return { ...msg, content: newContent };
+                            }
+
+                            return msg;
+                        }),
+                    );
+                } else if (event.event === 'response.completed') {
+                    const { turn, message } = event.data;
+                    streamingTurnIdRef.current = null;
+                    isStreamingRef.current = false;
+                    setIsStreaming(false);
+                    setRetryableTurn(null);
+
+                    const streamTempId = `stream-${turn.publicId}`;
+                    updateMessages((prev) => {
+                        const hasStream = prev.some(
+                            (m) =>
+                                m.publicId === streamTempId ||
+                                (m.streamStatus === 'streaming' &&
+                                    m.tempId === streamTempId),
+                        );
+
+                        if (hasStream) {
+                            return prev.map((m) =>
+                                m.publicId === streamTempId ||
+                                (m.streamStatus === 'streaming' &&
+                                    m.tempId === streamTempId)
+                                    ? { ...message, streamStatus: undefined }
+                                    : m,
+                            );
+                        }
+
+                        if (prev.some((m) => m.publicId === message.publicId)) {
+                            return prev;
+                        }
+
+                        return [...prev, message];
+                    });
+
+                    if (!isOpenRef.current) {
+                        setUnreadCount((c) => c + 1);
+                    }
+
+                    announceStatus(
+                        pageLocale === 'en'
+                            ? 'New message from assistant.'
+                            : 'وصلت رسالة جديدة من المساعد.',
+                    );
+
+                    handleTerminalTurnBacklog(turn, triggeredGeneration);
+                } else if (event.event === 'response.failed') {
+                    const { turn, message } = event.data;
+                    streamingTurnIdRef.current = null;
+                    isStreamingRef.current = false;
+                    setIsStreaming(false);
+
+                    updateMessages((prev) =>
+                        prev.filter((m) => m.streamStatus !== 'streaming'),
+                    );
+
+                    if (turn.retryable) {
+                        setRetryableTurn(turn);
+                    } else {
+                        setRetryableTurn(null);
+                    }
+
+                    const displayError =
+                        message ||
+                        (pageLocale === 'en'
+                            ? 'Assistant could not respond. Please try again.'
+                            : 'تعذر على المساعد الرد. يرجى المحاولة مرة أخرى.');
+                    showError(displayError);
+
+                    handleTerminalTurnBacklog(turn, triggeredGeneration);
+                }
+            };
+
+            try {
+                let result: AgentTurnStartResult;
+
+                if (retryTurnId !== undefined && retryTurnId !== '') {
+                    result = await retryAgentTurn(
+                        conversationPublicId,
+                        retryTurnId,
+                        onEvent,
+                        abortController.signal,
+                    );
+                } else {
+                    result = await startAgentTurn(
+                        conversationPublicId,
+                        onEvent,
+                        abortController.signal,
+                    );
+                }
+
+                if (!ownsAsyncGeneration(triggeredGeneration)) {
+                    return;
+                }
+
+                if (result.state === 'waiting_for_quiet') {
+                    if (quietTimerRef.current !== null) {
+                        clearTimeout(quietTimerRef.current);
+                    }
+
+                    setIsQuietWaiting(true);
+                    quietTimerRef.current = setTimeout(() => {
+                        quietTimerRef.current = null;
+                        void triggerAgentTurnRef.current?.(triggeredGeneration);
+                    }, result.retryAfterMs);
+                } else if (result.state === 'turn_in_progress') {
+                    startPollingTurn(
+                        conversationPublicId,
+                        result.turn.publicId,
+                        triggeredGeneration,
+                    );
+                } else if (result.state === 'idle') {
+                    nextStartScheduledForTurnRef.current = null;
+                }
+            } catch {
+                if (!ownsAsyncGeneration(triggeredGeneration)) {
+                    return;
+                }
+
+                if (streamingTurnIdRef.current !== null) {
+                    const turnId = streamingTurnIdRef.current;
+                    startPollingTurn(
+                        conversationPublicId,
+                        turnId,
+                        triggeredGeneration,
+                    );
+                }
+            } finally {
+                if (streamAbortControllerRef.current === abortController) {
+                    streamAbortControllerRef.current = null;
+                }
+            }
+        },
+        [
+            announceStatus,
+            handleTerminalTurnBacklog,
+            ownsAsyncGeneration,
+            pageLocale,
+            showError,
+            startPollingTurn,
+            updateMessages,
+        ],
+    );
+
+    useEffect(() => {
+        triggerAgentTurnRef.current = triggerAgentTurn;
+    });
+
+    const handleLoadedConversation = useCallback(
+        (data: ChatConversation, generation: number) => {
+            const latestTurn = data.latestTurn ?? data.latestTurnState ?? null;
+
+            if (data.assistantMode === 'agent' && latestTurn !== null) {
+                if (
+                    latestTurn.status === 'waiting' ||
+                    latestTurn.status === 'running'
+                ) {
+                    startPollingTurn(
+                        data.publicId,
+                        latestTurn.publicId,
+                        generation,
+                    );
+                } else if (
+                    latestTurn.status === 'completed' ||
+                    latestTurn.status === 'failed'
+                ) {
+                    if (
+                        latestTurn.status === 'failed' &&
+                        latestTurn.retryable
+                    ) {
+                        setRetryableTurn(latestTurn);
+                    }
+
+                    if (
+                        latestTurn.status === 'completed' &&
+                        latestTurn.message !== null
+                    ) {
+                        const msg = latestTurn.message;
+                        updateMessages((prev) => {
+                            if (prev.some((m) => m.publicId === msg.publicId)) {
+                                return prev;
+                            }
+
+                            return [...prev, msg];
+                        });
+                    }
+
+                    handleTerminalTurnBacklog(latestTurn, generation);
+                }
+            }
+        },
+        [handleTerminalTurnBacklog, startPollingTurn, updateMessages],
+    );
+
     const adoptConversation = useCallback(
         (conversationSnapshot: ChatConversation) => {
             startConversationGeneration();
+            const generation = conversationGenerationRef.current;
             queueRef.current = [];
             isProcessingQueueRef.current = false;
             initializationPromiseRef.current = null;
@@ -216,8 +724,9 @@ export function useChat(options: UseChatOptions = {}) {
             setIsAssistantTyping(false);
             setIsLoadingOlder(false);
             setIsRestarting(false);
+            handleLoadedConversation(conversationSnapshot, generation);
         },
-        [startConversationGeneration],
+        [handleLoadedConversation, startConversationGeneration],
     );
 
     const appendDeliveredDemoReply = useCallback(
@@ -298,14 +807,20 @@ export function useChat(options: UseChatOptions = {}) {
             setIsLoading(true);
             setError(null);
 
+            const generation = conversationGenerationRef.current;
             const promise = fetchOrStartActiveConversation(pageLocale)
                 .then((data) => {
+                    if (!ownsAsyncGeneration(generation)) {
+                        return data;
+                    }
+
                     setConversation(data);
                     conversationRef.current = data;
                     setMessages(data.messages);
                     messagesRef.current = data.messages;
                     setHasMore(data.hasMore);
                     setOldestCursor(data.oldestCursor ?? null);
+                    handleLoadedConversation(data, generation);
 
                     return data;
                 })
@@ -319,14 +834,22 @@ export function useChat(options: UseChatOptions = {}) {
                     throw err;
                 })
                 .finally(() => {
-                    setIsLoading(false);
+                    if (ownsAsyncGeneration(generation)) {
+                        setIsLoading(false);
+                    }
+
                     initializationPromiseRef.current = null;
                 });
 
             initializationPromiseRef.current = promise;
 
             return promise;
-        }, [pageLocale, showError]);
+        }, [
+            handleLoadedConversation,
+            ownsAsyncGeneration,
+            pageLocale,
+            showError,
+        ]);
 
     const initializeChat = useCallback(async () => {
         if (!isChatEnabled || isLoading || conversationRef.current !== null) {
@@ -426,6 +949,21 @@ export function useChat(options: UseChatOptions = {}) {
                 if (result.demoReply !== null) {
                     scheduleDemoReply(result.demoReply, queueItemGeneration);
                 }
+
+                if (
+                    queueRef.current.length === 0 &&
+                    currentConv.assistantMode === 'agent'
+                ) {
+                    if (quietTimerRef.current !== null) {
+                        clearTimeout(quietTimerRef.current);
+                    }
+
+                    setIsQuietWaiting(true);
+                    quietTimerRef.current = setTimeout(() => {
+                        quietTimerRef.current = null;
+                        void triggerAgentTurn(queueItemGeneration);
+                    }, 1500);
+                }
             } catch (err) {
                 if (!ownsAsyncGeneration(queueItemGeneration)) {
                     continue;
@@ -520,6 +1058,7 @@ export function useChat(options: UseChatOptions = {}) {
         pageLocale,
         scheduleDemoReply,
         showError,
+        triggerAgentTurn,
         updateMessages,
     ]);
 
@@ -529,6 +1068,12 @@ export function useChat(options: UseChatOptions = {}) {
 
             if (trimmed === '') {
                 return;
+            }
+
+            if (quietTimerRef.current !== null) {
+                clearTimeout(quietTimerRef.current);
+                quietTimerRef.current = null;
+                setIsQuietWaiting(false);
             }
 
             const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -572,6 +1117,12 @@ export function useChat(options: UseChatOptions = {}) {
                 return;
             }
 
+            if (quietTimerRef.current !== null) {
+                clearTimeout(quietTimerRef.current);
+                quietTimerRef.current = null;
+                setIsQuietWaiting(false);
+            }
+
             const clientMessageId =
                 failedMsg.clientMessageId || generateClientMessageId();
             const messageTempId = failedMsg.tempId || failedMsg.publicId;
@@ -595,6 +1146,20 @@ export function useChat(options: UseChatOptions = {}) {
         },
         [processQueue, updateMessages],
     );
+
+    const retryAgentTurnAction = useCallback(async () => {
+        if (
+            retryableTurn === null ||
+            isStreaming ||
+            pollingTurnIdRef.current !== null
+        ) {
+            return;
+        }
+
+        const turnId = retryableTurn.publicId;
+        setRetryableTurn(null);
+        void triggerAgentTurn(conversationGenerationRef.current, turnId);
+    }, [isStreaming, retryableTurn, triggerAgentTurn]);
 
     const loadOlderMessages = useCallback(async () => {
         if (
@@ -652,12 +1217,15 @@ export function useChat(options: UseChatOptions = {}) {
     const hasPendingSends = messages.some(
         (message) => message.clientStatus === 'sending',
     );
+    const isAgentTurnActive = isStreaming || isPollingTurn || isQuietWaiting;
+
     const canRestart =
         !isLoading &&
         !isLoadingOlder &&
         !isRestarting &&
         !isAssistantTyping &&
-        !hasPendingSends;
+        !hasPendingSends &&
+        !isAgentTurnActive;
 
     const restartChat = useCallback(async () => {
         if (!isMountedRef.current || !canRestart) {
@@ -750,6 +1318,9 @@ export function useChat(options: UseChatOptions = {}) {
         messages,
         isLoading,
         isAssistantTyping,
+        isStreaming,
+        retryableTurn,
+        retryAgentTurn: retryAgentTurnAction,
         isLoadingOlder,
         isRestarting,
         hasMore,

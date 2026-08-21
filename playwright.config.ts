@@ -30,6 +30,11 @@ export default defineConfig({
         env: {
             CHAT_ENABLED: 'true',
             CHAT_DEMO_ASSISTANT: 'true',
+            AI_ASSISTANT_ENABLED: 'true',
+            AI_ASSISTANT_ROLLOUT: 'public',
+            AI_MODEL_PROVIDER: 'fake',
+            AI_FAKE_DELTA_DELAY_MS: '400',
+            OPENAI_API_KEY: '',
         },
     },
 });

@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Middleware\SetChatLocale;
+use App\Models\AgentTurn;
 use App\Models\ChatConversation;
+use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -158,4 +160,88 @@ test('404 disabled chat responses receive no-store private cache control header'
 
     $response->assertStatus(404);
     expect($response->headers->get('Cache-Control'))->toContain('no-store');
+});
+
+test('agent turn routes return no-store private cache control header across all status codes', function () {
+    config()->set('ai-assistant.enabled', true);
+    config()->set('ai-assistant.rollout', 'authenticated_testers');
+    config()->set('ai-assistant.provider', 'fake');
+    config()->set('ai-assistant.fake_delta_delay_ms', 0);
+
+    $user = User::factory()->create();
+    config()->set('ai-assistant.test_user_ids', [$user->id]);
+    $conversation = ChatConversation::factory()->forUser($user)->create();
+    $customerMessage = ChatMessage::factory()->customer()->agentEligible()
+        ->for($conversation, 'conversation')->create([
+            'created_at' => now()->subSeconds(2),
+        ]);
+
+    // 200 Stream
+    $streamResponse = $this->actingAs($user)
+        ->withHeader('Accept', 'text/event-stream')
+        ->post(route('chat.agent-turns.store', ['conversation' => $conversation->public_id]));
+    $streamResponse->streamedContent();
+    $streamResponse->assertOk();
+    expect($streamResponse->headers->get('Cache-Control'))->toBe('no-store, private');
+
+    // 204 Idle
+    $idleResponse = $this->actingAs($user)
+        ->postJson(route('chat.agent-turns.store', ['conversation' => $conversation->public_id]));
+    $idleResponse->assertNoContent();
+    expect($idleResponse->headers->get('Cache-Control'))->toBe('no-store, private');
+
+    // 200 Show
+    $turn = AgentTurn::query()->where('conversation_id', $conversation->id)->firstOrFail();
+    $showResponse = $this->actingAs($user)
+        ->getJson(route('chat.agent-turns.show', [
+            'conversation' => $conversation->public_id,
+            'turn' => $turn->public_id,
+        ]));
+    $showResponse->assertOk();
+    expect($showResponse->headers->get('Cache-Control'))->toBe('no-store, private');
+
+    // 409 Retry not allowed on completed turn
+    $retryResponse = $this->actingAs($user)
+        ->postJson(route('chat.agent-turns.retry', [
+            'conversation' => $conversation->public_id,
+            'turn' => $turn->public_id,
+        ]));
+    $retryResponse->assertStatus(409);
+    expect($retryResponse->headers->get('Cache-Control'))->toBe('no-store, private');
+
+    // 404 Agent unavailable for non-tester
+    $otherUser = User::factory()->create();
+    $otherConv = ChatConversation::factory()->forUser($otherUser)->create();
+    $unavailResponse = $this->actingAs($otherUser)
+        ->postJson(route('chat.agent-turns.store', ['conversation' => $otherConv->public_id]));
+    $unavailResponse->assertStatus(404);
+    expect($unavailResponse->headers->get('Cache-Control'))->toBe('no-store, private');
+});
+
+test('agent-turns rate limiting returns 429 with safe headers and no-store private cache control', function () {
+    config()->set('ai-assistant.enabled', true);
+    config()->set('ai-assistant.rollout', 'authenticated_testers');
+    config()->set('ai-assistant.provider', 'fake');
+    config()->set('ai-assistant.turn_rate_limit_per_minute', 2);
+    config()->set('ai-assistant.turn_ip_rate_limit_per_minute', 10);
+
+    $user = User::factory()->create();
+    config()->set('ai-assistant.test_user_ids', [$user->id]);
+    $conversation = ChatConversation::factory()->forUser($user)->create();
+
+    $this->actingAs($user)->postJson(route('chat.agent-turns.store', ['conversation' => $conversation->public_id]));
+    $this->actingAs($user)->postJson(route('chat.agent-turns.store', ['conversation' => $conversation->public_id]));
+
+    $response = $this->actingAs($user)->postJson(route('chat.agent-turns.store', [
+        'conversation' => $conversation->public_id,
+    ]));
+
+    $response->assertStatus(429)
+        ->assertJsonPath('error.code', 'rate_limited')
+        ->assertJsonPath('error.message', trans('chat.rate_limited'))
+        ->assertJsonPath('error.details', []);
+    expect($response->headers->get('Cache-Control'))->toBe('no-store, private')
+        ->and($response->headers->get('Retry-After'))->not->toBeNull()
+        ->and($response->headers->get('X-RateLimit-Limit'))->toBe('2')
+        ->and($response->headers->get('X-RateLimit-Remaining'))->toBe('0');
 });

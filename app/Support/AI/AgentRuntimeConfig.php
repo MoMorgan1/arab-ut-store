@@ -77,7 +77,7 @@ final class AgentRuntimeConfig
 
     public function maxOutputTokens(): int
     {
-        return $this->integerInRange('max_output_tokens', 1, 500);
+        return $this->integerInRange('max_output_tokens', 1, 1000);
     }
 
     public function maxResponseCharacters(): int
@@ -151,7 +151,13 @@ final class AgentRuntimeConfig
 
     public function staleTurnSeconds(): int
     {
-        return $this->integerInRange('stale_turn_seconds', 60, 3600);
+        $stale = $this->integerInRange('stale_turn_seconds', 60, 3600);
+
+        if ($stale < $this->requestTimeoutSeconds() + 15) {
+            $this->invalid();
+        }
+
+        return $stale;
     }
 
     public function fakeDeltaDelayMilliseconds(): int

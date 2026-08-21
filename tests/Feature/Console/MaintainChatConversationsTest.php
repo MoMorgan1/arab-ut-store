@@ -1,8 +1,10 @@
 <?php
 
 use App\Actions\Chat\CloseChatConversation;
+use App\Enums\AI\AgentErrorCode;
 use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatConversationStatus;
+use App\Models\AgentTurn;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
@@ -186,4 +188,60 @@ test('chat maintenance is scheduled hourly without overlapping', function () {
     expect($events)->toHaveCount(1)
         ->and($events->first()->expression)->toBe('0 * * * *')
         ->and($events->first()->withoutOverlapping)->toBeTrue();
+});
+
+test('maintenance does not close or purge a conversation with a waiting or running agent turn', function () {
+    Carbon::setTestNow('2026-08-20 12:00:00');
+
+    // Inactive open conversation that would normally be closed, but has running turn
+    $openWithRunningTurn = ChatConversation::factory()->create([
+        'last_message_at' => now()->subHours(24),
+    ]);
+    AgentTurn::factory()->running()->for($openWithRunningTurn, 'conversation')->create();
+
+    // Inactive open conversation that would normally be closed, but has waiting turn
+    $openWithWaitingTurn = ChatConversation::factory()->create([
+        'last_message_at' => now()->subHours(24),
+    ]);
+    AgentTurn::factory()->waiting()->for($openWithWaitingTurn, 'conversation')->create();
+
+    // Expired guest conversation that would normally be deleted, but has running turn
+    $expiredGuestWithRunningTurn = ChatConversation::factory()->forGuest(hash('sha256', 'expired-guest-active-turn'))->closed(
+        ChatConversationCloseReason::Inactive,
+        now()->subDays(30),
+    )->create(['last_message_at' => now()->subDays(30)]);
+    AgentTurn::factory()->running()->for($expiredGuestWithRunningTurn, 'conversation')->create();
+
+    $this->artisan('chat:maintain-conversations')
+        ->expectsOutputToContain('Closed 0 inactive conversation(s).')
+        ->expectsOutputToContain('Deleted 0 expired conversation(s).')
+        ->assertSuccessful();
+
+    expect($openWithRunningTurn->fresh()->status)->toBe(ChatConversationStatus::Open)
+        ->and($openWithWaitingTurn->fresh()->status)->toBe(ChatConversationStatus::Open)
+        ->and($expiredGuestWithRunningTurn->fresh())->not->toBeNull();
+});
+
+test('maintenance closes and purges conversation after agent turn becomes terminal', function () {
+    Carbon::setTestNow('2026-08-20 12:00:00');
+
+    $openWithCompletedTurn = ChatConversation::factory()->create([
+        'last_message_at' => now()->subHours(24),
+    ]);
+    AgentTurn::factory()->completed()->for($openWithCompletedTurn, 'conversation')->create();
+
+    $expiredGuestWithFailedTurn = ChatConversation::factory()->forGuest(hash('sha256', 'expired-guest-terminal-turn'))->closed(
+        ChatConversationCloseReason::Inactive,
+        now()->subDays(30),
+    )->create(['last_message_at' => now()->subDays(30)]);
+    AgentTurn::factory()->failed(AgentErrorCode::ProviderTimeout)->for($expiredGuestWithFailedTurn, 'conversation')->create();
+
+    $this->artisan('chat:maintain-conversations')
+        ->expectsOutputToContain('Closed 1 inactive conversation(s).')
+        ->expectsOutputToContain('Deleted 1 expired conversation(s).')
+        ->assertSuccessful();
+
+    expect($openWithCompletedTurn->fresh()->status)->toBe(ChatConversationStatus::Closed)
+        ->and($openWithCompletedTurn->fresh()->close_reason)->toBe(ChatConversationCloseReason::Inactive)
+        ->and($expiredGuestWithFailedTurn->fresh())->toBeNull();
 });

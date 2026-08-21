@@ -3,6 +3,20 @@
 **Lifecycle:** Implemented record
 **Verified:** 2026-08-21
 
+## 2026-08-21 — Phase 2 started with lead-debate amendments
+
+Mohamed approved starting Phase 2 implementation and accepted the amendments
+from the orchestrator-versus-Sol architecture debate: output budget raised to
+1000 tokens; total request deadline lowered to 30 seconds; stale sweep lowered
+to 60 seconds and required to exceed the deadline by at least 15 seconds;
+disconnect/reload `finally` finalization is the primary recovery with the
+minute sweeper as process-death backstop; credential guarding requires
+label-plus-nearby-value context, Luhn only near card terminology, and no
+eight-digit-group heuristic; prior assistant context that trips the guard is
+excluded from prompts instead of blocking the current claim; terminal fallback
+fails a nonterminal run and its turn atomically; eval latency thresholds are
+stated as maxima. Public rollout remains unapproved.
+
 ## 2026-08-21 — Mohamed accepted Phase 1
 
 Mohamed accepted the deployed Phase 1 release after the recurring hPanel

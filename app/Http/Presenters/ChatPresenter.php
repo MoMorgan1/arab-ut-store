@@ -30,7 +30,7 @@ final class ChatPresenter
             'lastMessageAt' => $conversation->last_message_at?->toIso8601String(),
             'assistantMode' => $assistantMode->value,
             'messages' => $messages->map(fn (ChatMessage $message) => $this->message($message, $conversation->public_id))->values()->all(),
-            'latestTurnState' => $latestTurnState,
+            'latestTurn' => $latestTurnState,
             'hasMore' => $hasMore,
             'oldestCursor' => $oldestCursor,
         ];

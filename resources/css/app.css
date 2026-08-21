@@ -11114,3 +11114,14 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+[data-stream-status='streaming'] {
+    border-color: rgba(212, 168, 67, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-stream-status='streaming'] {
+        animation: none !important;
+        transition: none !important;
+    }
+}
