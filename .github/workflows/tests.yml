@@ -167,3 +167,4 @@ jobs:
           tests/Unit/Enums/OrderItemStatusTest.php
           tests/Unit/Enums/PlatformTest.php
           tests/Unit/Support/MoneyTest.php
+          tests/Integration/RecoverStaleAgentTurnsConcurrencyTest.php

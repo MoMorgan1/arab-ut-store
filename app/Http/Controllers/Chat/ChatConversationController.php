@@ -7,7 +7,9 @@ use App\Actions\Chat\CreateOrGetActiveConversation;
 use App\Actions\Chat\ResolveChatOwner;
 use App\Actions\Chat\RestartChatConversation;
 use App\Http\Controllers\Controller;
+use App\Http\Presenters\AgentTurnPresenter;
 use App\Http\Presenters\ChatPresenter;
+use App\Models\AgentTurn;
 use App\Models\ChatConversation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,6 +21,7 @@ class ChatConversationController extends Controller
         private readonly CreateOrGetActiveConversation $createOrGetActiveConversation,
         private readonly RestartChatConversation $restartChatConversation,
         private readonly ResolveAssistantMode $resolveAssistantMode,
+        private readonly AgentTurnPresenter $agentTurnPresenter,
         private readonly ChatPresenter $chatPresenter,
     ) {}
 
@@ -42,7 +45,7 @@ class ChatConversationController extends Controller
                 $conversation,
                 $bounded['messages'],
                 $assistantMode,
-                null,
+                $this->latestTurnState($conversation),
                 $bounded['hasMore'],
                 $bounded['oldestCursor'],
             ),
@@ -98,7 +101,7 @@ class ChatConversationController extends Controller
                 $conversation,
                 $bounded['messages'],
                 $assistantMode,
-                null,
+                $this->latestTurnState($conversation),
                 $bounded['hasMore'],
                 $bounded['oldestCursor'],
             ),
@@ -123,10 +126,26 @@ class ChatConversationController extends Controller
                 $conversation,
                 $bounded['messages'],
                 $assistantMode,
-                null,
+                $this->latestTurnState($conversation),
                 $bounded['hasMore'],
                 $bounded['oldestCursor'],
             ),
         ])->header('Cache-Control', 'no-store, private');
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function latestTurnState(ChatConversation $conversation): ?array
+    {
+        $latestTurn = AgentTurn::query()
+            ->where('conversation_id', $conversation->id)
+            ->with(['assistantMessage', 'conversation'])
+            ->orderByDesc('id')
+            ->first();
+
+        return $latestTurn instanceof AgentTurn
+            ? $this->agentTurnPresenter->turn($latestTurn)
+            : null;
     }
 }

@@ -2,12 +2,14 @@
 
 namespace App\Console\Commands;
 
-use App\Actions\Chat\CloseChatConversation;
+use App\Enums\AI\AgentTurnStatus;
+use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatConversationStatus;
 use App\Models\ChatConversation;
 use DateTimeInterface;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 final class MaintainChatConversations extends Command
 {
@@ -15,9 +17,9 @@ final class MaintainChatConversations extends Command
 
     protected $description = 'Close inactive chat conversations and purge expired closed conversations';
 
-    public function handle(CloseChatConversation $closeChatConversation): int
+    public function handle(): int
     {
-        $closedCount = $this->closeInactiveConversations($closeChatConversation);
+        $closedCount = $this->closeInactiveConversations();
         $deletedCount = $this->purgeExpiredConversations();
 
         $this->components->info("Closed {$closedCount} inactive conversation(s).");
@@ -26,7 +28,7 @@ final class MaintainChatConversations extends Command
         return self::SUCCESS;
     }
 
-    private function closeInactiveConversations(CloseChatConversation $closeChatConversation): int
+    private function closeInactiveConversations(): int
     {
         $closedCount = 0;
         $cutoff = now()->subHours((int) config('chat.auto_close_hours'));
@@ -34,15 +36,47 @@ final class MaintainChatConversations extends Command
         ChatConversation::query()
             ->open()
             ->where('last_message_at', '<=', $cutoff)
-            ->chunkById(200, function ($conversations) use ($closeChatConversation, $cutoff, &$closedCount): void {
+            ->whereDoesntHave('agentTurns', fn (Builder $turns): Builder => $turns
+                ->whereIn('status', [AgentTurnStatus::Waiting, AgentTurnStatus::Running]))
+            ->chunkById(200, function ($conversations) use ($cutoff, &$closedCount): void {
                 foreach ($conversations as $conversation) {
-                    if ($closeChatConversation->closeIfInactive($conversation, $cutoff)) {
+                    if ($this->closeIfInactive($conversation, $cutoff)) {
                         $closedCount++;
                     }
                 }
             });
 
         return $closedCount;
+    }
+
+    private function closeIfInactive(ChatConversation $conversation, DateTimeInterface $cutoff): bool
+    {
+        return DB::transaction(function () use ($conversation, $cutoff): bool {
+            $lockedConversation = ChatConversation::query()
+                ->whereKey($conversation->id)
+                ->open()
+                ->where('last_message_at', '<=', $cutoff)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $lockedConversation instanceof ChatConversation) {
+                return false;
+            }
+
+            if ($lockedConversation->agentTurns()
+                ->whereIn('status', [AgentTurnStatus::Waiting, AgentTurnStatus::Running])
+                ->exists()) {
+                return false;
+            }
+
+            $lockedConversation->forceFill([
+                'status' => ChatConversationStatus::Closed,
+                'closed_at' => now(),
+                'close_reason' => ChatConversationCloseReason::Inactive,
+            ])->save();
+
+            return true;
+        });
     }
 
     private function purgeExpiredConversations(): int
@@ -71,15 +105,31 @@ final class MaintainChatConversations extends Command
         $ownerConstraint(
             ChatConversation::query()
                 ->where('status', 'closed')
-                ->whereLastActivityAtOrBefore($cutoff),
+                ->whereLastActivityAtOrBefore($cutoff)
+                ->whereDoesntHave('agentTurns', fn (Builder $turns): Builder => $turns
+                    ->whereIn('status', [AgentTurnStatus::Waiting, AgentTurnStatus::Running])),
         )->chunkById(200, function ($conversations) use ($ownerConstraint, $cutoff, &$deletedCount): void {
             foreach ($conversations as $conversation) {
-                $deletedCount += $ownerConstraint(
-                    ChatConversation::query()
-                        ->whereKey($conversation->id)
-                        ->where('status', ChatConversationStatus::Closed)
-                        ->whereLastActivityAtOrBefore($cutoff),
-                )->delete();
+                $deletedCount += DB::transaction(function () use ($conversation, $cutoff, $ownerConstraint): int {
+                    $lockedConversation = $ownerConstraint(
+                        ChatConversation::query()
+                            ->whereKey($conversation->id)
+                            ->where('status', ChatConversationStatus::Closed)
+                            ->whereLastActivityAtOrBefore($cutoff),
+                    )->lockForUpdate()->first();
+
+                    if (! $lockedConversation instanceof ChatConversation) {
+                        return 0;
+                    }
+
+                    if ($lockedConversation->agentTurns()
+                        ->whereIn('status', [AgentTurnStatus::Waiting, AgentTurnStatus::Running])
+                        ->exists()) {
+                        return 0;
+                    }
+
+                    return $lockedConversation->delete() ? 1 : 0;
+                });
             }
         });
     }
