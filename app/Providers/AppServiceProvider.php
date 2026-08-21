@@ -5,8 +5,10 @@ namespace App\Providers;
 use App\Actions\Cart\ResolveCartOwner;
 use App\Actions\Chat\ResolveChatOwner;
 use App\Contracts\AI\AgentModelResolver;
+use App\Contracts\AI\AgentSleeper;
 use App\Contracts\AI\MonotonicClock;
 use App\Services\AI\ConfiguredAgentModelResolver;
+use App\Support\AI\SystemAgentSleeper;
 use App\Support\AI\SystemMonotonicClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -26,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(AgentModelResolver::class, ConfiguredAgentModelResolver::class);
         $this->app->singleton(MonotonicClock::class, SystemMonotonicClock::class);
+        $this->app->bind(AgentSleeper::class, SystemAgentSleeper::class);
     }
 
     /**
