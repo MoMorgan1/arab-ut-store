@@ -1,6 +1,6 @@
 # Customer experience
 
-**Lifecycle:** Implemented; physical iPhone acceptance pending
+**Lifecycle:** Implemented and owner accepted
 **Verified:** 2026-08-21
 
 ## Conversation behavior
@@ -55,7 +55,7 @@ backend/component tests cover that behavior.
   and scroll controls have 44px minimum touch dimensions. Dialog/live
   semantics, visible focus, and reduced-motion classes are present.
 
-`AI-F06` is narrowed, not closed: Chromium exercises emulated safe-area layout,
-but Mohamed must accept real iPhone/Safari keyboard and home-indicator behavior.
-`AI-F04` remains a P3 test-precision item for scroll geometry and unread state.
-See [STATUS.md](STATUS.md) for the acceptance list.
+`AI-F06` is closed by Mohamed's acceptance of the deployed real-account and
+iPhone/Safari checklist on 2026-08-21. `AI-F04` remains a P3 test-precision
+item for scroll geometry and unread state. See [STATUS.md](STATUS.md) for the
+acceptance record.

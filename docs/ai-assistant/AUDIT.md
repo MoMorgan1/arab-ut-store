@@ -1,7 +1,6 @@
 # Phase 1 Completion audit
 
-**Lifecycle:** Repository fixes and scheduler evidence deployed; owner
-acceptance pending
+**Lifecycle:** Repository fixes and scheduler evidence deployed; owner accepted
 **Verified:** 2026-08-21
 
 ## Release evidence
@@ -37,10 +36,9 @@ event were registered. Owner-provided hPanel evidence shows the exact
 | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | AI-B04 | P2       | Narrowed. Canonical replay includes explicit `reply_to_message_id` rows created after the lifecycle migration. Pre-migration unlinked assistant rows are excluded because concurrent historical inserts make timestamp/order association unprovable; regression coverage returns the legacy customer with `demoReply: null` and creates no association. |
 | AI-B09 | P2       | Open decision. Production database sessions are encrypted, but raw guest-token storage remains a Laravel-session boundary and no configuration change is approved.                                                                                                                                                                                      |
-| AI-F06 | P2       | Narrowed. Chromium checks account safe-area geometry; real iPhone/Safari keyboard and safe-area acceptance is Mohamed's pending gate.                                                                                                                                                                                                                   |
 | AI-F04 | P3       | Open test-precision item: scroll geometry and unread-state assertions remain incomplete.                                                                                                                                                                                                                                                                |
 
-No P0 or P1 code finding is open. That is repository/release evidence, not a
-claim that Phase 1 is accepted. Mohamed's manual checklist in
-[STATUS.md](STATUS.md) is still required; no Phase 2 work starts before owner
-acceptance is recorded.
+No P0 or P1 code finding is open. Mohamed accepted the deployed real-account
+and iPhone/Safari checklist on 2026-08-21, closing `AI-F06` and Phase 1. Later
+AI phases and the support operator inbox remain separately scoped work; see
+[STATUS.md](STATUS.md).

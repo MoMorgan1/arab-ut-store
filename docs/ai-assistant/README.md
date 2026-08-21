@@ -12,7 +12,7 @@ task. Then use the relevant canonical document below.
 | Product boundary          | [PRODUCT.md](PRODUCT.md)             | Implemented foundation; later support/admin work planned |
 | Application flow and data | [ARCHITECTURE.md](ARCHITECTURE.md)   | Implemented                                              |
 | Ownership and safety      | [SECURITY.md](SECURITY.md)           | Implemented controls with recorded P2/P3 risks           |
-| Customer experience       | [UX.md](UX.md)                       | Implemented; owner acceptance pending                    |
+| Customer experience       | [UX.md](UX.md)                       | Implemented and owner accepted                           |
 | Operations and release    | [OPERATIONS.md](OPERATIONS.md)       | Implemented; external scheduler evidence verified        |
 | Audit evidence            | [AUDIT.md](AUDIT.md)                 | Implemented record                                       |
 | Incident history          | [INCIDENTS.md](INCIDENTS.md)         | Implemented record                                       |

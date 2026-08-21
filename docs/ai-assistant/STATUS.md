@@ -1,7 +1,6 @@
 # Live status
 
-**Lifecycle:** Implementation, deployment, and scheduler evidence complete;
-owner acceptance pending
+**Lifecycle:** Phase 1 accepted; later AI phases and operator inbox not started
 **Verified:** 2026-08-21
 
 ## Release snapshot
@@ -17,6 +16,7 @@ owner acceptance pending
 | Production session decision evidence                       | `SESSION_DRIVER=database`; `SESSION_ENCRYPT=true`.                                                                                                                                                                                                                                                                  |
 | Final-review correction wave                               | Integrated and deployed in the final Phase 1 SHA above.                                                                                                                                                                                                                                                             |
 | Recurring scheduler execution                              | Verified from owner-provided hPanel evidence: exact custom command, manual `* * * * *` schedule, and successful `orders:publish-paid-events` output at `2026-08-21 10:14:01`. A read-only `schedule:list` on the active final release confirmed the minute publisher and hourly chat maintenance event.             |
+| Owner acceptance                                           | Mohamed accepted the deployed real-account and iPhone/Safari checklist on 2026-08-21.                                                                                                                                                                                                                               |
 
 On 2026-08-21, read-only production configuration observed
 `CHAT_ENABLED=true` and `CHAT_DEMO_ASSISTANT=true` for the final Phase 1 release.
@@ -26,12 +26,12 @@ tools, streaming, operator inbox, or Phase 2 implementation.
 
 ## Phase status
 
-| Phase                                 | State                                                                                                                                            |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase 0 stabilization                 | Implemented.                                                                                                                                     |
-| Phase 1 deterministic chat foundation | Implemented.                                                                                                                                     |
-| Phase 1 Completion                    | Implementation, deployment, and scheduler evidence complete. **Not accepted** until Mohamed completes the manual account/iPhone checklist below. |
-| Phase 2 AI runtime/Luna               | Not started. Do not create or execute its implementation plan before Phase 1 acceptance.                                                         |
+| Phase                                 | State                                                                                                            |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Phase 0 stabilization                 | Implemented.                                                                                                     |
+| Phase 1 deterministic chat foundation | Implemented.                                                                                                     |
+| Phase 1 Completion                    | Accepted by Mohamed on 2026-08-21 after deployment, scheduler evidence, and the manual account/iPhone checklist. |
+| Phase 2 AI runtime/Luna               | Not started. Do not create or execute its implementation plan before Phase 1 acceptance.                         |
 
 ## Scheduler evidence
 
@@ -48,26 +48,12 @@ the active `d77385a44e7ac1413aab419f79d38fc2040be650` release listed the minute
 publisher and hourly `chat:maintain-conversations` event. This closes the
 external scheduler gate.
 
-## Remaining owner gate
+## Owner acceptance
 
-Mohamed must verify the deployed release with a real account, including on an
-iPhone/Safari device:
-
-- the account launcher is above the mobile navigation;
-- the full sheet covers navigation and closes back to the focused launcher;
-- Arabic, English, and mixed-language messages remain readable;
-- New conversation returns a distinct public ID; refresh, navigation, and
-  login preserve the appropriate conversation; and an explicit old thread does
-  not reopen;
-- iPhone zoom, keyboard/safe-area behavior, and touch targets are acceptable.
-
-This is an owner acceptance gate, not a failed automated check. The final
-Chromium fixture keeps exactly seven tests; its synthetic authenticated account
-scenario covers both locales at 320/390px modal and 768/1440px nonmodal sizes,
-safe-area geometry/reset, focus, hit testing, restart-control availability,
-outside-panel actionability, and request/console/overflow checks. It does not
-exercise replacement behavior and is not Safari proof. See [UX.md](UX.md) and
-[AUDIT.md](AUDIT.md).
+Mohamed accepted the deployed real-account and iPhone/Safari checklist on
+2026-08-21. This closes the Phase 1 owner gate. It does not authorize or imply
+implementation of the AI runtime, retrieval, tools, realtime transport, or the
+support operator inbox; those remain separately scoped work.
 
 ## Open decision
 

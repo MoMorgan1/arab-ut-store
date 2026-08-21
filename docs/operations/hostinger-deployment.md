@@ -80,8 +80,9 @@ operator completed these steps:
    `d77385a44e7ac1413aab419f79d38fc2040be650` listed the minute publisher and
    hourly `chat:maintain-conversations` event.
 
-This closes the recurring scheduler gate. Owner device acceptance remains a
-separate product gate.
+This closes the recurring scheduler gate. Mohamed's separate owner-device
+acceptance is recorded in
+[`docs/ai-assistant/STATUS.md`](../ai-assistant/STATUS.md).
 
 ## Partial lifecycle migration detection
 

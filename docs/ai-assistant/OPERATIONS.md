@@ -44,8 +44,8 @@ php artisan schedule:list
 ```
 
 The output listed `orders:publish-paid-events` every minute and
-`chat:maintain-conversations` hourly. The scheduler gate is closed; owner device
-acceptance remains separate.
+`chat:maintain-conversations` hourly. The scheduler gate is closed. Mohamed's
+separate owner-device acceptance is recorded in [STATUS.md](STATUS.md).
 
 ## Partial lifecycle migration detection
 
