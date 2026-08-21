@@ -14,7 +14,7 @@ import ChatRootLayout from '@/layouts/chat-root-layout';
 const pageState = vi.hoisted(() => ({
     component: 'store/home',
     props: {
-        chat: { enabled: true, demoAssistant: false },
+        chat: { enabled: true },
         locale: 'ar',
     } as Record<string, unknown>,
 }));
@@ -48,7 +48,7 @@ describe('Chat Root Navigation Persistence', () => {
     beforeEach(() => {
         pageState.component = 'store/home';
         pageState.props = {
-            chat: { enabled: true, demoAssistant: false },
+            chat: { enabled: true },
             locale: 'ar',
         };
         vi.stubGlobal('fetch', vi.fn());

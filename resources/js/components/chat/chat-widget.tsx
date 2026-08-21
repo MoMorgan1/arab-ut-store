@@ -8,7 +8,6 @@ import { ChatMessageList } from './chat-message-list';
 
 export type ChatWidgetProps = {
     enabled?: boolean;
-    demoAssistant?: boolean;
     locale?: string;
     surface?: ChatSurface;
 };
@@ -43,7 +42,6 @@ function matchesMobileDialog(surface: ChatSurface): boolean {
 
 export const ChatWidget: React.FC<ChatWidgetProps> = ({
     enabled,
-    demoAssistant,
     locale = 'ar',
     surface = 'store',
 }) => {
@@ -68,8 +66,10 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         restartChat,
         sendMessage,
         retryMessage,
+        retryableTurn,
+        retryAgentTurn,
         loadOlderMessages,
-    } = useChat({ enabled, demoAssistant, locale });
+    } = useChat({ enabled, locale });
 
     const launcherRef = useRef<HTMLButtonElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
@@ -303,6 +303,8 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                         onLoadOlder={loadOlderMessages}
                         onSelectSuggestion={sendMessage}
                         onRetry={retryMessage}
+                        retryableTurn={retryableTurn}
+                        onRetryAgentTurn={retryAgentTurn}
                     />
 
                     {/* Composer */}

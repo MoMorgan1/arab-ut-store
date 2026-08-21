@@ -40,9 +40,13 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run browser smoke
+      - name: Run browser smoke and agent stream
         id: browser-smoke
-        run: npm run test:e2e
+        run: >-
+          npx playwright test
+          tests/Browser/storefront-smoke.spec.ts
+          tests/Browser/agent-stream.spec.ts
+          --project=chromium
 
       - name: Upload Playwright report on smoke failure
         if: ${{ failure() && steps.browser-smoke.outcome == 'failure' }}

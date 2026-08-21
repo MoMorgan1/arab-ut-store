@@ -6,6 +6,9 @@ export type ChatConversationStatus = 'open' | 'closed' | 'archived';
 
 export type ChatSurface = 'store' | 'account';
 
+export type AgentTurnStatus =
+    'waiting' | 'running' | 'completed' | 'failed' | 'cancelled';
+
 export type ChatMessage = {
     publicId: string;
     conversationPublicId?: string;
@@ -17,7 +20,30 @@ export type ChatMessage = {
     createdAt: string;
     clientStatus?: 'sending' | 'sent' | 'error';
     tempId?: string;
+    streamStatus?: 'streaming';
 };
+
+export type AgentTurnState = {
+    publicId: string;
+    status: AgentTurnStatus;
+    attemptCount: number;
+    retryable: boolean;
+    hasPendingMessages: boolean;
+    errorCode: string | null;
+    message: ChatMessage | null;
+};
+
+export type AppStreamEvent =
+    | { event: 'turn.created'; data: { turn: AgentTurnState } }
+    | { event: 'response.delta'; data: { turnPublicId: string; delta: string } }
+    | {
+          event: 'response.completed';
+          data: { turn: AgentTurnState; message: ChatMessage };
+      }
+    | {
+          event: 'response.failed';
+          data: { turn: AgentTurnState; code: string; message: string };
+      };
 
 export type ChatConversation = {
     publicId: string;
@@ -25,7 +51,10 @@ export type ChatConversation = {
     locale: string;
     subject?: string | null;
     lastMessageAt?: string | null;
+    assistantMode?: 'agent' | 'demo' | 'none';
     messages: ChatMessage[];
+    latestTurn?: AgentTurnState | null;
+    latestTurnState?: AgentTurnState | null;
     hasMore: boolean;
     oldestCursor?: string | null;
 };
@@ -40,5 +69,4 @@ export type ChatGroupedCluster = {
 
 export type ChatSharedProps = {
     enabled: boolean;
-    demoAssistant: boolean;
 };
