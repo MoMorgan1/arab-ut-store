@@ -7,7 +7,7 @@ export default function AdminWorkQueue({
     title,
 }: PropsWithChildren<{ icon: LucideIcon; title: string }>) {
     return (
-        <section className="rounded-xl border border-border bg-card p-5">
+        <section className="rounded-xl border border-border bg-card p-4">
             <header className="flex items-center gap-2 pb-4">
                 <Icon
                     aria-hidden="true"

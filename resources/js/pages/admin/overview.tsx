@@ -61,7 +61,7 @@ export default function AdminOverviewPage() {
     });
 
     return (
-        <article className="space-y-8" dir={props.direction}>
+        <article className="space-y-5" dir={props.direction}>
             <Head title={copy.headTitle} />
             <OverviewHeader
                 copy={copy}
@@ -106,9 +106,9 @@ function OverviewHeader({
     const rangeLabel = locale === 'ar' ? 'نطاق التاريخ' : 'Date range';
 
     return (
-        <header className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-1.5">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">
+        <header className="flex flex-col gap-4 border-b border-border pb-5">
+            <div className="space-y-1">
+                <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
                     {copy.title}
                 </h1>
                 <p className="max-w-prose text-sm text-muted-foreground">
@@ -127,10 +127,10 @@ function OverviewHeader({
                         <Link
                             aria-current={option.active ? 'page' : undefined}
                             className={cn(
-                                'inline-flex min-h-[44px] items-center gap-2 rounded-md border px-4 text-sm font-medium hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
+                                'inline-flex min-h-[44px] items-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
                                 option.active
                                     ? 'border-transparent bg-primary text-primary-foreground'
-                                    : 'border-border bg-card text-foreground',
+                                    : 'border-border bg-card text-muted-foreground',
                                 isLoading && 'opacity-70',
                             )}
                             data-loading={isLoading ? 'true' : undefined}
@@ -143,7 +143,7 @@ function OverviewHeader({
                             {isLoading ? (
                                 <LoaderCircle
                                     aria-hidden="true"
-                                    className="h-4 w-4 animate-spin motion-reduce:hidden"
+                                    className="h-3.5 w-3.5 animate-spin motion-reduce:hidden"
                                 />
                             ) : null}
                             <span>{option.label}</span>
