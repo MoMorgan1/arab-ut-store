@@ -1,7 +1,7 @@
 # Live status
 
-**Lifecycle:** Phase 1 accepted; Phase 2 implementation plan proposed and
-awaiting Mohamed's approval
+**Lifecycle:** Phase 1 accepted; Phase 2 implementation approved by Mohamed on
+2026-08-21 and in progress
 **Verified:** 2026-08-21
 
 ## Release snapshot
@@ -32,7 +32,7 @@ tools, streaming, operator inbox, or Phase 2 implementation.
 | Phase 0 stabilization                 | Implemented.                                                                                                                                                  |
 | Phase 1 deterministic chat foundation | Implemented.                                                                                                                                                  |
 | Phase 1 Completion                    | **Accepted by Mohamed on 2026-08-21.** Implementation, deployment, scheduler evidence, real-account testing, and physical iPhone/Safari testing are complete. |
-| Phase 2 AI runtime/Luna               | Implementation not started. The implementation plan is proposed and awaits Mohamed's explicit approval. Public rollout is outside the proposed scope.         |
+| Phase 2 AI runtime/Luna               | Implementation approved and in progress. Tasks 1-3 are merged to `main` (`d075b4f`) and deployed with AI disabled. Task 4 fix rounds are in review on `codex/ai-phase2-plan`. Public rollout is outside the approved scope. |
 
 ## Scheduler evidence
 
@@ -73,13 +73,13 @@ supplies that separate acceptance evidence. See [UX.md](UX.md) and
 
 ## Exact next gate
 
-Review
-[`2026-08-21-ai-assistant-phase-2-runtime.md`](../superpowers/plans/2026-08-21-ai-assistant-phase-2-runtime.md).
-No Phase 2 runtime code, schema, provider, prompt, route, streaming behavior,
-credential, or rollout has been implemented. Implementation begins only after
-Mohamed explicitly approves the plan and its proposed tester-evaluation
-thresholds; the OpenAI project spend ceiling remains a later secure owner
-decision before real Luna testing.
+Phase 2 implementation is underway on branch `codex/ai-phase2-plan` under the
+approved plan
+[`2026-08-21-ai-assistant-phase-2-runtime.md`](../superpowers/plans/2026-08-21-ai-assistant-phase-2-runtime.md)
+with the 2026-08-21 debate amendments recorded in [DECISIONS.md](DECISIONS.md).
+Tasks 1-3 are deployed with production AI disabled. The OpenAI project spend
+ceiling remains a later secure owner decision before real Luna testing; no key
+is requested or installed before the Tasks 9-11 gates.
 
 ## Open decision
 
