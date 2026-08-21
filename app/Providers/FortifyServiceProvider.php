@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\PrivateNoStore;
 use App\Http\Responses\LocalizedFailedTwoFactorLoginResponse;
 use App\Http\Responses\LocalizedPasswordResetResponse;
@@ -255,6 +256,7 @@ class FortifyServiceProvider extends ServiceProvider
 
             $route->middleware([
                 PrivateNoStore::class,
+                EnsureActiveUser::class,
                 'throttle:two-factor-management',
             ]);
         }

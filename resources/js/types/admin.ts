@@ -31,6 +31,14 @@ export type AdminTranslations = {
         enabling: string;
         scanTitle: string;
         scanDescription: string;
+        sessionExpired: string;
+        signIn: string;
+        accessDenied: string;
+        returnToStore: string;
+        passwordConfirmationExpired: string;
+        confirmPasswordAgain: string;
+        rateLimited: string;
+        retryAfterWait: string;
         qrAlt: string;
         confirmCode: string;
         confirm: string;

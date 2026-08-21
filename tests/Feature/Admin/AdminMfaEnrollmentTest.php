@@ -3,6 +3,7 @@
 use App\Enums\UserRole;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
+use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use Laravel\Fortify\Fortify;
 
 test('the Admin MFA page exposes only safe booleans and relative endpoint URLs', function (
@@ -14,6 +15,9 @@ test('the Admin MFA page exposes only safe booleans and relative endpoint URLs',
     $response = $this->actingAs($user)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->get($path);
+    $secret = Fortify::currentEncrypter()->decrypt(
+        (string) $user->two_factor_secret,
+    );
 
     $response->assertOk()
         ->assertHeader('Cache-Control', 'no-store, private')
@@ -35,7 +39,7 @@ test('the Admin MFA page exposes only safe booleans and relative endpoint URLs',
     expect($response->getContent())
         ->not->toContain(
             $user->email,
-            'ADMINMFASECRET',
+            $secret,
             'recovery-code-one',
             'two_factor_secret',
             'two_factor_recovery_codes',
@@ -95,15 +99,66 @@ test('Fortify recovery code JSON requires password confirmation and is always pr
         ->assertExactJson(['recovery-code-one', 'recovery-code-two']);
 });
 
+test('inactive privileged users cannot use any Fortify MFA management endpoint', function (
+    UserRole $role,
+    string $method,
+    string $routeName,
+): void {
+    $user = adminMfaUser($role, confirmed: true);
+    $user->forceFill(['is_active' => false])->save();
+
+    $request = $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp]);
+    $response = match ($method) {
+        'GET' => $request->getJson(route($routeName)),
+        'POST' => $request->postJson(route($routeName), ['code' => '000000']),
+        'DELETE' => $request->deleteJson(route($routeName)),
+    };
+
+    $response->assertForbidden();
+})->with(function (): array {
+    $endpoints = [
+        'enable' => ['POST', 'two-factor.enable'],
+        'confirm' => ['POST', 'two-factor.confirm'],
+        'disable' => ['DELETE', 'two-factor.disable'],
+        'QR code' => ['GET', 'two-factor.qr-code'],
+        'secret key' => ['GET', 'two-factor.secret-key'],
+        'recovery codes' => ['GET', 'two-factor.recovery-codes'],
+        'regenerate recovery codes' => ['POST', 'two-factor.regenerate-recovery-codes'],
+    ];
+    $cases = [];
+
+    foreach ([UserRole::Admin, UserRole::Staff] as $role) {
+        foreach ($endpoints as $label => [$method, $routeName]) {
+            $cases["inactive {$role->value} {$label}"] = [$role, $method, $routeName];
+        }
+    }
+
+    return $cases;
+});
+
+test('active Customers retain Fortify MFA management access', function (): void {
+    $customer = User::factory()->create(['role' => UserRole::Customer]);
+
+    $this->actingAs($customer)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->postJson(route('two-factor.enable'))
+        ->assertOk()
+        ->assertHeader('Cache-Control', 'no-store, private');
+
+    expect($customer->fresh()->two_factor_secret)->toBeString();
+});
+
 function adminMfaUser(UserRole $role, bool $confirmed, string $locale = 'ar'): User
 {
+    $secret = app(TwoFactorAuthenticationProvider::class)->generateSecretKey();
     $user = User::factory()->create([
         'role' => $role,
         'password' => 'SecurePassword!12',
         'preferred_locale' => $locale,
     ]);
     $user->forceFill([
-        'two_factor_secret' => Fortify::currentEncrypter()->encrypt('ADMINMFASECRET'),
+        'two_factor_secret' => Fortify::currentEncrypter()->encrypt($secret),
         'two_factor_recovery_codes' => Fortify::currentEncrypter()->encrypt(json_encode([
             'recovery-code-one',
             'recovery-code-two',

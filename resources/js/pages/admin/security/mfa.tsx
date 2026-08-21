@@ -26,6 +26,8 @@ type RetryOperation =
     | 'confirmEnrollment'
     | 'showRecoveryCodes'
     | 'regenerateRecoveryCodes';
+type FailureRecovery = 'retry' | 'login' | 'home' | 'reauthenticate' | 'wait';
+type FailureState = { message: string; recovery: FailureRecovery };
 
 export default function AdminMfaPage({
     adminUi,
@@ -44,7 +46,7 @@ export default function AdminMfaPage({
     const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
     const [confirmingRegeneration, setConfirmingRegeneration] = useState(false);
     const [operation, setOperation] = useState<Operation>(null);
-    const [failure, setFailure] = useState<string | null>(null);
+    const [failure, setFailure] = useState<FailureState | null>(null);
 
     const clearSensitiveState = useCallback(() => {
         setCode('');
@@ -59,7 +61,7 @@ export default function AdminMfaPage({
             currentOperation: Exclude<Operation, null>,
             retryOperation: RetryOperation,
             action: () => Promise<void>,
-        ) => {
+        ): Promise<boolean> => {
             retry.current = retryOperation;
             setFailure(null);
             setCodeError(null);
@@ -67,6 +69,8 @@ export default function AdminMfaPage({
 
             try {
                 await action();
+
+                return true;
             } catch (error) {
                 if (mounted.current) {
                     if (
@@ -75,17 +79,24 @@ export default function AdminMfaPage({
                         error.code === 'validation'
                     ) {
                         setCodeError(copy.invalidCode);
+                    } else if (error instanceof AdminMfaApiError) {
+                        setFailure(matchFailure(error.code, copy));
                     } else {
-                        setFailure(copy.failed);
+                        setFailure({
+                            message: copy.failed,
+                            recovery: 'retry',
+                        });
                     }
                 }
+
+                return false;
             } finally {
                 if (mounted.current) {
                     setOperation(null);
                 }
             }
         },
-        [copy.failed, copy.invalidCode],
+        [copy],
     );
 
     const loadQrCode = useCallback(async (): Promise<void> => {
@@ -135,20 +146,25 @@ export default function AdminMfaPage({
     }, [mfa.routes.recoveryCodes, run]);
 
     const regenerateRecoveryCodes = useCallback(async (): Promise<void> => {
-        await run('regenerate', 'regenerateRecoveryCodes', async () => {
-            await regenerateAdminMfaRecoveryCodes(
-                mfa.routes.regenerateRecoveryCodes,
-            );
-            const codes = await loadAdminMfaRecoveryCodes(
-                mfa.routes.recoveryCodes,
-            );
+        const regenerated = await run(
+            'regenerate',
+            'regenerateRecoveryCodes',
+            async () => {
+                await regenerateAdminMfaRecoveryCodes(
+                    mfa.routes.regenerateRecoveryCodes,
+                );
 
-            if (mounted.current) {
-                setRecoveryCodes(codes);
-                setConfirmingRegeneration(false);
-            }
-        });
-    }, [mfa.routes.recoveryCodes, mfa.routes.regenerateRecoveryCodes, run]);
+                if (mounted.current) {
+                    setRecoveryCodes(null);
+                    setConfirmingRegeneration(false);
+                }
+            },
+        );
+
+        if (regenerated && mounted.current) {
+            await showRecoveryCodes();
+        }
+    }, [mfa.routes.regenerateRecoveryCodes, run, showRecoveryCodes]);
 
     useEffect(() => {
         if (
@@ -163,6 +179,7 @@ export default function AdminMfaPage({
     }, [confirmed, enabled, failure, loadQrCode, operation, qrSvg]);
 
     useEffect(() => {
+        mounted.current = true;
         const stopListening = router.on('before', () => {
             clearSensitiveState();
         });
@@ -176,6 +193,7 @@ export default function AdminMfaPage({
 
     const accountSecurityUrl =
         locale === 'en' ? '/en/my-account/security' : '/my-account/security';
+    const blocksMfaActions = failure !== null && failure.recovery !== 'retry';
 
     return (
         <main
@@ -240,11 +258,13 @@ export default function AdminMfaPage({
                                     aria-hidden="true"
                                     className="mt-0.5 size-5 shrink-0"
                                 />
-                                {failure}
+                                {failure.message}
                             </p>
-                            <ActionButton
-                                label={adminUi.common.retry}
-                                onClick={() => {
+                            <FailureAction
+                                copy={copy}
+                                failure={failure}
+                                locale={locale}
+                                onRetry={() => {
                                     if (retry.current === 'loadQrCode') {
                                         void loadQrCode();
                                     } else if (
@@ -266,12 +286,12 @@ export default function AdminMfaPage({
                                         void regenerateRecoveryCodes();
                                     }
                                 }}
-                                variant="secondary"
+                                retryLabel={adminUi.common.retry}
                             />
                         </div>
                     ) : null}
 
-                    {!mfa.passwordConfigured ? (
+                    {blocksMfaActions ? null : !mfa.passwordConfigured ? (
                         <PasswordSetup
                             action={copy.openAccountSecurity}
                             description={copy.setupPasswordDescription}
@@ -321,6 +341,92 @@ export default function AdminMfaPage({
 }
 
 type MfaCopy = AdminMfaPageProps['adminUi']['mfa'];
+
+function matchFailure(
+    code: AdminMfaApiError['code'],
+    copy: MfaCopy,
+): FailureState {
+    if (code === 'unauthenticated') {
+        return { message: copy.sessionExpired, recovery: 'login' };
+    }
+
+    if (code === 'forbidden') {
+        return { message: copy.accessDenied, recovery: 'home' };
+    }
+
+    if (code === 'password_confirmation_required') {
+        return {
+            message: copy.passwordConfirmationExpired,
+            recovery: 'reauthenticate',
+        };
+    }
+
+    if (code === 'rate_limited') {
+        return { message: copy.rateLimited, recovery: 'wait' };
+    }
+
+    return { message: copy.failed, recovery: 'retry' };
+}
+
+function FailureAction({
+    copy,
+    failure,
+    locale,
+    onRetry,
+    retryLabel,
+}: {
+    copy: MfaCopy;
+    failure: FailureState;
+    locale: 'ar' | 'en';
+    onRetry: () => void;
+    retryLabel: string;
+}) {
+    if (failure.recovery === 'retry') {
+        return (
+            <ActionButton
+                label={retryLabel}
+                onClick={onRetry}
+                variant="secondary"
+            />
+        );
+    }
+
+    const english = locale === 'en';
+    const mfaUrl = english ? '/en/admin/security/mfa' : '/admin/security/mfa';
+
+    if (failure.recovery === 'wait') {
+        return <FailureLink href={mfaUrl} label={copy.retryAfterWait} />;
+    }
+
+    const destinations = {
+        home: english ? '/en' : '/',
+        login: english ? '/en/login' : '/login',
+        reauthenticate: mfaUrl,
+    };
+    const labels = {
+        home: copy.returnToStore,
+        login: copy.signIn,
+        reauthenticate: copy.confirmPasswordAgain,
+    };
+
+    return (
+        <FailureLink
+            href={destinations[failure.recovery]}
+            label={labels[failure.recovery]}
+        />
+    );
+}
+
+function FailureLink({ href, label }: { href: string; label: string }) {
+    return (
+        <a
+            className="inline-flex min-h-11 touch-manipulation items-center justify-center rounded-md border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-5 py-2 text-sm font-bold text-[var(--arabut-ink)] transition-colors hover:border-[var(--arabut-gold)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--arabut-focus)] active:brightness-95"
+            href={href}
+        >
+            {label}
+        </a>
+    );
+}
 
 function StartState({
     copy,
