@@ -1,7 +1,23 @@
 # Decision record
 
 **Lifecycle:** Implemented record
-**Verified:** 2026-08-21
+**Verified:** 2026-08-22
+
+## 2026-08-22 — Direct Luna rollout replaces the staged fake gate
+
+Mohamed directed Phase 2 to skip the production fake-provider gate entirely
+("start directly with luna no fake") and chose **public rollout**: every
+visitor, including guests, reaches Luna at go-live ("do not exclude to me
+only no need for my id"). Accepted consequences: the first production
+streaming proof happens with a live key and real spend, and disconnect/
+reload recovery is proven under Luna instead of the fake provider.
+Mitigations that remain mandatory: the owner sets the OpenAI project spend
+ceiling before any key entry; existing turn/IP rate limits stay; the kill
+switch stays; Task 11 evaluation thresholds still gate acceptance; the key
+still enters only Hostinger's shared `.env` after the deployed-SHA
+`agent:inspect-streaming-http` outbound-handler check passes. The Task 9
+fake-gate stop is superseded by this decision; Task 12 documentation must
+record the deviation.
 
 ## 2026-08-21 — Phase 2 started with lead-debate amendments
 

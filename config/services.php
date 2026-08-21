@@ -76,4 +76,9 @@ return [
         'merchant_lookup_value' => env('PAYLINK_MERCHANT_LOOKUP_VALUE'),
     ],
 
+    'openai' => [
+        'base_url' => 'https://api.openai.com/v1',
+        'key' => env('OPENAI_API_KEY', ''),
+    ],
+
 ];

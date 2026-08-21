@@ -2,7 +2,7 @@
 
 **Lifecycle:** Phase 1 accepted; Phase 2 implementation approved by Mohamed on
 2026-08-21 and in progress
-**Verified:** 2026-08-21
+**Verified:** 2026-08-22
 
 ## Release snapshot
 
@@ -32,7 +32,7 @@ tools, streaming, operator inbox, or Phase 2 implementation.
 | Phase 0 stabilization                 | Implemented.                                                                                                                                                  |
 | Phase 1 deterministic chat foundation | Implemented.                                                                                                                                                  |
 | Phase 1 Completion                    | **Accepted by Mohamed on 2026-08-21.** Implementation, deployment, scheduler evidence, real-account testing, and physical iPhone/Safari testing are complete. |
-| Phase 2 AI runtime/Luna               | Implementation approved and in progress. Tasks 1-3 are merged to `main` (`d075b4f`) and deployed with AI disabled. Task 4 fix rounds are in review on `codex/ai-phase2-plan`. Public rollout is outside the approved scope. |
+| Phase 2 AI runtime/Luna | Implementation approved and in progress. Tasks 1-8 are merged to `main` (`d8b7345`) and deployed with AI disabled. Task 10 (direct OpenAI Responses adapter) is implemented on `codex/ai-phase2-luna` with all local gates green. On 2026-08-22 Mohamed waived the Task 9 fake-production gate and approved **public** rollout at go-live; see [DECISIONS.md](DECISIONS.md). |
 
 ## Scheduler evidence
 
@@ -73,13 +73,21 @@ supplies that separate acceptance evidence. See [UX.md](UX.md) and
 
 ## Exact next gate
 
-Phase 2 implementation is underway on branch `codex/ai-phase2-plan` under the
-approved plan
+Phase 2 continues on branch `codex/ai-phase2-luna` under the approved plan
 [`2026-08-21-ai-assistant-phase-2-runtime.md`](../superpowers/plans/2026-08-21-ai-assistant-phase-2-runtime.md)
-with the 2026-08-21 debate amendments recorded in [DECISIONS.md](DECISIONS.md).
-Tasks 1-3 are deployed with production AI disabled. The OpenAI project spend
-ceiling remains a later secure owner decision before real Luna testing; no key
-is requested or installed before the Tasks 9-11 gates.
+with the 2026-08-22 owner decision recorded in [DECISIONS.md](DECISIONS.md)
+(fake-production gate waived; public rollout approved at go-live). Task 10 is
+implemented and locally verified. After merge/deploy of the adapter with AI
+still disabled: run `php artisan agent:inspect-streaming-http` on the deployed
+SHA (outbound StreamHandler check), then Mohamed sets the OpenAI project spend
+ceiling through secure project controls and an authorized operator enters the
+project key only in Hostinger's shared `.env` together with
+`AI_ASSISTANT_ENABLED=true`, `AI_ASSISTANT_ROLLOUT=public`,
+`AI_MODEL_PROVIDER=openai`, followed by `php artisan config:cache`. One
+content-free canary message requiring an actual Luna first delta is the final
+streaming proof; disable immediately on failure. The bilingual/safety
+evaluation thresholds then gate acceptance. No key has been requested,
+transmitted, or installed.
 
 ## Open decision
 
