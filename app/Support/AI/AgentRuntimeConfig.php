@@ -32,23 +32,16 @@ final class AgentRuntimeConfig
     /** @return list<int> */
     public function testUserIds(): array
     {
-        $userIds = $this->value('test_user_ids');
+        $userIds = array_map(
+            fn (mixed $configuredId): int => $this->testerUserId($configuredId),
+            $this->testerIdTokens(),
+        );
 
-        if (! is_array($userIds)) {
+        if (count($userIds) !== count(array_unique($userIds))) {
             $this->invalid();
         }
 
-        foreach ($userIds as $userId) {
-            if (! is_int($userId) || $userId < 1) {
-                $this->invalid();
-            }
-        }
-
-        if (count($userIds) !== count(array_unique($userIds, SORT_REGULAR))) {
-            $this->invalid();
-        }
-
-        return array_values($userIds);
+        return $userIds;
     }
 
     public function provider(): AgentProvider
@@ -142,7 +135,7 @@ final class AgentRuntimeConfig
 
     public function maxAttempts(): int
     {
-        $attempts = $this->value('max_attempts');
+        $attempts = $this->canonicalInteger($this->value('max_attempts'));
 
         if ($attempts !== 3) {
             $this->invalid();
@@ -210,13 +203,54 @@ final class AgentRuntimeConfig
 
     private function integerInRange(string $key, int $minimum, int $maximum): int
     {
-        $value = $this->value($key);
+        $value = $this->canonicalInteger($this->value($key));
 
-        if (! is_int($value) || $value < $minimum || $value > $maximum) {
+        if ($value < $minimum || $value > $maximum) {
             $this->invalid();
         }
 
         return $value;
+    }
+
+    /** @return list<mixed> */
+    private function testerIdTokens(): array
+    {
+        $configuredIds = $this->value('test_user_ids');
+
+        if ($configuredIds === '') {
+            return [];
+        }
+
+        if (is_string($configuredIds)) {
+            $configuredIds = explode(',', $configuredIds);
+        }
+
+        return is_array($configuredIds) && array_is_list($configuredIds)
+            ? $configuredIds
+            : $this->invalid();
+    }
+
+    private function testerUserId(mixed $configuredId): int
+    {
+        $userId = $this->canonicalInteger($configuredId);
+
+        return $userId > 0 ? $userId : $this->invalid();
+    }
+
+    private function canonicalInteger(mixed $configuredValue): int
+    {
+        if (is_int($configuredValue)) {
+            return $configuredValue;
+        }
+
+        if (! is_string($configuredValue)
+            || preg_match('/\A(?:0|-?[1-9]\d*)\z/D', $configuredValue) !== 1) {
+            $this->invalid();
+        }
+
+        $integer = filter_var($configuredValue, FILTER_VALIDATE_INT);
+
+        return is_int($integer) ? $integer : $this->invalid();
     }
 
     private function nonNegativeDecimal(string $key): string

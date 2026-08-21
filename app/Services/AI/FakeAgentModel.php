@@ -39,6 +39,7 @@ final readonly class FakeAgentModel implements AgentModel
             yield AgentModelEvent::delta($delta);
         }
 
+        $deadline->throwIfExpired();
         yield AgentModelEvent::completed(new AgentUsage(0, 0, 0, 0, 0, 0), null);
     }
 }

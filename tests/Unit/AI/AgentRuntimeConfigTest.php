@@ -3,6 +3,7 @@
 use App\Enums\AI\AgentErrorCode;
 use App\Exceptions\AI\AgentConfigurationException;
 use App\Support\AI\AgentRuntimeConfig;
+use Illuminate\Support\Env;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -67,7 +68,7 @@ test('runtime config returns each validated configured value', function () {
         ->and($runtime->outputRatePerMillion())->toBe('1.20');
 });
 
-test('runtime config rejects invalid values without exposing them', function (string $key, mixed $value, string $method) {
+test('runtime config rejects invalid domains without exposing them', function (string $key, mixed $value, string $method) {
     config()->set($key, $value);
 
     expect(fn () => app(AgentRuntimeConfig::class)->{$method}())
@@ -78,25 +79,81 @@ test('runtime config rejects invalid values without exposing them', function (st
     'provider must be known' => ['ai-assistant.provider', 'unexpected', 'provider'],
     'model is fixed' => ['ai-assistant.model', 'unexpected', 'model'],
     'prompt version is fixed' => ['ai-assistant.prompt_version', 'unexpected', 'promptVersion'],
-    'debounce is bounded' => ['ai-assistant.turn_debounce_ms', 99, 'turnDebounceMilliseconds'],
-    'context is bounded' => ['ai-assistant.max_context_messages', 25, 'maxContextMessages'],
-    'output is bounded' => ['ai-assistant.max_output_tokens', 501, 'maxOutputTokens'],
-    'response length is bounded' => ['ai-assistant.max_response_characters', 4001, 'maxResponseCharacters'],
     'reasoning effort is fixed' => ['ai-assistant.reasoning_effort', 'high', 'reasoningEffort'],
-    'connection timeout is bounded' => ['ai-assistant.connect_timeout_seconds', 0, 'connectTimeoutSeconds'],
-    'stream timeout is bounded' => ['ai-assistant.stream_read_timeout_seconds', 11, 'streamReadTimeoutSeconds'],
-    'request timeout is bounded' => ['ai-assistant.request_timeout_seconds', 61, 'requestTimeoutSeconds'],
-    'owner rate limit is bounded' => ['ai-assistant.turn_rate_limit_per_minute', 0, 'turnRateLimitPerMinute'],
-    'ip rate limit is bounded' => ['ai-assistant.turn_ip_rate_limit_per_minute', 301, 'turnIpRateLimitPerMinute'],
-    'attempt count is fixed' => ['ai-assistant.max_attempts', 2, 'maxAttempts'],
-    'retry cap is bounded' => ['ai-assistant.retry_after_cap_ms', 2001, 'retryAfterCapMilliseconds'],
-    'stale turn time is bounded' => ['ai-assistant.stale_turn_seconds', 59, 'staleTurnSeconds'],
-    'fake delay is bounded' => ['ai-assistant.fake_delta_delay_ms', 2001, 'fakeDeltaDelayMilliseconds'],
     'pricing version must be present' => ['ai-assistant.pricing.version', '', 'pricingVersion'],
     'input pricing must be nonnegative decimal' => ['ai-assistant.pricing.input_per_million', '-0.01', 'inputRatePerMillion'],
     'cached input pricing must be nonnegative decimal' => ['ai-assistant.pricing.cached_input_per_million', '-0.01', 'cachedInputRatePerMillion'],
     'cache write pricing must be nonnegative decimal' => ['ai-assistant.pricing.cache_write_per_million', '-0.01', 'cacheWriteRatePerMillion'],
     'output pricing must be nonnegative decimal' => ['ai-assistant.pricing.output_per_million', '-0.01', 'outputRatePerMillion'],
+]);
+
+test('runtime config rejects values immediately outside every numeric boundary', function (string $key, int $value, string $method) {
+    config()->set($key, $value);
+
+    expect(fn () => app(AgentRuntimeConfig::class)->{$method}())
+        ->toThrow(AgentConfigurationException::class);
+})->with([
+    'debounce below minimum' => ['ai-assistant.turn_debounce_ms', 99, 'turnDebounceMilliseconds'],
+    'debounce above maximum' => ['ai-assistant.turn_debounce_ms', 5001, 'turnDebounceMilliseconds'],
+    'context below minimum' => ['ai-assistant.max_context_messages', 0, 'maxContextMessages'],
+    'context above maximum' => ['ai-assistant.max_context_messages', 25, 'maxContextMessages'],
+    'output below minimum' => ['ai-assistant.max_output_tokens', 0, 'maxOutputTokens'],
+    'output above maximum' => ['ai-assistant.max_output_tokens', 501, 'maxOutputTokens'],
+    'response length below minimum' => ['ai-assistant.max_response_characters', 0, 'maxResponseCharacters'],
+    'response length above maximum' => ['ai-assistant.max_response_characters', 4001, 'maxResponseCharacters'],
+    'connection timeout below minimum' => ['ai-assistant.connect_timeout_seconds', 0, 'connectTimeoutSeconds'],
+    'connection timeout above maximum' => ['ai-assistant.connect_timeout_seconds', 11, 'connectTimeoutSeconds'],
+    'stream timeout below minimum' => ['ai-assistant.stream_read_timeout_seconds', 0, 'streamReadTimeoutSeconds'],
+    'stream timeout above maximum' => ['ai-assistant.stream_read_timeout_seconds', 11, 'streamReadTimeoutSeconds'],
+    'request timeout below minimum' => ['ai-assistant.request_timeout_seconds', 0, 'requestTimeoutSeconds'],
+    'request timeout above maximum' => ['ai-assistant.request_timeout_seconds', 61, 'requestTimeoutSeconds'],
+    'owner rate limit below minimum' => ['ai-assistant.turn_rate_limit_per_minute', 0, 'turnRateLimitPerMinute'],
+    'owner rate limit above maximum' => ['ai-assistant.turn_rate_limit_per_minute', 121, 'turnRateLimitPerMinute'],
+    'ip rate limit below minimum' => ['ai-assistant.turn_ip_rate_limit_per_minute', 0, 'turnIpRateLimitPerMinute'],
+    'ip rate limit above maximum' => ['ai-assistant.turn_ip_rate_limit_per_minute', 301, 'turnIpRateLimitPerMinute'],
+    'attempt count below fixed value' => ['ai-assistant.max_attempts', 2, 'maxAttempts'],
+    'attempt count above fixed value' => ['ai-assistant.max_attempts', 4, 'maxAttempts'],
+    'retry cap below minimum' => ['ai-assistant.retry_after_cap_ms', -1, 'retryAfterCapMilliseconds'],
+    'retry cap above maximum' => ['ai-assistant.retry_after_cap_ms', 2001, 'retryAfterCapMilliseconds'],
+    'stale turn time below minimum' => ['ai-assistant.stale_turn_seconds', 59, 'staleTurnSeconds'],
+    'stale turn time above maximum' => ['ai-assistant.stale_turn_seconds', 3601, 'staleTurnSeconds'],
+    'fake delay below minimum' => ['ai-assistant.fake_delta_delay_ms', -1, 'fakeDeltaDelayMilliseconds'],
+    'fake delay above maximum' => ['ai-assistant.fake_delta_delay_ms', 2001, 'fakeDeltaDelayMilliseconds'],
+]);
+
+test('environment config accepts only canonical runtime values', function (string $environmentKey, string $rawValue, string $method, mixed $expected) {
+    $runtime = runtimeConfigLoadedFromEnvironment($environmentKey, $rawValue);
+
+    expect($runtime->{$method}())->toBe($expected);
+})->with([
+    'enabled true' => ['AI_ASSISTANT_ENABLED', 'true', 'enabled', true],
+    'enabled false' => ['AI_ASSISTANT_ENABLED', 'false', 'enabled', false],
+    'empty tester allowlist' => ['AI_ASSISTANT_TEST_USER_IDS', '', 'testUserIds', []],
+    'tester allowlist' => ['AI_ASSISTANT_TEST_USER_IDS', '7,11', 'testUserIds', [7, 11]],
+    'integer string' => ['AI_TURN_DEBOUNCE_MS', '100', 'turnDebounceMilliseconds', 100],
+]);
+
+test('environment config preserves malformed values for fail closed validation', function (string $environmentKey, string $rawValue, string $method) {
+    $runtime = runtimeConfigLoadedFromEnvironment($environmentKey, $rawValue);
+
+    try {
+        $runtime->{$method}();
+    } catch (AgentConfigurationException $exception) {
+        expect($exception->errorCode)->toBe(AgentErrorCode::ConfigurationInvalid)
+            ->and($exception->getMessage())->toBe('Assistant runtime configuration is invalid.')
+            ->and($exception->getMessage())->not->toContain($rawValue);
+
+        return;
+    }
+
+    $this->fail('Expected malformed environment configuration to fail closed.');
+})->with([
+    'malformed enabled flag' => ['AI_ASSISTANT_ENABLED', 'tru', 'enabled'],
+    'malformed tester token' => ['AI_ASSISTANT_TEST_USER_IDS', '7oops', 'testUserIds'],
+    'zero tester token' => ['AI_ASSISTANT_TEST_USER_IDS', '0', 'testUserIds'],
+    'negative tester token' => ['AI_ASSISTANT_TEST_USER_IDS', '-7', 'testUserIds'],
+    'duplicate tester token' => ['AI_ASSISTANT_TEST_USER_IDS', '7,7', 'testUserIds'],
+    'malformed numeric value' => ['AI_TURN_DEBOUNCE_MS', '100oops', 'turnDebounceMilliseconds'],
 ]);
 
 test('runtime config rejects an empty provider with the configuration invalid code', function () {
@@ -125,3 +182,28 @@ test('runtime config rejects invalid timeout and rate-limit relationships', func
     'stream timeout cannot exceed request timeout' => ['ai-assistant.stream_read_timeout_seconds', 6, 'streamReadTimeoutSeconds'],
     'ip rate limit cannot be below owner rate limit' => ['ai-assistant.turn_ip_rate_limit_per_minute', 9, 'turnIpRateLimitPerMinute'],
 ]);
+
+function runtimeConfigLoadedFromEnvironment(string $environmentKey, string $rawValue): AgentRuntimeConfig
+{
+    $environment = Env::getRepository();
+    $hadOriginalValue = $environment->has($environmentKey);
+    $originalValue = $environment->get($environmentKey);
+
+    if ($hadOriginalValue) {
+        $environment->clear($environmentKey);
+    }
+
+    $environment->set($environmentKey, $rawValue);
+
+    try {
+        config()->set('ai-assistant', require config_path('ai-assistant.php'));
+    } finally {
+        $environment->clear($environmentKey);
+
+        if ($hadOriginalValue && is_string($originalValue)) {
+            $environment->set($environmentKey, $originalValue);
+        }
+    }
+
+    return app(AgentRuntimeConfig::class);
+}

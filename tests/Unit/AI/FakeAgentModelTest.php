@@ -104,4 +104,9 @@ test('fake stream stops without completion when its deadline expires', function 
 })->with([
     'before the first delta' => [[0, 1_000], []],
     'after an inter-delta delay' => [[0, 0, 0, 1_000], [AgentModelEventType::Delta]],
+    'after all deltas before completion' => [[0, 0, 0, 0, 0, 0, 1_000], [
+        AgentModelEventType::Delta,
+        AgentModelEventType::Delta,
+        AgentModelEventType::Delta,
+    ]],
 ]);

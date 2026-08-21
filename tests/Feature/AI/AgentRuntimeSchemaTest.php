@@ -114,16 +114,20 @@ test('database rejects reusing one assistant message across turns', function () 
         ->toThrow(QueryException::class);
 });
 
-test('database rejects duplicate run attempts and provider response ids', function (string $duplicateColumn) {
+test('database rejects duplicate run attempts provider response ids and trace ids', function (string $duplicateColumn) {
     $turn = AgentTurn::factory()->create();
     $firstRun = validAgentRunRow($turn->id);
     DB::table('agent_runs')->insert($firstRun);
 
     $duplicateRun = validAgentRunRow($turn->id);
-    if ($duplicateColumn === 'provider_response_id') {
+    if ($duplicateColumn !== 'attempt_number') {
         $duplicateRun['attempt_number'] = 2;
-    } else {
+    }
+    if ($duplicateColumn !== 'provider_response_id') {
         $duplicateRun['provider_response_id'] = 'response-2';
+    }
+    if ($duplicateColumn === 'trace_id') {
+        $duplicateRun['trace_id'] = $firstRun['trace_id'];
     }
 
     expect(fn () => DB::table('agent_runs')->insert($duplicateRun))
@@ -131,6 +135,7 @@ test('database rejects duplicate run attempts and provider response ids', functi
 })->with([
     'attempt boundary' => 'attempt_number',
     'provider response boundary' => 'provider_response_id',
+    'trace boundary' => 'trace_id',
 ]);
 
 test('models expose typed statuses errors timestamps and relationships', function () {
