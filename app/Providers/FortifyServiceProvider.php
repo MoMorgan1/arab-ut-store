@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Http\Middleware\PrivateNoStore;
 use App\Http\Responses\LocalizedFailedTwoFactorLoginResponse;
 use App\Http\Responses\LocalizedPasswordResetResponse;
 use App\Http\Responses\LoginResponse;
@@ -15,6 +16,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -51,6 +53,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureViews();
         $this->configureRateLimiting();
         $this->configurePasswordResetUrls();
+        $this->app->booted(fn () => $this->hardenTwoFactorManagementRoutes());
     }
 
     /**
@@ -149,6 +152,9 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('two-factor', fn (Request $request): Limit => Limit::perMinute(5)
             ->by(hash('sha256', ($request->session()->get('login.id') ?? $request->session()->getId()).'|'.$request->ip())));
 
+        RateLimiter::for('two-factor-management', fn (Request $request): Limit => Limit::perMinute(5)
+            ->by(hash('sha256', ($request->user()?->getAuthIdentifier() ?? $request->session()->getId()).'|'.$request->ip())));
+
         RateLimiter::for('whatsapp-login-send', fn (Request $request): Limit => Limit::perMinute(3)
             ->by(hash('sha256', (string) $request->input('phone').'|'.$request->ip())));
         RateLimiter::for('whatsapp-login-verify', fn (Request $request): Limit => Limit::perMinute(10)
@@ -220,5 +226,37 @@ class FortifyServiceProvider extends ServiceProvider
 
             return url(route($routeName, $parameters, absolute: false));
         });
+    }
+
+    private function hardenTwoFactorManagementRoutes(): void
+    {
+        if (! Features::enabled(Features::twoFactorAuthentication())) {
+            return;
+        }
+
+        $routeNames = [
+            'two-factor.enable',
+            'two-factor.confirm',
+            'two-factor.disable',
+            'two-factor.qr-code',
+            'two-factor.secret-key',
+            'two-factor.recovery-codes',
+            'two-factor.regenerate-recovery-codes',
+        ];
+
+        Route::getRoutes()->refreshNameLookups();
+
+        foreach ($routeNames as $routeName) {
+            $route = Route::getRoutes()->getByName($routeName);
+
+            if ($route === null) {
+                throw new \LogicException("Enabled Fortify route [{$routeName}] is missing.");
+            }
+
+            $route->middleware([
+                PrivateNoStore::class,
+                'throttle:two-factor-management',
+            ]);
+        }
     }
 }
