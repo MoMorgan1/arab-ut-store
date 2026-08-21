@@ -113,6 +113,7 @@ export async function fetchOrStartActiveConversation(
             method: 'POST',
             credentials: 'same-origin',
             cache: 'no-store',
+            signal: AbortSignal.timeout(15_000),
             headers,
             body: JSON.stringify({ locale }),
         });
@@ -169,6 +170,7 @@ export async function restartConversation(
             method: 'POST',
             credentials: 'same-origin',
             cache: 'no-store',
+            signal: AbortSignal.timeout(15_000),
             headers,
             body: JSON.stringify({ locale }),
         });
