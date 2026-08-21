@@ -120,9 +120,9 @@ test('a foreign display quote keeps SAR authority and uses only the session-sele
 
     assertQuoteIsNotStored($response);
     $response->assertOk()
-        ->assertJsonPath('data.total.amountHalalah', 300)
+        ->assertJsonPath('data.total.amountHalalah', 250)
         ->assertJsonPath('data.total.currency', 'SAR')
-        ->assertJsonPath('data.displayTotal.amountMinor', 80)
+        ->assertJsonPath('data.displayTotal.amountMinor', 67)
         ->assertJsonPath('data.displayTotal.currency', 'USD')
         ->assertJsonMissingPath('data.checkoutCurrency');
 });

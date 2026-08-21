@@ -7,7 +7,7 @@ import type {
 export type ManualServicePlatform = 'playstation' | 'pc';
 export type PcLauncher = 'ea_app' | 'steam';
 export type Division = '7' | '6' | '5' | '4' | '3' | '2' | '1' | 'elite';
-export type ManualServiceMoney = { amountMinor: number; currency: 'SAR' };
+export type ManualServiceMoney = { amountMinor: number; currency: string };
 
 export type ManualServiceSuggestion = {
     key: 'sbc' | 'fut_champions' | 'rivals';
@@ -147,7 +147,7 @@ export type ManualServicePageProps = {
         };
         pricing:
             | {
-                  currency: 'SAR';
+                  currency: string;
                   rankOptions: Array<{
                       rank: number;
                       price: ManualServiceMoney;
@@ -155,7 +155,7 @@ export type ManualServicePageProps = {
                   urgentSurcharge: ManualServiceMoney;
               }
             | {
-                  currency: 'SAR';
+                  currency: string;
                   ladder: Division[];
                   stepOptions: Array<{
                       from: Division;

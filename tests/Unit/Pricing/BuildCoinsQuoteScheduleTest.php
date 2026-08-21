@@ -127,9 +127,9 @@ test('it builds compact exact schedules at every legal quantity', function (
             ->and($schedule['displayTotalsMinor'][$index])->toBeGreaterThan(0);
     }
 })->with([
-    'PlayStation normal' => [Platform::PlayStation, DeliveryMode::Normal, 2_000_000, 196, 300, 10_000],
+    'PlayStation normal' => [Platform::PlayStation, DeliveryMode::Normal, 2_000_000, 196, 250, 10_000],
     'PlayStation fast' => [Platform::PlayStation, DeliveryMode::Fast, 20_000_000, 1_996, 1_200, 300_000],
-    'PC' => [Platform::Pc, null, 20_000_000, 1_996, 300, 300_000],
+    'PC' => [Platform::Pc, null, 20_000_000, 1_996, 250, 300_000],
 ]);
 
 test('it uses the real fast tier and exact override totals at their indexed quantities', function () {
@@ -167,7 +167,7 @@ test('it converts schedules through fixed-point display money with a single sche
 
     expect($schedule['pricedAt'])->toBe('2026-08-10T12:00:00+00:00')
         ->and($schedule['displayCurrency'])->toBe('USD')
-        ->and($schedule['displayTotalsMinor'][0])->toBe(80)
+        ->and($schedule['displayTotalsMinor'][0])->toBe(67)
         ->and($schedule['displayTotalsMinor'][195])->toBe(4_267);
 });
 

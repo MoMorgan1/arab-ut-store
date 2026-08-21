@@ -104,7 +104,7 @@ function parseQuote(
         typeof data.total.amountHalalah !== 'number' ||
         !Number.isSafeInteger(data.total.amountHalalah) ||
         data.total.amountHalalah <= 0 ||
-        data.total.amountHalalah % 100 !== 0 ||
+        data.total.amountHalalah % 10 !== 0 ||
         data.total.currency !== 'SAR' ||
         !isRecord(data.displayTotal) ||
         typeof data.displayTotal.amountMinor !== 'number' ||

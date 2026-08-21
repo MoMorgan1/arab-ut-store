@@ -36,14 +36,14 @@ function fastPricingRule(array $changes = []): CoinsPricingRule
     ], $changes), 'console_fast');
 }
 
-test('pricing uses integer halalah for the multiplier fee divisor and whole-SAR rounding', function () {
+test('pricing uses integer halalah for the multiplier fee divisor and display-grain rounding', function () {
     $rule = pricingRule([
         'discount_divisor_basis_points' => 8_000,
     ]);
 
     $total = (new CoinsPriceCalculator)->calculate($rule, 50_000);
 
-    // ((0.05 × 50 SAR × 1.10) + (3 SAR × 0.95)) / 0.80 = 7 SAR.
+    // ((0.05M coins × 50 SAR/M × 1.10) + (3 SAR × 0.95)) / 0.80 = 7.0 SAR exactly.
     expect($total->halalah())->toBe(700)
         ->and($total->currency())->toBe('SAR');
 });
@@ -57,14 +57,23 @@ test('an exact quantity override takes precedence over the tier formula', functi
         ->toBe(1_200);
 });
 
-test('exact overrides must preserve the positive whole-SAR price boundary', function (int $override) {
+test('sub-riyal overrides are accepted on the 0.1-SAR display grid', function () {
+    $rule = pricingRule([
+        'exact_overrides_halalah' => ['50000' => 150],
+    ]);
+
+    expect((new CoinsPriceCalculator)->calculate($rule, 50_000)->halalah())
+        ->toBe(150);
+});
+
+test('exact overrides must preserve the positive 0.1-SAR price boundary', function (int $override) {
     expect(fn () => pricingRule([
         'exact_overrides_halalah' => ['50000' => $override],
     ]))->toThrow(DomainException::class);
 })->with([
     'zero would permit a free order' => 0,
-    'less than one SAR' => 99,
-    'fractional SAR' => 150,
+    'less than one display grain' => 5,
+    'off the 0.1 SAR grid' => 123,
 ]);
 
 test('tier upper bounds are inclusive and the sixth rate is open ended', function (int $quantity, int $expectedHalalah) {
@@ -88,9 +97,9 @@ test('tier upper bounds are inclusive and the sixth rate is open ended', functio
     'open-ended tier six' => [5_010_000, 300_600],
 ]);
 
-test('formula results round to whole SAR and retain the one-SAR minimum', function () {
+test('formula results round to the 0.1-SAR grain and retain the one-SAR minimum', function () {
     $calculator = new CoinsPriceCalculator;
-    $roundsUp = pricingRule([
+    $keepsHalfRiyal = pricingRule([
         'flat_rate_halalah_per_million' => 5_100,
         'multipliers_basis_points' => ['50000' => 10_000],
         'service_fee_halalah' => 0,
@@ -101,7 +110,7 @@ test('formula results round to whole SAR and retain the one-SAR minimum', functi
         'service_fee_halalah' => 0,
     ]);
 
-    expect($calculator->calculate($roundsUp, 500_000)->halalah())->toBe(2_600)
+    expect($calculator->calculate($keepsHalfRiyal, 500_000)->halalah())->toBe(2_550)
         ->and($calculator->calculate($floorsAtOne, 50_000)->halalah())->toBe(100);
 });
 

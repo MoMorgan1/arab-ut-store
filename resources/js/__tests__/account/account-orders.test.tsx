@@ -190,10 +190,63 @@ it('reveals manual-service credentials and squad image only after the owner asks
     );
     expect(localStorageSpy).not.toHaveBeenCalled();
 
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, 'clipboard', {
+        value: { writeText },
+        configurable: true,
+    });
+
+    expect(screen.getAllByText('12345678')).toHaveLength(1);
+    expect(screen.getByText('A1B2C3')).toBeVisible();
+    expect(screen.getByText('D4E5F6')).toBeVisible();
+    expect(screen.getByText('Z9Y8X7')).toBeVisible();
+
+    const emailRow = screen
+        .getByText('owner@example.test')
+        .closest('.account-order-fulfillment__value-row');
+    expect(emailRow).not.toBeNull();
+    fireEvent.click(
+        within(emailRow as HTMLElement).getByRole('button', {
+            name: 'PlayStation email — Copy',
+        }),
+    );
+
+    await waitFor(() =>
+        expect(writeText).toHaveBeenCalledWith('owner@example.test'),
+    );
+    expect(screen.getAllByText('Copied').length).toBeGreaterThan(0);
+    expect(writeText).not.toHaveBeenCalledWith(expect.stringContaining('A1B2C3,D4E5F6'));
+
     fireEvent.click(
         screen.getByRole('button', { name: 'Hide account details' }),
     );
     expect(screen.queryByText('owner@example.test')).not.toBeInTheDocument();
+});
+
+it('offers a browse services CTA from the orders empty state', () => {
+    page.props = {
+        ...shellProps(),
+        filters: { status: 'all' },
+        orders: [],
+        pagination: {
+            currentPage: 1,
+            lastPage: 1,
+            perPage: 10,
+            total: 0,
+            nextUrl: null,
+            previousUrl: null,
+        },
+    };
+
+    render(<AccountOrders />);
+
+    expect(
+        screen.getByRole('heading', { level: 2, name: 'No orders yet' }),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Browse services' })).toHaveAttribute(
+        'href',
+        '/en#coins',
+    );
 });
 
 it('resumes the existing Paylink payment from the canonical detail', async () => {
@@ -400,6 +453,8 @@ function shellProps() {
                 refresh_status: 'Refresh status',
                 refreshing: 'Refreshing…',
                 back: 'Back to Orders',
+                copy: 'Copy',
+                copied: 'Copied',
             },
             statuses: {
                 pending_payment: 'Awaiting payment',

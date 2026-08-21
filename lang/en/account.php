@@ -97,6 +97,8 @@ return [
         'refresh_status' => 'Refresh status',
         'refreshing' => 'Refreshing…',
         'back' => 'Back to Orders',
+        'copy' => 'Copy',
+        'copied' => 'Copied',
     ],
     'wallet' => [
         'title' => 'Wallet',
