@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\PaylinkRefundController;
 use App\Http\Controllers\Auth\GoogleAuthenticationController;
 use App\Http\Controllers\Auth\WhatsAppLoginController;
 use App\Http\Controllers\Store\CartController;
@@ -57,9 +56,6 @@ Route::get('/orders/{order}', OrderController::class)
 Route::post('/orders/{order:public_id}/payments/paylink', PaylinkOrderPaymentController::class)
     ->middleware(['auth', NoStore::class, 'throttle:coins-cart'])
     ->name('store.orders.paylink-payment');
-Route::post('/admin/api/orders/{order:public_id}/refund', PaylinkRefundController::class)
-    ->middleware(['auth', NoStore::class, 'throttle:staff-payments'])
-    ->name('admin.orders.paylink-refund');
 Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])
     ->middleware([NoStore::class, 'throttle:coins-cart'])
     ->name('cart.items.credentials.show');

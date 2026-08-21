@@ -25,8 +25,8 @@ final readonly class RefundPaylinkOrder
 
     public function execute(Order $order, string $reason, User $actor): Refund
     {
-        if (! in_array($actor->role, [UserRole::Admin, UserRole::Staff], true)) {
-            throw new CheckoutUnavailable('Only authorized staff may refund an order.');
+        if ($actor->role !== UserRole::Admin) {
+            throw new CheckoutUnavailable('Only an admin may refund an order.');
         }
 
         $reason = trim($reason);

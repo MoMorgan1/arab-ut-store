@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Laravel\Fortify\Fortify;
 
 beforeEach(function (): void {
     config()->set('services.paylink', [
@@ -31,7 +32,7 @@ beforeEach(function (): void {
 /** @return array{admin: User, order: Order, payment: Payment} */
 function refundablePaylinkOrder(): array
 {
-    $admin = User::factory()->create(['role' => UserRole::Admin]);
+    $admin = mfaConfirmedAdmin();
     $order = Order::factory()->create([
         'order_number' => 'AUT-REFUND-1001',
         'status' => OrderStatus::Received,
@@ -71,6 +72,17 @@ function refundablePaylinkOrder(): array
     return compact('admin', 'order', 'payment');
 }
 
+function mfaConfirmedAdmin(): User
+{
+    $admin = User::factory()->create(['role' => UserRole::Admin]);
+    $admin->forceFill([
+        'two_factor_secret' => Fortify::currentEncrypter()->encrypt('ADMINTESTTOTPSECRET'),
+        'two_factor_confirmed_at' => now(),
+    ])->save();
+
+    return $admin;
+}
+
 test('an admin can issue one verified full Paylink refund and exact retries never call the provider twice', function () {
     ['admin' => $admin, 'order' => $order] = refundablePaylinkOrder();
     Http::fake([
@@ -102,11 +114,14 @@ test('an admin can issue one verified full Paylink refund and exact retries neve
         ->toHaveCount(1);
 });
 
-test('refunds fail closed for non staff and unpaid orders', function () {
+test('refunds fail closed for non admin actors and unpaid orders', function () {
     ['order' => $order] = refundablePaylinkOrder();
     $customer = User::factory()->create(['role' => UserRole::Customer]);
+    $staff = User::factory()->create(['role' => UserRole::Staff]);
 
     expect(fn () => app(RefundPaylinkOrder::class)->execute($order, 'Customer request.', $customer))
+        ->toThrow(CheckoutUnavailable::class)
+        ->and(fn () => app(RefundPaylinkOrder::class)->execute($order, 'Customer request.', $staff))
         ->toThrow(CheckoutUnavailable::class);
 
     $order->payments()->sole()->update(['status' => PaymentStatus::Pending]);
@@ -151,21 +166,45 @@ test('a mismatched Paylink refund is quarantined for manual review without chang
         ->and($order->payments()->sole()->status)->toBe(PaymentStatus::Paid);
 });
 
-test('the admin refund endpoint is authenticated, role restricted, full amount only and no store', function () {
+test('the admin refund endpoint is authenticated, admin restricted, mfa gated, password confirmed, full amount only and no store', function () {
     ['admin' => $admin, 'order' => $order] = refundablePaylinkOrder();
     $customer = User::factory()->create(['role' => UserRole::Customer]);
+    $staff = User::factory()->create(['role' => UserRole::Staff]);
+    $staff->forceFill([
+        'two_factor_secret' => Fortify::currentEncrypter()->encrypt('STAFFTESTTOTPSECRET'),
+        'two_factor_confirmed_at' => now(),
+    ])->save();
+    $unconfirmedMfaAdmin = User::factory()->create(['role' => UserRole::Admin]);
     Http::fake();
 
     $url = '/admin/api/orders/'.$order->public_id.'/refund';
     $payload = ['amountHalalah' => 1250, 'reason' => 'Customer request.'];
 
     $this->postJson($url, $payload)->assertUnauthorized();
-    $this->actingAs($customer)->postJson($url, $payload)
-        ->assertForbidden()
-        ->assertHeader('Cache-Control', 'no-store, private');
+    $this->actingAs($customer)->postJson($url, $payload)->assertForbidden();
+    $this->actingAs($staff)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->postJson($url, $payload)
+        ->assertForbidden();
+    $this->actingAs($unconfirmedMfaAdmin)->postJson($url, $payload)
+        ->assertRedirect('/admin/security/mfa');
     $this->actingAs($admin)->postJson($url, [...$payload, 'amountHalalah' => 1249])
         ->assertUnprocessable()
         ->assertHeader('Cache-Control', 'no-store, private');
+
+    Http::assertNothingSent();
+});
+
+test('the admin refund endpoint requires a recent password confirmation', function () {
+    ['admin' => $admin, 'order' => $order] = refundablePaylinkOrder();
+    Http::fake();
+
+    $this->actingAs($admin)
+        ->postJson('/admin/api/orders/'.$order->public_id.'/refund', [
+            'amountHalalah' => 1250,
+            'reason' => 'Customer request.',
+        ])
+        ->assertStatus(423);
 
     Http::assertNothingSent();
 });
@@ -185,6 +224,7 @@ test('the admin refund endpoint completes one provider verified refund', functio
     ]);
 
     $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/orders/'.$order->public_id.'/refund', [
             'amountHalalah' => 1250,
             'reason' => 'Customer request.',

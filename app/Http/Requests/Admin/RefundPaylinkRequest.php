@@ -13,8 +13,7 @@ final class RefundPaylinkRequest extends FormRequest
     {
         $user = $this->user();
 
-        return $user instanceof User
-            && in_array($user->role, [UserRole::Admin, UserRole::Staff], true);
+        return $user instanceof User && $user->role === UserRole::Admin;
     }
 
     /** @return array<string, list<string>> */

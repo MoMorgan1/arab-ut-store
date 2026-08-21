@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\OverviewController;
+use App\Http\Controllers\Admin\PaylinkRefundController;
 use App\Http\Controllers\Admin\Security\AdminMfaController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureAdminAccess;
@@ -37,6 +38,14 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $route->defaults('locale', $locale);
+                }
+
+                $refund = Route::post('/api/orders/{order:public_id}/refund', PaylinkRefundController::class)
+                    ->middleware(['password.confirm', 'can:orders.refund', 'throttle:staff-payments'])
+                    ->name('orders.paylink-refund');
+
+                if ($locale !== null) {
+                    $refund->defaults('locale', $locale);
                 }
             });
         });
