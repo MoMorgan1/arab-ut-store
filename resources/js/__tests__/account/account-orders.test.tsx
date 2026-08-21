@@ -215,7 +215,9 @@ it('reveals manual-service credentials and squad image only after the owner asks
         expect(writeText).toHaveBeenCalledWith('owner@example.test'),
     );
     expect(screen.getAllByText('Copied').length).toBeGreaterThan(0);
-    expect(writeText).not.toHaveBeenCalledWith(expect.stringContaining('A1B2C3,D4E5F6'));
+    expect(writeText).not.toHaveBeenCalledWith(
+        expect.stringContaining('A1B2C3,D4E5F6'),
+    );
 
     fireEvent.click(
         screen.getByRole('button', { name: 'Hide account details' }),
@@ -243,10 +245,9 @@ it('offers a browse services CTA from the orders empty state', () => {
     expect(
         screen.getByRole('heading', { level: 2, name: 'No orders yet' }),
     ).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Browse services' })).toHaveAttribute(
-        'href',
-        '/en#coins',
-    );
+    expect(
+        screen.getByRole('link', { name: 'Browse services' }),
+    ).toHaveAttribute('href', '/en#coins');
 });
 
 it('resumes the existing Paylink payment from the canonical detail', async () => {
