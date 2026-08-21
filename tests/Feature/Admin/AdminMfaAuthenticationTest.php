@@ -146,6 +146,35 @@ test('ineligible pending privileged challenges clear the session on both challen
     'Staff TOTP unconfirmed POST' => [UserRole::Staff, 'totp_unconfirmed', 'POST'],
 ]);
 
+test('English ineligible challenges redirect to the localized login with generic copy', function (
+    string $method,
+) {
+    ['user' => $staff] = confirmedTotpUser(UserRole::Staff);
+    $staff->forceFill([
+        'is_active' => false,
+        'preferred_locale' => 'en',
+    ])->save();
+
+    $request = $this->withSession(['login.id' => $staff->id]);
+    $response = $method === 'GET'
+        ? $request->get(route('two-factor.login'))
+        : $request->post(route('two-factor.login.store'), ['code' => '000000']);
+
+    expect($response->headers->get('Location'))->toBe(
+        route('localized.login', ['locale' => 'en']),
+    );
+
+    $this->get(route('localized.login', ['locale' => 'en']))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('auth/login')
+            ->where('locale', 'en')
+            ->where('direction', 'ltr')
+            ->where('errors.email', trans('auth_ui.two_factor_challenge.invalid_code', [], 'en')));
+})->with([
+    'GET' => ['GET'],
+    'POST' => ['POST'],
+]);
+
 test('failed TOTP challenges use the pending users locale and mode-specific copy', function (
     string $locale,
     string $field,

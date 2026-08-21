@@ -21,14 +21,13 @@ final class EnsureEligibleTwoFactorChallenge
             ? User::query()->find($challengedUserId)
             : null;
 
-        if ($challengedUser instanceof User) {
-            app()->setLocale($challengedUser->preferred_locale === 'en' ? 'en' : 'ar');
-        }
+        $locale = $challengedUser?->preferred_locale === 'en' ? 'en' : 'ar';
+        app()->setLocale($locale);
 
         if (! $this->isEligible($challengedUser)) {
             $request->session()->forget(['login.id', 'login.remember']);
 
-            return redirect()->route('login')->withErrors([
+            return redirect($this->loginUrl($locale))->withErrors([
                 'email' => trans('auth_ui.two_factor_challenge.invalid_code'),
             ]);
         }
@@ -42,5 +41,12 @@ final class EnsureEligibleTwoFactorChallenge
             && $user->is_active
             && $user->password !== null
             && $user->hasEnabledTwoFactorAuthentication();
+    }
+
+    private function loginUrl(string $locale): string
+    {
+        return $locale === 'en'
+            ? route('localized.login', ['locale' => 'en'])
+            : route('login');
     }
 }
