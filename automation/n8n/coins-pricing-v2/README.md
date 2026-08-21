@@ -11,79 +11,35 @@ this file contains none.
 
 ## REQUIRED SYNC: 0.1-SAR display grain (2026-08-21)
 
-Laravel now rounds coins prices at a **0.1-SAR grain** instead of whole riyals
-(`CoinsPriceCalculator::DISPLAY_GRAIN_HALALAH = 10`). This workflow carries its
-own JavaScript copy of the same formula for schedule validation, and that copy
-still uses the old whole-riyal math. Until the nodes below are patched, the
-validator can approve a rate set whose true Laravel-served schedule dips
-between adjacent 10K quantities by up to 0.09 SAR — an inversion invisible at
-whole-riyal granularity.
+Laravel rounds coins prices at a **0.1-SAR grain** instead of whole riyals
+(`CoinsPriceCalculator::DISPLAY_GRAIN_HALALAH = 10`). The original export in
+`workflow.json` carries the old whole-riyal math and must not be imported onto
+the new backend.
 
-Patch the two code nodes **before or immediately with** the next Laravel
-deploy. Applying the n8n patch first is safe against both old and new Laravel;
-running new Laravel against unpatched n8n is the only unsafe combination.
+**`workflow-v2.3.json` is the corrected, ready-to-import artifact.** It is
+byte-identical to the production export except the pricing math inside the
+"Prepare Coins Snapshot" and "Validate Snapshot" code nodes:
 
-### Node "Prepare Coins Snapshot" — replace four functions
+- All internal price computation moved to **halalah integers**, rounded
+  half-up to the 10-halalah display grid (`roundToDisplayGrain`), floored at
+  100 halalah.
+- Fast-delivery floors mirror Laravel exactly: percentage floor ×105%, the
+  per-million guarantee (`quantity * 500` term), and the visible gap
+  (`normal + 100`).
+- Exact overrides are now stored/validated as halalah multiples of 10
+  (matching Laravel's `>= 10 && % 10 !== 0` contract), so the override-grid
+  asymmetry noted below disappears once v2.3 is imported.
 
-```js
-const DISPLAY_GRAIN_HALALAH = 10;
+Import checklist:
 
-function formulaHalalah(rule, quantity) {
-    const rate = rule.group === 'console_normal'
-        ? rule.flat_rate_halalah_per_million
-        : tierRateFor(quantity, rule.tier_rates_halalah_per_million);
-    const multiplier = multiplierFor(rule, quantity);
-    const rateNumerator = BigInt(quantity) * BigInt(rate) * BigInt(multiplier);
-    const feeGap = Math.max(0, 1_000_000 - quantity);
-    const feeNumerator =
-        BigInt(rule.service_fee_halalah) * BigInt(feeGap) * 10_000n;
-    const denominator =
-        1_000_000n * BigInt(rule.discount_divisor_basis_points);
-    return Math.max(
-        Number(roundHalfUpBigInt(rateNumerator + feeNumerator, denominator)),
-        100,
-    );
-}
+1. Import `workflow-v2.3.json` into n8n (replaces the active workflow).
+2. Confirm no executions are pinned to old code (remove any pin data).
+3. Trigger "Run Coins Pricing Now" manually and confirm "Validate Snapshot"
+   passes with `fullScheduleChecked: true`.
+4. Verify one storefront quote lands on the 0.1-SAR grid.
 
-function roundToDisplayGrain(halalah) {
-    return Number(roundHalfUpBigInt(BigInt(halalah), 10n)) * DISPLAY_GRAIN_HALALAH;
-}
-
-function percentageFloor(normalHalalah) {
-    return roundToDisplayGrain(
-        Number(roundHalfUpBigInt(BigInt(normalHalalah) * 105n, 100n)),
-    );
-}
-
-function perMillionFloor(normalHalalah, quantity) {
-    return roundToDisplayGrain(Number(roundHalfUpBigInt(
-        BigInt(normalHalalah) * 1_000_000n + BigInt(quantity) * 500n,
-        1_000_000n,
-    )));
-}
-```
-
-Then inside `displayedSar()` use, for every group:
-
-```js
-const base = roundToDisplayGrain(formulaHalalah(rule, quantity));
-if (group !== 'console_fast') return base;
-
-const normal = roundToDisplayGrain(formulaHalalah(rules.console_normal, quantity));
-return Math.max(base, percentageFloor(normal), perMillionFloor(normal, quantity), normal + 100);
-```
-
-Keep returning values divided by 100 where the current code treats them as
-SAR units, or switch the monotonicity loop to compare halalah directly — either
-works as long as all comparisons use one unit. The non-decreasing override
-writer (`safe * 100`) stays valid: whole-riyal overrides remain a legal subset
-of Laravel's new `>= 10 && % 10 === 0` override contract.
-
-### Node "Validate Snapshot" — mirror the same three floor functions
-
-Apply the identical replacements so its full 4,188-price sweep checks the
-schedule Laravel will actually serve. Its exact-override acceptance check
-(`value < 100 || value % 100 !== 0` rejects) may stay stricter than Laravel.
+Ordering rule: patched-n8n against old Laravel is safe; new-Laravel against
+the unpatched workflow is the only unsafe combination.
 
 ## Known hygiene notes (non-blocking)
 
@@ -92,10 +48,7 @@ schedule Laravel will actually serve. Its exact-override acceptance check
   Unify on the next edit.
 - `tierCapsK` (6 cost rows) vs `tierUpperBoundsK` (5 bounds + open sixth rate)
   matches Laravel's six-rate contract; do not trim either list independently.
-- **Override-grid pairing rule:** Laravel accepts exact overrides at any
-  positive multiple of 0.1 SAR (`>= 10 && % 10 === 0`), but this workflow's
-  validator still requires whole riyals (`% 100 === 0`) — a deliberate strict
-  subset, safe because `Prepare Coins Snapshot` only ever writes whole-riyal
-  overrides. Anyone relaxing the writer to sub-riyal overrides MUST relax the
-  validator's acceptance check in the same edit, or hourly runs fail closed
-  with `exact override is invalid`.
+- Override grids: Laravel and v2.3 both accept exact overrides at any positive
+  multiple of 0.1 SAR (`>= 10 && % 10 === 0`). The pre-v2.3 validator required
+  whole riyals — if you ever re-import `workflow.json`, restore that stricter
+  pairing or hourly runs will fail closed with `exact override is invalid`.
