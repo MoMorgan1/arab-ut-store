@@ -206,7 +206,7 @@ export default function Login({
 
                                     <Button
                                         type="submit"
-                                        className="auth-form__submit mt-4 h-11 w-full"
+                                        className="auth-form__submit h-11 w-full"
                                         disabled={processing}
                                         data-test="login-button"
                                     >
