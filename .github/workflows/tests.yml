@@ -158,6 +158,9 @@ jobs:
           tests/Integration/ChatConversationLifecycleInvariantUpgradeTest.php
           tests/Integration/ChatConversationConcurrencyTest.php
           tests/Integration/MaintainChatConversationsConcurrencyTest.php
+          tests/Feature/AI/AgentRuntimeSchemaTest.php
+          tests/Feature/AI/AgentMessageEligibilityTest.php
+          tests/Integration/AgentRuntimeInvariantUpgradeTest.php
           tests/Unit/Cart/CartOwnerTest.php
           tests/Unit/Enums/OrderItemStatusTest.php
           tests/Unit/Enums/PlatformTest.php

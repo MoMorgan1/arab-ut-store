@@ -46,18 +46,21 @@ final readonly class CreateChatMessage
                     ];
                 }
 
+                $assistantMode = $this->resolveAssistantMode->for($owner);
                 $customerMessage = $lockedConversation->messages()->create([
                     'client_message_id' => $clientMessageId,
                     'sender_type' => ChatSenderType::Customer,
                     'message_type' => ChatMessageType::Text,
                     'content' => $content,
+                    'agent_eligible_at' => $assistantMode === AssistantMode::Agent ? now() : null,
+                    'agent_prompt_blocked_at' => null,
                 ]);
 
                 $lockedConversation->update(['last_message_at' => now()]);
 
                 $demoReply = null;
 
-                if ($this->resolveAssistantMode->for($owner) === AssistantMode::Demo) {
+                if ($assistantMode === AssistantMode::Demo) {
                     $demoReplyContent = $lockedConversation->locale === 'en'
                         ? 'Got your message 👍 This is the chat foundation demo. Smart replies and tools will be connected in later phases.'
                         : 'وصلتني رسالتك 👍 هذي نسخة تجريبية من الشات. قريبًا بنربط الردود الذكية والطلبات.';

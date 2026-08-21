@@ -26,6 +26,8 @@ class ChatMessageFactory extends Factory
             'message_type' => ChatMessageType::Text,
             'content' => fake()->sentence(),
             'metadata' => null,
+            'agent_eligible_at' => null,
+            'agent_prompt_blocked_at' => null,
         ];
     }
 
@@ -33,6 +35,15 @@ class ChatMessageFactory extends Factory
     {
         return $this->state(fn () => [
             'sender_type' => ChatSenderType::Customer,
+        ]);
+    }
+
+    public function agentEligible(): static
+    {
+        return $this->state(fn () => [
+            'sender_type' => ChatSenderType::Customer,
+            'agent_eligible_at' => now(),
+            'agent_prompt_blocked_at' => null,
         ]);
     }
 

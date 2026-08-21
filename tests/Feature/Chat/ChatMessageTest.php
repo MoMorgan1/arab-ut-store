@@ -235,6 +235,8 @@ test('arbitrary client metadata is rejected or ignored and not stored', function
             'content' => 'Clean message',
             'client_message_id' => $clientMessageId,
             'metadata' => ['injected' => 'malicious_payload', 'role' => 'admin'],
+            'agent_eligible_at' => now()->toISOString(),
+            'agent_prompt_blocked_at' => now()->toISOString(),
         ]);
 
     $response->assertCreated();
@@ -245,7 +247,9 @@ test('arbitrary client metadata is rejected or ignored and not stored', function
         ->first();
 
     expect($createdMessage)->not->toBeNull()
-        ->and($createdMessage->metadata)->toBeNull();
+        ->and($createdMessage->metadata)->toBeNull()
+        ->and($createdMessage->agent_eligible_at)->toBeNull()
+        ->and($createdMessage->agent_prompt_blocked_at)->toBeNull();
 });
 
 test('guest cannot post to another guests conversation', function () {
