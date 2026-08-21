@@ -12,6 +12,11 @@ final class GuardAgentPromptContent
         'رمز احتياطي', 'رموز احتياطية', 'مفتاح API', 'رمز التحقق',
     ];
 
+    private const CARD_TERMS = [
+        'card', 'debit', 'credit', 'PAN',
+        'بطاقة', 'بطاقتي', 'بطاقة ائتمان', 'بطاقة خصم', 'رقم البطاقة',
+    ];
+
     private const DIGIT_NORMALIZATION = [
         '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
         '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
@@ -23,13 +28,21 @@ final class GuardAgentPromptContent
     {
         $normalized = strtr($content, self::DIGIT_NORMALIZATION);
 
-        if ($this->containsCredentialLabel($normalized)
+        if ($this->containsCredentialWithSecret($normalized)
             || preg_match('/\bBearer\s+\S+/iu', $normalized) === 1
             || preg_match('/\bsk-[A-Za-z0-9_-]{16,}/iu', $normalized) === 1
-            || $this->containsBackupCodeSet($normalized)
             || $this->containsPaymentCard($normalized)) {
             throw new SensitiveAgentContentException;
         }
+    }
+
+    private function containsCredentialWithSecret(string $content): bool
+    {
+        if (! $this->containsCredentialLabel($content)) {
+            return false;
+        }
+
+        return $this->containsSecretValue($content);
     }
 
     private function containsCredentialLabel(string $content): bool
@@ -39,15 +52,32 @@ final class GuardAgentPromptContent
         return preg_match('/(?:'.implode('|', $labels).')/iu', $content) === 1;
     }
 
-    private function containsBackupCodeSet(string $content): bool
+    private function containsSecretValue(string $content): bool
     {
-        preg_match_all('/(?<![0-9])[0-9]{8}(?![0-9])/', $content, $groups);
+        if (preg_match('/(?:"[^"\r\n]{6,}"|\'[^\'\r\n]{6,}\'|[“«][^”»\r\n]{6,}[”»]|[‘][^’\r\n]{6,}[’])/u', $content) === 1) {
+            return true;
+        }
 
-        return count(array_unique($groups[0])) >= 3;
+        if (preg_match('/:\s*\S{6,}/u', $content) === 1) {
+            return true;
+        }
+
+        if (preg_match('/[A-Za-z0-9_-]{12,}/', $content) === 1) {
+            return true;
+        }
+
+        $hasCvvCvc = preg_match('/\b(?:CVV|CVC)\b/iu', $content) === 1;
+        $minDigits = $hasCvvCvc ? 3 : 8;
+
+        return preg_match('/[0-9]{'.$minDigits.',}/', $content) === 1;
     }
 
     private function containsPaymentCard(string $content): bool
     {
+        if (! $this->containsCardTerminology($content)) {
+            return false;
+        }
+
         preg_match_all('/(?<![0-9])(?:[0-9][ -]*){12,18}[0-9](?![0-9])/', $content, $candidates);
 
         foreach ($candidates[0] as $candidate) {
@@ -59,6 +89,19 @@ final class GuardAgentPromptContent
         }
 
         return false;
+    }
+
+    private function containsCardTerminology(string $content): bool
+    {
+        $terms = array_map(function (string $term): string {
+            if (preg_match('/^[A-Za-z]+$/', $term) === 1) {
+                return '\b'.preg_quote($term, '/').'\b';
+            }
+
+            return preg_quote($term, '/');
+        }, self::CARD_TERMS);
+
+        return preg_match('/(?:'.implode('|', $terms).')/iu', $content) === 1;
     }
 
     private function passesLuhn(string $digits): bool

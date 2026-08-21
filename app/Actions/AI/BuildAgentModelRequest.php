@@ -5,6 +5,7 @@ namespace App\Actions\AI;
 use App\Enums\Chat\ChatMessageType;
 use App\Enums\Chat\ChatSenderType;
 use App\Exceptions\AI\InvalidAgentRequestException;
+use App\Exceptions\AI\SensitiveAgentContentException;
 use App\Models\AgentTurn;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
@@ -38,7 +39,7 @@ final readonly class BuildAgentModelRequest
             $firstMessageId,
             $this->config->maxContextMessages() - $current->count(),
         );
-        $messages = $this->modelMessages($prior->concat($current));
+        $messages = $this->modelMessages($prior, $current);
         $instructions = File::get(resource_path("ai-assistant/prompts/{$turn->prompt_version}.md"));
 
         return new AgentModelRequest(
@@ -88,23 +89,48 @@ final readonly class BuildAgentModelRequest
     }
 
     /**
-     * @param  Collection<int, ChatMessage>  $selected
+     * @param  Collection<int, ChatMessage>  $prior
+     * @param  Collection<int, ChatMessage>  $current
      * @return list<array{role:string,content:string}>
      */
-    private function modelMessages(Collection $selected): array
+    private function modelMessages(Collection $prior, Collection $current): array
     {
-        return array_values($selected->map(function (ChatMessage $message): array {
-            if ($message->message_type !== ChatMessageType::Text
-                || ! in_array($message->sender_type, [ChatSenderType::Customer, ChatSenderType::Assistant], true)) {
-                throw new InvalidAgentRequestException;
+        $messages = [];
+
+        foreach ($prior as $message) {
+            $this->validateMessage($message);
+
+            try {
+                $this->guardPromptContent->execute($message->content);
+            } catch (SensitiveAgentContentException) {
+                continue;
             }
 
-            $this->guardPromptContent->execute($message->content);
-
-            return [
+            $messages[] = [
                 'role' => $message->sender_type === ChatSenderType::Customer ? 'user' : 'assistant',
                 'content' => $message->content,
             ];
-        })->all());
+        }
+
+        foreach ($current as $message) {
+            $this->validateMessage($message);
+
+            $this->guardPromptContent->execute($message->content);
+
+            $messages[] = [
+                'role' => $message->sender_type === ChatSenderType::Customer ? 'user' : 'assistant',
+                'content' => $message->content,
+            ];
+        }
+
+        return $messages;
+    }
+
+    private function validateMessage(ChatMessage $message): void
+    {
+        if ($message->message_type !== ChatMessageType::Text
+            || ! in_array($message->sender_type, [ChatSenderType::Customer, ChatSenderType::Assistant], true)) {
+            throw new InvalidAgentRequestException;
+        }
     }
 }
