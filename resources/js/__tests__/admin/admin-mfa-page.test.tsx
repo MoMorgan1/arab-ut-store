@@ -1,4 +1,5 @@
 import {
+    act,
     cleanup,
     fireEvent,
     render,
@@ -295,6 +296,53 @@ it('forgets invalidated codes after regeneration and retries only the failed cod
     expect(await screen.findByText('new-recovery-code')).toBeVisible();
     expect(api.regenerateAdminMfaRecoveryCodes).toHaveBeenCalledTimes(1);
     expect(api.loadAdminMfaRecoveryCodes).toHaveBeenCalledTimes(3);
+});
+
+it('reconciles with GET only when a committed regeneration response is lost', async () => {
+    let rejectRegeneration!: (reason: unknown) => void;
+    const lostRegenerationResponse = new Promise<void>((_resolve, reject) => {
+        rejectRegeneration = reject;
+    });
+    api.loadAdminMfaRecoveryCodes
+        .mockResolvedValueOnce(['old-invalidated-code'])
+        .mockResolvedValueOnce(['rotated-recovery-code']);
+    api.regenerateAdminMfaRecoveryCodes.mockReturnValue(
+        lostRegenerationResponse,
+    );
+    renderPage({ enabled: true, confirmed: true });
+
+    fireEvent.click(
+        screen.getByRole('button', { name: 'اعرض رموز الاسترداد' }),
+    );
+    expect(await screen.findByText('old-invalidated-code')).toBeVisible();
+    fireEvent.click(
+        screen.getByRole('button', { name: 'أنشئ رموز استرداد جديدة' }),
+    );
+    fireEvent.click(
+        screen.getByRole('button', { name: 'استبدل رموز الاسترداد' }),
+    );
+
+    expect(api.regenerateAdminMfaRecoveryCodes).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('old-invalidated-code')).not.toBeInTheDocument();
+    expect(
+        screen.queryByRole('heading', {
+            name: 'استبدال رموز الاسترداد؟',
+        }),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+        rejectRegeneration(
+            new AdminMfaApiError('network', 'The committed response was lost.'),
+        );
+    });
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+        adminUi.mfa.failed,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'حاول مرة أخرى' }));
+
+    expect(await screen.findByText('rotated-recovery-code')).toBeVisible();
+    expect(api.regenerateAdminMfaRecoveryCodes).toHaveBeenCalledTimes(1);
+    expect(api.loadAdminMfaRecoveryCodes).toHaveBeenCalledTimes(2);
 });
 
 it('shows a recoverable failure state and retries the failed operation', async () => {

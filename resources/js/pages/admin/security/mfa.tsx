@@ -146,17 +146,25 @@ export default function AdminMfaPage({
     }, [mfa.routes.recoveryCodes, run]);
 
     const regenerateRecoveryCodes = useCallback(async (): Promise<void> => {
+        if (mounted.current) {
+            setRecoveryCodes(null);
+            setConfirmingRegeneration(false);
+        }
+
         const regenerated = await run(
             'regenerate',
             'regenerateRecoveryCodes',
             async () => {
-                await regenerateAdminMfaRecoveryCodes(
-                    mfa.routes.regenerateRecoveryCodes,
-                );
+                try {
+                    await regenerateAdminMfaRecoveryCodes(
+                        mfa.routes.regenerateRecoveryCodes,
+                    );
+                } catch (error) {
+                    if (isAmbiguousRegenerationFailure(error)) {
+                        retry.current = 'showRecoveryCodes';
+                    }
 
-                if (mounted.current) {
-                    setRecoveryCodes(null);
-                    setConfirmingRegeneration(false);
+                    throw error;
                 }
             },
         );
@@ -366,6 +374,13 @@ function matchFailure(
     }
 
     return { message: copy.failed, recovery: 'retry' };
+}
+
+function isAmbiguousRegenerationFailure(error: unknown): boolean {
+    return (
+        !(error instanceof AdminMfaApiError) ||
+        ['network', 'server', 'invalid_response'].includes(error.code)
+    );
 }
 
 function FailureAction({
