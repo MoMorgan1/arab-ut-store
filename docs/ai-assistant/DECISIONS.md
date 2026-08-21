@@ -84,14 +84,18 @@ proposed operational defaults are:
 - six turn starts per owner/minute, 20/IP/minute, three attempts, one bounded
   automatic 429 retry, a two-second automatic wait cap, and 120-second stale
   recovery from the verified minute scheduler;
+- automatic 429 fails the run but keeps the turn nonterminal waiting, sleeps
+  outside locks, exposes no explicit retry, and terminalizes timeout if the
+  shared deadline expires during the wait;
 - fail-closed disabled/rollout/provider defaults; fake and OpenAI providers;
   disabled, authenticated-tester, and public configuration values, with public
   neither enabled nor approved;
 - a production fake authenticated-tester gate with exactly three localized
   350ms deltas, observable incremental delivery, and disconnect/reload durable
   recovery; failure stops OpenAI work;
-- a server-derived pending-after-terminal boolean that drains 25 eligible rows
-  as 24 + 1 with exactly two starts, including reload/poll recovery;
+- a server-derived pending-after-terminal boolean: at default limit 24, 25 rows
+  drain as 24 + 1/two starts; nondefault validated limits drain in configured
+  chunks, including reload/poll recovery;
 - validated config consumers, typed retry policy, lazy provider resolution
   after the sensitive guard, and a 45-second monotonic deadline covering
   connect/headers/body/parser/automatic wait/retry with bounded per-read time;

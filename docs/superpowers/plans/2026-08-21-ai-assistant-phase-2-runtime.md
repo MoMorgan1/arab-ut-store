@@ -36,7 +36,7 @@
 - Defaults fail closed: `AI_ASSISTANT_ENABLED=false`, `AI_ASSISTANT_ROLLOUT=disabled`, and `AI_MODEL_PROVIDER=`. Allowed providers are `fake` and `openai`; allowed rollout values are `disabled`, `authenticated_testers`, and `public`.
 - The production fake gate uses provider `fake`, one authenticated tester, exactly three localized plain-text deltas separated by 350ms, and the identical route/browser parser later used by OpenAI. Delta one must reach the browser before completion.
 - A disconnect/reload must recover one durable terminal result without another provider call. If production buffers the fake response or terminal persistence fails after disconnect, disable Phase 2 and stop before the OpenAI adapter task.
-- Every safe turn state carries only a server-derived `hasPendingMessages` boolean. After terminal completion/failure, the browser starts one idempotent next turn only when that value is true and its FIFO is empty; 25 eligible rows must produce 24 + 1 across exactly two provider starts.
+- Every safe turn state carries server-derived `hasPendingMessages`. With the approved/default context limit 24, 25 eligible rows produce 24 + 1 across two starts; another validated limit drains the same FIFO in chunks of that configured maximum.
 - Turn and run rows cascade with their conversation under the existing 30/180-day retention. Do not add a longer-lived raw cost ledger.
 - Never persist or log a prompt body, message content, provider payload, chain-of-thought, API key, safety identifier, owner scope, email, raw user ID, guest key/token, or public conversation ID in an agent run.
 - Connect no structured credential/account source to the model. Before provider resolution, fail safely on the explicit English/Arabic credential labels and token/card/backup-code patterns defined in Task 4; never log the matched text.
@@ -70,27 +70,27 @@ The required accounts and access are the existing repository/GitHub/Hostinger de
 
 ## File and interface map
 
-| Unit              | Exact path(s)                                                                                                                                                                                                                                                                                                                   | Responsibility / stable interface                                                                                                   |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Runtime config    | `config/ai-assistant.php`, `.env.example`, `config/services.php`, `app/Support/AI/AgentRuntimeConfig.php`, `app/Enums/AI/AgentProvider.php`, `app/Enums/AI/AgentRollout.php`                                                                                                                                                    | Validated fail-closed flags, every bounded value/rate, versioned pricing, and server-only key lookup.                               |
-| Eligibility       | `app/Enums/AI/AssistantMode.php`, `app/Actions/AI/ResolveAssistantMode.php`, `app/Actions/Chat/CreateChatMessage.php`                                                                                                                                                                                                           | Server-only mode plus immutable `agent_eligible_at` assignment for new customer rows.                                               |
-| Durable turns     | `database/migrations/2026_08_21_000001_create_agent_turns_table.php`, `app/Models/AgentTurn.php`, `app/Enums/AI/AgentTurnStatus.php`, `app/Models/ChatMessage.php`                                                                                                                                                              | Eligibility/block timestamps, one claimed range, and one optional final assistant message.                                          |
-| Durable runs      | `database/migrations/2026_08_21_000002_create_agent_runs_table.php`, `app/Models/AgentRun.php`, `app/Enums/AI/AgentRunStatus.php`                                                                                                                                                                                               | One provider attempt with safe operational metadata and no content.                                                                 |
-| Prompt            | `resources/ai-assistant/prompts/support-v1.md`, `app/Actions/AI/GuardAgentPromptContent.php`, `app/Actions/AI/BuildAgentModelRequest.php`                                                                                                                                                                                       | Versioned instructions, only completed-agent prior context, and all current claimed rows or a blocked range.                        |
-| Provider contract | `app/Contracts/AI/AgentModel.php`, `app/Contracts/AI/AgentModelResolver.php`                                                                                                                                                                                                                                                    | `stream(AgentModelRequest, AgentDeadline)` and lazy resolution after prompt guard success.                                          |
-| Provider values   | `app/ValueObjects/AI/AgentModelRequest.php`, `app/ValueObjects/AI/AgentModelEvent.php`, `app/ValueObjects/AI/AgentUsage.php`, `app/ValueObjects/AI/AgentDeadline.php`, `app/Enums/AI/AgentModelEventType.php`, `app/Enums/AI/AgentErrorCode.php`                                                                                | Neutral request/events/usage, total deadline, and authoritative safe errors.                                                        |
-| Fake provider     | `app/Services/AI/FakeAgentModel.php`                                                                                                                                                                                                                                                                                            | Three localized text deltas at the validated 350ms production interval, then zero-token completion.                                 |
-| OpenAI provider   | `app/Services/AI/OpenAiResponsesAgentModel.php`, `app/Services/AI/OpenAiSseDecoder.php`, `app/Services/AI/ConfiguredAgentModelResolver.php`, `app/Contracts/AI/MonotonicClock.php`, `app/Support/AI/SystemMonotonicClock.php`                                                                                                   | Explicit Guzzle stream-handler transport, strict events, lazy resolution, and monotonic deadline.                                   |
-| Turn claim        | `app/Queries/AI/PendingAgentMessages.php`, `app/Actions/AI/CreateOrRecoverAgentTurn.php`, `app/ValueObjects/AI/AgentTurnClaim.php`                                                                                                                                                                                              | Eligible/unreplied/unblocked FIFO query, quiet check, at-most-24 claim, pending signal, and idempotency.                            |
-| Turn execution    | `app/Actions/AI/StreamAgentTurn.php`, `app/Actions/AI/StartAgentRun.php`, `app/Actions/AI/FinalizeAgentTurn.php`, `app/Actions/AI/FailAgentTurn.php`, `app/Actions/AI/BlockAgentPromptRange.php`, `app/Actions/AI/RetryAgentTurn.php`, `app/Actions/AI/EnsureAgentTurnTerminal.php`, `app/Services/AI/AgentTurnRetryPolicy.php` | Lock-bounded transitions, blocked sensitive ranges, lazy provider I/O, total attempt deadline, retry policy, and one final message. |
-| App stream        | `app/Enums/AI/AppStreamEventType.php`, `app/ValueObjects/AI/AppStreamEvent.php`, `app/Http/Responses/SseEventEncoder.php`                                                                                                                                                                                                       | Internal events normalized to only four approved browser event names and heartbeat comments.                                        |
-| HTTP boundary     | `app/Http/Controllers/Chat/AgentTurnController.php`, `app/Http/Presenters/AgentTurnPresenter.php`, `routes/chat.php`                                                                                                                                                                                                            | Owner-scoped create stream, status, and failed-turn retry.                                                                          |
-| Recovery          | `app/Console/Commands/RecoverStaleAgentTurns.php`, `routes/console.php`, `app/Console/Commands/MaintainChatConversations.php`                                                                                                                                                                                                   | Minute stale-turn failure and retention-safe nonterminal exclusion.                                                                 |
-| Browser transport | `resources/js/lib/agent-stream.ts`, `resources/js/lib/chat-api.ts`, `resources/js/hooks/use-chat.ts`, `resources/js/types/chat.ts`                                                                                                                                                                                              | Quiet timer, POST parser, bounded partial bubble, polling, reload recovery, and server-pending drain.                               |
-| Browser UI        | `resources/js/components/chat/chat-widget.tsx`, `resources/js/components/chat/chat-message-list.tsx`, `resources/js/components/chat/typing-indicator.tsx`, `resources/css/app.css`                                                                                                                                              | WordPress-continuous presentation with explicit streaming/failure state.                                                            |
-| Focused tests     | `tests/Feature/AI/*`, `tests/Unit/AI/*`, `tests/Integration/AI/*`, `tests/Integration/Agent*`, `resources/js/__tests__/chat/*`, `tests/Browser/agent-stream.spec.ts`                                                                                                                                                            | State, legacy isolation, backlog, deadline, concurrency, protocol, browser, privacy, and cost.                                      |
-| CI                | `.github/workflows/tests.yml`, `playwright.config.ts`                                                                                                                                                                                                                                                                           | Explicit MariaDB/Chromium paths; fake provider and empty OpenAI key only.                                                           |
-| Evidence          | `docs/ai-assistant/evidence/phase-2-hostinger-fake-stream.md`, `docs/ai-assistant/evidence/phase-2-luna-tester-acceptance.md`                                                                                                                                                                                                   | Sanitized measured evidence with no prompts, content, owner identifiers, or secrets.                                                |
+| Unit              | Exact path(s)                                                                                                                                                                                                                                                                                                                                                           | Responsibility / stable interface                                                                                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Runtime config    | `config/ai-assistant.php`, `.env.example`, `config/services.php`, `app/Support/AI/AgentRuntimeConfig.php`, `app/Enums/AI/AgentProvider.php`, `app/Enums/AI/AgentRollout.php`                                                                                                                                                                                            | Validated fail-closed flags, every bounded value/rate, versioned pricing, and server-only key lookup.                 |
+| Eligibility       | `app/Enums/AI/AssistantMode.php`, `app/Actions/AI/ResolveAssistantMode.php`, `app/Actions/Chat/CreateChatMessage.php`                                                                                                                                                                                                                                                   | Server-only mode plus immutable `agent_eligible_at` assignment for new customer rows.                                 |
+| Durable turns     | `database/migrations/2026_08_21_000001_create_agent_turns_table.php`, `app/Models/AgentTurn.php`, `app/Enums/AI/AgentTurnStatus.php`, `app/Models/ChatMessage.php`                                                                                                                                                                                                      | Eligibility/block timestamps, one claimed range, and one optional final assistant message.                            |
+| Durable runs      | `database/migrations/2026_08_21_000002_create_agent_runs_table.php`, `app/Models/AgentRun.php`, `app/Enums/AI/AgentRunStatus.php`                                                                                                                                                                                                                                       | One provider attempt with safe operational metadata and no content.                                                   |
+| Prompt            | `resources/ai-assistant/prompts/support-v1.md`, `app/Actions/AI/GuardAgentPromptContent.php`, `app/Actions/AI/BuildAgentModelRequest.php`                                                                                                                                                                                                                               | Versioned instructions, only completed-agent prior context, and all current claimed rows or a blocked range.          |
+| Provider contract | `app/Contracts/AI/AgentModel.php`, `app/Contracts/AI/AgentModelResolver.php`                                                                                                                                                                                                                                                                                            | `stream(AgentModelRequest, AgentDeadline)` and lazy resolution after prompt guard success.                            |
+| Provider values   | `app/ValueObjects/AI/AgentModelRequest.php`, `app/ValueObjects/AI/AgentModelEvent.php`, `app/ValueObjects/AI/AgentUsage.php`, `app/ValueObjects/AI/AgentDeadline.php`, `app/Enums/AI/AgentModelEventType.php`, `app/Enums/AI/AgentErrorCode.php`                                                                                                                        | Neutral request/events/usage, total deadline, and authoritative safe errors.                                          |
+| Fake provider     | `app/Services/AI/FakeAgentModel.php`                                                                                                                                                                                                                                                                                                                                    | Three localized text deltas at the validated 350ms production interval, then zero-token completion.                   |
+| OpenAI provider   | `app/Services/AI/OpenAiResponsesAgentModel.php`, `app/Services/AI/OpenAiSseDecoder.php`, `app/Services/AI/ConfiguredAgentModelResolver.php`, `app/Contracts/AI/MonotonicClock.php`, `app/Support/AI/SystemMonotonicClock.php`                                                                                                                                           | Explicit Guzzle stream-handler transport, strict events, lazy resolution, and monotonic deadline.                     |
+| Turn claim        | `app/Queries/AI/PendingAgentMessages.php`, `app/Actions/AI/CreateOrRecoverAgentTurn.php`, `app/ValueObjects/AI/AgentTurnClaim.php`                                                                                                                                                                                                                                      | Eligible/unreplied/unblocked FIFO query, quiet check, at-most-24 claim, pending signal, and idempotency.              |
+| Turn execution    | `app/Actions/AI/StreamAgentTurn.php`, `app/Actions/AI/StartAgentRun.php`, `app/Actions/AI/FinalizeAgentTurn.php`, `app/Actions/AI/FailAgentTurn.php`, `app/Actions/AI/BlockAgentPromptRange.php`, `app/Actions/AI/PrepareAutomaticAgentRetry.php`, `app/Actions/AI/RetryAgentTurn.php`, `app/Services/AI/AgentTurnRetryPolicy.php`, `app/Contracts/AI/AgentSleeper.php` | Lock-bounded terminal/automatic transitions, outside-lock wait, shared deadline, retry policy, and one final message. |
+| App stream        | `app/Enums/AI/AppStreamEventType.php`, `app/ValueObjects/AI/AppStreamEvent.php`, `app/Http/Responses/SseEventEncoder.php`                                                                                                                                                                                                                                               | Internal events normalized to only four approved browser event names and heartbeat comments.                          |
+| HTTP boundary     | `app/Http/Controllers/Chat/AgentTurnController.php`, `app/Http/Presenters/AgentTurnPresenter.php`, `routes/chat.php`                                                                                                                                                                                                                                                    | Owner-scoped create stream, status, and failed-turn retry.                                                            |
+| Recovery          | `app/Console/Commands/RecoverStaleAgentTurns.php`, `routes/console.php`, `app/Console/Commands/MaintainChatConversations.php`                                                                                                                                                                                                                                           | Minute stale-turn failure and retention-safe nonterminal exclusion.                                                   |
+| Browser transport | `resources/js/lib/agent-stream.ts`, `resources/js/lib/chat-api.ts`, `resources/js/hooks/use-chat.ts`, `resources/js/types/chat.ts`                                                                                                                                                                                                                                      | Quiet timer, POST parser, bounded partial bubble, polling, reload recovery, and server-pending drain.                 |
+| Browser UI        | `resources/js/components/chat/chat-widget.tsx`, `resources/js/components/chat/chat-message-list.tsx`, `resources/js/components/chat/typing-indicator.tsx`, `resources/css/app.css`                                                                                                                                                                                      | WordPress-continuous presentation with explicit streaming/failure state.                                              |
+| Focused tests     | `tests/Feature/AI/*`, `tests/Unit/AI/*`, `tests/Integration/AI/*`, `tests/Integration/Agent*`, `resources/js/__tests__/chat/*`, `tests/Browser/agent-stream.spec.ts`                                                                                                                                                                                                    | State, legacy isolation, backlog, deadline, concurrency, protocol, browser, privacy, and cost.                        |
+| CI                | `.github/workflows/tests.yml`, `playwright.config.ts`                                                                                                                                                                                                                                                                                                                   | Explicit MariaDB/Chromium paths; fake provider and empty OpenAI key only.                                             |
+| Evidence          | `docs/ai-assistant/evidence/phase-2-hostinger-fake-stream.md`, `docs/ai-assistant/evidence/phase-2-luna-tester-acceptance.md`                                                                                                                                                                                                                                           | Sanitized measured evidence with no prompts, content, owner identifiers, or secrets.                                  |
 
 ## Stable interface definitions
 
@@ -120,14 +120,16 @@ interface AgentModelResolver
 
 The concrete class signatures are contracts, not bodyless PHP declarations:
 
-| Class                      | Exact public signature                                                                                                                                 |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `CreateOrRecoverAgentTurn` | `execute(ChatConversation $conversation, ChatOwner $owner): AgentTurnClaim`                                                                            |
-| `GuardAgentPromptContent`  | `assertSafe(Collection $messages): void`                                                                                                               |
-| `BuildAgentModelRequest`   | `execute(AgentTurn $turn, ChatOwner $owner): AgentModelRequest`                                                                                        |
-| `PendingAgentMessages`     | `query(ChatConversation $conversation, int $afterMessageId = 0): Builder` and `existsAfter(ChatConversation $conversation, int $afterMessageId): bool` |
-| `StreamAgentTurn`          | `execute(AgentTurn $turn, ChatOwner $owner): Generator` yielding `AppStreamEvent`                                                                      |
-| `AgentTurnRetryPolicy`     | `canRetry(AgentTurn $turn): bool` and `canAutomaticallyRetry(AgentTurn $turn, AgentRun $run, AgentErrorCode $code): bool`                              |
+| Class                        | Exact public signature                                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CreateOrRecoverAgentTurn`   | `execute(ChatConversation $conversation, ChatOwner $owner): AgentTurnClaim`                                                                            |
+| `GuardAgentPromptContent`    | `assertSafe(Collection $messages): void`                                                                                                               |
+| `BuildAgentModelRequest`     | `execute(AgentTurn $turn, ChatOwner $owner): AgentModelRequest`                                                                                        |
+| `PendingAgentMessages`       | `query(ChatConversation $conversation, int $afterMessageId = 0): Builder` and `existsAfter(ChatConversation $conversation, int $afterMessageId): bool` |
+| `StreamAgentTurn`            | `execute(AgentTurn $turn, ChatOwner $owner): Generator` yielding `AppStreamEvent`                                                                      |
+| `AgentTurnRetryPolicy`       | `canRetry(AgentTurn $turn): bool` and `canAutomaticallyRetry(AgentTurn $turn, AgentRun $run, AgentErrorCode $code): bool`                              |
+| `PrepareAutomaticAgentRetry` | `execute(AgentTurn $turn, AgentRun $run): AgentTurn` returning the fresh waiting turn                                                                  |
+| `AgentSleeper`               | `sleepMilliseconds(int $milliseconds, AgentDeadline $deadline): void` with no database work                                                            |
 
 ```ts
 export type AgentTurnState = {
@@ -1026,7 +1028,7 @@ Review Tasks 1-3 as one Stage 2 unit. Push the feature branch for review; that p
 - Consumes: `AgentTurn`, `ChatConversation`, `ChatMessage`, `ChatOwner`, `AgentModelRequest`, config limits, and the conversation-first lock discipline.
 - Produces: one authoritative eligible/unreplied/unblocked pending query; completed-agent-only prior context; `CreateOrRecoverAgentTurn::execute(ChatConversation, ChatOwner): AgentTurnClaim`; guarded request construction; canonical active-turn recovery.
 
-- [ ] **Step 1: Write failing quiet-window, 24-message, prompt-completeness, and concurrency tests**
+- [ ] **Step 1: Write failing quiet-window, default-24, prompt-completeness, and concurrency tests**
 
 ```php
 <?php
@@ -1044,7 +1046,7 @@ afterEach(function (): void {
     Carbon::setTestNow();
 });
 
-test('claim waits for quiet then takes the first 24 unclaimed customers', function () {
+test('claim waits for quiet then takes the approved default 24 customers', function () {
     Carbon::setTestNow('2026-08-21 12:00:00');
     config()->set('ai-assistant.turn_debounce_ms', 1500);
     $conversation = ChatConversation::factory()->create();
@@ -1124,7 +1126,8 @@ test('first AI claim excludes Phase 1 demo and old unreplied history', function 
         'reply_to_message_id' => $demoCustomer->id,
         'content' => 'Phase 1 demo must never enter agent context.',
     ]);
-    ChatMessage::factory()->customer()->for($conversation, 'conversation')->create([
+    ChatMessage::factory()->customer()->agentEligible()
+        ->for($conversation, 'conversation')->create([
         'content' => 'Old unreplied history must remain ineligible.',
     ]);
     $eligible = ChatMessage::factory()->customer()->agentEligible()
@@ -1281,7 +1284,7 @@ php vendor/bin/phpstan analyse app/Actions/AI app/Queries/AI app/ValueObjects/AI
 php vendor/bin/pint --test app/Actions/AI app/Queries/AI app/ValueObjects/AI app/Exceptions/AI app/Models/ChatMessage.php tests/Feature/AI tests/Integration/AgentTurnConcurrencyTest.php tests/Support/ConcurrentAgentTurnClaim.php
 ```
 
-Expected: PASS; Phase 1 demo-linked and old unreplied rows never enter claim/context, every claim is eligible/unblocked/unreplied, four rapid persisted messages produce one four-message turn after quiet, 25 eligible rows produce a first 24-message turn with server pending true, concurrent claims return one start owner, and prompt tests include every current claimed row plus only completed-agent prior context without exceeding the validated limit.
+Expected: PASS; legacy rows stay excluded; every claim is eligible/unblocked/unreplied; default 24 makes 25 rows pending after the first range; nondefault 10 claims only 10; concurrent claims have one starter; prompt uses validated limit/completed-agent context.
 
 Append this exact path to the MariaDB workflow command:
 
@@ -1309,24 +1312,30 @@ Checkpoint: no provider call, sleep, or HTTP stream occurs inside a database tra
 - Create: `app/Actions/AI/FinalizeAgentTurn.php`
 - Create: `app/Actions/AI/FailAgentTurn.php`
 - Create: `app/Actions/AI/BlockAgentPromptRange.php`
+- Create: `app/Actions/AI/PrepareAutomaticAgentRetry.php`
 - Create: `app/Actions/AI/RetryAgentTurn.php`
 - Create: `app/Actions/AI/EnsureAgentTurnTerminal.php`
 - Create: `app/Actions/AI/StreamAgentTurn.php`
 - Create: `app/Services/AI/AgentTurnRetryPolicy.php`
+- Create: `app/Contracts/AI/AgentSleeper.php`
+- Create: `app/Support/AI/SystemAgentSleeper.php`
+- Create: `tests/Support/AI/DeadlineAdvancingSleeper.php`
 - Create: `tests/Support/AI/ScriptedAgentModelResolver.php`
 - Create: `tests/Support/AI/ScriptedAgentModel.php`
 - Test: `tests/Feature/AI/AgentTurnExecutionTest.php`
 - Test: `tests/Feature/AI/AgentBacklogExecutionTest.php`
 - Test: `tests/Feature/AI/AgentSensitiveRangeTest.php`
+- Test: `tests/Feature/AI/AgentAutomaticRetryTest.php`
 - Test: `tests/Feature/AI/AgentTurnRetryTest.php`
 - Test: `tests/Integration/AgentTurnFinalizationConcurrencyTest.php`
 - Create: `tests/Support/ConcurrentAgentTurnFinalization.php`
+- Modify: `app/Providers/AppServiceProvider.php`
 - Modify: `.github/workflows/tests.yml`
 
 **Interfaces:**
 
 - Consumes: lazy `AgentModelResolver`, one turn-wide `AgentDeadline`, guarded request builder, pending query, typed errors/config, turn/run constraints, and `ChatOwner`.
-- Produces: one final message or one typed terminal failure; permanently blocked sensitive range; authoritative retryability; 24+1 backlog drain across exactly two provider starts.
+- Produces: one final message/typed failure; blocked sensitive range; authoritative retryability; configured-max backlog drain (default 24 gives 24+1/two starts).
 
 - [ ] **Step 1: Write failing execution, truncation, retry-budget, and finalization-race tests**
 
@@ -1458,7 +1467,9 @@ expect($firstHasPending)->toBeTrue()
     ->and(AgentRun::query()->count())->toBe(2);
 ```
 
-The fixture creates exactly 25 eligible/unblocked/unreplied customers. Assert the first range contains 24, the second contains one, both final messages are unique, and no third provider start/run occurs.
+With default 24, the fixture creates 25 eligible/unblocked/unreplied customers and asserts ranges 24/1, two starts, and no third. A second case sets `max_context_messages=10` through validated config and asserts ranges 10/10/5, three starts, then idle/no fourth; this proves chunk size is wired rather than hardcoded.
+
+`AgentAutomaticRetryTest` first calls `PrepareAutomaticAgentRetry` on a running attempt-one/rate-limit fixture and asserts: run `failed` + `RateLimited`, turn `waiting`, null terminal code/completion, `attempt_count=1`, no assistant, and explicit retry policy false. Its deadline case binds `DeadlineAdvancingSleeper`, advances beyond the shared deadline during `Retry-After`, and asserts one run only, run code `RateLimited`, terminal turn code `ProviderTimeout`, emitted `response.failed.code=provider_timeout`, and no attempt two. A within-budget case asserts the waiting transition commits before sleeper invocation and attempt two starts afterward.
 
 The MariaDB test starts two finalizers for the same running turn. A barrier pauses both before their terminal transactions; after release, assert one `chat_messages` assistant row, one `assistant_message_id`, one completed turn, and no content overwrite.
 
@@ -1467,7 +1478,7 @@ The MariaDB test starts two finalizers for the same running turn. A barrier paus
 Run:
 
 ```powershell
-php artisan test tests/Feature/AI/AgentTurnExecutionTest.php tests/Feature/AI/AgentBacklogExecutionTest.php tests/Feature/AI/AgentSensitiveRangeTest.php tests/Feature/AI/AgentTurnRetryTest.php
+php artisan test tests/Feature/AI/AgentTurnExecutionTest.php tests/Feature/AI/AgentBacklogExecutionTest.php tests/Feature/AI/AgentSensitiveRangeTest.php tests/Feature/AI/AgentAutomaticRetryTest.php tests/Feature/AI/AgentTurnRetryTest.php
 ```
 
 Expected: FAIL because the runner, block/fail/finalize/retry actions, retry policy, app event values, scripted resolver/provider, and server backlog drain do not exist.
@@ -1521,6 +1532,8 @@ $lockedConversation->forceFill(['last_message_at' => now()])->save();
 
 `FailAgentTurn::execute(AgentTurn, ?AgentRun, AgentErrorCode)` uses conversation -> turn -> optional run lock order, writes only the enum value, never creates a message, and is idempotent if another terminal path won. `BlockAgentPromptRange` uses conversation -> turn lock order and sets `agent_prompt_blocked_at=now()` only on eligible/unblocked customer rows inside the turn's immutable numeric bounds; it does not alter content or eligibility. `EnsureAgentTurnTerminal` marks a still-nonterminal turn with `AgentErrorCode::StreamTerminated`; it leaves terminal turns unchanged.
 
+`PrepareAutomaticAgentRetry` is distinct from terminal failure and explicit retry. In one transaction it locks conversation -> turn -> current run, rechecks `canAutomaticallyRetry`, marks only that run `failed` with `RateLimited`/completion time, and changes the turn from `running` to `waiting` with `terminal_error_code=null` and `completed_at=null`. It commits before any wait. Polling during the wait therefore returns nonterminal waiting, `retryable=false`, no assistant message, and no customer failure event. Bind `AgentSleeper` to `SystemAgentSleeper`; it sleeps only after this transaction and checks the shared deadline before/after.
+
 `AgentTurnRetryPolicy` is the only retry decision:
 
 ```php
@@ -1540,11 +1553,14 @@ public function canAutomaticallyRetry(
 ): bool {
     return $code === AgentErrorCode::RateLimited
         && $run->attempt_number === 1
-        && $this->canRetry($turn);
+        && $run->status === AgentRunStatus::Running
+        && $turn->status === AgentTurnStatus::Running
+        && $turn->assistant_message_id === null
+        && $turn->attempt_count < $this->config->maxAttempts();
 }
 ```
 
-`RetryAgentTurn` and `AgentTurnPresenter` both call this policy. Tests enumerate every `AgentErrorCode`: the seven transient cases are retryable only with remaining budget; sensitive/configuration/invalid-request/authentication/permission/rejected/malformed/terminal-provider/cancelled cases are always non-retryable.
+`RetryAgentTurn` and `AgentTurnPresenter` call `canRetry`; the automatic transition calls only `canAutomaticallyRetry` while turn/run are still running. Tests enumerate every error: transient cases are explicit-retryable only after terminal failure with budget; sensitive/config/invalid/auth/permission/rejected/malformed/terminal/cancelled are not.
 
 - [ ] **Step 4: Implement provider streaming and the exact attempt budget**
 
@@ -1641,26 +1657,32 @@ try {
 
             $errorCode = $providerEvent->errorCode
                 ?? AgentErrorCode::ProviderTerminalFailure;
-            $this->failAgentTurn->execute($turn, $run, $errorCode);
-            $failedTurn = $turn->fresh();
+            $runningTurn = $turn->fresh();
 
             if ($this->retryPolicy->canAutomaticallyRetry(
-                $failedTurn,
+                $runningTurn,
                 $run,
                 $errorCode,
             ) && ! $automatic429Used) {
                 $automatic429Used = true;
+                $this->prepareAutomaticAgentRetry->execute(
+                    $runningTurn,
+                    $run,
+                );
                 $waitMilliseconds = min(
                     $providerEvent->retryAfterMilliseconds ?? 0,
                     $this->config->retryAfterCapMilliseconds(),
                     $deadline->remainingMilliseconds(),
                 );
-                usleep($waitMilliseconds * 1000);
-                $deadline->throwIfExpired();
-                $this->retryAgentTurn->execute($failedTurn);
+                $this->sleeper->sleepMilliseconds(
+                    $waitMilliseconds,
+                    $deadline,
+                );
                 continue 2;
             }
 
+            $this->failAgentTurn->execute($turn, $run, $errorCode);
+            $failedTurn = $turn->fresh();
             yield AppStreamEvent::failed($failedTurn, $errorCode);
             return;
         }
@@ -1677,9 +1699,14 @@ try {
         return;
     }
 } catch (AgentDeadlineExceeded) {
+    $timeoutRun = null;
+
+    if (isset($run) && $run->fresh()->status === AgentRunStatus::Running) {
+        $timeoutRun = $run;
+    }
     $this->failAgentTurn->execute(
         $turn,
-        isset($run) ? $run : null,
+        $timeoutRun,
         AgentErrorCode::ProviderTimeout,
     );
     yield AppStreamEvent::failed(
@@ -1689,18 +1716,18 @@ try {
 }
 ```
 
-The real implementation also catches `AgentDeadlineExceeded` around prompt construction, resolution, provider connect/headers/body/parser, automatic wait, and automatic retry; it closes any response, fails the current/no-run turn with `ProviderTimeout`, and emits one safe failure. It maps connection/HTTP/provider failures to the exact enum and never includes exception messages. The same deadline instance is never reset for automatic attempt two. `RetryAgentTurn::execute` locks conversation then turn and calls `AgentTurnRetryPolicy::canRetry`; when allowed it sets status to `waiting`, clears completion/error, and preserves bounds, public ID, attempt count, eligibility/block state, and original start.
+The outer deadline catch covers prompt/resolver, provider transport/parser, automatic wait, and attempt two. If expiry occurs during wait, the first run remains failed `RateLimited`, the waiting turn becomes terminal `ProviderTimeout`, and the emitted failure is also `ProviderTimeout`; no attempt two starts. The same deadline is never reset. `RetryAgentTurn` remains explicit-only: it locks conversation -> turn, calls `canRetry`, and when allowed returns a terminal failed turn to waiting while preserving bounds/public ID/attempt count/eligibility/block state/start.
 
 - [ ] **Step 5: Run SQLite/MariaDB GREEN, security assertions, and CI path update**
 
 ```powershell
-php artisan test tests/Feature/AI/AgentTurnExecutionTest.php tests/Feature/AI/AgentBacklogExecutionTest.php tests/Feature/AI/AgentSensitiveRangeTest.php tests/Feature/AI/AgentTurnRetryTest.php
+php artisan test tests/Feature/AI/AgentTurnExecutionTest.php tests/Feature/AI/AgentBacklogExecutionTest.php tests/Feature/AI/AgentSensitiveRangeTest.php tests/Feature/AI/AgentAutomaticRetryTest.php tests/Feature/AI/AgentTurnRetryTest.php
 php vendor/bin/pest --configuration phpunit.mariadb.xml tests/Integration/AgentTurnFinalizationConcurrencyTest.php
 php vendor/bin/phpstan analyse app/Actions/AI app/Services/AI/AgentTurnRetryPolicy.php app/ValueObjects/AI tests/Support/AI
 php vendor/bin/pint --test app/Actions/AI app/Services/AI/AgentTurnRetryPolicy.php app/Enums/AI app/ValueObjects/AI tests/Feature/AI tests/Integration/AgentTurnFinalizationConcurrencyTest.php tests/Support/AI
 ```
 
-Expected: PASS for completion, empty/malformed/incomplete failure, connect failure, 5xx, one bounded automatic 429 inside the original deadline, explicit retry, every error-code retryability case, attempt exhaustion, 25 -> 24 + 1 with two starts/no third, sensitive-range blocking before resolver invocation, later harmless-turn success, config-derived character/attempt/retry limits, and concurrent finalization. Assert run serialization/log output contains no prompt/customer/matched secret/safety ID/owner/provider payload.
+Expected: PASS for completion/failures, automatic 429 run-only failure plus nonterminal waiting turn, no explicit retry during wait, attempt two after outside-lock sleep, deadline expiry inside wait producing persisted/emitted `ProviderTimeout`, explicit retry policy, attempt exhaustion, default/nondefault backlog chunks, sensitive block/later harmless success, config-derived limits, and concurrent finalization. Assert no prompt/customer/secret/safety ID/owner/provider payload in run/log output.
 
 Append the exact MariaDB path:
 
@@ -1712,7 +1739,7 @@ tests/Integration/AgentTurnFinalizationConcurrencyTest.php
 
 ```powershell
 git diff --check
-git add app/Enums/AI/AppStreamEventType.php app/ValueObjects/AI/AppStreamEvent.php app/Actions/AI/StartAgentRun.php app/Actions/AI/FinalizeAgentTurn.php app/Actions/AI/FailAgentTurn.php app/Actions/AI/BlockAgentPromptRange.php app/Actions/AI/RetryAgentTurn.php app/Actions/AI/EnsureAgentTurnTerminal.php app/Actions/AI/StreamAgentTurn.php app/Services/AI/AgentTurnRetryPolicy.php tests/Support/AI/ScriptedAgentModelResolver.php tests/Support/AI/ScriptedAgentModel.php tests/Feature/AI/AgentTurnExecutionTest.php tests/Feature/AI/AgentBacklogExecutionTest.php tests/Feature/AI/AgentSensitiveRangeTest.php tests/Feature/AI/AgentTurnRetryTest.php tests/Integration/AgentTurnFinalizationConcurrencyTest.php tests/Support/ConcurrentAgentTurnFinalization.php .github/workflows/tests.yml
+git add app/Enums/AI/AppStreamEventType.php app/ValueObjects/AI/AppStreamEvent.php app/Contracts/AI/AgentSleeper.php app/Actions/AI/StartAgentRun.php app/Actions/AI/FinalizeAgentTurn.php app/Actions/AI/FailAgentTurn.php app/Actions/AI/BlockAgentPromptRange.php app/Actions/AI/PrepareAutomaticAgentRetry.php app/Actions/AI/RetryAgentTurn.php app/Actions/AI/EnsureAgentTurnTerminal.php app/Actions/AI/StreamAgentTurn.php app/Services/AI/AgentTurnRetryPolicy.php app/Support/AI/SystemAgentSleeper.php app/Providers/AppServiceProvider.php tests/Support/AI/DeadlineAdvancingSleeper.php tests/Support/AI/ScriptedAgentModelResolver.php tests/Support/AI/ScriptedAgentModel.php tests/Feature/AI/AgentTurnExecutionTest.php tests/Feature/AI/AgentBacklogExecutionTest.php tests/Feature/AI/AgentSensitiveRangeTest.php tests/Feature/AI/AgentAutomaticRetryTest.php tests/Feature/AI/AgentTurnRetryTest.php tests/Integration/AgentTurnFinalizationConcurrencyTest.php tests/Support/ConcurrentAgentTurnFinalization.php .github/workflows/tests.yml
 git commit -m "feat(ai): execute durable agent turns safely"
 ```
 
@@ -1923,6 +1950,9 @@ Review Tasks 4-6 together, including every transaction boundary and MariaDB test
 ```php
 <?php
 
+use App\Actions\AI\PrepareAutomaticAgentRetry;
+use App\Models\AgentRun;
+use App\Models\AgentTurn;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
@@ -1941,9 +1971,10 @@ test('quiet fake turn streams only app events and persists before completion', f
     $user = User::factory()->create();
     config()->set('ai-assistant.test_user_ids', [$user->id]);
     $conversation = ChatConversation::factory()->forUser($user)->create();
-    ChatMessage::factory()->customer()->for($conversation, 'conversation')->create([
-        'created_at' => now()->subSeconds(2),
-    ]);
+    ChatMessage::factory()->customer()->agentEligible()
+        ->for($conversation, 'conversation')->create([
+            'created_at' => now()->subSeconds(2),
+        ]);
 
     $response = $this->actingAs($user)
         ->withHeader('Accept', 'text/event-stream')
@@ -1970,15 +2001,40 @@ test('nonquiet request returns bounded 202 without creating a turn', function ()
     $user = User::factory()->create();
     config()->set('ai-assistant.test_user_ids', [$user->id]);
     $conversation = ChatConversation::factory()->forUser($user)->create();
-    ChatMessage::factory()->customer()->for($conversation, 'conversation')->create([
-        'created_at' => now(),
-    ]);
+    ChatMessage::factory()->customer()->agentEligible()
+        ->for($conversation, 'conversation')->create([
+            'created_at' => now(),
+        ]);
 
     $this->actingAs($user)
         ->postJson(route('chat.agent-turns.store', ['conversation' => $conversation->public_id]))
         ->assertAccepted()
         ->assertJsonPath('data.state', 'waiting_for_quiet')
         ->assertJsonPath('data.retryAfterMs', 1500);
+});
+
+test('status polling during automatic retry wait stays nonterminal and not retryable', function () {
+    config()->set('chat.enabled', true);
+    config()->set('ai-assistant.enabled', true);
+    config()->set('ai-assistant.rollout', 'authenticated_testers');
+    config()->set('ai-assistant.provider', 'fake');
+    $user = User::factory()->create();
+    config()->set('ai-assistant.test_user_ids', [$user->id]);
+    $conversation = ChatConversation::factory()->forUser($user)->create();
+    $turn = AgentTurn::factory()->running()
+        ->for($conversation, 'conversation')->create(['attempt_count' => 1]);
+    $run = AgentRun::factory()->running()->for($turn)->create([
+        'attempt_number' => 1,
+    ]);
+    app(PrepareAutomaticAgentRetry::class)->execute($turn, $run);
+
+    $this->actingAs($user)->getJson(route('chat.agent-turns.show', [
+        'conversation' => $conversation->public_id,
+        'turn' => $turn->public_id,
+    ]))->assertOk()
+        ->assertJsonPath('data.status', 'waiting')
+        ->assertJsonPath('data.retryable', false)
+        ->assertJsonPath('data.errorCode', null);
 });
 ```
 
@@ -2054,7 +2110,7 @@ php vendor/bin/phpstan analyse app/Http/Controllers/Chat/AgentTurnController.php
 php vendor/bin/pint --test app/Http/Controllers/Chat/AgentTurnController.php app/Http/Responses/SseEventEncoder.php routes/chat.php app/Providers/AppServiceProvider.php
 ```
 
-Expected: seven chat routes are listed; feature tests observe one `turn.created`, exactly three ordered deltas, one completion, no provider names/payload, no-store and `X-Accel-Buffering: no`, canonical retry, and one durable assistant message.
+Expected: seven chat routes; eligible fixtures stream three deltas/completion; nonquiet eligible fixture returns 202; polling the committed automatic-wait state returns waiting/nonretryable/null error; no provider payload; no-store/X-Accel; canonical explicit retry and one durable message.
 
 - [ ] **Step 6: Review, commit, and hold deployment disabled**
 
@@ -2166,7 +2222,7 @@ it('drains server pending backlog once and stops after the second terminal turn'
 });
 ```
 
-Also test: timer does not start while a message request or queue item remains; a new persisted send resets it; a terminal state with `hasPendingMessages=true` starts exactly one next POST after FIFO empties; 25 rows yield first terminal pending true then second terminal false and exactly two POSTs/no third; a message persisted during a running turn follows the same terminal signal; reload/poll of a terminal pending turn starts exactly once despite rerenders; a 202 uses bounded `retryAfterMs`; split UTF-8 Arabic chunks decode correctly; raw provider event names fail parsing; disconnect polls the known public turn without POSTing another start; partial content is text only; restart is disabled while nonterminal.
+Also test: timer waits for FIFO; terminal pending starts one successor; under default 24, 25 rows yield two POSTs/no third; a mocked three-chunk nondefault sequence still schedules exactly one successor per terminal true then stops; active-turn arrivals/reload/poll use the same rule; 202 delay, UTF-8, event whitelist, disconnect polling, text-only partial, and restart guard hold.
 
 - [ ] **Step 3: Run frontend tests to verify RED**
 
@@ -2415,10 +2471,11 @@ use App\Exceptions\AI\AgentDeadlineExceeded;
 use App\ValueObjects\AI\AgentDeadline;
 use App\ValueObjects\AI\AgentModelRequest;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\StrayRequestException;
 use Illuminate\Support\Facades\Http;
 use Tests\Support\AI\FakeMonotonicClock;
 
-test('adapter sends the exact bounded request and maps required events', function () {
+test('matched Http fake is recorded through the custom base handler', function () {
     Http::preventStrayRequests();
     Http::fake([
         'https://api.openai.com/v1/responses' => Http::response(
@@ -2462,6 +2519,23 @@ test('adapter sends the exact bounded request and maps required events', functio
         ->and($events[0]->delta)->toBe('مرحبًا')
         ->and($events[1]->usage->cacheWriteTokens)->toBe(100)
         ->and($events[1]->usage->reasoningTokens)->toBe(80);
+});
+
+test('preventStrayRequests blocks an unmatched URL through the custom base handler', function () {
+    Http::preventStrayRequests();
+    config()->set('services.openai.key', 'unit-test-key-not-a-real-secret');
+    $clock = new FakeMonotonicClock();
+    $deadline = AgentDeadline::afterSeconds(
+        $clock,
+        app(AgentRuntimeConfig::class)->requestTimeoutSeconds(),
+    );
+
+    expect(fn () => iterator_to_array(
+        app(OpenAiResponsesAgentModel::class)->stream(
+            validAgentModelRequest(),
+            $deadline,
+        ),
+    ))->toThrow(StrayRequestException::class);
 });
 
 test('continuous nonterminal events cannot overrun the monotonic total deadline', function () {
@@ -2535,11 +2609,13 @@ The adapter validates a nonempty server key, exact model/limits/reasoning, 64 lo
 ```php
 $deadline->throwIfExpired();
 $remainingSeconds = max(0.001, $deadline->remainingMilliseconds() / 1000);
-$response = Http::baseUrl((string) config('services.openai.base_url'))
+$pendingRequest = Http::baseUrl((string) config('services.openai.base_url'))
     ->withToken($apiKey)
-    ->acceptJson()
+    ->acceptJson();
+$pendingRequest->setHandler($this->streamHandlerStack->make());
+
+$response = $pendingRequest
     ->withOptions([
-        'handler' => $this->streamHandlerStack->make(),
         'stream' => true,
         'read_timeout' => min(
             $this->config->streamReadTimeoutSeconds(),
@@ -2576,6 +2652,8 @@ foreach ($this->streamReader->chunks($response, $deadline) as $chunk) {
     }
 }
 ```
+
+Use Laravel's public `PendingRequest::setHandler()` exactly as above. Never put `handler` in request-level `withOptions()`: `setHandler()` becomes the base for `buildHandlerStack()`, which wraps it with Laravel's before-send, recorder, and stub/stray-request middleware.
 
 Installed `StreamHandler` does not consume Guzzle's curl-only `connect_timeout`, so its `timeout` option is set to `min(validated connect timeout, deadline remaining)` for open/headers. `DeadlineAwareStreamReader` then detaches the PSR resource and before **each** `fread(8192)` recomputes `min(validated read timeout, deadline remaining)`, reapplies `stream_set_timeout`, checks `timed_out`, and rechecks the deadline. The initial `read_timeout` is not sufficient because budget shrinks. It closes in `finally`; body/read/parser/deadline failures map safely. The same deadline covers prompt/resolver, connect/headers, body/parser, `Retry-After`, and attempt two.
 
@@ -2615,7 +2693,7 @@ composer ci:check
 git diff -- composer.json composer.lock package.json package-lock.json
 ```
 
-Expected: PASS for explicit real StreamHandler loopback streaming, connect/header/body/parser deadline, continuous nonterminal overrun at the wall deadline, remaining-budget per-read timeout/close, event mapping, split UTF-8, 429 bounds, config-derived request/usage/cost, lazy missing-key failure, and privacy. Dependency diff is empty.
+Expected: PASS for unmatched stray-request blocking, matched fake recording/`assertSent`, separate real StreamHandler loopback, connect/header/body/parser deadline, continuous overrun, remaining-read timeout/close, event mapping, 429 bounds, config-derived request/usage/cost, lazy missing-key failure, and privacy. Dependency diff is empty.
 
 At workflow job scope set explicit fake/no-key CI values:
 
@@ -2933,7 +3011,7 @@ Expected RED: matches remain because the handbook still describes the preimpleme
 - `AGENT-RUNTIME.md`: eligibility/block state, completed-only context, pending drain, lazy provider contract, typed retries, monotonic deadline/read bound, StreamHandler gate, prompt/routes/events/usage/cost/stale/key/retention/stop outcome.
 - `ARCHITECTURE.md`: actual route table, message eligibility/index, models/relationships, safe pending turn shape, and demo/agent exclusivity.
 - `SECURITY.md`: blocked sensitive range before lazy resolution, typed retry policy, HMAC, key/no-content/owner/provider-retention/rate/error boundaries.
-- `UX.md`: quiet/partial/retry/reload plus server-pending 24+1 drain and completed four-width bilingual/accessibility verification.
+- `UX.md`: quiet/partial/retry/reload plus configured-max pending drain (default 24 gives 24+1) and completed bilingual/accessibility verification.
 - `OPERATIONS.md`: kill switch/scheduler/config sequence, inbound fake and outbound StreamHandler/Luna gates, exact eval batch interval query, incident disable, and public prohibition.
 - `AUDIT.md`: verified tests, MariaDB/Chromium/release/fake/Luna evidence and any still-open P2/P3 findings.
 - `PHASES.md`: Phase 2 complete for authenticated testers only; retrieval/tools/admin/public remain not started.
@@ -2997,7 +3075,7 @@ git push
 - [ ] Tasks 1-10 begin only after Mohamed approves the plan and eval thresholds; the separate spend ceiling is required only before Task 11 key entry/real Luna testing.
 - [ ] Every code task follows RED -> minimal GREEN -> focused/full verification -> review -> commit.
 - [ ] Legacy/demo/unreplied history stays ineligible; blocked sensitive ranges cannot poison later harmless turns; completed-agent-only context is proven.
-- [ ] Server pending state proves 25 -> 24 + 1, active-turn arrivals, and reload/poll recovery with exactly two starts and no third.
+- [ ] Server pending state proves default-limit 25 -> 24 + 1/two starts, a nondefault configured chunk sequence, active-turn arrivals, and reload/poll recovery.
 - [ ] One validated config reader feeds every declared value; retry policy is shared; adapter resolution occurs only after the prompt guard.
 - [ ] One monotonic deadline covers initial attempt plus automatic wait/retry, with each read bounded by remaining time and a continuous-event overrun test.
 - [ ] Production inbound fake and outbound explicit-StreamHandler gates are distinct; Luna first delta is final proof before the 16-case batch.

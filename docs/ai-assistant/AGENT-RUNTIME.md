@@ -34,6 +34,9 @@ The plan requires Mohamed's explicit approval before implementation.
   attempts: initial, at most one automatic bounded 429 retry, and an explicit
   retry while budget remains; cap automatic `Retry-After` waiting at two
   seconds.
+- For automatic 429, fail only attempt one, return the turn to nonterminal
+  `waiting`, commit, then sleep outside locks under the same deadline. Polling
+  exposes no explicit retry/failure; deadline expiry terminalizes as timeout.
 - Recover `waiting`/`running` turns older than 120 seconds from the verified
   minute scheduler as retryable failures.
 - One typed error/retry policy makes only enumerated transient failures
@@ -82,9 +85,9 @@ The application stream exposes only `turn.created`, `response.delta`,
 `response.completed`, `response.failed`, and heartbeat comments. Conversation
 JSON exposes only safe resolved assistant mode and the latest bounded turn
 state, including server-derived `hasPendingMessages`. A terminal true signal
-drains one idempotent successor after the FIFO empties; 25 eligible messages
-produce 24 + 1 and no third start. Provider/config/IDs/runs/model/key/usage/
-cost/traces remain server-side.
+drains one successor after FIFO empties. At approved/default limit 24, 25 rows
+produce 24 + 1/two starts; another validated limit drains in configured-size
+chunks. Provider/config/IDs/runs/model/key/usage/cost/traces stay server-side.
 
 ## Verified OpenAI and Laravel facts
 
