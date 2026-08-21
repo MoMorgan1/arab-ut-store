@@ -25,12 +25,22 @@ test('runtime defaults fail closed and an eligible owner receives no demo reply'
     config()->set('ai-assistant.test_user_ids', [$user->id]);
     config()->set('ai-assistant.provider', 'fake');
 
+    $clientMessageId = (string) Str::uuid();
+
     $response = $this->actingAs($user)->postJson(
         route('chat.messages.store', ['conversation' => $conversation->public_id]),
-        ['content' => 'اختبار وضع المساعد', 'client_message_id' => (string) Str::uuid()],
+        ['content' => 'اختبار وضع المساعد', 'client_message_id' => $clientMessageId],
     );
 
     $response->assertCreated()->assertJsonPath('data.demoReply', null);
+    $customerMessage = $conversation->messages()->where('client_message_id', $clientMessageId)->sole();
+
+    expect($conversation->messages()->count())->toBe(1)
+        ->and($customerMessage->sender_type->value)->toBe('customer')
+        ->and($conversation->messages()
+            ->where('reply_to_message_id', $customerMessage->id)
+            ->where('sender_type', 'assistant')
+            ->exists())->toBeFalse();
     expect(app(ResolveAssistantMode::class)->for(ChatOwner::user($user->id)))
         ->toBe(AssistantMode::Agent);
 });

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AI\AgentErrorCode;
 use App\Exceptions\AI\AgentConfigurationException;
 use App\Support\AI\AgentRuntimeConfig;
 use Tests\TestCase;
@@ -97,6 +98,20 @@ test('runtime config rejects invalid values without exposing them', function (st
     'cache write pricing must be nonnegative decimal' => ['ai-assistant.pricing.cache_write_per_million', '-0.01', 'cacheWriteRatePerMillion'],
     'output pricing must be nonnegative decimal' => ['ai-assistant.pricing.output_per_million', '-0.01', 'outputRatePerMillion'],
 ]);
+
+test('runtime config rejects an empty provider with the configuration invalid code', function () {
+    config()->set('ai-assistant.provider', '');
+
+    try {
+        app(AgentRuntimeConfig::class)->provider();
+    } catch (AgentConfigurationException $exception) {
+        expect($exception->errorCode)->toBe(AgentErrorCode::ConfigurationInvalid);
+
+        return;
+    }
+
+    $this->fail('Expected an empty provider to throw AgentConfigurationException.');
+});
 
 test('runtime config rejects invalid timeout and rate-limit relationships', function (string $key, mixed $value, string $method) {
     config()->set('ai-assistant.request_timeout_seconds', 5);
