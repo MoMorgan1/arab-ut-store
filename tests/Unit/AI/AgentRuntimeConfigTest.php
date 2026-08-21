@@ -3,7 +3,6 @@
 use App\Enums\AI\AgentErrorCode;
 use App\Exceptions\AI\AgentConfigurationException;
 use App\Support\AI\AgentRuntimeConfig;
-use Illuminate\Support\Env;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -185,23 +184,58 @@ test('runtime config rejects invalid timeout and rate-limit relationships', func
 
 function runtimeConfigLoadedFromEnvironment(string $environmentKey, string $rawValue): AgentRuntimeConfig
 {
-    $environment = Env::getRepository();
-    $hadOriginalValue = $environment->has($environmentKey);
-    $originalValue = $environment->get($environmentKey);
+    $managedKeys = [
+        'AI_ASSISTANT_ENABLED',
+        'AI_ASSISTANT_ROLLOUT',
+        'AI_ASSISTANT_TEST_USER_IDS',
+        'AI_MODEL_PROVIDER',
+        'AI_MODEL',
+        'AI_TURN_DEBOUNCE_MS',
+        'AI_MAX_CONTEXT_MESSAGES',
+        'AI_MAX_OUTPUT_TOKENS',
+        'AI_MAX_RESPONSE_CHARACTERS',
+        'AI_REASONING_EFFORT',
+        'AI_CONNECT_TIMEOUT_SECONDS',
+        'AI_STREAM_READ_TIMEOUT_SECONDS',
+        'AI_REQUEST_TIMEOUT_SECONDS',
+        'AI_TURN_RATE_LIMIT_PER_MINUTE',
+        'AI_TURN_IP_RATE_LIMIT_PER_MINUTE',
+        'AI_MAX_ATTEMPTS',
+        'AI_RETRY_AFTER_CAP_MS',
+        'AI_STALE_TURN_SECONDS',
+        'AI_FAKE_DELTA_DELAY_MS',
+    ];
 
-    if ($hadOriginalValue) {
-        $environment->clear($environmentKey);
+    $saved = [];
+
+    foreach ($managedKeys as $managedKey) {
+        $saved[$managedKey] = getenv($managedKey) === false
+            ? null
+            : (string) getenv($managedKey);
+
+        putenv($managedKey);
+        unset($_ENV[$managedKey], $_SERVER[$managedKey]);
     }
 
-    $environment->set($environmentKey, $rawValue);
+    putenv("{$environmentKey}={$rawValue}");
+    $_ENV[$environmentKey] = $rawValue;
+    $_SERVER[$environmentKey] = $rawValue;
 
     try {
         config()->set('ai-assistant', require config_path('ai-assistant.php'));
     } finally {
-        $environment->clear($environmentKey);
+        foreach ($managedKeys as $managedKey) {
+            if ($saved[$managedKey] !== null) {
+                $restored = $saved[$managedKey];
+                putenv("{$managedKey}={$restored}");
+                $_ENV[$managedKey] = $restored;
+                $_SERVER[$managedKey] = $restored;
 
-        if ($hadOriginalValue && is_string($originalValue)) {
-            $environment->set($environmentKey, $originalValue);
+                continue;
+            }
+
+            putenv($managedKey);
+            unset($_ENV[$managedKey], $_SERVER[$managedKey]);
         }
     }
 
