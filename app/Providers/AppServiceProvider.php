@@ -8,6 +8,7 @@ use App\Contracts\AI\AgentModelResolver;
 use App\Contracts\AI\AgentSleeper;
 use App\Contracts\AI\MonotonicClock;
 use App\Services\AI\ConfiguredAgentModelResolver;
+use App\Support\AI\AgentRuntimeConfig;
 use App\Support\AI\SystemAgentSleeper;
 use App\Support\AI\SystemMonotonicClock;
 use Carbon\CarbonImmutable;
@@ -144,6 +145,20 @@ class AppServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(60)->by('chat-read:'.$owner->idempotencyScope()),
                 Limit::perMinute(120)->by('chat-read-ip:'.$request->ip()),
+            ];
+        });
+
+        RateLimiter::for('agent-turns', function (Request $request): array {
+            if (! config('chat.enabled', false)) {
+                return [Limit::none()];
+            }
+
+            $owner = app(ResolveChatOwner::class)->forRequest($request);
+            $config = app(AgentRuntimeConfig::class);
+
+            return [
+                Limit::perMinute($config->turnRateLimitPerMinute())->by('agent-turns:'.$owner->idempotencyScope()),
+                Limit::perMinute($config->turnIpRateLimitPerMinute())->by('agent-turns-ip:'.$request->ip()),
             ];
         });
     }
