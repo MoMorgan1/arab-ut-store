@@ -1,7 +1,7 @@
 # Phase 1 Completion audit
 
-**Lifecycle:** Repository fixes and scheduler evidence deployed; owner
-acceptance pending
+**Lifecycle:** Phase 1 repository, deployment, scheduler, and owner acceptance
+complete
 **Verified:** 2026-08-21
 
 ## Release evidence
@@ -20,6 +20,8 @@ Read-only production evidence on 2026-08-21: the active release matched the
 final SHA; four chat routes, the minute publisher, and hourly chat maintenance
 event were registered. Owner-provided hPanel evidence shows the exact
 `schedule:run` command at `* * * * *` and successful minute-job output.
+Mohamed accepted the deployed Phase 1 release on 2026-08-21 after completing
+the real-account and physical iPhone/Safari checks.
 
 ## Resolved findings
 
@@ -30,6 +32,7 @@ event were registered. Owner-provided hPanel evidence shows the exact
 | AI-B06 | SQLite/MariaDB migration tests cover upgrade/down paths; CI runs MariaDB fresh/rollback/migrate, and production confirms schema, zero active duplicates, and `LOCK TABLES` permission. |
 | AI-B08 | `ChatErrorResponse` normalizes 409/422/429/500 responses with no-store cache control; focused tests cover validation, throttling, server error, and conflict.                          |
 | AI-F07 | Composer labeling and 44px interactive controls are implemented and covered by component/browser checks.                                                                               |
+| AI-F06 | Chromium's emulated safe-area evidence was supplemented by Mohamed's accepted physical iPhone/Safari keyboard, safe-area, home-indicator, touch, and sheet review on 2026-08-21.       |
 
 ## Remaining findings and gates
 
@@ -37,10 +40,9 @@ event were registered. Owner-provided hPanel evidence shows the exact
 | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | AI-B04 | P2       | Narrowed. Canonical replay includes explicit `reply_to_message_id` rows created after the lifecycle migration. Pre-migration unlinked assistant rows are excluded because concurrent historical inserts make timestamp/order association unprovable; regression coverage returns the legacy customer with `demoReply: null` and creates no association. |
 | AI-B09 | P2       | Open decision. Production database sessions are encrypted, but raw guest-token storage remains a Laravel-session boundary and no configuration change is approved.                                                                                                                                                                                      |
-| AI-F06 | P2       | Narrowed. Chromium checks account safe-area geometry; real iPhone/Safari keyboard and safe-area acceptance is Mohamed's pending gate.                                                                                                                                                                                                                   |
 | AI-F04 | P3       | Open test-precision item: scroll geometry and unread-state assertions remain incomplete.                                                                                                                                                                                                                                                                |
 
-No P0 or P1 code finding is open. That is repository/release evidence, not a
-claim that Phase 1 is accepted. Mohamed's manual checklist in
-[STATUS.md](STATUS.md) is still required; no Phase 2 work starts before owner
-acceptance is recorded.
+No P0 or P1 code finding is open. Phase 1 is accepted; `AI-B04`, `AI-B09`, and
+`AI-F04` retain the exact limited states above and are not erased by owner
+acceptance. Phase 2 implementation remains separately blocked on approval of
+the proposed plan linked from [STATUS.md](STATUS.md).
