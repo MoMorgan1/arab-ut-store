@@ -20,19 +20,25 @@ The plan requires Mohamed's explicit approval before implementation.
 - Use direct authenticated POST streaming. The existing browser FIFO persists
   each message, and a 1.5-second quiet window begins only after persistence and
   an empty send queue. No queue worker is used for coalescing.
-- Claim at most 24 customer messages, include every claimed message, and fill
-  only the remaining context slots with prior conversation messages.
+- A first forward migration marks only newly persisted, server-selected agent
+  messages with immutable `agent_eligible_at`; existing/demo/unreplied history
+  stays null. Claim at most 24 eligible, unblocked, unreplied customers. Prior
+  context comes only from completed agent turns, never Phase 1 demo replies.
 - Keep one nonterminal turn per conversation and lock conversation -> turn ->
   run. No database lock spans provider I/O or streamed waiting.
 - Use 500 total provider output tokens, including reasoning, `low` reasoning,
-  a five-second connect timeout, a 45-second total provider timeout, and at
-  most 4000 Unicode characters of final customer-visible text.
+  a five-second connect timeout, two-second per-read timeout bounded by the
+  remaining budget, one 45-second monotonic deadline covering connect through
+  parser and automatic retry, and at most 4000 visible Unicode characters.
 - Allow six turn starts per owner/minute and 20/IP/minute. Permit three
   attempts: initial, at most one automatic bounded 429 retry, and an explicit
   retry while budget remains; cap automatic `Retry-After` waiting at two
   seconds.
 - Recover `waiting`/`running` turns older than 120 seconds from the verified
   minute scheduler as retryable failures.
+- One typed error/retry policy makes only enumerated transient failures
+  retryable within budget; sensitive/config/invalid/auth/permission/rejected/
+  malformed/terminal failures are not retryable.
 - Preserve the Phase 1 demo for ineligible owners; an eligible owner receives
   agent mode and never both demo and AI replies.
 - Release only to an authenticated tester. Public behavior exists as a
@@ -47,6 +53,13 @@ day reopen, 30-day guest retention, 180-day authenticated retention, and the
 documented Phase 1 owner/IP rate limits.
 
 ## Proposed persistence and stream contracts
+
+The first Phase 2 migration also adds nullable `agent_eligible_at` and
+`agent_prompt_blocked_at` plus a claim index to `chat_messages`. Existing rows
+remain null. `CreateChatMessage` sets eligibility atomically from server mode
+only on original insert; duplicate recovery never changes it when rollout
+changes. A detected-sensitive claimed range is marked blocked before lazy
+provider resolution, so a later harmless eligible message can form a new turn.
 
 `agent_turns` will hold a public ULID, conversation cascade, status, numeric
 first/last customer-message bounds without range foreign keys, nullable unique
@@ -68,8 +81,10 @@ raw cost ledger.
 The application stream exposes only `turn.created`, `response.delta`,
 `response.completed`, `response.failed`, and heartbeat comments. Conversation
 JSON exposes only safe resolved assistant mode and the latest bounded turn
-state. Provider events, rollout/allowlist/config, numeric IDs, runs, model/key,
-tokens, latency, cost, and traces remain server-side.
+state, including server-derived `hasPendingMessages`. A terminal true signal
+drains one idempotent successor after the FIFO empties; 25 eligible messages
+produce 24 + 1 and no third start. Provider/config/IDs/runs/model/key/usage/
+cost/traces remain server-side.
 
 ## Verified OpenAI and Laravel facts
 
@@ -100,6 +115,11 @@ Production CLI observation on 2026-08-21 found PHP 8.3.30, memory 2048M,
 enabled. These CLI values do not prove web/FPM/proxy streaming or disconnect
 finalization.
 
+The plan explicitly selects and integration-tests Guzzle `StreamHandler`, whose
+streaming path requires the production domain's web PHP to have
+`allow_url_fopen=1` plus HTTP/HTTPS wrappers. That deployed-SHA capability gate
+must pass before a key; Luna's first delta before completion is final proof.
+
 ## Non-negotiable feasibility and secret gates
 
 Code first deploys with `AI_ASSISTANT_ENABLED=false`,
@@ -124,7 +144,9 @@ identifier is an in-memory HMAC-SHA256 of `ChatOwner::idempotencyScope()` with
 No structured credential/account source is connected. The plan also fails a
 turn before provider resolution when its deterministic English/Arabic
 credential-label, token, backup-code, or payment-card guard detects sensitive
-content; matched text is neither logged nor copied into run records.
+content. It blocks that immutable range, never resolves an adapter for it, and
+allows later harmless eligible rows; matched text is neither logged nor copied
+into run records.
 
 The Phase 1 session decision also remains unchanged. Production read-only
 evidence observed database sessions with encryption enabled; chat tables hold

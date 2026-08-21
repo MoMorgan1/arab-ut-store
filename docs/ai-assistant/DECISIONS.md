@@ -76,8 +76,11 @@ proposed operational defaults are:
 - provider-neutral `AgentModel`, direct OpenAI Responses adapter, model
   `gpt-5.6-luna`, `store: false`, streamed required-event mapping, 500 total
   output tokens, `low` reasoning, and `support-v1`;
-- at most 24 claimed customer messages, one nonterminal turn per conversation,
-  conversation -> turn -> run lock order, and no lock during provider I/O;
+- immutable nullable message eligibility/block timestamps: legacy/demo/old
+  unreplied rows remain ineligible; claims use only eligible, unblocked,
+  unreplied customers; prior assistant context is completed-agent-only;
+- at most 24 claimed messages, one nonterminal turn per conversation,
+  conversation -> turn -> run locks, and no lock during provider I/O;
 - six turn starts per owner/minute, 20/IP/minute, three attempts, one bounded
   automatic 429 retry, a two-second automatic wait cap, and 120-second stale
   recovery from the verified minute scheduler;
@@ -87,6 +90,14 @@ proposed operational defaults are:
 - a production fake authenticated-tester gate with exactly three localized
   350ms deltas, observable incremental delivery, and disconnect/reload durable
   recovery; failure stops OpenAI work;
+- a server-derived pending-after-terminal boolean that drains 25 eligible rows
+  as 24 + 1 with exactly two starts, including reload/poll recovery;
+- validated config consumers, typed retry policy, lazy provider resolution
+  after the sensitive guard, and a 45-second monotonic deadline covering
+  connect/headers/body/parser/automatic wait/retry with bounded per-read time;
+- explicit Guzzle `StreamHandler` tested on loopback and gated on production
+  web-PHP `allow_url_fopen`/HTTP(S) wrappers before key entry; Luna's first
+  delta is final proof;
 - one final assistant message of at most 4000 Unicode characters, content-free
   run records, conversation-cascaded 30/180-day retention, and versioned Luna
   input/cached/cache-write/output cost categories without double-charging

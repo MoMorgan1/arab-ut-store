@@ -65,6 +65,13 @@ safety-critical. Its proposed authenticated-tester thresholds are:
   eval turn above `$0.01000000` and the accepted 16-case run at or below
   `$0.16000000` estimated cost.
 
+The proposed evidence method uses a content-free batch label and exact
+half-open UTC start/end containing only the 16 ordered cases. Each case records
+first-delta/terminal milliseconds without content or runtime identifiers.
+Nearest-rank p95 sorts 16 values and selects rank `ceil(0.95 * 16) = 16`.
+Cost/token SQL is restricted to that interval; canary and resilience checks run
+outside it so they cannot contaminate latency or cost.
+
 These are plan proposals, not accepted thresholds or measured results. Mohamed
 must approve or revise them before implementation and separately set an OpenAI
 project spend ceiling before real Luna testing. CI remains fake-only with no
