@@ -1,54 +1,14 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import {
-    Activity,
-    CircleAlert,
-    CircleCheck,
-    Clock3,
-    Hourglass,
-    LoaderCircle,
-    ShieldAlert,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { LoaderCircle } from 'lucide-react';
 import { useState } from 'react';
 
-import AdminBadge from '@/components/admin/admin-badge';
-import type { AdminBadgeVariant } from '@/components/admin/admin-badge';
+import AdminAttentionRail from '@/components/admin/admin-attention-rail';
 import AdminKpiStrip from '@/components/admin/admin-kpi-strip';
-import AdminWorkQueue from '@/components/admin/admin-work-queue';
+import AdminOrderStatusChart from '@/components/admin/admin-order-status-chart';
+import AdminRecentOrders from '@/components/admin/admin-recent-orders';
+import AdminRevenueChart from '@/components/admin/admin-revenue-chart';
 import { cn } from '@/lib/utils';
 import type { AdminOverviewPageProps } from '@/types/admin';
-
-const statusIcons: Record<string, LucideIcon> = {
-    cancelled: CircleAlert,
-    completed: CircleCheck,
-    failed: ShieldAlert,
-    in_progress: Clock3,
-    pending: Clock3,
-    pending_payment: Clock3,
-    received: CircleAlert,
-    refunded: CircleCheck,
-    waiting_for_customer: Hourglass,
-};
-
-function getStatusVariant(status: string): AdminBadgeVariant {
-    switch (status) {
-        case 'completed':
-        case 'refunded':
-            return 'success';
-        case 'received':
-        case 'in_progress':
-            return 'info';
-        case 'waiting_for_customer':
-        case 'pending_payment':
-        case 'pending':
-            return 'warning';
-        case 'failed':
-        case 'cancelled':
-            return 'danger';
-        default:
-            return 'neutral';
-    }
-}
 
 export default function AdminOverviewPage() {
     const { props } = usePage<AdminOverviewPageProps>();
@@ -61,7 +21,7 @@ export default function AdminOverviewPage() {
     });
 
     return (
-        <article className="space-y-5" dir={props.direction}>
+        <article className="space-y-6" dir={props.direction}>
             <Head title={copy.headTitle} />
             <OverviewHeader
                 copy={copy}
@@ -78,12 +38,44 @@ export default function AdminOverviewPage() {
                 translations={copy}
             />
 
-            <OperationalQueues
-                copy={copy}
-                dateFormatter={dateFormatter}
-                overview={props.overview}
-                statuses={props.adminUi.statuses}
-            />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                <div className="lg:col-span-8">
+                    <AdminRevenueChart
+                        locale={props.locale}
+                        overview={props.overview}
+                        translations={copy}
+                    />
+                </div>
+                <div className="lg:col-span-4">
+                    <AdminOrderStatusChart
+                        locale={props.locale}
+                        overview={props.overview}
+                        statuses={props.adminUi.statuses}
+                        translations={copy}
+                    />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                <div className="lg:col-span-8">
+                    <AdminRecentOrders
+                        dateFormatter={dateFormatter}
+                        locale={props.locale}
+                        orders={props.overview.recentOrders}
+                        statuses={props.adminUi.statuses}
+                        translations={copy}
+                    />
+                </div>
+                <div className="lg:col-span-4">
+                    <AdminAttentionRail
+                        dateFormatter={dateFormatter}
+                        locale={props.locale}
+                        overview={props.overview}
+                        statuses={props.adminUi.statuses}
+                        translations={copy}
+                    />
+                </div>
+            </div>
         </article>
     );
 }
@@ -152,133 +144,5 @@ function OverviewHeader({
                 })}
             </nav>
         </header>
-    );
-}
-
-function OperationalQueues({
-    copy,
-    dateFormatter,
-    overview,
-    statuses,
-}: {
-    copy: AdminOverviewPageProps['adminUi']['overview'];
-    dateFormatter: Intl.DateTimeFormat;
-    overview: AdminOverviewPageProps['overview'];
-    statuses: AdminOverviewPageProps['adminUi']['statuses'];
-}) {
-    return (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start">
-            <AdminWorkQueue icon={Clock3} title={copy.oldestUnresolved}>
-                {overview.oldestUnresolvedOrder === null ? (
-                    <p className="flex min-h-16 items-center gap-2.5 text-sm text-muted-foreground">
-                        <CircleCheck
-                            aria-hidden="true"
-                            className="h-4 w-4 shrink-0 text-muted-foreground"
-                        />
-                        <span>{copy.noUnresolved}</span>
-                    </p>
-                ) : (
-                    <OldestOrder
-                        dateFormatter={dateFormatter}
-                        order={overview.oldestUnresolvedOrder}
-                        statusLabel={
-                            statuses[overview.oldestUnresolvedOrder.status] ??
-                            overview.oldestUnresolvedOrder.status
-                        }
-                    />
-                )}
-            </AdminWorkQueue>
-            <AuditQueue
-                copy={copy}
-                dateFormatter={dateFormatter}
-                events={overview.recentAuditEvents}
-            />
-        </div>
-    );
-}
-
-function AuditQueue({
-    copy,
-    dateFormatter,
-    events,
-}: {
-    copy: AdminOverviewPageProps['adminUi']['overview'];
-    dateFormatter: Intl.DateTimeFormat;
-    events: AdminOverviewPageProps['overview']['recentAuditEvents'];
-}) {
-    if (events === null) {
-        return null;
-    }
-
-    return (
-        <AdminWorkQueue icon={Activity} title={copy.recentAudit}>
-            {events.length === 0 ? (
-                <p className="flex min-h-16 items-center gap-2.5 text-sm text-muted-foreground">
-                    <Activity
-                        aria-hidden="true"
-                        className="h-4 w-4 shrink-0 text-muted-foreground"
-                    />
-                    <span>{copy.noAudit}</span>
-                </p>
-            ) : (
-                <ol className="divide-y divide-border">
-                    {events.map((event) => (
-                        <li key={event.id} className="grid gap-1 py-3">
-                            <span
-                                className="font-medium text-foreground"
-                                translate="no"
-                            >
-                                {event.action}
-                            </span>
-                            <time
-                                className="text-xs text-muted-foreground tabular-nums"
-                                dateTime={event.createdAt}
-                            >
-                                {dateFormatter.format(
-                                    new Date(event.createdAt),
-                                )}
-                            </time>
-                        </li>
-                    ))}
-                </ol>
-            )}
-        </AdminWorkQueue>
-    );
-}
-
-function OldestOrder({
-    dateFormatter,
-    order,
-    statusLabel,
-}: {
-    dateFormatter: Intl.DateTimeFormat;
-    order: NonNullable<
-        AdminOverviewPageProps['overview']['oldestUnresolvedOrder']
-    >;
-    statusLabel: string;
-}) {
-    const StatusIcon = statusIcons[order.status] ?? CircleAlert;
-    const variant = getStatusVariant(order.status);
-
-    return (
-        <div className="grid gap-2.5">
-            <strong
-                className="text-base font-bold text-foreground tabular-nums"
-                translate="no"
-            >
-                {order.number}
-            </strong>
-            <div>
-                <AdminBadge icon={StatusIcon} variant={variant}>
-                    {statusLabel}
-                </AdminBadge>
-            </div>
-            <time
-                className="text-xs text-muted-foreground tabular-nums"
-                dateTime={order.placedAt}
-            >
-                {dateFormatter.format(new Date(order.placedAt))}
-            </time>
-        </div>
     );
 }

@@ -9,7 +9,7 @@
         @if ($isStoreRoute)
             <meta name="theme-color" content="#0d0b08">
         @elseif ($isAdminRoute)
-            <meta name="theme-color" content="#09090b">
+            <meta name="theme-color" content="#080705">
         @endif
 
         {{-- Inline script to detect system dark mode preference and apply it immediately --}}
@@ -42,7 +42,7 @@
             }
 
             html.admin-document {
-                background-color: #09090b;
+                background-color: #080705;
             }
         </style>
 

@@ -45,6 +45,30 @@ export type AdminTranslations = {
         recentAudit: string;
         noUnresolved: string;
         noAudit: string;
+        totalOrders: string;
+        newCustomers: string;
+        needsAttention: string;
+        previousPeriod: string;
+        newThisPeriod: string;
+        noChange: string;
+        revenueTrendTitle: string;
+        revenueTrendDescription: string;
+        orderDistributionTitle: string;
+        orderDistributionDescription: string;
+        revenueTableAria: string;
+        date: string;
+        revenue: string;
+        status: string;
+        count: string;
+        noRevenue: string;
+        noOrdersInPeriod: string;
+        recentOrdersTitle: string;
+        recentOrdersDescription: string;
+        orderNumber: string;
+        orderTotal: string;
+        orderPlacedAt: string;
+        noRecentOrders: string;
+        attentionRailTitle: string;
     };
     statuses: Record<string, string>;
     mfa: {
@@ -105,6 +129,37 @@ export type AdminMoney = {
     currency: 'SAR';
 };
 
+export type AdminRevenueTrendPoint = {
+    date: string;
+    amountMinor: string;
+    currency: 'SAR';
+};
+
+export type AdminOrderStatusCount = {
+    status:
+        | 'pending_payment'
+        | 'received'
+        | 'in_progress'
+        | 'waiting_for_customer'
+        | 'completed'
+        | 'cancelled'
+        | 'refunded';
+    count: number;
+};
+
+export type AdminRecentOrder = {
+    id: string;
+    number: string;
+    status: string;
+    placedAt: string;
+    total: AdminMoney;
+};
+
+export type AdminComparisonCount = {
+    current: number;
+    previous: number;
+};
+
 export type AdminOverviewPageProps = {
     locale: 'ar' | 'en';
     direction: 'rtl' | 'ltr';
@@ -122,6 +177,13 @@ export type AdminOverviewPageProps = {
         payments: { pending: number; failed: number };
         refunds: { failed: number };
         capturedRevenue: AdminMoney;
+        previousCapturedRevenue: AdminMoney;
+        totalOrders: AdminComparisonCount;
+        newCustomers: AdminComparisonCount;
+        attentionCount: number;
+        revenueTrend: AdminRevenueTrendPoint[];
+        orderStatusDistribution: AdminOrderStatusCount[];
+        recentOrders: AdminRecentOrder[];
         oldestUnresolvedOrder: null | {
             id: string;
             number: string;

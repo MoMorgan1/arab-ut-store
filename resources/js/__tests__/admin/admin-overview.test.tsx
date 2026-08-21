@@ -4,6 +4,7 @@ import {
     fireEvent,
     render,
     screen,
+    within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -75,8 +76,40 @@ function pageProps(
             payments: { pending: 5, failed: 2 },
             refunds: { failed: 1 },
             capturedRevenue: { amountMinor: '123456', currency: 'SAR' },
+            previousCapturedRevenue: { amountMinor: '100000', currency: 'SAR' },
+            totalOrders: { current: 19, previous: 15 },
+            newCustomers: { current: 8, previous: 5 },
+            attentionCount: 7,
+            revenueTrend: [
+                { date: '2026-08-14', amountMinor: '0', currency: 'SAR' },
+                { date: '2026-08-15', amountMinor: '0', currency: 'SAR' },
+                { date: '2026-08-16', amountMinor: '0', currency: 'SAR' },
+                { date: '2026-08-17', amountMinor: '0', currency: 'SAR' },
+                { date: '2026-08-18', amountMinor: '0', currency: 'SAR' },
+                { date: '2026-08-19', amountMinor: '0', currency: 'SAR' },
+                { date: '2026-08-20', amountMinor: '123456', currency: 'SAR' },
+                { date: '2026-08-21', amountMinor: '0', currency: 'SAR' },
+            ],
+            orderStatusDistribution: [
+                { status: 'pending_payment', count: 0 },
+                { status: 'received', count: 12 },
+                { status: 'in_progress', count: 3 },
+                { status: 'waiting_for_customer', count: 4 },
+                { status: 'completed', count: 0 },
+                { status: 'cancelled', count: 0 },
+                { status: 'refunded', count: 0 },
+            ],
+            recentOrders: [
+                {
+                    id: '01K5ADM1N00000000000000001',
+                    number: 'AUT-RECEIVED-1001-WITH-A-LONG-IDENTIFIER',
+                    status: 'received',
+                    placedAt: '2026-08-20T10:00:00.000000Z',
+                    total: { amountMinor: '123456', currency: 'SAR' },
+                },
+            ],
             oldestUnresolvedOrder: {
-                id: '01J-LONG-PRIVATE-ID',
+                id: '01K5ADM1N00000000000000001',
                 number: 'AUT-RECEIVED-1001-WITH-A-LONG-IDENTIFIER',
                 status: 'received',
                 placedAt: '2026-08-20T10:00:00.000000Z',
@@ -120,26 +153,45 @@ describe('Admin operational overview', () => {
         vi.clearAllMocks();
     });
 
-    it('renders work, failed money, and revenue in deliberate reading order with literal values', () => {
+    it('renders dominant gross captured revenue and supporting metrics in deliberate reading order with literal values', () => {
         const { container } = render(<AdminOverviewPage />);
         const text = container.textContent ?? '';
 
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
             'Operations dashboard',
         );
-        expect(screen.getByText('12')).toBeVisible();
-        expect(screen.getByText('3')).toBeVisible();
-        expect(screen.getByText('4')).toBeVisible();
-        expect(screen.getByText('5')).toBeVisible();
-        expect(screen.getByText('2')).toBeVisible();
-        expect(screen.getByText('1')).toBeVisible();
-        expect(screen.getByText(/SAR\s+1,234\.56/)).toBeVisible();
 
-        expect(text.indexOf('Received orders')).toBeLessThan(
-            text.indexOf('Failed payments'),
+        const kpiStrip = container.querySelector('.admin-kpi-strip');
+        expect(kpiStrip).not.toBeNull();
+        const kpi = within(kpiStrip as HTMLElement);
+
+        expect(kpi.getByText(/SAR\s+1,234\.56/)).toBeVisible();
+        expect(kpi.getByText('+23.5% vs. previous period')).toBeVisible();
+        expect(kpi.getByText('Total placed orders')).toBeVisible();
+        expect(kpi.getByText('19')).toBeVisible();
+        expect(kpi.getByText('New customers')).toBeVisible();
+        expect(kpi.getByText('8')).toBeVisible();
+        expect(kpi.getByText('Needs attention')).toBeVisible();
+        expect(kpi.getByText('7')).toBeVisible();
+
+        const rail = within(
+            screen.getByRole('complementary', { name: 'Operational focus' }),
         );
-        expect(text.indexOf('Failed payments')).toBeLessThan(
-            text.indexOf('Captured revenue'),
+        expect(rail.getByText('12')).toBeVisible();
+        expect(rail.getByText('3')).toBeVisible();
+        expect(rail.getByText('4')).toBeVisible();
+        expect(rail.getByText('5')).toBeVisible();
+        expect(rail.getByText('2')).toBeVisible();
+        expect(rail.getByText('1')).toBeVisible();
+
+        expect(text.indexOf('Captured revenue')).toBeLessThan(
+            text.indexOf('Total placed orders'),
+        );
+        expect(text.indexOf('Total placed orders')).toBeLessThan(
+            text.indexOf('Captured revenue trend'),
+        );
+        expect(text.indexOf('Captured revenue trend')).toBeLessThan(
+            text.indexOf('Recent placed orders'),
         );
     });
 
@@ -161,13 +213,88 @@ describe('Admin operational overview', () => {
         ).toBeVisible();
     });
 
-    it('shows the oldest unresolved identity and status without inventing a detail link', () => {
+    it('calculates exact finite percentages without Infinity or NaN on 64-bit scale values', () => {
+        inertia.props = pageProps({
+            overview: {
+                ...pageProps().overview,
+                capturedRevenue: {
+                    amountMinor: '9223372036854775807',
+                    currency: 'SAR',
+                },
+                previousCapturedRevenue: {
+                    amountMinor: '4611686018427387903',
+                    currency: 'SAR',
+                },
+            },
+        });
+
+        const { container } = render(<AdminOverviewPage />);
+        const kpi = within(
+            container.querySelector('.admin-kpi-strip') as HTMLElement,
+        );
+
+        expect(kpi.getByText('+100.0% vs. previous period')).toBeVisible();
+        expect(container.textContent).not.toContain('Infinity');
+        expect(container.textContent).not.toContain('NaN');
+    });
+
+    it('shows honest comparison wording for new period and unchanged metrics without duplicated phrases', () => {
+        inertia.props = pageProps({
+            overview: {
+                ...pageProps().overview,
+                capturedRevenue: {
+                    amountMinor: '5000',
+                    currency: 'SAR',
+                },
+                previousCapturedRevenue: {
+                    amountMinor: '0',
+                    currency: 'SAR',
+                },
+                totalOrders: { current: 0, previous: 0 },
+            },
+        });
+
+        const { container, rerender } = render(<AdminOverviewPage />);
+        const kpi = within(
+            container.querySelector('.admin-kpi-strip') as HTMLElement,
+        );
+
+        expect(kpi.getAllByText('New this period')).toHaveLength(1);
+        expect(kpi.getByText('No change')).toBeVisible();
+
+        inertia.props = pageProps({
+            overview: {
+                ...pageProps().overview,
+                capturedRevenue: {
+                    amountMinor: '0',
+                    currency: 'SAR',
+                },
+                previousCapturedRevenue: {
+                    amountMinor: '0',
+                    currency: 'SAR',
+                },
+            },
+        });
+        rerender(<AdminOverviewPage />);
+
+        const updatedKpi = within(
+            container.querySelector('.admin-kpi-strip') as HTMLElement,
+        );
+        expect(
+            updatedKpi.getAllByText('No change').length,
+        ).toBeGreaterThanOrEqual(1);
+    });
+
+    it('shows recent orders as plain records without pretending to be links', () => {
         render(<AdminOverviewPage />);
 
         expect(
-            screen.getByText('AUT-RECEIVED-1001-WITH-A-LONG-IDENTIFIER'),
-        ).toBeVisible();
-        expect(screen.getByText('Received')).toBeVisible();
+            screen.getAllByText('AUT-RECEIVED-1001-WITH-A-LONG-IDENTIFIER')
+                .length,
+        ).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('Received').length).toBeGreaterThanOrEqual(
+            1,
+        );
         expect(
             screen.queryByRole('link', {
                 name: /AUT-RECEIVED-1001-WITH-A-LONG-IDENTIFIER/,
@@ -195,10 +322,24 @@ describe('Admin operational overview', () => {
         expect(screen.queryByText('order.status_updated')).toBeNull();
     });
 
-    it('renders clear empty queue states without charts or credential content', () => {
+    it('renders purposeful empty chart and queue states when series are all-zero without credential content', () => {
         inertia.props = pageProps({
             overview: {
                 ...pageProps().overview,
+                revenueTrend: [
+                    { date: '2026-08-20', amountMinor: '0', currency: 'SAR' },
+                    { date: '2026-08-21', amountMinor: '0', currency: 'SAR' },
+                ],
+                orderStatusDistribution: [
+                    { status: 'pending_payment', count: 0 },
+                    { status: 'received', count: 0 },
+                    { status: 'in_progress', count: 0 },
+                    { status: 'waiting_for_customer', count: 0 },
+                    { status: 'completed', count: 0 },
+                    { status: 'cancelled', count: 0 },
+                    { status: 'refunded', count: 0 },
+                ],
+                recentOrders: [],
                 oldestUnresolvedOrder: null,
                 recentAuditEvents: [],
             },
@@ -207,12 +348,20 @@ describe('Admin operational overview', () => {
         const { container } = render(<AdminOverviewPage />);
 
         expect(
+            screen.getByText('No captured revenue in this period.'),
+        ).toBeVisible();
+        expect(
+            screen.getByText('No orders placed in this period.'),
+        ).toBeVisible();
+        expect(
+            screen.getByText('There are no recent orders in this period.'),
+        ).toBeVisible();
+        expect(
             screen.getByText('There are no unresolved orders.'),
         ).toBeVisible();
         expect(
             screen.getByText('There is no recent Admin activity.'),
         ).toBeVisible();
-        expect(container.querySelector('canvas, svg[role="img"]')).toBeNull();
         expect(container).not.toHaveTextContent(
             /credential|password|provider/i,
         );

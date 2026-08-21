@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Admin\Presenters\AdminOverviewPage;
 use App\Admin\Presenters\AdminShell;
@@ -83,13 +83,126 @@ test('the overview returns literal bounded operational metrics and the oldest un
         'payments' => ['pending' => 1, 'failed' => 1],
         'refunds' => ['failed' => 1],
         'capturedRevenue' => ['amountMinor' => '1250', 'currency' => 'SAR'],
+        'previousCapturedRevenue' => ['amountMinor' => '0', 'currency' => 'SAR'],
+        'totalOrders' => ['current' => 4, 'previous' => 1],
+        'attentionCount' => 3,
         'oldestUnresolvedOrder' => [
             'id' => '01K5ADM1N0V3RV13W000000001',
             'number' => 'AUT-OLDEST-1001',
             'status' => 'received',
             'placedAt' => '2026-08-20T10:00:00+00:00',
         ],
-    ])->and($overview['recentAuditEvents'])->toHaveCount(5);
+    ])->and($overview['recentAuditEvents'])->toHaveCount(5)
+        ->and($overview['revenueTrend'])->toHaveCount(8)
+        ->and($overview['orderStatusDistribution'])->toHaveCount(7)
+        ->and($overview['recentOrders'])->toHaveCount(4);
+});
+
+test('revenue trend points zero-fill all touched UTC dates in the rolling window', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-08-21 12:00:00', 'UTC'));
+    $admin = adminOverviewActor(UserRole::Admin);
+    $order = adminOverviewOrder($admin, OrderStatus::Completed, now()->subDay(), 'AUT-REV-TREND-1');
+    adminOverviewPayment($order, PaymentStatus::Paid, 500, Carbon::parse('2026-08-20 15:00:00', 'UTC'));
+
+    $overview7 = app(ReadAdminOverview::class)->for($admin, 7);
+    $overview30 = app(ReadAdminOverview::class)->for($admin, 30);
+
+    expect($overview7['revenueTrend'])->toHaveCount(8)
+        ->and($overview7['revenueTrend'][0]['date'])->toBe('2026-08-14')
+        ->and($overview7['revenueTrend'][7]['date'])->toBe('2026-08-21')
+        ->and(collect($overview7['revenueTrend'])->firstWhere('date', '2026-08-20'))->toBe([
+            'date' => '2026-08-20',
+            'amountMinor' => '500',
+            'currency' => 'SAR',
+        ])
+        ->and(collect($overview7['revenueTrend'])->firstWhere('date', '2026-08-14')['amountMinor'])->toBe('0')
+        ->and($overview30['revenueTrend'])->toHaveCount(31)
+        ->and($overview30['revenueTrend'][0]['date'])->toBe('2026-07-22')
+        ->and($overview30['revenueTrend'][30]['date'])->toBe('2026-08-21');
+});
+
+test('order status distribution includes all canonical OrderStatus cases in stable order with zero counts', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-08-21 12:00:00', 'UTC'));
+    $admin = adminOverviewActor(UserRole::Admin);
+    adminOverviewOrder($admin, OrderStatus::Received, now()->subDay(), 'AUT-DIST-1');
+    adminOverviewOrder($admin, OrderStatus::Completed, now()->subDays(2), 'AUT-DIST-2');
+
+    $distribution = app(ReadAdminOverview::class)->for($admin, 7)['orderStatusDistribution'];
+
+    expect(array_column($distribution, 'status'))->toBe([
+        'pending_payment',
+        'received',
+        'in_progress',
+        'waiting_for_customer',
+        'completed',
+        'cancelled',
+        'refunded',
+    ])->and(collect($distribution)->firstWhere('status', 'received')['count'])->toBe(1)
+        ->and(collect($distribution)->firstWhere('status', 'completed')['count'])->toBe(1)
+        ->and(collect($distribution)->firstWhere('status', 'cancelled')['count'])->toBe(0)
+        ->and(collect($distribution)->firstWhere('status', 'pending_payment')['count'])->toBe(0);
+});
+
+test('recent orders returns at most five orders ordered newest first without customer PII or provider payloads', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-08-21 12:00:00', 'UTC'));
+    $admin = adminOverviewActor(UserRole::Admin);
+
+    foreach (range(1, 7) as $i) {
+        $order = adminOverviewOrder(
+            $admin,
+            OrderStatus::Received,
+            now()->subHours(10 - $i),
+            "AUT-RECENT-{$i}",
+            sprintf('01K5ADM1N0000000000000000%d', $i),
+        );
+        $order->forceFill(['total_halalah' => 1500 * $i])->save();
+    }
+
+    $recent = app(ReadAdminOverview::class)->for($admin, 7)['recentOrders'];
+
+    expect($recent)->toHaveCount(5)
+        ->and($recent[0]['number'])->toBe('AUT-RECENT-7')
+        ->and($recent[0]['id'])->toBe('01K5ADM1N00000000000000007')
+        ->and($recent[0]['total'])->toBe(['amountMinor' => '10500', 'currency' => 'SAR'])
+        ->and(array_keys($recent[0]))->toBe(['id', 'number', 'status', 'placedAt', 'total']);
+
+    $serialized = json_encode($recent, JSON_THROW_ON_ERROR);
+    foreach (['email', 'user_id', 'provider', 'metadata', 'password'] as $forbidden) {
+        expect($serialized)->not->toContain($forbidden);
+    }
+});
+
+test('new customers counts only customer roles in rolling windows', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-08-21 12:00:00', 'UTC'));
+    $admin = adminOverviewActor(UserRole::Admin);
+
+    User::factory()->create([
+        'role' => UserRole::Customer,
+        'created_at' => now()->subDay(),
+    ]);
+    User::factory()->create([
+        'role' => UserRole::Staff,
+        'created_at' => now()->subDay(),
+    ]);
+    User::factory()->create([
+        'role' => UserRole::Admin,
+        'created_at' => now()->subDay(),
+    ]);
+    User::factory()->create([
+        'role' => UserRole::Customer,
+        'created_at' => now()->subDays(10),
+    ]);
+    User::factory()->create([
+        'role' => UserRole::Customer,
+        'created_at' => now()->subDays(20),
+    ]);
+
+    $counts = app(ReadAdminOverview::class)->for($admin, 7)['newCustomers'];
+
+    expect($counts)->toBe([
+        'current' => 1,
+        'previous' => 1,
+    ]);
 });
 
 test('the overview includes the exact lower date boundary and excludes older or future activity', function (): void {
@@ -99,7 +212,11 @@ test('the overview includes the exact lower date boundary and excludes older or 
     adminOverviewOrder($admin, OrderStatus::Received, now()->subDays(7)->subSecond(), 'AUT-OLDER-1');
     adminOverviewOrder($admin, OrderStatus::Received, now()->addSecond(), 'AUT-FUTURE-1');
 
-    expect(app(ReadAdminOverview::class)->for($admin, 7)['orders']['received'])->toBe(1);
+    $overview = app(ReadAdminOverview::class)->for($admin, 7);
+
+    expect($overview['orders']['received'])->toBe(1)
+        ->and($overview['totalOrders']['current'])->toBe(1)
+        ->and($overview['totalOrders']['previous'])->toBe(1);
 });
 
 test('the main overview queries use the named search indexes instead of full table scans on SQLite', function (): void {
@@ -206,8 +323,8 @@ test('the overview query count stays bounded and its selects omit secret and pro
         expect($sql)->not->toContain($forbiddenColumn);
     }
 })->with([
-    'Admin has one bounded audit query' => [UserRole::Admin, 5],
-    'Staff skips the global audit query' => [UserRole::Staff, 4],
+    'Admin has one bounded audit query' => [UserRole::Admin, 10],
+    'Staff skips the global audit query' => [UserRole::Staff, 9],
 ]);
 
 test('the Admin shell exposes only safe identity exact permissions and implemented localized navigation', function (

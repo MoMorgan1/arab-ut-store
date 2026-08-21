@@ -721,7 +721,7 @@ test('authenticated Admin overview is operable in English across required widths
                                 element.getAttribute('content'),
                             ),
                         ),
-                ).toEqual(['#09090b']);
+                ).toEqual(['#080705']);
                 await expect(page.locator('html')).toHaveAttribute(
                     'lang',
                     locale.language,
@@ -737,8 +737,20 @@ test('authenticated Admin overview is operable in English across required widths
                     }),
                 ).toBeVisible();
                 await expect(page.locator('.admin-kpi-strip dd')).toHaveCount(
-                    7,
+                    4,
                 );
+                await expect(
+                    page.getByRole('heading', {
+                        level: 2,
+                        name: 'Captured revenue trend',
+                    }),
+                ).toBeVisible();
+                await expect(
+                    page.getByRole('heading', {
+                        level: 2,
+                        name: 'Recent placed orders',
+                    }),
+                ).toBeVisible();
                 await expect(
                     page.getByRole('link', { name: locale.range7 }),
                 ).toHaveAttribute('aria-current', 'page');

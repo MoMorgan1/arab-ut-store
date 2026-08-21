@@ -93,35 +93,40 @@
 
 html.admin-document {
     color-scheme: dark;
-    /* shadcn-admin dark (zinc): scoped to the Admin so storefront tokens stay untouched. */
-    --background: oklch(0.141 0.005 285.823);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.21 0.006 285.885);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.21 0.006 285.885);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.92 0.004 286.32);
-    --primary-foreground: oklch(0.21 0.006 285.885);
-    --secondary: oklch(0.274 0.006 286.033);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.274 0.006 286.033);
-    --muted-foreground: oklch(0.705 0.015 286.067);
-    --accent: oklch(0.274 0.006 286.033);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.552 0.016 285.938);
-    --sidebar: oklch(0.18 0.006 285.885);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.274 0.006 286.033);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --status-success: oklch(0.792 0.209 151.711);
-    --status-warning: oklch(0.828 0.189 84.429);
-    --status-info: oklch(0.746 0.16 232.661);
-    --status-danger: oklch(0.704 0.191 22.216);
-    --status-neutral: oklch(0.705 0.015 286.067);
+    --background: #080705;
+    --foreground: #ede4d0;
+    --card: #14110e;
+    --card-foreground: #ede4d0;
+    --popover: #1c1814;
+    --popover-foreground: #ede4d0;
+    --primary: #d4a843;
+    --primary-foreground: #080705;
+    --secondary: #241e18;
+    --secondary-foreground: #ede4d0;
+    --muted: #241e18;
+    --muted-foreground: #a89880;
+    --accent: #241e18;
+    --accent-foreground: #ede4d0;
+    --destructive: #ffb4a9;
+    --destructive-foreground: #080705;
+    --border: rgb(212 168 67 / 16%);
+    --input: rgb(212 168 67 / 20%);
+    --ring: #d4a843;
+    --sidebar: #0d0b08;
+    --sidebar-foreground: #ede4d0;
+    --sidebar-accent: #1c1814;
+    --sidebar-accent-foreground: #ede4d0;
+    --sidebar-border: rgb(212 168 67 / 16%);
+    --status-success: #67e89a;
+    --status-warning: #e4b756;
+    --status-info: #d4a843;
+    --status-danger: #ffb4a9;
+    --status-neutral: #a89880;
+    --chart-1: #d4a843;
+    --chart-2: #e4b756;
+    --chart-3: #67e89a;
+    --chart-4: #ffb4a9;
+    --chart-5: #a89880;
 }
 
 @theme {
