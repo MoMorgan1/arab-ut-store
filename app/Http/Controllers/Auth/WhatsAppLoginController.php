@@ -6,6 +6,7 @@ use App\Account\AccountOverviewUrl;
 use App\Actions\Auth\PendingVerifiedRegistrationPhone;
 use App\Actions\Auth\SendWhatsAppLoginCode;
 use App\Actions\Auth\VerifyWhatsAppLoginCode;
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\SendWhatsAppCodeRequest;
 use App\Http\Requests\Auth\VerifyWhatsAppCodeRequest;
@@ -59,6 +60,12 @@ final class WhatsAppLoginController extends Controller
 
             return response()->json(['data' => ['redirectUrl' => $registerRoute]])
                 ->header('Cache-Control', 'no-store, private');
+        }
+
+        if ($result->user?->role !== UserRole::Customer) {
+            throw ValidationException::withMessages([
+                'code' => trans('auth_ui.login.phone_code_invalid'),
+            ]);
         }
 
         $pendingPhone->forget($request);

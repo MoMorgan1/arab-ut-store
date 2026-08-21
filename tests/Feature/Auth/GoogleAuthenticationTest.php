@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Laravel\Socialite\Contracts\Provider;
@@ -69,3 +70,33 @@ test('google callback refuses to link an unverified provider email to an existin
     $this->assertGuest();
     expect(SocialAccount::query()->count())->toBe(0);
 });
+
+test('google callback fails closed for privileged accounts without revealing their role', function (UserRole $role) {
+    $user = User::factory()->create([
+        'email' => 'privileged-google@example.test',
+        'role' => $role,
+    ]);
+    $providerUser = (new SocialiteUser)->map([
+        'id' => 'privileged-google-user',
+        'name' => 'Privileged Player',
+        'email' => $user->email,
+        'email_verified' => true,
+    ])->setRaw([
+        'email_verified' => true,
+    ]);
+    $provider = Mockery::mock(Provider::class);
+    $provider->shouldReceive('user')->once()->andReturn($providerUser);
+    Socialite::shouldReceive('driver')->once()->with('google')->andReturn($provider);
+
+    $response = $this->get('/auth/google/callback');
+
+    $response->assertRedirect('/login')
+        ->assertSessionHasErrors(['email' => trans('auth_ui.login.google_error')])
+        ->assertDontSee($role->value);
+    $this->assertGuest();
+    expect(SocialAccount::query()->where('provider_user_id', 'privileged-google-user')->exists())
+        ->toBeFalse();
+})->with([
+    'Admin' => [UserRole::Admin],
+    'Staff' => [UserRole::Staff],
+]);

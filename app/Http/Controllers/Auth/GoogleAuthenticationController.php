@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Account\AccountOverviewUrl;
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -64,7 +65,7 @@ final class GoogleAuthenticationController extends Controller
             if ($socialAccount !== null) {
                 $user = $socialAccount->user()->lockForUpdate()->firstOrFail();
 
-                if (! $user->is_active) {
+                if (! $user->is_active || $user->role !== UserRole::Customer) {
                     throw new \DomainException('User is inactive.');
                 }
 
@@ -73,7 +74,7 @@ final class GoogleAuthenticationController extends Controller
 
             $user = User::query()->where('email', $email)->lockForUpdate()->first();
 
-            if ($user !== null && ! $user->is_active) {
+            if ($user !== null && (! $user->is_active || $user->role !== UserRole::Customer)) {
                 throw new \DomainException('User is inactive.');
             }
 

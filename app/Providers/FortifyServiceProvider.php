@@ -111,6 +111,24 @@ class FortifyServiceProvider extends ServiceProvider
             'auth/confirm-password',
             $this->authViewProps('confirm_password'),
         ));
+
+        Fortify::twoFactorChallengeView(function (Request $request) {
+            $preferredLocale = User::query()
+                ->whereKey($request->session()->get('login.id'))
+                ->value('preferred_locale');
+
+            $locale = $preferredLocale === 'en' ? 'en' : 'ar';
+            app()->setLocale($locale);
+
+            return Inertia::render(
+                'auth/two-factor-challenge',
+                [
+                    ...$this->authViewProps('two_factor_challenge'),
+                    'locale' => $locale,
+                    'direction' => $locale === 'ar' ? 'rtl' : 'ltr',
+                ],
+            );
+        });
     }
 
     /**
@@ -124,6 +142,9 @@ class FortifyServiceProvider extends ServiceProvider
 
             return Limit::perMinute(5)->by($throttleKey);
         });
+
+        RateLimiter::for('two-factor', fn (Request $request): Limit => Limit::perMinute(5)
+            ->by(hash('sha256', ($request->session()->get('login.id') ?? $request->session()->getId()).'|'.$request->ip())));
 
         RateLimiter::for('whatsapp-login-send', fn (Request $request): Limit => Limit::perMinute(3)
             ->by(hash('sha256', (string) $request->input('phone').'|'.$request->ip())));

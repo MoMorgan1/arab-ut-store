@@ -85,4 +85,15 @@ return [
         'description' => 'This is a secure area. Confirm your password to continue.',
         'submit' => 'Confirm password',
     ],
+    'two_factor_challenge' => [
+        'head_title' => 'Two-factor authentication',
+        'title' => 'Confirm your identity',
+        'description' => 'Enter the code from your authenticator app to continue.',
+        'code' => 'Authenticator code',
+        'recovery_code' => 'Recovery code',
+        'use_recovery_code' => 'Use a recovery code',
+        'use_authenticator_code' => 'Use an authenticator code',
+        'invalid_code' => 'The code is invalid or has expired.',
+        'submit' => 'Confirm sign in',
+    ],
 ];

@@ -14,6 +14,7 @@ import ForgotPassword from '@/pages/auth/forgot-password';
 import Login from '@/pages/auth/login';
 import Register from '@/pages/auth/register';
 import ResetPasswordPage from '@/pages/auth/reset-password';
+import TwoFactorChallenge from '@/pages/auth/two-factor-challenge';
 import type { AuthUiTranslations } from '@/types/auth';
 
 const page = vi.hoisted(() => ({ props: {} as Record<string, unknown> }));
@@ -169,6 +170,17 @@ const arabicUi = {
         description: 'هذه منطقة آمنة. أكّد كلمة المرور للمتابعة.',
         submit: 'تأكيد كلمة المرور',
     },
+    two_factor_challenge: {
+        head_title: 'التحقق بخطوتين',
+        title: 'أكّد هويتك',
+        description: 'أدخل الرمز من تطبيق المصادقة للمتابعة.',
+        code: 'رمز تطبيق المصادقة',
+        recovery_code: 'رمز الاسترداد',
+        use_recovery_code: 'استخدم رمز استرداد',
+        use_authenticator_code: 'استخدم رمز تطبيق المصادقة',
+        invalid_code: 'الرمز غير صحيح أو انتهت صلاحيته.',
+        submit: 'تأكيد الدخول',
+    },
 } satisfies AuthUiTranslations;
 
 const englishUi = {
@@ -230,6 +242,17 @@ const englishUi = {
         description:
             'This is a secure area. Confirm your password to continue.',
         submit: 'Confirm password',
+    },
+    two_factor_challenge: {
+        head_title: 'Two-factor authentication',
+        title: 'Confirm your identity',
+        description: 'Enter the code from your authenticator app to continue.',
+        code: 'Authenticator code',
+        recovery_code: 'Recovery code',
+        use_recovery_code: 'Use a recovery code',
+        use_authenticator_code: 'Use an authenticator code',
+        invalid_code: 'The code is invalid or has expired.',
+        submit: 'Confirm sign in',
     },
 } satisfies AuthUiTranslations;
 
@@ -395,4 +418,47 @@ it('renders English register forgot and reset forms with the localized route con
         screen.getByRole('button', { name: 'Save new password' }),
     ).toBeVisible();
     expect(document.querySelector('.auth-shell')).toHaveAttribute('dir', 'ltr');
+});
+
+it('renders one localized two-factor challenge mode at a time without retaining a code', () => {
+    page.props = {
+        authPage: 'two_factor_challenge',
+        authRoutes: routes,
+        authUi: arabicUi,
+        direction: 'rtl',
+        locale: 'ar',
+    };
+
+    render(
+        <AuthLayout>
+            <TwoFactorChallenge authUi={arabicUi} />
+        </AuthLayout>,
+    );
+
+    const authenticatorCode = screen.getByLabelText(
+        arabicUi.two_factor_challenge.code,
+    );
+    expect(authenticatorCode).toHaveAttribute('name', 'code');
+    expect(authenticatorCode).toHaveAttribute('inputmode', 'numeric');
+    expect(authenticatorCode).toHaveAttribute('autocomplete', 'one-time-code');
+    expect(
+        screen.queryByLabelText(arabicUi.two_factor_challenge.recovery_code),
+    ).not.toBeInTheDocument();
+    expect(document.querySelector('form')).toHaveAttribute(
+        'action',
+        '/two-factor-challenge',
+    );
+
+    fireEvent.click(
+        screen.getByRole('button', {
+            name: arabicUi.two_factor_challenge.use_recovery_code,
+        }),
+    );
+
+    expect(
+        screen.queryByLabelText(arabicUi.two_factor_challenge.code),
+    ).not.toBeInTheDocument();
+    expect(
+        screen.getByLabelText(arabicUi.two_factor_challenge.recovery_code),
+    ).toHaveAttribute('name', 'recovery_code');
 });

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Models\PhoneVerification;
 use App\Models\User;
 use Illuminate\Http\Client\Request;
@@ -174,6 +175,37 @@ test('the matching WhatsApp code is consumed once and signs in the phone owner',
     ])->assertUnprocessable();
     $this->assertGuest();
 });
+
+test('WhatsApp verification fails closed for privileged accounts without revealing their role', function (UserRole $role) {
+    $user = User::factory()->create([
+        'phone' => '+966501234567',
+        'phone_verified_at' => now(),
+        'role' => $role,
+    ]);
+    $sentCode = null;
+    Http::fake(function (Request $request) use (&$sentCode) {
+        preg_match('/\b([0-9]{6})\b/', (string) $request['body'], $matches);
+        $sentCode = $matches[1] ?? null;
+
+        return Http::response(['sent' => true]);
+    });
+
+    $this->postJson(route('auth.whatsapp.send'), ['phone' => $user->phone])
+        ->assertOk();
+
+    $response = $this->postJson(route('auth.whatsapp.verify'), [
+        'phone' => $user->phone,
+        'code' => $sentCode,
+    ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonPath('errors.code.0', trans('auth_ui.login.phone_code_invalid'))
+        ->assertDontSee($role->value);
+    $this->assertGuest();
+})->with([
+    'Admin' => [UserRole::Admin],
+    'Staff' => [UserRole::Staff],
+]);
 
 test('five incorrect attempts are persisted and exhaust the code', function () {
     $user = User::factory()->create([

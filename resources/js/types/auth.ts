@@ -25,7 +25,8 @@ export type AuthPage =
     | 'register'
     | 'forgot_password'
     | 'reset_password'
-    | 'confirm_password';
+    | 'confirm_password'
+    | 'two_factor_challenge';
 
 export type AuthRoutes = {
     homeUrl: string;
@@ -117,6 +118,17 @@ export type AuthUiTranslations = {
         head_title: string;
         title: string;
         description: string;
+        submit: string;
+    };
+    two_factor_challenge: {
+        head_title: string;
+        title: string;
+        description: string;
+        code: string;
+        recovery_code: string;
+        use_recovery_code: string;
+        use_authenticator_code: string;
+        invalid_code: string;
         submit: string;
     };
 };
