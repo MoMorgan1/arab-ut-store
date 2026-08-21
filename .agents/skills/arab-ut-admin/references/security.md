@@ -13,6 +13,10 @@ and unsafe automation/manual-authority overlap.
   challenge. Google/WhatsApp login must fail generically for Admin/Staff because
   those existing controllers bypass the Fortify MFA pipeline.
 - Missing TOTP routes only to enrollment; it never grants ordinary Admin access.
+- A missing or unconfirmed TOTP factor may establish only the constrained
+  authenticated session required for password setup and MFA enrollment. Task
+  3's `EnsureAdminMfa` middleware denies ordinary Admin routes until the factor
+  is confirmed.
 - Sensitive actions require recent password confirmation.
 - Rate-limit login, TOTP challenge/enrollment, credential reveal, refunds,
   wallet adjustments, and staff/settings mutations.

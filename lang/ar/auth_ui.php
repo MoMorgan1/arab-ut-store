@@ -94,6 +94,7 @@ return [
         'use_recovery_code' => 'استخدم رمز استرداد',
         'use_authenticator_code' => 'استخدم رمز تطبيق المصادقة',
         'invalid_code' => 'الرمز غير صحيح أو انتهت صلاحيته.',
+        'invalid_recovery_code' => 'رمز الاسترداد غير صحيح أو تم استخدامه.',
         'submit' => 'تأكيد الدخول',
     ],
 ];

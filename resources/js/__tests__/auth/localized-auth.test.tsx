@@ -179,6 +179,7 @@ const arabicUi = {
         use_recovery_code: 'استخدم رمز استرداد',
         use_authenticator_code: 'استخدم رمز تطبيق المصادقة',
         invalid_code: 'الرمز غير صحيح أو انتهت صلاحيته.',
+        invalid_recovery_code: 'رمز الاسترداد غير صحيح أو تم استخدامه.',
         submit: 'تأكيد الدخول',
     },
 } satisfies AuthUiTranslations;
@@ -252,6 +253,8 @@ const englishUi = {
         use_recovery_code: 'Use a recovery code',
         use_authenticator_code: 'Use an authenticator code',
         invalid_code: 'The code is invalid or has expired.',
+        invalid_recovery_code:
+            'The recovery code is invalid or has already been used.',
         submit: 'Confirm sign in',
     },
 } satisfies AuthUiTranslations;

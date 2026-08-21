@@ -80,6 +80,11 @@ workflow, ticketing model, or realtime transport.
   do not participate in Fortify's MFA pipeline. Customer Google/WhatsApp login
   remains unchanged.
 - An Admin/Staff user without confirmed TOTP cannot enter ordinary Admin pages.
+- Password authentication for an Admin/Staff user whose TOTP is missing or
+  unconfirmed creates only the constrained authenticated session needed for the
+  existing password-setup and MFA-enrollment flow. It does not grant ordinary
+  Admin access; Task 3's `EnsureAdminMfa` middleware is the route boundary that
+  denies those Admin pages until TOTP is confirmed.
 - Credential reveal, refund, wallet adjustment, account activation changes,
   staff access changes, catalog/pricing mutations, and settings mutations
   require a recently confirmed password.

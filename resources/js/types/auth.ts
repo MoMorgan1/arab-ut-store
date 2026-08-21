@@ -129,6 +129,7 @@ export type AuthUiTranslations = {
         use_recovery_code: string;
         use_authenticator_code: string;
         invalid_code: string;
+        invalid_recovery_code: string;
         submit: string;
     };
 };

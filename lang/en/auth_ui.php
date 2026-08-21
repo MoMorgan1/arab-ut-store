@@ -94,6 +94,7 @@ return [
         'use_recovery_code' => 'Use a recovery code',
         'use_authenticator_code' => 'Use an authenticator code',
         'invalid_code' => 'The code is invalid or has expired.',
+        'invalid_recovery_code' => 'The recovery code is invalid or has already been used.',
         'submit' => 'Confirm sign in',
     ],
 ];
