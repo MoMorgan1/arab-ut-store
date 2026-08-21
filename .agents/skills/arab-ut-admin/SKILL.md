@@ -59,6 +59,7 @@ canonical design explicitly adopts these foundations.
 - Audit events and safe metadata: [references/audit-logging.md](references/audit-logging.md)
 - Required tests/gates: [references/testing.md](references/testing.md)
 - Threat model and secret handling: [references/security.md](references/security.md)
+- UI/UX and engineering references: [references/ui-reference.md](references/ui-reference.md)
 
 Before a new slice, run [checklists/new-feature.md](checklists/new-feature.md).
 Before review/merge, run [checklists/pre-merge.md](checklists/pre-merge.md).

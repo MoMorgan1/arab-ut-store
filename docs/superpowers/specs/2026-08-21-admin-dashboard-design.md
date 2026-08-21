@@ -22,6 +22,16 @@ workflow, ticketing model, or realtime transport.
 
 ## Owner decisions
 
+- On 2026-08-21, Mohamed set the Admin UI/UX engineering references: the
+  Laravel React Starter Kit as architectural reference, shadcn-admin
+  (satnaing/shadcn-admin) as the UI/UX reference for sidebar, navigation,
+  layouts, tables, filters, forms, command/search, settings, responsive
+  behavior, and information density, and TanStack Table patterns for complex
+  tables. The Admin follows the faithful shadcn-admin look in a single dark
+  theme; Thmanyah typography and the Arab UT logo are retained. This supersedes
+  the earlier "not a generic SaaS dashboard / no copied shadcn-admin" visual
+  direction for the Admin surface; architecture remains Laravel-owned (see the
+  skill's `references/ui-reference.md`).
 - On 2026-08-21, Mohamed superseded the earlier bilingual Admin contract: the
   Admin dashboard surface is English-only. Arabic remains the storefront and
   customer-account default. Local Thmanyah typography is retained for the
