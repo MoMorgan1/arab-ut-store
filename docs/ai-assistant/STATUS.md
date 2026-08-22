@@ -1,7 +1,8 @@
 # Live status
 
-**Lifecycle:** Phase 1 accepted; Phase 2 implemented and deployed but not
-accepted after the mandatory public Luna evaluation failed
+**Lifecycle:** Phase 1 accepted; Phase 2 implemented, deployed, and re-enabled
+in production by owner decision on 2026-08-22 while remediation continues; not
+accepted (the mandatory public Luna evaluation failed and has not been re-run)
 **Verified:** 2026-08-22
 
 ## Release snapshot
@@ -20,7 +21,7 @@ accepted after the mandatory public Luna evaluation failed
 | Phase 1 owner acceptance                                   | Mohamed accepted the deployed Phase 1 release on 2026-08-21 after completing the real-account and physical iPhone/Safari checks. This closes the remaining device/owner gate without changing the scope of the automated Chromium evidence.                                                                                                               |
 | Phase 2 runtime release                                    | [Tests 32578736891](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32578736891) and [deploy 32578995534](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32578995534) passed for `e13ee8bde25263a262788177d0ce78fb4f46f37f`. The active release, seven chat routes, and minute stale-turn recovery schedule were verified in production. |
 | Public Luna evaluation                                     | The exact 16-case batch failed mandatory mixed-language, safety-critical-case, and first-visible-content thresholds. See [the sanitized evidence](evidence/2026-08-22-phase-2-luna-public-eval.md).                                                                                                                                                       |
-| Current production mode                                    | Mohamed selected disable and remediate. AI is disabled, rollout is `disabled`, the provider selector is empty, and the deterministic Phase 1 demo remains enabled. A public fallback probe produced no agent turn.                                                                                                                                        |
+| Current production mode                                    | **Luna re-enabled by Mohamed's decision on 2026-08-22** after the first remediation wave deployed at `b08b4475` (nested `response.failed` parsing, real handler inspection, re-enabled tests, docs). Production env was switched by the owner and activated by that deploy. A public storefront probe at `2026-08-22T19:47:57Z` produced `POST /chat/conversations/{id}/agent-turns → 200`, a streamed Luna reply, the agent-mode disclaimer, and zero browser console errors. The 16-case batch has **not** been re-run: the mixed-language prompt fix (`support-v2`) and the first-visible-content investigation are still open, so the mandatory gate remains unmet and this is an owner-accepted exception, not an acceptance. |
 
 The deployed application contains the Phase 2 runtime, direct Luna adapter,
 streaming routes, durable turn/run schema, recovery, and cost accounting. Those
