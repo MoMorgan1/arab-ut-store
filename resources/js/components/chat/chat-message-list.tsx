@@ -2,6 +2,7 @@ import { AlertCircle, ArrowDown, RefreshCw } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { groupChatMessages } from '@/lib/chat-grouping';
+import { chatTopicsFor } from '@/lib/chat-topics';
 import type { AgentTurnState, ChatMessage } from '@/types/chat';
 import { TypingIndicator } from './typing-indicator';
 
@@ -20,11 +21,6 @@ type ChatMessageListProps = {
     onRetryAgentTurn?: () => void;
 };
 
-const SUGGESTIONS = {
-    ar: ['الأسعار', 'الخدمات', 'متابعة الطلب', 'الدعم'],
-    en: ['Prices', 'Services', 'Track Order', 'Support'],
-};
-
 export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     disabled = false,
     messages,
@@ -40,7 +36,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     onRetryAgentTurn,
 }) => {
     const isEn = locale === 'en';
-    const suggestions = isEn ? SUGGESTIONS.en : SUGGESTIONS.ar;
+    const suggestions = chatTopicsFor(locale).map((topic) => topic.label);
     const hasCustomerMessages = messages.some(
         (m) => m.senderType === 'customer',
     );
