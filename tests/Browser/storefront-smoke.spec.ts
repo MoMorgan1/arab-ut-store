@@ -1023,11 +1023,15 @@ test('authenticated Admin overview and orders are operable across required width
                         name: /Filters/i,
                     });
                     await expectMinimumTouchTarget(filtersButton);
-                    await filtersButton.click();
 
+                    // Asserted before the sheet opens: the modal marks the rest
+                    // of the page aria-hidden, which removes this control from
+                    // the accessibility tree while the sheet is up.
                     await expectMinimumTouchTarget(
                         page.getByRole('combobox', { name: 'Per page' }),
                     );
+
+                    await filtersButton.click();
 
                     const filterSheet = page.getByRole('dialog', {
                         name: 'Filters',
