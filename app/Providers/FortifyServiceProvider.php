@@ -238,6 +238,12 @@ class FortifyServiceProvider extends ServiceProvider
 
     private function hardenTwoFactorManagementRoutes(): void
     {
+        // Cached routes already contain this middleware and are loaded after
+        // application booted callbacks have started running.
+        if ($this->app->routesAreCached()) {
+            return;
+        }
+
         if (! Features::enabled(Features::twoFactorAuthentication())) {
             return;
         }
