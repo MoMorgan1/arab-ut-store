@@ -1,38 +1,40 @@
 # Live status
 
-**Lifecycle:** Phase 1 accepted; Phase 2 implementation approved by Mohamed on
-2026-08-21 and in progress
+**Lifecycle:** Phase 1 accepted; Phase 2 implemented and deployed but not
+accepted after the mandatory public Luna evaluation failed
 **Verified:** 2026-08-22
 
 ## Release snapshot
 
-| Item                                                       | Evidence                                                                                                                                                                                                                                                                                                            |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Verified final Phase 1 application SHA deployed 2026-08-21 | `d77385a44e7ac1413aab419f79d38fc2040be650`                                                                                                                                                                                                                                                                          |
-| Backend/MariaDB release checkpoint                         | [tests 32398600493](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32398600493) and [deploy 32399022501](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32399022501) passed for `1fd83d37b990833cd451d7c3a7b48314976a9f6f`.                                                                       |
-| UI/account release checkpoint                              | [tests 32410960971](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32410960971) and [deploy 32411415481](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32411415481) passed for `e7f230d2ea01dc456aef1a51035f4d88f39542e2`.                                                                       |
-| Final-review release checkpoint                            | [tests 32427300165](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427300165) and [deploy 32427591352](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427591352) passed for `1dfebf625bf68cea5069037a5115278e19c3cc09`.                                                                       |
-| Owner-revalidation release checkpoint                      | [tests 32429880313](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32429880313) and [deploy 32430144972](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32430144972) passed for the final SHA. The tests workflow passed CI, MariaDB lifecycle/concurrency, seven Chromium checks, and packaging. |
-| Production read-only evidence                              | On 2026-08-21, the active release resolved to the final SHA; all four chat routes were registered; Laravel listed the minute order publisher and hourly maintenance event; the six health/public routes returned 200 in the preceding final-review deployment check.                                                |
-| Production session decision evidence                       | `SESSION_DRIVER=database`; `SESSION_ENCRYPT=true`.                                                                                                                                                                                                                                                                  |
-| Final-review correction wave                               | Integrated and deployed in the final Phase 1 SHA above.                                                                                                                                                                                                                                                             |
-| Recurring scheduler execution                              | Verified from owner-provided hPanel evidence: exact custom command, manual `* * * * *` schedule, and successful `orders:publish-paid-events` output at `2026-08-21 10:14:01`. A read-only `schedule:list` on the active final release confirmed the minute publisher and hourly chat maintenance event.             |
-| Phase 1 owner acceptance                                   | Mohamed accepted the deployed Phase 1 release on 2026-08-21 after completing the real-account and physical iPhone/Safari checks. This closes the remaining device/owner gate without changing the scope of the automated Chromium evidence.                                                                         |
+| Item                                                       | Evidence                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Verified final Phase 1 application SHA deployed 2026-08-21 | `d77385a44e7ac1413aab419f79d38fc2040be650`                                                                                                                                                                                                                                                                                                                |
+| Backend/MariaDB release checkpoint                         | [tests 32398600493](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32398600493) and [deploy 32399022501](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32399022501) passed for `1fd83d37b990833cd451d7c3a7b48314976a9f6f`.                                                                                                             |
+| UI/account release checkpoint                              | [tests 32410960971](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32410960971) and [deploy 32411415481](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32411415481) passed for `e7f230d2ea01dc456aef1a51035f4d88f39542e2`.                                                                                                             |
+| Final-review release checkpoint                            | [tests 32427300165](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427300165) and [deploy 32427591352](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32427591352) passed for `1dfebf625bf68cea5069037a5115278e19c3cc09`.                                                                                                             |
+| Owner-revalidation release checkpoint                      | [tests 32429880313](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32429880313) and [deploy 32430144972](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32430144972) passed for the final SHA. The tests workflow passed CI, MariaDB lifecycle/concurrency, seven Chromium checks, and packaging.                                       |
+| Production read-only evidence                              | On 2026-08-21, the active release resolved to the final SHA; all four chat routes were registered; Laravel listed the minute order publisher and hourly maintenance event; the six health/public routes returned 200 in the preceding final-review deployment check.                                                                                      |
+| Production session decision evidence                       | `SESSION_DRIVER=database`; `SESSION_ENCRYPT=true`.                                                                                                                                                                                                                                                                                                        |
+| Final-review correction wave                               | Integrated and deployed in the final Phase 1 SHA above.                                                                                                                                                                                                                                                                                                   |
+| Recurring scheduler execution                              | Verified from owner-provided hPanel evidence: exact custom command, manual `* * * * *` schedule, and successful `orders:publish-paid-events` output at `2026-08-21 10:14:01`. A read-only `schedule:list` on the active final release confirmed the minute publisher and hourly chat maintenance event.                                                   |
+| Phase 1 owner acceptance                                   | Mohamed accepted the deployed Phase 1 release on 2026-08-21 after completing the real-account and physical iPhone/Safari checks. This closes the remaining device/owner gate without changing the scope of the automated Chromium evidence.                                                                                                               |
+| Phase 2 runtime release                                    | [Tests 32578736891](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32578736891) and [deploy 32578995534](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32578995534) passed for `e13ee8bde25263a262788177d0ce78fb4f46f37f`. The active release, seven chat routes, and minute stale-turn recovery schedule were verified in production. |
+| Public Luna evaluation                                     | The exact 16-case batch failed mandatory mixed-language, safety-critical-case, and first-visible-content thresholds. See [the sanitized evidence](evidence/2026-08-22-phase-2-luna-public-eval.md).                                                                                                                                                       |
+| Current production mode                                    | Mohamed selected disable and remediate. AI is disabled, rollout is `disabled`, the provider selector is empty, and the deterministic Phase 1 demo remains enabled. A public fallback probe produced no agent turn.                                                                                                                                        |
 
-On 2026-08-21, read-only production configuration observed
-`CHAT_ENABLED=true` and `CHAT_DEMO_ASSISTANT=true` for the final Phase 1 release.
-This observation does not describe repository or nonproduction defaults. The
-application has no provider runtime, OpenAI credential, RAG,
-tools, streaming, operator inbox, or Phase 2 implementation.
+The deployed application contains the Phase 2 runtime, direct Luna adapter,
+streaming routes, durable turn/run schema, recovery, and cost accounting. Those
+capabilities are inactive in production after the failed gate. RAG, tools, live
+commerce/account access, and the operator inbox remain unimplemented.
 
 ## Phase status
 
-| Phase                                 | State                                                                                                                                                         |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase 0 stabilization                 | Implemented.                                                                                                                                                  |
-| Phase 1 deterministic chat foundation | Implemented.                                                                                                                                                  |
-| Phase 1 Completion                    | **Accepted by Mohamed on 2026-08-21.** Implementation, deployment, scheduler evidence, real-account testing, and physical iPhone/Safari testing are complete. |
-| Phase 2 AI runtime/Luna | Implementation approved and in progress. Tasks 1-8 are merged to `main` (`d8b7345`) and deployed with AI disabled. Task 10 (direct OpenAI Responses adapter) is implemented on `codex/ai-phase2-luna` with all local gates green. On 2026-08-22 Mohamed waived the Task 9 fake-production gate and approved **public** rollout at go-live; see [DECISIONS.md](DECISIONS.md). |
+| Phase                                 | State                                                                                                                                                                                                                                                                                |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase 0 stabilization                 | Implemented.                                                                                                                                                                                                                                                                         |
+| Phase 1 deterministic chat foundation | Implemented.                                                                                                                                                                                                                                                                         |
+| Phase 1 Completion                    | **Accepted by Mohamed on 2026-08-21.** Implementation, deployment, scheduler evidence, real-account testing, and physical iPhone/Safari testing are complete.                                                                                                                        |
+| Phase 2 AI runtime/Luna               | Implemented and deployed at `e13ee8bde25263a262788177d0ce78fb4f46f37f`, but **not accepted**. Mohamed approved direct public rollout and waived the fake-production gate; the mandatory public evaluation then failed and AI was disabled while the Phase 1 demo remained available. |
 
 ## Scheduler evidence
 
@@ -47,7 +49,8 @@ The hPanel output recorded `orders:publish-paid-events` as `DONE` at
 `2026-08-21 10:14:01`. A subsequent read-only `php artisan schedule:list` from
 the active `d77385a44e7ac1413aab419f79d38fc2040be650` release listed the minute
 publisher and hourly `chat:maintain-conversations` event. This closes the
-external scheduler gate.
+external scheduler gate. A 2026-08-22 read-only check on the current release
+also verified `agent:recover-stale-turns` every minute.
 
 ## Phase 1 acceptance record
 
@@ -73,21 +76,21 @@ supplies that separate acceptance evidence. See [UX.md](UX.md) and
 
 ## Exact next gate
 
-Phase 2 continues on branch `codex/ai-phase2-luna` under the approved plan
-[`2026-08-21-ai-assistant-phase-2-runtime.md`](../superpowers/plans/2026-08-21-ai-assistant-phase-2-runtime.md)
-with the 2026-08-22 owner decision recorded in [DECISIONS.md](DECISIONS.md)
-(fake-production gate waived; public rollout approved at go-live). Task 10 is
-implemented and locally verified. After merge/deploy of the adapter with AI
-still disabled: run `php artisan agent:inspect-streaming-http` on the deployed
-SHA (outbound StreamHandler check), then Mohamed sets the OpenAI project spend
-ceiling through secure project controls and an authorized operator enters the
-project key only in Hostinger's shared `.env` together with
-`AI_ASSISTANT_ENABLED=true`, `AI_ASSISTANT_ROLLOUT=public`,
-`AI_MODEL_PROVIDER=openai`, followed by `php artisan config:cache`. One
-content-free canary message requiring an actual Luna first delta is the final
-streaming proof; disable immediately on failure. The bilingual/safety
-evaluation thresholds then gate acceptance. No key has been requested,
-transmitted, or installed.
+Phase 2 re-entry is blocked on an owner-approved remediation for the two
+mixed-language failures and the first-visible-content maximum. Source review
+also found a nested-versus-flat `response.failed` client/server payload mismatch
+and a configured connect timeout currently passed as Guzzle's total timeout.
+The accepted nearby-value guard decision is broader in current source: any
+qualifying label and value in one message can pair. The inspection command also
+reports a hardcoded handler instead of inspecting the adapter stack. Four
+frontend tests for quiet timing/rescheduling, disconnect polling, and retry UI
+are skipped. No prompt, threshold, guard, or runtime default may be changed
+silently. After a reviewed fix is deployed with AI still disabled, verify the
+actual deployed handler, enable the approved direct-public Luna configuration
+through secure access, require a live canary, and execute a new complete 16-case
+batch. Any mandatory miss disables Luna again. See
+[AGENT-RUNTIME.md](AGENT-RUNTIME.md), [EVALS.md](EVALS.md), and
+[OPERATIONS.md](OPERATIONS.md).
 
 ## Open decision
 
