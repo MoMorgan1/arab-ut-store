@@ -459,6 +459,7 @@ export function useChat(options: UseChatOptions = {}) {
                     streamingTurnIdRef.current = turn.publicId;
                     isStreamingRef.current = true;
                     setIsStreaming(true);
+                    setIsAssistantTyping(false);
                     setRetryableTurn(null);
 
                     const streamTempId = `stream-${turn.publicId}`;
@@ -640,6 +641,12 @@ export function useChat(options: UseChatOptions = {}) {
                     );
                 }
             } finally {
+                setIsQuietWaiting(false);
+
+                if (quietTimerRef.current === null) {
+                    setIsAssistantTyping(false);
+                }
+
                 if (streamAbortControllerRef.current === abortController) {
                     streamAbortControllerRef.current = null;
                 }
@@ -908,6 +915,7 @@ export function useChat(options: UseChatOptions = {}) {
                     continue;
                 }
 
+                setIsAssistantTyping(false);
                 updateMessages((prev) =>
                     prev.map((msg) =>
                         msg.tempId === item.tempId
@@ -1009,6 +1017,7 @@ export function useChat(options: UseChatOptions = {}) {
                             continue;
                         }
 
+                        setIsAssistantTyping(false);
                         updateMessages((prev) =>
                             prev.map((msg) =>
                                 msg.tempId === item.tempId
@@ -1026,6 +1035,7 @@ export function useChat(options: UseChatOptions = {}) {
                     continue;
                 }
 
+                setIsAssistantTyping(false);
                 updateMessages((prev) =>
                     prev.map((msg) =>
                         msg.tempId === item.tempId
@@ -1094,6 +1104,10 @@ export function useChat(options: UseChatOptions = {}) {
 
             updateMessages((prev) => [...prev, optimisticMessage]);
             setError(null);
+
+            if (conversationRef.current?.assistantMode === 'agent') {
+                setIsAssistantTyping(true);
+            }
 
             queueRef.current.push({
                 tempId,
