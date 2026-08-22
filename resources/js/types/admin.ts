@@ -219,6 +219,39 @@ export type AdminTranslations = {
             copyFallbackSuccess: string;
             copyFallbackFailed: string;
         };
+        refundsTitle: string;
+        refund: {
+            title: string;
+            description: string;
+            amountLabel: string;
+            reasonLabel: string;
+            reasonPlaceholder: string;
+            reasonRequired: string;
+            reasonMaxLength: string;
+            submitButton: string;
+            processingButton: string;
+            confirmModalTitle: string;
+            confirmModalDescription: string;
+            confirmButton: string;
+            cancelButton: string;
+            successTitle: string;
+            successMessage: string;
+            errorTitle: string;
+            fullRefundRequired: string;
+            unavailable: string;
+            providerUnavailable: string;
+            rateLimited: string;
+            rateLimitedGeneric: string;
+            genericError: string;
+            networkError: string;
+            passwordModalTitle: string;
+            passwordModalDescription: string;
+            passwordLabel: string;
+            passwordPlaceholder: string;
+            confirmPasswordButton: string;
+            confirmingPassword: string;
+            invalidPassword: string;
+        };
     };
     statuses: Record<string, string>;
     mfa: {
@@ -530,6 +563,12 @@ export type AdminOrderDetailPageProps = {
     allowedTransitions: string[];
     transitionUrl: string;
     revealUrlTemplate?: string;
+    refund: {
+        eligible: boolean;
+        amountMinor: string;
+        currency: string;
+    };
+    refundUrl: string;
     confirmPasswordUrl?: string;
     logoutUrl: string;
 };

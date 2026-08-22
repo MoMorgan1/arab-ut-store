@@ -11,17 +11,9 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
+import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
@@ -86,8 +78,6 @@ export default function AdminOrderItemSecret({
     > | null>(null);
     const [isPurged, setIsPurged] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
-    const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
-    const [passwordError, setPasswordError] = useState<string | null>(null);
     const [feedback, setFeedback] = useState<{
         type: 'error';
         message: string;
@@ -108,22 +98,12 @@ export default function AdminOrderItemSecret({
         ? revealUrlTemplate.replace('__ITEM_ID__', item.id)
         : `/admin/api/orders/${orderId}/items/${item.id}/reveal`;
 
-    const confirmUrl = confirmPasswordUrl || '/user/confirm-password';
-
     const revealHttp = useHttp<
         { purpose: string; case_reference?: string },
         { data: Record<string, unknown> }
     >('post', revealUrl, {
         purpose: 'fulfillment',
     });
-
-    const passwordHttp = useHttp<{ password: string }, unknown>(
-        'post',
-        confirmUrl,
-        {
-            password: '',
-        },
-    );
 
     const executeReveal = useCallback(async () => {
         const trimmedCaseRef = caseReference.trim();
@@ -246,64 +226,6 @@ export default function AdminOrderItemSecret({
         secretsCopy.networkError,
         selectedPurpose,
     ]);
-
-    const handlePasswordSubmit = async (e?: React.FormEvent) => {
-        if (e) {
-            e.preventDefault();
-        }
-
-        if (!confirmPasswordInput) {
-            return;
-        }
-
-        setPasswordError(null);
-        passwordHttp.setData({ password: confirmPasswordInput });
-
-        let handled = false;
-
-        try {
-            await passwordHttp.submit('post', confirmUrl, {
-                headers: { Accept: 'application/json' },
-                onSuccess: () => {
-                    handled = true;
-                    setShowPasswordModal(false);
-                    setConfirmPasswordInput('');
-                    setPasswordError(null);
-                    // Automatically replay the reveal request!
-                    void executeReveal();
-                },
-                onHttpException: (response) => {
-                    handled = true;
-
-                    if (response.status === 422) {
-                        const parsed = parseResponseData(response.data) as {
-                            errors?: { password?: string[] };
-                        };
-                        setPasswordError(
-                            parsed?.errors?.password?.[0] ||
-                                secretsCopy.invalidPassword,
-                        );
-                    } else {
-                        setPasswordError(secretsCopy.invalidPassword);
-                    }
-
-                    return false;
-                },
-                onNetworkError: () => {
-                    handled = true;
-                    setPasswordError(secretsCopy.networkError);
-
-                    return false;
-                },
-            });
-        } catch {
-            // Handled in callbacks
-        }
-
-        if (!handled && !passwordHttp.processing) {
-            setPasswordError(secretsCopy.genericError);
-        }
-    };
 
     const handleCopy = async (text: string, fieldKey?: string) => {
         let success = false;
@@ -677,97 +599,23 @@ export default function AdminOrderItemSecret({
                 </div>
             )}
 
-            {/* Password Confirmation Modal (Triggered by 423) */}
-            <Dialog
-                onOpenChange={(open) => {
-                    if (!open && !passwordHttp.processing) {
-                        setShowPasswordModal(false);
-                        setPasswordError(null);
-                        setConfirmPasswordInput('');
-                    }
-                }}
+            <AdminPasswordConfirmDialog
+                cancelButtonText={secretsCopy.cancelButton}
+                confirmButtonText={secretsCopy.confirmPasswordButton}
+                confirmingButtonText={secretsCopy.confirmingPassword}
+                confirmPasswordUrl={confirmPasswordUrl}
+                description={secretsCopy.passwordModalDescription}
+                genericErrorText={secretsCopy.genericError}
+                inputId="reveal-password-confirm"
+                invalidPasswordText={secretsCopy.invalidPassword}
+                networkErrorText={secretsCopy.networkError}
+                onConfirmed={executeReveal}
+                onOpenChange={setShowPasswordModal}
                 open={showPasswordModal}
-            >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>
-                            {secretsCopy.passwordModalTitle}
-                        </DialogTitle>
-                        <DialogDescription>
-                            {secretsCopy.passwordModalDescription}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <form
-                        className="flex flex-col gap-4"
-                        onSubmit={(e) => void handlePasswordSubmit(e)}
-                    >
-                        <div className="flex flex-col gap-1.5">
-                            <Label
-                                className="text-xs font-semibold"
-                                htmlFor="reveal-password-confirm"
-                            >
-                                {secretsCopy.passwordLabel}
-                            </Label>
-                            <Input
-                                autoFocus
-                                className="min-h-11 text-xs"
-                                id="reveal-password-confirm"
-                                onChange={(e) => {
-                                    setConfirmPasswordInput(e.target.value);
-                                    setPasswordError(null);
-                                }}
-                                placeholder={secretsCopy.passwordPlaceholder}
-                                type="password"
-                                value={confirmPasswordInput}
-                            />
-                            {passwordError ? (
-                                <p
-                                    className="text-xs font-medium text-destructive"
-                                    role="alert"
-                                >
-                                    {passwordError}
-                                </p>
-                            ) : null}
-                        </div>
-
-                        <DialogFooter className="gap-2 sm:gap-0">
-                            <DialogClose asChild>
-                                <Button
-                                    className="min-h-11"
-                                    disabled={passwordHttp.processing}
-                                    type="button"
-                                    variant="outline"
-                                >
-                                    {secretsCopy.cancelButton}
-                                </Button>
-                            </DialogClose>
-                            <Button
-                                className="min-h-11 gap-2"
-                                disabled={
-                                    passwordHttp.processing ||
-                                    !confirmPasswordInput
-                                }
-                                type="submit"
-                                variant="default"
-                            >
-                                {passwordHttp.processing ? (
-                                    <>
-                                        <Spinner />
-                                        <span>
-                                            {secretsCopy.confirmingPassword}
-                                        </span>
-                                    </>
-                                ) : (
-                                    <span>
-                                        {secretsCopy.confirmPasswordButton}
-                                    </span>
-                                )}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
+                passwordLabel={secretsCopy.passwordLabel}
+                passwordPlaceholder={secretsCopy.passwordPlaceholder}
+                title={secretsCopy.passwordModalTitle}
+            />
         </div>
     );
 }
