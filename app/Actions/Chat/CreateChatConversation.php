@@ -27,12 +27,17 @@ final readonly class CreateChatConversation
             $conversation->messages()->create([
                 'sender_type' => ChatSenderType::System,
                 'message_type' => ChatMessageType::System,
-                'content' => $effectiveLocale === 'en'
-                    ? "Hello 👋 I'm the Arab UT assistant. Type your message, and you can sign in anytime if you'd like to track your orders."
-                    : 'هلا 👋 أنا مساعد عرب التيميت. اكتب رسالتك، وبإمكانك تطلب تسجيل الدخول لاحقًا لو احتجت متابعة الطلبات.',
+                'content' => self::seedContent($effectiveLocale),
             ]);
 
             return $conversation;
         });
+    }
+
+    public static function seedContent(string $locale): string
+    {
+        return $locale === 'en'
+            ? "Hello 👋 I'm the Arab UT assistant. Type your message, and you can sign in anytime if you'd like to track your orders."
+            : 'هلا 👋 أنا مساعد عرب التيميت. اكتب رسالتك، وبإمكانك تطلب تسجيل الدخول لاحقًا لو احتجت متابعة الطلبات.';
     }
 }

@@ -79,6 +79,30 @@ test('a guest can initialize and fetch an active conversation with seeded onboar
     expect($fetchResponse->headers->get('Cache-Control'))->toContain('no-store');
 });
 
+test('reopening a conversation from another locale adopts the requested language and rewrites the seed', function () {
+    config()->set('ai-assistant.enabled', false);
+    config()->set('ai-assistant.rollout', 'disabled');
+
+    $arResponse = $this->postJson(route('chat.conversations.store'), [
+        'locale' => 'ar',
+    ]);
+    $arResponse->assertOk();
+    $arData = $arResponse->json('data');
+
+    expect($arData['messages'][0]['content'])->toContain('مساعد عرب التيميت');
+
+    $enResponse = $this->postJson(route('chat.conversations.store'), [
+        'locale' => 'en',
+    ]);
+    $enResponse->assertOk();
+    $enData = $enResponse->json('data');
+
+    expect($enData['publicId'])->toBe($arData['publicId'])
+        ->and($enData['messages'][0]['senderType'])->toBe('system')
+        ->and($enData['messages'][0]['content'])->toContain("I'm the Arab UT assistant")
+        ->and(ChatConversation::query()->where('public_id', $enData['publicId'])->firstOrFail()->locale)->toBe('en');
+});
+
 test('guest cannot fetch another guests conversation', function () {
     $otherRawToken = str_repeat('1', 64);
     $otherGuestKey = hash_hmac('sha256', $otherRawToken, (string) config('app.key'));
