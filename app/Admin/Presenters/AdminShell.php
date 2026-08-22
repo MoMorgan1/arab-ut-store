@@ -38,6 +38,14 @@ final class AdminShell
             ];
         }
 
+        if ($actor->can(AdminPermission::CustomersView->value)) {
+            $navigation[] = [
+                'key' => 'customers',
+                'label' => (string) trans('admin.navigation.customers', locale: $locale),
+                'url' => route($prefix.'customers', absolute: false),
+            ];
+        }
+
         $navigation[] = [
             'key' => 'security',
             'label' => (string) trans('admin.navigation.security', locale: $locale),
