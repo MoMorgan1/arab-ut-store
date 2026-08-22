@@ -100,10 +100,14 @@ Post-batch source review also found five re-entry items. Three were fixed on
   arithmetic, a stream fixture that errored inside `start()` and dropped
   `turn.created`, and microtask warm-up order dependence).
 
-Two remain open:
+- fixed: `connect_timeout_seconds` is now Guzzle `connect_timeout`,
+  `stream_read_timeout_seconds` stays `read_timeout`, and
+  `request_timeout_seconds` is the total `timeout`; each is capped by the
+  remaining turn deadline. Previously the connect value was the total timeout
+  and Guzzle's default 10s connect timeout applied.
 
-- `connect_timeout_seconds` is passed to Guzzle as total `timeout`, not
-  `connect_timeout`;
+One remains open:
+
 - the accepted nearby label/value guard boundary is not implemented as a
   proximity rule; current source pairs any qualifying label and value in the
   same message, creating a broader false-positive boundary.

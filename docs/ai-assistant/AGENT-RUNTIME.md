@@ -94,11 +94,13 @@ real failure frame became `invalid_stream`.)
 - the versioned instructions and message input;
 - a 64-character HMAC safety identifier derived from owner scope and `APP_KEY`.
 
-The adapter installs Guzzle `StreamHandler` explicitly. The configured
-five-second value named `connect_timeout_seconds` is currently passed as
-Guzzle's total `timeout` option rather than `connect_timeout`; each body read is
-bounded to two seconds and the remaining monotonic deadline. That mismatch is a
-re-entry remediation item. The required provider events are
+The adapter installs Guzzle `StreamHandler` explicitly. `connect_timeout_seconds`
+(five seconds) is Guzzle `connect_timeout`, `stream_read_timeout_seconds` (two
+seconds) bounds each body read as `read_timeout`, and `request_timeout_seconds`
+(thirty seconds) is the total `timeout`; each is capped by the remaining
+monotonic deadline. (Until 2026-08-22 the connect value was passed as the total
+`timeout` and Guzzle's default ten-second connect timeout applied.) The
+required provider events are
 `response.output_text.delta`, `response.completed`,
 `response.failed`, `response.incomplete`, and top-level `error`. Unknown
 nonterminal provider events are ignored. Visible output is capped at 4,000

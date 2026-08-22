@@ -84,12 +84,18 @@ final readonly class OpenAiResponsesAgentModel implements AgentModel
             $response = $pendingRequest
                 ->withOptions([
                     'stream' => true,
+                    // Connect, per-read, and total budgets are distinct Guzzle
+                    // options; each is capped by the remaining turn deadline.
+                    'connect_timeout' => min(
+                        (float) $this->config->connectTimeoutSeconds(),
+                        $remainingSeconds,
+                    ),
                     'read_timeout' => min(
                         (float) $this->config->streamReadTimeoutSeconds(),
                         $remainingSeconds,
                     ),
                     'timeout' => min(
-                        (float) $this->config->connectTimeoutSeconds(),
+                        (float) $this->config->requestTimeoutSeconds(),
                         $remainingSeconds,
                     ),
                 ])

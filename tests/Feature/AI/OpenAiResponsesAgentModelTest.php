@@ -10,9 +10,11 @@ use App\Services\AI\OpenAiStreamHandlerStack;
 use App\Support\AI\AgentRuntimeConfig;
 use App\ValueObjects\AI\AgentDeadline;
 use App\ValueObjects\AI\AgentModelRequest;
+use GuzzleHttp\Middleware;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\StrayRequestException;
 use Illuminate\Support\Facades\Http;
+use Psr\Http\Message\RequestInterface;
 use Tests\Support\AI\FakeMonotonicClock;
 
 function validAgentModelRequest(): AgentModelRequest
@@ -265,3 +267,38 @@ test('provider events map correctly across terminal, error, and malformed cases'
     'malformed usage structure' => ["data: {\"type\":\"response.completed\",\"response\":{\"id\":\"r1\",\"usage\":\"invalid\"}}\n\n", AgentErrorCode::ProviderMalformed],
     'eof without terminal' => ["data: {\"type\":\"response.in_progress\"}\n\n", AgentErrorCode::ProviderIncomplete],
 ]);
+
+test('provider request uses the connect timeout for connecting and the request timeout as the total budget', function () {
+    config()->set('ai-assistant.connect_timeout_seconds', 5);
+    config()->set('ai-assistant.stream_read_timeout_seconds', 2);
+    config()->set('ai-assistant.request_timeout_seconds', 30);
+    config()->set('services.openai.key', 'unit-test-key-not-a-real-secret');
+
+    $captured = null;
+    Http::globalMiddleware(Middleware::tap(function (RequestInterface $request, array $options) use (&$captured): void {
+        $captured = $options;
+    }));
+    Http::fake([
+        'https://api.openai.com/v1/responses' => Http::response(
+            'data: {"type":"response.completed","response":{"id":"resp_fixture_timeouts","usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}
+
+',
+            200,
+            ['Content-Type' => 'text/event-stream'],
+        ),
+    ]);
+
+    $deadline = AgentDeadline::afterSeconds(
+        new FakeMonotonicClock,
+        app(AgentRuntimeConfig::class)->requestTimeoutSeconds(),
+    );
+    iterator_to_array(
+        app(OpenAiResponsesAgentModel::class)->stream(validAgentModelRequest(), $deadline),
+    );
+
+    expect($captured)->not->toBeNull()
+        ->and($captured['connect_timeout'])->toBe(5.0)
+        ->and($captured['read_timeout'])->toBe(2.0)
+        ->and($captured['timeout'])->toBe(30.0)
+        ->and($captured['stream'])->toBeTrue();
+});
