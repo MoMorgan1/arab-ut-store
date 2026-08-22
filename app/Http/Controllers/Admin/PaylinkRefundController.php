@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Checkout\RefundPaylinkOrder;
+use App\Admin\Actions\RecordStaffAudit;
+use App\Admin\Audit\StaffAuditEvent;
 use App\Exceptions\Checkout\CheckoutUnavailable;
 use App\Exceptions\Payments\PaymentConfigurationException;
 use App\Exceptions\Payments\PaymentGatewayException;
@@ -14,6 +16,10 @@ use Illuminate\Http\JsonResponse;
 
 final class PaylinkRefundController extends Controller
 {
+    public function __construct(
+        private readonly RecordStaffAudit $recordStaffAudit,
+    ) {}
+
     public function __invoke(
         RefundPaylinkRequest $request,
         Order $order,
@@ -21,18 +27,38 @@ final class PaylinkRefundController extends Controller
     ): JsonResponse {
         $amount = (int) $request->validated('amountHalalah');
 
-        if ($amount !== $order->total_halalah) {
-            return $this->error('full_refund_required', 'Paylink supports a full original-payment refund only.', 422);
-        }
-
         $actor = $request->user();
 
         if (! $actor instanceof User) {
             return $this->error('authentication_required', 'Authentication is required.', 401);
         }
 
+        if ($amount !== $order->total_halalah) {
+            $this->recordStaffAudit->execute(
+                actor: $actor,
+                subject: $order,
+                event: new StaffAuditEvent(
+                    action: 'refunds.rejected',
+                    metadata: [
+                        'amount_halalah' => $amount,
+                        'currency' => (string) $order->currency,
+                        'provider' => 'paylink',
+                        'failure_code' => 'full_refund_required',
+                    ],
+                    ipAddress: $request->ip(),
+                ),
+            );
+
+            return $this->error('full_refund_required', 'Paylink supports a full original-payment refund only.', 422);
+        }
+
         try {
-            $refund = $refundOrder->execute($order, (string) $request->validated('reason'), $actor);
+            $refund = $refundOrder->execute(
+                order: $order,
+                reason: (string) $request->validated('reason'),
+                actor: $actor,
+                ipAddress: $request->ip(),
+            );
         } catch (PaymentConfigurationException|PaymentGatewayException) {
             return $this->error('refund_provider_unavailable', 'The refund provider is unavailable.', 503);
         } catch (CheckoutUnavailable) {
@@ -43,12 +69,12 @@ final class PaylinkRefundController extends Controller
             'refundId' => $refund->public_id,
             'status' => $refund->status,
             'amountHalalah' => $refund->amount_halalah,
-        ]])->header('Cache-Control', 'no-store');
+        ]])->header('Cache-Control', 'no-store, private');
     }
 
     private function error(string $code, string $message, int $status): JsonResponse
     {
         return response()->json(['error' => compact('code', 'message')], $status)
-            ->header('Cache-Control', 'no-store');
+            ->header('Cache-Control', 'no-store, private');
     }
 }

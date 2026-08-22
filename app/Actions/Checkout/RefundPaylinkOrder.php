@@ -2,6 +2,8 @@
 
 namespace App\Actions\Checkout;
 
+use App\Admin\Actions\RecordStaffAudit;
+use App\Admin\Audit\StaffAuditEvent;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
@@ -21,9 +23,12 @@ use Throwable;
 
 final readonly class RefundPaylinkOrder
 {
-    public function __construct(private PaymentManager $payments) {}
+    public function __construct(
+        private PaymentManager $payments,
+        private RecordStaffAudit $recordStaffAudit,
+    ) {}
 
-    public function execute(Order $order, string $reason, User $actor): Refund
+    public function execute(Order $order, string $reason, User $actor, ?string $ipAddress = null): Refund
     {
         if ($actor->role !== UserRole::Admin) {
             throw new CheckoutUnavailable('Only an admin may refund an order.');
@@ -35,7 +40,20 @@ final readonly class RefundPaylinkOrder
             throw new CheckoutUnavailable('A valid refund reason is required.');
         }
 
-        $refund = DB::transaction(fn (): Refund => $this->reserve($order, $reason, $actor), attempts: 3);
+        try {
+            $refund = DB::transaction(fn (): Refund => $this->reserve($order, $reason, $actor), attempts: 3);
+        } catch (CheckoutUnavailable $exception) {
+            $existingRefund = $this->findExistingRefund($order);
+
+            $metadata = ['failure_code' => 'manual_review_required'];
+            if ($existingRefund instanceof Refund) {
+                $metadata['refund_public_id'] = (string) $existingRefund->public_id;
+            }
+
+            $this->recordFailureAudit($actor, $order, $metadata, $ipAddress);
+
+            throw $exception;
+        }
 
         if ($refund->status === 'completed') {
             return $refund;
@@ -44,25 +62,69 @@ final readonly class RefundPaylinkOrder
         try {
             $result = $this->payments->gateway()->refund($order->order_number, $reason);
         } catch (PaymentConfigurationException $exception) {
-            $refund->delete();
+            DB::transaction(function () use ($refund, $actor, $order, $ipAddress): void {
+                $refund->delete();
+                $this->recordFailureAudit(
+                    $actor,
+                    $order,
+                    ['failure_code' => 'provider_unavailable'],
+                    $ipAddress,
+                );
+            });
 
             throw $exception;
         } catch (Throwable $exception) {
-            $refund->forceFill(['status' => 'failed'])->save();
+            DB::transaction(function () use ($refund, $actor, $order, $ipAddress): void {
+                $refund->forceFill(['status' => 'failed'])->save();
+                $this->recordFailureAudit(
+                    $actor,
+                    $order,
+                    [
+                        'failure_code' => 'provider_unavailable',
+                        'refund_public_id' => (string) $refund->public_id,
+                    ],
+                    $ipAddress,
+                );
+            });
 
             throw $exception;
         }
 
         if (! $this->matches($result, $order, $refund)) {
-            $refund->forceFill(['status' => 'failed'])->save();
+            DB::transaction(function () use ($refund, $actor, $order, $ipAddress): void {
+                $refund->forceFill(['status' => 'failed'])->save();
+                $this->recordFailureAudit(
+                    $actor,
+                    $order,
+                    [
+                        'failure_code' => 'provider_mismatch',
+                        'refund_public_id' => (string) $refund->public_id,
+                    ],
+                    $ipAddress,
+                );
+            });
 
             throw new CheckoutUnavailable('Paylink returned a mismatched refund.');
         }
 
-        return DB::transaction(
-            fn (): Refund => $this->complete($refund, $result, $actor),
-            attempts: 3,
-        );
+        try {
+            return DB::transaction(
+                fn (): Refund => $this->complete($refund, $result, $actor, $ipAddress),
+                attempts: 3,
+            );
+        } catch (CheckoutUnavailable $exception) {
+            $this->recordFailureAudit(
+                $actor,
+                $order,
+                [
+                    'failure_code' => 'manual_review_required',
+                    'refund_public_id' => (string) $refund->public_id,
+                ],
+                $ipAddress,
+            );
+
+            throw $exception;
+        }
     }
 
     private function reserve(Order $order, string $reason, User $actor): Refund
@@ -71,6 +133,7 @@ final readonly class RefundPaylinkOrder
         $payment = Payment::query()
             ->where('order_id', $lockedOrder->id)
             ->where('provider', 'paylink')
+            ->orderByDesc('id')
             ->lockForUpdate()
             ->first();
 
@@ -89,10 +152,19 @@ final readonly class RefundPaylinkOrder
             throw new CheckoutUnavailable('The refund requires manual review before retrying.');
         }
 
+        if (Refund::query()->where('payment_id', $payment->id)->lockForUpdate()->first() instanceof Refund) {
+            throw new CheckoutUnavailable('The refund requires manual review before retrying.');
+        }
+
+        if (in_array($lockedOrder->status, [OrderStatus::Cancelled, OrderStatus::Refunded], true)) {
+            throw new CheckoutUnavailable('The Paylink payment is not refundable.');
+        }
+
         if ($payment->status !== PaymentStatus::Paid
             || $payment->currency !== 'SAR'
             || $payment->captured_halalah <= 0
-            || $payment->refunded_halalah !== 0) {
+            || $payment->refunded_halalah !== 0
+            || $payment->captured_halalah !== $lockedOrder->total_halalah) {
             throw new CheckoutUnavailable('The Paylink payment is not refundable.');
         }
 
@@ -130,7 +202,7 @@ final readonly class RefundPaylinkOrder
             && $result->currency === 'SAR';
     }
 
-    private function complete(Refund $refund, RefundResult $result, User $actor): Refund
+    private function complete(Refund $refund, RefundResult $result, User $actor, ?string $ipAddress): Refund
     {
         $locked = Refund::query()->whereKey($refund->id)->lockForUpdate()->sole();
 
@@ -165,6 +237,64 @@ final readonly class RefundPaylinkOrder
             'completed_at' => now(),
         ])->save();
 
+        $this->recordStaffAudit->execute(
+            actor: $actor,
+            subject: $order,
+            event: new StaffAuditEvent(
+                action: 'refunds.requested',
+                metadata: [
+                    'amount_halalah' => (int) $locked->amount_halalah,
+                    'currency' => 'SAR',
+                    'provider' => 'paylink',
+                    'refund_public_id' => (string) $locked->public_id,
+                ],
+                ipAddress: $ipAddress,
+            ),
+        );
+
         return $locked->fresh();
+    }
+
+    private function findExistingRefund(Order $order): ?Refund
+    {
+        $payment = Payment::query()
+            ->where('order_id', $order->id)
+            ->where('provider', 'paylink')
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $payment instanceof Payment) {
+            return null;
+        }
+
+        $idempotencyKey = 'paylink:'.hash('sha256', $order->id.'|'.$payment->id);
+
+        return Refund::query()->where('idempotency_key', $idempotencyKey)->first()
+            ?? Refund::query()->where('payment_id', $payment->id)->first();
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     */
+    private function recordFailureAudit(
+        User $actor,
+        Order $order,
+        array $metadata,
+        ?string $ipAddress = null,
+    ): void {
+        $this->recordStaffAudit->execute(
+            actor: $actor,
+            subject: $order,
+            event: new StaffAuditEvent(
+                action: 'refunds.failed',
+                metadata: [
+                    'amount_halalah' => (int) $order->total_halalah,
+                    'currency' => (string) $order->currency,
+                    'provider' => 'paylink',
+                    ...$metadata,
+                ],
+                ipAddress: $ipAddress,
+            ),
+        );
     }
 }

@@ -80,6 +80,12 @@ function defaultProps(): AdminOrderDetailPageProps {
             'cancelled',
         ],
         transitionUrl: '/admin/orders/01K5ADM1N00000000000000001/transitions',
+        refund: {
+            eligible: false,
+            amountMinor: '0',
+            currency: 'SAR',
+        },
+        refundUrl: '/admin/api/orders/01K5ADM1N00000000000000001/refund',
         logoutUrl: '/logout',
     };
 }
@@ -542,10 +548,702 @@ describe('AdminOrderDetailPage', () => {
             });
             fireEvent.click(confirmPwButton);
 
-            // Replayed reveal brings in decrypted credentials
             await waitFor(() => {
                 expect(screen.getByText('Decrypted credentials')).toBeVisible();
                 expect(screen.getByText('replayed@example.com')).toBeVisible();
+            });
+        });
+    });
+
+    describe('Admin Paylink refund (Task 10)', () => {
+        const refundProps = (
+            overrides?: Partial<AdminOrderDetailPageProps>,
+        ): AdminOrderDetailPageProps => ({
+            ...defaultProps(),
+            permissions: [...defaultProps().permissions, 'orders.refund'],
+            refund: {
+                eligible: true,
+                amountMinor: '15000',
+                currency: 'SAR',
+            },
+            refundUrl: '/admin/api/orders/01K5ADM1N00000000000000001/refund',
+            ...overrides,
+        });
+
+        it('renders refund control when actor has orders.refund permission and refund is eligible', () => {
+            pageState.props = refundProps();
+            render(<AdminOrderDetailPage />);
+
+            expect(
+                screen.getByRole('heading', { name: 'Issue Paylink refund' }),
+            ).toBeVisible();
+            expect(
+                screen.getByText(
+                    'Refund the captured payment back to the customer via Paylink.',
+                ),
+            ).toBeVisible();
+            expect(screen.getByText('Refund amount')).toBeVisible();
+            expect(screen.getByLabelText('Refund amount')).toHaveTextContent(
+                /SAR\s*150\.00/,
+            );
+            expect(screen.getByLabelText('Staff reason')).toBeVisible();
+            expect(
+                screen.getByRole('button', { name: /Refund order/i }),
+            ).toBeVisible();
+        });
+
+        it('hides refund control when actor lacks orders.refund permission', () => {
+            pageState.props = refundProps({
+                permissions: ['dashboard.view', 'orders.view', 'orders.update'],
+            });
+            render(<AdminOrderDetailPage />);
+
+            expect(
+                screen.queryByRole('heading', { name: 'Issue Paylink refund' }),
+            ).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: /Refund order/i }),
+            ).not.toBeInTheDocument();
+        });
+
+        it('hides refund control when refund is ineligible', () => {
+            pageState.props = refundProps({
+                refund: {
+                    eligible: false,
+                    amountMinor: '15000',
+                    currency: 'SAR',
+                },
+            });
+            render(<AdminOrderDetailPage />);
+
+            expect(
+                screen.queryByRole('heading', { name: 'Issue Paylink refund' }),
+            ).not.toBeInTheDocument();
+        });
+
+        it('renders existing refund history independently in payment section', () => {
+            pageState.props = refundProps({
+                refund: {
+                    eligible: false,
+                    amountMinor: '15000',
+                    currency: 'SAR',
+                },
+                order: {
+                    ...sampleAdminOrderDetail,
+                    refunds: [
+                        {
+                            id: '01K5REF00000000000000001',
+                            status: 'failed',
+                            method: 'paylink',
+                            amount: { amountMinor: '15000', currency: 'SAR' },
+                            reason: 'Provider mismatch',
+                            completedAt: null,
+                            createdAt: '2026-08-20T10:15:00Z',
+                        },
+                    ],
+                },
+            });
+            render(<AdminOrderDetailPage />);
+
+            expect(screen.getByText('Refunds')).toBeVisible();
+            expect(screen.getByText('Failed')).toBeVisible();
+        });
+
+        it('validates staff reason length and requires non-empty reason', () => {
+            pageState.props = refundProps();
+            render(<AdminOrderDetailPage />);
+
+            const submitBtn = screen.getByRole('button', {
+                name: /Refund order/i,
+            });
+            expect(submitBtn).toBeDisabled();
+
+            const reasonInput = screen.getByLabelText('Staff reason');
+            fireEvent.change(reasonInput, { target: { value: '   ' } });
+            expect(submitBtn).toBeDisabled();
+
+            fireEvent.change(reasonInput, {
+                target: {
+                    value: 'Customer requested refund after support ticket #123.',
+                },
+            });
+            expect(submitBtn).not.toBeDisabled();
+        });
+
+        it('opens second confirmation modal naming exact order number and consequence, and submits exact payload on confirm', async () => {
+            pageState.props = refundProps();
+
+            http.submit.mockImplementationOnce(
+                (
+                    _method: string,
+                    _url: string,
+                    options: {
+                        onSuccess?: (response: unknown) => void;
+                    },
+                ) => {
+                    options.onSuccess?.({
+                        data: {
+                            refundId: '01K5REF00000000000000002',
+                            status: 'completed',
+                            amountHalalah: 15000,
+                        },
+                    });
+
+                    return Promise.resolve(null);
+                },
+            );
+
+            render(<AdminOrderDetailPage />);
+
+            const reasonInput = screen.getByLabelText('Staff reason');
+            fireEvent.change(reasonInput, {
+                target: { value: 'Customer cancellation.' },
+            });
+
+            const initialSubmitBtn = screen.getByRole('button', {
+                name: /Refund order/i,
+            });
+            fireEvent.click(initialSubmitBtn);
+
+            await waitFor(() => {
+                expect(
+                    screen.getByRole('heading', {
+                        name: 'Confirm Paylink refund',
+                    }),
+                ).toBeVisible();
+                expect(
+                    screen.getByText(
+                        /Are you sure you want to refund SAR\s*150\.00 for order AUT-1001\? This will return the payment to the customer and mark the order as refunded\./i,
+                    ),
+                ).toBeVisible();
+                expect(
+                    screen.getByRole('button', { name: 'Issue full refund' }),
+                ).toBeVisible();
+            });
+
+            const confirmBtn = screen.getByRole('button', {
+                name: 'Issue full refund',
+            });
+            fireEvent.click(confirmBtn);
+
+            await waitFor(() => {
+                expect(http.setData).toHaveBeenCalledWith({
+                    amountHalalah: 15000,
+                    reason: 'Customer cancellation.',
+                });
+                expect(http.submit).toHaveBeenCalledWith(
+                    'post',
+                    '/admin/api/orders/01K5ADM1N00000000000000001/refund',
+                    expect.objectContaining({
+                        headers: { Accept: 'application/json' },
+                    }),
+                );
+            });
+
+            await waitFor(() => {
+                expect(screen.getByText('Refund completed')).toBeVisible();
+                expect(
+                    screen.getByText('Refund processed successfully.'),
+                ).toBeVisible();
+            });
+
+            expect(inertia.reload).toHaveBeenCalledWith({
+                only: ['order', 'refund', 'allowedTransitions'],
+            });
+        });
+
+        it('keeps the password prompt open after invalid credentials, then replays the exact refund payload after confirmation', async () => {
+            pageState.props = refundProps();
+
+            let callCount = 0;
+            http.submit.mockImplementation(
+                (
+                    _method: string,
+                    url: string,
+                    options: {
+                        onError?: (errors: Record<string, string>) => void;
+                        onSuccess?: (response: unknown) => void;
+                        onHttpException?: (response: {
+                            data: string;
+                            status: number;
+                        }) => boolean | void;
+                    },
+                ) => {
+                    callCount++;
+
+                    if (callCount === 1) {
+                        options.onHttpException?.({
+                            data: JSON.stringify({
+                                message: 'Password confirmation required.',
+                            }),
+                            status: 423,
+                        });
+                    } else if (
+                        callCount === 2 &&
+                        url.includes('confirm-password')
+                    ) {
+                        options.onError?.({
+                            password: 'The provided password was incorrect.',
+                        });
+                    } else if (
+                        callCount === 3 &&
+                        url.includes('confirm-password')
+                    ) {
+                        options.onSuccess?.({});
+                    } else if (callCount === 4 && url.includes('refund')) {
+                        options.onSuccess?.({
+                            data: {
+                                refundId: '01K5REF00000000000000003',
+                                status: 'completed',
+                                amountHalalah: 15000,
+                            },
+                        });
+                    }
+
+                    return Promise.resolve(null);
+                },
+            );
+
+            render(<AdminOrderDetailPage />);
+
+            fireEvent.change(screen.getByLabelText('Staff reason'), {
+                target: { value: 'Valid reason.' },
+            });
+            fireEvent.click(
+                screen.getByRole('button', { name: /Refund order/i }),
+            );
+
+            await waitFor(() => {
+                expect(
+                    screen.getByRole('button', { name: 'Issue full refund' }),
+                ).toBeVisible();
+            });
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Issue full refund' }),
+            );
+
+            await waitFor(() => {
+                expect(
+                    screen.getByRole('heading', {
+                        name: 'Confirm your password',
+                    }),
+                ).toBeVisible();
+                expect(
+                    screen.getByText(
+                        /For security, please enter your password to confirm this refund\./i,
+                    ),
+                ).toBeVisible();
+            });
+
+            fireEvent.change(
+                screen.getByPlaceholderText('Enter your current password'),
+                {
+                    target: { value: 'AdminPassword!12' },
+                },
+            );
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Confirm password' }),
+            );
+
+            await waitFor(() => {
+                expect(
+                    screen.getByText('The provided password was incorrect.'),
+                ).toBeVisible();
+            });
+
+            fireEvent.change(
+                screen.getByPlaceholderText('Enter your current password'),
+                {
+                    target: { value: 'CorrectAdminPassword!12' },
+                },
+            );
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Confirm password' }),
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Refund completed')).toBeVisible();
+                expect(
+                    screen.getByText('Refund processed successfully.'),
+                ).toBeVisible();
+            });
+
+            expect(inertia.reload).toHaveBeenCalledWith({
+                only: ['order', 'refund', 'allowedTransitions'],
+            });
+        });
+
+        it('reopens the password confirmation modal if replayed refund itself returns 423 and submits exact original payload both times', async () => {
+            pageState.props = refundProps();
+
+            let callCount = 0;
+            const submittedPayloads: unknown[] = [];
+
+            http.setData.mockImplementation((data: unknown) => {
+                submittedPayloads.push(data);
+            });
+
+            http.submit.mockImplementation(
+                (
+                    _method: string,
+                    url: string,
+                    options: {
+                        onSuccess?: (response: unknown) => void;
+                        onHttpException?: (response: {
+                            data: string;
+                            status: number;
+                        }) => boolean | void;
+                    },
+                ) => {
+                    callCount++;
+
+                    if (callCount === 1) {
+                        options.onHttpException?.({
+                            data: JSON.stringify({
+                                message: 'Password confirmation required.',
+                            }),
+                            status: 423,
+                        });
+                    } else if (
+                        callCount === 2 &&
+                        url.includes('confirm-password')
+                    ) {
+                        options.onSuccess?.({});
+                    } else if (callCount === 3 && url.includes('refund')) {
+                        options.onHttpException?.({
+                            data: JSON.stringify({
+                                message:
+                                    'Password confirmation required again.',
+                            }),
+                            status: 423,
+                        });
+                    } else if (
+                        callCount === 4 &&
+                        url.includes('confirm-password')
+                    ) {
+                        options.onSuccess?.({});
+                    } else if (callCount === 5 && url.includes('refund')) {
+                        options.onSuccess?.({
+                            data: {
+                                refundId: '01K5REF00000000000000004',
+                                status: 'completed',
+                                amountHalalah: 15000,
+                            },
+                        });
+                    }
+
+                    return Promise.resolve(null);
+                },
+            );
+
+            render(<AdminOrderDetailPage />);
+
+            fireEvent.change(screen.getByLabelText('Staff reason'), {
+                target: { value: 'Persistent reason snapshot.' },
+            });
+            fireEvent.click(
+                screen.getByRole('button', { name: /Refund order/i }),
+            );
+
+            await waitFor(() => {
+                expect(
+                    screen.getByRole('button', { name: 'Issue full refund' }),
+                ).toBeVisible();
+            });
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Issue full refund' }),
+            );
+
+            await waitFor(() => {
+                expect(
+                    screen.getByRole('heading', {
+                        name: 'Confirm your password',
+                    }),
+                ).toBeVisible();
+            });
+
+            fireEvent.change(
+                screen.getByPlaceholderText('Enter your current password'),
+                {
+                    target: { value: 'FirstPasswordAttempt' },
+                },
+            );
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Confirm password' }),
+            );
+
+            await waitFor(() => {
+                expect(
+                    screen.getByRole('heading', {
+                        name: 'Confirm your password',
+                    }),
+                ).toBeVisible();
+            });
+
+            fireEvent.change(
+                screen.getByPlaceholderText('Enter your current password'),
+                {
+                    target: { value: 'SecondPasswordAttempt' },
+                },
+            );
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Confirm password' }),
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Refund completed')).toBeVisible();
+                expect(
+                    screen.getByText('Refund processed successfully.'),
+                ).toBeVisible();
+            });
+
+            const refundPayloads = submittedPayloads.filter(
+                (p): p is { amountHalalah: number; reason: string } =>
+                    Boolean(
+                        p &&
+                        typeof p === 'object' &&
+                        'reason' in p &&
+                        p.reason === 'Persistent reason snapshot.',
+                    ),
+            );
+            expect(refundPayloads).toEqual([
+                {
+                    amountHalalah: 15000,
+                    reason: 'Persistent reason snapshot.',
+                },
+                {
+                    amountHalalah: 15000,
+                    reason: 'Persistent reason snapshot.',
+                },
+                {
+                    amountHalalah: 15000,
+                    reason: 'Persistent reason snapshot.',
+                },
+            ]);
+        });
+
+        it('maps a 422 validation response to the full refund requirement message', async () => {
+            pageState.props = refundProps();
+
+            http.submit.mockImplementationOnce(
+                (
+                    _method: string,
+                    _url: string,
+                    options: {
+                        onError?: (errors: Record<string, string>) => void;
+                    },
+                ) => {
+                    options.onError?.({});
+
+                    return Promise.resolve(null);
+                },
+            );
+
+            render(<AdminOrderDetailPage />);
+
+            fireEvent.change(screen.getByLabelText('Staff reason'), {
+                target: { value: 'Reason' },
+            });
+            fireEvent.click(
+                screen.getByRole('button', { name: /Refund order/i }),
+            );
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Issue full refund' }),
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Refund error')).toBeVisible();
+                expect(
+                    screen.getByText(
+                        'Paylink supports a full original-payment refund only.',
+                    ),
+                ).toBeVisible();
+            });
+        });
+
+        it('maps 409 response to order cannot be refunded automatically message', async () => {
+            pageState.props = refundProps();
+
+            http.submit.mockImplementationOnce(
+                (
+                    _method: string,
+                    _url: string,
+                    options: {
+                        onHttpException?: (response: {
+                            data: string;
+                            status: number;
+                        }) => boolean | void;
+                    },
+                ) => {
+                    options.onHttpException?.({
+                        data: JSON.stringify({
+                            error: {
+                                code: 'refund_unavailable',
+                                message: 'Unavailable',
+                            },
+                        }),
+                        status: 409,
+                    });
+
+                    return Promise.resolve(null);
+                },
+            );
+
+            render(<AdminOrderDetailPage />);
+
+            fireEvent.change(screen.getByLabelText('Staff reason'), {
+                target: { value: 'Reason' },
+            });
+            fireEvent.click(
+                screen.getByRole('button', { name: /Refund order/i }),
+            );
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Issue full refund' }),
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Refund error')).toBeVisible();
+                expect(
+                    screen.getByText(
+                        'This order cannot be refunded automatically.',
+                    ),
+                ).toBeVisible();
+            });
+        });
+
+        it('maps 503 response to provider unavailable message', async () => {
+            pageState.props = refundProps();
+
+            http.submit.mockImplementationOnce(
+                (
+                    _method: string,
+                    _url: string,
+                    options: {
+                        onHttpException?: (response: {
+                            data: string;
+                            status: number;
+                        }) => boolean | void;
+                    },
+                ) => {
+                    options.onHttpException?.({
+                        data: JSON.stringify({
+                            error: {
+                                code: 'refund_provider_unavailable',
+                                message: 'Unavailable',
+                            },
+                        }),
+                        status: 503,
+                    });
+
+                    return Promise.resolve(null);
+                },
+            );
+
+            render(<AdminOrderDetailPage />);
+
+            fireEvent.change(screen.getByLabelText('Staff reason'), {
+                target: { value: 'Reason' },
+            });
+            fireEvent.click(
+                screen.getByRole('button', { name: /Refund order/i }),
+            );
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Issue full refund' }),
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Refund error')).toBeVisible();
+                expect(
+                    screen.getByText(
+                        'The refund provider is currently unavailable. Please try again later.',
+                    ),
+                ).toBeVisible();
+            });
+        });
+
+        it('maps 429 response with Retry-After header to rate limit message with seconds', async () => {
+            pageState.props = refundProps();
+
+            http.submit.mockImplementationOnce(
+                (
+                    _method: string,
+                    _url: string,
+                    options: {
+                        onHttpException?: (response: {
+                            data: string;
+                            headers: Record<string, string>;
+                            status: number;
+                        }) => boolean | void;
+                    },
+                ) => {
+                    options.onHttpException?.({
+                        data: JSON.stringify({ message: 'Too many attempts.' }),
+                        headers: { 'retry-after': '60' },
+                        status: 429,
+                    });
+
+                    return Promise.resolve(null);
+                },
+            );
+
+            render(<AdminOrderDetailPage />);
+
+            fireEvent.change(screen.getByLabelText('Staff reason'), {
+                target: { value: 'Reason' },
+            });
+            fireEvent.click(
+                screen.getByRole('button', { name: /Refund order/i }),
+            );
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Issue full refund' }),
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Refund error')).toBeVisible();
+                expect(
+                    screen.getByText(
+                        'Too many refund requests. Please wait 60 seconds before trying again.',
+                    ),
+                ).toBeVisible();
+            });
+        });
+
+        it('handles network failure and displays network error message', async () => {
+            pageState.props = refundProps();
+
+            http.submit.mockImplementationOnce(
+                (
+                    _method: string,
+                    _url: string,
+                    options: {
+                        onNetworkError?: () => boolean | void;
+                    },
+                ) => {
+                    options.onNetworkError?.();
+
+                    return Promise.resolve(null);
+                },
+            );
+
+            render(<AdminOrderDetailPage />);
+
+            fireEvent.change(screen.getByLabelText('Staff reason'), {
+                target: { value: 'Reason' },
+            });
+            fireEvent.click(
+                screen.getByRole('button', { name: /Refund order/i }),
+            );
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Issue full refund' }),
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Refund error')).toBeVisible();
+                expect(
+                    screen.getByText(
+                        'Network error. Please check your connection and try again.',
+                    ),
+                ).toBeVisible();
             });
         });
     });

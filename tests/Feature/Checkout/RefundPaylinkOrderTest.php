@@ -9,10 +9,13 @@ use App\Exceptions\Checkout\CheckoutUnavailable;
 use App\Exceptions\Payments\PaymentConfigurationException;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Refund;
+use App\Models\StaffAuditLog;
 use App\Models\User;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Laravel\Fortify\Fortify;
 
 beforeEach(function (): void {
@@ -112,6 +115,21 @@ test('an admin can issue one verified full Paylink refund and exact retries neve
 
     expect(Http::recorded(fn (Request $request): bool => str_ends_with($request->url(), '/refund')))
         ->toHaveCount(1);
+
+    $audits = StaffAuditLog::query()
+        ->where('auditable_type', $order->getMorphClass())
+        ->where('auditable_id', $order->id)
+        ->get();
+
+    expect($audits)->toHaveCount(1)
+        ->and($audits->first()->action)->toBe('refunds.requested')
+        ->and($audits->first()->actor_user_id)->toBe($admin->id)
+        ->and($audits->first()->metadata)->toBe([
+            'amount_halalah' => 1250,
+            'currency' => 'SAR',
+            'provider' => 'paylink',
+            'refund_public_id' => $first->public_id,
+        ]);
 });
 
 test('refunds fail closed for non admin actors and unpaid orders', function () {
@@ -124,10 +142,51 @@ test('refunds fail closed for non admin actors and unpaid orders', function () {
         ->and(fn () => app(RefundPaylinkOrder::class)->execute($order, 'Customer request.', $staff))
         ->toThrow(CheckoutUnavailable::class);
 
+    expect(StaffAuditLog::query()->count())->toBe(0);
+
     $order->payments()->sole()->update(['status' => PaymentStatus::Pending]);
     $admin = User::factory()->create(['role' => UserRole::Admin]);
     expect(fn () => app(RefundPaylinkOrder::class)->execute($order->fresh(), 'Customer request.', $admin))
         ->toThrow(CheckoutUnavailable::class);
+
+    $failedAudit = StaffAuditLog::query()
+        ->where('action', 'refunds.failed')
+        ->sole();
+
+    expect($failedAudit->metadata)->toBe([
+        'amount_halalah' => 1250,
+        'currency' => 'SAR',
+        'provider' => 'paylink',
+        'failure_code' => 'manual_review_required',
+    ]);
+});
+
+test('an existing refund for the selected payment requires manual review even with a noncanonical key', function () {
+    ['admin' => $admin, 'order' => $order, 'payment' => $payment] = refundablePaylinkOrder();
+    $existing = Refund::query()->create([
+        'public_id' => (string) Str::ulid(),
+        'order_id' => $order->id,
+        'payment_id' => $payment->id,
+        'created_by_user_id' => $admin->id,
+        'method' => 'paylink',
+        'status' => 'failed',
+        'amount_halalah' => 1250,
+        'idempotency_key' => 'legacy-refund-key',
+    ]);
+    Http::fake();
+
+    expect(fn () => app(RefundPaylinkOrder::class)->execute($order, 'Customer request.', $admin))
+        ->toThrow(CheckoutUnavailable::class, 'manual review');
+
+    Http::assertNothingSent();
+    expect(StaffAuditLog::query()->where('action', 'refunds.failed')->sole()->metadata)
+        ->toBe([
+            'amount_halalah' => 1250,
+            'currency' => 'SAR',
+            'provider' => 'paylink',
+            'failure_code' => 'manual_review_required',
+            'refund_public_id' => $existing->public_id,
+        ]);
 });
 
 test('missing Partner credentials fail before a provider call and do not poison a later refund', function () {
@@ -142,6 +201,17 @@ test('missing Partner credentials fail before a provider call and do not poison 
         ->and($order->fresh()->status)->toBe(OrderStatus::Received)
         ->and($order->payments()->sole()->status)->toBe(PaymentStatus::Paid);
     Http::assertNothingSent();
+
+    $failedAudit = StaffAuditLog::query()
+        ->where('action', 'refunds.failed')
+        ->sole();
+
+    expect($failedAudit->metadata)->toBe([
+        'amount_halalah' => 1250,
+        'currency' => 'SAR',
+        'provider' => 'paylink',
+        'failure_code' => 'provider_unavailable',
+    ]);
 });
 
 test('a mismatched Paylink refund is quarantined for manual review without changing the order', function () {
@@ -161,9 +231,23 @@ test('a mismatched Paylink refund is quarantined for manual review without chang
     expect(fn () => app(RefundPaylinkOrder::class)->execute($order, 'Customer request.', $admin))
         ->toThrow(CheckoutUnavailable::class, 'mismatched refund');
 
-    expect($order->refunds()->sole()->status)->toBe('failed')
+    $failedRefund = $order->refunds()->sole();
+
+    expect($failedRefund->status)->toBe('failed')
         ->and($order->fresh()->status)->toBe(OrderStatus::Received)
         ->and($order->payments()->sole()->status)->toBe(PaymentStatus::Paid);
+
+    $failedAudit = StaffAuditLog::query()
+        ->where('action', 'refunds.failed')
+        ->sole();
+
+    expect($failedAudit->metadata)->toBe([
+        'amount_halalah' => 1250,
+        'currency' => 'SAR',
+        'provider' => 'paylink',
+        'failure_code' => 'provider_mismatch',
+        'refund_public_id' => $failedRefund->public_id,
+    ]);
 });
 
 test('the admin refund endpoint is authenticated, admin restricted, mfa gated, password confirmed, full amount only and no store', function () {

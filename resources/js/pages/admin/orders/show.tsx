@@ -4,6 +4,7 @@ import {
     CreditCard,
     Package,
     Receipt,
+    RotateCcw,
     User as UserIcon,
 } from 'lucide-react';
 import React, { useState } from 'react';
@@ -16,6 +17,7 @@ import {
 } from '@/components/admin/admin-order-status';
 import AdminOrderHistory from '@/components/admin/orders/admin-order-history';
 import AdminOrderItemSecret from '@/components/admin/orders/admin-order-item-secret';
+import AdminOrderRefundControl from '@/components/admin/orders/admin-order-refund-control';
 import AdminOrderTransitionControls from '@/components/admin/orders/admin-order-transition-controls';
 import type {
     AdminOrderDetail,
@@ -439,6 +441,69 @@ export default function AdminOrderDetailPage() {
                                     ))}
                                 </div>
                             </div>
+                        ) : null}
+
+                        {order.refunds.length > 0 ? (
+                            <div className="border-t border-border/60 pt-3">
+                                <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                                    <RotateCcw
+                                        aria-hidden="true"
+                                        className="size-3.5 text-muted-foreground"
+                                    />
+                                    <span>{copy.refundsTitle}</span>
+                                </div>
+                                <div className="flex flex-col gap-2 text-xs">
+                                    {order.refunds.map((r) => (
+                                        <div
+                                            className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-border/40 bg-muted/20 p-2"
+                                            key={r.id}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <AdminBadge
+                                                    icon={statusIcons[r.status]}
+                                                    variant={getStatusVariant(
+                                                        r.status,
+                                                    )}
+                                                >
+                                                    {statuses[r.status] ??
+                                                        r.status}
+                                                </AdminBadge>
+                                                <span className="font-semibold text-foreground tabular-nums">
+                                                    <bdi>
+                                                        {formatAdminMoney(
+                                                            r.amount,
+                                                            props.locale,
+                                                        )}
+                                                    </bdi>
+                                                </span>
+                                            </div>
+                                            <span className="text-muted-foreground tabular-nums">
+                                                <bdi>
+                                                    {dateFormatter.format(
+                                                        new Date(
+                                                            r.completedAt ??
+                                                                r.createdAt,
+                                                        ),
+                                                    )}
+                                                </bdi>
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
+
+                        {props.permissions.includes('orders.refund') &&
+                        props.refund.eligible ? (
+                            <AdminOrderRefundControl
+                                adminUi={props.adminUi}
+                                confirmPasswordUrl={props.confirmPasswordUrl}
+                                direction={props.direction}
+                                locale={props.locale}
+                                order={order}
+                                refund={props.refund}
+                                refundUrl={props.refundUrl}
+                            />
                         ) : null}
                     </section>
                 </div>
