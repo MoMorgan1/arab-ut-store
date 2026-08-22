@@ -42,7 +42,7 @@ test('unconfirmed MFA privileged users are redirected to MFA setup', function ()
 
     $this->actingAs($admin)
         ->get("/admin/orders/{$order->public_id}")
-        ->assertRedirect('/admin/security/mfa');
+        ->assertRedirect('/admin/settings');
 });
 
 test('confirmed privileged actors can open localized private order detail routes', function (

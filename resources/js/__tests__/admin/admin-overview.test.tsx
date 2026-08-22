@@ -64,9 +64,9 @@ function pageProps(
         adminNavigation: [
             { key: 'overview', label: 'Overview', url: '/en/admin' },
             {
-                key: 'security',
-                label: 'MFA Security',
-                url: '/en/admin/security/mfa',
+                key: 'settings',
+                label: 'Settings',
+                url: '/en/admin/settings',
             },
         ],
         permissions: ['dashboard.view', 'audit.view'],

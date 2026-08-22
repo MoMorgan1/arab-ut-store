@@ -65,9 +65,9 @@ function defaultProps(): AdminCustomerDetailPageProps {
             { key: 'orders', label: 'Orders', url: '/admin/orders' },
             { key: 'customers', label: 'Customers', url: '/admin/customers' },
             {
-                key: 'security',
-                label: 'MFA Security',
-                url: '/admin/security/mfa',
+                key: 'settings',
+                label: 'Settings',
+                url: '/admin/settings',
             },
         ],
         permissions: [

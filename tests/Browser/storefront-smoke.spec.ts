@@ -780,7 +780,7 @@ test('authenticated Admin overview and orders are operable across required width
                 dialog: 'Arab UT',
                 overview: 'Overview',
                 orders: 'Orders',
-                security: 'MFA Security',
+                settings: 'Settings',
                 range7: 'Last 7 days',
                 range30: 'Last 30 days',
             },
@@ -887,7 +887,7 @@ test('authenticated Admin overview and orders are operable across required width
                         dialog.getByRole('link', { name: locale.orders }),
                     );
                     await expectMinimumTouchTarget(
-                        dialog.getByRole('link', { name: locale.security }),
+                        dialog.getByRole('link', { name: locale.settings }),
                     );
                     await expectMinimumTouchTarget(
                         dialog.getByRole('button', {
