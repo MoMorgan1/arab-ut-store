@@ -1,4 +1,4 @@
-import { Send } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -15,14 +15,18 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
     disabled = false,
     locale = 'ar',
     onSend,
+    showDisclaimer = false,
 }) => {
     const [content, setContent] = useState('');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const isEn = locale === 'en';
 
-    const placeholder = isEn ? 'Type a message...' : 'اكتب رسالتك هنا...';
+    const placeholder = isEn ? 'Type a message…' : 'اكتب رسالتك هنا…';
     const inputLabel = isEn ? 'Type your message' : 'اكتب رسالتك';
     const sendLabel = isEn ? 'Send message' : 'إرسال الرسالة';
+    const disclaimer = isEn
+        ? 'AI assistant — may make mistakes. Verify important info.'
+        : 'مساعد ذكي — قد يخطئ، تحقق من المعلومات المهمة';
 
     useEffect(() => {
         if (textareaRef.current) {
@@ -58,16 +62,17 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         }
     };
 
-    const canSubmit = content.trim().length > 0 && !disabled;
+    const hasText = content.trim().length > 0;
+    const canSubmit = hasText && !disabled;
 
     return (
         <form
             onSubmit={handleSubmit}
-            className="chat-composer--mobile-safe border-t border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)]/90 p-3 backdrop-blur-md"
+            className="chat-composer--mobile-safe flex flex-col gap-2 border-t border-[var(--chat-line)] bg-[var(--chat-card)] p-3"
         >
             <div
                 dir="ltr"
-                className="relative flex items-end gap-2 rounded-2xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] p-1.5 focus-within:border-[var(--arabut-gold)]/60 focus-within:ring-1 focus-within:ring-[var(--arabut-gold)]/60"
+                className="relative flex items-end gap-2 rounded-2xl border border-[var(--chat-line-strong)] bg-[var(--chat-surface)] p-1.5 transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--chat-accent)] focus-within:shadow-[0_0_0_2px_var(--chat-accent)] motion-reduce:transition-none"
             >
                 <textarea
                     ref={textareaRef}
@@ -80,23 +85,33 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                     disabled={disabled}
                     aria-label={inputLabel}
                     dir="auto"
-                    className="max-h-32 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-base text-[var(--arabut-ink)] placeholder-[var(--arabut-muted)] focus:outline-none disabled:opacity-60 lg:text-sm"
+                    className="max-h-32 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-base text-[var(--chat-ink)] placeholder-[var(--chat-faint)] focus:outline-none disabled:opacity-60 lg:text-sm"
                 />
 
                 <button
                     type="submit"
                     disabled={!canSubmit}
                     aria-label={sendLabel}
-                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--arabut-gold-bright)] text-[var(--arabut-navy-deep)] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-40"
+                    className={`chat-press flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--chat-accent)] text-[var(--chat-hero)] transition-[transform,opacity] duration-200 [transition-timing-function:var(--chat-ease-spring)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed motion-reduce:transition-none ${
+                        hasText
+                            ? 'scale-100 opacity-100'
+                            : 'scale-90 opacity-40'
+                    }`}
                 >
-                    <Send className="h-5 w-5" aria-hidden="true" />
+                    <ArrowUp className="h-5 w-5" aria-hidden="true" />
                 </button>
             </div>
 
             {content.length > 3500 && (
-                <div className="mt-1 text-end text-[11px] text-[var(--arabut-muted)]">
+                <div className="text-end text-[11px] text-[var(--chat-faint)]">
                     {content.length} / {MAX_LENGTH}
                 </div>
+            )}
+
+            {showDisclaimer && (
+                <p className="chat-drop-in text-center text-[11px] leading-snug text-[var(--chat-faint)]">
+                    {disclaimer}
+                </p>
             )}
         </form>
     );

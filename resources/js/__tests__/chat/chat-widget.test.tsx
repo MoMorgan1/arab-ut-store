@@ -1520,5 +1520,57 @@ describe('ChatWidget Component', () => {
                 'bg-[var(--chat-card)]',
             );
         });
+
+        it('shows the AI disclaimer only in agent mode', async () => {
+            mockConversationResponse('agent');
+            render(
+                <ChatWidget initialView="chat" enabled={true} locale="en" />,
+            );
+            fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+
+            expect(
+                await screen.findByText(/AI assistant — may make mistakes/),
+            ).toBeInTheDocument();
+        });
+
+        it('hides the AI disclaimer in demo mode', async () => {
+            mockEmptyConversation();
+            render(
+                <ChatWidget initialView="chat" enabled={true} locale="ar" />,
+            );
+            fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
+            await screen.findByRole('textbox');
+
+            expect(screen.queryByText(/مساعد ذكي/)).not.toBeInTheDocument();
+        });
+
+        it('reveals the send button with a pop when text is typed', async () => {
+            mockEmptyConversation();
+            render(
+                <ChatWidget initialView="chat" enabled={true} locale="en" />,
+            );
+            fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+            const textbox = await screen.findByRole('textbox');
+            const send = screen.getByRole('button', { name: 'Send message' });
+
+            expect(send).toHaveClass('scale-90', 'opacity-40');
+            fireEvent.change(textbox, { target: { value: 'hello' } });
+            expect(send).toHaveClass('scale-100', 'opacity-100');
+        });
+
+        it('pulses the launcher ring once when opened', async () => {
+            mockEmptyConversation();
+            render(<ChatWidget enabled={true} locale="en" />);
+            const launcher = screen.getByRole('button', { name: /Open chat/i });
+
+            expect(launcher).not.toHaveClass('chat-launcher-open');
+            fireEvent.click(launcher);
+            expect(
+                screen.getByRole('button', {
+                    name: /Close chat/i,
+                    expanded: true,
+                }),
+            ).toHaveClass('chat-launcher-open');
+        });
     });
 });
