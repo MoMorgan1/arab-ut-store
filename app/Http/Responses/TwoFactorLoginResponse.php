@@ -5,10 +5,11 @@ namespace App\Http\Responses;
 use App\Account\AccountOverviewUrl;
 use App\Enums\UserRole;
 use App\Models\User;
-use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+use Illuminate\Http\JsonResponse;
+use Laravel\Fortify\Contracts\TwoFactorLoginResponse as TwoFactorLoginResponseContract;
 use Symfony\Component\HttpFoundation\Response;
 
-final class LoginResponse implements LoginResponseContract
+final class TwoFactorLoginResponse implements TwoFactorLoginResponseContract
 {
     public function __construct(private readonly AccountOverviewUrl $accountOverviewUrl) {}
 
@@ -22,7 +23,7 @@ final class LoginResponse implements LoginResponseContract
             : ($user !== null ? $this->accountOverviewUrl->for($user) : '/');
 
         return $request->wantsJson()
-            ? response()->json(['two_factor' => false])
+            ? new JsonResponse('', 204)
             : redirect()->intended($target);
     }
 }

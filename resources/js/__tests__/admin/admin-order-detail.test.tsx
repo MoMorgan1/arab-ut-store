@@ -14,7 +14,10 @@ import {
     sampleAdminOrderDetail,
 } from '@/__tests__/admin/admin-test-fixtures';
 import AdminOrderDetailPage from '@/pages/admin/orders/show';
-import type { AdminOrderDetailPageProps } from '@/types/admin';
+import type {
+    AdminOrderDetail,
+    AdminOrderDetailPageProps,
+} from '@/types/admin';
 
 const inertia = vi.hoisted(() => ({
     get: vi.fn(),
@@ -248,6 +251,43 @@ describe('AdminOrderDetailPage', () => {
         expect(inertia.reload).toHaveBeenCalledWith({ only: ['order'] });
     });
 
+    it('re-syncs local order state when incoming props.order updates, reflecting refunded badge and refund history', () => {
+        const { rerender } = render(<AdminOrderDetailPage />);
+
+        expect(
+            screen.getByRole('heading', { level: 1, name: /AUT-1001/i }),
+        ).toBeVisible();
+        expect(screen.getAllByText('Received')[0]).toBeVisible();
+        expect(screen.queryByText('Refunds')).not.toBeInTheDocument();
+
+        const updatedOrder: AdminOrderDetail = {
+            ...sampleAdminOrderDetail,
+            status: 'refunded',
+            refunds: [
+                {
+                    id: '01K5REF00000000000000001',
+                    status: 'completed',
+                    method: 'paylink',
+                    amount: { amountMinor: '15000', currency: 'SAR' },
+                    reason: 'Customer requested refund',
+                    completedAt: '2026-08-20T10:15:00Z',
+                    createdAt: '2026-08-20T10:10:00Z',
+                },
+            ],
+        };
+
+        pageState.props = {
+            ...pageState.props,
+            order: updatedOrder,
+        };
+
+        rerender(<AdminOrderDetailPage />);
+
+        expect(screen.getAllByText('Refunded')[0]).toBeVisible();
+        expect(screen.getByText('Refunds')).toBeVisible();
+        expect(screen.getAllByText('Completed')[0]).toBeVisible();
+    });
+
     describe('Admin credential reveal (Task 9)', () => {
         const itemWithSecret = {
             ...sampleAdminOrderDetail.items[0],
@@ -382,17 +422,25 @@ describe('AdminOrderDetailPage', () => {
             await waitFor(() => {
                 expect(screen.getByText('Decrypted credentials')).toBeVisible();
                 expect(screen.getByText('player@example.com')).toBeVisible();
-                expect(screen.getByText('••••••••')).toBeVisible();
-                expect(screen.getByText('11111111')).toBeVisible();
-                expect(screen.getByText('22222222')).toBeVisible();
+                expect(screen.getAllByText('••••••••')).toHaveLength(3);
             });
 
+            expect(
+                screen.queryByText('SecretPassword123!'),
+            ).not.toBeInTheDocument();
+            expect(screen.queryByText('11111111')).not.toBeInTheDocument();
+            expect(screen.queryByText('22222222')).not.toBeInTheDocument();
+
             // Test Show/Hide password toggle
-            const showPasswordButton = screen.getByRole('button', {
+            const showButtons = screen.getAllByRole('button', {
                 name: /Show credentials/i,
             });
-            fireEvent.click(showPasswordButton);
+            fireEvent.click(showButtons[0]);
             expect(screen.getByText('SecretPassword123!')).toBeVisible();
+
+            fireEvent.click(showButtons[1]);
+            expect(screen.getByText('11111111')).toBeVisible();
+            expect(screen.getByText('22222222')).toBeVisible();
 
             // Test Copy button
             const copyEmailButton = screen.getByRole('button', {
@@ -552,6 +600,130 @@ describe('AdminOrderDetailPage', () => {
                 expect(screen.getByText('Decrypted credentials')).toBeVisible();
                 expect(screen.getByText('replayed@example.com')).toBeVisible();
             });
+        });
+
+        it('masks sensitive array values initially, reveals on Show, re-masks on Hide, and copies the real code', async () => {
+            const clipboardSpy = vi.fn().mockResolvedValue(undefined);
+            Object.assign(navigator, {
+                clipboard: { writeText: clipboardSpy },
+            });
+
+            pageState.props = secretProps();
+
+            const decryptedData = {
+                backup_codes: ['BACKUP-CODE-AAA', 'BACKUP-CODE-BBB'],
+            };
+
+            http.submit.mockImplementationOnce(
+                (
+                    _method: string,
+                    _url: string,
+                    options: {
+                        onSuccess?: (response: unknown) => void;
+                    },
+                ) => {
+                    options.onSuccess?.({ data: decryptedData });
+
+                    return Promise.resolve({ data: decryptedData });
+                },
+            );
+
+            render(<AdminOrderDetailPage />);
+
+            fireEvent.click(
+                screen.getByRole('button', { name: /Reveal credentials/i }),
+            );
+            fireEvent.click(
+                screen.getByRole('button', { name: /Confirm reveal/i }),
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Decrypted credentials')).toBeVisible();
+                expect(screen.getByText('backup_codes:')).toBeVisible();
+            });
+
+            // backup_codes start masked
+            expect(screen.getAllByText('••••••••')).toHaveLength(2);
+            expect(
+                screen.queryByText('BACKUP-CODE-AAA'),
+            ).not.toBeInTheDocument();
+            expect(
+                screen.queryByText('BACKUP-CODE-BBB'),
+            ).not.toBeInTheDocument();
+
+            // Copy button still copies the real unmasked code
+            const copyFirstCodeBtn = screen.getByRole('button', {
+                name: /Copy backup_codes #1/i,
+            });
+            fireEvent.click(copyFirstCodeBtn);
+            expect(clipboardSpy).toHaveBeenCalledWith('BACKUP-CODE-AAA');
+
+            // Click Show credentials toggle
+            const toggleButton = screen.getByRole('button', {
+                name: /Show credentials/i,
+            });
+            fireEvent.click(toggleButton);
+
+            // Now unmasked codes are visible
+            expect(screen.getByText('BACKUP-CODE-AAA')).toBeVisible();
+            expect(screen.getByText('BACKUP-CODE-BBB')).toBeVisible();
+
+            // Click Hide credentials toggle
+            fireEvent.click(
+                screen.getByRole('button', { name: /Hide credentials/i }),
+            );
+
+            // Codes are masked again
+            expect(screen.getAllByText('••••••••')).toHaveLength(2);
+            expect(
+                screen.queryByText('BACKUP-CODE-AAA'),
+            ).not.toBeInTheDocument();
+            expect(
+                screen.queryByText('BACKUP-CODE-BBB'),
+            ).not.toBeInTheDocument();
+        });
+
+        it('renders non-sensitive array values unmasked without Show/Hide toggle', async () => {
+            pageState.props = secretProps();
+
+            const decryptedData = {
+                assigned_tags: ['tag-one', 'tag-two'],
+            };
+
+            http.submit.mockImplementationOnce(
+                (
+                    _method: string,
+                    _url: string,
+                    options: {
+                        onSuccess?: (response: unknown) => void;
+                    },
+                ) => {
+                    options.onSuccess?.({ data: decryptedData });
+
+                    return Promise.resolve({ data: decryptedData });
+                },
+            );
+
+            render(<AdminOrderDetailPage />);
+
+            fireEvent.click(
+                screen.getByRole('button', { name: /Reveal credentials/i }),
+            );
+            fireEvent.click(
+                screen.getByRole('button', { name: /Confirm reveal/i }),
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Decrypted credentials')).toBeVisible();
+                expect(screen.getByText('assigned_tags:')).toBeVisible();
+            });
+
+            // Non-sensitive arrays stay visible immediately
+            expect(screen.getByText('tag-one')).toBeVisible();
+            expect(screen.getByText('tag-two')).toBeVisible();
+            expect(
+                screen.queryByRole('button', { name: /Show credentials/i }),
+            ).not.toBeInTheDocument();
         });
     });
 

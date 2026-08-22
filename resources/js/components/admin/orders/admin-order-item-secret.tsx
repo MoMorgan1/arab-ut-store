@@ -361,9 +361,39 @@ export default function AdminOrderItemSecret({
                                         className="flex flex-col gap-1 py-2 first:pt-0 last:pb-0"
                                         key={key}
                                     >
-                                        <span className="font-semibold text-muted-foreground">
-                                            {key}:
-                                        </span>
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <span className="font-semibold text-muted-foreground">
+                                                {key}:
+                                            </span>
+                                            {isSensitive ? (
+                                                <Button
+                                                    aria-label={
+                                                        isVisible
+                                                            ? secretsCopy.hideButton
+                                                            : secretsCopy.showButton
+                                                    }
+                                                    className="min-h-11 min-w-11 gap-1 text-xs"
+                                                    onClick={() =>
+                                                        toggleFieldVisibility(
+                                                            key,
+                                                        )
+                                                    }
+                                                    type="button"
+                                                    variant="ghost"
+                                                >
+                                                    {isVisible ? (
+                                                        <EyeOff className="size-3.5" />
+                                                    ) : (
+                                                        <Eye className="size-3.5" />
+                                                    )}
+                                                    <span className="hidden sm:inline">
+                                                        {isVisible
+                                                            ? secretsCopy.hideButton
+                                                            : secretsCopy.showButton}
+                                                    </span>
+                                                </Button>
+                                            ) : null}
+                                        </div>
                                         <div className="flex flex-wrap gap-1.5">
                                             {val.map((itemVal, idx) => (
                                                 <div
@@ -371,7 +401,10 @@ export default function AdminOrderItemSecret({
                                                     key={idx}
                                                 >
                                                     <span>
-                                                        {String(itemVal)}
+                                                        {isSensitive &&
+                                                        !isVisible
+                                                            ? '••••••••'
+                                                            : String(itemVal)}
                                                     </span>
                                                     <Button
                                                         aria-label={`${secretsCopy.copyButton} ${key} #${idx + 1}`}

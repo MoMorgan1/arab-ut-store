@@ -56,7 +56,7 @@ test('a valid TOTP code completes the challenged session', function () {
 
     $this->withSession(['login.id' => $staff->id])
         ->post(route('two-factor.login.store'), ['code' => $code])
-        ->assertRedirect('/dashboard');
+        ->assertRedirect('/admin');
 
     $this->assertAuthenticatedAs($staff);
     expect(session()->has('login.id'))->toBeFalse();
@@ -67,7 +67,7 @@ test('an unused recovery code completes the challenged session and cannot be rep
 
     $this->withSession(['login.id' => $staff->id])
         ->post(route('two-factor.login.store'), ['recovery_code' => 'recovery-code-one'])
-        ->assertRedirect('/dashboard');
+        ->assertRedirect('/admin');
 
     $this->assertAuthenticatedAs($staff);
     expect($staff->fresh()->recoveryCodes())->not->toContain('recovery-code-one');
@@ -99,7 +99,7 @@ test('privileged users without confirmed TOTP enter only the constrained normal 
     $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'SecurePassword!12',
-    ])->assertRedirect('/my-account');
+    ])->assertRedirect('/admin');
 
     $this->assertAuthenticatedAs($user);
     expect(session()->has('login.id'))->toBeFalse();
@@ -108,6 +108,76 @@ test('privileged users without confirmed TOTP enter only the constrained normal 
     'Staff without TOTP' => [UserRole::Staff, 'missing'],
     'Admin with unconfirmed TOTP' => [UserRole::Admin, 'unconfirmed'],
     'Staff with unconfirmed TOTP' => [UserRole::Staff, 'unconfirmed'],
+]);
+
+test('Admin completing the TOTP challenge is redirected to the Admin overview', function () {
+    ['user' => $admin, 'secret' => $secret] = confirmedTotpUser(UserRole::Admin);
+    $code = (new Google2FA)->getCurrentOtp($secret);
+
+    $this->withSession(['login.id' => $admin->id])
+        ->post(route('two-factor.login.store'), ['code' => $code])
+        ->assertRedirect('/admin');
+
+    $this->assertAuthenticatedAs($admin);
+    expect(session()->has('login.id'))->toBeFalse();
+});
+
+test('Customer password login lands on the customer account overview', function (
+    string $preferredLocale,
+    string $expectedRedirect,
+) {
+    $customer = User::factory()->create([
+        'role' => UserRole::Customer,
+        'password' => 'SecurePassword!12',
+        'preferred_locale' => $preferredLocale,
+    ]);
+
+    $this->post(route('login.store'), [
+        'email' => $customer->email,
+        'password' => 'SecurePassword!12',
+    ])->assertRedirect($expectedRedirect);
+
+    $this->assertAuthenticatedAs($customer);
+})->with([
+    'Arabic customer' => ['ar', '/my-account'],
+    'English customer' => ['en', '/en/my-account'],
+]);
+
+test('Admin or Staff with an intended deep link URL is redirected to the intended URL', function (
+    UserRole $role,
+    string $flow,
+) {
+    if ($flow === 'password') {
+        $user = User::factory()->create([
+            'role' => $role,
+            'password' => 'SecurePassword!12',
+        ]);
+
+        $this->withSession(['url.intended' => '/admin/orders'])
+            ->post(route('login.store'), [
+                'email' => $user->email,
+                'password' => 'SecurePassword!12',
+            ])->assertRedirect('/admin/orders');
+
+        $this->assertAuthenticatedAs($user);
+    } else {
+        ['user' => $user, 'secret' => $secret] = confirmedTotpUser($role);
+        $code = (new Google2FA)->getCurrentOtp($secret);
+
+        $this->withSession([
+            'login.id' => $user->id,
+            'url.intended' => '/admin/orders',
+        ])
+            ->post(route('two-factor.login.store'), ['code' => $code])
+            ->assertRedirect('/admin/orders');
+
+        $this->assertAuthenticatedAs($user);
+    }
+})->with([
+    'Admin password login with deep link' => [UserRole::Admin, 'password'],
+    'Staff password login with deep link' => [UserRole::Staff, 'password'],
+    'Admin TOTP challenge with deep link' => [UserRole::Admin, 'totp'],
+    'Staff TOTP challenge with deep link' => [UserRole::Staff, 'totp'],
 ]);
 
 test('ineligible pending privileged challenges clear the session on both challenge routes', function (
