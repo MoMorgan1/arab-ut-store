@@ -11,8 +11,8 @@ import {
     X,
 } from 'lucide-react';
 import type React from 'react';
-import { chatTopicsFor  } from '@/lib/chat-topics';
-import type {ChatTopicId} from '@/lib/chat-topics';
+import { chatTopicsFor } from '@/lib/chat-topics';
+import type { ChatTopicId } from '@/lib/chat-topics';
 
 export type ChatHomeLastMessage = {
     preview: string;

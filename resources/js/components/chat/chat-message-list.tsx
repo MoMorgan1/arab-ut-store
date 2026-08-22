@@ -157,7 +157,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     const clusters = groupChatMessages(messages);
 
     return (
-        <div className="relative flex flex-1 flex-col overflow-hidden bg-[var(--arabut-navy)]">
+        <div className="relative flex flex-1 flex-col overflow-hidden bg-[var(--chat-surface)]">
             <div
                 ref={scrollContainerRef}
                 onScroll={checkScrollPosition}
@@ -173,7 +173,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                             type="button"
                             onClick={handleLoadOlderClick}
                             disabled={disabled || isLoadingOlder}
-                            className="inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-4 py-2 text-xs text-[var(--arabut-muted)] hover:text-[var(--arabut-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+                            className="chat-press inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--chat-line)] bg-[var(--chat-card)] px-4 py-2 text-xs text-[var(--chat-muted)] hover:text-[var(--chat-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isLoadingOlder
                                 ? isEn
@@ -189,7 +189,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                 {/* Initial loading state */}
                 {isLoading && (
                     <div className="flex h-32 items-center justify-center">
-                        <span className="animate-pulse text-sm text-[var(--arabut-muted)]">
+                        <span className="animate-pulse text-sm text-[var(--chat-muted)]">
                             {isEn ? 'Loading chat...' : 'جاري فتح الشات...'}
                         </span>
                     </div>
@@ -208,7 +208,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                             >
                                 <div
                                     dir="auto"
-                                    className="max-w-[85%] rounded-xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)] px-3.5 py-2 text-center text-xs leading-relaxed text-[var(--arabut-muted)] shadow-sm"
+                                    className="max-w-[85%] rounded-full bg-[var(--chat-tint)] px-3.5 py-1.5 text-center text-[11px] leading-relaxed text-[var(--chat-faint)]"
                                 >
                                     {cluster.messages.map((m) => (
                                         <p key={m.publicId}>{m.content}</p>
@@ -239,11 +239,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                     <div
                                         key={message.publicId}
                                         dir="auto"
-                                        className={`group relative max-w-[82%] text-start ${
-                                            isCustomer
-                                                ? ''
-                                                : 'chat-bubble-enter'
-                                        }`}
+                                        className="chat-bubble-enter group relative max-w-[85%] text-start"
                                     >
                                         <div
                                             data-stream-status={
@@ -251,11 +247,11 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                     ? 'streaming'
                                                     : undefined
                                             }
-                                            className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed transition-opacity ${
+                                            className={`rounded-2xl px-3.5 py-3 text-sm leading-relaxed ${
                                                 isCustomer
-                                                    ? 'rounded-br-sm bg-[var(--arabut-gold)] font-medium text-[var(--arabut-navy-deep)]'
-                                                    : 'rounded-bl-sm border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] text-[var(--arabut-ink)] shadow-md'
-                                            } ${isSending ? 'opacity-70' : ''}`}
+                                                    ? 'rounded-br-[4px] bg-[var(--chat-hero)] text-[#fbf8f2]'
+                                                    : 'rounded-bl-[4px] border border-[var(--chat-line)] bg-[var(--chat-card)] text-[var(--chat-ink)] shadow-[0_2px_8px_rgb(13_11_8/0.05)]'
+                                            } ${isSending ? 'chat-sending opacity-70' : ''}`}
                                         >
                                             {isStreaming && (
                                                 <span className="sr-only">
@@ -271,7 +267,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                     className="flex items-center gap-1.5 py-0.5"
                                                 >
                                                     <span
-                                                        className="h-2 w-2 animate-bounce rounded-full bg-[var(--arabut-gold-bright)] motion-reduce:animate-none"
+                                                        className="h-2 w-2 animate-bounce rounded-full bg-[var(--chat-accent)] motion-reduce:animate-none"
                                                         style={{
                                                             animationDelay:
                                                                 '0ms',
@@ -280,7 +276,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                         }}
                                                     />
                                                     <span
-                                                        className="h-2 w-2 animate-bounce rounded-full bg-[var(--arabut-gold-bright)] motion-reduce:animate-none"
+                                                        className="h-2 w-2 animate-bounce rounded-full bg-[var(--chat-accent)] motion-reduce:animate-none"
                                                         style={{
                                                             animationDelay:
                                                                 '180ms',
@@ -289,7 +285,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                         }}
                                                     />
                                                     <span
-                                                        className="h-2 w-2 animate-bounce rounded-full bg-[var(--arabut-gold-bright)] motion-reduce:animate-none"
+                                                        className="h-2 w-2 animate-bounce rounded-full bg-[var(--chat-accent)] motion-reduce:animate-none"
                                                         style={{
                                                             animationDelay:
                                                                 '360ms',
@@ -315,7 +311,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
                                         {/* Status / retry for customer messages */}
                                         {isCustomer && isError && (
-                                            <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--arabut-danger)]">
+                                            <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--chat-danger)]">
                                                 <AlertCircle
                                                     aria-hidden="true"
                                                     className="h-3.5 w-3.5"
@@ -336,7 +332,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                             )
                                                         }
                                                         disabled={disabled}
-                                                        className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 underline hover:text-[var(--arabut-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+                                                        className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 underline hover:text-[var(--chat-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
                                                         <RefreshCw
                                                             aria-hidden="true"
@@ -354,7 +350,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                         {isLastInCluster &&
                                             !isError &&
                                             !isStreaming && (
-                                                <div className="mt-1 px-1 text-[10px] text-[var(--arabut-muted)] opacity-60 transition-opacity group-hover:opacity-100">
+                                                <div className="mt-1 px-1 text-[10px] text-[var(--chat-faint)] opacity-60 transition-opacity group-hover:opacity-100">
                                                     {new Date(
                                                         message.createdAt,
                                                     ).toLocaleTimeString(
@@ -387,7 +383,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                     <div dir="ltr" className="my-1 flex w-full justify-start">
                         <div
                             dir="auto"
-                            className="flex items-center gap-1.5 rounded-xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-3 py-2 text-xs text-[var(--arabut-danger)] shadow-sm"
+                            className="chat-drop-in flex items-center gap-1.5 rounded-xl border border-[var(--chat-line)] bg-[var(--chat-card)] px-3 py-2 text-xs text-[var(--chat-danger)] shadow-sm"
                         >
                             <AlertCircle
                                 aria-hidden="true"
@@ -403,7 +399,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                     type="button"
                                     onClick={onRetryAgentTurn}
                                     disabled={disabled}
-                                    className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 underline hover:text-[var(--arabut-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 underline hover:text-[var(--chat-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     <RefreshCw
                                         aria-hidden="true"
@@ -418,25 +414,19 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
                 {/* Suggestion Chips (shown when no customer message exists yet) */}
                 {!hasCustomerMessages && (
-                    <div className="pt-2 pb-1">
-                        <p className="mb-2 text-xs font-medium text-[var(--arabut-muted)]">
-                            {isEn ? 'Suggested topics:' : 'المواضيع المقترحة:'}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                            {suggestions.map((suggestion) => (
-                                <button
-                                    key={suggestion}
-                                    type="button"
-                                    onClick={() =>
-                                        onSelectSuggestion(suggestion)
-                                    }
-                                    disabled={disabled}
-                                    className="min-h-11 rounded-xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-3 py-2 text-xs text-[var(--arabut-ink)] transition-colors hover:border-[var(--arabut-gold)]/50 hover:bg-[var(--arabut-navy-active)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none"
-                                >
-                                    {suggestion}
-                                </button>
-                            ))}
-                        </div>
+                    <div className="flex flex-wrap gap-2 pt-1 pb-1">
+                        {suggestions.map((suggestion, index) => (
+                            <button
+                                key={suggestion}
+                                type="button"
+                                onClick={() => onSelectSuggestion(suggestion)}
+                                disabled={disabled}
+                                style={{ ['--i' as string]: index }}
+                                className="chat-stagger-in chat-press min-h-11 rounded-full border border-[var(--chat-accent)] bg-[var(--chat-card)] px-3.5 py-2 text-[13px] font-semibold text-[var(--chat-accent-ink)] transition-colors hover:bg-[var(--chat-tint)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {suggestion}
+                            </button>
+                        ))}
                     </div>
                 )}
 
@@ -449,7 +439,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                     type="button"
                     onClick={handleScrollToBottomClick}
                     aria-label={isEn ? 'Scroll to bottom' : 'الانتقال لأسفل'}
-                    className="absolute bottom-4 left-1/2 flex min-h-11 -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--arabut-line)] bg-[var(--arabut-navy-deep)]/95 px-3.5 py-2 text-xs font-semibold text-[var(--arabut-gold-bright)] shadow-xl backdrop-blur-sm transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] active:scale-95 motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
+                    className="chat-drop-in chat-press absolute bottom-4 left-1/2 flex min-h-11 -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--chat-line)] bg-[var(--chat-card)]/95 px-3.5 py-2 text-xs font-semibold text-[var(--chat-accent-ink)] shadow-xl backdrop-blur-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)]"
                 >
                     <ArrowDown aria-hidden="true" className="h-3.5 w-3.5" />
                     <span>{isEn ? 'New messages' : 'رسائل جديدة'}</span>
