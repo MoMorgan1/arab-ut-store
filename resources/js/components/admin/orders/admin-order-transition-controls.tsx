@@ -80,8 +80,8 @@ export default function AdminOrderTransitionControls({
 
     const handleConfirm = useCallback(async () => {
         if (!pendingTarget) {
-return;
-}
+            return;
+        }
 
         setFeedback(null);
         http.setData({

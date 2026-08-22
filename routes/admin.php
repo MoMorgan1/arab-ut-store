@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\OrderDetailController;
+use App\Http\Controllers\Admin\OrderItemSecretRevealController;
 use App\Http\Controllers\Admin\OrdersController;
 use App\Http\Controllers\Admin\OrderTransitionController;
 use App\Http\Controllers\Admin\OverviewController;
@@ -64,6 +65,14 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $orderTransition->defaults('locale', $locale);
+                }
+
+                $reveal = Route::post('/api/orders/{publicId}/items/{itemPublicId}/reveal', OrderItemSecretRevealController::class)
+                    ->middleware(['password.confirm', 'can:orders.view', 'can:order_credentials.view'])
+                    ->name('orders.items.reveal');
+
+                if ($locale !== null) {
+                    $reveal->defaults('locale', $locale);
                 }
 
                 $refund = Route::post('/api/orders/{order:public_id}/refund', PaylinkRefundController::class)

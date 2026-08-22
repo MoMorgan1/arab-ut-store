@@ -44,6 +44,7 @@ final readonly class AdminOrderDetailPage
             'order' => $this->detailPresenter->present($order, $locale, $auditLogs),
             'allowedTransitions' => $allowedTargets,
             'transitionUrl' => route($prefix.'orders.transitions.store', ['publicId' => (string) $order->public_id], absolute: false),
+            'revealUrlTemplate' => route($prefix.'orders.items.reveal', ['publicId' => (string) $order->public_id, 'itemPublicId' => '__ITEM_ID__'], absolute: false),
         ];
     }
 }

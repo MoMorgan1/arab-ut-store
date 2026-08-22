@@ -23,6 +23,7 @@ final class ReadAdminOrderDetail
             ->with([
                 'user',
                 'items' => fn ($query) => $query->orderBy('id'),
+                'items.secret' => fn ($query) => $query->select(['id', 'order_item_id', 'public_id', 'masked_summary']),
                 'items.statusHistory' => fn ($query) => $query->orderBy('id'),
                 'items.statusHistory.actor',
                 'payments' => fn ($query) => $query->orderByDesc('id'),

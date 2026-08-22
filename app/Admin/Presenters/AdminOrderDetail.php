@@ -47,6 +47,8 @@ final class AdminOrderDetail
      *         total: array{amountMinor: string, currency: string},
      *         status: string,
      *         configuration: ?array<string, mixed>,
+     *         hasSecret: bool,
+     *         maskedSummary: ?array<string, mixed>,
      *         statusHistory: list<array{
      *             id: string,
      *             status: string,
@@ -140,6 +142,8 @@ final class AdminOrderDetail
                 'configuration' => $item->configuration === null
                     ? null
                     : SafeOrderItemConfiguration::project($item->configuration, $item->service_type),
+                'hasSecret' => $item->secret !== null,
+                'maskedSummary' => $item->secret?->masked_summary,
                 'statusHistory' => self::historyList($item->statusHistory),
             ])->all()),
             'payments' => array_values($order->payments->map(fn (Payment $payment): array => [

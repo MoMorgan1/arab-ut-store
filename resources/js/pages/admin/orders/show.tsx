@@ -15,6 +15,7 @@ import {
     statusIcons,
 } from '@/components/admin/admin-order-status';
 import AdminOrderHistory from '@/components/admin/orders/admin-order-history';
+import AdminOrderItemSecret from '@/components/admin/orders/admin-order-item-secret';
 import AdminOrderTransitionControls from '@/components/admin/orders/admin-order-transition-controls';
 import type {
     AdminOrderDetail,
@@ -226,62 +227,82 @@ export default function AdminOrderDetailPage() {
                             <div className="flex flex-col divide-y divide-border/60">
                                 {order.items.map((item) => (
                                     <div
-                                        className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                                        className="flex flex-col py-3 first:pt-0 last:pb-0"
                                         key={item.id}
                                     >
-                                        <div className="flex flex-col gap-1">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-sm font-semibold text-foreground">
-                                                    {item.name}
-                                                </span>
-                                                <AdminBadge
-                                                    icon={
-                                                        statusIcons[item.status]
-                                                    }
-                                                    variant={getStatusVariant(
-                                                        item.status,
-                                                    )}
-                                                >
-                                                    {statuses[item.status] ??
-                                                        item.status}
-                                                </AdminBadge>
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="text-sm font-semibold text-foreground">
+                                                        {item.name}
+                                                    </span>
+                                                    <AdminBadge
+                                                        icon={
+                                                            statusIcons[
+                                                                item.status
+                                                            ]
+                                                        }
+                                                        variant={getStatusVariant(
+                                                            item.status,
+                                                        )}
+                                                    >
+                                                        {statuses[
+                                                            item.status
+                                                        ] ?? item.status}
+                                                    </AdminBadge>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                                                    <span className="rounded-sm bg-secondary px-1.5 py-0.5 text-secondary-foreground">
+                                                        {ordersCopy.services[
+                                                            item.serviceType
+                                                        ] ?? item.serviceType}
+                                                    </span>
+                                                    <span className="rounded-sm border border-border px-1.5 py-0.5">
+                                                        {ordersCopy.platforms[
+                                                            item.platform
+                                                        ] ?? item.platform}
+                                                    </span>
+                                                    <span>
+                                                        &times; {item.quantity}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                                                <span className="rounded-sm bg-secondary px-1.5 py-0.5 text-secondary-foreground">
-                                                    {ordersCopy.services[
-                                                        item.serviceType
-                                                    ] ?? item.serviceType}
+
+                                            <div className="flex flex-col text-start text-xs sm:text-end">
+                                                <span className="font-bold text-foreground tabular-nums">
+                                                    <bdi>
+                                                        {formatAdminMoney(
+                                                            item.total,
+                                                            props.locale,
+                                                        )}
+                                                    </bdi>
                                                 </span>
-                                                <span className="rounded-sm border border-border px-1.5 py-0.5">
-                                                    {ordersCopy.platforms[
-                                                        item.platform
-                                                    ] ?? item.platform}
-                                                </span>
-                                                <span>
-                                                    &times; {item.quantity}
+                                                <span className="text-muted-foreground tabular-nums">
+                                                    <bdi>
+                                                        {formatAdminMoney(
+                                                            item.unitPrice,
+                                                            props.locale,
+                                                        )}{' '}
+                                                        / {copy.unitPrice}
+                                                    </bdi>
                                                 </span>
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col text-start text-xs sm:text-end">
-                                            <span className="font-bold text-foreground tabular-nums">
-                                                <bdi>
-                                                    {formatAdminMoney(
-                                                        item.total,
-                                                        props.locale,
-                                                    )}
-                                                </bdi>
-                                            </span>
-                                            <span className="text-muted-foreground tabular-nums">
-                                                <bdi>
-                                                    {formatAdminMoney(
-                                                        item.unitPrice,
-                                                        props.locale,
-                                                    )}{' '}
-                                                    / {copy.unitPrice}
-                                                </bdi>
-                                            </span>
-                                        </div>
+                                        <AdminOrderItemSecret
+                                            adminUi={props.adminUi}
+                                            confirmPasswordUrl={
+                                                props.confirmPasswordUrl
+                                            }
+                                            direction={props.direction}
+                                            item={item}
+                                            locale={props.locale}
+                                            orderId={order.id}
+                                            orderNumber={order.orderNumber}
+                                            revealUrlTemplate={
+                                                props.revealUrlTemplate
+                                            }
+                                        />
                                     </div>
                                 ))}
                             </div>
