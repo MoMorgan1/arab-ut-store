@@ -6,6 +6,7 @@ type ChatComposerProps = {
     disabled?: boolean;
     locale?: string;
     onSend: (content: string) => void;
+    showDisclaimer?: boolean;
 };
 
 const MAX_LENGTH = 4000;
