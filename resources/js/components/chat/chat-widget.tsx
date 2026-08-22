@@ -1,5 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useChat } from '@/hooks/use-chat';
+import {
+    isChatSoundEnabled,
+    playChatNotification,
+    setChatSoundEnabled,
+} from '@/lib/chat-sound';
 import type { ChatSurface } from '@/types/chat';
 import { ChatComposer } from './chat-composer';
 import { ChatHeader } from './chat-header';
@@ -123,6 +128,50 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
 
         return () => clearTimeout(timeout);
     }, [exitingView, isReducedMotion]);
+
+    // Notification sound: chime once per newly arrived assistant message,
+    // never for history loaded on open and never while a reply is streaming.
+    const [soundEnabled, setSoundEnabled] = useState(() =>
+        isChatSoundEnabled(),
+    );
+    const lastNotifiedIdRef = useRef<string | null>(null);
+    const toggleSound = () => {
+        setSoundEnabled((current) => {
+            setChatSoundEnabled(!current);
+
+            return !current;
+        });
+    };
+
+    useEffect(() => {
+        const latestAssistant = [...messages]
+            .reverse()
+            .find(
+                (m) =>
+                    m.senderType === 'assistant' &&
+                    m.streamStatus !== 'streaming',
+            );
+        const latestId = latestAssistant?.publicId ?? null;
+
+        if (isLoading || latestId === null) {
+            return;
+        }
+
+        if (lastNotifiedIdRef.current === null) {
+            // First settled list (history): remember, do not chime.
+            lastNotifiedIdRef.current = latestId;
+
+            return;
+        }
+
+        if (latestId !== lastNotifiedIdRef.current) {
+            lastNotifiedIdRef.current = latestId;
+
+            if (soundEnabled) {
+                playChatNotification();
+            }
+        }
+    }, [isLoading, messages, soundEnabled]);
 
     const lastMessage = messages[messages.length - 1] ?? null;
     const hasCustomerMessages = messages.some(
@@ -361,6 +410,8 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                                 onBack={() => switchView('home')}
                                 onClose={closeChat}
                                 onRestart={restartChat}
+                                soundEnabled={soundEnabled}
+                                onToggleSound={toggleSound}
                             />
 
                             {error !== null && (

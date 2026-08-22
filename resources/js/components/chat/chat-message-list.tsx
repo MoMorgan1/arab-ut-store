@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { groupChatMessages } from '@/lib/chat-grouping';
 import { chatTopicsFor } from '@/lib/chat-topics';
 import type { AgentTurnState, ChatMessage } from '@/types/chat';
+import { StreamedText } from './streamed-text';
 import { TypingIndicator } from './typing-indicator';
 
 type ChatMessageListProps = {
@@ -296,7 +297,14 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                 </span>
                                             ) : (
                                                 <p className="break-words whitespace-pre-wrap">
-                                                    {message.content}
+                                                    <StreamedText
+                                                        content={
+                                                            message.content
+                                                        }
+                                                        isStreaming={
+                                                            isStreaming
+                                                        }
+                                                    />
                                                     {isStreaming &&
                                                         message.content !==
                                                             '' && (

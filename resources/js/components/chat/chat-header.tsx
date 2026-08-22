@@ -1,4 +1,11 @@
-import { ChevronLeft, MessageSquarePlus, Sparkles, X } from 'lucide-react';
+import {
+    ChevronLeft,
+    MessageSquarePlus,
+    Sparkles,
+    Volume2,
+    VolumeX,
+    X,
+} from 'lucide-react';
 import type React from 'react';
 
 type ChatHeaderProps = {
@@ -9,6 +16,8 @@ type ChatHeaderProps = {
     onBack: () => void;
     onClose: () => void;
     onRestart: () => void;
+    soundEnabled: boolean;
+    onToggleSound: () => void;
 };
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
@@ -19,6 +28,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     onBack,
     onClose,
     onRestart,
+    soundEnabled,
+    onToggleSound,
 }) => {
     const isEn = locale === 'en';
     const title = isEn ? 'Arab UT Assistant' : 'مساعد عرب التيميت';
@@ -33,6 +44,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           ? 'New conversation'
           : 'محادثة جديدة';
     const restartTooltipId = 'chat-restart-tooltip';
+    const soundLabel = soundEnabled
+        ? isEn
+            ? 'Mute notification sound'
+            : 'كتم صوت التنبيه'
+        : isEn
+          ? 'Unmute notification sound'
+          : 'تشغيل صوت التنبيه';
 
     return (
         <div className="flex items-center justify-between gap-2 border-b border-[var(--chat-line)] bg-[var(--chat-card)] px-3 py-2.5">
@@ -72,6 +90,20 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             </div>
 
             <div className="flex flex-shrink-0 items-center gap-1">
+                <button
+                    type="button"
+                    onClick={onToggleSound}
+                    aria-pressed={soundEnabled}
+                    aria-label={soundLabel}
+                    className="chat-press flex h-11 w-11 items-center justify-center rounded-xl text-[var(--chat-muted)] transition-colors hover:bg-[var(--chat-tint)] hover:text-[var(--chat-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)]"
+                >
+                    {soundEnabled ? (
+                        <Volume2 aria-hidden="true" className="h-5 w-5" />
+                    ) : (
+                        <VolumeX aria-hidden="true" className="h-5 w-5" />
+                    )}
+                </button>
+
                 <div className="chat-restart-group group relative">
                     <button
                         type="button"

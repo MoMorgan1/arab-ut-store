@@ -11161,20 +11161,51 @@ html.admin-document {
 /* Smooth, professional entrance for assistant bubbles and a calm
    streaming caret; both fully disabled under reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
+    /* Assistant replies settle in: a soft rise with a blur-to-sharp focus
+       and a slight scale, so streamed text reads as "arriving" rather than
+       popping. Customer bubbles reuse it with a shorter distance. */
     @keyframes chat-bubble-in {
         from {
             opacity: 0;
-            transform: translateY(6px);
+            transform: translateY(10px) scale(0.97);
+            filter: blur(4px);
+        }
+
+        60% {
+            opacity: 1;
+            filter: blur(0);
         }
 
         to {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
+            filter: blur(0);
         }
     }
 
     .chat-bubble-enter {
-        animation: chat-bubble-in 220ms ease-out both;
+        animation: chat-bubble-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        transform-origin: bottom left;
+    }
+
+    [dir='rtl'] .chat-bubble-enter,
+    .chat-bubble-enter[dir='rtl'] {
+        transform-origin: bottom right;
+    }
+
+    /* Streamed text: each appended run fades in instead of flashing. */
+    @keyframes chat-stream-run-in {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .chat-stream-run {
+        animation: chat-stream-run-in 240ms ease-out both;
     }
 
     @keyframes chat-stream-caret-blink {

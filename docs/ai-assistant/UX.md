@@ -14,6 +14,11 @@ close lands on Home again. A topic card sends its label as the first message.
 The widget uses a light warm surface with gold accents; the AI disclaimer line
 under the composer renders only when the server reports `assistantMode: agent`.
 The `initialView` prop lets tests and hosts open directly in the chat view.
+Assistant bubbles settle in with a soft rise and blur-to-sharp reveal, and each
+newly streamed text run fades in rather than flashing; reduced motion disables
+both. A short two-note chime (Web Audio, no asset) plays once per newly arrived
+assistant message — never for history loaded on open — and the chat header has
+a mute toggle persisted in `localStorage` (`arabut-chat-sound`).
 
 The launcher initializes chat lazily. One owner has one open conversation.
 Hourly maintenance closes it after 24 hours without a message. A later open
