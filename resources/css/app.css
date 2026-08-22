@@ -11152,6 +11152,58 @@ html.admin-document {
     }
 }
 
+/* Hide the restart tooltip while its button is disabled so a resting
+   pointer never paints a stray strip below the header control. */
+.chat-restart-button:disabled ~ .chat-restart-tooltip {
+    opacity: 0;
+}
+
+/* Smooth, professional entrance for assistant bubbles and a calm
+   streaming caret; both fully disabled under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+    @keyframes chat-bubble-in {
+        from {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .chat-bubble-enter {
+        animation: chat-bubble-in 220ms ease-out both;
+    }
+
+    @keyframes chat-stream-caret-blink {
+        0%,
+        45% {
+            opacity: 1;
+        }
+
+        50%,
+        100% {
+            opacity: 0;
+        }
+    }
+
+    .chat-stream-caret {
+        animation: chat-stream-caret-blink 900ms steps(1, end) infinite;
+    }
+}
+
+.chat-stream-caret {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    margin-inline-start: 3px;
+    vertical-align: text-bottom;
+    background: var(--arabut-gold-bright);
+    border-radius: 1px;
+}
+
 @supports not (
     (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
 ) {

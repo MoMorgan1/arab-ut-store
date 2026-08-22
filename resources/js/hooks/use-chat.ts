@@ -199,6 +199,7 @@ export function useChat(options: UseChatOptions = {}) {
         });
         demoReplyTimeoutsRef.current.clear();
         pendingDemoReplyCountRef.current = 0;
+        setIsAssistantTyping(false);
     }, []);
 
     const clearAgentState = useCallback(() => {
@@ -294,6 +295,8 @@ export function useChat(options: UseChatOptions = {}) {
             pollingTurnIdRef.current = turnPublicId;
             setIsPollingTurn(true);
 
+            let consecutivePollFailures = 0;
+
             const poll = async () => {
                 if (
                     !ownsAsyncGeneration(generation) ||
@@ -314,6 +317,8 @@ export function useChat(options: UseChatOptions = {}) {
                     ) {
                         return;
                     }
+
+                    consecutivePollFailures = 0;
 
                     if (
                         turnState.status === 'waiting' ||
@@ -410,6 +415,23 @@ export function useChat(options: UseChatOptions = {}) {
                         return;
                     }
 
+                    consecutivePollFailures += 1;
+
+                    if (consecutivePollFailures >= 5) {
+                        pollingTurnIdRef.current = null;
+                        setIsPollingTurn(false);
+                        streamingTurnIdRef.current = null;
+                        isStreamingRef.current = false;
+                        setIsStreaming(false);
+                        showError(
+                            pageLocale === 'en'
+                                ? 'Lost connection while waiting for the response. Please try again.'
+                                : 'انقطع الاتصال أثناء انتظار الرد. حاول مرة ثانية.',
+                        );
+
+                        return;
+                    }
+
                     pollingTimerRef.current = setTimeout(poll, 1000);
                 }
             };
@@ -421,6 +443,7 @@ export function useChat(options: UseChatOptions = {}) {
             handleTerminalTurnBacklog,
             ownsAsyncGeneration,
             pageLocale,
+            showError,
             updateMessages,
         ],
     );
@@ -1267,6 +1290,8 @@ export function useChat(options: UseChatOptions = {}) {
             );
         } catch (error) {
             if (!ownsAsyncGeneration(restartGeneration)) {
+                setIsRestarting(false);
+
                 return;
             }
 
