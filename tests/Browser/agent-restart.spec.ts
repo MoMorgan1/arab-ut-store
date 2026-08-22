@@ -1,5 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
+import type { Locator } from '@playwright/test';
+// The widget opens on its Home view; chat-specific checks first enter the
+// conversation view through the Start call to action.
+async function enterChatView(dialog: Locator) {
+    const start = dialog.getByRole('button', {
+        name: /ابدأ محادثة|Start a conversation/,
+    });
+    await expect(start).toBeVisible();
+    await start.click();
+    await expect(start).toHaveCount(0);
+    await expect(dialog.locator('textarea')).toBeVisible();
+}
 
 test.describe('Agent restart after completed reply', () => {
     test('new chat opens cleanly right after a streamed reply completes', async ({
@@ -32,6 +44,7 @@ test.describe('Agent restart after completed reply', () => {
             name: 'شات مساعد عرب التيميت',
         });
         await expect(dialog).toBeVisible();
+        await enterChatView(dialog);
 
         const composer = dialog.locator('textarea');
         const sendBtn = dialog.getByRole('button', { name: 'إرسال الرسالة' });
