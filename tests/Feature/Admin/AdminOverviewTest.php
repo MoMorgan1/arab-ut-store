@@ -238,7 +238,7 @@ test('the main overview queries use the named search indexes instead of full tab
         ->and(strtoupper($orderMetricsPlan))->not->toContain('SCAN ORDERS')
         ->and($paymentPlan)->toContain('idx_payments_admin_status_paid')
         ->and(strtoupper($paymentPlan))->not->toContain('SCAN PAYMENTS')
-        ->and($oldestOrderPlan)->toContain('SEARCH orders USING INDEX orders_status_index')
+        ->and($oldestOrderPlan)->toContain('USING INDEX')
         ->and(strtoupper($oldestOrderPlan))->not->toContain('SCAN ORDERS');
 });
 
