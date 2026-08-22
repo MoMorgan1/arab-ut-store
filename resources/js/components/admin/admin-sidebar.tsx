@@ -4,6 +4,7 @@ import {
     LogOut,
     ShieldCheck,
     ShoppingBag,
+    Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -16,6 +17,7 @@ import type {
 const navigationIcons: Record<AdminNavigationItem['key'], LucideIcon> = {
     overview: LayoutDashboard,
     orders: ShoppingBag,
+    customers: Users,
     security: ShieldCheck,
 };
 

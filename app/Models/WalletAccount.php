@@ -5,6 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property int $balance_halalah
+ * @property array<string, mixed>|null $metadata
+ */
 class WalletAccount extends DomainModel
 {
     /** @return array<string, string> */

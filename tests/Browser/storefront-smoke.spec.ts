@@ -897,7 +897,7 @@ test('authenticated Admin overview and orders are operable across required width
                     await expect(
                         dialog.getByRole('link', { name: locale.overview }),
                     ).toHaveAttribute('aria-current', 'page');
-                    await expect(dialog.getByRole('link')).toHaveCount(3);
+                    await expect(dialog.getByRole('link')).toHaveCount(4);
 
                     const sheetBehavior = await dialog.evaluate((element) => {
                         const styles = window.getComputedStyle(element);
@@ -938,7 +938,7 @@ test('authenticated Admin overview and orders are operable across required width
                     ).toBeHidden();
                     const sidebar = page.locator('.admin-sidebar');
                     await expect(sidebar).toBeVisible();
-                    await expect(sidebar.getByRole('link')).toHaveCount(3);
+                    await expect(sidebar.getByRole('link')).toHaveCount(4);
                     await expect(
                         sidebar.getByRole('link', { name: locale.overview }),
                     ).toHaveAttribute('aria-current', 'page');

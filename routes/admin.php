@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\CustomerDetailController;
+use App\Http\Controllers\Admin\CustomersController;
+use App\Http\Controllers\Admin\CustomerStatusController;
 use App\Http\Controllers\Admin\OrderDetailController;
 use App\Http\Controllers\Admin\OrderItemSecretRevealController;
 use App\Http\Controllers\Admin\OrdersController;
@@ -68,7 +71,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $reveal = Route::post('/api/orders/{publicId}/items/{itemPublicId}/reveal', OrderItemSecretRevealController::class)
-                    ->middleware(['password.confirm', 'can:orders.view', 'can:order_credentials.view'])
+                    ->middleware(['can:orders.view', 'can:order_credentials.view'])
                     ->name('orders.items.reveal');
 
                 if ($locale !== null) {
@@ -81,6 +84,30 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $refund->defaults('locale', $locale);
+                }
+
+                $customers = Route::get('/customers', CustomersController::class)
+                    ->middleware('can:customers.view')
+                    ->name('customers');
+
+                if ($locale !== null) {
+                    $customers->defaults('locale', $locale);
+                }
+
+                $customerDetail = Route::get('/customers/{publicId}', CustomerDetailController::class)
+                    ->middleware('can:customers.view')
+                    ->name('customers.show');
+
+                if ($locale !== null) {
+                    $customerDetail->defaults('locale', $locale);
+                }
+
+                $customerStatus = Route::post('/api/customers/{publicId}/status', CustomerStatusController::class)
+                    ->middleware(['password.confirm', 'can:customers.update_status'])
+                    ->name('customers.status.store');
+
+                if ($locale !== null) {
+                    $customerStatus->defaults('locale', $locale);
                 }
             });
         });

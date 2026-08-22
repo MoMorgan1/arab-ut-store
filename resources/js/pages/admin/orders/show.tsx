@@ -303,9 +303,6 @@ export default function AdminOrderDetailPage() {
 
                                         <AdminOrderItemSecret
                                             adminUi={props.adminUi}
-                                            confirmPasswordUrl={
-                                                props.confirmPasswordUrl
-                                            }
                                             direction={props.direction}
                                             item={item}
                                             locale={props.locale}

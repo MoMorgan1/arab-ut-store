@@ -2,15 +2,19 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\AdminPermission;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
-final class RevealOrderItemSecret extends FormRequest
+final class UpdateAdminCustomerStatus extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+
+        return $user instanceof User && $user->can(AdminPermission::CustomersUpdateStatus->value);
     }
 
     /**
@@ -19,14 +23,21 @@ final class RevealOrderItemSecret extends FormRequest
     public function rules(): array
     {
         return [
-            'purpose' => [
-                'sometimes',
+            'action' => [
+                'required',
+                'string',
+                Rule::in(['suspend', 'reactivate']),
+            ],
+            'reason_code' => [
+                'required',
                 'string',
                 Rule::in([
-                    'fulfillment',
-                    'customer_support',
-                    'order_review',
-                    'incident_investigation',
+                    'fraud_suspected',
+                    'chargeback',
+                    'abuse',
+                    'customer_request',
+                    'account_recovery',
+                    'other_reviewed',
                 ]),
             ],
             'case_reference' => [
@@ -36,13 +47,17 @@ final class RevealOrderItemSecret extends FormRequest
                 'max:64',
                 'regex:/^[A-Za-z0-9._:-]{1,64}$/',
             ],
+            'expected_active' => [
+                'required',
+                'boolean',
+            ],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $allowedKeys = ['purpose', 'case_reference'];
+            $allowedKeys = ['action', 'reason_code', 'case_reference', 'expected_active'];
             $extraKeys = array_diff(array_keys($this->all()), $allowedKeys);
 
             if (! empty($extraKeys)) {
@@ -51,11 +66,14 @@ final class RevealOrderItemSecret extends FormRequest
         });
     }
 
-    public function purpose(): string
+    public function action(): string
     {
-        $value = $this->input('purpose');
+        return (string) $this->input('action');
+    }
 
-        return is_string($value) && $value !== '' ? $value : 'fulfillment';
+    public function reasonCode(): string
+    {
+        return (string) $this->input('reason_code');
     }
 
     public function caseReference(): ?string
@@ -63,5 +81,10 @@ final class RevealOrderItemSecret extends FormRequest
         $value = $this->input('case_reference');
 
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    public function expectedActive(): bool
+    {
+        return $this->boolean('expected_active');
     }
 }
