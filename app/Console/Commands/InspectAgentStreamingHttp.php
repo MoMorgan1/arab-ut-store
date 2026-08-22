@@ -2,8 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Services\AI\OpenAiStreamHandlerStack;
 use App\Support\AI\AgentRuntimeConfig;
 use Closure;
+use GuzzleHttp\Handler\CurlHandler;
+use GuzzleHttp\Handler\CurlMultiHandler;
+use GuzzleHttp\Handler\StreamHandler;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -28,11 +32,11 @@ final class InspectAgentStreamingHttp extends Command
      */
     public static ?Closure $capabilityResolver = null;
 
-    public function handle(AgentRuntimeConfig $config): int
+    public function handle(AgentRuntimeConfig $config, OpenAiStreamHandlerStack $stack): int
     {
         $data = self::$capabilityResolver !== null
             ? (self::$capabilityResolver)()
-            : $this->inspect($config);
+            : $this->inspect($config, $stack);
 
         $this->line('handler: '.$data['handler']);
         $this->line('curl: '.$data['curl_version']);
@@ -60,8 +64,10 @@ final class InspectAgentStreamingHttp extends Command
      *     passed: bool,
      * }
      */
-    private function inspect(AgentRuntimeConfig $config): array
+    private function inspect(AgentRuntimeConfig $config, OpenAiStreamHandlerStack $stack): array
     {
+        // Report the handler the adapter really installs, not an assumed label.
+        $handler = self::describeHandler($stack->make());
         $wrappers = stream_get_wrappers();
         $httpWrapper = in_array('http', $wrappers, true);
         $httpsWrapper = in_array('https', $wrappers, true);
@@ -86,10 +92,10 @@ final class InspectAgentStreamingHttp extends Command
             $configValid = false;
         }
 
-        $passed = $httpWrapper && $httpsWrapper && $allowUrlFopen && $configValid;
+        $passed = $handler === 'stream' && $httpWrapper && $httpsWrapper && $allowUrlFopen && $configValid;
 
         return [
-            'handler' => 'stream',
+            'handler' => $handler,
             'curl_version' => $curlVersion,
             'http_wrapper' => $httpWrapper,
             'https_wrapper' => $httpsWrapper,
@@ -99,5 +105,18 @@ final class InspectAgentStreamingHttp extends Command
             'total_timeout' => $totalTimeout,
             'passed' => $passed,
         ];
+    }
+
+    /**
+     * Label a Guzzle handler instance: `stream` for the approved PHP stream
+     * handler, `curl` for either cURL handler, otherwise the class basename.
+     */
+    public static function describeHandler(object $handler): string
+    {
+        return match (true) {
+            $handler instanceof StreamHandler => 'stream',
+            $handler instanceof CurlHandler, $handler instanceof CurlMultiHandler => 'curl',
+            default => (string) (new \ReflectionClass($handler))->getShortName(),
+        };
     }
 }

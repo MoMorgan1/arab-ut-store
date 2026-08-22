@@ -105,12 +105,13 @@ nonterminal provider events are ignored. Visible output is capped at 4,000
 Unicode characters while the adapter continues consuming the provider stream
 to its terminal event.
 
-The deployed `agent:inspect-streaming-http` command reports an expected `stream`
-handler label and validates `allow_url_fopen`, HTTP/HTTPS wrappers, and runtime
-timeout values. It does not inspect the adapter's actual handler stack and does
-not make an OpenAI request. That gap conflicts with the approved pre-key handler
-inspection and is a re-entry remediation item. The live canary remains the real
-outbound and incremental-delivery proof.
+The deployed `agent:inspect-streaming-http` command resolves the adapter's
+`OpenAiStreamHandlerStack`, labels the handler it actually builds (`stream` for
+Guzzle's `StreamHandler`, `curl` for either cURL handler, otherwise the class
+name), and passes only when that label is `stream` and `allow_url_fopen`, the
+HTTP/HTTPS wrappers, and runtime timeout values are valid. It does not make an
+OpenAI request. (Before 2026-08-22 it printed a hardcoded `stream` label.) The
+live canary remains the real outbound and incremental-delivery proof.
 
 ## Retry and recovery
 

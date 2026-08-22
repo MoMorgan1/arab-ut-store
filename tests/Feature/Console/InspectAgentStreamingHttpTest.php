@@ -1,6 +1,9 @@
 <?php
 
 use App\Console\Commands\InspectAgentStreamingHttp;
+use GuzzleHttp\Handler\CurlHandler;
+use GuzzleHttp\Handler\CurlMultiHandler;
+use GuzzleHttp\Handler\StreamHandler;
 use Illuminate\Support\Facades\Artisan;
 
 test('command outputs whitelisted format and succeeds when environment is ready', function () {
@@ -107,4 +110,21 @@ test('command output contains only whitelisted items and no sensitive keys or ur
     } finally {
         InspectAgentStreamingHttp::$capabilityResolver = null;
     }
+});
+
+test('handler label reflects the real Guzzle handler class', function () {
+    expect(InspectAgentStreamingHttp::describeHandler(new StreamHandler))->toBe('stream')
+        ->and(InspectAgentStreamingHttp::describeHandler(new CurlHandler))->toBe('curl')
+        ->and(InspectAgentStreamingHttp::describeHandler(new CurlMultiHandler))->toBe('curl')
+        ->and(InspectAgentStreamingHttp::describeHandler(new stdClass))->toBe('stdClass');
+});
+
+test('command inspects the adapter handler stack instead of a hardcoded label', function () {
+    InspectAgentStreamingHttp::$capabilityResolver = null;
+
+    Artisan::call('agent:inspect-streaming-http');
+    $output = Artisan::output();
+
+    // The stack installs Guzzle's StreamHandler; the report must come from it.
+    expect($output)->toContain('handler: stream');
 });
