@@ -345,6 +345,10 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         let startedAt = 0;
         let dragging = false;
         let eligible = false;
+        // Set once a swipe has committed to closing: the cleanup below must
+        // then leave the outgoing transform alone so the sheet can finish
+        // sliding away instead of snapping back.
+        let dismissing = false;
 
         const onTouchStart = (event: TouchEvent) => {
             const touch = event.touches[0];
@@ -394,14 +398,23 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
             const dy = Math.max(0, touch.clientY - startY);
             const velocity = dy / Math.max(1, event.timeStamp - startedAt);
             panel.classList.remove('chat-widget-dialog--dragging');
-            panel.style.removeProperty('transform');
 
             if (
                 dy > SHEET_DISMISS_DISTANCE ||
                 velocity > SHEET_DISMISS_VELOCITY
             ) {
+                // Keep travelling down from wherever the finger let go
+                // instead of snapping back to the top first.
+                dismissing = true;
+                panel.classList.add('chat-widget-dialog--dismissing');
+                panel.style.transform = 'translateY(100%)';
                 closeChatRef.current();
+
+                return;
             }
+
+            // Not far enough: spring back to the resting position.
+            panel.style.removeProperty('transform');
         };
 
         panel.addEventListener('touchstart', onTouchStart, { passive: true });
@@ -415,7 +428,11 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
             panel.removeEventListener('touchend', finish);
             panel.removeEventListener('touchcancel', finish);
             panel.classList.remove('chat-widget-dialog--dragging');
-            panel.style.removeProperty('transform');
+
+            if (!dismissing) {
+                panel.classList.remove('chat-widget-dialog--dismissing');
+                panel.style.removeProperty('transform');
+            }
         };
     }, [isMobileDialog, isOpen]);
 

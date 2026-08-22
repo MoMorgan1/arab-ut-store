@@ -179,7 +179,9 @@ describe('mobile sheet follows the visual viewport', () => {
         fireEvent.touchMove(reopened, { touches: touch(260) });
         fireEvent.touchEnd(reopened, { changedTouches: touch(260) });
 
-        expect(reopened.style.transform).toBe('');
+        // The sheet keeps sliding down instead of snapping back to the top.
+        expect(reopened.style.transform).toBe('translateY(100%)');
+        expect(reopened).toHaveClass('chat-widget-dialog--dismissing');
         await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     });
 

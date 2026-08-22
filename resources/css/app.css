@@ -11055,6 +11055,20 @@ html.admin-document {
         transition: none !important;
     }
 
+    /* Flung away: ride the drag offset out of view. Overrides the shared
+       close transition so the sheet never snaps back up first. */
+    .chat-widget-dialog--dismissing {
+        transition:
+            transform 260ms cubic-bezier(0.32, 0.72, 0, 1),
+            opacity 220ms linear !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .chat-widget-dialog--dismissing {
+            transition: none !important;
+        }
+    }
+
     @media (prefers-reduced-motion: no-preference) {
         .chat-widget-dialog--viewport-tracked:not(
             .chat-widget-dialog--dragging
