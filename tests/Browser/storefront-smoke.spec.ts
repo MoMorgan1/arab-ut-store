@@ -284,16 +284,19 @@ async function verifyMobileAccountChat(
         throw new Error('Expected rendered mobile chat and navigation');
     }
 
+    // The phone dialog is a bottom sheet: full width, ~88% of the viewport
+    // height, sitting on the bottom edge with the page visible above it.
+    const viewport = await page.evaluate(() => ({
+        width: innerWidth,
+        height: innerHeight,
+    }));
+
     expect(dialogBox.x).toBeCloseTo(0, 0);
-    expect(dialogBox.y).toBeCloseTo(0, 0);
-    expect(dialogBox.width).toBeCloseTo(
-        await page.evaluate(() => innerWidth),
-        0,
-    );
-    expect(dialogBox.height).toBeCloseTo(
-        await page.evaluate(() => innerHeight),
-        0,
-    );
+    expect(dialogBox.width).toBeCloseTo(viewport.width, 0);
+    expect(dialogBox.height).toBeGreaterThan(viewport.height * 0.8);
+    expect(dialogBox.height).toBeLessThan(viewport.height);
+    expect(dialogBox.y).toBeGreaterThan(0);
+    expect(dialogBox.y + dialogBox.height).toBeCloseTo(viewport.height, 0);
 
     const layersAndMotion = await page.evaluate(() => {
         const dialogElement = document.querySelector<HTMLElement>(
