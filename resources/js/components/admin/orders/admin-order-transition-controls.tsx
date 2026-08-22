@@ -1,4 +1,4 @@
-import { router } from '@inertiajs/react';
+import { router, useHttp } from '@inertiajs/react';
 import {
     AlertCircle,
     CheckCircle2,
@@ -41,12 +41,15 @@ const transitionIcons: Record<
     waiting_for_customer: Clock,
 };
 
-function getCsrfToken(): string {
-    return (
-        document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
-            ?.content ?? ''
-    );
-}
+type TransitionPayload = {
+    target_status: string;
+    expected_status: string;
+};
+
+type TransitionResponse = {
+    order: AdminOrderDetail;
+    status: string;
+};
 
 export default function AdminOrderTransitionControls({
     adminUi,
@@ -59,113 +62,129 @@ export default function AdminOrderTransitionControls({
     const copy = adminUi.orderDetail;
     const statuses = adminUi.statuses;
     const [pendingTarget, setPendingTarget] = useState<string | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [feedback, setFeedback] = useState<{
         type: 'success' | 'error' | 'conflict';
         message: string;
     } | null>(null);
+    const http = useHttp<TransitionPayload, TransitionResponse>(
+        'post',
+        transitionUrl,
+        {
+            expected_status: '',
+            target_status: '',
+        },
+    );
 
     const canUpdate = permissions.includes('orders.update');
     const canCancel = permissions.includes('orders.cancel');
 
     const handleConfirm = useCallback(async () => {
         if (!pendingTarget) {
-            return;
-        }
+return;
+}
 
-        setIsSubmitting(true);
         setFeedback(null);
+        http.setData({
+            expected_status: order.status,
+            target_status: pendingTarget,
+        });
+
+        let handled = false;
 
         try {
-            const response = await fetch(transitionUrl, {
-                body: JSON.stringify({
-                    expected_status: order.status,
-                    target_status: pendingTarget,
-                }),
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': getCsrfToken(),
+            await http.submit('post', transitionUrl, {
+                headers: { Accept: 'application/json' },
+                onHttpException: (response) => {
+                    handled = true;
+
+                    if (response.status === 409) {
+                        const body =
+                            typeof response.data === 'string'
+                                ? (JSON.parse(response.data) as {
+                                      status?: string;
+                                  })
+                                : (response.data as { status?: string });
+                        const canonicalStatus = body.status ?? 'unknown';
+                        const readableStatus =
+                            statuses[canonicalStatus] ?? canonicalStatus;
+                        setFeedback({
+                            message: copy.conflictError.replace(
+                                ':status',
+                                readableStatus,
+                            ),
+                            type: 'conflict',
+                        });
+                        setPendingTarget(null);
+                        router.reload({ only: ['order'] });
+
+                        return false;
+                    }
+
+                    if (response.status === 403) {
+                        setFeedback({
+                            message: copy.forbiddenTransition,
+                            type: 'error',
+                        });
+                        setPendingTarget(null);
+
+                        return false;
+                    }
+
+                    setFeedback({
+                        message: copy.transitionFailed,
+                        type: 'error',
+                    });
+                    setPendingTarget(null);
+
+                    return false;
                 },
-                method: 'POST',
+                onNetworkError: () => {
+                    handled = true;
+                    setFeedback({
+                        message: copy.transitionFailed,
+                        type: 'error',
+                    });
+                    setPendingTarget(null);
+
+                    return false;
+                },
+                onSuccess: (response) => {
+                    handled = true;
+                    setFeedback({
+                        message: copy.statusUpdated,
+                        type: 'success',
+                    });
+                    setPendingTarget(null);
+
+                    if (onStatusUpdated && response.order) {
+                        onStatusUpdated(response.order);
+                    } else {
+                        router.reload({ only: ['order'] });
+                    }
+                },
             });
-
-            if (response.status === 409) {
-                const conflictData = (await response.json()) as {
-                    order: string;
-                    status: string;
-                };
-                const canonicalStatus = conflictData.status ?? 'unknown';
-                const readableStatus =
-                    statuses[canonicalStatus] ?? canonicalStatus;
-                setFeedback({
-                    message: copy.conflictError.replace(
-                        ':status',
-                        readableStatus,
-                    ),
-                    type: 'conflict',
-                });
-                setPendingTarget(null);
-                router.reload({ only: ['order'] });
-
-                return;
-            }
-
-            if (response.status === 403) {
-                setFeedback({
-                    message: copy.forbiddenTransition,
-                    type: 'error',
-                });
-                setPendingTarget(null);
-
-                return;
-            }
-
-            if (!response.ok) {
-                setFeedback({
-                    message: copy.transitionFailed,
-                    type: 'error',
-                });
-                setPendingTarget(null);
-
-                return;
-            }
-
-            const successData = (await response.json()) as {
-                order: AdminOrderDetail;
-                status: string;
-            };
-
-            setFeedback({
-                message: copy.statusUpdated,
-                type: 'success',
-            });
-            setPendingTarget(null);
-
-            if (onStatusUpdated && successData.order) {
-                onStatusUpdated(successData.order);
-            } else {
-                router.reload({ only: ['order'] });
-            }
         } catch {
+            // Rejections are already surfaced through the callbacks above.
+        }
+
+        if (!handled) {
             setFeedback({
                 message: copy.transitionFailed,
                 type: 'error',
             });
             setPendingTarget(null);
-        } finally {
-            setIsSubmitting(false);
         }
     }, [
         copy.conflictError,
         copy.forbiddenTransition,
         copy.statusUpdated,
         copy.transitionFailed,
-        onStatusUpdated,
+        http,
         order.status,
         pendingTarget,
         statuses,
         transitionUrl,
+        onStatusUpdated,
     ]);
 
     const getDialogDescription = (target: string) => {
@@ -260,7 +279,7 @@ export default function AdminOrderTransitionControls({
                     return (
                         <Button
                             className="min-h-11 gap-2 text-xs font-medium"
-                            disabled={isSubmitting || !isAllowedByRole}
+                            disabled={http.processing || !isAllowedByRole}
                             key={target}
                             onClick={() => {
                                 setFeedback(null);
@@ -278,7 +297,7 @@ export default function AdminOrderTransitionControls({
 
             <Dialog
                 onOpenChange={(open) => {
-                    if (!open && !isSubmitting) {
+                    if (!open && !http.processing) {
                         setPendingTarget(null);
                     }
                 }}
@@ -297,7 +316,7 @@ export default function AdminOrderTransitionControls({
                         <DialogClose asChild>
                             <Button
                                 className="min-h-11"
-                                disabled={isSubmitting}
+                                disabled={http.processing}
                                 type="button"
                                 variant="outline"
                             >
@@ -306,7 +325,7 @@ export default function AdminOrderTransitionControls({
                         </DialogClose>
                         <Button
                             className="min-h-11"
-                            disabled={isSubmitting}
+                            disabled={http.processing}
                             onClick={handleConfirm}
                             type="button"
                             variant={
@@ -315,7 +334,9 @@ export default function AdminOrderTransitionControls({
                                     : 'default'
                             }
                         >
-                            {isSubmitting ? copy.updating : copy.confirmButton}
+                            {http.processing
+                                ? copy.updating
+                                : copy.confirmButton}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

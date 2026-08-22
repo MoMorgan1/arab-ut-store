@@ -20,6 +20,13 @@ const inertia = vi.hoisted(() => ({
     reload: vi.fn(),
 }));
 
+const http = vi.hoisted(() => ({
+    data: { expected_status: '', target_status: '' },
+    processing: false,
+    setData: vi.fn(),
+    submit: vi.fn(),
+}));
+
 const pageState = vi.hoisted(() => ({
     component: 'admin/orders/show',
     url: '/admin/orders/01K5ADM1N00000000000000001',
@@ -34,6 +41,7 @@ vi.mock('@inertiajs/react', () => ({
         </a>
     ),
     router: inertia,
+    useHttp: () => http,
     usePage: () => ({
         component: pageState.component,
         props: pageState.props,
@@ -79,7 +87,8 @@ describe('AdminOrderDetailPage', () => {
     beforeEach(() => {
         pageState.props = defaultProps();
         pageState.url = '/admin/orders/01K5ADM1N00000000000000001';
-        global.fetch = vi.fn();
+        http.data = { expected_status: '', target_status: '' };
+        http.processing = false;
     });
 
     afterEach(() => {
@@ -128,17 +137,28 @@ describe('AdminOrderDetailPage', () => {
         ).toBeVisible();
     });
 
-    it('dispatches transition POST request and updates state on 200 success without optimistic update', async () => {
+    it('submits the transition through inertia http and updates state on success without optimistic update', async () => {
         const updatedOrder = {
             ...sampleAdminOrderDetail,
             status: 'in_progress',
         };
 
-        (global.fetch as any).mockResolvedValueOnce({
-            ok: true,
-            status: 200,
-            json: async () => ({ order: updatedOrder, status: 'in_progress' }),
-        });
+        http.submit.mockImplementationOnce(
+            (
+                _method: string,
+                _url: string,
+                options: {
+                    onSuccess?: (response: unknown) => void;
+                },
+            ) => {
+                options.onSuccess?.({
+                    order: updatedOrder,
+                    status: 'in_progress',
+                });
+
+                return Promise.resolve(updatedOrder);
+            },
+        );
 
         render(<AdminOrderDetailPage />);
 
@@ -153,14 +173,15 @@ describe('AdminOrderDetailPage', () => {
         fireEvent.click(confirmButton);
 
         await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledWith(
+            expect(http.setData).toHaveBeenCalledWith({
+                expected_status: 'received',
+                target_status: 'in_progress',
+            });
+            expect(http.submit).toHaveBeenCalledWith(
+                'post',
                 '/admin/orders/01K5ADM1N00000000000000001/transitions',
                 expect.objectContaining({
-                    method: 'POST',
-                    body: JSON.stringify({
-                        expected_status: 'received',
-                        target_status: 'in_progress',
-                    }),
+                    headers: { Accept: 'application/json' },
                 }),
             );
         });
@@ -174,14 +195,28 @@ describe('AdminOrderDetailPage', () => {
     });
 
     it('handles 409 conflict and renders fresh canonical status without optimistic changes', async () => {
-        (global.fetch as any).mockResolvedValueOnce({
-            ok: false,
-            status: 409,
-            json: async () => ({
-                order: '01K5ADM1N00000000000000001',
-                status: 'completed',
-            }),
-        });
+        http.submit.mockImplementationOnce(
+            (
+                _method: string,
+                _url: string,
+                options: {
+                    onHttpException?: (response: {
+                        data: string;
+                        status: number;
+                    }) => boolean | void;
+                },
+            ) => {
+                options.onHttpException?.({
+                    data: JSON.stringify({
+                        order: '01K5ADM1N00000000000000001',
+                        status: 'completed',
+                    }),
+                    status: 409,
+                });
+
+                return Promise.resolve(null);
+            },
+        );
 
         render(<AdminOrderDetailPage />);
 
