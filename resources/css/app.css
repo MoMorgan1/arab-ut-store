@@ -11031,13 +11031,54 @@ html.admin-document {
         width: 100%;
     }
 
-    /* While a software keyboard is open the sheet follows the visual
-       viewport instead of the layout viewport (set from chat-widget.tsx). */
+    /* Phone bottom sheet: leaves a strip of the page visible above it and
+       rounds the top corners. Geometry comes from chat-widget.tsx via the
+       --chat-vv-* vars; the dvh fallback covers browsers without
+       visualViewport. */
+    .chat-widget-dialog--sheet {
+        top: auto !important;
+        bottom: 0 !important;
+        height: 88dvh !important;
+        max-height: none !important;
+        overflow: hidden;
+        border-radius: 1.5rem 1.5rem 0 0 !important;
+        box-shadow: 0 -12px 40px rgb(0 0 0 / 28%);
+    }
+
     .chat-widget-dialog--viewport-tracked {
         top: var(--chat-vv-top, 0) !important;
-        height: var(--chat-vv-height, 100%) !important;
-        max-height: none !important;
+        height: var(--chat-vv-height, 88dvh) !important;
         bottom: auto !important;
+    }
+
+    .chat-widget-dialog--dragging {
+        transition: none !important;
+    }
+
+    /* Flung away: ride the drag offset out of view. Overrides the shared
+       close transition so the sheet never snaps back up first. */
+    .chat-widget-dialog--dismissing {
+        transition:
+            transform 260ms cubic-bezier(0.32, 0.72, 0, 1),
+            opacity 220ms linear !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .chat-widget-dialog--dismissing {
+            transition: none !important;
+        }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .chat-widget-dialog--viewport-tracked:not(
+            .chat-widget-dialog--dragging
+        ) {
+            transition:
+                top 260ms cubic-bezier(0.16, 1, 0.3, 1),
+                height 260ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 280ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
     }
 
     html {
@@ -11369,6 +11410,14 @@ html.admin-document {
    Chat widget: light help-center surface + motion system.
    Tokens are scoped to the dialog so the dark store tokens stay intact.
    --------------------------------------------------------------------- */
+/* The widget renders on store and account shells alike, so it names the
+   brand face itself instead of inheriting .store-shell. */
+.chat-widget-root,
+.chat-widget-dialog,
+.chat-widget-backdrop {
+    font-family: 'Thmanyah Sans', Tahoma, Arial, sans-serif;
+}
+
 .chat-widget-dialog {
     --chat-surface: #fbf8f2;
     --chat-card: #ffffff;

@@ -115,7 +115,7 @@ describe('AdminCustomerDetailPage', () => {
         ).toBeVisible();
         expect(screen.getByText('saud@example.test')).toBeVisible();
         expect(screen.getByText('+966500000001')).toBeVisible();
-        expect(screen.getByText('AUT-1001')).toBeVisible();
+        expect(screen.getAllByText('AUT-1001')[0]).toBeVisible();
         expect(screen.getByText('PROMO-2026')).toBeVisible();
     });
 
@@ -150,9 +150,9 @@ describe('AdminCustomerDetailPage', () => {
 
         render(<AdminCustomerDetailPage />);
 
-        const suspendBtn = screen.getByRole('button', {
+        const suspendBtn = screen.getAllByRole('button', {
             name: 'Suspend customer',
-        });
+        })[0];
         fireEvent.click(suspendBtn);
 
         expect(
@@ -223,7 +223,7 @@ describe('AdminCustomerDetailPage', () => {
         render(<AdminCustomerDetailPage />);
 
         fireEvent.click(
-            screen.getByRole('button', { name: 'Suspend customer' }),
+            screen.getAllByRole('button', { name: 'Suspend customer' })[0],
         );
 
         const reasonSelect = screen.getByRole('combobox', {
@@ -250,13 +250,12 @@ describe('AdminCustomerDetailPage', () => {
 
         render(<AdminCustomerDetailPage />);
 
-        expect(
-            screen.getByRole('button', { name: 'Reactivate customer' }),
-        ).toBeVisible();
+        const reactivateBtn = screen.getAllByRole('button', {
+            name: 'Reactivate customer',
+        })[0];
+        expect(reactivateBtn).toBeVisible();
 
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Reactivate customer' }),
-        );
+        fireEvent.click(reactivateBtn);
 
         expect(
             screen.getByRole('heading', {
@@ -264,5 +263,26 @@ describe('AdminCustomerDetailPage', () => {
                 name: 'Reactivate customer',
             }),
         ).toBeVisible();
+    });
+
+    it('renders one-line summary and mobile recent orders cards', () => {
+        render(<AdminCustomerDetailPage />);
+
+        // Mobile summary under name
+        expect(
+            screen.getAllByText(
+                (_, element) =>
+                    element?.tagName === 'SPAN' &&
+                    /^\s*\d+\s+Total orders\s*$/i.test(
+                        element.textContent ?? '',
+                    ),
+            )[0],
+        ).toBeInTheDocument();
+
+        // Recent orders link
+        const orderLinks = screen.getAllByRole('link', {
+            name: /AUT-1001/i,
+        });
+        expect(orderLinks.length).toBeGreaterThanOrEqual(1);
     });
 });

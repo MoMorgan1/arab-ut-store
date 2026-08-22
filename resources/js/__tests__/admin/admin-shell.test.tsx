@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { englishAdminUi } from '@/__tests__/admin/admin-test-fixtures';
@@ -152,13 +158,46 @@ describe('Admin shell', () => {
             'id',
             'admin-main-content',
         );
-        expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute(
-            'aria-current',
-            'page',
-        );
+        expect(
+            screen.getAllByRole('link', { name: 'Overview' })[0],
+        ).toHaveAttribute('aria-current', 'page');
         expect(
             screen.getByRole('button', { name: 'Open Admin navigation' }),
         ).toBeInTheDocument();
+    });
+
+    it('renders mobile bottom quick navigation tab bar with accessible labels and active indicator', () => {
+        pageState.props = {
+            locale: 'en',
+            direction: 'ltr',
+            adminUi,
+            adminIdentity: { name: 'Operations Owner', role: 'admin' },
+            adminNavigation: navigation,
+            permissions: ['dashboard.view'],
+            logoutUrl: '/logout',
+        };
+
+        render(
+            <AdminLayout>
+                <h1>Operations dashboard</h1>
+            </AdminLayout>,
+        );
+
+        const tabbar = screen.getByRole('navigation', {
+            name: `${adminUi.brand} ${adminUi.navigation.quick}`,
+        });
+        expect(tabbar).toBeInTheDocument();
+        expect(tabbar).toHaveClass('md:hidden');
+
+        const activeTab = within(tabbar).getByRole('link', {
+            name: 'Overview',
+        });
+        expect(activeTab).toHaveAttribute('aria-current', 'page');
+
+        const ordersTab = within(tabbar).getByRole('link', {
+            name: 'Orders',
+        });
+        expect(ordersTab).not.toHaveAttribute('aria-current');
     });
 
     it('opens a labelled modal mobile sheet with only supplied destinations', () => {

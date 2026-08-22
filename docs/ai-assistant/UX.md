@@ -23,7 +23,12 @@ a mute toggle persisted in `localStorage` (`arabut-chat-sound`); peak gain is
 is open the page is scroll-locked (`html.chat-scroll-lock`) and the sheet tracks
 `window.visualViewport` (re-synced for ~800 ms after any focus change, because
 iOS settles the keyboard without a final viewport event), so an open software
-keyboard shrinks the sheet instead of pushing its header off-screen.
+keyboard shrinks the sheet instead of pushing its header off-screen. On phones
+the dialog is a bottom sheet: 88% of the visual viewport with rounded top
+corners and a drag handle, the page dimmed behind it (tap to close), and a
+swipe down from the header or an unscrolled list dismisses it. With a keyboard
+open the sheet takes the whole remaining viewport; when the keyboard closes and
+iOS leaves the viewport scrolled, the sync resets that offset.
 
 The launcher initializes chat lazily. One owner has one open conversation.
 Hourly maintenance closes it after 24 hours without a message. A later open

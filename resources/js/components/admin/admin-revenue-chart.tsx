@@ -107,9 +107,9 @@ export default function AdminRevenueChart({
                 </table>
             </div>
 
-            <div className="h-[280px] w-full lg:h-[360px]">
+            <div className="h-40 w-full md:h-[280px] lg:h-[360px]">
                 {isAllZero ? (
-                    <div className="flex h-64 flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+                    <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
                         <CircleDollarSign
                             aria-hidden="true"
                             className="h-8 w-8 text-muted-foreground/50"

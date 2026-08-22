@@ -15,6 +15,7 @@ return [
         'settings' => 'الإعدادات',
         'open' => 'فتح قائمة الإدارة',
         'close' => 'إغلاق قائمة الإدارة',
+        'quick' => 'التنقل السريع',
     ],
     'overview' => [
         'headTitle' => 'نظرة عامة على العمليات',
@@ -65,6 +66,9 @@ return [
         'searchPlaceholder' => 'البحث برقم الطلب، المعرف، البريد، أو الهاتف…',
         'searchLabel' => 'بحث في الطلبات',
         'searchButton' => 'بحث',
+        'filters' => 'الفلاتر',
+        'apply' => 'تطبيق',
+        'clearAll' => 'مسح الكل',
         'allStatuses' => 'جميع الحالات',
         'allServices' => 'جميع الخدمات',
         'allPlatforms' => 'جميع المنصات',

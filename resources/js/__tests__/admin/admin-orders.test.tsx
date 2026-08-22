@@ -465,4 +465,75 @@ describe('AdminOrdersPage', () => {
         expect(screen.queryByText('Active filters:')).toBeNull();
         expect(screen.queryByRole('button', { name: 'Clear all' })).toBeNull();
     });
+
+    it('opens mobile filter sheet, configures filters, and applies them', () => {
+        render(<AdminOrdersPage />);
+
+        // Mobile Filters button is visible
+        const filtersBtn = screen.getByRole('button', { name: /Filters/i });
+        expect(filtersBtn).toBeInTheDocument();
+
+        fireEvent.click(filtersBtn);
+
+        // Sheet opens
+        expect(screen.getByRole('dialog')).toBeVisible();
+
+        const sheet = screen.getByRole('dialog');
+        const applyBtn = within(sheet).getByRole('button', { name: 'Apply' });
+        expect(applyBtn).toBeInTheDocument();
+
+        // Select a status inside the sheet
+        const statusSelect = within(sheet).getByRole('combobox', {
+            name: 'Filter by status',
+        });
+        fireEvent.click(statusSelect);
+        fireEvent.click(screen.getByRole('option', { name: 'Received' }));
+
+        fireEvent.click(applyBtn);
+
+        expect(inertia.get).toHaveBeenCalledWith(
+            '/admin/orders',
+            expect.objectContaining({ status: 'received' }),
+            expect.any(Object),
+        );
+    });
+
+    it('renders 3-line mobile cards with checkbox, details, service chips, and date', () => {
+        render(<AdminOrdersPage />);
+
+        // Find mobile cards container
+        const mobileContainer = screen.getByLabelText('Orders list mobile');
+        expect(mobileContainer).toBeInTheDocument();
+
+        // Check first order row content
+        const firstOrder = sampleAdminOrderRows[0];
+        expect(
+            within(mobileContainer).getByRole('link', {
+                name: firstOrder.orderNumber,
+            }),
+        ).toHaveAttribute('href', `/admin/orders/${firstOrder.id}`);
+
+        expect(
+            within(mobileContainer).getByRole('checkbox', {
+                name: `Select row ${firstOrder.orderNumber}`,
+            }),
+        ).toBeInTheDocument();
+
+        expect(
+            within(mobileContainer).getByText(firstOrder.customer.name),
+        ).toBeVisible();
+        expect(within(mobileContainer).getByText('Received')).toBeVisible();
+    });
+
+    it('renders mobile compact pagination count and hides first/last buttons', () => {
+        render(<AdminOrdersPage />);
+
+        expect(screen.getByText('1–15')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'First page' })).toHaveClass(
+            'hidden md:inline-flex',
+        );
+        expect(screen.getByRole('button', { name: 'Last page' })).toHaveClass(
+            'hidden md:inline-flex',
+        );
+    });
 });

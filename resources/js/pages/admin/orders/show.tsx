@@ -94,7 +94,59 @@ export default function AdminOrderDetailPage() {
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground md:hidden">
+                        {order.placedAt ? (
+                            <span className="tabular-nums">
+                                {copy.placedAt}{' '}
+                                <bdi>
+                                    {dateFormatter.format(
+                                        new Date(order.placedAt),
+                                    )}
+                                </bdi>
+                            </span>
+                        ) : null}
+                        {order.paidAt ? (
+                            <>
+                                <span aria-hidden="true">·</span>
+                                <span className="tabular-nums">
+                                    {copy.paidAt}{' '}
+                                    <bdi>
+                                        {dateFormatter.format(
+                                            new Date(order.paidAt),
+                                        )}
+                                    </bdi>
+                                </span>
+                            </>
+                        ) : null}
+                        {order.completedAt ? (
+                            <>
+                                <span aria-hidden="true">·</span>
+                                <span className="tabular-nums">
+                                    {copy.completedAt}{' '}
+                                    <bdi>
+                                        {dateFormatter.format(
+                                            new Date(order.completedAt),
+                                        )}
+                                    </bdi>
+                                </span>
+                            </>
+                        ) : null}
+                        {order.cancelledAt ? (
+                            <>
+                                <span aria-hidden="true">·</span>
+                                <span className="tabular-nums">
+                                    {copy.cancelledAt}{' '}
+                                    <bdi>
+                                        {dateFormatter.format(
+                                            new Date(order.cancelledAt),
+                                        )}
+                                    </bdi>
+                                </span>
+                            </>
+                        ) : null}
+                    </div>
+
+                    <div className="hidden flex-wrap gap-4 text-xs text-muted-foreground md:flex">
                         {order.placedAt ? (
                             <div className="flex flex-col">
                                 <span className="font-medium text-foreground">
@@ -155,63 +207,36 @@ export default function AdminOrderDetailPage() {
                 </div>
             </header>
 
+            <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3 shadow-xs md:hidden">
+                <AdminOrderTransitionControls
+                    adminUi={props.adminUi}
+                    allowedTransitions={props.allowedTransitions}
+                    onStatusUpdated={(freshOrder) => setOrder(freshOrder)}
+                    order={order}
+                    permissions={props.permissions}
+                    transitionUrl={props.transitionUrl}
+                    variant="bar"
+                />
+                {props.permissions.includes('orders.refund') &&
+                props.refund.eligible ? (
+                    <AdminOrderRefundControl
+                        adminUi={props.adminUi}
+                        confirmPasswordUrl={props.confirmPasswordUrl}
+                        direction={props.direction}
+                        locale={props.locale}
+                        order={order}
+                        refund={props.refund}
+                        refundUrl={props.refundUrl}
+                        variant="bar"
+                    />
+                ) : null}
+            </div>
+
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <div className="flex flex-col gap-6 lg:col-span-2">
                     <section
-                        aria-labelledby="customer-info-heading"
-                        className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs"
-                    >
-                        <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-                            <UserIcon
-                                aria-hidden="true"
-                                className="size-4 text-muted-foreground"
-                            />
-                            <h2
-                                className="text-base font-semibold text-foreground"
-                                id="customer-info-heading"
-                            >
-                                {copy.customerSection}
-                            </h2>
-                        </div>
-                        <div className="grid grid-cols-1 gap-4 text-xs sm:grid-cols-2">
-                            <div className="flex flex-col gap-0.5">
-                                <span className="text-muted-foreground">
-                                    {copy.customerName}
-                                </span>
-                                <span className="font-semibold text-foreground">
-                                    {order.customer.name || '—'}
-                                </span>
-                            </div>
-                            <div className="flex flex-col gap-0.5">
-                                <span className="text-muted-foreground">
-                                    {copy.customerEmail}
-                                </span>
-                                <span className="font-semibold [overflow-wrap:anywhere] text-foreground">
-                                    {order.customer.email}
-                                </span>
-                            </div>
-                            <div className="flex flex-col gap-0.5">
-                                <span className="text-muted-foreground">
-                                    {copy.customerPhone}
-                                </span>
-                                <span className="font-semibold text-foreground tabular-nums">
-                                    <bdi>{order.customer.phone || '—'}</bdi>
-                                </span>
-                            </div>
-                            <div className="flex flex-col gap-0.5">
-                                <span className="text-muted-foreground">
-                                    ID
-                                </span>
-                                <span className="[overflow-wrap:anywhere] text-muted-foreground tabular-nums">
-                                    <bdi>{order.customer.id}</bdi>
-                                </span>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section
                         aria-labelledby="order-items-heading"
-                        className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs"
+                        className="order-1 flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs md:order-2"
                     >
                         <div className="flex items-center justify-between border-b border-border/60 pb-3">
                             <div className="flex items-center gap-2">
@@ -319,8 +344,60 @@ export default function AdminOrderDetailPage() {
                     </section>
 
                     <section
+                        aria-labelledby="customer-info-heading"
+                        className="order-2 flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs md:order-1"
+                    >
+                        <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+                            <UserIcon
+                                aria-hidden="true"
+                                className="size-4 text-muted-foreground"
+                            />
+                            <h2
+                                className="text-base font-semibold text-foreground"
+                                id="customer-info-heading"
+                            >
+                                {copy.customerSection}
+                            </h2>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4 text-xs sm:grid-cols-2">
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-muted-foreground">
+                                    {copy.customerName}
+                                </span>
+                                <span className="font-semibold text-foreground">
+                                    {order.customer.name || '—'}
+                                </span>
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-muted-foreground">
+                                    {copy.customerEmail}
+                                </span>
+                                <span className="font-semibold [overflow-wrap:anywhere] text-foreground">
+                                    {order.customer.email}
+                                </span>
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-muted-foreground">
+                                    {copy.customerPhone}
+                                </span>
+                                <span className="font-semibold text-foreground tabular-nums">
+                                    <bdi>{order.customer.phone || '—'}</bdi>
+                                </span>
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-muted-foreground">
+                                    ID
+                                </span>
+                                <span className="[overflow-wrap:anywhere] text-muted-foreground tabular-nums">
+                                    <bdi>{order.customer.id}</bdi>
+                                </span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section
                         aria-labelledby="payment-breakdown-heading"
-                        className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs"
+                        className="order-3 flex flex-col gap-4 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs md:order-3"
                     >
                         <div className="flex items-center gap-2 border-b border-border/60 pb-3">
                             <Receipt
@@ -502,28 +579,36 @@ export default function AdminOrderDetailPage() {
 
                         {props.permissions.includes('orders.refund') &&
                         props.refund.eligible ? (
-                            <AdminOrderRefundControl
-                                adminUi={props.adminUi}
-                                confirmPasswordUrl={props.confirmPasswordUrl}
-                                direction={props.direction}
-                                locale={props.locale}
-                                order={order}
-                                refund={props.refund}
-                                refundUrl={props.refundUrl}
-                            />
+                            <div className="hidden md:block">
+                                <AdminOrderRefundControl
+                                    adminUi={props.adminUi}
+                                    confirmPasswordUrl={
+                                        props.confirmPasswordUrl
+                                    }
+                                    direction={props.direction}
+                                    locale={props.locale}
+                                    order={order}
+                                    refund={props.refund}
+                                    refundUrl={props.refundUrl}
+                                />
+                            </div>
                         ) : null}
                     </section>
                 </div>
 
                 <div className="flex flex-col gap-6 lg:col-span-1">
-                    <AdminOrderTransitionControls
-                        adminUi={props.adminUi}
-                        allowedTransitions={props.allowedTransitions}
-                        onStatusUpdated={(freshOrder) => setOrder(freshOrder)}
-                        order={order}
-                        permissions={props.permissions}
-                        transitionUrl={props.transitionUrl}
-                    />
+                    <div className="hidden md:block">
+                        <AdminOrderTransitionControls
+                            adminUi={props.adminUi}
+                            allowedTransitions={props.allowedTransitions}
+                            onStatusUpdated={(freshOrder) =>
+                                setOrder(freshOrder)
+                            }
+                            order={order}
+                            permissions={props.permissions}
+                            transitionUrl={props.transitionUrl}
+                        />
+                    </div>
 
                     <AdminOrderHistory
                         adminUi={props.adminUi}

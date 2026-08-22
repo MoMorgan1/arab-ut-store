@@ -39,14 +39,14 @@ export default function AdminOverviewPage() {
             />
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-                <div className="lg:col-span-8">
+                <div className="order-2 md:order-1 lg:col-span-8">
                     <AdminRevenueChart
                         locale={props.locale}
                         overview={props.overview}
                         translations={copy}
                     />
                 </div>
-                <div className="lg:col-span-4">
+                <div className="order-3 md:order-2 lg:col-span-4">
                     <AdminOrderStatusChart
                         locale={props.locale}
                         overview={props.overview}
@@ -54,10 +54,7 @@ export default function AdminOverviewPage() {
                         translations={copy}
                     />
                 </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-                <div className="lg:col-span-8">
+                <div className="order-4 md:order-3 lg:col-span-8">
                     <AdminRecentOrders
                         dateFormatter={dateFormatter}
                         locale={props.locale}
@@ -66,7 +63,7 @@ export default function AdminOverviewPage() {
                         translations={copy}
                     />
                 </div>
-                <div className="lg:col-span-4">
+                <div className="order-1 md:order-4 lg:col-span-4">
                     <AdminAttentionRail
                         dateFormatter={dateFormatter}
                         locale={props.locale}

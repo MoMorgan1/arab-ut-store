@@ -136,7 +136,11 @@ export default function AdminOrdersTable({
                 </Table>
             </div>
 
-            <div className="flex flex-col gap-3 md:hidden" role="list">
+            <div
+                aria-label={`${copy.tableLabel} mobile`}
+                className="flex flex-col gap-3 md:hidden"
+                role="list"
+            >
                 {rows.length > 0 ? (
                     rows.map((row) => (
                         <AdminOrdersMobileCard
