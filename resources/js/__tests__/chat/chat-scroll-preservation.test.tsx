@@ -73,7 +73,7 @@ describe('Chat Scroll Preservation', () => {
                 }),
             } as Response);
 
-        render(<ChatWidget enabled={true} locale="en" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="en" />);
         fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
 
         await waitFor(() => {

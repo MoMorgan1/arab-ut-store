@@ -95,6 +95,9 @@ describe('Chat Root Navigation Persistence', () => {
 
         const launcher = screen.getByRole('button', { name: /فتح الشات/i });
         fireEvent.click(launcher);
+        fireEvent.click(
+            await screen.findByRole('button', { name: 'ابدأ محادثة' }),
+        );
 
         await waitFor(() => {
             expect(

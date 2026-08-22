@@ -58,7 +58,7 @@ describe('ChatWidget Component', () => {
     });
 
     it('renders launcher button in Arabic mode when locale is ar', () => {
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
 
         const launcherButton = screen.getByRole('button', {
             name: /فتح الشات/i,
@@ -70,7 +70,7 @@ describe('ChatWidget Component', () => {
     // Regression: owner mobile acceptance on 2026-08-20 found the gold orb
     // visually excessive after the first launcher polish.
     it('uses the approved quiet launcher geometry', () => {
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
 
         const launcherButton = screen.getByRole('button', {
             name: /فتح الشات/i,
@@ -91,7 +91,7 @@ describe('ChatWidget Component', () => {
     });
 
     it('anchors the desktop panel one spacing step above the launcher', () => {
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
 
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
 
@@ -102,7 +102,12 @@ describe('ChatWidget Component', () => {
 
     it('marks the account root and keeps its dialog above account navigation', () => {
         const { container } = render(
-            <ChatWidget enabled={true} locale="ar" surface="account" />,
+            <ChatWidget
+                initialView="chat"
+                enabled={true}
+                locale="ar"
+                surface="account"
+            />,
         );
 
         const root = container.querySelector('.chat-widget-root--account');
@@ -180,7 +185,14 @@ describe('ChatWidget Component', () => {
                 }),
             } as Response);
 
-            render(<ChatWidget enabled={true} locale="en" surface="account" />);
+            render(
+                <ChatWidget
+                    initialView="chat"
+                    enabled={true}
+                    locale="en"
+                    surface="account"
+                />,
+            );
 
             const launcher = screen.getByRole('button', {
                 name: /Open chat/i,
@@ -204,12 +216,16 @@ describe('ChatWidget Component', () => {
             await waitFor(() => expect(restart).toBeEnabled());
             const composer = within(dialog).getByRole('textbox');
 
+            const back = within(dialog).getByRole('button', {
+                name: /^Back$/i,
+            });
+
             composer.focus();
             fireEvent.keyDown(composer, { key: 'Tab' });
-            expect(restart).toHaveFocus();
+            expect(back).toHaveFocus();
 
-            restart.focus();
-            fireEvent.keyDown(restart, { key: 'Tab', shiftKey: true });
+            back.focus();
+            fireEvent.keyDown(back, { key: 'Tab', shiftKey: true });
             expect(composer).toHaveFocus();
 
             fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
@@ -221,7 +237,14 @@ describe('ChatWidget Component', () => {
         'keeps the %ipx account panel non-modal and launcher-focused',
         (width) => {
             setViewportWidth(width);
-            render(<ChatWidget enabled={true} locale="en" surface="account" />);
+            render(
+                <ChatWidget
+                    initialView="chat"
+                    enabled={true}
+                    locale="en"
+                    surface="account"
+                />,
+            );
 
             const launcher = screen.getByRole('button', {
                 name: /Open chat/i,
@@ -291,7 +314,12 @@ describe('ChatWidget Component', () => {
         } as Response);
 
         const { unmount } = render(
-            <ChatWidget enabled={true} locale="en" surface="account" />,
+            <ChatWidget
+                initialView="chat"
+                enabled={true}
+                locale="en"
+                surface="account"
+            />,
         );
 
         expect(addListener).toHaveBeenCalledTimes(1);
@@ -327,7 +355,7 @@ describe('ChatWidget Component', () => {
     });
 
     it('renders one accessible 44px New conversation control', () => {
-        render(<ChatWidget enabled={true} locale="en" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="en" />);
         fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
 
         const restart = screen.getByRole('button', {
@@ -347,7 +375,7 @@ describe('ChatWidget Component', () => {
             json: async () => ({ error: { code: 'chat_unavailable' } }),
         } as Response);
 
-        render(<ChatWidget enabled={true} locale="en" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="en" />);
         fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
 
         expect(
@@ -377,7 +405,7 @@ describe('ChatWidget Component', () => {
             } as Response)
             .mockReturnValueOnce(pendingSend);
 
-        render(<ChatWidget enabled={true} locale="en" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="en" />);
         fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
 
         await waitFor(() => {
@@ -445,7 +473,7 @@ describe('ChatWidget Component', () => {
             } as Response)
             .mockReturnValueOnce(pendingOlder);
 
-        render(<ChatWidget enabled={true} locale="en" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="en" />);
         fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
 
         await screen.findByText('Newest message');
@@ -534,7 +562,7 @@ describe('ChatWidget Component', () => {
             } as Response);
         });
 
-        render(<ChatWidget enabled={true} locale="en" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="en" />);
         fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
 
         expect(
@@ -608,7 +636,7 @@ describe('ChatWidget Component', () => {
                 }),
             } as Response);
 
-        render(<ChatWidget enabled={true} locale="en" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="en" />);
         fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
         await screen.findByText('Keep this conversation visible.');
         fireEvent.click(
@@ -663,7 +691,7 @@ describe('ChatWidget Component', () => {
                 json: async () => ({ data: conversation('conv-restart-2') }),
             } as Response);
 
-        render(<ChatWidget enabled={true} locale="en" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="en" />);
         fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
 
         const restart = screen.getByRole('button', {
@@ -714,7 +742,7 @@ describe('ChatWidget Component', () => {
             } as Response);
         });
 
-        render(<ChatWidget enabled={true} locale="en" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="en" />);
         fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
 
         const restart = await screen.findByRole('button', {
@@ -735,7 +763,7 @@ describe('ChatWidget Component', () => {
 
     it('keeps the panel mounted only for the faster close transition', () => {
         vi.useFakeTimers();
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
 
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
         act(() => vi.runOnlyPendingTimers());
@@ -781,7 +809,7 @@ describe('ChatWidget Component', () => {
             json: async () => ({ data: mockConversation }),
         } as Response);
 
-        render(<ChatWidget enabled={true} locale="en" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="en" />);
 
         const launcherButton = screen.getByRole('button', {
             name: /Open chat/i,
@@ -844,7 +872,7 @@ describe('ChatWidget Component', () => {
             json: async () => ({ data: mockConversation }),
         } as Response);
 
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
 
         const launcherButton = screen.getByRole('button', {
             name: /فتح الشات/i,
@@ -912,7 +940,7 @@ describe('ChatWidget Component', () => {
                 }),
             } as Response);
 
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
 
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
 
@@ -972,7 +1000,7 @@ describe('ChatWidget Component', () => {
                 }),
             } as Response);
 
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
 
         await waitFor(() => {
@@ -985,7 +1013,7 @@ describe('ChatWidget Component', () => {
     });
 
     it('closes on Escape key press and restores focus to launcher', async () => {
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
 
         const launcher = screen.getByRole('button', { name: /فتح الشات/i });
         fireEvent.click(launcher);
@@ -1046,7 +1074,7 @@ describe('ChatWidget Component', () => {
                 }),
             } as Response);
 
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
 
         await act(async () => {
@@ -1157,7 +1185,7 @@ describe('ChatWidget Component', () => {
             return { ok: false, status: 404 } as Response;
         });
 
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
 
         await vi.advanceTimersByTimeAsync(10);
@@ -1304,7 +1332,7 @@ describe('ChatWidget Component', () => {
             return { ok: false, status: 404 } as Response;
         });
 
-        render(<ChatWidget enabled={true} locale="en" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="en" />);
         fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
 
         await vi.advanceTimersByTimeAsync(10);
@@ -1332,5 +1360,217 @@ describe('ChatWidget Component', () => {
         expect(
             await screen.findByText('Success after retry'),
         ).toBeInTheDocument();
+    });
+
+    it('scopes light-surface chat tokens and motion to the dialog', () => {
+        // The token block is the last bare `.chat-widget-dialog {` rule; an
+        // earlier account-surface rule also ends with that selector.
+        const tokenStart = appCss.lastIndexOf('\n.chat-widget-dialog {');
+        const tokens = appCss.slice(
+            tokenStart,
+            appCss.indexOf('}', tokenStart),
+        );
+
+        expect(tokens).toContain('--chat-surface: #fbf8f2');
+        expect(tokens).toContain('--chat-hero: var(--arabut-navy)');
+        expect(tokens).toContain(
+            '--chat-ease-out: cubic-bezier(0.16, 1, 0.3, 1)',
+        );
+
+        const motionStart = appCss.indexOf('.chat-view-enter {');
+        const reducedMotionStart = appCss.lastIndexOf(
+            '@media (prefers-reduced-motion: no-preference)',
+            motionStart,
+        );
+
+        expect(motionStart).toBeGreaterThan(-1);
+        expect(reducedMotionStart).toBeGreaterThan(-1);
+    });
+
+    describe('home view', () => {
+        function mockConversationResponse(
+            assistantMode: 'demo' | 'agent' = 'demo',
+        ) {
+            vi.mocked(fetch).mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: async () => ({
+                    data: {
+                        publicId: `conv-home-${assistantMode}`,
+                        status: 'open',
+                        locale: 'en',
+                        subject: null,
+                        lastMessageAt: null,
+                        assistantMode,
+                        messages: [],
+                        hasMore: false,
+                        oldestCursor: null,
+                    },
+                }),
+            } as Response);
+        }
+
+        function mockEmptyConversation() {
+            mockConversationResponse('demo');
+        }
+
+        it('lands on Home when opened and hides the composer', async () => {
+            mockEmptyConversation();
+            render(<ChatWidget enabled={true} locale="ar" />);
+
+            fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
+
+            expect(
+                await screen.findByRole('heading', { name: 'أهلًا بك' }),
+            ).toBeInTheDocument();
+            expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        });
+
+        it('moves to chat on Start and back to Home on the back button', async () => {
+            vi.useFakeTimers({ shouldAdvanceTime: true });
+            mockEmptyConversation();
+            render(<ChatWidget enabled={true} locale="en" />);
+
+            fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+            fireEvent.click(
+                await screen.findByRole('button', {
+                    name: 'Start a conversation',
+                }),
+            );
+
+            expect(await screen.findByRole('textbox')).toBeInTheDocument();
+            const dialog = screen.getByRole('dialog');
+            expect(dialog).toHaveAttribute('data-view-direction', 'forward');
+
+            fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+            expect(dialog).toHaveAttribute('data-view-direction', 'back');
+            expect(
+                await screen.findByRole('heading', { name: 'Hi there' }),
+            ).toBeInTheDocument();
+
+            await act(async () => {
+                vi.advanceTimersByTime(300);
+            });
+            expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        });
+
+        it('sends the topic and switches to chat when a topic is chosen', async () => {
+            mockEmptyConversation();
+            render(<ChatWidget enabled={true} locale="en" />);
+
+            fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+            fireEvent.click(
+                await screen.findByRole('button', { name: 'Prices' }),
+            );
+
+            expect(await screen.findByRole('textbox')).toBeInTheDocument();
+            expect(screen.getAllByText('Prices').length).toBeGreaterThan(0);
+        });
+
+        it('returns to Home after close and reopen', async () => {
+            vi.useFakeTimers({ shouldAdvanceTime: true });
+            mockEmptyConversation();
+            render(<ChatWidget enabled={true} locale="en" />);
+
+            const launcher = screen.getByRole('button', { name: /Open chat/i });
+            fireEvent.click(launcher);
+            fireEvent.click(
+                await screen.findByRole('button', {
+                    name: 'Start a conversation',
+                }),
+            );
+            await screen.findByRole('textbox');
+
+            fireEvent.keyDown(window, { key: 'Escape' });
+            await act(async () => {
+                vi.advanceTimersByTime(300);
+            });
+            fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+
+            expect(
+                await screen.findByRole('heading', { name: 'Hi there' }),
+            ).toBeInTheDocument();
+        });
+
+        it('honours initialView="chat"', async () => {
+            mockEmptyConversation();
+            render(
+                <ChatWidget initialView="chat" enabled={true} locale="en" />,
+            );
+
+            fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+
+            expect(await screen.findByRole('textbox')).toBeInTheDocument();
+            expect(
+                screen.queryByRole('heading', { name: 'Hi there' }),
+            ).not.toBeInTheDocument();
+        });
+
+        it('renders the chat header on the light card surface with a back control', async () => {
+            mockEmptyConversation();
+            render(
+                <ChatWidget initialView="chat" enabled={true} locale="en" />,
+            );
+            fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+            await screen.findByRole('textbox');
+
+            const back = screen.getByRole('button', { name: 'Back' });
+            expect(back).toHaveClass('h-11', 'w-11');
+            expect(back.parentElement?.parentElement).toHaveClass(
+                'bg-[var(--chat-card)]',
+            );
+        });
+
+        it('shows the AI disclaimer only in agent mode', async () => {
+            mockConversationResponse('agent');
+            render(
+                <ChatWidget initialView="chat" enabled={true} locale="en" />,
+            );
+            fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+
+            expect(
+                await screen.findByText(/AI assistant — may make mistakes/),
+            ).toBeInTheDocument();
+        });
+
+        it('hides the AI disclaimer in demo mode', async () => {
+            mockEmptyConversation();
+            render(
+                <ChatWidget initialView="chat" enabled={true} locale="ar" />,
+            );
+            fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
+            await screen.findByRole('textbox');
+
+            expect(screen.queryByText(/مساعد ذكي/)).not.toBeInTheDocument();
+        });
+
+        it('reveals the send button with a pop when text is typed', async () => {
+            mockEmptyConversation();
+            render(
+                <ChatWidget initialView="chat" enabled={true} locale="en" />,
+            );
+            fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
+            const textbox = await screen.findByRole('textbox');
+            const send = screen.getByRole('button', { name: 'Send message' });
+
+            expect(send).toHaveClass('scale-90', 'opacity-40');
+            fireEvent.change(textbox, { target: { value: 'hello' } });
+            expect(send).toHaveClass('scale-100', 'opacity-100');
+        });
+
+        it('pulses the launcher ring once when opened', async () => {
+            mockEmptyConversation();
+            render(<ChatWidget enabled={true} locale="en" />);
+            const launcher = screen.getByRole('button', { name: /Open chat/i });
+
+            expect(launcher).not.toHaveClass('chat-launcher-open');
+            fireEvent.click(launcher);
+            expect(
+                screen.getByRole('button', {
+                    name: /Close chat/i,
+                    expanded: true,
+                }),
+            ).toHaveClass('chat-launcher-open');
+        });
     });
 });

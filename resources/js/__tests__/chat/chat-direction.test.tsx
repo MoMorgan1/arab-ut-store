@@ -29,6 +29,36 @@ function messageCluster(content: string): HTMLElement | null {
     return messageFrame(content)?.parentElement ?? null;
 }
 
+function customer(id: string, content: string): ChatMessage {
+    return {
+        publicId: id,
+        senderType: 'customer',
+        messageType: 'text',
+        content,
+        createdAt: '2026-08-22T10:00:00Z',
+    };
+}
+
+function assistant(id: string, content: string): ChatMessage {
+    return { ...customer(id, content), senderType: 'assistant' };
+}
+
+function renderList(messages: ChatMessage[]) {
+    return render(
+        <ChatMessageList
+            messages={messages}
+            isLoading={false}
+            isAssistantTyping={false}
+            hasMore={false}
+            isLoadingOlder={false}
+            locale="ar"
+            onLoadOlder={() => {}}
+            onSelectSuggestion={() => {}}
+            onRetry={() => {}}
+        />,
+    );
+}
+
 // Regression from Mohamed's 2026-08-20 mobile acceptance screenshot.
 describe('chat direction contracts', () => {
     beforeEach(() => {
@@ -273,5 +303,24 @@ describe('chat direction contracts', () => {
         expect(screen.getByRole('button', { name: 'Prices' })).toHaveClass(
             'min-h-11',
         );
+    });
+
+    it('uses the light bubble palette', () => {
+        renderList([customer('c1', 'مرحبا'), assistant('a1', 'أهلًا')]);
+
+        const customerBubble = screen.getByText('مرحبا').parentElement;
+        const assistantBubble = screen.getByText('أهلًا').parentElement;
+
+        expect(customerBubble).toHaveClass('bg-[var(--chat-hero)]');
+        expect(assistantBubble).toHaveClass('bg-[var(--chat-card)]');
+        expect(customerBubble?.parentElement).toHaveClass('chat-bubble-enter');
+    });
+
+    it('renders quick replies as gold pills with stagger', () => {
+        renderList([assistant('a1', 'أهلًا')]);
+
+        const pill = screen.getByRole('button', { name: 'الأسعار' });
+        expect(pill).toHaveClass('rounded-full', 'chat-stagger-in');
+        expect(pill).toHaveClass('border-[var(--chat-accent)]');
     });
 });

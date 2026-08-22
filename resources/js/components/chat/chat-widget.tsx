@@ -3,16 +3,22 @@ import { useChat } from '@/hooks/use-chat';
 import type { ChatSurface } from '@/types/chat';
 import { ChatComposer } from './chat-composer';
 import { ChatHeader } from './chat-header';
+import { ChatHome } from './chat-home';
 import { ChatLauncher } from './chat-launcher';
 import { ChatMessageList } from './chat-message-list';
+
+export type ChatWidgetView = 'home' | 'chat';
 
 export type ChatWidgetProps = {
     enabled?: boolean;
     locale?: string;
     surface?: ChatSurface;
+    /** Which view the widget shows when opened. Defaults to the Home screen. */
+    initialView?: ChatWidgetView;
 };
 
 const CLOSE_TRANSITION_MS = 180;
+const VIEW_TRANSITION_MS = 240;
 const FOCUSABLE_SELECTOR = [
     'a[href]',
     'button:not([disabled])',
@@ -44,6 +50,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
     enabled,
     locale = 'ar',
     surface = 'store',
+    initialView = 'home',
 }) => {
     const {
         isChatEnabled,
@@ -77,6 +84,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
     const wasOpenRef = useRef(isOpen);
 
     const [isVisible, setIsVisible] = useState(isOpen);
+    const isMounted = isOpen || isVisible;
     const [isMobileDialog, setIsMobileDialog] = useState(() =>
         matchesMobileDialog(surface),
     );
@@ -85,6 +93,46 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         typeof window !== 'undefined' &&
         typeof window.matchMedia === 'function' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const [view, setView] = useState<ChatWidgetView>(initialView);
+    const [exitingView, setExitingView] = useState<ChatWidgetView | null>(null);
+    const [viewDirection, setViewDirection] = useState<'forward' | 'back'>(
+        'forward',
+    );
+
+    const switchView = (next: ChatWidgetView) => {
+        if (next === view) {
+            return;
+        }
+
+        setViewDirection(next === 'chat' ? 'forward' : 'back');
+        setExitingView(view);
+        setView(next);
+    };
+
+    // Unmount the exiting view after the slide completes.
+    useEffect(() => {
+        if (exitingView === null) {
+            return;
+        }
+
+        const timeout = setTimeout(
+            () => setExitingView(null),
+            isReducedMotion ? 0 : VIEW_TRANSITION_MS,
+        );
+
+        return () => clearTimeout(timeout);
+    }, [exitingView, isReducedMotion]);
+
+    const lastMessage = messages[messages.length - 1] ?? null;
+    const hasCustomerMessages = messages.some(
+        (m) => m.senderType === 'customer',
+    );
+    const homeLastMessage =
+        lastMessage !== null
+            ? { preview: lastMessage.content, createdAt: lastMessage.createdAt }
+            : null;
+    const showDisclaimer = conversation?.assistantMode === 'agent';
 
     useEffect(() => {
         const updateMobileDialog = () => {
@@ -137,15 +185,16 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
             const timeout = setTimeout(
                 () => {
                     setIsVisible(false);
+                    // Reset to the initial view once the widget fully closes.
+                    setView(initialView);
+                    setExitingView(null);
                 },
                 isReducedMotion ? 0 : CLOSE_TRANSITION_MS,
             );
 
             return () => clearTimeout(timeout);
         }
-    }, [isOpen, isVisible, isReducedMotion]);
-
-    const isMounted = isOpen || isVisible;
+    }, [initialView, isOpen, isVisible, isReducedMotion]);
 
     // Focus restoration to launcher on close
     useEffect(() => {
@@ -254,65 +303,108 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                             ? 'Arab UT Chat Assistant'
                             : 'شات مساعد عرب التيميت'
                     }
+                    data-view-direction={viewDirection}
                     onKeyDown={handleDialogKeyDown}
-                    className={`chat-widget-dialog fixed inset-0 z-[70] flex origin-bottom flex-col bg-[var(--arabut-navy)] transition-[transform,opacity] motion-reduce:transition-none sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[650px] sm:max-h-[85vh] sm:w-[420px] sm:origin-bottom-right sm:overflow-hidden sm:rounded-3xl sm:border sm:border-[var(--arabut-line)] sm:shadow-2xl ${
+                    className={`chat-widget-dialog fixed inset-0 z-[70] flex origin-bottom flex-col bg-[var(--chat-surface)] transition-[transform,opacity] motion-reduce:transition-none sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[650px] sm:max-h-[85vh] sm:w-[420px] sm:origin-bottom-right sm:overflow-hidden sm:rounded-3xl sm:border sm:border-[var(--arabut-line)] sm:shadow-2xl ${
                         isVisible
                             ? 'pointer-events-auto translate-y-0 scale-100 opacity-100 duration-[280ms] [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]'
                             : 'pointer-events-none translate-y-3 scale-[0.98] opacity-0 duration-[180ms] [transition-timing-function:cubic-bezier(0.7,0,0.84,0)] sm:scale-[0.96]'
                     }`}
                 >
-                    {/* Header */}
-                    <ChatHeader
-                        canRestart={canRestart}
-                        closeButtonRef={closeButtonRef}
-                        isRestarting={isRestarting}
-                        locale={locale}
-                        onClose={closeChat}
-                        onRestart={restartChat}
-                    />
-
-                    {/* Error Banner if any */}
-                    {error !== null && (
+                    {(view === 'home' || exitingView === 'home') && (
                         <div
-                            key={errorAnnouncementId}
-                            aria-atomic="true"
-                            className="flex items-center justify-between border-b border-[var(--arabut-danger)]/30 bg-[var(--arabut-danger)]/10 px-4 py-2 text-xs text-[var(--arabut-danger)]"
-                            role="alert"
+                            key="home"
+                            className={`absolute inset-0 flex flex-col ${
+                                view === 'home'
+                                    ? 'chat-view-enter'
+                                    : 'chat-view-exit'
+                            }`}
+                            aria-hidden={view !== 'home'}
                         >
-                            <span>{error}</span>
-                            <button
-                                type="button"
-                                onClick={clearError}
-                                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 underline hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)]"
-                            >
-                                {locale === 'en' ? 'Dismiss' : 'إغلاق'}
-                            </button>
+                            <ChatHome
+                                locale={locale}
+                                hasConversation={hasCustomerMessages}
+                                lastMessage={homeLastMessage}
+                                disabled={isLoading || isRestarting}
+                                isMobileDialog={isMobileDialog}
+                                closeButtonRef={
+                                    view === 'home' ? closeButtonRef : undefined
+                                }
+                                onClose={closeChat}
+                                onStart={() => switchView('chat')}
+                                onContinue={() => switchView('chat')}
+                                onSelectTopic={(label) => {
+                                    sendMessage(label);
+                                    switchView('chat');
+                                }}
+                            />
                         </div>
                     )}
 
-                    {/* Message List */}
-                    <ChatMessageList
-                        key={conversation?.publicId ?? 'chat-pending'}
-                        disabled={isRestarting}
-                        messages={messages}
-                        isLoading={isLoading}
-                        isAssistantTyping={isAssistantTyping}
-                        hasMore={hasMore}
-                        isLoadingOlder={isLoadingOlder}
-                        locale={locale}
-                        onLoadOlder={loadOlderMessages}
-                        onSelectSuggestion={sendMessage}
-                        onRetry={retryMessage}
-                        retryableTurn={retryableTurn}
-                        onRetryAgentTurn={retryAgentTurn}
-                    />
+                    {(view === 'chat' || exitingView === 'chat') && (
+                        <div
+                            key="chat"
+                            className={`absolute inset-0 flex flex-col ${
+                                view === 'chat'
+                                    ? 'chat-view-enter'
+                                    : 'chat-view-exit'
+                            }`}
+                            aria-hidden={view !== 'chat'}
+                        >
+                            <ChatHeader
+                                canRestart={canRestart}
+                                closeButtonRef={
+                                    view === 'chat' ? closeButtonRef : undefined
+                                }
+                                isRestarting={isRestarting}
+                                locale={locale}
+                                onBack={() => switchView('home')}
+                                onClose={closeChat}
+                                onRestart={restartChat}
+                            />
 
-                    {/* Composer */}
-                    <ChatComposer
-                        disabled={isLoading || isRestarting}
-                        locale={locale}
-                        onSend={sendMessage}
-                    />
+                            {error !== null && (
+                                <div
+                                    key={errorAnnouncementId}
+                                    aria-atomic="true"
+                                    className="chat-drop-in flex items-center justify-between border-b border-[var(--chat-danger)]/30 bg-[var(--chat-danger)]/10 px-4 py-2 text-xs text-[var(--chat-danger)]"
+                                    role="alert"
+                                >
+                                    <span>{error}</span>
+                                    <button
+                                        type="button"
+                                        onClick={clearError}
+                                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 underline hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)]"
+                                    >
+                                        {locale === 'en' ? 'Dismiss' : 'إغلاق'}
+                                    </button>
+                                </div>
+                            )}
+
+                            <ChatMessageList
+                                key={conversation?.publicId ?? 'chat-pending'}
+                                disabled={isRestarting}
+                                messages={messages}
+                                isLoading={isLoading}
+                                isAssistantTyping={isAssistantTyping}
+                                hasMore={hasMore}
+                                isLoadingOlder={isLoadingOlder}
+                                locale={locale}
+                                onLoadOlder={loadOlderMessages}
+                                onSelectSuggestion={sendMessage}
+                                onRetry={retryMessage}
+                                retryableTurn={retryableTurn}
+                                onRetryAgentTurn={retryAgentTurn}
+                            />
+
+                            <ChatComposer
+                                disabled={isLoading || isRestarting}
+                                locale={locale}
+                                onSend={sendMessage}
+                                showDisclaimer={showDisclaimer}
+                            />
+                        </div>
+                    )}
                 </div>
             )}
 

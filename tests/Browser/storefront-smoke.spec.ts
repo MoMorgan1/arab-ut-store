@@ -119,6 +119,18 @@ async function expectHitTestable(locator: Locator) {
     ).toBe(true);
 }
 
+// The widget opens on its Home view; chat-specific checks first enter the
+// conversation view through the Start call to action.
+async function enterChatView(dialog: Locator) {
+    const start = dialog.getByRole('button', {
+        name: /ابدأ محادثة|Start a conversation/,
+    });
+    await expect(start).toBeVisible();
+    await start.click();
+    await expect(start).toHaveCount(0);
+    await expect(dialog.locator('textarea')).toBeVisible();
+}
+
 async function readSafeAreaInsetBottom(page: Page) {
     return page.evaluate(() => {
         const probe = document.createElement('div');
@@ -229,6 +241,7 @@ async function verifyMobileAccountChat(
         dialog: string;
         close: string;
         restart: string;
+        back: string;
     },
     safeAreaInsetBottom: number,
 ) {
@@ -251,6 +264,7 @@ async function verifyMobileAccountChat(
     await expect.poll(() => effectiveOpacity(dialog)).toBeGreaterThan(0);
     await expect(close).toBeFocused();
     await expect(close).toBeEnabled();
+    await enterChatView(dialog);
     await expect(restart).toBeEnabled();
     await expect(composer).toBeVisible();
     await close.click({ trial: true });
@@ -328,10 +342,11 @@ async function verifyMobileAccountChat(
         ),
     ).toBe(true);
 
+    const back = dialog.getByRole('button', { name: labels.back });
     await composer.focus();
     await page.keyboard.press('Tab');
-    await expect(restart).toBeFocused();
-    await restart.focus();
+    await expect(back).toBeFocused();
+    await back.focus();
     await page.keyboard.press('Shift+Tab');
     await expect(composer).toBeFocused();
     await expectNoHorizontalOverflow(page);
@@ -387,6 +402,7 @@ async function verifyDesktopAccountChat(
     await expect(dialog).toHaveAttribute('aria-modal', 'false');
     await expect(launcher).toBeFocused();
     await expect.poll(() => effectiveOpacity(dialog)).toBeGreaterThan(0);
+    await enterChatView(dialog);
     await close.click({ trial: true });
     await restart.click({ trial: true });
     await expectMinimumTouchTarget(close);
@@ -604,7 +620,7 @@ test('mobile home opens and closes chat without overflow', async ({ page }) => {
         name: 'شات مساعد عرب التيميت',
     });
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator('textarea')).toBeVisible();
+    await enterChatView(dialog);
     await dialog.getByRole('button', { name: 'إغلاق الشات' }).click();
     await expect(dialog).not.toBeAttached();
     await expect(launcher).toBeFocused();
@@ -659,6 +675,7 @@ test('authenticated account keeps chat above mobile navigation', async ({
                 dialog: 'شات مساعد عرب التيميت',
                 close: 'إغلاق الشات',
                 restart: 'محادثة جديدة',
+                back: 'رجوع',
             },
         },
         {
@@ -670,6 +687,7 @@ test('authenticated account keeps chat above mobile navigation', async ({
                 dialog: 'Arab UT Chat Assistant',
                 close: 'Close chat',
                 restart: 'New conversation',
+                back: 'Back',
             },
         },
     ] as const;

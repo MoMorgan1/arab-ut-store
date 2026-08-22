@@ -174,7 +174,7 @@ export default function AdminOrdersToolbar({
                         />
                         <Input
                             aria-label={copy.searchLabel}
-                            className="min-h-11 ps-9 pe-12 text-sm md:min-h-9 md:text-xs"
+                            className="min-h-11 ps-9 pe-12 text-sm md:text-xs"
                             disabled={isNavigating}
                             maxLength={100}
                             onChange={(event) => setSearch(event.target.value)}
@@ -194,7 +194,7 @@ export default function AdminOrdersToolbar({
                         ) : null}
                     </div>
                     <Button
-                        className="min-h-11 shrink-0 text-sm md:min-h-9 md:text-xs"
+                        className="min-h-11 shrink-0 text-sm md:text-xs"
                         disabled={isNavigating}
                         type="submit"
                         variant="secondary"
@@ -269,7 +269,7 @@ export default function AdminOrdersToolbar({
                     <DropdownMenuTrigger asChild>
                         <Button
                             aria-label={copy.toggleColumns}
-                            className="min-h-11 text-sm md:min-h-9 md:text-xs"
+                            className="min-h-11 text-sm md:text-xs"
                             disabled={isNavigating}
                             variant="outline"
                         >
@@ -291,7 +291,7 @@ export default function AdminOrdersToolbar({
                             .map((column) => (
                                 <DropdownMenuCheckboxItem
                                     checked={column.getIsVisible()}
-                                    className="min-h-12 text-sm md:min-h-9 md:text-xs"
+                                    className="min-h-12 text-sm md:text-xs"
                                     key={column.id}
                                     onCheckedChange={(visible) =>
                                         column.toggleVisibility(
@@ -367,20 +367,17 @@ function FilterSelect({
         >
             <SelectTrigger
                 aria-label={label}
-                className="min-h-11 w-full text-sm min-[480px]:w-36 md:min-h-9 md:text-xs"
+                className="min-h-11 w-full text-sm min-[480px]:w-36 md:text-xs"
             >
                 <SelectValue placeholder={allLabel} />
             </SelectTrigger>
             <SelectContent className="motion-reduce:animate-none">
-                <SelectItem
-                    className="min-h-11 text-sm md:min-h-9 md:text-xs"
-                    value="ALL"
-                >
+                <SelectItem className="min-h-11 text-sm md:text-xs" value="ALL">
                     {allLabel}
                 </SelectItem>
                 {options.map((option) => (
                     <SelectItem
-                        className="min-h-11 text-sm md:min-h-9 md:text-xs"
+                        className="min-h-11 text-sm md:text-xs"
                         key={option.value}
                         value={option.value}
                     >
@@ -413,7 +410,7 @@ function DateFilter({
                 {label}
             </label>
             <Input
-                className="min-h-11 w-full text-sm min-[480px]:w-36 md:min-h-9 md:text-xs"
+                className="min-h-11 w-full text-sm min-[480px]:w-36 md:text-xs"
                 disabled={disabled}
                 id={id}
                 min={min ?? undefined}

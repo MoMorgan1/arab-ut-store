@@ -252,7 +252,7 @@ describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
             },
         );
 
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
 
         await vi.advanceTimersByTimeAsync(10);
@@ -361,7 +361,7 @@ describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
             return { ok: false, status: 404 } as Response;
         });
 
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
 
         await vi.advanceTimersByTimeAsync(10);
@@ -484,7 +484,7 @@ describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
             return { ok: false, status: 404 } as Response;
         });
 
-        render(<ChatWidget enabled={true} locale="en" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="en" />);
         fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
 
         await vi.advanceTimersByTimeAsync(10);
@@ -629,7 +629,7 @@ describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
             return { ok: false, status: 404 } as Response;
         });
 
-        render(<ChatWidget enabled={true} locale="en" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="en" />);
         fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
 
         await vi.advanceTimersByTimeAsync(10);
@@ -740,7 +740,7 @@ describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
             return { ok: false, status: 404 } as Response;
         });
 
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
 
         await vi.advanceTimersByTimeAsync(10);
