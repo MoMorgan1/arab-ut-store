@@ -45,9 +45,9 @@ export default function AdminKpiStrip({
     return (
         <dl
             aria-label={translations.title}
-            className="admin-kpi-strip grid grid-cols-1 gap-6 rounded-xl border border-border bg-card p-4 sm:grid-cols-3 md:p-6 lg:grid-cols-12 lg:items-center lg:gap-6"
+            className="admin-kpi-strip grid grid-cols-3 gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-3 sm:gap-6 md:p-6 lg:grid-cols-12 lg:items-center lg:gap-6"
         >
-            <div className="flex flex-col gap-2 sm:col-span-3 lg:col-span-5 lg:border-e lg:border-border/60 lg:pe-6">
+            <div className="col-span-3 flex flex-col gap-2 border-b border-border/60 pb-3 sm:border-b-0 sm:pb-0 lg:col-span-5 lg:border-e lg:border-border/60 lg:pe-6">
                 <dt className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                     <CircleDollarSign
                         aria-hidden="true"
@@ -63,40 +63,42 @@ export default function AdminKpiStrip({
                 </div>
             </div>
 
-            <div className="flex flex-col gap-1 sm:ps-0 lg:col-span-2">
-                <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <div className="col-span-1 flex flex-col gap-1 sm:ps-0 lg:col-span-2">
+                <dt className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground sm:gap-1.5 sm:text-xs">
                     <ShoppingBag
                         aria-hidden="true"
                         className="h-3.5 w-3.5 shrink-0"
                     />
-                    <span>{translations.totalOrders}</span>
+                    <span className="truncate">{translations.totalOrders}</span>
                 </dt>
-                <dd className="text-xl font-bold tracking-tight text-foreground tabular-nums md:text-2xl">
+                <dd className="text-base font-bold tracking-tight text-foreground tabular-nums sm:text-xl md:text-2xl">
                     {numberFormatter.format(overview.totalOrders.current)}
                 </dd>
-                <div className="flex items-center text-[11px] text-muted-foreground">
+                <div className="flex items-center text-[10px] text-muted-foreground sm:text-[11px]">
                     <ComparisonBadge comparison={ordersComparison} />
                 </div>
             </div>
 
-            <div className="flex flex-col gap-1 sm:border-s sm:border-border/60 sm:ps-4 lg:col-span-2">
-                <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <div className="col-span-1 flex flex-col gap-1 border-s border-border/60 ps-2.5 sm:ps-4 lg:col-span-2">
+                <dt className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground sm:gap-1.5 sm:text-xs">
                     <Users
                         aria-hidden="true"
                         className="h-3.5 w-3.5 shrink-0"
                     />
-                    <span>{translations.newCustomers}</span>
+                    <span className="truncate">
+                        {translations.newCustomers}
+                    </span>
                 </dt>
-                <dd className="text-xl font-bold tracking-tight text-foreground tabular-nums md:text-2xl">
+                <dd className="text-base font-bold tracking-tight text-foreground tabular-nums sm:text-xl md:text-2xl">
                     {numberFormatter.format(overview.newCustomers.current)}
                 </dd>
-                <div className="flex items-center text-[11px] text-muted-foreground">
+                <div className="flex items-center text-[10px] text-muted-foreground sm:text-[11px]">
                     <ComparisonBadge comparison={customersComparison} />
                 </div>
             </div>
 
-            <div className="flex flex-col gap-1 sm:border-s sm:border-border/60 sm:ps-4 lg:col-span-3">
-                <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <div className="col-span-1 flex flex-col gap-1 border-s border-border/60 ps-2.5 sm:ps-4 lg:col-span-3">
+                <dt className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground sm:gap-1.5 sm:text-xs">
                     {hasUrgentAttention ? (
                         <AlertTriangle
                             aria-hidden="true"
@@ -115,6 +117,7 @@ export default function AdminKpiStrip({
                     )}
                     <span
                         className={cn(
+                            'truncate',
                             hasUrgentAttention && 'text-status-danger',
                         )}
                     >
@@ -123,7 +126,7 @@ export default function AdminKpiStrip({
                 </dt>
                 <dd
                     className={cn(
-                        'text-xl font-bold tracking-tight tabular-nums md:text-2xl',
+                        'text-base font-bold tracking-tight tabular-nums sm:text-xl md:text-2xl',
                         hasUrgentAttention
                             ? 'text-status-danger'
                             : overview.attentionCount > 0
@@ -133,13 +136,13 @@ export default function AdminKpiStrip({
                 >
                     {numberFormatter.format(overview.attentionCount)}
                 </dd>
-                <div className="text-[11px] text-muted-foreground">
+                <div className="text-[10px] text-muted-foreground sm:text-[11px]">
                     {overview.attentionCount === 0 ? (
                         <span className="text-status-success">
                             {translations.noUnresolved}
                         </span>
                     ) : (
-                        <span>
+                        <span className="truncate">
                             {overview.orders.waitingForCustomer}{' '}
                             {translations.waitingForCustomer}
                         </span>

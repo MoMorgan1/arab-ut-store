@@ -91,16 +91,22 @@ async function effectiveOpacity(locator: Locator) {
 }
 
 async function expectMinimumTouchTarget(locator: Locator) {
-    const box = await locator.boundingBox();
+    let box: Awaited<ReturnType<Locator['boundingBox']>> = null;
 
-    expect(box).not.toBeNull();
+    // Measured by polling rather than once: while a surface is still animating
+    // in, Chrome reports sub-pixel-short boxes for its descendants (43.99994
+    // for a control that settles at exactly 44).
+    await expect
+        .poll(async () => {
+            box = await locator.boundingBox();
+
+            return box === null ? 0 : Math.min(box.width, box.height);
+        })
+        .toBeGreaterThanOrEqual(44);
 
     if (box === null) {
         throw new Error('Expected rendered touch target');
     }
-
-    expect(box.width).toBeGreaterThanOrEqual(44);
-    expect(box.height).toBeGreaterThanOrEqual(44);
 
     return box;
 }
@@ -935,6 +941,20 @@ test('authenticated Admin overview and orders are operable across required width
                         'inert',
                         '',
                     );
+
+                    const tabbar = page.getByRole('navigation', {
+                        name: 'Arab UT quick navigation',
+                    });
+                    await expect(tabbar).toBeVisible();
+                    await expectMinimumTouchTarget(
+                        tabbar.getByRole('link', { name: locale.overview }),
+                    );
+                    await expectMinimumTouchTarget(
+                        tabbar.getByRole('link', { name: locale.orders }),
+                    );
+                    await expectMinimumTouchTarget(
+                        tabbar.getByRole('link', { name: locale.security }),
+                    );
                 } else {
                     await expect(
                         page.getByRole('button', { name: locale.open }),
@@ -972,11 +992,10 @@ test('authenticated Admin overview and orders are operable across required width
                 let ordersLink: Locator;
 
                 if (width < 768) {
-                    await page
-                        .getByRole('button', { name: locale.open })
-                        .click();
                     ordersLink = page
-                        .getByRole('dialog', { name: locale.dialog })
+                        .getByRole('navigation', {
+                            name: 'Arab UT quick navigation',
+                        })
                         .getByRole('link', { name: locale.orders });
                 } else {
                     ordersLink = page
@@ -1008,29 +1027,87 @@ test('authenticated Admin overview and orders are operable across required width
                     page.getByRole('button', { name: 'Search', exact: true }),
                 );
 
-                for (const label of [
-                    'Filter by status',
-                    'Filter by service',
-                    'Filter by platform',
-                    'Filter by payment status',
-                    'Per page',
-                ]) {
-                    await expectMinimumTouchTarget(
-                        page.getByRole('combobox', { name: label }),
-                    );
-                }
+                if (width < 768) {
+                    const filtersButton = page.getByRole('button', {
+                        name: /Filters/i,
+                    });
+                    await expectMinimumTouchTarget(filtersButton);
 
-                await expectMinimumTouchTarget(page.getByLabel('Date from'));
-                await expectMinimumTouchTarget(page.getByLabel('Date to'));
-                const columnsButton = page.getByRole('button', {
-                    name: 'Toggle columns',
-                });
-                await expectMinimumTouchTarget(columnsButton);
-                await columnsButton.click();
-                await expectMinimumTouchTarget(
-                    page.getByRole('menuitemcheckbox', { name: 'Customer' }),
-                );
-                await page.keyboard.press('Escape');
+                    // Asserted before the sheet opens: the modal marks the rest
+                    // of the page aria-hidden, which removes this control from
+                    // the accessibility tree while the sheet is up.
+                    await expectMinimumTouchTarget(
+                        page.getByRole('combobox', { name: 'Per page' }),
+                    );
+
+                    await filtersButton.click();
+
+                    const filterSheet = page.getByRole('dialog', {
+                        name: 'Filters',
+                    });
+                    await expect(filterSheet).toBeVisible();
+
+                    for (const label of [
+                        'Filter by status',
+                        'Filter by service',
+                        'Filter by platform',
+                        'Filter by payment status',
+                    ]) {
+                        await expectMinimumTouchTarget(
+                            filterSheet.getByRole('combobox', { name: label }),
+                        );
+                    }
+
+                    await expectMinimumTouchTarget(
+                        filterSheet.getByLabel('Date from'),
+                    );
+                    await expectMinimumTouchTarget(
+                        filterSheet.getByLabel('Date to'),
+                    );
+
+                    // The filters sheet must honour reduced motion like every
+                    // other animated Admin surface.
+                    await expect(filterSheet).toHaveClass(
+                        /motion-reduce:animate-none/,
+                    );
+                    await expectMinimumTouchTarget(
+                        filterSheet.getByRole('button', { name: 'Apply' }),
+                    );
+                    await expectMinimumTouchTarget(
+                        filterSheet.getByRole('button', { name: 'Clear all' }),
+                    );
+
+                    await page.keyboard.press('Escape');
+                    await expect(filterSheet).not.toBeAttached();
+                } else {
+                    for (const label of [
+                        'Filter by status',
+                        'Filter by service',
+                        'Filter by platform',
+                        'Filter by payment status',
+                        'Per page',
+                    ]) {
+                        await expectMinimumTouchTarget(
+                            page.getByRole('combobox', { name: label }),
+                        );
+                    }
+
+                    await expectMinimumTouchTarget(
+                        page.getByLabel('Date from'),
+                    );
+                    await expectMinimumTouchTarget(page.getByLabel('Date to'));
+                    const columnsButton = page.getByRole('button', {
+                        name: 'Toggle columns',
+                    });
+                    await expectMinimumTouchTarget(columnsButton);
+                    await columnsButton.click();
+                    await expectMinimumTouchTarget(
+                        page.getByRole('menuitemcheckbox', {
+                            name: 'Customer',
+                        }),
+                    );
+                    await page.keyboard.press('Escape');
+                }
 
                 const selectOrder = page.getByRole('checkbox', {
                     name: `Select row ${orderNumber}`,

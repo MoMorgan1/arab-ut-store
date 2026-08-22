@@ -1,7 +1,7 @@
 'use no memo'; // TanStack Table exposes a mutable table object.
 
 import type { Table } from '@tanstack/react-table';
-import { Columns3, Search, X } from 'lucide-react';
+import { Columns3, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 
@@ -22,6 +22,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import { hasActiveFilters } from '@/lib/admin-orders-query';
 import type {
     AdminFilterOption,
@@ -45,6 +53,33 @@ export type AdminOrdersToolbarProps = {
     table: Table<AdminOrderRow>;
 };
 
+/**
+ * A start date after the current end date clears the end date; a new end date
+ * before the current start date clears the start date. One implementation is
+ * shared by the desktop row and the mobile filters sheet so the two can never
+ * drift apart.
+ */
+export function dateRangePatch(
+    field: 'date_from' | 'date_to',
+    value: string | null,
+    current: { date_from?: string | null; date_to?: string | null },
+): { date_from?: string | null; date_to?: string | null } {
+    const other = field === 'date_from' ? current.date_to : current.date_from;
+    const conflicts =
+        value !== null &&
+        other !== null &&
+        other !== undefined &&
+        (field === 'date_from' ? other < value : value < other);
+
+    if (field === 'date_from') {
+        return conflicts
+            ? { date_from: value, date_to: null }
+            : { date_from: value };
+    }
+
+    return conflicts ? { date_from: null, date_to: value } : { date_to: value };
+}
+
 export default function AdminOrdersToolbar({
     adminUi,
     filterOptions,
@@ -56,6 +91,23 @@ export default function AdminOrdersToolbar({
 }: AdminOrdersToolbarProps) {
     const copy = adminUi.orders;
     const [search, setSearch] = useState(filters.search ?? '');
+    const [sheetOpen, setSheetOpen] = useState(false);
+    const [draftFilters, setDraftFilters] = useState<{
+        date_from?: string | null;
+        date_to?: string | null;
+        payment_status?: string | null;
+        platform?: string | null;
+        service?: string | null;
+        status?: string | null;
+    }>({
+        date_from: filters.date_from,
+        date_to: filters.date_to,
+        payment_status: filters.payment_status,
+        platform: filters.platform,
+        service: filters.service,
+        status: filters.status,
+    });
+
     const columnLabels: Record<string, string> = {
         customer: copy.customer,
         itemCount: copy.items,
@@ -76,6 +128,37 @@ export default function AdminOrdersToolbar({
         setSearch('');
         onFilterChange({ search: null });
     };
+
+    const handleOpenSheet = () => {
+        setDraftFilters({
+            date_from: filters.date_from,
+            date_to: filters.date_to,
+            payment_status: filters.payment_status,
+            platform: filters.platform,
+            service: filters.service,
+            status: filters.status,
+        });
+        setSheetOpen(true);
+    };
+
+    const handleApplySheet = () => {
+        onFilterChange(draftFilters);
+        setSheetOpen(false);
+    };
+
+    const handleClearAllSheet = () => {
+        onResetFilters();
+        setSheetOpen(false);
+    };
+
+    const activeFilterCount = [
+        filters.status,
+        filters.service,
+        filters.platform,
+        filters.payment_status,
+        filters.date_from,
+        filters.date_to,
+    ].filter((val) => val !== null && val !== undefined && val !== '').length;
 
     const activeChips: Array<{
         key: string;
@@ -203,108 +286,276 @@ export default function AdminOrdersToolbar({
                     </Button>
                 </form>
 
-                <FilterSelect
-                    allLabel={copy.allStatuses}
+                <Button
+                    aria-label={copy.filters ?? 'Filters'}
+                    className="min-h-11 shrink-0 gap-2 text-sm md:hidden"
                     disabled={isNavigating}
-                    label={copy.filterStatus}
-                    onChange={(status) => onFilterChange({ status })}
-                    options={filterOptions.statuses}
-                    value={filters.status}
-                />
-                <FilterSelect
-                    allLabel={copy.allServices}
-                    disabled={isNavigating}
-                    label={copy.filterService}
-                    onChange={(service) => onFilterChange({ service })}
-                    options={filterOptions.services}
-                    value={filters.service}
-                />
-                <FilterSelect
-                    allLabel={copy.allPlatforms}
-                    disabled={isNavigating}
-                    label={copy.filterPlatform}
-                    onChange={(platform) => onFilterChange({ platform })}
-                    options={filterOptions.platforms}
-                    value={filters.platform}
-                />
-                <FilterSelect
-                    allLabel={copy.allPaymentStatuses}
-                    disabled={isNavigating}
-                    label={copy.filterPayment}
-                    onChange={(payment_status) =>
-                        onFilterChange({ payment_status })
-                    }
-                    options={filterOptions.paymentStatuses}
-                    value={filters.payment_status}
-                />
-                <DateFilter
-                    disabled={isNavigating}
-                    id="admin-orders-date-from"
-                    label={copy.dateFrom}
-                    onChange={(date_from) => {
-                        const conflictsWithDateTo =
-                            date_from !== null &&
-                            filters.date_to !== null &&
-                            filters.date_to !== undefined &&
-                            filters.date_to < date_from;
+                    onClick={handleOpenSheet}
+                    type="button"
+                    variant="outline"
+                >
+                    <SlidersHorizontal aria-hidden="true" className="size-4" />
+                    <span>{copy.filters ?? 'Filters'}</span>
+                    {activeFilterCount > 0 ? (
+                        <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+                            {activeFilterCount}
+                        </span>
+                    ) : null}
+                </Button>
 
-                        onFilterChange(
-                            conflictsWithDateTo
-                                ? { date_from, date_to: null }
-                                : { date_from },
-                        );
-                    }}
-                    value={filters.date_from}
-                />
-                <DateFilter
-                    disabled={isNavigating}
-                    id="admin-orders-date-to"
-                    label={copy.dateTo}
-                    min={filters.date_from}
-                    onChange={(date_to) => onFilterChange({ date_to })}
-                    value={filters.date_to}
-                />
+                <div className="hidden md:flex md:flex-wrap md:items-center md:gap-2">
+                    <FilterSelect
+                        allLabel={copy.allStatuses}
+                        disabled={isNavigating}
+                        label={copy.filterStatus}
+                        onChange={(status) => onFilterChange({ status })}
+                        options={filterOptions.statuses}
+                        value={filters.status}
+                    />
+                    <FilterSelect
+                        allLabel={copy.allServices}
+                        disabled={isNavigating}
+                        label={copy.filterService}
+                        onChange={(service) => onFilterChange({ service })}
+                        options={filterOptions.services}
+                        value={filters.service}
+                    />
+                    <FilterSelect
+                        allLabel={copy.allPlatforms}
+                        disabled={isNavigating}
+                        label={copy.filterPlatform}
+                        onChange={(platform) => onFilterChange({ platform })}
+                        options={filterOptions.platforms}
+                        value={filters.platform}
+                    />
+                    <FilterSelect
+                        allLabel={copy.allPaymentStatuses}
+                        disabled={isNavigating}
+                        label={copy.filterPayment}
+                        onChange={(payment_status) =>
+                            onFilterChange({ payment_status })
+                        }
+                        options={filterOptions.paymentStatuses}
+                        value={filters.payment_status}
+                    />
+                    <DateFilter
+                        disabled={isNavigating}
+                        id="admin-orders-date-from"
+                        label={copy.dateFrom}
+                        onChange={(date_from) => {
+                            onFilterChange(
+                                dateRangePatch('date_from', date_from, filters),
+                            );
+                        }}
+                        value={filters.date_from}
+                    />
+                    <DateFilter
+                        disabled={isNavigating}
+                        id="admin-orders-date-to"
+                        label={copy.dateTo}
+                        min={filters.date_from}
+                        onChange={(date_to) => {
+                            onFilterChange(
+                                dateRangePatch('date_to', date_to, filters),
+                            );
+                        }}
+                        value={filters.date_to}
+                    />
 
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                aria-label={copy.toggleColumns}
+                                className="min-h-11 text-sm md:text-xs"
+                                disabled={isNavigating}
+                                variant="outline"
+                            >
+                                <Columns3
+                                    aria-hidden="true"
+                                    className="size-4"
+                                />
+                                <span>{copy.columns}</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                            align="end"
+                            className="w-48 motion-reduce:animate-none"
+                        >
+                            <DropdownMenuLabel>
+                                {copy.toggleColumns}
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {table
+                                .getAllLeafColumns()
+                                .filter((column) => column.getCanHide())
+                                .map((column) => (
+                                    <DropdownMenuCheckboxItem
+                                        checked={column.getIsVisible()}
+                                        className="min-h-12 text-sm md:text-xs"
+                                        key={column.id}
+                                        onCheckedChange={(visible) =>
+                                            column.toggleVisibility(
+                                                Boolean(visible),
+                                            )
+                                        }
+                                    >
+                                        {columnLabels[column.id] ?? column.id}
+                                    </DropdownMenuCheckboxItem>
+                                ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
+
+            <Sheet onOpenChange={setSheetOpen} open={sheetOpen}>
+                <SheetContent
+                    className="max-h-[85vh] overflow-y-auto rounded-t-xl motion-reduce:animate-none motion-reduce:transition-none motion-reduce:duration-[0.01ms]"
+                    side="bottom"
+                >
+                    <SheetHeader>
+                        <SheetTitle>{copy.filters ?? 'Filters'}</SheetTitle>
+                        <SheetDescription className="sr-only">
+                            Filter customer orders
+                        </SheetDescription>
+                    </SheetHeader>
+                    <div className="grid grid-cols-1 gap-3 p-4 pt-2 sm:grid-cols-2">
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-xs font-medium text-muted-foreground">
+                                {copy.filterStatus}
+                            </span>
+                            <FilterSelect
+                                allLabel={copy.allStatuses}
+                                disabled={isNavigating}
+                                label={copy.filterStatus}
+                                onChange={(status) =>
+                                    setDraftFilters((prev) => ({
+                                        ...prev,
+                                        status,
+                                    }))
+                                }
+                                options={filterOptions.statuses}
+                                value={draftFilters.status}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-xs font-medium text-muted-foreground">
+                                {copy.filterService}
+                            </span>
+                            <FilterSelect
+                                allLabel={copy.allServices}
+                                disabled={isNavigating}
+                                label={copy.filterService}
+                                onChange={(service) =>
+                                    setDraftFilters((prev) => ({
+                                        ...prev,
+                                        service,
+                                    }))
+                                }
+                                options={filterOptions.services}
+                                value={draftFilters.service}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-xs font-medium text-muted-foreground">
+                                {copy.filterPlatform}
+                            </span>
+                            <FilterSelect
+                                allLabel={copy.allPlatforms}
+                                disabled={isNavigating}
+                                label={copy.filterPlatform}
+                                onChange={(platform) =>
+                                    setDraftFilters((prev) => ({
+                                        ...prev,
+                                        platform,
+                                    }))
+                                }
+                                options={filterOptions.platforms}
+                                value={draftFilters.platform}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-xs font-medium text-muted-foreground">
+                                {copy.filterPayment}
+                            </span>
+                            <FilterSelect
+                                allLabel={copy.allPaymentStatuses}
+                                disabled={isNavigating}
+                                label={copy.filterPayment}
+                                onChange={(payment_status) =>
+                                    setDraftFilters((prev) => ({
+                                        ...prev,
+                                        payment_status,
+                                    }))
+                                }
+                                options={filterOptions.paymentStatuses}
+                                value={draftFilters.payment_status}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-xs font-medium text-muted-foreground">
+                                {copy.dateFrom}
+                            </span>
+                            <DateFilter
+                                disabled={isNavigating}
+                                id="admin-orders-mobile-date-from"
+                                label={copy.dateFrom}
+                                onChange={(date_from) => {
+                                    setDraftFilters((prev) => ({
+                                        ...prev,
+                                        ...dateRangePatch(
+                                            'date_from',
+                                            date_from,
+                                            prev,
+                                        ),
+                                    }));
+                                }}
+                                value={draftFilters.date_from}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-xs font-medium text-muted-foreground">
+                                {copy.dateTo}
+                            </span>
+                            <DateFilter
+                                disabled={isNavigating}
+                                id="admin-orders-mobile-date-to"
+                                label={copy.dateTo}
+                                min={draftFilters.date_from}
+                                onChange={(date_to) => {
+                                    setDraftFilters((prev) => ({
+                                        ...prev,
+                                        ...dateRangePatch(
+                                            'date_to',
+                                            date_to,
+                                            prev,
+                                        ),
+                                    }));
+                                }}
+                                value={draftFilters.date_to}
+                            />
+                        </div>
+                    </div>
+                    <SheetFooter className="flex flex-row items-center justify-between gap-3 border-t border-border p-4">
                         <Button
-                            aria-label={copy.toggleColumns}
-                            className="min-h-11 text-sm md:text-xs"
+                            className="min-h-11 flex-1 text-sm"
                             disabled={isNavigating}
+                            onClick={handleClearAllSheet}
+                            type="button"
                             variant="outline"
                         >
-                            <Columns3 aria-hidden="true" className="size-4" />
-                            <span>{copy.columns}</span>
+                            {copy.clearAll ?? 'Clear all'}
                         </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                        align="end"
-                        className="w-48 motion-reduce:animate-none"
-                    >
-                        <DropdownMenuLabel>
-                            {copy.toggleColumns}
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        {table
-                            .getAllLeafColumns()
-                            .filter((column) => column.getCanHide())
-                            .map((column) => (
-                                <DropdownMenuCheckboxItem
-                                    checked={column.getIsVisible()}
-                                    className="min-h-12 text-sm md:text-xs"
-                                    key={column.id}
-                                    onCheckedChange={(visible) =>
-                                        column.toggleVisibility(
-                                            Boolean(visible),
-                                        )
-                                    }
-                                >
-                                    {columnLabels[column.id] ?? column.id}
-                                </DropdownMenuCheckboxItem>
-                            ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
+                        <Button
+                            className="min-h-11 flex-1 text-sm"
+                            disabled={isNavigating}
+                            onClick={handleApplySheet}
+                            type="button"
+                        >
+                            {copy.apply ?? 'Apply'}
+                        </Button>
+                    </SheetFooter>
+                </SheetContent>
+            </Sheet>
 
             {hasActiveFilters(filters) && activeChips.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
@@ -319,7 +570,7 @@ export default function AdminOrdersToolbar({
                             <span>{chip.label}</span>
                             <button
                                 aria-label={`Clear ${chip.name} filter`}
-                                className="inline-flex size-4 items-center justify-center rounded-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                                className="-my-2 -me-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
                                 disabled={isNavigating}
                                 onClick={chip.onClear}
                                 type="button"
@@ -329,7 +580,7 @@ export default function AdminOrdersToolbar({
                         </span>
                     ))}
                     <button
-                        className="text-xs font-medium text-primary underline underline-offset-2 transition-colors hover:text-primary/80 focus-visible:outline-2 focus-visible:outline-ring"
+                        className="inline-flex min-h-11 items-center px-1 text-xs font-medium text-primary underline underline-offset-2 transition-colors hover:text-primary/80 focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
                         disabled={isNavigating}
                         onClick={onResetFilters}
                         type="button"

@@ -29,6 +29,7 @@ export type AdminTranslations = {
         security: string;
         open: string;
         close: string;
+        quick?: string;
     };
     overview: {
         headTitle: string;
@@ -79,6 +80,9 @@ export type AdminTranslations = {
         searchPlaceholder: string;
         searchLabel: string;
         searchButton: string;
+        filters?: string;
+        apply?: string;
+        clearAll?: string;
         allStatuses: string;
         allServices: string;
         allPlatforms: string;

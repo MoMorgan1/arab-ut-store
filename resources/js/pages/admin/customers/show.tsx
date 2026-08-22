@@ -139,9 +139,35 @@ export default function AdminCustomerDetailPage() {
                         <p className="text-xs [overflow-wrap:anywhere] text-muted-foreground">
                             <bdi>{customer.id}</bdi>
                         </p>
+                        <p className="text-xs text-muted-foreground md:hidden">
+                            <span className="tabular-nums">
+                                {copy.registeredAt}{' '}
+                                <bdi>
+                                    {customer.createdAt
+                                        ? dateFormatter.format(
+                                              new Date(customer.createdAt),
+                                          )
+                                        : '—'}
+                                </bdi>
+                            </span>
+                            <span aria-hidden="true"> · </span>
+                            <span className="tabular-nums">
+                                {customer.ordersSummary.ordersCount}{' '}
+                                {copy.ordersCount}
+                            </span>
+                            <span aria-hidden="true"> · </span>
+                            <span className="tabular-nums">
+                                <bdi>
+                                    {formatAdminMoney(
+                                        customer.ordersSummary.totalSpent,
+                                        props.locale,
+                                    )}
+                                </bdi>
+                            </span>
+                        </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                    <div className="hidden flex-wrap gap-4 text-xs text-muted-foreground md:flex">
                         {customer.createdAt ? (
                             <div className="flex flex-col">
                                 <span className="font-medium text-foreground">
@@ -157,6 +183,46 @@ export default function AdminCustomerDetailPage() {
                     </div>
                 </div>
             </header>
+
+            {/* Mobile Account Status Card */}
+            <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs md:hidden">
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">
+                        {customersCopy.status}
+                    </span>
+                    <AdminBadge
+                        icon={customer.isActive ? CheckCircle2 : XCircle}
+                        variant={customer.isActive ? 'success' : 'danger'}
+                    >
+                        {customer.isActive
+                            ? customersCopy.statusActive
+                            : customersCopy.statusSuspended}
+                    </AdminBadge>
+                </div>
+                {canUpdateStatus ? (
+                    customer.isActive ? (
+                        <Button
+                            className="min-h-11 w-full text-xs font-medium"
+                            onClick={() => handleOpenStatusDialog('suspend')}
+                            type="button"
+                            variant="outline"
+                        >
+                            <XCircle className="size-4 text-destructive" />
+                            <span>{copy.suspendButton}</span>
+                        </Button>
+                    ) : (
+                        <Button
+                            className="min-h-11 w-full text-xs font-medium"
+                            onClick={() => handleOpenStatusDialog('reactivate')}
+                            type="button"
+                            variant="default"
+                        >
+                            <CheckCircle2 className="size-4" />
+                            <span>{copy.reactivateButton}</span>
+                        </Button>
+                    )
+                ) : null}
+            </div>
 
             <div aria-atomic="true" aria-live="polite" className="empty:hidden">
                 {feedback ? (
@@ -326,65 +392,23 @@ export default function AdminCustomerDetailPage() {
                                 {copy.recentOrders}
                             </h3>
                             {customer.recentOrders.length > 0 ? (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-start text-xs">
-                                        <thead>
-                                            <tr className="border-b border-border text-muted-foreground">
-                                                <th className="pb-2 text-start font-medium">
-                                                    {copy.orderNumber}
-                                                </th>
-                                                <th className="pb-2 text-start font-medium">
-                                                    {copy.orderStatus}
-                                                </th>
-                                                <th className="pb-2 text-start font-medium">
-                                                    {copy.orderTotal}
-                                                </th>
-                                                <th className="pb-2 text-start font-medium">
-                                                    {copy.orderPlacedAt}
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border/60">
-                                            {customer.recentOrders.map(
-                                                (order) => (
-                                                    <tr key={order.id}>
-                                                        <td className="py-2.5 font-semibold">
-                                                            <Link
-                                                                className="text-foreground tabular-nums underline decoration-border underline-offset-4 hover:text-primary hover:decoration-primary"
-                                                                href={`${ordersBasePath}/${order.id}`}
-                                                            >
-                                                                <bdi>
-                                                                    {
-                                                                        order.orderNumber
-                                                                    }
-                                                                </bdi>
-                                                            </Link>
-                                                        </td>
-                                                        <td className="py-2.5">
-                                                            <AdminBadge
-                                                                icon={
-                                                                    statusIcons[
-                                                                        order
-                                                                            .status
-                                                                    ]
-                                                                }
-                                                                variant={getStatusVariant(
-                                                                    order.status,
-                                                                )}
-                                                            >
-                                                                {statuses[
-                                                                    order.status
-                                                                ] ??
-                                                                    order.status}
-                                                            </AdminBadge>
-                                                        </td>
-                                                        <td className="py-2.5 font-semibold text-foreground tabular-nums">
-                                                            {formatAdminMoney(
-                                                                order.total,
-                                                                props.locale,
-                                                            )}
-                                                        </td>
-                                                        <td className="py-2.5 text-muted-foreground tabular-nums">
+                                <>
+                                    {/* Mobile Recent Orders as Tappable Rows */}
+                                    <div className="flex flex-col divide-y divide-border/60 md:hidden">
+                                        {customer.recentOrders.map((order) => (
+                                            <Link
+                                                className="flex min-h-11 items-center justify-between gap-3 py-2.5 text-xs transition-colors hover:bg-muted/30 focus-visible:outline-2 focus-visible:outline-ring"
+                                                href={`${ordersBasePath}/${order.id}`}
+                                                key={order.id}
+                                            >
+                                                <div className="flex min-w-0 flex-col gap-0.5">
+                                                    <span className="font-semibold text-foreground tabular-nums underline decoration-border underline-offset-4">
+                                                        <bdi>
+                                                            {order.orderNumber}
+                                                        </bdi>
+                                                    </span>
+                                                    <span className="text-[11px] text-muted-foreground tabular-nums">
+                                                        <bdi>
                                                             {order.placedAt
                                                                 ? dateFormatter.format(
                                                                       new Date(
@@ -392,13 +416,114 @@ export default function AdminCustomerDetailPage() {
                                                                       ),
                                                                   )
                                                                 : '—'}
-                                                        </td>
-                                                    </tr>
-                                                ),
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                        </bdi>
+                                                    </span>
+                                                </div>
+                                                <div className="flex shrink-0 flex-col items-end gap-1">
+                                                    <AdminBadge
+                                                        className="text-[11px]"
+                                                        icon={
+                                                            statusIcons[
+                                                                order.status
+                                                            ]
+                                                        }
+                                                        variant={getStatusVariant(
+                                                            order.status,
+                                                        )}
+                                                    >
+                                                        {statuses[
+                                                            order.status
+                                                        ] ?? order.status}
+                                                    </AdminBadge>
+                                                    <span className="font-bold text-foreground tabular-nums">
+                                                        <bdi>
+                                                            {formatAdminMoney(
+                                                                order.total,
+                                                                props.locale,
+                                                            )}
+                                                        </bdi>
+                                                    </span>
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+
+                                    {/* Desktop Recent Orders Table */}
+                                    <div className="hidden overflow-x-auto md:block">
+                                        <table className="w-full text-start text-xs">
+                                            <thead>
+                                                <tr className="border-b border-border text-muted-foreground">
+                                                    <th className="pb-2 text-start font-medium">
+                                                        {copy.orderNumber}
+                                                    </th>
+                                                    <th className="pb-2 text-start font-medium">
+                                                        {copy.orderStatus}
+                                                    </th>
+                                                    <th className="pb-2 text-start font-medium">
+                                                        {copy.orderTotal}
+                                                    </th>
+                                                    <th className="pb-2 text-start font-medium">
+                                                        {copy.orderPlacedAt}
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/60">
+                                                {customer.recentOrders.map(
+                                                    (order) => (
+                                                        <tr key={order.id}>
+                                                            <td className="py-2.5 font-semibold">
+                                                                <Link
+                                                                    className="text-foreground tabular-nums underline decoration-border underline-offset-4 hover:text-primary hover:decoration-primary"
+                                                                    href={`${ordersBasePath}/${order.id}`}
+                                                                >
+                                                                    <bdi>
+                                                                        {
+                                                                            order.orderNumber
+                                                                        }
+                                                                    </bdi>
+                                                                </Link>
+                                                            </td>
+                                                            <td className="py-2.5">
+                                                                <AdminBadge
+                                                                    icon={
+                                                                        statusIcons[
+                                                                            order
+                                                                                .status
+                                                                        ]
+                                                                    }
+                                                                    variant={getStatusVariant(
+                                                                        order.status,
+                                                                    )}
+                                                                >
+                                                                    {statuses[
+                                                                        order
+                                                                            .status
+                                                                    ] ??
+                                                                        order.status}
+                                                                </AdminBadge>
+                                                            </td>
+                                                            <td className="py-2.5 font-semibold text-foreground tabular-nums">
+                                                                {formatAdminMoney(
+                                                                    order.total,
+                                                                    props.locale,
+                                                                )}
+                                                            </td>
+                                                            <td className="py-2.5 text-muted-foreground tabular-nums">
+                                                                {order.placedAt
+                                                                    ? dateFormatter.format(
+                                                                          new Date(
+                                                                              order.placedAt,
+                                                                          ),
+                                                                      )
+                                                                    : '—'}
+                                                            </td>
+                                                        </tr>
+                                                    ),
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </>
                             ) : (
                                 <p className="text-xs text-muted-foreground">
                                     {copy.noOrders}
@@ -623,7 +748,7 @@ export default function AdminCustomerDetailPage() {
                 </div>
 
                 {/* Right Column (1 Col) - Account Status Control */}
-                <div className="space-y-6 lg:col-span-1">
+                <div className="hidden space-y-6 md:block lg:col-span-1">
                     <section
                         aria-labelledby="account-status-heading"
                         className="rounded-lg border border-border bg-card p-5 text-card-foreground shadow-xs"
