@@ -11017,6 +11017,20 @@ html.admin-document {
         padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
     }
 
+    /* Page scroll is locked while the mobile sheet is open so iOS cannot
+       scroll the document under the keyboard (set from chat-widget.tsx). */
+    html.chat-scroll-lock,
+    html.chat-scroll-lock body {
+        overflow: hidden;
+        overscroll-behavior: none;
+    }
+
+    html.chat-scroll-lock body {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+    }
+
     /* While a software keyboard is open the sheet follows the visual
        viewport instead of the layout viewport (set from chat-widget.tsx). */
     .chat-widget-dialog--viewport-tracked {

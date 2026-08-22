@@ -5,8 +5,11 @@
 
 const STORAGE_KEY = 'arabut-chat-sound';
 
-/** Peak gain of the chime (0-1). Raised from 0.12 after the owner's phone test. */
-export const CHIME_GAIN = 0.35;
+/**
+ * Peak gain of the chime (0-1). Raised 0.12 -> 0.35 -> 0.8 after the owner's
+ * phone tests; a compressor on the output keeps it from clipping.
+ */
+export const CHIME_GAIN = 0.8;
 
 type AudioContextCtor = new () => AudioContext;
 
@@ -63,22 +66,40 @@ export function playChatNotification(): boolean {
         const now = context.currentTime;
         const master = context.createGain();
         master.gain.value = 0.0001;
-        master.connect(context.destination);
+
+        if (typeof context.createDynamicsCompressor === 'function') {
+            const limiter = context.createDynamicsCompressor();
+            limiter.threshold.value = -6;
+            limiter.knee.value = 6;
+            limiter.ratio.value = 12;
+            limiter.attack.value = 0.002;
+            limiter.release.value = 0.12;
+            master.connect(limiter);
+            limiter.connect(context.destination);
+        } else {
+            master.connect(context.destination);
+        }
 
         // Gentle attack/decay envelope, two notes a fourth apart.
         master.gain.exponentialRampToValueAtTime(CHIME_GAIN, now + 0.02);
-        master.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+        master.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
 
-        for (const [frequency, offset] of [
-            [659.25, 0],
-            [880, 0.12],
+        // Two notes a fourth apart plus a quieter octave-down body so the
+        // chime carries on small phone speakers.
+        for (const [frequency, offset, type, level] of [
+            [659.25, 0, 'sine', 1],
+            [880, 0.12, 'sine', 1],
+            [329.63, 0, 'triangle', 0.35],
         ] as const) {
             const osc = context.createOscillator();
-            osc.type = 'sine';
+            const voice = context.createGain();
+            voice.gain.value = level;
+            osc.type = type;
             osc.frequency.value = frequency;
-            osc.connect(master);
+            osc.connect(voice);
+            voice.connect(master);
             osc.start(now + offset);
-            osc.stop(now + 0.6);
+            osc.stop(now + 0.75);
         }
 
         return true;

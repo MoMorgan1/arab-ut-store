@@ -222,13 +222,32 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
 
     // Mobile keyboards shrink the *visual* viewport while the layout viewport
     // (which `position: fixed` uses) stays put, so iOS pushes the sheet up and
-    // hides its header. Track window.visualViewport and pin the sheet to it.
+    // hides its header. Lock the page, track window.visualViewport, and pin
+    // the sheet to it. iOS often settles the keyboard animation without a
+    // final `scroll`/`resize` event, so a focus change inside the sheet also
+    // re-syncs over the next ~800 ms.
     useEffect(() => {
         const panel = panelRef.current;
         const viewport = window.visualViewport;
 
-        if (!isOpen || !isMobileDialog || panel === null || !viewport) {
+        if (!isOpen || !isMobileDialog || panel === null) {
             return;
+        }
+
+        const root = document.documentElement;
+        const body = document.body;
+        const scrollY = window.scrollY;
+        root.classList.add('chat-scroll-lock');
+        body.style.top = `-${scrollY}px`;
+
+        const releaseScrollLock = () => {
+            root.classList.remove('chat-scroll-lock');
+            body.style.removeProperty('top');
+            window.scrollTo(0, scrollY);
+        };
+
+        if (!viewport) {
+            return releaseScrollLock;
         }
 
         const sync = () => {
@@ -237,16 +256,35 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
             panel.classList.add('chat-widget-dialog--viewport-tracked');
         };
 
+        const timers: number[] = [];
+        const resyncDuringKeyboardAnimation = () => {
+            for (const delay of [50, 150, 300, 500, 800]) {
+                timers.push(window.setTimeout(sync, delay));
+            }
+        };
+
         sync();
         viewport.addEventListener('resize', sync);
         viewport.addEventListener('scroll', sync);
+        panel.addEventListener('focusin', resyncDuringKeyboardAnimation);
+        panel.addEventListener('focusout', resyncDuringKeyboardAnimation);
 
         return () => {
+            for (const timer of timers) {
+                window.clearTimeout(timer);
+            }
+
             viewport.removeEventListener('resize', sync);
             viewport.removeEventListener('scroll', sync);
+            panel.removeEventListener('focusin', resyncDuringKeyboardAnimation);
+            panel.removeEventListener(
+                'focusout',
+                resyncDuringKeyboardAnimation,
+            );
             panel.classList.remove('chat-widget-dialog--viewport-tracked');
             panel.style.removeProperty('--chat-vv-top');
             panel.style.removeProperty('--chat-vv-height');
+            releaseScrollLock();
         };
     }, [isMobileDialog, isOpen]);
 

@@ -86,7 +86,7 @@ describe('chat sound', () => {
         FakeAudioContext.ramps = [];
 
         expect(playChatNotification()).toBe(true);
-        expect(CHIME_GAIN).toBeGreaterThanOrEqual(0.3);
+        expect(CHIME_GAIN).toBeGreaterThanOrEqual(0.75);
         expect(FakeAudioContext.ramps[0]).toBe(CHIME_GAIN);
     });
 
