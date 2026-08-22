@@ -201,7 +201,7 @@ export default function AdminRevenueChart({
                                 isAnimationActive={false}
                                 stroke="var(--primary)"
                                 strokeWidth={2}
-                                type="monotone"
+                                type="monotoneX"
                             />
                         </AreaChart>
                     </ResponsiveContainer>

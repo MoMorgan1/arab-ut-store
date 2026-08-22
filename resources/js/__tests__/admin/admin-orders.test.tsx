@@ -411,4 +411,58 @@ describe('AdminOrdersPage', () => {
             inertia.get.mock.calls[0][1],
         );
     });
+
+    it('renders active filter chips with individual remove buttons and a Clear all button', () => {
+        pageState.props.filters = {
+            ...pageState.props.filters,
+            date_from: '2026-08-01',
+            platform: 'playstation',
+            search: 'AUT-1001',
+            status: 'received',
+        };
+
+        render(<AdminOrdersPage />);
+
+        expect(screen.getByText('Active filters:')).toBeVisible();
+        expect(screen.getByText('Search: "AUT-1001"')).toBeVisible();
+        expect(screen.getByText('Status: Received')).toBeVisible();
+        expect(screen.getByText('Platform: PlayStation')).toBeVisible();
+        expect(screen.getByText('From: 2026-08-01')).toBeVisible();
+
+        // Clear status filter individually
+        const clearStatusBtn = screen.getByRole('button', {
+            name: 'Clear status filter',
+        });
+        fireEvent.click(clearStatusBtn);
+
+        expect(inertia.get).toHaveBeenCalledWith(
+            '/admin/orders',
+            expect.not.objectContaining({ status: 'received' }),
+            expect.any(Object),
+        );
+
+        // Click Clear all
+        const clearAllBtn = screen.getByRole('button', {
+            name: 'Clear all',
+        });
+        fireEvent.click(clearAllBtn);
+
+        expect(inertia.get).toHaveBeenCalledWith(
+            '/admin/orders',
+            expect.not.objectContaining({
+                date_from: '2026-08-01',
+                platform: 'playstation',
+                search: 'AUT-1001',
+                status: 'received',
+            }),
+            expect.any(Object),
+        );
+    });
+
+    it('does not render active filter chips when no filters are active', () => {
+        render(<AdminOrdersPage />);
+
+        expect(screen.queryByText('Active filters:')).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Clear all' })).toBeNull();
+    });
 });

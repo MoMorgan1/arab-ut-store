@@ -129,20 +129,25 @@ describe('AdminOrderDetailPage', () => {
         expect(screen.getByText('Admin audit activity')).toBeVisible();
     });
 
-    it('opens confirmation modal when clicking a transition button', () => {
+    it('opens confirmation modal when applying cancelled status and directly transitions for other statuses', () => {
         render(<AdminOrderDetailPage />);
 
-        const inProgressButton = screen.getByRole('button', {
-            name: /Change status to In progress/i,
+        const statusSelect = screen.getByLabelText('Next status');
+        const applyButton = screen.getByRole('button', {
+            name: 'Apply status',
         });
-        fireEvent.click(inProgressButton);
+        expect(applyButton).toBeDisabled();
+
+        fireEvent.change(statusSelect, { target: { value: 'cancelled' } });
+        expect(applyButton).not.toBeDisabled();
+        fireEvent.click(applyButton);
 
         expect(
             screen.getByRole('heading', { name: 'Confirm status change' }),
         ).toBeVisible();
         expect(
             screen.getByText(
-                /Are you sure you want to change order AUT-1001 to In progress\?/i,
+                /Are you sure you want to cancel order AUT-1001\?/i,
             ),
         ).toBeVisible();
     });
@@ -172,15 +177,13 @@ describe('AdminOrderDetailPage', () => {
 
         render(<AdminOrderDetailPage />);
 
-        const inProgressButton = screen.getByRole('button', {
-            name: /Change status to In progress/i,
-        });
-        fireEvent.click(inProgressButton);
+        const statusSelect = screen.getByLabelText('Next status');
+        fireEvent.change(statusSelect, { target: { value: 'in_progress' } });
 
-        const confirmButton = screen.getByRole('button', {
-            name: 'Confirm transition',
+        const applyButton = screen.getByRole('button', {
+            name: 'Apply status',
         });
-        fireEvent.click(confirmButton);
+        fireEvent.click(applyButton);
 
         await waitFor(() => {
             expect(http.setData).toHaveBeenCalledWith({
@@ -230,15 +233,13 @@ describe('AdminOrderDetailPage', () => {
 
         render(<AdminOrderDetailPage />);
 
-        const inProgressButton = screen.getByRole('button', {
-            name: /Change status to In progress/i,
-        });
-        fireEvent.click(inProgressButton);
+        const statusSelect = screen.getByLabelText('Next status');
+        fireEvent.change(statusSelect, { target: { value: 'in_progress' } });
 
-        const confirmButton = screen.getByRole('button', {
-            name: 'Confirm transition',
+        const applyButton = screen.getByRole('button', {
+            name: 'Apply status',
         });
-        fireEvent.click(confirmButton);
+        fireEvent.click(applyButton);
 
         await waitFor(() => {
             expect(
@@ -308,7 +309,7 @@ describe('AdminOrderDetailPage', () => {
                 '/admin/api/orders/01K5ADM1N00000000000000001/items/__ITEM_ID__/reveal',
         });
 
-        it('renders masked summary chips and Reveal credentials button for items with secrets', () => {
+        it('renders masked summary chips, audit helper, and Reveal credentials button for items with secrets', () => {
             pageState.props = secretProps();
             render(<AdminOrderDetailPage />);
 
@@ -317,6 +318,11 @@ describe('AdminOrderDetailPage', () => {
             expect(screen.getByText('p***r@example.com')).toBeVisible();
             expect(screen.getByText('backupCodesCount:')).toBeVisible();
             expect(screen.getByText('2')).toBeVisible();
+            expect(
+                screen.getByText(
+                    'Reveals are audited and require a recent password confirmation.',
+                ),
+            ).toBeVisible();
 
             expect(
                 screen.getByRole('button', { name: /Reveal credentials/i }),
@@ -353,7 +359,7 @@ describe('AdminOrderDetailPage', () => {
             ).toBeVisible();
         });
 
-        it('successfully reveals credentials on 200, supports show/hide and copy, forgets on close, and never writes to storage', async () => {
+        it('successfully reveals credentials in plain text on 200, supports copy, forgets on close, and never writes to storage', async () => {
             const localStorageSpy = vi.spyOn(Storage.prototype, 'setItem');
             const sessionStorageSpy = vi.spyOn(
                 sessionStorage.__proto__,
@@ -418,29 +424,14 @@ describe('AdminOrderDetailPage', () => {
                 );
             });
 
-            // Decrypted credentials card rendered
+            // Decrypted credentials card rendered immediately in plain text
             await waitFor(() => {
                 expect(screen.getByText('Decrypted credentials')).toBeVisible();
                 expect(screen.getByText('player@example.com')).toBeVisible();
-                expect(screen.getAllByText('••••••••')).toHaveLength(3);
+                expect(screen.getByText('SecretPassword123!')).toBeVisible();
+                expect(screen.getByText('11111111')).toBeVisible();
+                expect(screen.getByText('22222222')).toBeVisible();
             });
-
-            expect(
-                screen.queryByText('SecretPassword123!'),
-            ).not.toBeInTheDocument();
-            expect(screen.queryByText('11111111')).not.toBeInTheDocument();
-            expect(screen.queryByText('22222222')).not.toBeInTheDocument();
-
-            // Test Show/Hide password toggle
-            const showButtons = screen.getAllByRole('button', {
-                name: /Show credentials/i,
-            });
-            fireEvent.click(showButtons[0]);
-            expect(screen.getByText('SecretPassword123!')).toBeVisible();
-
-            fireEvent.click(showButtons[1]);
-            expect(screen.getByText('11111111')).toBeVisible();
-            expect(screen.getByText('22222222')).toBeVisible();
 
             // Test Copy button
             const copyEmailButton = screen.getByRole('button', {
@@ -448,6 +439,12 @@ describe('AdminOrderDetailPage', () => {
             });
             fireEvent.click(copyEmailButton);
             expect(clipboardSpy).toHaveBeenCalledWith('player@example.com');
+
+            const copyCodeBtn = screen.getByRole('button', {
+                name: /Copy ea_backup_codes #1/i,
+            });
+            fireEvent.click(copyCodeBtn);
+            expect(clipboardSpy).toHaveBeenCalledWith('11111111');
 
             // Close credentials forgets state
             const closeBtn = screen.getByRole('button', {
@@ -509,10 +506,6 @@ describe('AdminOrderDetailPage', () => {
                     ),
                 ).toBeVisible();
             });
-
-            expect(
-                screen.queryByRole('button', { name: /Reveal credentials/i }),
-            ).not.toBeInTheDocument();
         });
 
         it('handles 423 password confirmation response, prompts for password, and replays reveal automatically on confirmation', async () => {
@@ -602,7 +595,7 @@ describe('AdminOrderDetailPage', () => {
             });
         });
 
-        it('masks sensitive array values initially, reveals on Show, re-masks on Hide, and copies the real code', async () => {
+        it('renders array values unmasked immediately and allows individual code copying', async () => {
             const clipboardSpy = vi.fn().mockResolvedValue(undefined);
             Object.assign(navigator, {
                 clipboard: { writeText: clipboardSpy },
@@ -642,88 +635,16 @@ describe('AdminOrderDetailPage', () => {
                 expect(screen.getByText('backup_codes:')).toBeVisible();
             });
 
-            // backup_codes start masked
-            expect(screen.getAllByText('••••••••')).toHaveLength(2);
-            expect(
-                screen.queryByText('BACKUP-CODE-AAA'),
-            ).not.toBeInTheDocument();
-            expect(
-                screen.queryByText('BACKUP-CODE-BBB'),
-            ).not.toBeInTheDocument();
+            // backup_codes are plain text immediately
+            expect(screen.getByText('BACKUP-CODE-AAA')).toBeVisible();
+            expect(screen.getByText('BACKUP-CODE-BBB')).toBeVisible();
 
-            // Copy button still copies the real unmasked code
+            // Copy button copies the code
             const copyFirstCodeBtn = screen.getByRole('button', {
                 name: /Copy backup_codes #1/i,
             });
             fireEvent.click(copyFirstCodeBtn);
             expect(clipboardSpy).toHaveBeenCalledWith('BACKUP-CODE-AAA');
-
-            // Click Show credentials toggle
-            const toggleButton = screen.getByRole('button', {
-                name: /Show credentials/i,
-            });
-            fireEvent.click(toggleButton);
-
-            // Now unmasked codes are visible
-            expect(screen.getByText('BACKUP-CODE-AAA')).toBeVisible();
-            expect(screen.getByText('BACKUP-CODE-BBB')).toBeVisible();
-
-            // Click Hide credentials toggle
-            fireEvent.click(
-                screen.getByRole('button', { name: /Hide credentials/i }),
-            );
-
-            // Codes are masked again
-            expect(screen.getAllByText('••••••••')).toHaveLength(2);
-            expect(
-                screen.queryByText('BACKUP-CODE-AAA'),
-            ).not.toBeInTheDocument();
-            expect(
-                screen.queryByText('BACKUP-CODE-BBB'),
-            ).not.toBeInTheDocument();
-        });
-
-        it('renders non-sensitive array values unmasked without Show/Hide toggle', async () => {
-            pageState.props = secretProps();
-
-            const decryptedData = {
-                assigned_tags: ['tag-one', 'tag-two'],
-            };
-
-            http.submit.mockImplementationOnce(
-                (
-                    _method: string,
-                    _url: string,
-                    options: {
-                        onSuccess?: (response: unknown) => void;
-                    },
-                ) => {
-                    options.onSuccess?.({ data: decryptedData });
-
-                    return Promise.resolve({ data: decryptedData });
-                },
-            );
-
-            render(<AdminOrderDetailPage />);
-
-            fireEvent.click(
-                screen.getByRole('button', { name: /Reveal credentials/i }),
-            );
-            fireEvent.click(
-                screen.getByRole('button', { name: /Confirm reveal/i }),
-            );
-
-            await waitFor(() => {
-                expect(screen.getByText('Decrypted credentials')).toBeVisible();
-                expect(screen.getByText('assigned_tags:')).toBeVisible();
-            });
-
-            // Non-sensitive arrays stay visible immediately
-            expect(screen.getByText('tag-one')).toBeVisible();
-            expect(screen.getByText('tag-two')).toBeVisible();
-            expect(
-                screen.queryByRole('button', { name: /Show credentials/i }),
-            ).not.toBeInTheDocument();
         });
     });
 
@@ -746,12 +667,19 @@ describe('AdminOrderDetailPage', () => {
             pageState.props = refundProps();
             render(<AdminOrderDetailPage />);
 
+            const refundButton = screen.getByRole('button', {
+                name: /Refund order/i,
+            });
+            expect(refundButton).toBeVisible();
+
+            fireEvent.click(refundButton);
+
             expect(
                 screen.getByRole('heading', { name: 'Issue Paylink refund' }),
             ).toBeVisible();
             expect(
                 screen.getByText(
-                    'Refund the captured payment back to the customer via Paylink.',
+                    /Refunds the full captured payment back to the customer via Paylink/i,
                 ),
             ).toBeVisible();
             expect(screen.getByText('Refund amount')).toBeVisible();
@@ -760,7 +688,7 @@ describe('AdminOrderDetailPage', () => {
             );
             expect(screen.getByLabelText('Staff reason')).toBeVisible();
             expect(
-                screen.getByRole('button', { name: /Refund order/i }),
+                screen.getByRole('button', { name: /Refund SAR\s*150\.00/i }),
             ).toBeVisible();
         });
 
@@ -770,9 +698,6 @@ describe('AdminOrderDetailPage', () => {
             });
             render(<AdminOrderDetailPage />);
 
-            expect(
-                screen.queryByRole('heading', { name: 'Issue Paylink refund' }),
-            ).not.toBeInTheDocument();
             expect(
                 screen.queryByRole('button', { name: /Refund order/i }),
             ).not.toBeInTheDocument();
@@ -789,7 +714,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             expect(
-                screen.queryByRole('heading', { name: 'Issue Paylink refund' }),
+                screen.queryByRole('button', { name: /Refund order/i }),
             ).not.toBeInTheDocument();
         });
 
@@ -825,8 +750,12 @@ describe('AdminOrderDetailPage', () => {
             pageState.props = refundProps();
             render(<AdminOrderDetailPage />);
 
+            fireEvent.click(
+                screen.getByRole('button', { name: /Refund order/i }),
+            );
+
             const submitBtn = screen.getByRole('button', {
-                name: /Refund order/i,
+                name: /Refund SAR\s*150\.00/i,
             });
             expect(submitBtn).toBeDisabled();
 
@@ -842,7 +771,7 @@ describe('AdminOrderDetailPage', () => {
             expect(submitBtn).not.toBeDisabled();
         });
 
-        it('opens second confirmation modal naming exact order number and consequence, and submits exact payload on confirm', async () => {
+        it('submits exact payload on confirm and completes refund', async () => {
             pageState.props = refundProps();
 
             http.submit.mockImplementationOnce(
@@ -867,36 +796,19 @@ describe('AdminOrderDetailPage', () => {
 
             render(<AdminOrderDetailPage />);
 
+            fireEvent.click(
+                screen.getByRole('button', { name: /Refund order/i }),
+            );
+
             const reasonInput = screen.getByLabelText('Staff reason');
             fireEvent.change(reasonInput, {
                 target: { value: 'Customer cancellation.' },
             });
 
-            const initialSubmitBtn = screen.getByRole('button', {
-                name: /Refund order/i,
+            const submitBtn = screen.getByRole('button', {
+                name: /Refund SAR\s*150\.00/i,
             });
-            fireEvent.click(initialSubmitBtn);
-
-            await waitFor(() => {
-                expect(
-                    screen.getByRole('heading', {
-                        name: 'Confirm Paylink refund',
-                    }),
-                ).toBeVisible();
-                expect(
-                    screen.getByText(
-                        /Are you sure you want to refund SAR\s*150\.00 for order AUT-1001\? This will return the payment to the customer and mark the order as refunded\./i,
-                    ),
-                ).toBeVisible();
-                expect(
-                    screen.getByRole('button', { name: 'Issue full refund' }),
-                ).toBeVisible();
-            });
-
-            const confirmBtn = screen.getByRole('button', {
-                name: 'Issue full refund',
-            });
-            fireEvent.click(confirmBtn);
+            fireEvent.click(submitBtn);
 
             await waitFor(() => {
                 expect(http.setData).toHaveBeenCalledWith({
@@ -978,20 +890,15 @@ describe('AdminOrderDetailPage', () => {
 
             render(<AdminOrderDetailPage />);
 
-            fireEvent.change(screen.getByLabelText('Staff reason'), {
-                target: { value: 'Valid reason.' },
-            });
             fireEvent.click(
                 screen.getByRole('button', { name: /Refund order/i }),
             );
 
-            await waitFor(() => {
-                expect(
-                    screen.getByRole('button', { name: 'Issue full refund' }),
-                ).toBeVisible();
+            fireEvent.change(screen.getByLabelText('Staff reason'), {
+                target: { value: 'Valid reason.' },
             });
             fireEvent.click(
-                screen.getByRole('button', { name: 'Issue full refund' }),
+                screen.getByRole('button', { name: /Refund SAR\s*150\.00/i }),
             );
 
             await waitFor(() => {
@@ -1110,20 +1017,15 @@ describe('AdminOrderDetailPage', () => {
 
             render(<AdminOrderDetailPage />);
 
-            fireEvent.change(screen.getByLabelText('Staff reason'), {
-                target: { value: 'Persistent reason snapshot.' },
-            });
             fireEvent.click(
                 screen.getByRole('button', { name: /Refund order/i }),
             );
 
-            await waitFor(() => {
-                expect(
-                    screen.getByRole('button', { name: 'Issue full refund' }),
-                ).toBeVisible();
+            fireEvent.change(screen.getByLabelText('Staff reason'), {
+                target: { value: 'Persistent reason snapshot.' },
             });
             fireEvent.click(
-                screen.getByRole('button', { name: 'Issue full refund' }),
+                screen.getByRole('button', { name: /Refund SAR\s*150\.00/i }),
             );
 
             await waitFor(() => {
@@ -1213,14 +1115,15 @@ describe('AdminOrderDetailPage', () => {
 
             render(<AdminOrderDetailPage />);
 
+            fireEvent.click(
+                screen.getByRole('button', { name: /Refund order/i }),
+            );
+
             fireEvent.change(screen.getByLabelText('Staff reason'), {
                 target: { value: 'Reason' },
             });
             fireEvent.click(
-                screen.getByRole('button', { name: /Refund order/i }),
-            );
-            fireEvent.click(
-                screen.getByRole('button', { name: 'Issue full refund' }),
+                screen.getByRole('button', { name: /Refund SAR\s*150\.00/i }),
             );
 
             await waitFor(() => {
@@ -1263,14 +1166,15 @@ describe('AdminOrderDetailPage', () => {
 
             render(<AdminOrderDetailPage />);
 
+            fireEvent.click(
+                screen.getByRole('button', { name: /Refund order/i }),
+            );
+
             fireEvent.change(screen.getByLabelText('Staff reason'), {
                 target: { value: 'Reason' },
             });
             fireEvent.click(
-                screen.getByRole('button', { name: /Refund order/i }),
-            );
-            fireEvent.click(
-                screen.getByRole('button', { name: 'Issue full refund' }),
+                screen.getByRole('button', { name: /Refund SAR\s*150\.00/i }),
             );
 
             await waitFor(() => {
@@ -1313,14 +1217,15 @@ describe('AdminOrderDetailPage', () => {
 
             render(<AdminOrderDetailPage />);
 
+            fireEvent.click(
+                screen.getByRole('button', { name: /Refund order/i }),
+            );
+
             fireEvent.change(screen.getByLabelText('Staff reason'), {
                 target: { value: 'Reason' },
             });
             fireEvent.click(
-                screen.getByRole('button', { name: /Refund order/i }),
-            );
-            fireEvent.click(
-                screen.getByRole('button', { name: 'Issue full refund' }),
+                screen.getByRole('button', { name: /Refund SAR\s*150\.00/i }),
             );
 
             await waitFor(() => {
@@ -1360,14 +1265,15 @@ describe('AdminOrderDetailPage', () => {
 
             render(<AdminOrderDetailPage />);
 
+            fireEvent.click(
+                screen.getByRole('button', { name: /Refund order/i }),
+            );
+
             fireEvent.change(screen.getByLabelText('Staff reason'), {
                 target: { value: 'Reason' },
             });
             fireEvent.click(
-                screen.getByRole('button', { name: /Refund order/i }),
-            );
-            fireEvent.click(
-                screen.getByRole('button', { name: 'Issue full refund' }),
+                screen.getByRole('button', { name: /Refund SAR\s*150\.00/i }),
             );
 
             await waitFor(() => {
@@ -1399,14 +1305,15 @@ describe('AdminOrderDetailPage', () => {
 
             render(<AdminOrderDetailPage />);
 
+            fireEvent.click(
+                screen.getByRole('button', { name: /Refund order/i }),
+            );
+
             fireEvent.change(screen.getByLabelText('Staff reason'), {
                 target: { value: 'Reason' },
             });
             fireEvent.click(
-                screen.getByRole('button', { name: /Refund order/i }),
-            );
-            fireEvent.click(
-                screen.getByRole('button', { name: 'Issue full refund' }),
+                screen.getByRole('button', { name: /Refund SAR\s*150\.00/i }),
             );
 
             await waitFor(() => {

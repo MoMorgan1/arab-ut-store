@@ -115,6 +115,7 @@ export default function AdminOrderStatusChart({
                                     }}
                                 >
                                     <XAxis
+                                        allowDecimals={false}
                                         axisLine={false}
                                         className="text-[11px] text-muted-foreground"
                                         tickLine={false}

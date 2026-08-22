@@ -1,14 +1,5 @@
 import { useHttp } from '@inertiajs/react';
-import {
-    AlertCircle,
-    Check,
-    Copy,
-    Eye,
-    EyeOff,
-    Key,
-    Lock,
-    X,
-} from 'lucide-react';
+import { AlertCircle, Check, Copy, Key, Lock, X } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
@@ -83,9 +74,6 @@ export default function AdminOrderItemSecret({
         message: string;
     } | null>(null);
     const [copiedField, setCopiedField] = useState<string | null>(null);
-    const [revealedFields, setRevealedFields] = useState<
-        Record<string, boolean>
-    >({});
 
     // Ephemeral state cleanup on unmount
     useEffect(() => {
@@ -264,15 +252,7 @@ export default function AdminOrderItemSecret({
 
     const handleCloseCredentials = () => {
         setDecryptedPayload(null);
-        setRevealedFields({});
         setFeedback(null);
-    };
-
-    const toggleFieldVisibility = (key: string) => {
-        setRevealedFields((prev) => ({
-            ...prev,
-            [key]: !prev[key],
-        }));
     };
 
     if (!item.hasSecret && !item.maskedSummary) {
@@ -280,7 +260,7 @@ export default function AdminOrderItemSecret({
     }
 
     return (
-        <div className="mt-2 flex flex-col gap-2 rounded-md border border-border/70 bg-muted/30 p-3">
+        <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3">
             {/* Masked summary chips */}
             {item.maskedSummary &&
             Object.keys(item.maskedSummary).length > 0 ? (
@@ -305,6 +285,11 @@ export default function AdminOrderItemSecret({
                     ))}
                 </div>
             ) : null}
+
+            {/* Helper note under chips */}
+            <p className="text-[11px] text-muted-foreground">
+                Reveals are audited and require a recent password confirmation.
+            </p>
 
             {/* Outcome and error feedback */}
             <div aria-atomic="true" aria-live="polite" className="empty:hidden">
@@ -350,50 +335,15 @@ export default function AdminOrderItemSecret({
 
                     <div className="flex flex-col divide-y divide-border/40 text-xs">
                         {Object.entries(decryptedPayload).map(([key, val]) => {
-                            const isSensitive =
-                                /password|code|secret|pin/i.test(key);
-                            const isVisible = Boolean(revealedFields[key]);
-                            const isCopied = copiedField === key;
-
                             if (Array.isArray(val)) {
                                 return (
                                     <div
                                         className="flex flex-col gap-1 py-2 first:pt-0 last:pb-0"
                                         key={key}
                                     >
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <span className="font-semibold text-muted-foreground">
-                                                {key}:
-                                            </span>
-                                            {isSensitive ? (
-                                                <Button
-                                                    aria-label={
-                                                        isVisible
-                                                            ? secretsCopy.hideButton
-                                                            : secretsCopy.showButton
-                                                    }
-                                                    className="min-h-11 min-w-11 gap-1 text-xs"
-                                                    onClick={() =>
-                                                        toggleFieldVisibility(
-                                                            key,
-                                                        )
-                                                    }
-                                                    type="button"
-                                                    variant="ghost"
-                                                >
-                                                    {isVisible ? (
-                                                        <EyeOff className="size-3.5" />
-                                                    ) : (
-                                                        <Eye className="size-3.5" />
-                                                    )}
-                                                    <span className="hidden sm:inline">
-                                                        {isVisible
-                                                            ? secretsCopy.hideButton
-                                                            : secretsCopy.showButton}
-                                                    </span>
-                                                </Button>
-                                            ) : null}
-                                        </div>
+                                        <span className="font-semibold text-muted-foreground">
+                                            {key}:
+                                        </span>
                                         <div className="flex flex-wrap gap-1.5">
                                             {val.map((itemVal, idx) => (
                                                 <div
@@ -401,10 +351,7 @@ export default function AdminOrderItemSecret({
                                                     key={idx}
                                                 >
                                                     <span>
-                                                        {isSensitive &&
-                                                        !isVisible
-                                                            ? '••••••••'
-                                                            : String(itemVal)}
+                                                        {String(itemVal)}
                                                     </span>
                                                     <Button
                                                         aria-label={`${secretsCopy.copyButton} ${key} #${idx + 1}`}
@@ -438,6 +385,8 @@ export default function AdminOrderItemSecret({
                                     ? JSON.stringify(val)
                                     : String(val ?? '');
 
+                            const isCopied = copiedField === key;
+
                             return (
                                 <div
                                     className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0"
@@ -448,61 +397,30 @@ export default function AdminOrderItemSecret({
                                             {key}:
                                         </span>
                                         <span className="font-mono text-xs text-foreground">
-                                            {isSensitive && !isVisible
-                                                ? '••••••••'
-                                                : stringVal}
+                                            {stringVal}
                                         </span>
                                     </div>
 
-                                    <div className="flex items-center gap-1">
-                                        {isSensitive ? (
-                                            <Button
-                                                aria-label={
-                                                    isVisible
-                                                        ? secretsCopy.hideButton
-                                                        : secretsCopy.showButton
-                                                }
-                                                className="min-h-11 min-w-11 gap-1 text-xs"
-                                                onClick={() =>
-                                                    toggleFieldVisibility(key)
-                                                }
-                                                type="button"
-                                                variant="ghost"
-                                            >
-                                                {isVisible ? (
-                                                    <EyeOff className="size-3.5" />
-                                                ) : (
-                                                    <Eye className="size-3.5" />
-                                                )}
-                                                <span className="hidden sm:inline">
-                                                    {isVisible
-                                                        ? secretsCopy.hideButton
-                                                        : secretsCopy.showButton}
-                                                </span>
-                                            </Button>
-                                        ) : null}
-
-                                        <Button
-                                            aria-label={`${secretsCopy.copyButton} ${key}`}
-                                            className="min-h-11 min-w-11 gap-1 text-xs"
-                                            onClick={() =>
-                                                handleCopy(stringVal, key)
-                                            }
-                                            type="button"
-                                            variant="outline"
-                                        >
-                                            {isCopied ? (
-                                                <Check className="size-3.5 text-emerald-500" />
-                                            ) : (
-                                                <Copy className="size-3.5 text-muted-foreground" />
-                                            )}
-                                            <span>
-                                                {isCopied
-                                                    ? secretsCopy.copied
-                                                    : secretsCopy.copyButton}
-                                            </span>
-                                        </Button>
-                                    </div>
+                                    <Button
+                                        aria-label={`${secretsCopy.copyButton} ${key}`}
+                                        className="min-h-11 min-w-11 gap-1 text-xs"
+                                        onClick={() =>
+                                            handleCopy(stringVal, key)
+                                        }
+                                        type="button"
+                                        variant="outline"
+                                    >
+                                        {isCopied ? (
+                                            <Check className="size-3.5 text-emerald-500" />
+                                        ) : (
+                                            <Copy className="size-3.5 text-muted-foreground" />
+                                        )}
+                                        <span>
+                                            {isCopied
+                                                ? secretsCopy.copied
+                                                : secretsCopy.copyButton}
+                                        </span>
+                                    </Button>
                                 </div>
                             );
                         })}
