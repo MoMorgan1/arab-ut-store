@@ -135,7 +135,7 @@ export default function AdminCustomersToolbar({
                         />
                         <Input
                             aria-label={copy.searchLabel}
-                            className="min-h-11 ps-9 pe-12 text-sm md:min-h-9 md:text-xs"
+                            className="min-h-11 ps-9 pe-12 text-sm md:text-xs"
                             disabled={isNavigating}
                             maxLength={100}
                             onChange={(event) => setSearch(event.target.value)}
@@ -155,7 +155,7 @@ export default function AdminCustomersToolbar({
                         ) : null}
                     </div>
                     <Button
-                        className="min-h-11 shrink-0 text-sm md:min-h-9 md:text-xs"
+                        className="min-h-11 shrink-0 text-sm md:text-xs"
                         disabled={isNavigating}
                         type="submit"
                         variant="secondary"
@@ -209,7 +209,7 @@ export default function AdminCustomersToolbar({
                     <DropdownMenuTrigger asChild>
                         <Button
                             aria-label={copy.toggleColumns}
-                            className="min-h-11 text-sm md:min-h-9 md:text-xs"
+                            className="min-h-11 text-sm md:text-xs"
                             disabled={isNavigating}
                             variant="outline"
                         >
@@ -231,7 +231,7 @@ export default function AdminCustomersToolbar({
                             .map((column) => (
                                 <DropdownMenuCheckboxItem
                                     checked={column.getIsVisible()}
-                                    className="min-h-12 text-sm md:min-h-9 md:text-xs"
+                                    className="min-h-12 text-sm md:text-xs"
                                     key={column.id}
                                     onCheckedChange={(visible) =>
                                         column.toggleVisibility(
@@ -247,7 +247,7 @@ export default function AdminCustomersToolbar({
 
                 {hasActiveCustomerFilters(filters) ? (
                     <Button
-                        className="min-h-11 text-sm md:min-h-9 md:text-xs"
+                        className="min-h-11 text-sm md:text-xs"
                         disabled={isNavigating}
                         onClick={onResetFilters}
                         type="button"
@@ -311,7 +311,7 @@ function FilterSelect({
         >
             <SelectTrigger
                 aria-label={label}
-                className="min-h-11 w-full text-sm md:min-h-9 md:w-auto md:min-w-[130px] md:text-xs"
+                className="min-h-11 w-full text-sm md:w-auto md:min-w-[130px] md:text-xs"
             >
                 <SelectValue placeholder={label} />
             </SelectTrigger>
@@ -358,7 +358,7 @@ function DateFilter({
             </label>
             <Input
                 aria-label={label}
-                className="min-h-11 text-sm md:min-h-9 md:w-36 md:text-xs"
+                className="min-h-11 text-sm md:w-36 md:text-xs"
                 disabled={disabled}
                 id={id}
                 min={min ?? undefined}
