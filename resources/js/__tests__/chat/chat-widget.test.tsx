@@ -1207,10 +1207,9 @@ describe('ChatWidget Component', () => {
         expect(screen.getByText('المساعد يرد الآن')).toBeInTheDocument();
     });
 
-    // SKIP(task8-followup): hangs under vi.useFakeTimers while awaiting the
-    // streamed failure -> retry affordance transition; needs a real-stream or
-    // fake-timer-async fixture pattern before re-enable.
-    it.skip('renders assistant retry button on retryable failed agent turn', async () => {
+    // Testing Library's findBy*/waitFor never advance Vitest fake timers, so
+    // this test asserts synchronously after advanceTimersByTimeAsync.
+    it('renders assistant retry button on retryable failed agent turn', async () => {
         vi.useFakeTimers();
 
         let retryCount = 0;
@@ -1346,7 +1345,7 @@ describe('ChatWidget Component', () => {
         await vi.advanceTimersByTimeAsync(1550);
 
         // Verify Assistant retry button is displayed
-        const retryBtn = await screen.findByRole('button', { name: /Retry/i });
+        const retryBtn = screen.getByRole('button', { name: /Retry/i });
         expect(retryBtn).toBeInTheDocument();
         expect(
             screen.getByText('Assistant could not complete response'),
@@ -1357,9 +1356,7 @@ describe('ChatWidget Component', () => {
         await vi.advanceTimersByTimeAsync(50);
 
         expect(retryCount).toBe(1);
-        expect(
-            await screen.findByText('Success after retry'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('Success after retry')).toBeInTheDocument();
     });
 
     it('scopes light-surface chat tokens and motion to the dialog', () => {

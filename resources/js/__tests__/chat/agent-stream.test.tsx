@@ -1,10 +1,4 @@
-import {
-    cleanup,
-    fireEvent,
-    render,
-    screen,
-    waitFor,
-} from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatWidget } from '@/components/chat/chat-widget';
 import { collectAgentEvents, parseAppStreamFrame } from '@/lib/agent-stream';
@@ -179,6 +173,39 @@ describe('Agent Stream Parser and Transport', () => {
     });
 });
 
+/**
+ * Retry an assertion under Vitest fake timers. Testing Library's waitFor
+ * cannot advance them, and a single advanceTimersByTimeAsync call does not
+ * always flush every microtask hop of a mocked fetch chain. Zero-time flushes
+ * are tried first so timing-sensitive assertions later in a test keep their
+ * clock; 1ms steps are the fallback.
+ */
+async function settle(assertion: () => void, maxMs = 200): Promise<void> {
+    for (let flush = 0; flush < 20; flush++) {
+        try {
+            assertion();
+
+            return;
+        } catch {
+            await vi.advanceTimersByTimeAsync(0);
+        }
+    }
+
+    for (let elapsed = 0; ; elapsed++) {
+        try {
+            assertion();
+
+            return;
+        } catch (error) {
+            if (elapsed >= maxMs) {
+                throw error;
+            }
+
+            await vi.advanceTimersByTimeAsync(1);
+        }
+    }
+}
+
 describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
     beforeEach(() => {
         vi.stubGlobal('fetch', vi.fn());
@@ -192,11 +219,12 @@ describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
         vi.unstubAllGlobals();
     });
 
-    // SKIP(task8-followup): fake-timer choreography is unstable for this case
-    // (timeout under isolation / duplicate start suspected but unproven).
-    // Transport and parser behavior are covered by the passing tests above;
-    // re-enable after Task 9 hardening with real-stream fixtures.
-    it.skip('starts one agent turn 1500ms after four durable sends and an empty queue', async () => {
+    // Fake-timer notes: Testing Library's waitFor/findBy* never advance
+    // Vitest fake timers (they only detect Jest's), so these tests assert
+    // synchronously after advanceTimersByTimeAsync. The opening tick moves
+    // the clock to t=10 before the send, so the 1500ms quiet timer is armed
+    // at t=10 and fires at t=1510.
+    it('starts one agent turn 1500ms after four durable sends and an empty queue', async () => {
         vi.useFakeTimers();
 
         const agentCalls: string[] = [];
@@ -269,9 +297,7 @@ describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
 
         await vi.advanceTimersByTimeAsync(10);
-        await waitFor(() => {
-            expect(screen.getByRole('dialog')).toBeInTheDocument();
-        });
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
 
         const textarea = screen.getByPlaceholderText(/اكتب رسالتك هنا/i);
         const sendBtn = screen.getByRole('button', { name: /إرسال الرسالة/i });
@@ -294,11 +320,7 @@ describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
         expect(agentCalls).toHaveLength(1);
     });
 
-    // SKIP(task8-followup): fake-timer choreography is unstable for this case
-    // (timeout under isolation / duplicate start suspected but unproven).
-    // Transport and parser behavior are covered by the passing tests above;
-    // re-enable after Task 9 hardening with real-stream fixtures.
-    it.skip('reschedules quiet timer when server returns 202 waiting_for_quiet', async () => {
+    it('reschedules quiet timer when server returns 202 waiting_for_quiet', async () => {
         vi.useFakeTimers();
 
         let agentTurnPostCount = 0;
@@ -384,18 +406,20 @@ describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
         fireEvent.change(textarea, { target: { value: 'مرحبا' } });
         fireEvent.click(sendBtn);
 
+        // t=60: quiet timer armed at t=10 for t=1510
         await vi.advanceTimersByTimeAsync(50);
         expect(agentTurnPostCount).toBe(0);
 
-        // Initial 1500ms fires first post -> returns 202 with retryAfterMs: 800
+        // t=1560: first post fired at t=1510 -> 202 with retryAfterMs: 800,
+        // so the reschedule lands at t=2310
         await vi.advanceTimersByTimeAsync(1500);
         expect(agentTurnPostCount).toBe(1);
 
-        // 799ms later, no second post yet
-        await vi.advanceTimersByTimeAsync(799);
+        // t=2309: one ms before the reschedule, no second post yet
+        await vi.advanceTimersByTimeAsync(749);
         expect(agentTurnPostCount).toBe(1);
 
-        // 1ms later (total 800ms) -> second post fires
+        // t=2311: second post fires exactly retryAfterMs after the 202
         await vi.advanceTimersByTimeAsync(2);
         expect(agentTurnPostCount).toBe(2);
     });
@@ -518,11 +542,7 @@ describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
         expect(agentTurnCount).toBe(2);
     });
 
-    // SKIP(task8-followup): fake-timer choreography is unstable for this case
-    // (timeout under isolation / duplicate start suspected but unproven).
-    // Transport and parser behavior are covered by the passing tests above;
-    // re-enable after Task 9 hardening with real-stream fixtures.
-    it.skip('switches to 1s GET polling on stream disconnect and avoids second start', async () => {
+    it('switches to 1s GET polling on stream disconnect and avoids second start', async () => {
         vi.useFakeTimers();
 
         let startCalls = 0;
@@ -577,8 +597,14 @@ describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
 
             if (path.includes('/agent-turns') && method === 'POST') {
                 startCalls++;
-                // Stream emits turn.created, one delta, then errors/aborts!
+                // Stream emits turn.created, one delta, then the connection
+                // drops. The error is raised from pull() so the queued bytes
+                // are delivered first; erroring inside start() would reset the
+                // queue and the browser would never learn the turn ID.
                 const stream = new ReadableStream<Uint8Array>({
+                    pull(controller) {
+                        controller.error(new Error('Network disconnected'));
+                    },
                     start(controller) {
                         const turn: AgentTurnState = {
                             publicId: 'turn-disc-01',
@@ -595,7 +621,6 @@ describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
                                     `event: response.delta\ndata: {"turnPublicId":"turn-disc-01","delta":"Partial"}\n\n`,
                             ),
                         );
-                        controller.error(new Error('Network disconnected'));
                     },
                 });
 
@@ -652,16 +677,19 @@ describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
         fireEvent.change(textarea, { target: { value: 'Question' } });
         fireEvent.click(sendBtn);
 
-        // Advance 1550ms -> triggers start POST
+        // t=1560: start POST fired at t=1510; the stream dropped after
+        // turn.created, so recovery polls the turn immediately (GET #1,
+        // still running) and schedules the next poll 1s later.
         await vi.advanceTimersByTimeAsync(1550);
         expect(startCalls).toBe(1);
-
-        // Stream failed, but turn ID was established -> polls GET at 1s interval
-        await vi.advanceTimersByTimeAsync(1000);
         expect(getPollCalls).toBe(1);
+
+        // t=2560: GET #2 at t=2510 returns completed -> polling stops
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(getPollCalls).toBe(2);
         expect(startCalls).toBe(1); // Never POSTs a new start!
 
-        // Next 1s poll returns completed
+        // No further polls after the terminal state
         await vi.advanceTimersByTimeAsync(1000);
         expect(getPollCalls).toBe(2);
         expect(startCalls).toBe(1);
@@ -760,7 +788,8 @@ describe('Quiet Timer and Agent Turn Lifecycle in useChat / ChatWidget', () => {
         const restartBtn = screen.getByRole('button', {
             name: /محادثة جديدة/i,
         });
-        expect(restartBtn).toBeEnabled();
+        // The conversation load settles across several microtask hops.
+        await settle(() => expect(restartBtn).toBeEnabled());
 
         const textarea = screen.getByPlaceholderText(/اكتب رسالتك هنا/i);
         const sendBtn = screen.getByRole('button', { name: /إرسال الرسالة/i });
