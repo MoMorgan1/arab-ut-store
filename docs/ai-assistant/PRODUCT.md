@@ -1,7 +1,8 @@
 # Product contract
 
-**Lifecycle:** Implemented
-**Verified:** 2026-08-20
+**Lifecycle:** Phase 1 live and accepted; Phase 2 runtime deployed but inactive
+and not accepted
+**Verified:** 2026-08-22
 
 ## Purpose and users
 
@@ -22,15 +23,24 @@ designed and approved.
 - The launcher, full-screen mobile sheet, anchored desktop panel, retry state,
   older-history loading, and Arabic/English presentation are present.
 
-The current reply is deterministic demo behavior. It is not a model response
-and it does not make a claim about answer quality or availability.
+The current production reply is deterministic demo behavior. It is not a model
+response and it does not make a claim about answer quality or availability.
+
+## Implemented but inactive
+
+Phase 2 added owner-scoped durable agent turns/runs, a prompt guard, bilingual
+streaming/recovery UX, usage/cost accounting, a fake CI provider, and a direct
+OpenAI Responses adapter for `gpt-5.6-luna`. Mohamed approved direct public
+rollout, but the mandatory public evaluation failed mixed-language and
+first-visible-content gates. AI is disabled while remediation is reviewed, so
+these capabilities are not part of the currently accepted customer experience.
 
 ## Excluded from the current product
 
 - Autonomous order changes, cancellations, refunds, or fulfillment actions.
 - Payment initiation, capture, credential access, or other financial actions.
-- Model-generated answers, AI accuracy guarantees, tool calling, retrieval,
-  realtime support, or an admin inbox.
+- Currently live model-generated answers or AI accuracy guarantees.
+- Tool calling, retrieval, realtime support, or an admin inbox.
 
 ## Success criteria
 
@@ -42,5 +52,10 @@ and Mohamed completes manual owner acceptance on the deployed experience.
 
 **Section lifecycle:** Planned
 
-Human support and administration, an AI turn runtime, retrieval, and approved
-tools require separate discovery, design, security review, and owner approval.
+The immediate next product gate is approval, remediation, and complete
+re-evaluation of the existing AI turn runtime. Human support/administration,
+retrieval, and approved tools require separate discovery, design, security
+review, and owner approval.
+
+See [STATUS.md](STATUS.md), [AGENT-RUNTIME.md](AGENT-RUNTIME.md), and
+[EVALS.md](EVALS.md).

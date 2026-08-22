@@ -1,7 +1,8 @@
 # Customer experience
 
-**Lifecycle:** Implemented and accepted by Mohamed
-**Verified:** 2026-08-21
+**Lifecycle:** Phase 1 implemented and accepted; Phase 2 UX implemented but
+inactive and not accepted
+**Verified:** 2026-08-22
 
 ## Conversation behavior
 
@@ -26,24 +27,49 @@ The widget preserves the active public ID across Inertia navigation and resolves
 it after refresh. Login claims matching guest history transactionally. Closed
 history has no customer-facing picker in this release.
 
+## Agent response behavior
+
+When server mode is `agent`, a persisted message receives no demo reply. The
+browser shows typing feedback immediately when a message is enqueued. After the
+persistence FIFO empties, it starts the 1.5-second quiet window and then the
+durable turn. `turn.created` creates an empty assistant bubble; text deltas fill
+it, and terminal completion replaces it with the canonical persisted message.
+Assistant bubbles use a short entrance transition and streamed text uses a
+subtle caret; reduced-motion users receive neither animation.
+
+Polling recovers an active or terminal turn after disconnect/reload and stops
+after five consecutive polling failures instead of retrying forever. Retry is
+shown only for a retryable terminal turn. The browser blocks New conversation
+during quiet wait, streaming, polling, pending send, or restart, and the disabled
+control does not expose its tooltip strip. A terminal pending signal starts one
+successor only after the FIFO empties.
+
+Production currently resolves new messages to the deterministic Phase 1 demo:
+the mandatory public Luna evaluation failed and Mohamed selected disable and
+remediate. A post-disable public probe received a demo reply with no agent stream
+or agent turn.
+
 ## Account and mobile placement
 
 `ChatRootLayout` marks the account surface so `chat-widget-root--account` uses
-a bottom offset of the account navigation height plus
-`env(safe-area-inset-bottom)` and appears above `.account-mobile-bottom-nav`.
+the fixed mobile offset `calc(88px + env(safe-area-inset-bottom))` and appears
+above `.account-mobile-bottom-nav`.
 The open mobile chat is a fixed full-screen dialog; closing restores focus to
 the launcher. On storefront/auth surfaces it becomes a bottom-right panel at
 the `sm` breakpoint. On account surfaces it remains full-screen through
 47.99rem and anchors only at 48rem.
 
-The Chromium fixture creates a synthetic local user, never a production user.
-Within one authenticated scenario it checks Arabic and English at 320px and
-390px as full modal dialogs, then at 768px and 1440px as anchored nonmodal
-panels. It covers nonzero safe-area geometry and reset, 44px controls, computed
-layer/position/size, hit testing, keyboard focus, Escape/focus restoration,
-outside-panel actionability, reduced motion, overflow, and runtime request/
-console errors. It does not invoke restart or prove replacement behavior;
-backend/component tests cover that behavior.
+The accepted Phase 1 Chromium fixture created a synthetic local user, never a
+production user. Within one authenticated scenario it checked Arabic and
+English at 320px and 390px as full modal dialogs, then at 768px and 1440px as
+anchored nonmodal panels. It covered safe-area geometry/reset, 44px controls,
+computed layers, hit testing, keyboard focus, Escape/focus restoration,
+outside-panel actionability, reduced motion, overflow, and runtime errors.
+
+Current repository coverage additionally exercises fake-agent streaming,
+terminal recovery, and New conversation after a completed reply. CI runs the
+storefront and fake-agent browser suites; the real 16-case Luna evidence is a
+separate production measurement, not a CI network test.
 
 ## Direction and accessibility
 
@@ -62,3 +88,6 @@ behavior. This closes the `AI-F06` owner/device gate; it does not turn Chromium
 emulation into Safari automation. `AI-F04` remains a P3 test-precision item for
 scroll geometry and unread state. See [STATUS.md](STATUS.md) for the acceptance
 record.
+
+See [AGENT-RUNTIME.md](AGENT-RUNTIME.md), [EVALS.md](EVALS.md), and
+[DECISIONS.md](DECISIONS.md).

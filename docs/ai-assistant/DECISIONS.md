@@ -3,6 +3,27 @@
 **Lifecycle:** Implemented record
 **Verified:** 2026-08-22
 
+## 2026-08-22 — Failed public gate requires disable and remediate
+
+The first clean direct-public Luna batch completed all 16 cases durably but
+failed mandatory acceptance: mixed-language quality was 2/4, safety-critical
+contracts were 7/8, and maximum first-visible content was 10.663 seconds. The
+batch passed Arabic, English, boundary, terminal-latency, usage/cost, and the
+recorded content-safety checks. This outcome does not change or waive a
+threshold.
+
+Mohamed selected **Disable and remediate**. Production was recached with AI
+disabled, rollout `disabled`, an empty provider selector, and the accepted
+Phase 1 demo enabled. A public proof received the demo and produced no agent
+turn. Phase 2 remains implemented/deployed but inactive and unaccepted.
+
+Direct-public rollout remains the approved topology for the next attempt; it is
+not permission to reactivate before review. Re-entry requires owner approval of
+the exact remediation, correction and execution of an actual deployed-handler
+inspection, a live canary, resilience probes, and one new complete 16-case batch
+meeting every mandatory threshold. No prompt/default/threshold change is
+authorized silently.
+
 ## 2026-08-22 — Direct Luna rollout replaces the staged fake gate
 
 Mohamed directed Phase 2 to skip the production fake-provider gate entirely
@@ -13,11 +34,12 @@ streaming proof happens with a live key and real spend, and disconnect/
 reload recovery is proven under Luna instead of the fake provider.
 Mitigations that remain mandatory: the owner sets the OpenAI project spend
 ceiling before any key entry; existing turn/IP rate limits stay; the kill
-switch stays; Task 11 evaluation thresholds still gate acceptance; the key
-still enters only Hostinger's shared `.env` after the deployed-SHA
-`agent:inspect-streaming-http` outbound-handler check passes. The Task 9
-fake-gate stop is superseded by this decision; Task 12 documentation must
-record the deviation.
+switch stays; Task 11 evaluation thresholds still gate acceptance; the source
+key enters through Hostinger's shared `.env` only after the deployed-SHA
+`agent:inspect-streaming-http` outbound-handler check passes. Laravel
+configuration caching may materialize the resolved value in retained release
+caches, which stay inside the production secret boundary. The Task 9 fake-gate
+stop is superseded by this decision.
 
 ## 2026-08-21 — Phase 2 started with lead-debate amendments
 
@@ -45,13 +67,16 @@ limited `AI-B04`, `AI-B09`, or `AI-F04` findings recorded in [AUDIT.md](AUDIT.md
 
 An owner may have one open conversation. Inactive threads close after 24 hours
 and may reopen only within seven days of last activity. Guest/authenticated
-retention is 30/180 days of last activity. All three clocks use
-`last_message_at`, falling back to `closed_at`, then `updated_at` only for
-legacy nulls. Reopen/reclose alone does not extend the activity anchor. New
-conversation closes the old open
-thread and creates a new one, so an explicitly closed thread does not reopen.
-The lifecycle migration, actions, and hourly
-`chat:maintain-conversations` command implement this decision.
+retention is 30/180 days of last activity. The approved decision required all
+three clocks to use `last_message_at`, falling back to `closed_at`, then
+`updated_at` only for legacy nulls. Reopen/reclose alone does not extend the
+activity anchor. New conversation closes the old open thread and creates a new
+one, so an explicitly closed thread does not reopen.
+
+Current source applies the fallback to reopen and retention, but auto-close
+queries `last_message_at` directly. A legacy open row with a null value therefore
+does not auto-close. This implementation drift remains open; this decision
+record does not silently redefine the approved lifecycle.
 
 ## 2026-08-21 — Legacy reply association is not guessed
 
@@ -96,7 +121,12 @@ session. No session configuration change is made: it can invalidate active
 sessions, and nonproduction defaults are not inferred from production. `AI-B09`
 remains open pending an owner security decision.
 
-## 2026-08-21 — Phase 2 plan is proposed, not implemented
+## 2026-08-21 — Historical Phase 2 proposal
+
+**Superseded:** Implementation approval and the 2026-08-22 rollout/outcome
+decisions above replaced this proposal state and several listed defaults. It is
+retained only as a decision-history snapshot; use [STATUS.md](STATUS.md),
+[AGENT-RUNTIME.md](AGENT-RUNTIME.md), and current source for active behavior.
 
 Phase 1 acceptance now permits planning, not implementation. The executable
 Phase 2 runtime plan is proposed and awaits Mohamed's explicit approval. Its
@@ -141,10 +171,11 @@ proposed operational defaults are:
 - authenticated-tester Luna acceptance only. Public rollout requires a new
   explicit owner decision.
 
-None of these proposed runtime/schema/config/interface names or behaviors
-exists in the application yet. Mohamed must also approve the proposed eval
-thresholds, and he must set a secure OpenAI project spend ceiling before real
-Luna testing.
+At the time of this proposal none of these runtime/schema/config/interface
+names or behaviors existed. The subsequent implementation used approved
+amendments including a 1,000-token output limit, 30-second deadline, 60-second
+stale threshold, and direct-public rollout. Its first mandatory evaluation then
+failed and was contained as recorded above.
 
 Historical plans do not override [STATUS.md](STATUS.md), this record, current
 source, or a newer explicit owner decision.

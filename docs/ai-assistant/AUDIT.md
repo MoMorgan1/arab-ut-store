@@ -1,8 +1,7 @@
-# Phase 1 Completion audit
+# AI assistant audit
 
-**Lifecycle:** Phase 1 repository, deployment, scheduler, and owner acceptance
-complete
-**Verified:** 2026-08-21
+**Lifecycle:** Phase 1 accepted; Phase 2 public evaluation failed and contained
+**Verified:** 2026-08-22
 
 ## Release evidence
 
@@ -40,9 +39,73 @@ the real-account and physical iPhone/Safari checks.
 | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | AI-B04 | P2       | Narrowed. Canonical replay includes explicit `reply_to_message_id` rows created after the lifecycle migration. Pre-migration unlinked assistant rows are excluded because concurrent historical inserts make timestamp/order association unprovable; regression coverage returns the legacy customer with `demoReply: null` and creates no association. |
 | AI-B09 | P2       | Open decision. Production database sessions are encrypted, but raw guest-token storage remains a Laravel-session boundary and no configuration change is approved.                                                                                                                                                                                      |
+| AI-B10 | P2       | Open implementation drift. Reopen and retention use the approved legacy activity fallback, but auto-close queries `last_message_at` directly; a legacy open row with a null value does not auto-close.                                                                                                                                                  |
 | AI-F04 | P3       | Open test-precision item: scroll geometry and unread-state assertions remain incomplete.                                                                                                                                                                                                                                                                |
 
-No P0 or P1 code finding is open. Phase 1 is accepted; `AI-B04`, `AI-B09`, and
-`AI-F04` retain the exact limited states above and are not erased by owner
-acceptance. Phase 2 implementation remains separately blocked on approval of
-the proposed plan linked from [STATUS.md](STATUS.md).
+No P0 or P1 Phase 1 code finding is open. Phase 1 is accepted; `AI-B04`,
+`AI-B09`, `AI-B10`, and `AI-F04` retain the exact limited states above and are
+not erased by owner acceptance.
+
+## Phase 2 runtime and public evaluation
+
+The provider-neutral turn runtime, fake provider, direct OpenAI Responses
+adapter, durable turns/runs, usage and cost accounting, stale recovery,
+bilingual prompt, browser streaming/recovery, and migration/route-cache fixes
+are deployed in release `e13ee8bde25263a262788177d0ce78fb4f46f37f`.
+
+Verification for that release:
+
+- `composer test`: 1,483 tests and 35,476 assertions passed;
+- [tests 32578736891](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32578736891)
+  passed;
+- [deploy 32578995534](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32578995534)
+  passed;
+- production `/up`, all seven chat routes, cached MFA route middleware, and the
+  minute stale-turn schedule were verified read-only;
+- a live guest Luna canary completed incrementally with no browser-console error.
+
+The mandatory public batch ran on 2026-08-22 under label
+`phase2-luna-eval-20260822T153457Z`. Its exact half-open UTC interval contained
+16 distinct customer boundaries, turns, and Luna runs, with one attempt and a
+durable completion for every case. Usage/cost evidence was complete. It failed:
+
+- mixed-language quality: 2/4 rather than the required 3/4;
+- safety-critical contracts: 7/8 rather than 8/8 (a contract failure without an
+  unsafe live-data/action claim);
+- maximum first visible content: 10.663 seconds rather than no more than 8.
+
+Arabic, English, and boundary groups scored 4/4. Maximum terminal time was
+11.496 seconds. No secret echo, HTML, fabricated live fact, implied action,
+incomplete run, browser error, or missing usage/cost field was observed.
+
+Mohamed selected disable and remediate. Production configuration was recached
+with AI disabled, rollout `disabled`, an empty provider selector, and the demo
+enabled. A public probe at `2026-08-22T16:10:39.260Z` received the deterministic
+demo, opened no agent stream, produced no console error, and created no new
+agent turn. See [the sanitized evidence](evidence/2026-08-22-phase-2-luna-public-eval.md).
+
+The versioned eval fixture contains exactly 16 unique cases, four per group and
+eight safety-critical cases. Its contract test passed with 182 assertions.
+
+Post-batch source review also found five open re-entry items:
+
+- the server nests `response.failed` code/message under `error`, but the browser
+  parser requires top-level fields;
+- `connect_timeout_seconds` is passed to Guzzle as total `timeout`, not
+  `connect_timeout`;
+- the accepted nearby label/value guard boundary is not implemented as a
+  proximity rule; current source pairs any qualifying label and value in the
+  same message, creating a broader false-positive boundary;
+- `agent:inspect-streaming-http` reports a hardcoded expected handler and does
+  not inspect the adapter's actual handler stack, contrary to the approved
+  pre-key inspection gate;
+- four frontend tests remain skipped for quiet-start timing, authoritative quiet
+  rescheduling, disconnect polling, and the retry affordance. Existing browser
+  and live success evidence does not close those failure-path coverage gaps.
+
+These findings do not change the measured batch and do not authorize a code,
+prompt, or threshold change. They must be included in the owner-reviewed
+remediation before Luna re-entry.
+
+Future audit rounds should append new evidence rather than rewriting either the
+Phase 1 acceptance or this failed Phase 2 evaluation record.
