@@ -5,6 +5,9 @@
 
 const STORAGE_KEY = 'arabut-chat-sound';
 
+/** Peak gain of the chime (0-1). Raised from 0.12 after the owner's phone test. */
+export const CHIME_GAIN = 0.35;
+
 type AudioContextCtor = new () => AudioContext;
 
 function audioContextCtor(): AudioContextCtor | null {
@@ -63,7 +66,7 @@ export function playChatNotification(): boolean {
         master.connect(context.destination);
 
         // Gentle attack/decay envelope, two notes a fourth apart.
-        master.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+        master.gain.exponentialRampToValueAtTime(CHIME_GAIN, now + 0.02);
         master.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
 
         for (const [frequency, offset] of [

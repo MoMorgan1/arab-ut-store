@@ -11017,6 +11017,15 @@ html.admin-document {
         padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
     }
 
+    /* While a software keyboard is open the sheet follows the visual
+       viewport instead of the layout viewport (set from chat-widget.tsx). */
+    .chat-widget-dialog--viewport-tracked {
+        top: var(--chat-vv-top, 0) !important;
+        height: var(--chat-vv-height, 100%) !important;
+        max-height: none !important;
+        bottom: auto !important;
+    }
+
     html {
         scroll-padding-bottom: calc(110px + env(safe-area-inset-bottom));
     }
@@ -11167,11 +11176,11 @@ html.admin-document {
     @keyframes chat-bubble-in {
         from {
             opacity: 0;
-            transform: translateY(10px) scale(0.97);
-            filter: blur(4px);
+            transform: translateY(14px) scale(0.96);
+            filter: blur(6px);
         }
 
-        60% {
+        55% {
             opacity: 1;
             filter: blur(0);
         }
@@ -11183,9 +11192,29 @@ html.admin-document {
         }
     }
 
+    /* A faint gold bloom that fades as the bubble settles. */
+    @keyframes chat-bubble-bloom {
+        from {
+            box-shadow:
+                0 0 0 0 rgb(212 168 67 / 0%),
+                0 10px 30px rgb(212 168 67 / 28%);
+        }
+
+        to {
+            box-shadow:
+                0 0 0 0 rgb(212 168 67 / 0%),
+                0 2px 8px rgb(13 11 8 / 5%);
+        }
+    }
+
     .chat-bubble-enter {
-        animation: chat-bubble-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: chat-bubble-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
         transform-origin: bottom left;
+    }
+
+    .chat-bubble-enter > [data-stream-status],
+    .chat-bubble-enter > div:first-child {
+        animation: chat-bubble-bloom 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
     }
 
     [dir='rtl'] .chat-bubble-enter,
@@ -11194,18 +11223,22 @@ html.admin-document {
     }
 
     /* Streamed text: each appended run fades in instead of flashing. */
+    /* Runs stay inline so text wraps naturally across the run boundary;
+       inline elements cannot transform, so the run uses opacity + blur. */
     @keyframes chat-stream-run-in {
         from {
             opacity: 0;
+            filter: blur(2px);
         }
 
         to {
             opacity: 1;
+            filter: blur(0);
         }
     }
 
     .chat-stream-run {
-        animation: chat-stream-run-in 240ms ease-out both;
+        animation: chat-stream-run-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
     }
 
     @keyframes chat-stream-caret-blink {

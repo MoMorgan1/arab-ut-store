@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    CHIME_GAIN,
     isChatSoundEnabled,
     playChatNotification,
     setChatSoundEnabled,
@@ -7,6 +8,8 @@ import {
 
 class FakeAudioContext {
     static instances = 0;
+
+    static ramps: number[] = [];
 
     state = 'running';
 
@@ -26,7 +29,9 @@ class FakeAudioContext {
         const gain = {
             gain: {
                 value: 0,
-                exponentialRampToValueAtTime: vi.fn(),
+                exponentialRampToValueAtTime: vi.fn((value: number) => {
+                    FakeAudioContext.ramps.push(value);
+                }),
             },
             connect: vi.fn(),
         };
@@ -75,6 +80,14 @@ describe('chat sound', () => {
         expect(playChatNotification()).toBe(true);
         expect(playChatNotification()).toBe(true);
         expect(FakeAudioContext.instances).toBe(1);
+    });
+
+    it('ramps to the configured chime gain', () => {
+        FakeAudioContext.ramps = [];
+
+        expect(playChatNotification()).toBe(true);
+        expect(CHIME_GAIN).toBeGreaterThanOrEqual(0.3);
+        expect(FakeAudioContext.ramps[0]).toBe(CHIME_GAIN);
     });
 
     it('reports false when Web Audio is unavailable', () => {

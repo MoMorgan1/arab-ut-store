@@ -220,6 +220,36 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         };
     }, [surface]);
 
+    // Mobile keyboards shrink the *visual* viewport while the layout viewport
+    // (which `position: fixed` uses) stays put, so iOS pushes the sheet up and
+    // hides its header. Track window.visualViewport and pin the sheet to it.
+    useEffect(() => {
+        const panel = panelRef.current;
+        const viewport = window.visualViewport;
+
+        if (!isOpen || !isMobileDialog || panel === null || !viewport) {
+            return;
+        }
+
+        const sync = () => {
+            panel.style.setProperty('--chat-vv-top', `${viewport.offsetTop}px`);
+            panel.style.setProperty('--chat-vv-height', `${viewport.height}px`);
+            panel.classList.add('chat-widget-dialog--viewport-tracked');
+        };
+
+        sync();
+        viewport.addEventListener('resize', sync);
+        viewport.addEventListener('scroll', sync);
+
+        return () => {
+            viewport.removeEventListener('resize', sync);
+            viewport.removeEventListener('scroll', sync);
+            panel.classList.remove('chat-widget-dialog--viewport-tracked');
+            panel.style.removeProperty('--chat-vv-top');
+            panel.style.removeProperty('--chat-vv-height');
+        };
+    }, [isMobileDialog, isOpen]);
+
     // Presence animation management
     useEffect(() => {
         if (isOpen) {
