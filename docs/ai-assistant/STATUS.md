@@ -77,15 +77,16 @@ supplies that separate acceptance evidence. See [UX.md](UX.md) and
 ## Exact next gate
 
 Phase 2 re-entry is blocked on an owner-approved remediation for the two
-mixed-language failures and the first-visible-content maximum. Source review
-also found a nested-versus-flat `response.failed` client/server payload mismatch
-and a configured connect timeout currently passed as Guzzle's total timeout.
-The accepted nearby-value guard decision is broader in current source: any
-qualifying label and value in one message can pair. The inspection command also
-reports a hardcoded handler instead of inspecting the adapter stack. Four
-frontend tests for quiet timing/rescheduling, disconnect polling, and retry UI
-are skipped. No prompt, threshold, guard, or runtime default may be changed
-silently. After a reviewed fix is deployed with AI still disabled, verify the
+mixed-language failures and the first-visible-content maximum. Of the five
+source-review items, three were fixed on 2026-08-22 with Mohamed's approval and
+AI still disabled: the browser now parses the server's nested `response.failed`
+payload, `agent:inspect-streaming-http` inspects the adapter's real handler
+stack, and the four previously skipped frontend tests (quiet timing/rescheduling,
+disconnect polling, retry UI) run and pass. Still open: the configured connect
+timeout is passed as Guzzle's total timeout, and the accepted nearby-value guard
+decision is broader in current source (any qualifying label and value in one
+message can pair). No prompt, threshold, guard, or runtime default may be
+changed silently. After a reviewed fix is deployed with AI still disabled, verify the
 actual deployed handler, enable the approved direct-public Luna configuration
 through secure access, require a live canary, and execute a new complete 16-case
 batch. Any mandatory miss disables Luna again. See

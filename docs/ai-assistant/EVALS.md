@@ -23,9 +23,10 @@ production measurement with sanitized, content-free operational evidence.
 - `resources/js/__tests__/chat`, including `agent-stream.test.tsx` and
   `chat-demo-reply-lifecycle.test.tsx`, covers component behavior,
   send/restart orchestration, stream parsing, polling, and terminal recovery.
-- Four follow-up cases are currently skipped: quiet-start timing, server quiet
+- The four previously skipped follow-up cases (quiet-start timing, server quiet
   rescheduling, disconnect polling without a duplicate start, and the retry
-  affordance. They are re-entry test gaps, not passing evidence.
+  affordance) were re-enabled on 2026-08-22 and pass; the skips were caused by
+  fake-timer choreography in the tests, not by runtime behavior.
 - CI Playwright runs the storefront and fake-agent streaming suites. The fake
   provider proves browser integration without provider quality or real network
   behavior.

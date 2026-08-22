@@ -87,25 +87,29 @@ agent turn. See [the sanitized evidence](evidence/2026-08-22-phase-2-luna-public
 The versioned eval fixture contains exactly 16 unique cases, four per group and
 eight safety-critical cases. Its contract test passed with 182 assertions.
 
-Post-batch source review also found five open re-entry items:
+Post-batch source review also found five re-entry items. Three were fixed on
+2026-08-22 after Mohamed approved the remediation order, with AI still disabled:
 
-- the server nests `response.failed` code/message under `error`, but the browser
-  parser requires top-level fields;
+- fixed: the server nests `response.failed` code/message under `error`; the
+  browser parser now reads that shape (the flat form stays accepted);
+- fixed: `agent:inspect-streaming-http` now resolves the adapter's
+  `OpenAiStreamHandlerStack` and labels the handler it really builds, passing
+  only for Guzzle's `StreamHandler`;
+- fixed: the four skipped frontend tests run and pass; every root cause was in
+  the tests (Testing Library `waitFor` under Vitest fake timers, quiet-timer
+  arithmetic, a stream fixture that errored inside `start()` and dropped
+  `turn.created`, and microtask warm-up order dependence).
+
+Two remain open:
+
 - `connect_timeout_seconds` is passed to Guzzle as total `timeout`, not
   `connect_timeout`;
 - the accepted nearby label/value guard boundary is not implemented as a
   proximity rule; current source pairs any qualifying label and value in the
-  same message, creating a broader false-positive boundary;
-- `agent:inspect-streaming-http` reports a hardcoded expected handler and does
-  not inspect the adapter's actual handler stack, contrary to the approved
-  pre-key inspection gate;
-- four frontend tests remain skipped for quiet-start timing, authoritative quiet
-  rescheduling, disconnect polling, and the retry affordance. Existing browser
-  and live success evidence does not close those failure-path coverage gaps.
+  same message, creating a broader false-positive boundary.
 
-These findings do not change the measured batch and do not authorize a code,
-prompt, or threshold change. They must be included in the owner-reviewed
-remediation before Luna re-entry.
+These findings do not change the measured batch. The open items still require
+owner review before Luna re-entry.
 
 Future audit rounds should append new evidence rather than rewriting either the
 Phase 1 acceptance or this failed Phase 2 evaluation record.

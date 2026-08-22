@@ -6,6 +6,15 @@ inactive and not accepted
 
 ## Conversation behavior
 
+The launcher opens on a Home view (brand hero, greeting, a Continue card when
+the conversation already has a customer message, a Send-us-a-message call to
+action, and four topic cards). Start, Continue, or a topic card slides into the
+chat view; the chat header's Back control returns to Home, and reopening after
+close lands on Home again. A topic card sends its label as the first message.
+The widget uses a light warm surface with gold accents; the AI disclaimer line
+under the composer renders only when the server reports `assistantMode: agent`.
+The `initialView` prop lets tests and hosts open directly in the chat view.
+
 The launcher initializes chat lazily. One owner has one open conversation.
 Hourly maintenance closes it after 24 hours without a message. A later open
 request reuses only an inactivity-closed conversation inside the seven-day
@@ -77,7 +86,7 @@ separate production measurement, not a CI network test.
   in Arabic RTL and English LTR; bubbles use `dir="auto"` for mixed-language text.
 - The composer has a persistent accessible name, 16px mobile text, a 44px
   minimum height, and grows up to 120px.
-- Launcher, close, send, restart, retry, suggestion, older-message, dismiss,
+- Launcher, close, back, send, restart, retry, topic/quick-reply, older-message, dismiss,
   and scroll controls have 44px minimum touch dimensions. Dialog/live
   semantics, visible focus, and reduced-motion classes are present.
 
