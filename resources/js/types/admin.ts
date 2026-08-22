@@ -25,6 +25,7 @@ export type AdminTranslations = {
     navigation: {
         overview: string;
         orders: string;
+        customers: string;
         security: string;
         open: string;
         close: string;
@@ -294,10 +295,145 @@ export type AdminTranslations = {
         failed: string;
         invalidCode: string;
     };
+    customers: {
+        actions: string;
+        headTitle: string;
+        title: string;
+        description: string;
+        searchPlaceholder: string;
+        searchLabel: string;
+        searchButton: string;
+        allStatuses: string;
+        filterStatus: string;
+        statusActive: string;
+        statusSuspended: string;
+        dateFrom: string;
+        dateTo: string;
+        resetFilters: string;
+        clearSearch: string;
+        columns: string;
+        toggleColumns: string;
+        customer: string;
+        name: string;
+        email: string;
+        phone: string;
+        status: string;
+        orders: string;
+        ordersCount: string;
+        totalSpent: string;
+        walletBalance: string;
+        lastOrderAt: string;
+        createdAt: string;
+        noCustomers: string;
+        noCustomersMatching: string;
+        noPhone: string;
+        noOrders: string;
+        perPage: string;
+        page: string;
+        of: string;
+        showing: string;
+        to: string;
+        results: string;
+        previous: string;
+        next: string;
+        selectedRows: string;
+        selectAll: string;
+        selectRow: string;
+        loading: string;
+        errorTitle: string;
+        loadFailed: string;
+        tableLabel: string;
+        firstPage: string;
+        lastPage: string;
+        sortAscending: string;
+        sortDescending: string;
+        sortBy: string;
+        viewDetail: string;
+    };
+    customerDetail: {
+        networkError: string;
+        suspendedMessage: string;
+        reactivatedMessage: string;
+        headTitle: string;
+        title: string;
+        backToCustomers: string;
+        identitySection: string;
+        ordersSection: string;
+        recentOrders: string;
+        walletSection: string;
+        recentWalletEntries: string;
+        auditSection: string;
+        accountStatus: string;
+        statusDescription: string;
+        suspendButton: string;
+        reactivateButton: string;
+        suspendTitle: string;
+        reactivateTitle: string;
+        suspendConsequence: string;
+        reactivateConsequence: string;
+        reasonLabel: string;
+        reasonRequired: string;
+        caseReferenceLabel: string;
+        caseReferencePlaceholder: string;
+        caseReferenceHelp: string;
+        confirmSuspend: string;
+        confirmReactivate: string;
+        cancelButton: string;
+        suspending: string;
+        reactivating: string;
+        statusUpdated: string;
+        conflictError: string;
+        updateFailed: string;
+        forbiddenError: string;
+        name: string;
+        email: string;
+        phone: string;
+        preferredLocale: string;
+        registeredAt: string;
+        emailVerified: string;
+        emailUnverified: string;
+        phoneVerified: string;
+        phoneUnverified: string;
+        ordersCount: string;
+        totalSpent: string;
+        lastOrderAt: string;
+        noOrders: string;
+        walletBalance: string;
+        walletEntriesCount: string;
+        noWalletEntries: string;
+        noAudit: string;
+        orderNumber: string;
+        orderStatus: string;
+        orderTotal: string;
+        orderPlacedAt: string;
+        entryType: string;
+        entryAmount: string;
+        entryReference: string;
+        entryDate: string;
+        actor: string;
+        action: string;
+        date: string;
+        reasons: Record<
+            | 'fraud_suspected'
+            | 'chargeback'
+            | 'abuse'
+            | 'customer_request'
+            | 'account_recovery'
+            | 'other_reviewed',
+            string
+        >;
+        passwordModalTitle: string;
+        passwordModalDescription: string;
+        passwordLabel: string;
+        passwordPlaceholder: string;
+        confirmPasswordButton: string;
+        confirmingPassword: string;
+        invalidPassword: string;
+    };
 };
 
 export type AdminNavigationItem = {
-    key: 'overview' | 'orders' | 'security';
+    key: 'overview' | 'orders' | 'customers' | 'security';
     label: string;
     url: string;
 };
@@ -569,6 +705,114 @@ export type AdminOrderDetailPageProps = {
         currency: string;
     };
     refundUrl: string;
+    confirmPasswordUrl?: string;
+    logoutUrl: string;
+};
+
+export type AdminCustomerRow = {
+    id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    isActive: boolean;
+    createdAt: string;
+    ordersCount: number;
+    lastOrderAt: string | null;
+    totalSpent: AdminMoney<'SAR'>;
+    walletBalance: AdminMoney<'SAR'>;
+};
+
+export type AdminCustomersQueryState = {
+    search?: string | null;
+    status?: 'active' | 'suspended' | null;
+    date_from?: string | null;
+    date_to?: string | null;
+    sort:
+        | 'created_at'
+        | 'name'
+        | 'orders_count'
+        | 'last_order_at'
+        | 'total_spent';
+    direction: 'asc' | 'desc';
+    per_page: 15 | 25 | 50 | 100;
+    page: number;
+};
+
+export type AdminCustomersPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    customers: AdminCustomerRow[];
+    pagination: AdminPagination;
+    filters: AdminCustomersQueryState;
+    filterOptions: {
+        statuses: AdminFilterOption[];
+        perPageOptions: number[];
+    };
+    logoutUrl: string;
+};
+
+export type AdminCustomerRecentOrder = {
+    id: string;
+    orderNumber: string;
+    status: string;
+    total: AdminMoney<string>;
+    placedAt: string | null;
+};
+
+export type AdminCustomerWalletEntry = {
+    id: string;
+    type: string;
+    direction: 'credit' | 'debit' | 'neutral';
+    amount: AdminMoney<string>;
+    createdAt: string;
+    reference: string | null;
+};
+
+export type AdminCustomerDetail = {
+    id: string;
+    name: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string | null;
+    preferredLocale: string;
+    isActive: boolean;
+    createdAt: string;
+    emailVerifiedAt: string | null;
+    phoneVerifiedAt: string | null;
+    ordersSummary: {
+        ordersCount: number;
+        totalSpent: AdminMoney<'SAR'>;
+        lastOrderAt: string | null;
+    };
+    recentOrders: AdminCustomerRecentOrder[];
+    walletSummary: {
+        balance: AdminMoney<'SAR'>;
+        entriesCount: number;
+    };
+    recentWalletEntries: AdminCustomerWalletEntry[];
+    recentAuditLogs: Array<{
+        id: string;
+        action: string;
+        actor: { name: string; role: string } | null;
+        createdAt: string;
+        metadata?: Record<string, unknown>;
+    }> | null;
+};
+
+export type AdminCustomerDetailPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    customer: AdminCustomerDetail;
+    statusUrl: string;
     confirmPasswordUrl?: string;
     logoutUrl: string;
 };

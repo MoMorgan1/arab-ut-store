@@ -3,8 +3,20 @@
 namespace App\Models;
 
 use App\Enums\WalletEntryType;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property string $public_id
+ * @property int $wallet_account_id
+ * @property WalletEntryType $type
+ * @property int $sequence
+ * @property int $amount_halalah
+ * @property int $balance_after_halalah
+ * @property array<string, mixed>|null $metadata
+ * @property CarbonImmutable $created_at
+ */
 class WalletEntry extends DomainModel
 {
     public const UPDATED_AT = null;
