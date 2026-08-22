@@ -30,14 +30,17 @@ function OrderNumberCell({ row }: { row: { original: AdminOrderRow } }) {
     const detailUrl = `${basePath}/${row.original.id}`;
 
     return (
-        <div className="flex max-w-48 flex-col gap-0.5">
+        <div className="flex max-w-44 flex-col gap-0.5">
             <Link
-                className="text-sm font-semibold text-foreground tabular-nums underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
+                className="text-sm font-semibold whitespace-nowrap text-foreground tabular-nums underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
                 href={detailUrl}
             >
                 <bdi>{row.original.orderNumber}</bdi>
             </Link>
-            <span className="text-xs [overflow-wrap:anywhere] text-muted-foreground">
+            <span
+                className="truncate text-xs text-muted-foreground"
+                title={row.original.id}
+            >
                 <bdi>{row.original.id}</bdi>
             </span>
         </div>

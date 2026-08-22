@@ -98,6 +98,7 @@ export default function AdminOrdersTable({
                         {rows.length > 0 ? (
                             rows.map((row) => (
                                 <TableRow
+                                    className="data-[state=selected]:bg-primary/5"
                                     data-state={
                                         row.getIsSelected()
                                             ? 'selected'
