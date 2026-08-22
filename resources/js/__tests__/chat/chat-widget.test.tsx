@@ -1315,7 +1315,7 @@ describe('ChatWidget Component', () => {
                         controller.enqueue(
                             new TextEncoder().encode(
                                 `event: turn.created\ndata: ${JSON.stringify({ turn })}\n\n` +
-                                    `event: response.failed\ndata: ${JSON.stringify({ turn, code: 'rate_limited', message: 'Rate limit exceeded' })}\n\n`,
+                                    `event: response.failed\ndata: ${JSON.stringify({ turn, error: { code: 'rate_limited', message: 'Rate limit exceeded' } })}\n\n`,
                             ),
                         );
                         controller.close();

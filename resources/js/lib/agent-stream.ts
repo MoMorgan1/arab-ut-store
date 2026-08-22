@@ -257,10 +257,19 @@ export function parseAppStreamFrame(
         }
 
         case 'response.failed': {
+            // The server emits `{turn, error: {code, message}}`; the flat
+            // `{turn, code, message}` form is accepted for compatibility.
+            const errorSource =
+                'error' in parsedJson &&
+                typeof parsedJson.error === 'object' &&
+                parsedJson.error !== null
+                    ? (parsedJson.error as Record<string, unknown>)
+                    : parsedJson;
+
             if (
                 !('turn' in parsedJson) ||
-                typeof parsedJson.code !== 'string' ||
-                typeof parsedJson.message !== 'string'
+                typeof errorSource.code !== 'string' ||
+                typeof errorSource.message !== 'string'
             ) {
                 throw new ChatApiError(
                     'invalid_stream',
@@ -275,8 +284,8 @@ export function parseAppStreamFrame(
                 event: 'response.failed',
                 data: {
                     turn,
-                    code: parsedJson.code,
-                    message: parsedJson.message,
+                    code: errorSource.code,
+                    message: errorSource.message,
                 },
             };
         }

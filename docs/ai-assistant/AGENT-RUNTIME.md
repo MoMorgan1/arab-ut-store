@@ -76,11 +76,12 @@ The controller sends an initial heartbeat comment, flushes each event, sets
 There is no recurring heartbeat loop. Polling supplies reload/disconnect and
 terminal-state recovery.
 
-The server currently emits `response.failed` as `{turn, error: {code, message}}`,
-while `resources/js/lib/agent-stream.ts` expects `{turn, code, message}`. A real
-failure frame therefore becomes `invalid_stream`; polling can recover only when
-the browser already learned the turn ID. This mismatch must be fixed before
-Luna re-entry.
+The server emits `response.failed` as `{turn, error: {code, message}}`.
+`resources/js/lib/agent-stream.ts` reads that nested shape and still accepts the
+older flat `{turn, code, message}` form; either parses to the same browser
+event. A frame missing `code` or `message` is rejected as `invalid_stream`.
+(Fixed 2026-08-22; previously the browser expected only the flat form, so a
+real failure frame became `invalid_stream`.)
 
 ## OpenAI adapter
 

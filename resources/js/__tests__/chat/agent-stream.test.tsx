@@ -156,13 +156,26 @@ describe('Agent Stream Parser and Transport', () => {
             data: { turn, message },
         });
 
+        // Server shape: the error is nested under `error`.
         const failed = parseAppStreamFrame(
-            `event: response.failed\ndata: ${JSON.stringify({ turn, code: 'provider_error', message: 'خطأ' })}\n\n`,
+            `event: response.failed\ndata: ${JSON.stringify({ turn, error: { code: 'provider_error', message: 'خطأ' } })}\n\n`,
         );
         expect(failed).toEqual({
             event: 'response.failed',
             data: { turn, code: 'provider_error', message: 'خطأ' },
         });
+
+        // Legacy flat shape stays accepted.
+        const failedFlat = parseAppStreamFrame(
+            `event: response.failed\ndata: ${JSON.stringify({ turn, code: 'provider_error', message: 'خطأ' })}\n\n`,
+        );
+        expect(failedFlat).toEqual(failed);
+
+        expect(() =>
+            parseAppStreamFrame(
+                `event: response.failed\ndata: ${JSON.stringify({ turn, error: { code: 'provider_error' } })}\n\n`,
+            ),
+        ).toThrow('Invalid response.failed payload structure.');
     });
 });
 
