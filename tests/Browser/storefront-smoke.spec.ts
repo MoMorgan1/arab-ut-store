@@ -91,16 +91,22 @@ async function effectiveOpacity(locator: Locator) {
 }
 
 async function expectMinimumTouchTarget(locator: Locator) {
-    const box = await locator.boundingBox();
+    let box: Awaited<ReturnType<Locator['boundingBox']>> = null;
 
-    expect(box).not.toBeNull();
+    // Measured by polling rather than once: while a surface is still animating
+    // in, Chrome reports sub-pixel-short boxes for its descendants (43.99994
+    // for a control that settles at exactly 44).
+    await expect
+        .poll(async () => {
+            box = await locator.boundingBox();
+
+            return box === null ? 0 : Math.min(box.width, box.height);
+        })
+        .toBeGreaterThanOrEqual(44);
 
     if (box === null) {
         throw new Error('Expected rendered touch target');
     }
-
-    expect(box.width).toBeGreaterThanOrEqual(44);
-    expect(box.height).toBeGreaterThanOrEqual(44);
 
     return box;
 }
