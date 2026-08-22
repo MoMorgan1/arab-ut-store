@@ -121,6 +121,50 @@ Topic labels and suggestion chips reuse the existing `SUGGESTIONS` constant
 The disclaimer only renders when the server reports `assistantMode: 'agent'`.
 In the current production demo mode it is hidden.
 
+## Motion system
+
+Animation is a first-class requirement. Everything below is CSS-only
+(transitions + keyframes, no animation library) and every rule is wrapped in
+`@media (prefers-reduced-motion: no-preference)`; with reduced motion, states
+switch instantly and the existing behaviour/tests hold.
+
+Shared tokens (added to the `--chat-*` block):
+
+```css
+--chat-ease-out: cubic-bezier(0.16, 1, 0.3, 1);   /* entrances */
+--chat-ease-in:  cubic-bezier(0.7, 0, 0.84, 0);   /* exits */
+--chat-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* taps, badges */
+--chat-dur-fast: 150ms; --chat-dur-base: 240ms; --chat-dur-slow: 360ms;
+```
+
+| Moment | Animation |
+| --- | --- |
+| Panel open / close | Keep existing scale+translate fade (280ms out / 180ms in). Mobile sheet slides up from `translateY(24px)`. |
+| Home hero | Greeting and sub-greeting fade+rise 12px, staggered 60ms; brand mark scales in from 0.9. |
+| Home cards | Continue, Start, topic cards fade+rise with 50ms stagger (`animation-delay` via `--i` custom property). Hover: lift `-2px` + shadow deepen (base dur). Press: scale 0.98 (spring). |
+| Home ↔ Chat view switch | Cross-fade + horizontal slide 16px in the reading direction (RTL-aware via `dir`: Home exits toward start, Chat enters from end; back reverses). Old view unmounts after `--chat-dur-base`. Implemented with a `data-view-state="entering|exiting"` attribute, same pattern as the panel's `isVisible` timing. |
+| Back arrow | On hover, nudges 2px toward the Home direction. |
+| Assistant bubble | Keep `chat-bubble-enter` (fade + rise + scale 0.96→1). |
+| Customer bubble | Rise 8px + fade on send; `sending` state pulses opacity 0.7→1 until confirmed. |
+| Streaming | Keep caret blink; on `response.completed` the caret fades out (fast) instead of vanishing. |
+| Typing indicator | Three dots with offset bounce (existing 900ms); entrance fade. |
+| Quick-reply pills | Stagger in 40ms; hover fills tint `--chat-tint`; press spring scale. On selection the chosen pill briefly fills gold before the row fades out. |
+| Composer | Focus ring grows from 1px to 2px with colour transition; send button appears/disables with scale 0.9→1 + opacity when text becomes non-empty. |
+| Send button press | Spring scale 0.92 → 1; icon nudges up 2px. |
+| "New messages" pill | Slide up + fade (exists); add fade-out on click. |
+| Error banner | Slide down from -8px + fade; dismiss fades out. |
+| Launcher | Keep icon cross-fade/rotate; on open add a soft gold ring pulse once (`box-shadow` 0→12px transparent, 600ms). Unread badge pops with spring. |
+| Date pill / status text | Fade only (no movement). |
+
+Rules: entrances use `--chat-ease-out`, exits `--chat-ease-in`, taps the
+spring; never animate `width`/`height` of the scroll container (reflow); all
+keyframes animate only `opacity` and `transform`; `will-change` is not used.
+Total motion per interaction stays under 400ms so the widget feels quick.
+
+Testing: reduced-motion paths keep the existing timing tests green. Add one
+test that the view switch unmounts the exiting view after the base duration
+(fake timers), mirroring `chat-widget.test.tsx`'s close-transition test.
+
 ## Accessibility and RTL (must hold)
 
 - All controls ≥ 44px; visible focus rings (`--arabut-focus` remains valid
@@ -132,7 +176,7 @@ In the current production demo mode it is hidden.
 - Mobile: Home sheet header carries the close chevron; initial focus moves to
   it (existing behaviour via `closeButtonRef`). Back arrow is not shown on
   Home.
-- Reduced motion: no new animations beyond the existing bubble/caret ones.
+- Reduced motion: every animation in the Motion system is disabled; states switch instantly.
 
 ## Error handling
 
