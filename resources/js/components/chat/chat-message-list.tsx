@@ -243,7 +243,11 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                     <div
                                         key={message.publicId}
                                         dir="auto"
-                                        className="group relative max-w-[82%] text-start"
+                                        className={`group relative max-w-[82%] text-start ${
+                                            isCustomer
+                                                ? ''
+                                                : 'chat-bubble-enter'
+                                        }`}
                                     >
                                         <div
                                             data-stream-status={
@@ -301,6 +305,14 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                             ) : (
                                                 <p className="break-words whitespace-pre-wrap">
                                                     {message.content}
+                                                    {isStreaming &&
+                                                        message.content !==
+                                                            '' && (
+                                                            <span
+                                                                aria-hidden="true"
+                                                                className="chat-stream-caret"
+                                                            />
+                                                        )}
                                                 </p>
                                             )}
                                         </div>
