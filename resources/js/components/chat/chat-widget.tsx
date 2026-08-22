@@ -33,6 +33,33 @@ const FOCUSABLE_SELECTOR = [
     '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
+/** Share of the visual viewport the mobile bottom sheet occupies. */
+export const SHEET_HEIGHT_RATIO = 0.88;
+/** Drag distance (px) or velocity (px/ms) that dismisses the sheet. */
+const SHEET_DISMISS_DISTANCE = 110;
+const SHEET_DISMISS_VELOCITY = 0.6;
+
+/**
+ * Bottom-sheet geometry for the current visual viewport. With a keyboard
+ * open the sheet takes the whole remaining viewport; otherwise it leaves a
+ * strip of the page visible above it, like a native sheet.
+ */
+export function mobileSheetGeometry(
+    viewport: { offsetTop: number; height: number },
+    layoutHeight: number,
+): { top: number; height: number; keyboardOpen: boolean } {
+    const keyboardOpen = viewport.height < layoutHeight * 0.75;
+    const height = keyboardOpen
+        ? viewport.height
+        : Math.round(viewport.height * SHEET_HEIGHT_RATIO);
+
+    return {
+        top: viewport.offsetTop + viewport.height - height,
+        height,
+        keyboardOpen,
+    };
+}
+
 function mobileDialogQuery(surface: ChatSurface): string {
     return surface === 'account'
         ? '(max-width: 47.99rem)'
@@ -220,12 +247,13 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         };
     }, [surface]);
 
-    // Mobile keyboards shrink the *visual* viewport while the layout viewport
-    // (which `position: fixed` uses) stays put, so iOS pushes the sheet up and
-    // hides its header. Lock the page, track window.visualViewport, and pin
-    // the sheet to it. iOS often settles the keyboard animation without a
-    // final `scroll`/`resize` event, so a focus change inside the sheet also
-    // re-syncs over the next ~800 ms.
+    // On phones the dialog is a bottom sheet pinned to the *visual* viewport
+    // (position: fixed follows the layout viewport, which iOS scrolls when a
+    // keyboard opens). Lock the page, track window.visualViewport, and resync
+    // for ~800 ms after any focus change because iOS often settles the
+    // keyboard animation without a final `scroll`/`resize` event. When the
+    // keyboard closes iOS can leave the visual viewport scrolled, so the
+    // sync also resets that offset.
     useEffect(() => {
         const panel = panelRef.current;
         const viewport = window.visualViewport;
@@ -251,8 +279,16 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         }
 
         const sync = () => {
-            panel.style.setProperty('--chat-vv-top', `${viewport.offsetTop}px`);
-            panel.style.setProperty('--chat-vv-height', `${viewport.height}px`);
+            const geometry = mobileSheetGeometry(viewport, window.innerHeight);
+
+            if (!geometry.keyboardOpen && viewport.offsetTop > 0) {
+                // Keyboard is gone but iOS left the viewport scrolled.
+                window.scrollTo(0, 0);
+                geometry.top -= viewport.offsetTop;
+            }
+
+            panel.style.setProperty('--chat-vv-top', `${geometry.top}px`);
+            panel.style.setProperty('--chat-vv-height', `${geometry.height}px`);
             panel.classList.add('chat-widget-dialog--viewport-tracked');
         };
 
@@ -285,6 +321,101 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
             panel.style.removeProperty('--chat-vv-top');
             panel.style.removeProperty('--chat-vv-height');
             releaseScrollLock();
+        };
+    }, [isMobileDialog, isOpen]);
+
+    // Swipe down to dismiss the mobile sheet. Native listeners because React
+    // registers touch events as passive and we must prevent the inner list
+    // from scrolling while the sheet follows the finger.
+    const closeChatRef = useRef(closeChat);
+
+    useEffect(() => {
+        closeChatRef.current = closeChat;
+    }, [closeChat]);
+
+    useEffect(() => {
+        const panel = panelRef.current;
+
+        if (!isOpen || !isMobileDialog || panel === null) {
+            return;
+        }
+
+        let startY = 0;
+        let startX = 0;
+        let startedAt = 0;
+        let dragging = false;
+        let eligible = false;
+
+        const onTouchStart = (event: TouchEvent) => {
+            const touch = event.touches[0];
+            const target = event.target as Element | null;
+            const scroller = target?.closest('.overflow-y-auto');
+            eligible = !scroller || scroller.scrollTop <= 0;
+            dragging = false;
+            startY = touch.clientY;
+            startX = touch.clientX;
+            startedAt = event.timeStamp;
+        };
+
+        const onTouchMove = (event: TouchEvent) => {
+            if (!eligible) {
+                return;
+            }
+
+            const touch = event.touches[0];
+            const dy = touch.clientY - startY;
+            const dx = touch.clientX - startX;
+
+            if (!dragging) {
+                if (dy < 8 || Math.abs(dx) > dy) {
+                    if (Math.abs(dx) > 8 || dy < -8) {
+                        eligible = false;
+                    }
+
+                    return;
+                }
+
+                dragging = true;
+                panel.classList.add('chat-widget-dialog--dragging');
+            }
+
+            event.preventDefault();
+            panel.style.transform = `translateY(${Math.max(0, dy)}px)`;
+        };
+
+        const finish = (event: TouchEvent) => {
+            if (!dragging) {
+                return;
+            }
+
+            dragging = false;
+            eligible = false;
+            const touch = event.changedTouches[0];
+            const dy = Math.max(0, touch.clientY - startY);
+            const velocity = dy / Math.max(1, event.timeStamp - startedAt);
+            panel.classList.remove('chat-widget-dialog--dragging');
+            panel.style.removeProperty('transform');
+
+            if (
+                dy > SHEET_DISMISS_DISTANCE ||
+                velocity > SHEET_DISMISS_VELOCITY
+            ) {
+                closeChatRef.current();
+            }
+        };
+
+        panel.addEventListener('touchstart', onTouchStart, { passive: true });
+        panel.addEventListener('touchmove', onTouchMove, { passive: false });
+        panel.addEventListener('touchend', finish);
+        panel.addEventListener('touchcancel', finish);
+
+        return () => {
+            panel.removeEventListener('touchstart', onTouchStart);
+            panel.removeEventListener('touchmove', onTouchMove);
+            panel.removeEventListener('touchend', finish);
+            panel.removeEventListener('touchcancel', finish);
+            panel.classList.remove('chat-widget-dialog--dragging');
+            panel.style.removeProperty('transform');
         };
     }, [isMobileDialog, isOpen]);
 
@@ -409,6 +540,20 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                 )}
             </div>
 
+            {/* Dimmed page behind the mobile sheet; tap to close */}
+            {isMounted && isMobileDialog && (
+                <div
+                    data-testid="chat-widget-backdrop"
+                    aria-hidden="true"
+                    onClick={closeChat}
+                    className={`chat-widget-backdrop fixed inset-0 z-[69] bg-black/45 transition-opacity motion-reduce:transition-none ${
+                        isVisible
+                            ? 'pointer-events-auto opacity-100 duration-[280ms]'
+                            : 'pointer-events-none opacity-0 duration-[180ms]'
+                    }`}
+                />
+            )}
+
             {/* Chat Panel / Sheet */}
             {isMounted && (
                 <div
@@ -422,12 +567,18 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                     }
                     data-view-direction={viewDirection}
                     onKeyDown={handleDialogKeyDown}
-                    className={`chat-widget-dialog fixed inset-0 z-[70] flex origin-bottom flex-col bg-[var(--chat-surface)] transition-[transform,opacity] motion-reduce:transition-none sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[650px] sm:max-h-[85vh] sm:w-[420px] sm:origin-bottom-right sm:overflow-hidden sm:rounded-3xl sm:border sm:border-[var(--arabut-line)] sm:shadow-2xl ${
+                    className={`chat-widget-dialog ${isMobileDialog ? 'chat-widget-dialog--sheet' : ''} fixed inset-0 z-[70] flex origin-bottom flex-col bg-[var(--chat-surface)] transition-[transform,opacity] motion-reduce:transition-none sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[650px] sm:max-h-[85vh] sm:w-[420px] sm:origin-bottom-right sm:overflow-hidden sm:rounded-3xl sm:border sm:border-[var(--arabut-line)] sm:shadow-2xl ${
                         isVisible
                             ? 'pointer-events-auto translate-y-0 scale-100 opacity-100 duration-[280ms] [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]'
                             : 'pointer-events-none translate-y-3 scale-[0.98] opacity-0 duration-[180ms] [transition-timing-function:cubic-bezier(0.7,0,0.84,0)] sm:scale-[0.96]'
                     }`}
                 >
+                    {isMobileDialog && (
+                        <div
+                            aria-hidden="true"
+                            className="chat-sheet-handle pointer-events-none absolute top-1.5 left-1/2 z-10 h-1.5 w-10 -translate-x-1/2 rounded-full bg-[var(--chat-line-strong)]"
+                        />
+                    )}
                     {(view === 'home' || exitingView === 'home') && (
                         <div
                             key="home"
