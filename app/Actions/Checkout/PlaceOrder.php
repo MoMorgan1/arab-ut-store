@@ -5,6 +5,7 @@ namespace App\Actions\Checkout;
 use App\Actions\Pricing\QuoteCoins;
 use App\Actions\Pricing\ReadManualServicePricing;
 use App\Checkout\CheckoutResult;
+use App\Checkout\OrderNumber;
 use App\Enums\DeliveryMode;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
@@ -109,7 +110,7 @@ final readonly class PlaceOrder
 
         $order = Order::create([
             'user_id' => $user->id,
-            'order_number' => 'AUT-'.Str::upper((string) Str::ulid()),
+            'order_number' => OrderNumber::generate(),
             'status' => OrderStatus::PendingPayment,
             'locale' => $locale,
             'currency' => 'SAR',
