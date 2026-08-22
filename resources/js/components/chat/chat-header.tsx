@@ -1,7 +1,6 @@
 import {
     ChevronLeft,
     MessageSquarePlus,
-    Sparkles,
     Volume2,
     VolumeX,
     X,
@@ -54,7 +53,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
     return (
         <div className="flex items-center justify-between gap-2 border-b border-[var(--chat-line)] bg-[var(--chat-card)] px-3 py-2.5">
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
                 <button
                     type="button"
                     onClick={onBack}
@@ -68,9 +67,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 </button>
 
                 <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[var(--chat-tint)] text-[var(--chat-accent-ink)]">
-                    <Sparkles
-                        className="h-[18px] w-[18px]"
+                    <img
+                        src="/images/arabut-logo-header.webp"
+                        width="36"
+                        height="36"
+                        alt=""
                         aria-hidden="true"
+                        className="h-7 w-7 object-contain"
                     />
                     <span
                         className="absolute end-[-1px] bottom-[-1px] h-2.5 w-2.5 rounded-full border-2 border-[var(--chat-card)] bg-[var(--chat-success)]"
@@ -79,11 +82,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     />
                 </div>
 
-                <div className="flex flex-col text-start">
-                    <h2 className="text-[15px] leading-tight font-semibold text-[var(--chat-ink)]">
+                <div className="flex min-w-0 flex-col text-start">
+                    <h2 className="truncate text-[14px] leading-tight font-semibold text-[var(--chat-ink)] sm:text-[15px]">
                         {title}
                     </h2>
-                    <p className="text-xs leading-tight text-[var(--chat-muted)]">
+                    <p className="truncate text-xs leading-tight text-[var(--chat-muted)]">
                         {subtitle}
                     </p>
                 </div>

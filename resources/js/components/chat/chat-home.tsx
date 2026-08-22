@@ -112,12 +112,14 @@ export const ChatHome: React.FC<ChatHomeProps> = ({
             <div className="flex flex-col gap-5 bg-[var(--chat-hero)] px-6 pt-6 pb-7 text-[var(--chat-hero-ink)]">
                 <div className="flex items-center justify-between">
                     <div className="chat-pop-in flex items-center gap-2.5">
-                        <span
+                        <img
+                            src="/images/arabut-logo-header.webp"
+                            width="36"
+                            height="36"
+                            alt=""
                             aria-hidden="true"
-                            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--chat-accent)] text-[15px] font-bold text-[var(--chat-hero)]"
-                        >
-                            AU
-                        </span>
+                            className="h-9 w-9 rounded-xl object-contain"
+                        />
                         <span className="text-[13px] font-semibold tracking-wide text-[var(--arabut-muted)]">
                             Arab UT
                         </span>

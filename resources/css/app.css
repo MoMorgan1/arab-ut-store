@@ -11410,6 +11410,14 @@ html.admin-document {
    Chat widget: light help-center surface + motion system.
    Tokens are scoped to the dialog so the dark store tokens stay intact.
    --------------------------------------------------------------------- */
+/* The widget renders on store and account shells alike, so it names the
+   brand face itself instead of inheriting .store-shell. */
+.chat-widget-root,
+.chat-widget-dialog,
+.chat-widget-backdrop {
+    font-family: 'Thmanyah Sans', Tahoma, Arial, sans-serif;
+}
+
 .chat-widget-dialog {
     --chat-surface: #fbf8f2;
     --chat-card: #ffffff;

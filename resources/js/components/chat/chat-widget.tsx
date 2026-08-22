@@ -538,7 +538,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
 
     return (
         <div
-            className={`chat-widget-root fixed right-4 bottom-4 z-50 font-sans sm:right-6 sm:bottom-6 ${
+            className={`chat-widget-root fixed right-4 bottom-4 z-50 sm:right-6 sm:bottom-6 ${
                 surface === 'account' ? 'chat-widget-root--account' : ''
             }`}
             dir={locale === 'en' ? 'ltr' : 'rtl'}
