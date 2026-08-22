@@ -35,11 +35,11 @@ export default function AdminOrdersMobileCard({
 
     return (
         <article
-            className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-card-foreground transition-colors data-[selected=true]:border-primary/50 data-[selected=true]:bg-muted/40 motion-reduce:transition-none"
+            className="flex flex-col gap-2.5 rounded-lg border border-border bg-card p-3.5 text-card-foreground transition-colors data-[selected=true]:border-primary/50 data-[selected=true]:bg-muted/40 motion-reduce:transition-none"
             data-selected={row.getIsSelected() ? 'true' : undefined}
             role="listitem"
         >
-            <div className="flex items-start justify-between gap-3 border-b border-border/60 pb-3">
+            <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border/60 pb-2.5">
                 <div className="flex min-w-0 items-start gap-2">
                     <label
                         className="-ms-2 -mt-2 flex min-h-11 min-w-11 cursor-pointer items-center justify-center"
@@ -56,7 +56,7 @@ export default function AdminOrdersMobileCard({
                     </label>
                     <div className="flex min-w-0 flex-col gap-0.5">
                         <Link
-                            className="text-sm font-bold text-foreground tabular-nums underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
+                            className="text-sm font-bold whitespace-nowrap text-foreground tabular-nums underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
                             href={detailUrl}
                         >
                             <bdi>{order.orderNumber}</bdi>
@@ -89,7 +89,7 @@ export default function AdminOrdersMobileCard({
                 ) : null}
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5 border-t border-border/40 pt-3 text-xs">
+            <div className="flex flex-wrap items-center gap-1.5 border-t border-border/40 pt-2.5 text-xs">
                 {order.serviceTypes.map((service) => (
                     <span
                         className="rounded-sm bg-secondary px-1.5 py-0.5 text-secondary-foreground"
@@ -111,7 +111,7 @@ export default function AdminOrdersMobileCard({
                 </span>
             </div>
 
-            <div className="flex items-end justify-between gap-3 border-t border-border/60 pt-3">
+            <div className="flex items-end justify-between gap-3 border-t border-border/60 pt-2.5">
                 <div className="flex min-w-0 flex-col gap-0.5">
                     <strong className="text-base font-bold text-foreground tabular-nums">
                         <bdi>{formatAdminMoney(order.total, locale)}</bdi>

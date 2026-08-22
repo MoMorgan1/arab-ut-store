@@ -1,7 +1,7 @@
 'use no memo'; // TanStack Table exposes a mutable table object.
 
 import type { Table } from '@tanstack/react-table';
-import { Columns3, RotateCcw, Search, X } from 'lucide-react';
+import { Columns3, Search, X } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 
@@ -71,27 +71,110 @@ export default function AdminOrdersToolbar({
         event.preventDefault();
         onFilterChange({ search: search.trim() || null });
     };
+
     const clearSearch = () => {
         setSearch('');
         onFilterChange({ search: null });
     };
 
+    const activeChips: Array<{
+        key: string;
+        label: string;
+        name: string;
+        onClear: () => void;
+    }> = [];
+
+    if (filters.search && filters.search.trim() !== '') {
+        activeChips.push({
+            key: 'search',
+            label: `Search: "${filters.search.trim()}"`,
+            name: 'search',
+            onClear: clearSearch,
+        });
+    }
+
+    if (filters.status) {
+        const option = filterOptions.statuses.find(
+            (o) => o.value === filters.status,
+        );
+        activeChips.push({
+            key: 'status',
+            label: `Status: ${option?.label ?? filters.status}`,
+            name: 'status',
+            onClear: () => onFilterChange({ status: null }),
+        });
+    }
+
+    if (filters.service) {
+        const option = filterOptions.services.find(
+            (o) => o.value === filters.service,
+        );
+        activeChips.push({
+            key: 'service',
+            label: `Service: ${option?.label ?? filters.service}`,
+            name: 'service',
+            onClear: () => onFilterChange({ service: null }),
+        });
+    }
+
+    if (filters.platform) {
+        const option = filterOptions.platforms.find(
+            (o) => o.value === filters.platform,
+        );
+        activeChips.push({
+            key: 'platform',
+            label: `Platform: ${option?.label ?? filters.platform}`,
+            name: 'platform',
+            onClear: () => onFilterChange({ platform: null }),
+        });
+    }
+
+    if (filters.payment_status) {
+        const option = filterOptions.paymentStatuses.find(
+            (o) => o.value === filters.payment_status,
+        );
+        activeChips.push({
+            key: 'payment_status',
+            label: `Payment: ${option?.label ?? filters.payment_status}`,
+            name: 'payment status',
+            onClear: () => onFilterChange({ payment_status: null }),
+        });
+    }
+
+    if (filters.date_from) {
+        activeChips.push({
+            key: 'date_from',
+            label: `From: ${filters.date_from}`,
+            name: 'date from',
+            onClear: () => onFilterChange({ date_from: null }),
+        });
+    }
+
+    if (filters.date_to) {
+        activeChips.push({
+            key: 'date_to',
+            label: `To: ${filters.date_to}`,
+            name: 'date to',
+            onClear: () => onFilterChange({ date_to: null }),
+        });
+    }
+
     return (
-        <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
                 <form
-                    className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-2 sm:max-w-md"
+                    className="flex min-w-[200px] flex-1 items-center gap-2"
                     onSubmit={submitSearch}
                     role="search"
                 >
-                    <div className="relative min-w-0">
+                    <div className="relative min-w-0 flex-1">
                         <Search
                             aria-hidden="true"
                             className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                         />
                         <Input
                             aria-label={copy.searchLabel}
-                            className="min-h-11 ps-9 pe-12"
+                            className="min-h-11 ps-9 pe-12 text-sm md:text-xs"
                             disabled={isNavigating}
                             maxLength={100}
                             onChange={(event) => setSearch(event.target.value)}
@@ -111,7 +194,7 @@ export default function AdminOrdersToolbar({
                         ) : null}
                     </div>
                     <Button
-                        className="min-h-11 shrink-0"
+                        className="min-h-11 shrink-0 text-sm md:text-xs"
                         disabled={isNavigating}
                         type="submit"
                         variant="secondary"
@@ -120,48 +203,6 @@ export default function AdminOrdersToolbar({
                     </Button>
                 </form>
 
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            aria-label={copy.toggleColumns}
-                            className="ms-auto min-h-11"
-                            disabled={isNavigating}
-                            variant="outline"
-                        >
-                            <Columns3 aria-hidden="true" className="size-4" />
-                            {copy.columns}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                        align="end"
-                        className="w-48 motion-reduce:animate-none"
-                    >
-                        <DropdownMenuLabel>
-                            {copy.toggleColumns}
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        {table
-                            .getAllLeafColumns()
-                            .filter((column) => column.getCanHide())
-                            .map((column) => (
-                                <DropdownMenuCheckboxItem
-                                    checked={column.getIsVisible()}
-                                    className="min-h-12"
-                                    key={column.id}
-                                    onCheckedChange={(visible) =>
-                                        column.toggleVisibility(
-                                            Boolean(visible),
-                                        )
-                                    }
-                                >
-                                    {columnLabels[column.id] ?? column.id}
-                                </DropdownMenuCheckboxItem>
-                            ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
                 <FilterSelect
                     allLabel={copy.allStatuses}
                     disabled={isNavigating}
@@ -223,19 +264,80 @@ export default function AdminOrdersToolbar({
                     onChange={(date_to) => onFilterChange({ date_to })}
                     value={filters.date_to}
                 />
-                {hasActiveFilters(filters) ? (
-                    <Button
-                        className="min-h-11 gap-1 px-3 text-xs"
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            aria-label={copy.toggleColumns}
+                            className="min-h-11 text-sm md:text-xs"
+                            disabled={isNavigating}
+                            variant="outline"
+                        >
+                            <Columns3 aria-hidden="true" className="size-4" />
+                            <span>{copy.columns}</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                        align="end"
+                        className="w-48 motion-reduce:animate-none"
+                    >
+                        <DropdownMenuLabel>
+                            {copy.toggleColumns}
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {table
+                            .getAllLeafColumns()
+                            .filter((column) => column.getCanHide())
+                            .map((column) => (
+                                <DropdownMenuCheckboxItem
+                                    checked={column.getIsVisible()}
+                                    className="min-h-12 text-sm md:text-xs"
+                                    key={column.id}
+                                    onCheckedChange={(visible) =>
+                                        column.toggleVisibility(
+                                            Boolean(visible),
+                                        )
+                                    }
+                                >
+                                    {columnLabels[column.id] ?? column.id}
+                                </DropdownMenuCheckboxItem>
+                            ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+
+            {hasActiveFilters(filters) && activeChips.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
+                    <span className="font-medium text-muted-foreground">
+                        Active filters:
+                    </span>
+                    {activeChips.map((chip) => (
+                        <span
+                            className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-0.5 text-xs text-foreground"
+                            key={chip.key}
+                        >
+                            <span>{chip.label}</span>
+                            <button
+                                aria-label={`Clear ${chip.name} filter`}
+                                className="inline-flex size-4 items-center justify-center rounded-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                                disabled={isNavigating}
+                                onClick={chip.onClear}
+                                type="button"
+                            >
+                                <X aria-hidden="true" className="size-3" />
+                            </button>
+                        </span>
+                    ))}
+                    <button
+                        className="text-xs font-medium text-primary underline underline-offset-2 transition-colors hover:text-primary/80 focus-visible:outline-2 focus-visible:outline-ring"
                         disabled={isNavigating}
                         onClick={onResetFilters}
                         type="button"
-                        variant="ghost"
                     >
-                        <RotateCcw aria-hidden="true" className="size-3.5" />
-                        {copy.resetFilters}
-                    </Button>
-                ) : null}
-            </div>
+                        Clear all
+                    </button>
+                </div>
+            ) : null}
         </div>
     );
 }
@@ -265,17 +367,17 @@ function FilterSelect({
         >
             <SelectTrigger
                 aria-label={label}
-                className="min-h-11 w-full min-[480px]:w-44"
+                className="min-h-11 w-full text-sm min-[480px]:w-36 md:text-xs"
             >
                 <SelectValue placeholder={allLabel} />
             </SelectTrigger>
             <SelectContent className="motion-reduce:animate-none">
-                <SelectItem className="min-h-11" value="ALL">
+                <SelectItem className="min-h-11 text-sm md:text-xs" value="ALL">
                     {allLabel}
                 </SelectItem>
                 {options.map((option) => (
                     <SelectItem
-                        className="min-h-11"
+                        className="min-h-11 text-sm md:text-xs"
                         key={option.value}
                         value={option.value}
                     >
@@ -308,7 +410,7 @@ function DateFilter({
                 {label}
             </label>
             <Input
-                className="min-h-11 w-full min-[480px]:w-40"
+                className="min-h-11 w-full text-sm min-[480px]:w-36 md:text-xs"
                 disabled={disabled}
                 id={id}
                 min={min ?? undefined}

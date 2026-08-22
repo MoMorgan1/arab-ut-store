@@ -1,12 +1,5 @@
 import { router, useHttp } from '@inertiajs/react';
-import {
-    AlertCircle,
-    CheckCircle2,
-    Clock,
-    Play,
-    UserCheck,
-    XCircle,
-} from 'lucide-react';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -20,6 +13,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import type { AdminOrderDetail, AdminTranslations } from '@/types/admin';
 
 export type AdminOrderTransitionControlsProps = {
@@ -29,16 +23,6 @@ export type AdminOrderTransitionControlsProps = {
     transitionUrl: string;
     permissions: string[];
     onStatusUpdated?: (freshOrder: AdminOrderDetail) => void;
-};
-
-const transitionIcons: Record<
-    string,
-    React.ComponentType<{ className?: string }>
-> = {
-    cancelled: XCircle,
-    completed: CheckCircle2,
-    in_progress: Play,
-    waiting_for_customer: Clock,
 };
 
 type TransitionPayload = {
@@ -61,7 +45,8 @@ export default function AdminOrderTransitionControls({
 }: AdminOrderTransitionControlsProps) {
     const copy = adminUi.orderDetail;
     const statuses = adminUi.statuses;
-    const [pendingTarget, setPendingTarget] = useState<string | null>(null);
+    const [selectedStatus, setSelectedStatus] = useState<string>('');
+    const [showCancelDialog, setShowCancelDialog] = useState(false);
     const [feedback, setFeedback] = useState<{
         type: 'success' | 'error' | 'conflict';
         message: string;
@@ -78,136 +63,136 @@ export default function AdminOrderTransitionControls({
     const canUpdate = permissions.includes('orders.update');
     const canCancel = permissions.includes('orders.cancel');
 
-    const handleConfirm = useCallback(async () => {
-        if (!pendingTarget) {
+    const availableTransitions = allowedTransitions.filter((target) =>
+        target === 'cancelled' ? canUpdate && canCancel : canUpdate,
+    );
+
+    const handleTransition = useCallback(
+        async (target: string) => {
+            setFeedback(null);
+            http.setData({
+                expected_status: order.status,
+                target_status: target,
+            });
+
+            let handled = false;
+
+            try {
+                await http.submit('post', transitionUrl, {
+                    headers: { Accept: 'application/json' },
+                    onHttpException: (response) => {
+                        handled = true;
+
+                        if (response.status === 409) {
+                            const body =
+                                typeof response.data === 'string'
+                                    ? (JSON.parse(response.data) as {
+                                          status?: string;
+                                      })
+                                    : (response.data as { status?: string });
+                            const canonicalStatus = body.status ?? 'unknown';
+                            const readableStatus =
+                                statuses[canonicalStatus] ?? canonicalStatus;
+                            setFeedback({
+                                message: copy.conflictError.replace(
+                                    ':status',
+                                    readableStatus,
+                                ),
+                                type: 'conflict',
+                            });
+                            setSelectedStatus('');
+                            setShowCancelDialog(false);
+                            router.reload({ only: ['order'] });
+
+                            return false;
+                        }
+
+                        if (response.status === 403) {
+                            setFeedback({
+                                message: copy.forbiddenTransition,
+                                type: 'error',
+                            });
+                            setSelectedStatus('');
+                            setShowCancelDialog(false);
+
+                            return false;
+                        }
+
+                        setFeedback({
+                            message: copy.transitionFailed,
+                            type: 'error',
+                        });
+                        setSelectedStatus('');
+                        setShowCancelDialog(false);
+
+                        return false;
+                    },
+                    onNetworkError: () => {
+                        handled = true;
+                        setFeedback({
+                            message: copy.transitionFailed,
+                            type: 'error',
+                        });
+                        setSelectedStatus('');
+                        setShowCancelDialog(false);
+
+                        return false;
+                    },
+                    onSuccess: (response) => {
+                        handled = true;
+                        setFeedback({
+                            message: copy.statusUpdated,
+                            type: 'success',
+                        });
+                        setSelectedStatus('');
+                        setShowCancelDialog(false);
+
+                        if (onStatusUpdated && response.order) {
+                            onStatusUpdated(response.order);
+                        } else {
+                            router.reload({ only: ['order'] });
+                        }
+                    },
+                });
+            } catch {
+                // Rejections are already surfaced through the callbacks above.
+            }
+
+            if (!handled && !http.processing) {
+                setFeedback({
+                    message: copy.transitionFailed,
+                    type: 'error',
+                });
+                setSelectedStatus('');
+                setShowCancelDialog(false);
+            }
+        },
+        [
+            copy.conflictError,
+            copy.forbiddenTransition,
+            copy.statusUpdated,
+            copy.transitionFailed,
+            http,
+            onStatusUpdated,
+            order.status,
+            statuses,
+            transitionUrl,
+        ],
+    );
+
+    const handleApply = () => {
+        if (!selectedStatus) {
             return;
         }
 
-        setFeedback(null);
-        http.setData({
-            expected_status: order.status,
-            target_status: pendingTarget,
-        });
-
-        let handled = false;
-
-        try {
-            await http.submit('post', transitionUrl, {
-                headers: { Accept: 'application/json' },
-                onHttpException: (response) => {
-                    handled = true;
-
-                    if (response.status === 409) {
-                        const body =
-                            typeof response.data === 'string'
-                                ? (JSON.parse(response.data) as {
-                                      status?: string;
-                                  })
-                                : (response.data as { status?: string });
-                        const canonicalStatus = body.status ?? 'unknown';
-                        const readableStatus =
-                            statuses[canonicalStatus] ?? canonicalStatus;
-                        setFeedback({
-                            message: copy.conflictError.replace(
-                                ':status',
-                                readableStatus,
-                            ),
-                            type: 'conflict',
-                        });
-                        setPendingTarget(null);
-                        router.reload({ only: ['order'] });
-
-                        return false;
-                    }
-
-                    if (response.status === 403) {
-                        setFeedback({
-                            message: copy.forbiddenTransition,
-                            type: 'error',
-                        });
-                        setPendingTarget(null);
-
-                        return false;
-                    }
-
-                    setFeedback({
-                        message: copy.transitionFailed,
-                        type: 'error',
-                    });
-                    setPendingTarget(null);
-
-                    return false;
-                },
-                onNetworkError: () => {
-                    handled = true;
-                    setFeedback({
-                        message: copy.transitionFailed,
-                        type: 'error',
-                    });
-                    setPendingTarget(null);
-
-                    return false;
-                },
-                onSuccess: (response) => {
-                    handled = true;
-                    setFeedback({
-                        message: copy.statusUpdated,
-                        type: 'success',
-                    });
-                    setPendingTarget(null);
-
-                    if (onStatusUpdated && response.order) {
-                        onStatusUpdated(response.order);
-                    } else {
-                        router.reload({ only: ['order'] });
-                    }
-                },
-            });
-        } catch {
-            // Rejections are already surfaced through the callbacks above.
+        if (selectedStatus === 'cancelled') {
+            setShowCancelDialog(true);
+        } else {
+            void handleTransition(selectedStatus);
         }
-
-        if (!handled) {
-            setFeedback({
-                message: copy.transitionFailed,
-                type: 'error',
-            });
-            setPendingTarget(null);
-        }
-    }, [
-        copy.conflictError,
-        copy.forbiddenTransition,
-        copy.statusUpdated,
-        copy.transitionFailed,
-        http,
-        order.status,
-        pendingTarget,
-        statuses,
-        transitionUrl,
-        onStatusUpdated,
-    ]);
-
-    const getDialogDescription = (target: string) => {
-        if (target === 'cancelled') {
-            return copy.confirmCancelDescription.replace(
-                ':number',
-                order.orderNumber,
-            );
-        }
-
-        if (target === 'completed') {
-            return copy.confirmCompleteDescription.replace(
-                ':number',
-                order.orderNumber,
-            );
-        }
-
-        return copy.confirmModalDescription
-            .replace(':number', order.orderNumber)
-            .replace(':status', statuses[target] ?? target);
     };
 
-    if (allowedTransitions.length === 0) {
+    if (availableTransitions.length === 0) {
         return (
             <div className="rounded-lg border border-border bg-card p-4 text-card-foreground">
                 <h3 className="text-sm font-semibold text-foreground">
@@ -264,52 +249,71 @@ export default function AdminOrderTransitionControls({
                 ) : null}
             </div>
 
-            <div className="flex flex-wrap gap-2">
-                {allowedTransitions.map((target) => {
-                    const Icon = transitionIcons[target] ?? UserCheck;
-                    const isCancelled = target === 'cancelled';
-                    const isAllowedByRole = isCancelled
-                        ? canUpdate && canCancel
-                        : canUpdate;
-                    const label = copy.changeStatusTo.replace(
-                        ':status',
-                        statuses[target] ?? target,
-                    );
-
-                    return (
-                        <Button
-                            className="min-h-11 gap-2 text-xs font-medium"
-                            disabled={http.processing || !isAllowedByRole}
-                            key={target}
-                            onClick={() => {
-                                setFeedback(null);
-                                setPendingTarget(target);
-                            }}
-                            type="button"
-                            variant={isCancelled ? 'destructive' : 'outline'}
+            <div className="flex flex-col gap-2">
+                <Label
+                    className="text-xs font-semibold text-foreground"
+                    htmlFor="admin-order-next-status"
+                >
+                    Next status
+                </Label>
+                <div className="flex flex-wrap items-center gap-2">
+                    <select
+                        aria-label="Next status"
+                        className="flex min-h-11 min-w-0 flex-1 items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50"
+                        disabled={http.processing}
+                        id="admin-order-next-status"
+                        onChange={(e) => {
+                            setFeedback(null);
+                            setSelectedStatus(e.target.value);
+                        }}
+                        value={selectedStatus}
+                    >
+                        <option
+                            className="bg-popover text-popover-foreground"
+                            value=""
                         >
-                            <Icon aria-hidden="true" className="size-4" />
-                            <span>{label}</span>
-                        </Button>
-                    );
-                })}
+                            Choose next status…
+                        </option>
+                        {availableTransitions.map((target) => (
+                            <option
+                                className="bg-popover text-popover-foreground"
+                                key={target}
+                                value={target}
+                            >
+                                {target === 'cancelled'
+                                    ? 'Cancelled'
+                                    : (statuses[target] ?? target)}
+                            </option>
+                        ))}
+                    </select>
+
+                    <Button
+                        className="min-h-11 text-xs font-medium"
+                        disabled={http.processing || !selectedStatus}
+                        onClick={handleApply}
+                        type="button"
+                    >
+                        Apply status
+                    </Button>
+                </div>
             </div>
 
             <Dialog
                 onOpenChange={(open) => {
                     if (!open && !http.processing) {
-                        setPendingTarget(null);
+                        setShowCancelDialog(false);
                     }
                 }}
-                open={pendingTarget !== null}
+                open={showCancelDialog}
             >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{copy.confirmModalTitle}</DialogTitle>
                         <DialogDescription>
-                            {pendingTarget
-                                ? getDialogDescription(pendingTarget)
-                                : ''}
+                            {copy.confirmCancelDescription.replace(
+                                ':number',
+                                order.orderNumber,
+                            )}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2 sm:gap-0">
@@ -326,13 +330,9 @@ export default function AdminOrderTransitionControls({
                         <Button
                             className="min-h-11"
                             disabled={http.processing}
-                            onClick={handleConfirm}
+                            onClick={() => void handleTransition('cancelled')}
                             type="button"
-                            variant={
-                                pendingTarget === 'cancelled'
-                                    ? 'destructive'
-                                    : 'default'
-                            }
+                            variant="destructive"
                         >
                             {http.processing
                                 ? copy.updating

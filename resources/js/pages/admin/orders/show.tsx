@@ -27,6 +27,16 @@ import type {
 export default function AdminOrderDetailPage() {
     const { props, url } = usePage<AdminOrderDetailPageProps>();
     const [order, setOrder] = useState<AdminOrderDetail>(props.order);
+    const [syncedOrder, setSyncedOrder] = useState(props.order);
+
+    // Re-sync the local working copy whenever Inertia delivers a fresh
+    // order (e.g. router.reload after a refund) — the React-recommended
+    // "adjust state during render" pattern instead of a setState effect.
+    if (props.order !== syncedOrder) {
+        setSyncedOrder(props.order);
+        setOrder(props.order);
+    }
+
     const copy = props.adminUi.orderDetail;
     const ordersCopy = props.adminUi.orders;
     const statuses = props.adminUi.statuses;
