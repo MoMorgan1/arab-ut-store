@@ -124,6 +124,16 @@ and maximum provider-terminal latency were 1.410 and 2.604 seconds, while the
 browser maximum first-visible time was 10.663 seconds. This separation requires
 end-to-end latency investigation rather than a provider-only conclusion.
 
+Read-only production timeline review on 2026-08-22 (turn/run IDs and timestamps
+only): the `ar-order` case's turn was created 2 s after its message, ran one
+attempt of 1,195 ms, and persisted its reply 3 s after the message — the same
+profile as the other fifteen cases. The extra ~8 s in the browser measurement
+therefore occurred after the server had finished (proxy/delivery or the
+measuring browser), not in debounce, claiming, retries, or the provider. It was
+a single outlier. For the next batch, record the `/agent-turns` POST's
+`responseStart` from the browser Performance API per case so a repeat can be
+attributed to delivery buffering versus client processing.
+
 Mohamed selected disable and remediate. The authoritative sanitized record is
 [2026-08-22-phase-2-luna-public-eval.md](evidence/2026-08-22-phase-2-luna-public-eval.md).
 A partial/cherry-picked rerun cannot replace it. Acceptance requires one new

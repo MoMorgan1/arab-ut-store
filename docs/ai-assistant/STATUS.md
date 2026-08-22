@@ -85,8 +85,12 @@ payload, `agent:inspect-streaming-http` inspects the adapter's real handler
 stack, and the four previously skipped frontend tests (quiet timing/rescheduling,
 disconnect polling, retry UI) run and pass. The connect timeout is now passed
 as Guzzle `connect_timeout`, with the request timeout as the total budget (also
-2026-08-22). Still open: the accepted nearby-value guard decision is broader in
-current source (any qualifying label and value in one message can pair). No prompt, threshold, guard, or runtime default may be
+2026-08-22). The first-visible-content outlier was traced in production to
+post-server delivery (see [EVALS.md](EVALS.md)); no app change is indicated
+beyond better per-case timing capture. Still open: the `support-v2`
+mixed-language prompt (draft awaiting owner approval) and the accepted
+nearby-value guard decision, which is broader in current source (any qualifying
+label and value in one message can pair). No prompt, threshold, guard, or runtime default may be
 changed silently. After a reviewed fix is deployed with AI still disabled, verify the
 actual deployed handler, enable the approved direct-public Luna configuration
 through secure access, require a live canary, and execute a new complete 16-case
