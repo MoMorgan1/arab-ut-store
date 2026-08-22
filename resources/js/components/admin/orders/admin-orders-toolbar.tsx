@@ -53,6 +53,33 @@ export type AdminOrdersToolbarProps = {
     table: Table<AdminOrderRow>;
 };
 
+/**
+ * A start date after the current end date clears the end date; a new end date
+ * before the current start date clears the start date. One implementation is
+ * shared by the desktop row and the mobile filters sheet so the two can never
+ * drift apart.
+ */
+export function dateRangePatch(
+    field: 'date_from' | 'date_to',
+    value: string | null,
+    current: { date_from?: string | null; date_to?: string | null },
+): { date_from?: string | null; date_to?: string | null } {
+    const other = field === 'date_from' ? current.date_to : current.date_from;
+    const conflicts =
+        value !== null &&
+        other !== null &&
+        other !== undefined &&
+        (field === 'date_from' ? other < value : value < other);
+
+    if (field === 'date_from') {
+        return conflicts
+            ? { date_from: value, date_to: null }
+            : { date_from: value };
+    }
+
+    return conflicts ? { date_from: null, date_to: value } : { date_to: value };
+}
+
 export default function AdminOrdersToolbar({
     adminUi,
     filterOptions,
@@ -316,16 +343,8 @@ export default function AdminOrdersToolbar({
                         id="admin-orders-date-from"
                         label={copy.dateFrom}
                         onChange={(date_from) => {
-                            const conflictsWithDateTo =
-                                date_from !== null &&
-                                filters.date_to !== null &&
-                                filters.date_to !== undefined &&
-                                filters.date_to < date_from;
-
                             onFilterChange(
-                                conflictsWithDateTo
-                                    ? { date_from, date_to: null }
-                                    : { date_from },
+                                dateRangePatch('date_from', date_from, filters),
                             );
                         }}
                         value={filters.date_from}
@@ -335,7 +354,11 @@ export default function AdminOrdersToolbar({
                         id="admin-orders-date-to"
                         label={copy.dateTo}
                         min={filters.date_from}
-                        onChange={(date_to) => onFilterChange({ date_to })}
+                        onChange={(date_to) => {
+                            onFilterChange(
+                                dateRangePatch('date_to', date_to, filters),
+                            );
+                        }}
                         value={filters.date_to}
                     />
 
@@ -386,7 +409,7 @@ export default function AdminOrdersToolbar({
 
             <Sheet onOpenChange={setSheetOpen} open={sheetOpen}>
                 <SheetContent
-                    className="max-h-[85vh] overflow-y-auto rounded-t-xl"
+                    className="max-h-[85vh] overflow-y-auto rounded-t-xl motion-reduce:animate-none motion-reduce:transition-none motion-reduce:duration-[0.01ms]"
                     side="bottom"
                 >
                     <SheetHeader>
@@ -477,18 +500,13 @@ export default function AdminOrdersToolbar({
                                 id="admin-orders-mobile-date-from"
                                 label={copy.dateFrom}
                                 onChange={(date_from) => {
-                                    const conflictsWithDateTo =
-                                        date_from !== null &&
-                                        draftFilters.date_to !== null &&
-                                        draftFilters.date_to !== undefined &&
-                                        draftFilters.date_to < date_from;
-
                                     setDraftFilters((prev) => ({
                                         ...prev,
-                                        date_from,
-                                        date_to: conflictsWithDateTo
-                                            ? null
-                                            : prev.date_to,
+                                        ...dateRangePatch(
+                                            'date_from',
+                                            date_from,
+                                            prev,
+                                        ),
                                     }));
                                 }}
                                 value={draftFilters.date_from}
@@ -503,12 +521,16 @@ export default function AdminOrdersToolbar({
                                 id="admin-orders-mobile-date-to"
                                 label={copy.dateTo}
                                 min={draftFilters.date_from}
-                                onChange={(date_to) =>
+                                onChange={(date_to) => {
                                     setDraftFilters((prev) => ({
                                         ...prev,
-                                        date_to,
-                                    }))
-                                }
+                                        ...dateRangePatch(
+                                            'date_to',
+                                            date_to,
+                                            prev,
+                                        ),
+                                    }));
+                                }}
                                 value={draftFilters.date_to}
                             />
                         </div>
@@ -548,7 +570,7 @@ export default function AdminOrdersToolbar({
                             <span>{chip.label}</span>
                             <button
                                 aria-label={`Clear ${chip.name} filter`}
-                                className="inline-flex size-4 items-center justify-center rounded-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                                className="-my-2 -me-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
                                 disabled={isNavigating}
                                 onClick={chip.onClear}
                                 type="button"
@@ -558,7 +580,7 @@ export default function AdminOrdersToolbar({
                         </span>
                     ))}
                     <button
-                        className="text-xs font-medium text-primary underline underline-offset-2 transition-colors hover:text-primary/80 focus-visible:outline-2 focus-visible:outline-ring"
+                        className="inline-flex min-h-11 items-center px-1 text-xs font-medium text-primary underline underline-offset-2 transition-colors hover:text-primary/80 focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
                         disabled={isNavigating}
                         onClick={onResetFilters}
                         type="button"

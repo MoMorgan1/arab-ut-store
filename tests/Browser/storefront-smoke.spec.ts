@@ -1025,6 +1025,10 @@ test('authenticated Admin overview and orders are operable across required width
                     await expectMinimumTouchTarget(filtersButton);
                     await filtersButton.click();
 
+                    await expectMinimumTouchTarget(
+                        page.getByRole('combobox', { name: 'Per page' }),
+                    );
+
                     const filterSheet = page.getByRole('dialog', {
                         name: 'Filters',
                     });
@@ -1046,6 +1050,12 @@ test('authenticated Admin overview and orders are operable across required width
                     );
                     await expectMinimumTouchTarget(
                         filterSheet.getByLabel('Date to'),
+                    );
+
+                    // The filters sheet must honour reduced motion like every
+                    // other animated Admin surface.
+                    await expect(filterSheet).toHaveClass(
+                        /motion-reduce:animate-none/,
                     );
                     await expectMinimumTouchTarget(
                         filterSheet.getByRole('button', { name: 'Apply' }),

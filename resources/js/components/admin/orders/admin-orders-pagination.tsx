@@ -51,7 +51,7 @@ export default function AdminOrdersPagination({
 
     return (
         <div className="flex flex-wrap items-center justify-between gap-4 px-2 py-3 text-sm text-muted-foreground">
-            <div className="flex-1 text-xs">
+            <div className="w-full text-xs whitespace-nowrap md:w-auto md:flex-1">
                 {selectedCount > 0 ? (
                     <span className="tabular-nums">
                         {copy.selectedRows
@@ -92,8 +92,8 @@ export default function AdminOrdersPagination({
                 )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 md:gap-6">
-                <div className="hidden items-center gap-2 md:flex">
+            <div className="flex w-full flex-wrap items-center justify-between gap-3 md:w-auto md:justify-end md:gap-6">
+                <div className="flex items-center gap-2">
                     <span className="text-xs">{copy.perPage}</span>
                     <Select
                         disabled={isNavigating}
@@ -127,7 +127,7 @@ export default function AdminOrdersPagination({
 
                 <div
                     aria-live="polite"
-                    className="hidden items-center justify-center text-xs text-foreground md:flex"
+                    className="flex items-center justify-center text-xs text-foreground"
                 >
                     {copy.page} <strong className="mx-1">{currentPage}</strong>{' '}
                     {copy.of}{' '}
