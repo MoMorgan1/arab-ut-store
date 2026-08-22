@@ -62,7 +62,7 @@ final class AgentRuntimeConfig
 
     public function promptVersion(): string
     {
-        return $this->fixedString('prompt_version', 'support-v1');
+        return $this->fixedString('prompt_version', 'support-v2');
     }
 
     public function turnDebounceMilliseconds(): int

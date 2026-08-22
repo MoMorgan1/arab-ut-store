@@ -6,7 +6,7 @@ return [
     'test_user_ids' => env('AI_ASSISTANT_TEST_USER_IDS', ''),
     'provider' => env('AI_MODEL_PROVIDER', ''),
     'model' => env('AI_MODEL', 'gpt-5.6-luna'),
-    'prompt_version' => 'support-v1',
+    'prompt_version' => 'support-v2',
     'turn_debounce_ms' => env('AI_TURN_DEBOUNCE_MS', 1500),
     'max_context_messages' => env('AI_MAX_CONTEXT_MESSAGES', 24),
     'max_output_tokens' => env('AI_MAX_OUTPUT_TOKENS', 1000),

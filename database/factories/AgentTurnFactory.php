@@ -47,7 +47,7 @@ class AgentTurnFactory extends Factory
             'last_customer_message_id' => null,
             'assistant_message_id' => null,
             'debounce_until' => now(),
-            'prompt_version' => 'support-v1',
+            'prompt_version' => (string) config('ai-assistant.prompt_version'),
             'attempt_count' => 0,
             'started_at' => null,
             'completed_at' => null,

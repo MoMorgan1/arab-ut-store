@@ -70,7 +70,7 @@ test('invalid prompt versions ranges roles and types are rejected without conten
         'last_customer_message_id' => $customer->id,
     ]);
     if ($invalidCase === 'prompt version') {
-        $turn->prompt_version = 'support-v2';
+        $turn->prompt_version = 'support-v9';
     } elseif ($invalidCase === 'reversed range') {
         $later = ChatMessage::factory()->customer()->agentEligible()->for($conversation, 'conversation')->create();
         $turn->first_customer_message_id = $later->id;
