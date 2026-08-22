@@ -11286,3 +11286,192 @@ html.admin-document {
         transition: none !important;
     }
 }
+
+/* ---------------------------------------------------------------------
+   Chat widget: light help-center surface + motion system.
+   Tokens are scoped to the dialog so the dark store tokens stay intact.
+   --------------------------------------------------------------------- */
+.chat-widget-dialog {
+    --chat-surface: #fbf8f2;
+    --chat-card: #ffffff;
+    --chat-tint: #f3ead6;
+    --chat-ink: #1a1610;
+    --chat-muted: #6f6354;
+    --chat-faint: #7a6c58;
+    --chat-line: rgb(212 168 67 / 22%);
+    --chat-line-strong: rgb(212 168 67 / 35%);
+    --chat-accent: var(--arabut-gold);
+    --chat-accent-ink: #7d5f14;
+    --chat-hero: var(--arabut-navy);
+    --chat-hero-ink: var(--arabut-ink);
+    --chat-danger: #b42318;
+    --chat-success: #22a06b;
+    --chat-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --chat-ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+    --chat-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --chat-dur-fast: 150ms;
+    --chat-dur-base: 240ms;
+    --chat-dur-slow: 360ms;
+}
+
+.chat-widget-dialog .chat-stream-caret {
+    background: var(--chat-accent-ink);
+}
+
+/* Every rule below animates only opacity/transform and is disabled under
+   reduced motion: states then switch instantly. */
+@media (prefers-reduced-motion: no-preference) {
+    @keyframes chat-rise-in {
+        from {
+            opacity: 0;
+            transform: translateY(12px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes chat-pop-in {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @keyframes chat-drop-in {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes chat-ring-pulse {
+        from {
+            box-shadow: 0 0 0 0 rgb(212 168 67 / 55%);
+        }
+
+        to {
+            box-shadow: 0 0 0 12px rgb(212 168 67 / 0%);
+        }
+    }
+
+    /* Staggered entrances: set --i on each child. */
+    .chat-stagger-in {
+        animation: chat-rise-in var(--chat-dur-slow) var(--chat-ease-out) both;
+        animation-delay: calc(var(--i, 0) * 50ms);
+    }
+
+    .chat-pop-in {
+        animation: chat-pop-in var(--chat-dur-base) var(--chat-ease-spring) both;
+    }
+
+    .chat-drop-in {
+        animation: chat-drop-in var(--chat-dur-base) var(--chat-ease-out) both;
+    }
+
+    /* Home <-> Chat switch. The slide direction follows the reading
+       direction: [dir=rtl] flips the sign. */
+    .chat-view-enter {
+        animation: chat-view-enter var(--chat-dur-base) var(--chat-ease-out)
+            both;
+    }
+
+    .chat-view-exit {
+        animation: chat-view-exit var(--chat-dur-base) var(--chat-ease-in) both;
+        pointer-events: none;
+    }
+
+    @keyframes chat-view-enter {
+        from {
+            opacity: 0;
+            transform: translateX(var(--chat-slide, 16px));
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes chat-view-exit {
+        from {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        to {
+            opacity: 0;
+            transform: translateX(calc(var(--chat-slide, 16px) * -1));
+        }
+    }
+
+    .chat-widget-dialog[dir='rtl'] {
+        --chat-slide: -16px;
+    }
+
+    .chat-widget-dialog[data-view-direction='back'] {
+        --chat-slide: -16px;
+    }
+
+    .chat-widget-dialog[dir='rtl'][data-view-direction='back'] {
+        --chat-slide: 16px;
+    }
+
+    /* Interactive cards and pills. */
+    .chat-lift {
+        transition:
+            transform var(--chat-dur-base) var(--chat-ease-out),
+            box-shadow var(--chat-dur-base) var(--chat-ease-out),
+            background-color var(--chat-dur-fast) ease,
+            border-color var(--chat-dur-fast) ease;
+    }
+
+    .chat-lift:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px rgb(13 11 8 / 10%);
+    }
+
+    .chat-lift:active {
+        transform: scale(0.98);
+        transition-timing-function: var(--chat-ease-spring);
+    }
+
+    .chat-press {
+        transition: transform var(--chat-dur-fast) var(--chat-ease-spring);
+    }
+
+    .chat-press:active {
+        transform: scale(0.92);
+    }
+
+    .chat-launcher-open {
+        animation: chat-ring-pulse 600ms var(--chat-ease-out) 1;
+    }
+
+    .chat-sending {
+        animation: chat-sending-pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes chat-sending-pulse {
+        0%,
+        100% {
+            opacity: 0.7;
+        }
+
+        50% {
+            opacity: 1;
+        }
+    }
+}

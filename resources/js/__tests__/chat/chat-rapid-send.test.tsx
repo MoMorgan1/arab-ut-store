@@ -76,7 +76,7 @@ describe('Rapid Consecutive Messages & Idempotency', () => {
             return { ok: false, status: 404 } as Response;
         });
 
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
 
         // Open chat
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
@@ -178,7 +178,7 @@ describe('Rapid Consecutive Messages & Idempotency', () => {
             return { ok: false, status: 404 } as Response;
         });
 
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
 
         await waitFor(() => {
@@ -268,7 +268,7 @@ describe('Rapid Consecutive Messages & Idempotency', () => {
             return { ok: false, status: 404 } as Response;
         });
 
-        render(<ChatWidget enabled={true} locale="ar" />);
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
         fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
         await vi.advanceTimersByTimeAsync(10);
 
