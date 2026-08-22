@@ -14,7 +14,7 @@ class OrderFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'order_number' => 'UT-'.fake()->unique()->numerify('########'),
+            'order_number' => 'AUT-'.fake()->unique()->regexify('[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6}'),
             'status' => OrderStatus::PendingPayment,
             'locale' => 'ar',
             'currency' => 'SAR',
