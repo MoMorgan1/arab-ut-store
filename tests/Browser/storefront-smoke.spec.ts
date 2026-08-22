@@ -932,6 +932,20 @@ test('authenticated Admin overview and orders are operable across required width
                         'inert',
                         '',
                     );
+
+                    const tabbar = page.getByRole('navigation', {
+                        name: 'Arab UT quick navigation',
+                    });
+                    await expect(tabbar).toBeVisible();
+                    await expectMinimumTouchTarget(
+                        tabbar.getByRole('link', { name: locale.overview }),
+                    );
+                    await expectMinimumTouchTarget(
+                        tabbar.getByRole('link', { name: locale.orders }),
+                    );
+                    await expectMinimumTouchTarget(
+                        tabbar.getByRole('link', { name: locale.security }),
+                    );
                 } else {
                     await expect(
                         page.getByRole('button', { name: locale.open }),
@@ -969,11 +983,10 @@ test('authenticated Admin overview and orders are operable across required width
                 let ordersLink: Locator;
 
                 if (width < 768) {
-                    await page
-                        .getByRole('button', { name: locale.open })
-                        .click();
                     ordersLink = page
-                        .getByRole('dialog', { name: locale.dialog })
+                        .getByRole('navigation', {
+                            name: 'Arab UT quick navigation',
+                        })
                         .getByRole('link', { name: locale.orders });
                 } else {
                     ordersLink = page
@@ -1005,29 +1018,73 @@ test('authenticated Admin overview and orders are operable across required width
                     page.getByRole('button', { name: 'Search', exact: true }),
                 );
 
-                for (const label of [
-                    'Filter by status',
-                    'Filter by service',
-                    'Filter by platform',
-                    'Filter by payment status',
-                    'Per page',
-                ]) {
-                    await expectMinimumTouchTarget(
-                        page.getByRole('combobox', { name: label }),
-                    );
-                }
+                if (width < 768) {
+                    const filtersButton = page.getByRole('button', {
+                        name: /Filters/i,
+                    });
+                    await expectMinimumTouchTarget(filtersButton);
+                    await filtersButton.click();
 
-                await expectMinimumTouchTarget(page.getByLabel('Date from'));
-                await expectMinimumTouchTarget(page.getByLabel('Date to'));
-                const columnsButton = page.getByRole('button', {
-                    name: 'Toggle columns',
-                });
-                await expectMinimumTouchTarget(columnsButton);
-                await columnsButton.click();
-                await expectMinimumTouchTarget(
-                    page.getByRole('menuitemcheckbox', { name: 'Customer' }),
-                );
-                await page.keyboard.press('Escape');
+                    const filterSheet = page.getByRole('dialog', {
+                        name: 'Filters',
+                    });
+                    await expect(filterSheet).toBeVisible();
+
+                    for (const label of [
+                        'Filter by status',
+                        'Filter by service',
+                        'Filter by platform',
+                        'Filter by payment status',
+                    ]) {
+                        await expectMinimumTouchTarget(
+                            filterSheet.getByRole('combobox', { name: label }),
+                        );
+                    }
+
+                    await expectMinimumTouchTarget(
+                        filterSheet.getByLabel('Date from'),
+                    );
+                    await expectMinimumTouchTarget(
+                        filterSheet.getByLabel('Date to'),
+                    );
+                    await expectMinimumTouchTarget(
+                        filterSheet.getByRole('button', { name: 'Apply' }),
+                    );
+                    await expectMinimumTouchTarget(
+                        filterSheet.getByRole('button', { name: 'Clear all' }),
+                    );
+
+                    await page.keyboard.press('Escape');
+                    await expect(filterSheet).not.toBeAttached();
+                } else {
+                    for (const label of [
+                        'Filter by status',
+                        'Filter by service',
+                        'Filter by platform',
+                        'Filter by payment status',
+                        'Per page',
+                    ]) {
+                        await expectMinimumTouchTarget(
+                            page.getByRole('combobox', { name: label }),
+                        );
+                    }
+
+                    await expectMinimumTouchTarget(
+                        page.getByLabel('Date from'),
+                    );
+                    await expectMinimumTouchTarget(page.getByLabel('Date to'));
+                    const columnsButton = page.getByRole('button', {
+                        name: 'Toggle columns',
+                    });
+                    await expectMinimumTouchTarget(columnsButton);
+                    await columnsButton.click();
+                    await expectMinimumTouchTarget(
+                        page.getByRole('menuitemcheckbox', {
+                            name: 'Customer',
+                        }),
+                    );
+                    await page.keyboard.press('Escape');
+                }
 
                 const selectOrder = page.getByRole('checkbox', {
                     name: `Select row ${orderNumber}`,

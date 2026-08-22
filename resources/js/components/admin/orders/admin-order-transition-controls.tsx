@@ -23,6 +23,7 @@ export type AdminOrderTransitionControlsProps = {
     transitionUrl: string;
     permissions: string[];
     onStatusUpdated?: (freshOrder: AdminOrderDetail) => void;
+    variant?: 'card' | 'bar';
 };
 
 type TransitionPayload = {
@@ -42,6 +43,7 @@ export default function AdminOrderTransitionControls({
     transitionUrl,
     permissions,
     onStatusUpdated,
+    variant = 'card',
 }: AdminOrderTransitionControlsProps) {
     const copy = adminUi.orderDetail;
     const statuses = adminUi.statuses;
@@ -193,6 +195,10 @@ export default function AdminOrderTransitionControls({
     };
 
     if (availableTransitions.length === 0) {
+        if (variant === 'bar') {
+            return null;
+        }
+
         return (
             <div className="rounded-lg border border-border bg-card p-4 text-card-foreground">
                 <h3 className="text-sm font-semibold text-foreground">
@@ -205,23 +211,8 @@ export default function AdminOrderTransitionControls({
         );
     }
 
-    return (
-        <section
-            aria-labelledby="transition-controls-heading"
-            className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs"
-        >
-            <div className="flex flex-col gap-1">
-                <h3
-                    className="text-base font-semibold text-foreground"
-                    id="transition-controls-heading"
-                >
-                    {copy.transitionsTitle}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                    {copy.transitionsDescription}
-                </p>
-            </div>
-
+    const controlsContent = (
+        <>
             <div aria-atomic="true" aria-live="polite" className="empty:hidden">
                 {feedback ? (
                     <Alert
@@ -252,7 +243,11 @@ export default function AdminOrderTransitionControls({
             <div className="flex flex-col gap-2">
                 <Label
                     className="text-xs font-semibold text-foreground"
-                    htmlFor="admin-order-next-status"
+                    htmlFor={
+                        variant === 'bar'
+                            ? 'admin-order-next-status-bar'
+                            : 'admin-order-next-status'
+                    }
                 >
                     Next status
                 </Label>
@@ -261,7 +256,11 @@ export default function AdminOrderTransitionControls({
                         aria-label="Next status"
                         className="flex min-h-11 min-w-0 flex-1 items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50"
                         disabled={http.processing}
-                        id="admin-order-next-status"
+                        id={
+                            variant === 'bar'
+                                ? 'admin-order-next-status-bar'
+                                : 'admin-order-next-status'
+                        }
                         onChange={(e) => {
                             setFeedback(null);
                             setSelectedStatus(e.target.value);
@@ -341,6 +340,30 @@ export default function AdminOrderTransitionControls({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+        </>
+    );
+
+    if (variant === 'bar') {
+        return <div className="flex flex-col gap-3">{controlsContent}</div>;
+    }
+
+    return (
+        <section
+            aria-labelledby="transition-controls-heading"
+            className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs"
+        >
+            <div className="flex flex-col gap-1">
+                <h3
+                    className="text-base font-semibold text-foreground"
+                    id="transition-controls-heading"
+                >
+                    {copy.transitionsTitle}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                    {copy.transitionsDescription}
+                </p>
+            </div>
+            {controlsContent}
         </section>
     );
 }

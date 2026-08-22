@@ -15,6 +15,7 @@ return [
         'security' => 'MFA Security',
         'open' => 'Open Admin navigation',
         'close' => 'Close Admin navigation',
+        'quick' => 'quick navigation',
     ],
     'overview' => [
         'headTitle' => 'Operational overview',
@@ -65,6 +66,9 @@ return [
         'searchPlaceholder' => 'Search by order #, public ID, email, or phone…',
         'searchLabel' => 'Search orders',
         'searchButton' => 'Search',
+        'filters' => 'Filters',
+        'apply' => 'Apply',
+        'clearAll' => 'Clear all',
         'allStatuses' => 'All statuses',
         'allServices' => 'All services',
         'allPlatforms' => 'All platforms',
