@@ -48,6 +48,15 @@ export function AccountMobileBottomNav({
     const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
     useEffect(() => {
+        const closeTimer = { current: undefined as number | undefined };
+
+        function clearPendingClose() {
+            if (closeTimer.current !== undefined) {
+                window.clearTimeout(closeTimer.current);
+                closeTimer.current = undefined;
+            }
+        }
+
         const handleFocusIn = (event: FocusEvent) => {
             const target = event.target as HTMLElement | null;
 
@@ -57,18 +66,35 @@ export function AccountMobileBottomNav({
                     target.tagName === 'TEXTAREA' ||
                     target.tagName === 'SELECT')
             ) {
+                clearPendingClose();
                 setIsKeyboardOpen(true);
             }
         };
 
-        const handleFocusOut = () => {
-            setIsKeyboardOpen(false);
+        const handleFocusOut = (event: FocusEvent) => {
+            const target = event.target as HTMLElement | null;
+
+            if (
+                !target ||
+                (target.tagName !== 'INPUT' &&
+                    target.tagName !== 'TEXTAREA' &&
+                    target.tagName !== 'SELECT')
+            ) {
+                return;
+            }
+
+            clearPendingClose();
+            closeTimer.current = window.setTimeout(() => {
+                closeTimer.current = undefined;
+                setIsKeyboardOpen(false);
+            }, 120);
         };
 
         window.addEventListener('focusin', handleFocusIn);
         window.addEventListener('focusout', handleFocusOut);
 
         return () => {
+            clearPendingClose();
             window.removeEventListener('focusin', handleFocusIn);
             window.removeEventListener('focusout', handleFocusOut);
         };

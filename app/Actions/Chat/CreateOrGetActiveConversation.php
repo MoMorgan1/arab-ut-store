@@ -4,6 +4,7 @@ namespace App\Actions\Chat;
 
 use App\Enums\Chat\ChatConversationStatus;
 use App\Models\ChatConversation;
+use App\Models\ChatMessage;
 use App\ValueObjects\Chat\ChatOwner;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -50,7 +51,7 @@ final readonly class CreateOrGetActiveConversation
                 ->forOwner($owner)->open()->where('public_id', $sessionPointer)->lockForUpdate()->first();
 
             if ($pointedConversation instanceof ChatConversation) {
-                return $pointedConversation;
+                return $this->syncLocale($pointedConversation, $locale);
             }
         }
 
@@ -58,7 +59,7 @@ final readonly class CreateOrGetActiveConversation
             ->forOwner($owner)->open()->orderByDesc('last_message_at')->orderByDesc('id')->lockForUpdate()->first();
 
         if ($activeConversation instanceof ChatConversation) {
-            return $activeConversation;
+            return $this->syncLocale($activeConversation, $locale);
         }
 
         $reopenAfter = now()->subDays(max(0, (int) config('chat.reopen_within_days', 7)));
@@ -78,10 +79,38 @@ final readonly class CreateOrGetActiveConversation
                 'close_reason' => null,
             ])->save();
 
-            return $inactiveConversation;
+            return $this->syncLocale($inactiveConversation, $locale);
         }
 
         return $this->createChatConversation->execute($owner, $locale);
+    }
+
+    private function syncLocale(ChatConversation $conversation, string $locale): ChatConversation
+    {
+        if ($conversation->locale !== $locale) {
+            $conversation->forceFill(['locale' => $locale])->save();
+
+            $seedMessage = $conversation
+                ->messages()
+                ->where('sender_type', 'system')
+                ->orderBy('id')
+                ->first();
+
+            if ($seedMessage instanceof ChatMessage) {
+                $knownSeeds = [
+                    CreateChatConversation::seedContent('en'),
+                    CreateChatConversation::seedContent('ar'),
+                ];
+
+                if (in_array($seedMessage->content, $knownSeeds, true)) {
+                    $seedMessage->forceFill([
+                        'content' => CreateChatConversation::seedContent($locale),
+                    ])->save();
+                }
+            }
+        }
+
+        return $conversation;
     }
 
     private function isActiveOwnerUniqueViolation(QueryException $failure): bool

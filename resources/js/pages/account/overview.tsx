@@ -217,6 +217,7 @@ export default function AccountOverview() {
                             <strong>{props.loyalty.progressPercent}%</strong>
                         </div>
                         <div
+                            aria-label={props.accountUi.overview.loyalty}
                             aria-valuemax={100}
                             aria-valuemin={0}
                             aria-valuenow={props.loyalty.progressPercent}

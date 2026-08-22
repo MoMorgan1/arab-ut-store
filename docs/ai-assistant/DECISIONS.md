@@ -1,7 +1,45 @@
 # Decision record
 
 **Lifecycle:** Implemented record
-**Verified:** 2026-08-21
+**Verified:** 2026-08-22
+
+## 2026-08-22 — Direct Luna rollout replaces the staged fake gate
+
+Mohamed directed Phase 2 to skip the production fake-provider gate entirely
+("start directly with luna no fake") and chose **public rollout**: every
+visitor, including guests, reaches Luna at go-live ("do not exclude to me
+only no need for my id"). Accepted consequences: the first production
+streaming proof happens with a live key and real spend, and disconnect/
+reload recovery is proven under Luna instead of the fake provider.
+Mitigations that remain mandatory: the owner sets the OpenAI project spend
+ceiling before any key entry; existing turn/IP rate limits stay; the kill
+switch stays; Task 11 evaluation thresholds still gate acceptance; the key
+still enters only Hostinger's shared `.env` after the deployed-SHA
+`agent:inspect-streaming-http` outbound-handler check passes. The Task 9
+fake-gate stop is superseded by this decision; Task 12 documentation must
+record the deviation.
+
+## 2026-08-21 — Phase 2 started with lead-debate amendments
+
+Mohamed approved starting Phase 2 implementation and accepted the amendments
+from the orchestrator-versus-Sol architecture debate: output budget raised to
+1000 tokens; total request deadline lowered to 30 seconds; stale sweep lowered
+to 60 seconds and required to exceed the deadline by at least 15 seconds;
+disconnect/reload `finally` finalization is the primary recovery with the
+minute sweeper as process-death backstop; credential guarding requires
+label-plus-nearby-value context, Luhn only near card terminology, and no
+eight-digit-group heuristic; prior assistant context that trips the guard is
+excluded from prompts instead of blocking the current claim; terminal fallback
+fails a nonterminal run and its turn atomically; eval latency thresholds are
+stated as maxima. Public rollout remains unapproved.
+
+## 2026-08-21 — Mohamed accepted Phase 1
+
+Mohamed accepted the deployed Phase 1 release after the recurring hPanel
+scheduler evidence and his real-account/physical iPhone/Safari review passed.
+The accepted release remains
+`d77385a44e7ac1413aab419f79d38fc2040be650`; acceptance does not erase the
+limited `AI-B04`, `AI-B09`, or `AI-F04` findings recorded in [AUDIT.md](AUDIT.md).
 
 ## 2026-08-20 — Close/reopen/restart lifecycle
 
@@ -38,16 +76,17 @@ The account chat root is above the mobile navigation with safe-area spacing.
 Chromium regression coverage uses one synthetic local account across the exact
 seven-test suite. The account scenario covers 320/390 mobile modal and
 768/1440 anchored nonmodal behavior in Arabic and English, including emulated
-safe area; it does not create production users. Mohamed retains final physical
-iPhone/Safari and real-account acceptance.
+safe area; it does not create production users. Mohamed completed the separate
+physical iPhone/Safari and real-account acceptance on 2026-08-21.
 
-## 2026-08-21 — Hostinger scheduling is an external acceptance gate
+## 2026-08-21 — Hostinger recurring scheduling is verified
 
-The Laravel hourly schedule is implemented, but recurring `schedule:run`
-execution is not verified. The SSH account has no `crontab` command and this
-task has no hPanel/API credentials, so no local scheduler or inferred evidence
-is substituted. An authorized operator must configure and verify the exact
-hPanel Cron Jobs entry documented in [OPERATIONS.md](OPERATIONS.md).
+Owner-provided hPanel evidence shows the documented command at the manual
+`* * * * *` schedule and successful `orders:publish-paid-events` output at
+`2026-08-21 10:14:01`. A subsequent read-only `schedule:list` on the active
+release confirmed the minute publisher and hourly chat maintenance event. The
+external scheduler gate is complete; local cron inference was not substituted
+for the owner evidence.
 
 ## 2026-08-20 — Session boundary remains unchanged
 
@@ -57,11 +96,55 @@ session. No session configuration change is made: it can invalidate active
 sessions, and nonproduction defaults are not inferred from production. `AI-B09`
 remains open pending an owner security decision.
 
-## 2026-08-20 — Phase 2 stays behind acceptance
+## 2026-08-21 — Phase 2 plan is proposed, not implemented
 
-No provider runtime, model, prompt, RAG, tool, streaming transport, operator
-inbox, or Phase 2 plan starts with this release. Phase 1 owner acceptance is a
-prerequisite.
+Phase 1 acceptance now permits planning, not implementation. The executable
+Phase 2 runtime plan is proposed and awaits Mohamed's explicit approval. Its
+proposed operational defaults are:
+
+- direct authenticated POST streaming with no debounce queue worker;
+- provider-neutral `AgentModel`, direct OpenAI Responses adapter, model
+  `gpt-5.6-luna`, `store: false`, streamed required-event mapping, 500 total
+  output tokens, `low` reasoning, and `support-v1`;
+- immutable nullable message eligibility/block timestamps: legacy/demo/old
+  unreplied rows remain ineligible; claims use only eligible, unblocked,
+  unreplied customers; prior assistant context is completed-agent-only;
+- at most 24 claimed messages, one nonterminal turn per conversation,
+  conversation -> turn -> run locks, and no lock during provider I/O;
+- six turn starts per owner/minute, 20/IP/minute, three attempts, one bounded
+  automatic 429 retry, a two-second automatic wait cap, and 120-second stale
+  recovery from the verified minute scheduler;
+- automatic 429 fails the run but keeps the turn nonterminal waiting, sleeps
+  outside locks, exposes no explicit retry, and terminalizes timeout if the
+  shared deadline expires during the wait;
+- fail-closed disabled/rollout/provider defaults; fake and OpenAI providers;
+  disabled, authenticated-tester, and public configuration values, with public
+  neither enabled nor approved;
+- a production fake authenticated-tester gate with exactly three localized
+  350ms deltas, observable incremental delivery, and disconnect/reload durable
+  recovery; failure stops OpenAI work;
+- a server-derived pending-after-terminal boolean: at default limit 24, 25 rows
+  drain as 24 + 1/two starts; nondefault validated limits drain in configured
+  chunks, including reload/poll recovery;
+- validated config consumers, typed retry policy, lazy provider resolution
+  after the sensitive guard, and a 45-second monotonic deadline covering
+  connect/headers/body/parser/automatic wait/retry with bounded per-read time;
+- explicit Guzzle `StreamHandler` tested on loopback and gated on production
+  web-PHP `allow_url_fopen`/HTTP(S) wrappers before key entry; Luna's first
+  delta is final proof;
+- one final assistant message of at most 4000 Unicode characters, content-free
+  run records, conversation-cascaded 30/180-day retention, and versioned Luna
+  input/cached/cache-write/output cost categories without double-charging
+  reasoning tokens;
+- a 64-character in-memory HMAC safety identifier and a real project key only
+  in Hostinger shared `.env` after the fake gate;
+- authenticated-tester Luna acceptance only. Public rollout requires a new
+  explicit owner decision.
+
+None of these proposed runtime/schema/config/interface names or behaviors
+exists in the application yet. Mohamed must also approve the proposed eval
+thresholds, and he must set a secure OpenAI project spend ceiling before real
+Luna testing.
 
 Historical plans do not override [STATUS.md](STATUS.md), this record, current
 source, or a newer explicit owner decision.

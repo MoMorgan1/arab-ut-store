@@ -15,6 +15,12 @@ final class CoinsPriceCalculator
 
     private const HALALAH_PER_SAR = 100;
 
+    /**
+     * Display prices are quoted at a 0.1-SAR grain so nearby quantities stay
+     * distinguishable instead of collapsing onto the same whole-riyal price.
+     */
+    private const DISPLAY_GRAIN_HALALAH = 10;
+
     public function calculate(
         CoinsPricingRule $rule,
         int $quantity,
@@ -66,35 +72,43 @@ final class CoinsPriceCalculator
             self::COINS_PER_MILLION,
             $rule->discountDivisorBasisPoints,
         );
-        $sarDenominator = $this->safeMultiply($halalahDenominator, self::HALALAH_PER_SAR);
-        $roundedSar = max($this->roundRatio($rawNumerator, $sarDenominator), 1);
+        $exactHalalah = $this->roundRatio($rawNumerator, $halalahDenominator);
+        $roundedHalalah = max(
+            $this->roundToDisplayGrain($exactHalalah),
+            self::HALALAH_PER_SAR,
+        );
 
-        return Money::fromHalalah($this->safeMultiply($roundedSar, self::HALALAH_PER_SAR));
+        return Money::fromHalalah($roundedHalalah);
     }
 
     private function percentageFloor(Money $normal): int
     {
-        $normalSar = intdiv($normal->halalah(), self::HALALAH_PER_SAR);
-        $roundedSar = $this->roundRatio($this->safeMultiply($normalSar, 105), 100);
+        $normalGrain = intdiv($normal->halalah(), self::DISPLAY_GRAIN_HALALAH);
+        $roundedGrain = $this->roundRatio($this->safeMultiply($normalGrain, 105), 100);
 
-        return $this->safeMultiply($roundedSar, self::HALALAH_PER_SAR);
+        return $this->safeMultiply($roundedGrain, self::DISPLAY_GRAIN_HALALAH);
     }
 
     private function perMillionFloor(Money $normal, int $quantity): int
     {
-        $normalSar = intdiv($normal->halalah(), self::HALALAH_PER_SAR);
         $numerator = $this->safeAdd(
-            $this->safeMultiply($normalSar, self::COINS_PER_MILLION),
-            $this->safeMultiply($quantity, 5),
+            $this->safeMultiply($normal->halalah(), self::COINS_PER_MILLION),
+            $this->safeMultiply($quantity, 500),
         );
-        $roundedSar = $this->roundRatio($numerator, self::COINS_PER_MILLION);
+        $exactHalalah = $this->roundRatio($numerator, self::COINS_PER_MILLION);
 
-        return $this->safeMultiply($roundedSar, self::HALALAH_PER_SAR);
+        return $this->roundToDisplayGrain($exactHalalah);
     }
 
     private function addVisibleSar(Money $normal): int
     {
         return $this->safeAdd($normal->halalah(), self::HALALAH_PER_SAR);
+    }
+
+    private function roundToDisplayGrain(int $halalah): int
+    {
+        return $this->roundRatio($halalah, self::DISPLAY_GRAIN_HALALAH)
+            * self::DISPLAY_GRAIN_HALALAH;
     }
 
     private function roundRatio(int $numerator, int $denominator): int

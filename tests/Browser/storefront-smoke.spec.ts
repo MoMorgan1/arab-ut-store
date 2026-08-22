@@ -538,6 +538,52 @@ for (const { path, language, direction, heading } of [
     });
 }
 
+test('desktop login uses the annotated compact credential rhythm', async ({
+    page,
+}) => {
+    // Regression: 2026-08-22 browser annotations require 40px and 71px rows.
+    await page.setViewportSize({ width: 916, height: 912 });
+    await page.goto('/login');
+
+    const emailInput = page.getByLabel('البريد الإلكتروني');
+    const passwordInput = page.getByLabel('كلمة المرور', { exact: true });
+    const emailField = page.locator('.auth-form__field').filter({
+        has: emailInput,
+    });
+    const passwordField = page.locator('.auth-form__field').filter({
+        has: passwordInput,
+    });
+
+    await expect(emailInput).toBeVisible();
+    await expect(passwordInput).toBeVisible();
+    await expect(
+        emailField.getByText('البريد الإلكتروني', { exact: true }),
+    ).toBeVisible();
+    await expect(emailField).toHaveCSS('height', '40px');
+    const passwordFieldHeight = await passwordField.evaluate(
+        (element) => element.getBoundingClientRect().height,
+    );
+    expect(passwordFieldHeight).toBeCloseTo(71, 0);
+});
+
+test('mobile login keeps credential controls touch sized', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/login');
+
+    const emailInput = page.getByLabel('البريد الإلكتروني');
+    const passwordInput = page.getByLabel('كلمة المرور', { exact: true });
+    const forgotPassword = page.getByRole('link', {
+        name: 'نسيت كلمة المرور؟',
+    });
+
+    await expect(emailInput).toHaveCSS('height', '44px');
+    await expect(passwordInput).toHaveCSS('height', '44px');
+    const forgotPasswordHeight = await forgotPassword.evaluate(
+        (element) => element.getBoundingClientRect().height,
+    );
+    expect(forgotPasswordHeight).toBeGreaterThanOrEqual(44);
+});
+
 test('mobile home opens and closes chat without overflow', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const expectCleanRuntime = observeRuntime(page);

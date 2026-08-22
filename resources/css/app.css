@@ -373,6 +373,8 @@ html.admin-document {
     }
 
     .auth-shell__form-card {
+        --auth-form-surface: rgb(28 24 20);
+
         display: flex;
         flex-direction: column;
         gap: clamp(1.5rem, 3vw, 2rem);
@@ -409,7 +411,7 @@ html.admin-document {
     }
 
     .auth-form {
-        gap: 1.5rem;
+        gap: 1rem;
     }
 
     .password-input__toggle {
@@ -534,36 +536,64 @@ html.admin-document {
 
     .auth-social-login {
         display: grid;
-        gap: 0.75rem;
-        margin-top: 1rem;
+        gap: 0.85rem;
+    }
+
+    .auth-social-login__divider {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
         color: var(--arabut-muted);
-        text-align: center;
+        font-size: 0.8125rem;
+    }
+
+    .auth-social-login__divider::before,
+    .auth-social-login__divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(
+            to right,
+            transparent,
+            rgb(237 228 208 / 22%),
+            transparent
+        );
     }
 
     .auth-google-action {
-        display: inline-flex;
-        min-height: 2.75rem;
+        display: flex;
+        width: 100%;
+        min-height: 2.875rem;
         align-items: center;
         justify-content: center;
-        gap: 0.65rem;
-        border: 1px solid rgb(237 228 208 / 24%);
+        gap: 0.7rem;
+        border: 1px solid rgb(237 228 208 / 22%);
         border-radius: 0.625rem;
-        background: rgb(255 255 255 / 5%);
+        background: rgb(255 255 255 / 6%);
+        padding-block: 0.55rem;
         padding-inline: 1rem;
         color: var(--arabut-ink);
         font-weight: 700;
-        transition: 180ms var(--store-ease-out);
+        transition:
+            border-color 180ms var(--store-ease-out),
+            background-color 180ms var(--store-ease-out),
+            box-shadow 180ms var(--store-ease-out);
     }
 
     .auth-google-action:hover {
         border-color: rgb(212 168 67 / 55%);
-        background: rgb(212 168 67 / 9%);
+        background: rgb(212 168 67 / 10%);
+        box-shadow: 0 6px 18px -8px rgb(212 168 67 / 35%);
+    }
+
+    .auth-google-action:active {
+        background: rgb(212 168 67 / 14%);
     }
 
     .auth-google-action svg {
-        width: 1.2rem;
-        height: 1.2rem;
-        color: var(--arabut-gold-bright);
+        width: 1.15rem;
+        height: 1.15rem;
+        flex: 0 0 auto;
     }
 
     .auth-shell [data-slot='label'] {
@@ -574,13 +604,18 @@ html.admin-document {
     }
 
     .auth-shell [data-slot='input'] {
-        min-height: 2.75rem;
+        min-height: 2.5rem;
         border-color: rgb(237 228 208 / 20%);
         border-radius: 0.625rem;
         background: rgb(8 7 5 / 76%);
         color: var(--arabut-ink);
         font-size: 1rem;
         box-shadow: inset 0 1px rgb(255 255 255 / 2%);
+    }
+
+    .auth-shell .auth-form__control {
+        height: 2.75rem;
+        min-height: 2.75rem;
     }
 
     .auth-shell [data-slot='input'][type='email'],
@@ -597,7 +632,10 @@ html.admin-document {
     }
 
     .auth-shell .auth-form__submit {
-        min-height: 2.75rem;
+        min-height: 2.5rem;
+        /* Bind the primary action to the credential fields above it
+           (net 0.75rem against the form's 1rem row rhythm). */
+        margin-block-start: -0.25rem;
         border: 1px solid rgb(255 229 156 / 34%);
         border-radius: 0.625rem;
         background: var(--arabut-gold-bright);
@@ -796,6 +834,45 @@ html.admin-document {
         .auth-shell__grid:not(.auth-shell__grid--focused)
             .auth-shell__benefits {
             order: 2;
+        }
+    }
+
+    @media (min-width: 48.0625rem) and (pointer: fine) {
+        .auth-shell .auth-form__control {
+            height: 2.5rem;
+            min-height: 2.5rem;
+        }
+
+        .auth-form__field--floating {
+            position: relative;
+            display: block;
+        }
+
+        .auth-shell .auth-form__floating-label {
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline-start: 0.75rem;
+            z-index: 1;
+            padding-inline: 0.25rem;
+            transform: translateY(-50%);
+            background: var(--auth-form-surface);
+            font-size: 0.8125rem;
+            line-height: 1rem;
+        }
+
+        .auth-form__field--floating > [role='alert'] {
+            margin-block-start: 0.5rem;
+        }
+
+        .auth-form__field-heading {
+            min-height: 1.4375rem;
+        }
+
+        .auth-form__field-heading [data-slot='label'],
+        .auth-form__field-action {
+            /* 23px heading + 8px gap + 40px control matches the annotated row. */
+            min-height: 0;
+            line-height: 1.4375rem;
         }
     }
 
@@ -5569,6 +5646,59 @@ html.admin-document {
     font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
     font-size: 0.9rem;
     line-height: 1.6;
+}
+
+.account-order-fulfillment__value-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.account-order-fulfillment__value-row > bdi {
+    margin-block-start: 0;
+}
+
+.account-order-fulfillment__copy {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.35rem;
+    border: 1px solid rgb(212 168 67 / 28%);
+    border-radius: 0.6rem;
+    background: rgb(212 168 67 / 7%);
+    padding: 0.4rem 0.8rem;
+    color: var(--arabut-gold-bright);
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.account-order-fulfillment__copy svg {
+    width: 0.95rem;
+    height: 0.95rem;
+}
+
+.account-order-fulfillment__codes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    margin-block-start: 0.35rem;
+}
+
+.account-order-fulfillment__credentials .account-order-fulfillment__code {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border: 1px solid rgb(255 255 255 / 10%);
+    border-radius: 0.55rem;
+    background: rgb(255 255 255 / 4%);
+    padding-block: 0.25rem;
+    padding-inline: 0.55rem 0.3rem;
+}
+
+.account-order-fulfillment__code bdi {
+    margin-block-start: 0;
 }
 
 .account-order-fulfillment figure {
@@ -11003,6 +11133,25 @@ html.admin-document {
     }
 }
 
+/* Restart tooltip: hover previews; only keyboard focus keeps it visible,
+   so a mouse click on the button never leaves it stuck behind the panel. */
+.chat-restart-tooltip {
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 150ms;
+}
+
+.chat-restart-group:hover .chat-restart-tooltip,
+.chat-restart-button:focus-visible ~ .chat-restart-tooltip {
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chat-restart-tooltip {
+        transition: none;
+    }
+}
+
 @supports not (
     (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
 ) {
@@ -11072,5 +11221,16 @@ html.admin-document {
 
     .account-overview__metrics {
         grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+[data-stream-status='streaming'] {
+    border-color: rgba(212, 168, 67, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-stream-status='streaming'] {
+        animation: none !important;
+        transition: none !important;
     }
 }

@@ -59,6 +59,13 @@ export default function AccountOrders() {
                         </span>
                         <h2>{props.accountUi.orders.empty_title}</h2>
                         <p>{props.accountUi.orders.empty_description}</p>
+                        <Link
+                            className="account-overview__empty-cta"
+                            href={props.storeShell.coinsUrl}
+                        >
+                            {props.accountUi.overview.browse_services}
+                            <Arrow aria-hidden="true" />
+                        </Link>
                     </section>
                 ) : (
                     <section

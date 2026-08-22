@@ -156,6 +156,8 @@ export type AccountTranslations = {
         refresh_status: string;
         refreshing: string;
         back: string;
+        copy: string;
+        copied: string;
     };
     wallet: {
         title: string;

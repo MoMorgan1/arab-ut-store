@@ -74,7 +74,10 @@ export function RivalsConfigurator({
     const price =
         amount === null
             ? null
-            : { amountMinor: amount, currency: 'SAR' as const };
+            : {
+                  amountMinor: amount,
+                  currency: pricing.stepOptions[0]?.price.currency ?? 'SAR',
+              };
     const formattedPrice =
         price === null
             ? ''

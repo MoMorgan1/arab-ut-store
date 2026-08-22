@@ -2,6 +2,7 @@
 
 namespace App\Http\Responses;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -37,13 +38,22 @@ final class ChatErrorResponse
         return $response;
     }
 
-    /** @param array<string, list<string>> $headers */
-    private function error(string $code, string $message, int $status, array $headers = []): Response
+    public function agentUnavailable(): JsonResponse
     {
+        return $this->error('agent_unavailable', 'unavailable', 404);
+    }
+
+    /** @param array<string, list<string>> $headers */
+    public function error(string $code, string $message, int $status, array $headers = []): JsonResponse
+    {
+        $resolvedMessage = str_starts_with($message, 'chat.')
+            ? trans($message)
+            : (trans("chat.{$message}") !== "chat.{$message}" ? trans("chat.{$message}") : $message);
+
         return response()->json([
             'error' => [
                 'code' => $code,
-                'message' => trans("chat.{$message}"),
+                'message' => $resolvedMessage,
                 'details' => (object) [],
             ],
         ], $status, $headers)->header('Cache-Control', 'no-store, private');

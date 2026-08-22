@@ -189,10 +189,10 @@ describe('quoteCoins response contract', () => {
             },
         ],
         [
-            'whole-SAR amount',
+            'off the 0.1-SAR display grain',
             {
                 ...validPcQuote,
-                total: { amountHalalah: 650, currency: 'SAR' },
+                total: { amountHalalah: 655, currency: 'SAR' },
             },
         ],
         ['product ULID', { ...validPcQuote, productId: 'not-a-ulid' }],

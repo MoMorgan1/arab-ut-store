@@ -14,6 +14,8 @@ class ChatMessage extends DomainModel
         'sender_type' => ChatSenderType::class,
         'message_type' => ChatMessageType::class,
         'metadata' => 'array',
+        'agent_eligible_at' => 'datetime',
+        'agent_prompt_blocked_at' => 'datetime',
     ];
 
     /** @return BelongsTo<ChatConversation, $this> */
@@ -32,5 +34,11 @@ class ChatMessage extends DomainModel
     public function reply(): HasOne
     {
         return $this->hasOne(self::class, 'reply_to_message_id');
+    }
+
+    /** @return HasOne<AgentTurn, $this> */
+    public function completedAgentTurn(): HasOne
+    {
+        return $this->hasOne(AgentTurn::class, 'assistant_message_id');
     }
 }

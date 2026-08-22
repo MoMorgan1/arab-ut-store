@@ -2,6 +2,7 @@
 
 namespace App\Http\Presenters;
 
+use App\Enums\AI\AssistantMode;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use Illuminate\Support\Collection;
@@ -10,11 +11,14 @@ final class ChatPresenter
 {
     /**
      * @param  Collection<int, ChatMessage>  $messages
+     * @param  array<string, mixed>|null  $latestTurnState
      * @return array<string, mixed>
      */
     public function conversation(
         ChatConversation $conversation,
         Collection $messages,
+        AssistantMode $assistantMode,
+        ?array $latestTurnState = null,
         bool $hasMore = false,
         ?string $oldestCursor = null,
     ): array {
@@ -24,7 +28,9 @@ final class ChatPresenter
             'locale' => $conversation->locale,
             'subject' => $conversation->subject,
             'lastMessageAt' => $conversation->last_message_at?->toIso8601String(),
+            'assistantMode' => $assistantMode->value,
             'messages' => $messages->map(fn (ChatMessage $message) => $this->message($message, $conversation->public_id))->values()->all(),
+            'latestTurn' => $latestTurnState,
             'hasMore' => $hasMore,
             'oldestCursor' => $oldestCursor,
         ];

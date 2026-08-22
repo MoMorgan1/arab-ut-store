@@ -5,10 +5,11 @@ import {
     CalendarDays,
     CheckCircle2,
     ChevronDown,
+    Copy,
     RefreshCw,
     ShieldCheck,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import MyAccountLayout from '@/layouts/my-account-layout';
 import { formatAccountMoney } from '@/lib/account-money';
@@ -83,7 +84,7 @@ export default function AccountLiveOrder() {
     return (
         <MyAccountLayout {...props} current="orders" currentUrl={page.url}>
             <Head
-                title={`${props.accountUi.orders.title} ${props.order.number}`}
+                title={`${props.accountUi.orders.title} · ${props.order.number}`}
             />
             <div className="account-live-order">
                 <Link className="account-live-order__back" href={ordersUrl}>
@@ -116,7 +117,7 @@ export default function AccountLiveOrder() {
                 </header>
 
                 <div className="account-live-order__statusbar">
-                    <div>
+                    <div aria-live="polite">
                         <span>{props.accountUi.orders.status}</span>
                         <strong>
                             {props.accountUi.statuses[props.order.status]}
@@ -390,16 +391,19 @@ function CredentialsValues({
     translations: OrderTranslations;
 }) {
     const eaCodes = credentials.eaBackupCodes;
+    const copyLabels = { copied: translations.copied, copy: translations.copy };
 
     return (
         <div className="account-order-fulfillment__credentials" dir="ltr">
             {credentials.platform === 'playstation' ? (
                 <>
                     <CredentialFact
+                        copyLabels={copyLabels}
                         label={translations.playstation_email}
                         value={credentials.playstationEmail}
                     />
                     <CredentialFact
+                        copyLabels={copyLabels}
                         label={translations.playstation_password}
                         value={credentials.playstationPassword}
                     />
@@ -407,20 +411,24 @@ function CredentialsValues({
             ) : (
                 <>
                     <CredentialFact
+                        copyLabels={copyLabels}
                         label={translations.ea_email}
                         value={credentials.eaEmail}
                     />
                     <CredentialFact
+                        copyLabels={copyLabels}
                         label={translations.ea_password}
                         value={credentials.eaPassword}
                     />
                     {credentials.pcStore === 'steam' ? (
                         <>
                             <CredentialFact
+                                copyLabels={copyLabels}
                                 label={translations.steam_username}
                                 value={credentials.steamUsername ?? ''}
                             />
                             <CredentialFact
+                                copyLabels={copyLabels}
                                 label={translations.steam_password}
                                 value={credentials.steamPassword ?? ''}
                             />
@@ -428,9 +436,14 @@ function CredentialsValues({
                     ) : null}
                 </>
             )}
-            <CodesFact label={translations.ea_codes} values={eaCodes} />
+            <CodesFact
+                copyLabels={copyLabels}
+                label={translations.ea_codes}
+                values={eaCodes}
+            />
             {credentials.platform === 'playstation' ? (
                 <CodesFact
+                    copyLabels={copyLabels}
                     label={translations.playstation_codes}
                     values={credentials.playstationBackupCodes}
                 />
@@ -439,26 +452,104 @@ function CredentialsValues({
     );
 }
 
-function CredentialFact({ label, value }: { label: string; value: string }) {
+type CopyLabels = { copied: string; copy: string };
+
+function CopyButton({
+    ariaLabel,
+    labels,
+    value,
+}: {
+    ariaLabel: string;
+    labels: CopyLabels;
+    value: string;
+}) {
+    const [copied, setCopied] = useState(false);
+
+    useEffect(() => {
+        if (!copied) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => setCopied(false), 2000);
+
+        return () => window.clearTimeout(timer);
+    }, [copied]);
+
+    function copy() {
+        if (typeof navigator.clipboard?.writeText !== 'function') {
+            return;
+        }
+
+        navigator.clipboard
+            .writeText(value)
+            .then(() => setCopied(true))
+            .catch(() => {});
+    }
+
+    return (
+        <button
+            aria-label={`${ariaLabel} — ${copied ? labels.copied : labels.copy}`}
+            className="account-order-fulfillment__copy"
+            onClick={copy}
+            type="button"
+        >
+            <Copy aria-hidden="true" />
+            {copied ? labels.copied : labels.copy}
+        </button>
+    );
+}
+
+function CredentialFact({
+    copyLabels,
+    label,
+    value,
+}: {
+    copyLabels: CopyLabels;
+    label: string;
+    value: string;
+}) {
     return (
         <div>
             <span>{label}</span>
-            <bdi>{value}</bdi>
+            <div className="account-order-fulfillment__value-row">
+                <bdi>{value}</bdi>
+                <CopyButton
+                    ariaLabel={label}
+                    labels={copyLabels}
+                    value={value}
+                />
+            </div>
         </div>
     );
 }
 
 function CodesFact({
+    copyLabels,
     label,
     values,
 }: {
+    copyLabels: CopyLabels;
     label: string;
     values: [string, string, string];
 }) {
     return (
         <div>
             <span>{label}</span>
-            <bdi>{values.join(' · ')}</bdi>
+            <div className="account-order-fulfillment__codes">
+                {values.map((code, index) => (
+                    <span
+                        className="account-order-fulfillment__code"
+                        key={`${index}-${code}`}
+                    >
+                        <bdi>{code}</bdi>
+                        <CopyButton
+                            ariaLabel={label}
+                            labels={copyLabels}
+                            value={code}
+                        />
+                    </span>
+                ))}
+            </div>
         </div>
     );
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Store;
 
+use App\Actions\Pricing\ConvertDisplayMoney;
 use App\Actions\Pricing\ReadManualServicePricing;
 use App\Enums\Platform;
 use App\Enums\ProductAuthority;
@@ -10,7 +11,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ServicePriceSchedule;
+use App\Support\Money;
 use App\ValueObjects\Pricing\FutChampionsPricing;
+use App\ValueObjects\Pricing\PreparedDisplayMoneyConverter;
 use App\ValueObjects\Pricing\RivalsPricing;
 use DomainException;
 use Illuminate\Http\Request;
@@ -24,8 +27,11 @@ final class ManualServiceProductController extends Controller
 
     private const PLAYSTATION_TUTORIAL = 'https://youtu.be/fCAKsusuHR8?si=cYzL6fwszL4ExwPK';
 
-    public function __invoke(Request $request, ReadManualServicePricing $readPricing): Response
-    {
+    public function __invoke(
+        Request $request,
+        ReadManualServicePricing $readPricing,
+        ConvertDisplayMoney $convertDisplayMoney,
+    ): Response {
         $service = ServiceType::from((string) $request->route('service'));
         abort_unless(in_array($service, [ServiceType::FutChampions, ServiceType::Rivals], true), 404);
 
@@ -47,6 +53,16 @@ final class ManualServiceProductController extends Controller
             && $product->is_visible
             && $product->archived_at === null
             && $product->variants->where('is_active', true)->count() === 2;
+
+        try {
+            $displayConverter = $this->displayConverter($request, $convertDisplayMoney);
+            $pricingPayload = $active && $displayConverter !== null
+                ? $this->publicPricing($pricing, $displayConverter)
+                : null;
+        } catch (DomainException) {
+            // The page stays reachable while pricing fails closed.
+            $pricingPayload = null;
+        }
 
         return Inertia::render('store/manual-service', [
             'backUrl' => $this->route($request, 'home').'#services',
@@ -71,9 +87,22 @@ final class ManualServiceProductController extends Controller
                     'playstation' => self::PLAYSTATION_TUTORIAL,
                 ],
                 'product' => $this->product($product, $service, $identity['slug']),
-                'pricing' => $active ? $this->publicPricing($pricing) : null,
+                'pricing' => $pricingPayload,
             ],
         ]);
+    }
+
+    private function displayConverter(
+        Request $request,
+        ConvertDisplayMoney $convertDisplayMoney,
+    ): ?PreparedDisplayMoneyConverter {
+        try {
+            return $convertDisplayMoney->prepare(
+                (string) $request->session()->get('display_currency'),
+            );
+        } catch (DomainException) {
+            return null;
+        }
     }
 
     /** @return array{0: ServicePriceSchedule|null, 1: FutChampionsPricing|RivalsPricing|null} */
@@ -94,16 +123,18 @@ final class ManualServiceProductController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function publicPricing(FutChampionsPricing|RivalsPricing $pricing): array
-    {
+    private function publicPricing(
+        FutChampionsPricing|RivalsPricing $pricing,
+        PreparedDisplayMoneyConverter $converter,
+    ): array {
         if ($pricing instanceof FutChampionsPricing) {
             return [
-                'currency' => 'SAR',
+                'currency' => $converter->currency,
                 'rankOptions' => array_map(fn (int $rank): array => [
                     'rank' => $rank,
-                    'price' => $this->money($pricing->priceForRank($rank, false)),
+                    'price' => $this->money($pricing->priceForRank($rank, false), $converter),
                 ], range(1, 6)),
-                'urgentSurcharge' => $this->money($pricing->urgentSurcharge()),
+                'urgentSurcharge' => $this->money($pricing->urgentSurcharge(), $converter),
             ];
         }
 
@@ -115,21 +146,21 @@ final class ManualServiceProductController extends Controller
             $steps[] = [
                 'from' => $from,
                 'to' => $to,
-                'price' => $this->money($pricing->priceForRoute($from, $to)),
+                'price' => $this->money($pricing->priceForRoute($from, $to), $converter),
             ];
         }
 
         return [
-            'currency' => 'SAR',
+            'currency' => $converter->currency,
             'ladder' => $ladder,
             'stepOptions' => $steps,
         ];
     }
 
     /** @return array{amountMinor: int, currency: string} */
-    private function money(int $amountMinor): array
+    private function money(int $amountMinor, PreparedDisplayMoneyConverter $converter): array
     {
-        return ['amountMinor' => $amountMinor, 'currency' => 'SAR'];
+        return $converter->convert(Money::fromHalalah($amountMinor));
     }
 
     /** @return array<string, mixed> */

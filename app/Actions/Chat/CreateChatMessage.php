@@ -2,6 +2,8 @@
 
 namespace App\Actions\Chat;
 
+use App\Actions\AI\ResolveAssistantMode;
+use App\Enums\AI\AssistantMode;
 use App\Enums\Chat\ChatConversationStatus;
 use App\Enums\Chat\ChatMessageType;
 use App\Enums\Chat\ChatSenderType;
@@ -14,6 +16,8 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 final readonly class CreateChatMessage
 {
+    public function __construct(private ResolveAssistantMode $resolveAssistantMode) {}
+
     /**
      * @return array{message: ChatMessage, demoReply: ?ChatMessage}
      */
@@ -42,18 +46,21 @@ final readonly class CreateChatMessage
                     ];
                 }
 
+                $assistantMode = $this->resolveAssistantMode->for($owner);
                 $customerMessage = $lockedConversation->messages()->create([
                     'client_message_id' => $clientMessageId,
                     'sender_type' => ChatSenderType::Customer,
                     'message_type' => ChatMessageType::Text,
                     'content' => $content,
+                    'agent_eligible_at' => $assistantMode === AssistantMode::Agent ? now() : null,
+                    'agent_prompt_blocked_at' => null,
                 ]);
 
                 $lockedConversation->update(['last_message_at' => now()]);
 
                 $demoReply = null;
 
-                if (config('chat.demo_assistant', false) === true) {
+                if ($assistantMode === AssistantMode::Demo) {
                     $demoReplyContent = $lockedConversation->locale === 'en'
                         ? 'Got your message 👍 This is the chat foundation demo. Smart replies and tools will be connected in later phases.'
                         : 'وصلتني رسالتك 👍 هذي نسخة تجريبية من الشات. قريبًا بنربط الردود الذكية والطلبات.';

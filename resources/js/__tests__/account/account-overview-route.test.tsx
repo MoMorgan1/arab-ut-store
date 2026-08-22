@@ -208,7 +208,7 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
     render(<AccountOverview />);
 
     expect(
-        screen.getByRole('heading', { level: 1, name: 'أهلًا، محمد' }),
+        screen.getByRole('heading', { level: 1, name: 'مرحبًا، محمد' }),
     ).toBeVisible();
     expect(
         screen.getAllByRole('navigation', { name: 'أقسام حسابي' })[0],
@@ -221,6 +221,9 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
     expect(screen.getByText('خدمة كوينز FC 27')).toBeVisible();
     expect(screen.getAllByText('رصيد المحفظة')[0]).toBeVisible();
     expect(screen.getByText('تقدم الولاء')).toBeVisible();
+    expect(
+        screen.getByRole('progressbar', { name: 'تقدم الولاء' }),
+    ).toBeVisible();
     expect(screen.getByText('90%')).toBeVisible();
 
     const recentOrders = screen.getByRole('region', { name: 'أحدث الطلبات' });

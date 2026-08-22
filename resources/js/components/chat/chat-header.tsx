@@ -55,7 +55,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             </div>
 
             <div className="flex flex-shrink-0 items-center gap-2">
-                <div className="group relative">
+                <div className="chat-restart-group group relative">
                     <button
                         type="button"
                         onClick={onRestart}
@@ -63,7 +63,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                         aria-busy={isRestarting}
                         aria-describedby={restartTooltipId}
                         aria-label={restartLabel}
-                        className="flex h-11 w-11 items-center justify-center rounded-xl text-[var(--arabut-muted)] transition-colors hover:bg-[var(--arabut-navy-active)] hover:text-[var(--arabut-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-45"
+                        className="chat-restart-button flex h-11 w-11 items-center justify-center rounded-xl text-[var(--arabut-muted)] transition-colors hover:bg-[var(--arabut-navy-active)] hover:text-[var(--arabut-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-45"
                     >
                         <MessageSquarePlus
                             aria-hidden="true"
@@ -77,7 +77,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     <span
                         id={restartTooltipId}
                         role="tooltip"
-                        className="pointer-events-none absolute end-0 top-full z-10 mt-2 w-max max-w-48 rounded-lg border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-2.5 py-1.5 text-xs text-[var(--arabut-ink)] opacity-0 shadow-lg transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
+                        className="chat-restart-tooltip pointer-events-none absolute end-0 top-full z-30 mt-2 w-max max-w-48 rounded-lg border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-2.5 py-1.5 text-xs text-[var(--arabut-ink)] shadow-lg"
                     >
                         {restartLabel}
                     </span>

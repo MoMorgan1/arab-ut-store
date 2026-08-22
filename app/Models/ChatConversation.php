@@ -99,4 +99,10 @@ class ChatConversation extends DomainModel
     {
         return $this->hasMany(ChatMessage::class, 'conversation_id')->orderBy('id', 'asc');
     }
+
+    /** @return HasMany<AgentTurn, $this> */
+    public function agentTurns(): HasMany
+    {
+        return $this->hasMany(AgentTurn::class, 'conversation_id')->orderBy('id', 'asc');
+    }
 }

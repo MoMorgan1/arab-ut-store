@@ -14,6 +14,9 @@ beforeEach(function () {
 });
 
 test('a guest can initialize and fetch an active conversation with seeded onboarding message', function () {
+    config()->set('ai-assistant.enabled', false);
+    config()->set('ai-assistant.rollout', 'disabled');
+
     $response = $this->postJson(route('chat.conversations.store'), [
         'locale' => 'ar',
     ]);
@@ -26,6 +29,7 @@ test('a guest can initialize and fetch an active conversation with seeded onboar
                 'locale',
                 'subject',
                 'lastMessageAt',
+                'assistantMode',
                 'messages' => [
                     '*' => [
                         'publicId',
@@ -47,6 +51,18 @@ test('a guest can initialize and fetch an active conversation with seeded onboar
     $data = $response->json('data');
     expect($data['status'])->toBe('open')
         ->and($data['locale'])->toBe('ar')
+        ->and($data['assistantMode'])->toBe('none')
+        ->and($data)->not->toHaveKey('rollout')
+        ->and($data)->not->toHaveKey('provider')
+        ->and($data)->not->toHaveKey('model')
+        ->and($data)->not->toHaveKey('allowlist')
+        ->and($data)->not->toHaveKey('testUserIds')
+        ->and($data)->not->toHaveKey('test_user_ids')
+        ->and($data)->not->toHaveKey('api_key')
+        ->and($data)->not->toHaveKey('apiKey')
+        ->and($data)->not->toHaveKey('openai_api_key')
+        ->and($data)->not->toHaveKey('openaiApiKey')
+        ->and($data)->not->toHaveKey('OPENAI_API_KEY')
         ->and($data['messages'])->toHaveCount(1)
         ->and($data['messages'][0]['senderType'])->toBe('system')
         ->and($data['messages'][0]['messageType'])->toBe('system')
@@ -61,6 +77,30 @@ test('a guest can initialize and fetch an active conversation with seeded onboar
     $fetchResponse->assertOk()
         ->assertJsonPath('data.publicId', $data['publicId']);
     expect($fetchResponse->headers->get('Cache-Control'))->toContain('no-store');
+});
+
+test('reopening a conversation from another locale adopts the requested language and rewrites the seed', function () {
+    config()->set('ai-assistant.enabled', false);
+    config()->set('ai-assistant.rollout', 'disabled');
+
+    $arResponse = $this->postJson(route('chat.conversations.store'), [
+        'locale' => 'ar',
+    ]);
+    $arResponse->assertOk();
+    $arData = $arResponse->json('data');
+
+    expect($arData['messages'][0]['content'])->toContain('مساعد عرب التيميت');
+
+    $enResponse = $this->postJson(route('chat.conversations.store'), [
+        'locale' => 'en',
+    ]);
+    $enResponse->assertOk();
+    $enData = $enResponse->json('data');
+
+    expect($enData['publicId'])->toBe($arData['publicId'])
+        ->and($enData['messages'][0]['senderType'])->toBe('system')
+        ->and($enData['messages'][0]['content'])->toContain("I'm the Arab UT assistant")
+        ->and(ChatConversation::query()->where('public_id', $enData['publicId'])->firstOrFail()->locale)->toBe('en');
 });
 
 test('guest cannot fetch another guests conversation', function () {

@@ -98,6 +98,8 @@ return [
         'refresh_status' => 'تحديث الحالة',
         'refreshing' => 'جارٍ التحديث…',
         'back' => 'العودة إلى طلباتي',
+        'copy' => 'نسخ',
+        'copied' => 'تم النسخ',
     ],
     'wallet' => [
         'title' => 'محفظتي',

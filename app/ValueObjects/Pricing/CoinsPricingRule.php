@@ -6,6 +6,8 @@ use DomainException;
 
 final readonly class CoinsPricingRule
 {
+    private const MINIMUM_OVERRIDE_HALALAH = 10;
+
     /**
      * @param  list<int>  $tierUpperBoundsK
      * @param  list<int>  $tierRatesHalalahPerMillion
@@ -161,8 +163,8 @@ final readonly class CoinsPricingRule
         $overrides = self::positiveIntegerMap($configuredOverrides, 'exact overrides');
 
         foreach ($overrides as $override) {
-            if ($override < 100 || $override % 100 !== 0) {
-                throw new DomainException('A Coins exact override must be at least one whole SAR.');
+            if ($override < self::MINIMUM_OVERRIDE_HALALAH || $override % 10 !== 0) {
+                throw new DomainException('A Coins exact override must be a positive multiple of 0.1 SAR.');
             }
         }
 

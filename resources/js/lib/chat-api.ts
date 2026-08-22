@@ -1,4 +1,13 @@
-import type { ChatConversation, ChatMessage } from '@/types/chat';
+import {
+    readAgentEventStream,
+    validateAgentTurnState,
+} from '@/lib/agent-stream';
+import type {
+    AgentTurnState,
+    AppStreamEvent,
+    ChatConversation,
+    ChatMessage,
+} from '@/types/chat';
 
 const INVALID_JSON = Symbol('invalid-chat-json');
 
@@ -104,6 +113,7 @@ export async function fetchOrStartActiveConversation(
             method: 'POST',
             credentials: 'same-origin',
             cache: 'no-store',
+            signal: AbortSignal.timeout(15_000),
             headers,
             body: JSON.stringify({ locale }),
         });
@@ -160,6 +170,7 @@ export async function restartConversation(
             method: 'POST',
             credentials: 'same-origin',
             cache: 'no-store',
+            signal: AbortSignal.timeout(15_000),
             headers,
             body: JSON.stringify({ locale }),
         });
@@ -321,4 +332,264 @@ export async function sendChatMessage(
         message: ChatMessage;
         demoReply: ChatMessage | null;
     };
+}
+
+export type AgentTurnStartResult =
+    | { state: 'streamed' }
+    | { state: 'waiting_for_quiet'; retryAfterMs: number }
+    | { state: 'turn_in_progress'; turn: AgentTurnState }
+    | { state: 'idle' };
+
+export async function startAgentTurn(
+    conversationPublicId: string,
+    onEvent: (event: AppStreamEvent) => void,
+    signal?: AbortSignal,
+): Promise<AgentTurnStartResult> {
+    const token = csrfToken();
+    const headers: Record<string, string> = {
+        Accept: 'text/event-stream, application/json',
+    };
+
+    if (token !== null) {
+        headers['X-CSRF-TOKEN'] = token;
+    }
+
+    let response: Response;
+
+    try {
+        response = await fetch(
+            `/chat/conversations/${encodeURIComponent(conversationPublicId)}/agent-turns`,
+            {
+                method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers,
+                signal,
+            },
+        );
+    } catch {
+        throw new ChatApiError('network_error', 0, 'Network request failed.');
+    }
+
+    if (response.status === 204) {
+        return { state: 'idle' };
+    }
+
+    if (response.status === 202) {
+        const payload = await parseJsonPayload(response);
+
+        if (payload === INVALID_JSON || !hasDataPayload(payload)) {
+            throw new ChatApiError(
+                'invalid_response',
+                response.status,
+                'Chat returned an invalid agent turn response.',
+            );
+        }
+
+        const data = payload.data as Record<string, unknown>;
+
+        if (
+            data.state === 'waiting_for_quiet' &&
+            typeof data.retryAfterMs === 'number'
+        ) {
+            return {
+                state: 'waiting_for_quiet',
+                retryAfterMs: data.retryAfterMs,
+            };
+        }
+
+        if (
+            data.state === 'turn_in_progress' &&
+            typeof data.turn === 'object' &&
+            data.turn !== null
+        ) {
+            const turn = validateAgentTurnState(data.turn, response.status);
+
+            return {
+                state: 'turn_in_progress',
+                turn,
+            };
+        }
+
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid agent turn response.',
+        );
+    }
+
+    if (response.status === 200) {
+        if (!response.body) {
+            throw new ChatApiError(
+                'stream_unavailable',
+                response.status,
+                'Chat streaming is unavailable.',
+            );
+        }
+
+        await readAgentEventStream(response.body, onEvent, response.status);
+
+        return { state: 'streamed' };
+    }
+
+    const payload = await parseJsonPayload(response);
+
+    throw new ChatApiError(
+        extractErrorCode(payload),
+        response.status,
+        'Failed to start agent turn.',
+    );
+}
+
+export async function fetchAgentTurn(
+    conversationPublicId: string,
+    turnPublicId: string,
+): Promise<AgentTurnState> {
+    let response: Response;
+
+    try {
+        response = await fetch(
+            `/chat/conversations/${encodeURIComponent(conversationPublicId)}/agent-turns/${encodeURIComponent(turnPublicId)}`,
+            {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {
+                    Accept: 'application/json',
+                },
+            },
+        );
+    } catch {
+        throw new ChatApiError('network_error', 0, 'Network request failed.');
+    }
+
+    const payload = await parseJsonPayload(response);
+
+    if (payload === INVALID_JSON) {
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid agent turn response.',
+        );
+    }
+
+    if (!response.ok) {
+        throw new ChatApiError(
+            extractErrorCode(payload),
+            response.status,
+            'Failed to fetch agent turn.',
+        );
+    }
+
+    if (!hasDataPayload(payload)) {
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid agent turn response.',
+        );
+    }
+
+    return validateAgentTurnState(payload.data, response.status);
+}
+
+export async function retryAgentTurn(
+    conversationPublicId: string,
+    turnPublicId: string,
+    onEvent: (event: AppStreamEvent) => void,
+    signal?: AbortSignal,
+): Promise<AgentTurnStartResult> {
+    const token = csrfToken();
+    const headers: Record<string, string> = {
+        Accept: 'text/event-stream, application/json',
+    };
+
+    if (token !== null) {
+        headers['X-CSRF-TOKEN'] = token;
+    }
+
+    let response: Response;
+
+    try {
+        response = await fetch(
+            `/chat/conversations/${encodeURIComponent(conversationPublicId)}/agent-turns/${encodeURIComponent(turnPublicId)}/retry`,
+            {
+                method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers,
+                signal,
+            },
+        );
+    } catch {
+        throw new ChatApiError('network_error', 0, 'Network request failed.');
+    }
+
+    if (response.status === 204) {
+        return { state: 'idle' };
+    }
+
+    if (response.status === 202) {
+        const payload = await parseJsonPayload(response);
+
+        if (payload === INVALID_JSON || !hasDataPayload(payload)) {
+            throw new ChatApiError(
+                'invalid_response',
+                response.status,
+                'Chat returned an invalid agent turn response.',
+            );
+        }
+
+        const data = payload.data as Record<string, unknown>;
+
+        if (
+            data.state === 'waiting_for_quiet' &&
+            typeof data.retryAfterMs === 'number'
+        ) {
+            return {
+                state: 'waiting_for_quiet',
+                retryAfterMs: data.retryAfterMs,
+            };
+        }
+
+        if (
+            data.state === 'turn_in_progress' &&
+            typeof data.turn === 'object' &&
+            data.turn !== null
+        ) {
+            const turn = validateAgentTurnState(data.turn, response.status);
+
+            return {
+                state: 'turn_in_progress',
+                turn,
+            };
+        }
+
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid agent turn response.',
+        );
+    }
+
+    if (response.status === 200) {
+        if (!response.body) {
+            throw new ChatApiError(
+                'stream_unavailable',
+                response.status,
+                'Chat streaming is unavailable.',
+            );
+        }
+
+        await readAgentEventStream(response.body, onEvent, response.status);
+
+        return { state: 'streamed' };
+    }
+
+    const payload = await parseJsonPayload(response);
+
+    throw new ChatApiError(
+        extractErrorCode(payload),
+        response.status,
+        'Failed to retry agent turn.',
+    );
 }

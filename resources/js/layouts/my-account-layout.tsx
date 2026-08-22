@@ -39,11 +39,10 @@ export default function MyAccountLayout({
             ? firstName.charAt(0)
             : accountUi.page_title.charAt(0)
         ).toUpperCase() || 'U';
-    const headingGreeting = firstName
-        ? locale === 'ar'
-            ? `أهلًا، ${firstName}`
-            : `Welcome, ${firstName}`
-        : accountUi.greeting.replace(':name', rawName || accountUi.page_title);
+    const headingGreeting = accountUi.greeting.replace(
+        ':name',
+        firstName || rawName || accountUi.page_title,
+    );
 
     return (
         <StoreLayout

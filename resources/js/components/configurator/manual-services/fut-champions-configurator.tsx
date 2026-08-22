@@ -83,7 +83,7 @@ export function FutChampionsConfigurator({
                   amountMinor:
                       option.price.amountMinor +
                       (urgent ? pricing.urgentSurcharge.amountMinor : 0),
-                  currency: 'SAR' as const,
+                  currency: option.price.currency,
               };
 
     function choosePlatform(value: ManualServicePlatform) {

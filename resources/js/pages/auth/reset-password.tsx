@@ -43,7 +43,7 @@ export default function ResetPassword({
                                 name="email"
                                 autoComplete="email"
                                 value={email}
-                                className="mt-1 block h-11 w-full"
+                                className="mt-1 block h-10 w-full"
                                 readOnly
                                 aria-describedby={
                                     errors.email ? 'email-error' : undefined
@@ -66,7 +66,7 @@ export default function ResetPassword({
                                 id="password"
                                 name="password"
                                 autoComplete="new-password"
-                                className="mt-1 block h-11 w-full"
+                                className="mt-1 block h-10 w-full"
                                 autoFocus
                                 required
                                 placeholder={authUi.fields.password}
@@ -95,7 +95,7 @@ export default function ResetPassword({
                                 id="password_confirmation"
                                 name="password_confirmation"
                                 autoComplete="new-password"
-                                className="mt-1 block h-11 w-full"
+                                className="mt-1 block h-10 w-full"
                                 required
                                 placeholder={
                                     authUi.fields.password_confirmation
@@ -122,7 +122,7 @@ export default function ResetPassword({
 
                         <Button
                             type="submit"
-                            className="auth-form__submit mt-4 h-11 w-full"
+                            className="auth-form__submit mt-4 h-10 w-full"
                             disabled={processing}
                             data-test="reset-password-button"
                         >

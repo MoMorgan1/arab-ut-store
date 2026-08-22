@@ -2,7 +2,7 @@ import { AlertCircle, ArrowDown, RefreshCw } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { groupChatMessages } from '@/lib/chat-grouping';
-import type { ChatMessage } from '@/types/chat';
+import type { AgentTurnState, ChatMessage } from '@/types/chat';
 import { TypingIndicator } from './typing-indicator';
 
 type ChatMessageListProps = {
@@ -16,6 +16,8 @@ type ChatMessageListProps = {
     onLoadOlder: () => void;
     onSelectSuggestion: (text: string) => void;
     onRetry: (tempId: string) => void;
+    retryableTurn?: AgentTurnState | null;
+    onRetryAgentTurn?: () => void;
 };
 
 const SUGGESTIONS = {
@@ -34,6 +36,8 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     onLoadOlder,
     onSelectSuggestion,
     onRetry,
+    retryableTurn,
+    onRetryAgentTurn,
 }) => {
     const isEn = locale === 'en';
     const suggestions = isEn ? SUGGESTIONS.en : SUGGESTIONS.ar;
@@ -231,6 +235,9 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                     message.clientStatus === 'sending';
                                 const isError =
                                     message.clientStatus === 'error';
+                                const isStreaming =
+                                    message.senderType === 'assistant' &&
+                                    message.streamStatus === 'streaming';
 
                                 return (
                                     <div
@@ -239,15 +246,63 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                         className="group relative max-w-[82%] text-start"
                                     >
                                         <div
+                                            data-stream-status={
+                                                isStreaming
+                                                    ? 'streaming'
+                                                    : undefined
+                                            }
                                             className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed transition-opacity ${
                                                 isCustomer
                                                     ? 'rounded-br-sm bg-[var(--arabut-gold)] font-medium text-[var(--arabut-navy-deep)]'
                                                     : 'rounded-bl-sm border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] text-[var(--arabut-ink)] shadow-md'
                                             } ${isSending ? 'opacity-70' : ''}`}
                                         >
-                                            <p className="break-words whitespace-pre-wrap">
-                                                {message.content}
-                                            </p>
+                                            {isStreaming && (
+                                                <span className="sr-only">
+                                                    {isEn
+                                                        ? 'Assistant is responding'
+                                                        : 'المساعد يرد الآن'}
+                                                </span>
+                                            )}
+                                            {isStreaming &&
+                                            message.content === '' ? (
+                                                <span
+                                                    aria-hidden="true"
+                                                    className="flex items-center gap-1.5 py-0.5"
+                                                >
+                                                    <span
+                                                        className="h-2 w-2 animate-bounce rounded-full bg-[var(--arabut-gold-bright)] motion-reduce:animate-none"
+                                                        style={{
+                                                            animationDelay:
+                                                                '0ms',
+                                                            animationDuration:
+                                                                '900ms',
+                                                        }}
+                                                    />
+                                                    <span
+                                                        className="h-2 w-2 animate-bounce rounded-full bg-[var(--arabut-gold-bright)] motion-reduce:animate-none"
+                                                        style={{
+                                                            animationDelay:
+                                                                '180ms',
+                                                            animationDuration:
+                                                                '900ms',
+                                                        }}
+                                                    />
+                                                    <span
+                                                        className="h-2 w-2 animate-bounce rounded-full bg-[var(--arabut-gold-bright)] motion-reduce:animate-none"
+                                                        style={{
+                                                            animationDelay:
+                                                                '360ms',
+                                                            animationDuration:
+                                                                '900ms',
+                                                        }}
+                                                    />
+                                                </span>
+                                            ) : (
+                                                <p className="break-words whitespace-pre-wrap">
+                                                    {message.content}
+                                                </p>
+                                            )}
                                         </div>
 
                                         {/* Status / retry for customer messages */}
@@ -288,19 +343,23 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                         )}
 
                                         {/* Timestamp on last message of cluster */}
-                                        {isLastInCluster && !isError && (
-                                            <div className="mt-1 px-1 text-[10px] text-[var(--arabut-muted)] opacity-60 transition-opacity group-hover:opacity-100">
-                                                {new Date(
-                                                    message.createdAt,
-                                                ).toLocaleTimeString(
-                                                    isEn ? 'en-US' : 'ar-SA',
-                                                    {
-                                                        hour: '2-digit',
-                                                        minute: '2-digit',
-                                                    },
-                                                )}
-                                            </div>
-                                        )}
+                                        {isLastInCluster &&
+                                            !isError &&
+                                            !isStreaming && (
+                                                <div className="mt-1 px-1 text-[10px] text-[var(--arabut-muted)] opacity-60 transition-opacity group-hover:opacity-100">
+                                                    {new Date(
+                                                        message.createdAt,
+                                                    ).toLocaleTimeString(
+                                                        isEn
+                                                            ? 'en-US'
+                                                            : 'ar-SA',
+                                                        {
+                                                            hour: '2-digit',
+                                                            minute: '2-digit',
+                                                        },
+                                                    )}
+                                                </div>
+                                            )}
                                     </div>
                                 );
                             })}
@@ -312,6 +371,40 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                 {isAssistantTyping && (
                     <div dir="ltr" className="flex w-full justify-start">
                         <TypingIndicator locale={locale} />
+                    </div>
+                )}
+
+                {/* Assistant retryable turn affordance */}
+                {retryableTurn?.retryable === true && (
+                    <div dir="ltr" className="my-1 flex w-full justify-start">
+                        <div
+                            dir="auto"
+                            className="flex items-center gap-1.5 rounded-xl border border-[var(--arabut-line)] bg-[var(--arabut-navy-raised)] px-3 py-2 text-xs text-[var(--arabut-danger)] shadow-sm"
+                        >
+                            <AlertCircle
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5"
+                            />
+                            <span>
+                                {isEn
+                                    ? 'Assistant could not complete response'
+                                    : 'تعذر على المساعد إكمال الرد'}
+                            </span>
+                            {onRetryAgentTurn && (
+                                <button
+                                    type="button"
+                                    onClick={onRetryAgentTurn}
+                                    disabled={disabled}
+                                    className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 underline hover:text-[var(--arabut-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <RefreshCw
+                                        aria-hidden="true"
+                                        className="h-3 w-3"
+                                    />
+                                    {isEn ? 'Retry' : 'إعادة المحاولة'}
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )}
 

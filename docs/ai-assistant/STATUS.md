@@ -1,7 +1,8 @@
 # Live status
 
-**Lifecycle:** Phase 1 accepted; later AI phases and operator inbox not started
-**Verified:** 2026-08-21
+**Lifecycle:** Phase 1 accepted; Phase 2 implementation approved by Mohamed on
+2026-08-21 and in progress
+**Verified:** 2026-08-22
 
 ## Release snapshot
 
@@ -16,7 +17,7 @@
 | Production session decision evidence                       | `SESSION_DRIVER=database`; `SESSION_ENCRYPT=true`.                                                                                                                                                                                                                                                                  |
 | Final-review correction wave                               | Integrated and deployed in the final Phase 1 SHA above.                                                                                                                                                                                                                                                             |
 | Recurring scheduler execution                              | Verified from owner-provided hPanel evidence: exact custom command, manual `* * * * *` schedule, and successful `orders:publish-paid-events` output at `2026-08-21 10:14:01`. A read-only `schedule:list` on the active final release confirmed the minute publisher and hourly chat maintenance event.             |
-| Owner acceptance                                           | Mohamed accepted the deployed real-account and iPhone/Safari checklist on 2026-08-21.                                                                                                                                                                                                                               |
+| Phase 1 owner acceptance                                   | Mohamed accepted the deployed Phase 1 release on 2026-08-21 after completing the real-account and physical iPhone/Safari checks. This closes the remaining device/owner gate without changing the scope of the automated Chromium evidence.                                                                         |
 
 On 2026-08-21, read-only production configuration observed
 `CHAT_ENABLED=true` and `CHAT_DEMO_ASSISTANT=true` for the final Phase 1 release.
@@ -26,12 +27,12 @@ tools, streaming, operator inbox, or Phase 2 implementation.
 
 ## Phase status
 
-| Phase                                 | State                                                                                                            |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Phase 0 stabilization                 | Implemented.                                                                                                     |
-| Phase 1 deterministic chat foundation | Implemented.                                                                                                     |
-| Phase 1 Completion                    | Accepted by Mohamed on 2026-08-21 after deployment, scheduler evidence, and the manual account/iPhone checklist. |
-| Phase 2 AI runtime/Luna               | Not started. Do not create or execute its implementation plan before Phase 1 acceptance.                         |
+| Phase                                 | State                                                                                                                                                         |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 0 stabilization                 | Implemented.                                                                                                                                                  |
+| Phase 1 deterministic chat foundation | Implemented.                                                                                                                                                  |
+| Phase 1 Completion                    | **Accepted by Mohamed on 2026-08-21.** Implementation, deployment, scheduler evidence, real-account testing, and physical iPhone/Safari testing are complete. |
+| Phase 2 AI runtime/Luna | Implementation approved and in progress. Tasks 1-8 are merged to `main` (`d8b7345`) and deployed with AI disabled. Task 10 (direct OpenAI Responses adapter) is implemented on `codex/ai-phase2-luna` with all local gates green. On 2026-08-22 Mohamed waived the Task 9 fake-production gate and approved **public** rollout at go-live; see [DECISIONS.md](DECISIONS.md). |
 
 ## Scheduler evidence
 
@@ -48,12 +49,45 @@ the active `d77385a44e7ac1413aab419f79d38fc2040be650` release listed the minute
 publisher and hourly `chat:maintain-conversations` event. This closes the
 external scheduler gate.
 
-## Owner acceptance
+## Phase 1 acceptance record
 
-Mohamed accepted the deployed real-account and iPhone/Safari checklist on
-2026-08-21. This closes the Phase 1 owner gate. It does not authorize or imply
-implementation of the AI runtime, retrieval, tools, realtime transport, or the
-support operator inbox; those remain separately scoped work.
+On 2026-08-21, Mohamed completed the deployed real-account and physical
+iPhone/Safari review, including:
+
+- the account launcher is above the mobile navigation;
+- the full sheet covers navigation and closes back to the focused launcher;
+- Arabic, English, and mixed-language messages remain readable;
+- New conversation returns a distinct public ID; refresh, navigation, and
+  login preserve the appropriate conversation; and an explicit old thread does
+  not reopen;
+- iPhone zoom, keyboard/safe-area behavior, and touch targets are acceptable.
+
+The final Chromium fixture keeps exactly seven Phase 1 tests. Its synthetic
+authenticated account scenario covers both locales at 320/390px modal and
+768/1440px nonmodal sizes, safe-area geometry/reset, focus, hit testing,
+restart-control availability, outside-panel actionability, and
+request/console/overflow checks. It does not exercise replacement behavior and
+was never treated as Safari proof; Mohamed's completed physical-device review
+supplies that separate acceptance evidence. See [UX.md](UX.md) and
+[AUDIT.md](AUDIT.md).
+
+## Exact next gate
+
+Phase 2 continues on branch `codex/ai-phase2-luna` under the approved plan
+[`2026-08-21-ai-assistant-phase-2-runtime.md`](../superpowers/plans/2026-08-21-ai-assistant-phase-2-runtime.md)
+with the 2026-08-22 owner decision recorded in [DECISIONS.md](DECISIONS.md)
+(fake-production gate waived; public rollout approved at go-live). Task 10 is
+implemented and locally verified. After merge/deploy of the adapter with AI
+still disabled: run `php artisan agent:inspect-streaming-http` on the deployed
+SHA (outbound StreamHandler check), then Mohamed sets the OpenAI project spend
+ceiling through secure project controls and an authorized operator enters the
+project key only in Hostinger's shared `.env` together with
+`AI_ASSISTANT_ENABLED=true`, `AI_ASSISTANT_ROLLOUT=public`,
+`AI_MODEL_PROVIDER=openai`, followed by `php artisan config:cache`. One
+content-free canary message requiring an actual Luna first delta is the final
+streaming proof; disable immediately on failure. The bilingual/safety
+evaluation thresholds then gate acceptance. No key has been requested,
+transmitted, or installed.
 
 ## Open decision
 

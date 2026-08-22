@@ -50,7 +50,7 @@ export default function ForgotPassword({
                                     autoFocus
                                     required
                                     placeholder="email@example.com"
-                                    className="h-11"
+                                    className="h-10"
                                     aria-describedby={
                                         errors.email ? 'email-error' : undefined
                                     }
@@ -66,7 +66,7 @@ export default function ForgotPassword({
 
                             <div className="my-6 flex items-center justify-start">
                                 <Button
-                                    className="auth-form__submit h-11 w-full"
+                                    className="auth-form__submit h-10 w-full"
                                     disabled={processing}
                                     data-test="email-password-reset-link-button"
                                     type="submit"

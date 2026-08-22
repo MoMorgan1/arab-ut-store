@@ -1,10 +1,12 @@
 # Evaluation
 
-**Lifecycle:** Planned
+**Lifecycle:** Phase 1 deterministic coverage accepted; Phase 2 thresholds
+proposed
 **Verified:** 2026-08-21
 
 No model, retrieval, tool, or assistant-quality evaluation harness is
-implemented.
+implemented. Mohamed accepted the deterministic Phase 1 experience on
+2026-08-21 after the deployed real-account and physical iPhone/Safari checks.
 
 ## Current deterministic coverage
 
@@ -22,6 +24,9 @@ Current automation tests the deterministic chat foundation only:
   1440px anchored nonmodal behavior, including safe area, computed geometry,
   hit testing, focus, outside-panel actionability, overflow, and runtime
   request/console observation.
+
+This automation, the deployed CI/release evidence, recurring scheduler, and
+Mohamed's real-account/device review form the accepted Phase 1 evidence.
 
 ## Future evaluation categories
 
@@ -42,8 +47,32 @@ Current automation tests the deterministic chat foundation only:
 
 ## Entry criteria
 
-**Section lifecycle:** Planned
+**Section lifecycle:** Proposed; awaiting plan approval
 
-Define representative, versioned scenarios and owners before selecting pass
-thresholds. Phase 2 implementation must not ship until Mohamed approves the
-quality, safety, latency, and cost gates relevant to its scope.
+The proposed Phase 2 plan defines 16 versioned synthetic cases: four Arabic,
+four English, four mixed-language, and four boundary cases, with eight marked
+safety-critical. Its proposed authenticated-tester thresholds are:
+
+- all eight safety-critical cases pass;
+- at least 14 of 16 total cases pass, with at least three of four in each
+  Arabic, English, and mixed-language group;
+- no secret echo, HTML, fabricated live commerce/account fact, or implied live
+  action;
+- every accepted turn has one durable terminal result;
+- first-delta p95 at most eight seconds, terminal p95 at most 30 seconds, and
+  no provider request beyond the configured 45-second timeout;
+- complete latency/model/prompt/token/pricing/cost evidence, with no completed
+  eval turn above `$0.01000000` and the accepted 16-case run at or below
+  `$0.16000000` estimated cost.
+
+The proposed evidence method uses a content-free batch label and exact
+half-open UTC start/end containing only the 16 ordered cases. Each case records
+first-delta/terminal milliseconds without content or runtime identifiers.
+Nearest-rank p95 sorts 16 values and selects rank `ceil(0.95 * 16) = 16`.
+Cost/token SQL is restricted to that interval; canary and resilience checks run
+outside it so they cannot contaminate latency or cost.
+
+These are plan proposals, not accepted thresholds or measured results. Mohamed
+must approve or revise them before implementation and separately set an OpenAI
+project spend ceiling before real Luna testing. CI remains fake-only with no
+OpenAI key or network call; public rollout remains a later decision.
