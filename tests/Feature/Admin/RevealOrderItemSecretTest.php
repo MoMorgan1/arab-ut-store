@@ -20,7 +20,7 @@ afterEach(function (): void {
     Carbon::setTestNow();
 });
 
-test('admin and staff actors can reveal order item secret with recent password confirmation', function (
+test('admin and staff actors can reveal order item secret without password confirmation', function (
     UserRole $role,
     string $prefix,
 ): void {
@@ -28,7 +28,6 @@ test('admin and staff actors can reveal order item secret with recent password c
     [$order, $item, $secret] = createRevealTestOrderWithSecret();
 
     $response = $this->actingAs($actor)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("{$prefix}/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
             'purpose' => 'fulfillment',
             'case_reference' => 'TICKET-101',
@@ -90,7 +89,6 @@ test('guests and nonprivileged accounts cannot reveal order item secrets', funct
     foreach ([UserRole::Customer, UserRole::ServiceAccount] as $role) {
         $account = User::factory()->create(['role' => $role]);
         $this->actingAs($account)
-            ->withSession(['auth.password_confirmed_at' => now()->timestamp])
             ->postJson($url, $payload)
             ->assertForbidden();
     }
@@ -99,7 +97,6 @@ test('guests and nonprivileged accounts cannot reveal order item secrets', funct
     $inactiveStaff->forceFill(['is_active' => false])->save();
 
     $this->actingAs($inactiveStaff)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson($url, $payload)
         ->assertForbidden();
 });
@@ -110,14 +107,13 @@ test('unconfirmed MFA privileged actors are redirected to MFA setup', function (
     [$order, $item] = createRevealTestOrderWithSecret();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
             'purpose' => 'fulfillment',
         ])
         ->assertRedirect('/admin/security/mfa');
 });
 
-test('reveal endpoint requires a recent password confirmation else returns 423', function (): void {
+test('reveal endpoint reveals without a confirmation step', function (): void {
     $admin = createRevealTestActor(UserRole::Admin);
     [$order, $item] = createRevealTestOrderWithSecret();
 
@@ -125,11 +121,42 @@ test('reveal endpoint requires a recent password confirmation else returns 423',
         ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
             'purpose' => 'fulfillment',
         ])
-        ->assertStatus(423);
+        ->assertOk()
+        ->assertJsonPath('data.ea_email', 'player@example.com');
+});
 
-    // No access logs or audit logs written on 423
-    expect(SecretAccessLog::count())->toBe(0)
-        ->and(StaffAuditLog::count())->toBe(0);
+test('purpose defaults to fulfillment and is recorded in SecretAccessLog + audit metadata', function (): void {
+    $admin = createRevealTestActor(UserRole::Admin);
+    [$order, $item, $secret] = createRevealTestOrderWithSecret();
+
+    $response = $this->actingAs($admin)
+        ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", []);
+
+    $response->assertOk()
+        ->assertJsonPath('data.ea_email', 'player@example.com');
+
+    $accessLog = SecretAccessLog::query()
+        ->where('order_item_secret_id', $secret->id)
+        ->first();
+
+    expect($accessLog)->not->toBeNull()
+        ->and($accessLog->user_id)->toBe($admin->id)
+        ->and($accessLog->purpose)->toBe('fulfillment')
+        ->and($accessLog->case_reference)->toBeNull();
+
+    $auditLog = StaffAuditLog::query()
+        ->where('auditable_type', $secret->getMorphClass())
+        ->where('auditable_id', $secret->id)
+        ->first();
+
+    expect($auditLog)->not->toBeNull()
+        ->and($auditLog->actor_user_id)->toBe($admin->id)
+        ->and($auditLog->action)->toBe('secrets.revealed')
+        ->and($auditLog->metadata)->toBe([
+            'purpose' => 'fulfillment',
+            'case_reference' => null,
+            'order_item_public_id' => (string) $item->public_id,
+        ]);
 });
 
 test('unknown order, unknown item, or missing secret returns 404', function (): void {
@@ -138,7 +165,6 @@ test('unknown order, unknown item, or missing secret returns 404', function (): 
 
     // Unknown order
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/orders/01K5UNKNOWN0000000000000000/items/{$item->public_id}/reveal", [
             'purpose' => 'fulfillment',
         ])
@@ -146,7 +172,6 @@ test('unknown order, unknown item, or missing secret returns 404', function (): 
 
     // Unknown item
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/orders/{$order->public_id}/items/01K5UNKNOWN0000000000000000/reveal", [
             'purpose' => 'fulfillment',
         ])
@@ -168,7 +193,6 @@ test('unknown order, unknown item, or missing secret returns 404', function (): 
     ]);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/orders/{$order->public_id}/items/{$itemWithoutSecret->public_id}/reveal", [
             'purpose' => 'fulfillment',
         ])
@@ -183,7 +207,6 @@ test('all four purpose codes are accepted and invalid purpose codes return 422',
     [$order, $item] = createRevealTestOrderWithSecret();
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
             'purpose' => $purpose,
         ]);
@@ -217,7 +240,6 @@ test('case reference boundary validation enforces length and allowed characters'
     }
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", $body);
 
     if ($isValid) {
@@ -243,7 +265,6 @@ test('unknown body fields are strictly rejected with 422', function (): void {
     [$order, $item] = createRevealTestOrderWithSecret();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
             'purpose' => 'fulfillment',
             'case_reference' => 'CR-101',
@@ -269,7 +290,6 @@ test('purged or expired secrets return 410 Gone with secret_purged error', funct
     }
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
             'purpose' => 'fulfillment',
         ]);
@@ -293,7 +313,6 @@ test('retained_until in the future is not purged and successfully reveals', func
     $secret->forceFill(['retained_until' => now()->addDays(7)])->save();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
             'purpose' => 'order_review',
         ])
@@ -325,7 +344,6 @@ test('successful reveal writes case_reference null in metadata when omitted', fu
     [$order, $item, $secret] = createRevealTestOrderWithSecret();
 
     $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
             'purpose' => 'customer_support',
         ])

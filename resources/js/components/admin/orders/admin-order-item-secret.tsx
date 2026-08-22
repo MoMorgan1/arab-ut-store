@@ -1,12 +1,9 @@
 import { useHttp } from '@inertiajs/react';
-import { AlertCircle, Check, Copy, Key, Lock, X } from 'lucide-react';
-import React, { useCallback, useEffect, useState } from 'react';
+import { AlertCircle, Check, Copy, Key, Lock } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import type { AdminOrderDetailItem, AdminTranslations } from '@/types/admin';
 
@@ -18,21 +15,7 @@ export type AdminOrderItemSecretProps = {
     direction: 'ltr' | 'rtl';
     adminUi: AdminTranslations;
     revealUrlTemplate?: string;
-    confirmPasswordUrl?: string;
 };
-
-type PurposeCode =
-    | 'fulfillment'
-    | 'customer_support'
-    | 'order_review'
-    | 'incident_investigation';
-
-const PURPOSE_CODES: PurposeCode[] = [
-    'fulfillment',
-    'customer_support',
-    'order_review',
-    'incident_investigation',
-];
 
 function parseResponseData(data: unknown): unknown {
     if (typeof data === 'string') {
@@ -51,70 +34,35 @@ export default function AdminOrderItemSecret({
     orderId,
     adminUi,
     revealUrlTemplate,
-    confirmPasswordUrl,
 }: AdminOrderItemSecretProps) {
     const copy = adminUi.orderDetail;
     const secretsCopy = copy.secrets;
 
-    const [isFormOpen, setIsFormOpen] = useState(false);
-    const [selectedPurpose, setSelectedPurpose] =
-        useState<PurposeCode>('fulfillment');
-    const [caseReference, setCaseReference] = useState('');
-    const [caseReferenceError, setCaseReferenceError] = useState<string | null>(
-        null,
-    );
     const [decryptedPayload, setDecryptedPayload] = useState<Record<
         string,
         unknown
     > | null>(null);
     const [isPurged, setIsPurged] = useState(false);
-    const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [feedback, setFeedback] = useState<{
-        type: 'error';
+        canRetry?: boolean;
         message: string;
     } | null>(null);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
-    // Ephemeral state cleanup on unmount
-    useEffect(() => {
-        return () => {
-            setDecryptedPayload(null);
-        };
-    }, []);
+    const requestedItemIdRef = useRef<string | null>(null);
 
     const revealUrl = revealUrlTemplate
         ? revealUrlTemplate.replace('__ITEM_ID__', item.id)
         : `/admin/api/orders/${orderId}/items/${item.id}/reveal`;
 
     const revealHttp = useHttp<
-        { purpose: string; case_reference?: string },
+        { purpose?: string },
         { data: Record<string, unknown> }
     >('post', revealUrl, {
         purpose: 'fulfillment',
     });
 
     const executeReveal = useCallback(async () => {
-        const trimmedCaseRef = caseReference.trim();
-
-        if (trimmedCaseRef && !/^[A-Za-z0-9._:-]{1,64}$/.test(trimmedCaseRef)) {
-            setCaseReferenceError(secretsCopy.caseReferenceHelp);
-
-            return;
-        }
-
-        setCaseReferenceError(null);
-        setFeedback(null);
-
-        const submitData: { purpose: string; case_reference?: string } = {
-            purpose: selectedPurpose,
-        };
-
-        if (trimmedCaseRef) {
-            submitData.case_reference = trimmedCaseRef;
-        }
-
-        revealHttp.setData(submitData);
-
         let handled = false;
 
         try {
@@ -129,7 +77,6 @@ export default function AdminOrderItemSecret({
                             : (body as Record<string, unknown>);
 
                     setDecryptedPayload(payload ?? {});
-                    setIsFormOpen(false);
                     setFeedback(null);
                 },
                 onHttpException: (response) => {
@@ -137,49 +84,23 @@ export default function AdminOrderItemSecret({
 
                     if (response.status === 410) {
                         setIsPurged(true);
-                        setIsFormOpen(false);
                         setFeedback(null);
-
-                        return false;
-                    }
-
-                    if (response.status === 423) {
-                        setShowPasswordModal(true);
 
                         return false;
                     }
 
                     if (response.status === 403) {
                         setFeedback({
+                            canRetry: false,
                             message: secretsCopy.forbiddenError,
-                            type: 'error',
-                        });
-
-                        return false;
-                    }
-
-                    if (response.status === 422) {
-                        const parsed = parseResponseData(response.data) as {
-                            message?: string;
-                            errors?: Record<string, string[]>;
-                        };
-                        const firstError =
-                            parsed?.errors &&
-                            Object.values(parsed.errors)[0]?.[0];
-                        setFeedback({
-                            message:
-                                firstError ||
-                                parsed?.message ||
-                                secretsCopy.genericError,
-                            type: 'error',
                         });
 
                         return false;
                     }
 
                     setFeedback({
+                        canRetry: true,
                         message: secretsCopy.genericError,
-                        type: 'error',
                     });
 
                     return false;
@@ -187,8 +108,8 @@ export default function AdminOrderItemSecret({
                 onNetworkError: () => {
                     handled = true;
                     setFeedback({
+                        canRetry: true,
                         message: secretsCopy.networkError,
-                        type: 'error',
                     });
 
                     return false;
@@ -200,20 +121,43 @@ export default function AdminOrderItemSecret({
 
         if (!handled && !revealHttp.processing) {
             setFeedback({
+                canRetry: true,
                 message: secretsCopy.genericError,
-                type: 'error',
             });
         }
     }, [
-        caseReference,
         revealHttp,
         revealUrl,
-        secretsCopy.caseReferenceHelp,
         secretsCopy.forbiddenError,
         secretsCopy.genericError,
         secretsCopy.networkError,
-        selectedPurpose,
     ]);
+
+    // Keep the latest reveal callback reachable without re-running the
+    // fetch effect (useHttp returns a fresh object every render).
+    const executeRevealRef = useRef(executeReveal);
+
+    useEffect(() => {
+        executeRevealRef.current = executeReveal;
+    }, [executeReveal]);
+
+    // Auto-fetch credentials once per item, guarding against StrictMode's
+    // double invocation with a ref.
+    useEffect(() => {
+        if (!item.hasSecret || requestedItemIdRef.current === item.id) {
+            return;
+        }
+
+        requestedItemIdRef.current = item.id;
+        void executeRevealRef.current();
+    }, [item.hasSecret, item.id]);
+
+    // Forget the decrypted payload only when the component really unmounts.
+    useEffect(() => {
+        return () => {
+            setDecryptedPayload(null);
+        };
+    }, []);
 
     const handleCopy = async (text: string, fieldKey?: string) => {
         let success = false;
@@ -250,58 +194,18 @@ export default function AdminOrderItemSecret({
         }
     };
 
-    const handleCloseCredentials = () => {
-        setDecryptedPayload(null);
-        setFeedback(null);
-    };
-
-    if (!item.hasSecret && !item.maskedSummary) {
+    if (!item.hasSecret) {
         return null;
     }
 
     return (
         <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3">
-            {/* Masked summary chips */}
-            {item.maskedSummary &&
-            Object.keys(item.maskedSummary).length > 0 ? (
-                <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                    <span className="font-medium text-muted-foreground">
-                        {secretsCopy.maskedSummaryTitle}:
-                    </span>
-                    {Object.entries(item.maskedSummary).map(([key, value]) => (
-                        <span
-                            className="inline-flex items-center gap-1 rounded border border-border/80 bg-background px-2 py-0.5 font-mono text-[11px] text-foreground"
-                            key={key}
-                        >
-                            <span className="text-muted-foreground">
-                                {key}:
-                            </span>
-                            <span className="font-semibold">
-                                {typeof value === 'object'
-                                    ? JSON.stringify(value)
-                                    : String(value)}
-                            </span>
-                        </span>
-                    ))}
-                </div>
-            ) : null}
-
-            {/* Helper note under chips */}
-            <p className="text-[11px] text-muted-foreground">
-                Reveals are audited and require a recent password confirmation.
-            </p>
-
-            {/* Outcome and error feedback */}
-            <div aria-atomic="true" aria-live="polite" className="empty:hidden">
-                {feedback ? (
-                    <Alert className="text-xs" variant="destructive">
-                        <AlertCircle className="size-4" />
-                        <AlertTitle className="text-xs font-semibold">
-                            Error
-                        </AlertTitle>
-                        <AlertDescription>{feedback.message}</AlertDescription>
-                    </Alert>
-                ) : null}
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <Lock
+                    aria-hidden="true"
+                    className="size-3.5 text-muted-foreground"
+                />
+                <span>{secretsCopy.title}</span>
             </div>
 
             {/* Purged state notice */}
@@ -315,22 +219,11 @@ export default function AdminOrderItemSecret({
             ) : decryptedPayload ? (
                 /* Decrypted credentials state */
                 <div className="flex flex-col gap-3 rounded-md border border-primary/20 bg-background p-3 shadow-xs">
-                    <div className="flex items-center justify-between border-b border-border/60 pb-2">
-                        <div className="flex items-center gap-2">
-                            <Key className="size-4 text-primary" />
-                            <h4 className="text-xs font-bold text-foreground">
-                                {secretsCopy.revealedCredentialsTitle}
-                            </h4>
-                        </div>
-                        <Button
-                            className="min-h-11 gap-1 text-xs"
-                            onClick={handleCloseCredentials}
-                            type="button"
-                            variant="ghost"
-                        >
-                            <X className="size-3.5" />
-                            <span>{secretsCopy.closeButton}</span>
-                        </Button>
+                    <div className="flex items-center gap-2 border-b border-border/60 pb-2">
+                        <Key className="size-4 text-primary" />
+                        <h4 className="text-xs font-bold text-foreground">
+                            {secretsCopy.revealedCredentialsTitle}
+                        </h4>
                     </div>
 
                     <div className="flex flex-col divide-y divide-border/40 text-xs">
@@ -357,7 +250,7 @@ export default function AdminOrderItemSecret({
                                                         aria-label={`${secretsCopy.copyButton} ${key} #${idx + 1}`}
                                                         className="size-6 p-0"
                                                         onClick={() =>
-                                                            handleCopy(
+                                                            void handleCopy(
                                                                 String(itemVal),
                                                                 `${key}-${idx}`,
                                                             )
@@ -405,7 +298,7 @@ export default function AdminOrderItemSecret({
                                         aria-label={`${secretsCopy.copyButton} ${key}`}
                                         className="min-h-11 min-w-11 gap-1 text-xs"
                                         onClick={() =>
-                                            handleCopy(stringVal, key)
+                                            void handleCopy(stringVal, key)
                                         }
                                         type="button"
                                         variant="outline"
@@ -426,147 +319,54 @@ export default function AdminOrderItemSecret({
                         })}
                     </div>
                 </div>
-            ) : !isFormOpen ? (
-                /* Idle state — Reveal button */
-                <div>
-                    <Button
-                        className="min-h-11 gap-2 text-xs font-medium"
-                        disabled={revealHttp.processing}
-                        onClick={() => {
-                            setFeedback(null);
-                            setIsFormOpen(true);
-                        }}
-                        type="button"
-                        variant="outline"
-                    >
-                        <Lock aria-hidden="true" className="size-3.5" />
-                        <span>{secretsCopy.revealButton}</span>
-                    </Button>
+            ) : feedback ? (
+                /* Error / Forbidden state with optional retry button */
+                <div
+                    aria-atomic="true"
+                    aria-live="polite"
+                    className="flex flex-col gap-2"
+                >
+                    <Alert className="text-xs" variant="destructive">
+                        <AlertCircle className="size-4" />
+                        <AlertTitle className="text-xs font-semibold">
+                            Error
+                        </AlertTitle>
+                        <AlertDescription>{feedback.message}</AlertDescription>
+                    </Alert>
+                    {feedback.canRetry ? (
+                        <div>
+                            <Button
+                                className="min-h-11 gap-1.5 text-xs"
+                                disabled={revealHttp.processing}
+                                onClick={() => {
+                                    setFeedback(null);
+                                    void executeReveal();
+                                }}
+                                type="button"
+                                variant="outline"
+                            >
+                                {revealHttp.processing ? (
+                                    <>
+                                        <Spinner className="size-3.5" />
+                                        <span>{secretsCopy.loading}</span>
+                                    </>
+                                ) : (
+                                    <span>{secretsCopy.retryButton}</span>
+                                )}
+                            </Button>
+                        </div>
+                    ) : null}
                 </div>
             ) : (
-                /* Inline Purpose Selector & Case Reference Form */
+                /* Loading state */
                 <div
-                    className="flex flex-col gap-3 rounded-md border border-border bg-background p-3"
-                    data-testid="reveal-panel"
+                    aria-live="polite"
+                    className="flex items-center gap-2 text-xs text-muted-foreground"
                 >
-                    <div className="flex flex-col gap-1.5">
-                        <Label className="text-xs font-semibold">
-                            {secretsCopy.purposeLabel}
-                        </Label>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            {PURPOSE_CODES.map((code) => (
-                                <label
-                                    className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-md border p-2.5 text-xs transition-colors ${
-                                        selectedPurpose === code
-                                            ? 'border-primary bg-primary/5 font-semibold text-foreground'
-                                            : 'border-border bg-card text-muted-foreground hover:bg-muted/40'
-                                    }`}
-                                    key={code}
-                                >
-                                    <input
-                                        checked={selectedPurpose === code}
-                                        className="size-4 text-primary focus:ring-ring"
-                                        name={`purpose-${item.id}`}
-                                        onChange={() =>
-                                            setSelectedPurpose(code)
-                                        }
-                                        type="radio"
-                                        value={code}
-                                    />
-                                    <span>
-                                        {secretsCopy.purposes[code] ?? code}
-                                    </span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                        <Label
-                            className="text-xs font-semibold"
-                            htmlFor={`case-ref-${item.id}`}
-                        >
-                            {secretsCopy.caseReferenceLabel}
-                        </Label>
-                        <Input
-                            aria-describedby={`case-ref-help-${item.id}`}
-                            className="min-h-11 text-xs"
-                            id={`case-ref-${item.id}`}
-                            maxLength={64}
-                            onChange={(e) => {
-                                setCaseReference(e.target.value);
-                                setCaseReferenceError(null);
-                            }}
-                            placeholder={secretsCopy.caseReferencePlaceholder}
-                            value={caseReference}
-                        />
-                        <p
-                            className="text-[11px] text-muted-foreground"
-                            id={`case-ref-help-${item.id}`}
-                        >
-                            {secretsCopy.caseReferenceHelp}
-                        </p>
-                        {caseReferenceError ? (
-                            <p className="text-xs font-medium text-destructive">
-                                {caseReferenceError}
-                            </p>
-                        ) : null}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                        <Button
-                            className="min-h-11 gap-2 text-xs"
-                            disabled={revealHttp.processing}
-                            onClick={() => void executeReveal()}
-                            type="button"
-                            variant="default"
-                        >
-                            {revealHttp.processing ? (
-                                <>
-                                    <Spinner />
-                                    <span>{secretsCopy.revealing}</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Key className="size-3.5" />
-                                    <span>{secretsCopy.confirmReveal}</span>
-                                </>
-                            )}
-                        </Button>
-
-                        <Button
-                            className="min-h-11 text-xs"
-                            disabled={revealHttp.processing}
-                            onClick={() => {
-                                setIsFormOpen(false);
-                                setCaseReferenceError(null);
-                            }}
-                            type="button"
-                            variant="outline"
-                        >
-                            {secretsCopy.cancelButton}
-                        </Button>
-                    </div>
+                    <Spinner className="size-3.5" />
+                    <span>{secretsCopy.loading}</span>
                 </div>
             )}
-
-            <AdminPasswordConfirmDialog
-                cancelButtonText={secretsCopy.cancelButton}
-                confirmButtonText={secretsCopy.confirmPasswordButton}
-                confirmingButtonText={secretsCopy.confirmingPassword}
-                confirmPasswordUrl={confirmPasswordUrl}
-                description={secretsCopy.passwordModalDescription}
-                genericErrorText={secretsCopy.genericError}
-                inputId="reveal-password-confirm"
-                invalidPasswordText={secretsCopy.invalidPassword}
-                networkErrorText={secretsCopy.networkError}
-                onConfirmed={executeReveal}
-                onOpenChange={setShowPasswordModal}
-                open={showPasswordModal}
-                passwordLabel={secretsCopy.passwordLabel}
-                passwordPlaceholder={secretsCopy.passwordPlaceholder}
-                title={secretsCopy.passwordModalTitle}
-            />
         </div>
     );
 }

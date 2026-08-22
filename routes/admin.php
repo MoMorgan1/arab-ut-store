@@ -68,7 +68,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $reveal = Route::post('/api/orders/{publicId}/items/{itemPublicId}/reveal', OrderItemSecretRevealController::class)
-                    ->middleware(['password.confirm', 'can:orders.view', 'can:order_credentials.view'])
+                    ->middleware(['can:orders.view', 'can:order_credentials.view'])
                     ->name('orders.items.reveal');
 
                 if ($locale !== null) {

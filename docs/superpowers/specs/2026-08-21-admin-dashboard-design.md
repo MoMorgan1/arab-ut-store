@@ -47,8 +47,9 @@ workflow, ticketing model, or realtime transport.
 - The chatbox/operator inbox remains deferred until it is separately completed
   and working; it has no Admin permission or placeholder in this scope.
 - TOTP MFA is mandatory for all Admin and Staff accounts.
-- Sensitive actions require recent password confirmation in addition to the
+- Sensitive actions (such as Paylink refunds) require recent password confirmation in addition to the
   authenticated MFA session.
+- On 2026-08-22, Mohamed decided (final) that Admin and Staff see an order item's decrypted fulfillment credentials automatically on the Admin order detail page — no "Reveal" button, no purpose selector, no case reference, and no separate password confirmation step. Credentials remain never serialized into Inertia props or HTML (fetched after load from the existing same-origin JSON endpoint with private no-store headers); every automatic fetch writes a SecretAccessLog and a StaffAuditLog; purged/expired secrets show the 410 notice; the payload is forgotten when the page unmounts; no credential ever appears in URLs, toasts, error text, or logs.
 - Customer-facing behavior and existing domain actions remain authoritative;
   the Admin does not duplicate business logic in React or a parallel API.
 
@@ -167,22 +168,13 @@ until a time-series question and sufficient data justify them.
 
 ### Credential reveal
 
+- Note: The previous manual operator purpose selector, case reference input, and password confirmation step is superseded by the 2026-08-22 owner decision: Admin and Staff see an order item's decrypted fulfillment credentials automatically on the order detail page.
 - Credentials are never eager-loaded into list/detail queries or serialized in
-  Inertia props.
-- The operator explicitly selects an order item, chooses an allowlisted
-  operational-purpose code, may add a bounded case reference, and confirms the
-  reveal. v1 accepts no free-text reveal reason.
-- Credential-purpose codes and labels are fixed in v1:
-    - `fulfillment`: `تنفيذ الطلب` / `Order fulfillment`;
-    - `customer_support`: `دعم العميل` / `Customer support`;
-    - `order_review`: `مراجعة الطلب` / `Order review`;
-    - `incident_investigation`: `تحقيق في حادث` / `Incident investigation`.
-- A same-origin JSON endpoint reauthorizes the actor and item, checks recent
-  password confirmation, decrypts only that secret, records a
+  Inertia props or HTML.
+- When an order item has fulfillment credentials, the page automatically fetches them on mount from the same-origin JSON endpoint with default purpose `fulfillment`.
+- A same-origin JSON endpoint reauthorizes the actor and item, decrypts only that secret, records a
   `SecretAccessLog` and `StaffAuditLog`, and returns a private no-store response.
-- The UI starts masked, labels the sensitive state, supports explicit
-  show/hide/copy actions, and forgets the payload when the panel closes or the
-  page changes.
+- The UI renders the decrypted credentials directly with per-field / per-entry Copy buttons, displays a loading state during fetch, shows the 410 purged notice for purged/expired secrets, displays a 403 forbidden error if unpermitted, provides a retry button on network failure, and forgets the payload when the page unmounts.
 - Credentials never enter query strings, browser storage, error telemetry,
   toast text, audit metadata, or validation payload echoes.
 

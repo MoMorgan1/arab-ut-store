@@ -180,44 +180,16 @@ export type AdminTranslations = {
         forbiddenTransition: string;
         noTransitionsAvailable: string;
         secrets: {
-            revealButton: string;
-            hideButton: string;
-            showButton: string;
+            title: string;
+            loading: string;
+            retryButton: string;
             copyButton: string;
             copied: string;
-            closeButton: string;
-            cancelButton: string;
-            confirmReveal: string;
-            revealing: string;
-            purposeLabel: string;
-            purposeRequired: string;
-            purposes: Record<
-                | 'fulfillment'
-                | 'customer_support'
-                | 'order_review'
-                | 'incident_investigation',
-                string
-            >;
-            caseReferenceLabel: string;
-            caseReferencePlaceholder: string;
-            caseReferenceHelp: string;
             purgedNotice: string;
-            purgedBadge: string;
-            revealedBadge: string;
-            maskedSummaryTitle: string;
             revealedCredentialsTitle: string;
-            passwordModalTitle: string;
-            passwordModalDescription: string;
-            passwordLabel: string;
-            passwordPlaceholder: string;
-            confirmPasswordButton: string;
-            confirmingPassword: string;
-            invalidPassword: string;
             genericError: string;
             networkError: string;
             forbiddenError: string;
-            copyFallbackSuccess: string;
-            copyFallbackFailed: string;
         };
         refundsTitle: string;
         refund: {

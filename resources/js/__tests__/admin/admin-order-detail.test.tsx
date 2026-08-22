@@ -4,7 +4,6 @@ import {
     render,
     screen,
     waitFor,
-    within,
 } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -289,7 +288,7 @@ describe('AdminOrderDetailPage', () => {
         expect(screen.getAllByText('Completed')[0]).toBeVisible();
     });
 
-    describe('Admin credential reveal (Task 9)', () => {
+    describe('Admin credential auto-display', () => {
         const itemWithSecret = {
             ...sampleAdminOrderDetail.items[0],
             hasSecret: true,
@@ -309,62 +308,7 @@ describe('AdminOrderDetailPage', () => {
                 '/admin/api/orders/01K5ADM1N00000000000000001/items/__ITEM_ID__/reveal',
         });
 
-        it('renders masked summary chips, audit helper, and Reveal credentials button for items with secrets', () => {
-            pageState.props = secretProps();
-            render(<AdminOrderDetailPage />);
-
-            expect(screen.getByText('Stored credentials:')).toBeVisible();
-            expect(screen.getByText('account:')).toBeVisible();
-            expect(screen.getByText('p***r@example.com')).toBeVisible();
-            expect(screen.getByText('backupCodesCount:')).toBeVisible();
-            expect(screen.getByText('2')).toBeVisible();
-            expect(
-                screen.getByText(
-                    'Reveals are audited and require a recent password confirmation.',
-                ),
-            ).toBeVisible();
-
-            expect(
-                screen.getByRole('button', { name: /Reveal credentials/i }),
-            ).toBeVisible();
-        });
-
-        it('opens inline purpose selector and case reference input on clicking reveal', () => {
-            pageState.props = secretProps();
-            render(<AdminOrderDetailPage />);
-
-            const revealButton = screen.getByRole('button', {
-                name: /Reveal credentials/i,
-            });
-            fireEvent.click(revealButton);
-
-            expect(screen.getByText('Access purpose')).toBeVisible();
-            expect(screen.getByText('Order fulfillment')).toBeVisible();
-            expect(screen.getByText('Customer support inquiry')).toBeVisible();
-            expect(
-                screen.getByText('Order review or verification'),
-            ).toBeVisible();
-            expect(screen.getByText('Incident investigation')).toBeVisible();
-
-            expect(
-                screen.getByLabelText(/Case reference \(optional\)/i),
-            ).toBeVisible();
-            expect(
-                screen.getByRole('button', { name: /Confirm reveal/i }),
-            ).toBeVisible();
-            expect(
-                within(screen.getByTestId('reveal-panel')).getByRole('button', {
-                    name: 'Cancel',
-                }),
-            ).toBeVisible();
-        });
-
-        it('successfully reveals credentials in plain text on 200, supports copy, forgets on close, and never writes to storage', async () => {
-            const localStorageSpy = vi.spyOn(Storage.prototype, 'setItem');
-            const sessionStorageSpy = vi.spyOn(
-                sessionStorage.__proto__,
-                'setItem',
-            );
+        it('automatically submits on mount, renders loading state then values after submit resolves, and supports copying without a reveal button', async () => {
             const clipboardSpy = vi.fn().mockResolvedValue(undefined);
             Object.assign(navigator, {
                 clipboard: { writeText: clipboardSpy },
@@ -396,25 +340,15 @@ describe('AdminOrderDetailPage', () => {
 
             render(<AdminOrderDetailPage />);
 
-            fireEvent.click(
-                screen.getByRole('button', { name: /Reveal credentials/i }),
-            );
+            // No "Reveal credentials" button exists
+            expect(
+                screen.queryByRole('button', { name: /Reveal credentials/i }),
+            ).not.toBeInTheDocument();
 
-            const caseInput = screen.getByLabelText(
-                /Case reference \(optional\)/i,
-            );
-            fireEvent.change(caseInput, { target: { value: 'CR-1001' } });
-
-            const confirmRevealBtn = screen.getByRole('button', {
-                name: /Confirm reveal/i,
-            });
-            fireEvent.click(confirmRevealBtn);
+            // Heading is visible
+            expect(screen.getByText('Credentials')).toBeVisible();
 
             await waitFor(() => {
-                expect(http.setData).toHaveBeenCalledWith({
-                    case_reference: 'CR-1001',
-                    purpose: 'fulfillment',
-                });
                 expect(http.submit).toHaveBeenCalledWith(
                     'post',
                     '/admin/api/orders/01K5ADM1N00000000000000001/items/01K5ITEM00000000000000001/reveal',
@@ -424,7 +358,7 @@ describe('AdminOrderDetailPage', () => {
                 );
             });
 
-            // Decrypted credentials card rendered immediately in plain text
+            // Decrypted credentials card rendered
             await waitFor(() => {
                 expect(screen.getByText('Decrypted credentials')).toBeVisible();
                 expect(screen.getByText('player@example.com')).toBeVisible();
@@ -433,41 +367,22 @@ describe('AdminOrderDetailPage', () => {
                 expect(screen.getByText('22222222')).toBeVisible();
             });
 
-            // Test Copy button
+            // Test Copy button for single value
             const copyEmailButton = screen.getByRole('button', {
                 name: /Copy ea_email/i,
             });
             fireEvent.click(copyEmailButton);
             expect(clipboardSpy).toHaveBeenCalledWith('player@example.com');
 
+            // Test Copy button for array element
             const copyCodeBtn = screen.getByRole('button', {
                 name: /Copy ea_backup_codes #1/i,
             });
             fireEvent.click(copyCodeBtn);
             expect(clipboardSpy).toHaveBeenCalledWith('11111111');
-
-            // Close credentials forgets state
-            const closeBtn = screen.getByRole('button', {
-                name: /Close credentials/i,
-            });
-            fireEvent.click(closeBtn);
-
-            expect(
-                screen.queryByText('Decrypted credentials'),
-            ).not.toBeInTheDocument();
-            expect(
-                screen.queryByText('player@example.com'),
-            ).not.toBeInTheDocument();
-            expect(
-                screen.getByRole('button', { name: /Reveal credentials/i }),
-            ).toBeVisible();
-
-            // Verify no browser storage was touched
-            expect(localStorageSpy).not.toHaveBeenCalled();
-            expect(sessionStorageSpy).not.toHaveBeenCalled();
         });
 
-        it('handles 410 purged secret and disables further attempts', async () => {
+        it('handles 410 purged secret and displays purged notice', async () => {
             pageState.props = secretProps();
 
             http.submit.mockImplementationOnce(
@@ -492,13 +407,6 @@ describe('AdminOrderDetailPage', () => {
 
             render(<AdminOrderDetailPage />);
 
-            fireEvent.click(
-                screen.getByRole('button', { name: /Reveal credentials/i }),
-            );
-            fireEvent.click(
-                screen.getByRole('button', { name: /Confirm reveal/i }),
-            );
-
             await waitFor(() => {
                 expect(
                     screen.getByText(
@@ -508,44 +416,66 @@ describe('AdminOrderDetailPage', () => {
             });
         });
 
-        it('handles 423 password confirmation response, prompts for password, and replays reveal automatically on confirmation', async () => {
+        it('handles 403 forbidden and displays forbidden error message without retry button', async () => {
             pageState.props = secretProps();
 
-            const decryptedData = {
-                ea_email: 'replayed@example.com',
-            };
-
-            let callCount = 0;
-            http.submit.mockImplementation(
+            http.submit.mockImplementationOnce(
                 (
                     _method: string,
-                    url: string,
+                    _url: string,
                     options: {
-                        onSuccess?: (response: unknown) => void;
                         onHttpException?: (response: {
                             data: string;
                             status: number;
                         }) => boolean | void;
                     },
                 ) => {
+                    options.onHttpException?.({
+                        data: JSON.stringify({ message: 'Forbidden.' }),
+                        status: 403,
+                    });
+
+                    return Promise.resolve(null);
+                },
+            );
+
+            render(<AdminOrderDetailPage />);
+
+            await waitFor(() => {
+                expect(
+                    screen.getByText(
+                        'You do not have permission to view credentials.',
+                    ),
+                ).toBeVisible();
+            });
+
+            expect(
+                screen.queryByRole('button', { name: /Retry/i }),
+            ).not.toBeInTheDocument();
+        });
+
+        it('handles network error, displays network error message with Retry button, and retry re-submits', async () => {
+            pageState.props = secretProps();
+
+            const decryptedData = {
+                ea_email: 'retried@example.com',
+            };
+
+            let callCount = 0;
+            http.submit.mockImplementation(
+                (
+                    _method: string,
+                    _url: string,
+                    options: {
+                        onNetworkError?: () => boolean | void;
+                        onSuccess?: (response: unknown) => void;
+                    },
+                ) => {
                     callCount++;
 
                     if (callCount === 1) {
-                        // First call to reveal returns 423
-                        options.onHttpException?.({
-                            data: JSON.stringify({
-                                message: 'Password confirmation required.',
-                            }),
-                            status: 423,
-                        });
-                    } else if (
-                        callCount === 2 &&
-                        url.includes('confirm-password')
-                    ) {
-                        // Second call to password confirm succeeds
-                        options.onSuccess?.({});
-                    } else if (callCount === 3 && url.includes('reveal')) {
-                        // Replayed reveal succeeds
+                        options.onNetworkError?.();
+                    } else {
                         options.onSuccess?.({ data: decryptedData });
                     }
 
@@ -555,56 +485,37 @@ describe('AdminOrderDetailPage', () => {
 
             render(<AdminOrderDetailPage />);
 
-            fireEvent.click(
-                screen.getByRole('button', { name: /Reveal credentials/i }),
-            );
-            fireEvent.click(
-                screen.getByRole('button', { name: /Confirm reveal/i }),
-            );
-
-            // Password modal opens
             await waitFor(() => {
                 expect(
-                    screen.getByRole('heading', {
-                        name: 'Confirm your password',
-                    }),
-                ).toBeVisible();
-                expect(
                     screen.getByText(
-                        /For security, please enter your password to confirm access to order credentials\./i,
+                        'Network error. Please check your connection and try again.',
                     ),
                 ).toBeVisible();
             });
 
-            // Enter password and submit
-            const passwordInput = screen.getByPlaceholderText(
-                'Enter your current password',
-            );
-            fireEvent.change(passwordInput, {
-                target: { value: 'MySecretPassword123' },
-            });
+            const retryButton = screen.getByRole('button', { name: 'Retry' });
+            expect(retryButton).toBeVisible();
 
-            const confirmPwButton = screen.getByRole('button', {
-                name: 'Confirm password',
-            });
-            fireEvent.click(confirmPwButton);
+            fireEvent.click(retryButton);
 
             await waitFor(() => {
+                expect(http.submit).toHaveBeenCalledTimes(2);
                 expect(screen.getByText('Decrypted credentials')).toBeVisible();
-                expect(screen.getByText('replayed@example.com')).toBeVisible();
+                expect(screen.getByText('retried@example.com')).toBeVisible();
             });
         });
 
-        it('renders array values unmasked immediately and allows individual code copying', async () => {
-            const clipboardSpy = vi.fn().mockResolvedValue(undefined);
-            Object.assign(navigator, {
-                clipboard: { writeText: clipboardSpy },
-            });
+        it('clears decrypted payload on unmount and touches no browser storage', async () => {
+            const localStorageSpy = vi.spyOn(Storage.prototype, 'setItem');
+            const sessionStorageSpy = vi.spyOn(
+                sessionStorage.__proto__,
+                'setItem',
+            );
 
             pageState.props = secretProps();
 
             const decryptedData = {
-                backup_codes: ['BACKUP-CODE-AAA', 'BACKUP-CODE-BBB'],
+                ea_email: 'player@example.com',
             };
 
             http.submit.mockImplementationOnce(
@@ -615,36 +526,24 @@ describe('AdminOrderDetailPage', () => {
                         onSuccess?: (response: unknown) => void;
                     },
                 ) => {
-                    options.onSuccess?.({ data: decryptedData });
+                    options.onSuccess?.({
+                        data: decryptedData,
+                    });
 
                     return Promise.resolve({ data: decryptedData });
                 },
             );
 
-            render(<AdminOrderDetailPage />);
-
-            fireEvent.click(
-                screen.getByRole('button', { name: /Reveal credentials/i }),
-            );
-            fireEvent.click(
-                screen.getByRole('button', { name: /Confirm reveal/i }),
-            );
+            const { unmount } = render(<AdminOrderDetailPage />);
 
             await waitFor(() => {
-                expect(screen.getByText('Decrypted credentials')).toBeVisible();
-                expect(screen.getByText('backup_codes:')).toBeVisible();
+                expect(screen.getByText('player@example.com')).toBeVisible();
             });
 
-            // backup_codes are plain text immediately
-            expect(screen.getByText('BACKUP-CODE-AAA')).toBeVisible();
-            expect(screen.getByText('BACKUP-CODE-BBB')).toBeVisible();
+            unmount();
 
-            // Copy button copies the code
-            const copyFirstCodeBtn = screen.getByRole('button', {
-                name: /Copy backup_codes #1/i,
-            });
-            fireEvent.click(copyFirstCodeBtn);
-            expect(clipboardSpy).toHaveBeenCalledWith('BACKUP-CODE-AAA');
+            expect(localStorageSpy).not.toHaveBeenCalled();
+            expect(sessionStorageSpy).not.toHaveBeenCalled();
         });
     });
 

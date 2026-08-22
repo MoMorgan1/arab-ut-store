@@ -20,7 +20,7 @@ final class RevealOrderItemSecret extends FormRequest
     {
         return [
             'purpose' => [
-                'required',
+                'sometimes',
                 'string',
                 Rule::in([
                     'fulfillment',
@@ -53,7 +53,9 @@ final class RevealOrderItemSecret extends FormRequest
 
     public function purpose(): string
     {
-        return (string) $this->input('purpose');
+        $value = $this->input('purpose');
+
+        return is_string($value) && $value !== '' ? $value : 'fulfillment';
     }
 
     public function caseReference(): ?string
