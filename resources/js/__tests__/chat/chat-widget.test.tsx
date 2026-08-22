@@ -1333,4 +1333,29 @@ describe('ChatWidget Component', () => {
             await screen.findByText('Success after retry'),
         ).toBeInTheDocument();
     });
+
+    it('scopes light-surface chat tokens and motion to the dialog', () => {
+        // The token block is the last bare `.chat-widget-dialog {` rule; an
+        // earlier account-surface rule also ends with that selector.
+        const tokenStart = appCss.lastIndexOf('\n.chat-widget-dialog {');
+        const tokens = appCss.slice(
+            tokenStart,
+            appCss.indexOf('}', tokenStart),
+        );
+
+        expect(tokens).toContain('--chat-surface: #fbf8f2');
+        expect(tokens).toContain('--chat-hero: var(--arabut-navy)');
+        expect(tokens).toContain(
+            '--chat-ease-out: cubic-bezier(0.16, 1, 0.3, 1)',
+        );
+
+        const motionStart = appCss.indexOf('.chat-view-enter {');
+        const reducedMotionStart = appCss.lastIndexOf(
+            '@media (prefers-reduced-motion: no-preference)',
+            motionStart,
+        );
+
+        expect(motionStart).toBeGreaterThan(-1);
+        expect(reducedMotionStart).toBeGreaterThan(-1);
+    });
 });
