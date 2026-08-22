@@ -36,6 +36,10 @@ return new class extends Migration
         });
 
         Schema::table('payments', function (Blueprint $table): void {
+            // The payments -> orders foreign key relies on this composite
+            // index; leave a plain order_id index behind so dropping it
+            // never violates the constraint on MariaDB.
+            $table->index('order_id', 'idx_payments_order_id_fallback');
             $table->dropIndex('idx_payments_admin_order_id_lookup');
         });
     }

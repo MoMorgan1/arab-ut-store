@@ -23,7 +23,7 @@ test('MariaDB captured revenue preserves an aggregate beyond PHP integer range',
         $this->markTestSkipped('The aggregate precision contract requires MariaDB/MySQL.');
     }
 
-    Carbon::setTestNow(Carbon::parse('2040-01-15 12:00:00', 'UTC'));
+    Carbon::setTestNow(Carbon::parse('2035-01-15 12:00:00', 'UTC'));
     $admin = User::factory()->create(['role' => UserRole::Admin]);
     $order = Order::factory()->for($admin)->create([
         'status' => OrderStatus::Completed,
