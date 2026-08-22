@@ -1,5 +1,10 @@
 import { Link, router } from '@inertiajs/react';
-import { LayoutDashboard, LogOut, ShieldCheck } from 'lucide-react';
+import {
+    LayoutDashboard,
+    LogOut,
+    ShieldCheck,
+    ShoppingBag,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import type {
@@ -10,6 +15,7 @@ import type {
 
 const navigationIcons: Record<AdminNavigationItem['key'], LucideIcon> = {
     overview: LayoutDashboard,
+    orders: ShoppingBag,
     security: ShieldCheck,
 };
 

@@ -17,23 +17,39 @@ final class AdminShell
      */
     public function for(User $actor, string $locale): array
     {
+        $currentRouteName = (string) request()->route()?->getName();
+        $prefix = str_starts_with($currentRouteName, 'localized.admin.')
+            ? 'localized.admin.'
+            : 'admin.';
+
+        $navigation = [
+            [
+                'key' => 'overview',
+                'label' => (string) trans('admin.navigation.overview', locale: $locale),
+                'url' => route($prefix.'overview', absolute: false),
+            ],
+        ];
+
+        if ($actor->can(AdminPermission::OrdersView->value)) {
+            $navigation[] = [
+                'key' => 'orders',
+                'label' => (string) trans('admin.navigation.orders', locale: $locale),
+                'url' => route($prefix.'orders', absolute: false),
+            ];
+        }
+
+        $navigation[] = [
+            'key' => 'security',
+            'label' => (string) trans('admin.navigation.security', locale: $locale),
+            'url' => route($prefix.'security.mfa', absolute: false),
+        ];
+
         return [
             'adminIdentity' => [
                 'name' => $actor->name,
                 'role' => $actor->role->value,
             ],
-            'adminNavigation' => [
-                [
-                    'key' => 'overview',
-                    'label' => (string) trans('admin.navigation.overview', locale: $locale),
-                    'url' => route('admin.overview', absolute: false),
-                ],
-                [
-                    'key' => 'security',
-                    'label' => (string) trans('admin.navigation.security', locale: $locale),
-                    'url' => route('admin.security.mfa', absolute: false),
-                ],
-            ],
+            'adminNavigation' => $navigation,
             'permissions' => array_values(array_map(
                 fn (AdminPermission $permission): string => $permission->value,
                 array_filter(

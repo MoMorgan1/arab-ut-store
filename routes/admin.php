@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\OrdersController;
 use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\Admin\PaylinkRefundController;
 use App\Http\Controllers\Admin\Security\AdminMfaController;
@@ -38,6 +39,14 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $route->defaults('locale', $locale);
+                }
+
+                $orders = Route::get('/orders', OrdersController::class)
+                    ->middleware('can:orders.view')
+                    ->name('orders');
+
+                if ($locale !== null) {
+                    $orders->defaults('locale', $locale);
                 }
 
                 $refund = Route::post('/api/orders/{order:public_id}/refund', PaylinkRefundController::class)

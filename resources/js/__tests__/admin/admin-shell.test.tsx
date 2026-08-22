@@ -37,6 +37,7 @@ vi.mock('@inertiajs/react', () => ({
 
 const navigation: AdminNavigationItem[] = [
     { key: 'overview', label: 'Overview', url: '/en/admin' },
+    { key: 'orders', label: 'Orders', url: '/en/admin/orders' },
     {
         key: 'security',
         label: 'MFA Security',
@@ -73,15 +74,16 @@ describe('Admin shell', () => {
             />,
         );
 
-        expect(screen.getAllByRole('link')).toHaveLength(2);
+        expect(screen.getAllByRole('link')).toHaveLength(3);
         expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute(
             'aria-current',
             'page',
         );
+        expect(screen.getByRole('link', { name: 'Orders' })).toBeVisible();
         expect(
             screen.getByRole('link', { name: 'MFA Security' }),
         ).not.toHaveAttribute('aria-current');
-        expect(screen.queryByText(/orders|customers|wallet|chat/i)).toBeNull();
+        expect(screen.queryByText(/customers|wallet|chat/i)).toBeNull();
     });
 
     it('keeps the actor identity visible and logout separate from navigation', () => {
@@ -179,6 +181,6 @@ describe('Admin shell', () => {
         expect(
             screen.getByRole('button', { name: 'Close Admin navigation' }),
         ).toBeInTheDocument();
-        expect(screen.getAllByRole('link')).toHaveLength(2);
+        expect(screen.getAllByRole('link')).toHaveLength(3);
     });
 });

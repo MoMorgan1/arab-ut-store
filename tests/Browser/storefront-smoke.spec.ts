@@ -41,12 +41,29 @@ function mutateLocalBrowserUser(email: string, action: 'promote' | 'delete') {
     const mutation =
         action === 'promote'
             ? `${guard}$user = \\App\\Models\\User::where('email', ${lookup})->firstOrFail(); $user->forceFill(['role' => \\App\\Enums\\UserRole::Admin, 'two_factor_secret' => \\Laravel\\Fortify\\Fortify::currentEncrypter()->encrypt(\\Illuminate\\Support\\Str::random(32)), 'two_factor_confirmed_at' => now()])->save();`
-            : `${guard}\\App\\Models\\User::where('email', ${lookup})->delete();`;
+            : `${guard}$user = \\App\\Models\\User::where('email', ${lookup})->firstOrFail(); $user->orders()->each(function ($order) { $order->payments()->delete(); $order->items()->delete(); $order->delete(); }); $user->delete();`;
 
     execFileSync('php', ['artisan', 'tinker', '--execute', mutation], {
         cwd: process.cwd(),
         stdio: 'pipe',
     });
+}
+
+function seedLocalBrowserOrder(email: string) {
+    const orderNumber = `BROWSER-${randomUUID().slice(0, 8).toUpperCase()}`;
+    const encodedEmail = Buffer.from(email).toString('base64');
+    const encodedOrderNumber = Buffer.from(orderNumber).toString('base64');
+    const lookup = `base64_decode('${encodedEmail}')`;
+    const number = `base64_decode('${encodedOrderNumber}')`;
+    const guard = `if (!app()->environment(['local', 'testing']) || config('database.default') !== 'sqlite') { throw new \\RuntimeException('Browser Admin fixtures require a local SQLite environment.'); } `;
+    const mutation = `${guard}$user = \\App\\Models\\User::where('email', ${lookup})->firstOrFail(); $order = $user->orders()->create(['order_number' => ${number}, 'status' => \\App\\Enums\\OrderStatus::Received, 'locale' => 'en', 'currency' => 'SAR', 'subtotal_halalah' => 15000, 'discount_halalah' => 0, 'wallet_halalah' => 0, 'payment_halalah' => 15000, 'total_halalah' => 15000, 'placed_at' => now()]); $order->items()->create(['sku' => 'BROWSER-COINS', 'name_ar' => 'كوينز', 'name_en' => 'Coins', 'service_type' => \\App\\Enums\\ServiceType::Coins, 'platform' => \\App\\Enums\\Platform::PlayStation, 'status' => \\App\\Enums\\OrderItemStatus::Received, 'quantity' => 1, 'unit_price_halalah' => 15000, 'subtotal_halalah' => 15000, 'discount_halalah' => 0, 'total_halalah' => 15000]);`;
+
+    execFileSync('php', ['artisan', 'tinker', '--execute', mutation], {
+        cwd: process.cwd(),
+        stdio: 'pipe',
+    });
+
+    return orderNumber;
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
@@ -650,7 +667,7 @@ test('authenticated account keeps chat above mobile navigation', async ({
     expectCleanRuntime();
 });
 
-test('authenticated Admin overview is operable in English across required widths', async ({
+test('authenticated Admin overview and orders are operable across required widths', async ({
     context,
     page,
 }) => {
@@ -675,6 +692,7 @@ test('authenticated Admin overview is operable in English across required widths
         ]);
 
         mutateLocalBrowserUser(email, 'promote');
+        const orderNumber = seedLocalBrowserOrder(email);
 
         const cdpSession = await context.newCDPSession(page);
         await cdpSession.send('Emulation.setSafeAreaInsetsOverride', {
@@ -697,6 +715,7 @@ test('authenticated Admin overview is operable in English across required widths
                 close: 'Close Admin navigation',
                 dialog: 'Arab UT',
                 overview: 'Overview',
+                orders: 'Orders',
                 security: 'MFA Security',
                 range7: 'Last 7 days',
                 range30: 'Last 30 days',
@@ -801,6 +820,9 @@ test('authenticated Admin overview is operable in English across required widths
                         dialog.getByRole('link', { name: locale.overview }),
                     );
                     await expectMinimumTouchTarget(
+                        dialog.getByRole('link', { name: locale.orders }),
+                    );
+                    await expectMinimumTouchTarget(
                         dialog.getByRole('link', { name: locale.security }),
                     );
                     await expectMinimumTouchTarget(
@@ -811,7 +833,7 @@ test('authenticated Admin overview is operable in English across required widths
                     await expect(
                         dialog.getByRole('link', { name: locale.overview }),
                     ).toHaveAttribute('aria-current', 'page');
-                    await expect(dialog.getByRole('link')).toHaveCount(2);
+                    await expect(dialog.getByRole('link')).toHaveCount(3);
 
                     const sheetBehavior = await dialog.evaluate((element) => {
                         const styles = window.getComputedStyle(element);
@@ -852,7 +874,7 @@ test('authenticated Admin overview is operable in English across required widths
                     ).toBeHidden();
                     const sidebar = page.locator('.admin-sidebar');
                     await expect(sidebar).toBeVisible();
-                    await expect(sidebar.getByRole('link')).toHaveCount(2);
+                    await expect(sidebar.getByRole('link')).toHaveCount(3);
                     await expect(
                         sidebar.getByRole('link', { name: locale.overview }),
                     ).toHaveAttribute('aria-current', 'page');
@@ -879,6 +901,132 @@ test('authenticated Admin overview is operable in English across required widths
                     page.getByRole('link', { name: locale.range30 }),
                 ).toHaveAttribute('aria-current', 'page');
                 await expectNoHorizontalOverflow(page);
+
+                let ordersLink: Locator;
+
+                if (width < 768) {
+                    await page
+                        .getByRole('button', { name: locale.open })
+                        .click();
+                    ordersLink = page
+                        .getByRole('dialog', { name: locale.dialog })
+                        .getByRole('link', { name: locale.orders });
+                } else {
+                    ordersLink = page
+                        .locator('.admin-sidebar')
+                        .getByRole('link', { name: locale.orders });
+                }
+
+                await Promise.all([
+                    page.waitForURL((url) => url.pathname === '/admin/orders'),
+                    ordersLink.click(),
+                ]);
+
+                await expect(
+                    page.getByRole('heading', { level: 1, name: 'Orders' }),
+                ).toBeVisible();
+                await expect(page.locator('.chat-widget-root')).toHaveCount(0);
+
+                const search = page.getByRole('searchbox', {
+                    name: 'Search orders',
+                });
+                await expectMinimumTouchTarget(search);
+                await search.focus();
+                await expect(search).toBeFocused();
+                await search.fill(orderNumber);
+                await expectMinimumTouchTarget(
+                    page.getByRole('button', { name: 'Clear search' }),
+                );
+                await expectMinimumTouchTarget(
+                    page.getByRole('button', { name: 'Search', exact: true }),
+                );
+
+                for (const label of [
+                    'Filter by status',
+                    'Filter by service',
+                    'Filter by platform',
+                    'Filter by payment status',
+                    'Per page',
+                ]) {
+                    await expectMinimumTouchTarget(
+                        page.getByRole('combobox', { name: label }),
+                    );
+                }
+
+                await expectMinimumTouchTarget(page.getByLabel('Date from'));
+                await expectMinimumTouchTarget(page.getByLabel('Date to'));
+                const columnsButton = page.getByRole('button', {
+                    name: 'Toggle columns',
+                });
+                await expectMinimumTouchTarget(columnsButton);
+                await columnsButton.click();
+                await expectMinimumTouchTarget(
+                    page.getByRole('menuitemcheckbox', { name: 'Customer' }),
+                );
+                await page.keyboard.press('Escape');
+
+                const selectOrder = page.getByRole('checkbox', {
+                    name: `Select row ${orderNumber}`,
+                });
+                await expectMinimumTouchTarget(selectOrder.locator('..'));
+                await selectOrder.click();
+                await expect(selectOrder).toBeChecked();
+                await expect(
+                    page.getByText(/^1 of \d+ row\(s\) selected$/),
+                ).toBeVisible();
+
+                if (width < 768) {
+                    await expect(
+                        page.getByRole('listitem').filter({
+                            hasText: orderNumber,
+                        }),
+                    ).toBeVisible();
+                } else {
+                    const ordersTable = page.getByRole('region', {
+                        name: 'Orders list',
+                    });
+                    await expect(
+                        ordersTable.getByText(orderNumber),
+                    ).toBeVisible();
+                    await expect(
+                        ordersTable.getByRole('columnheader', {
+                            name: /Placed at/i,
+                        }),
+                    ).toHaveAttribute('aria-sort', 'descending');
+                }
+
+                await Promise.all([
+                    page.waitForResponse((response) => {
+                        const url = new URL(response.url());
+
+                        return (
+                            response.request().method() === 'GET' &&
+                            url.pathname === '/admin/orders' &&
+                            url.searchParams.get('search') === orderNumber
+                        );
+                    }),
+                    page.waitForURL(
+                        (url) =>
+                            url.pathname === '/admin/orders' &&
+                            url.searchParams.get('search') === orderNumber,
+                    ),
+                    page
+                        .getByRole('button', { name: 'Search', exact: true })
+                        .click(),
+                ]);
+                await expect(
+                    page.locator('main [aria-busy="true"]'),
+                ).toHaveCount(0);
+                await expect(selectOrder).not.toBeChecked();
+                await expectNoHorizontalOverflow(page);
+
+                await page.evaluate(() => {
+                    document.body.style.zoom = '2';
+                });
+                await expectNoHorizontalOverflow(page);
+                await page.evaluate(() => {
+                    document.body.style.zoom = '';
+                });
             }
         }
 

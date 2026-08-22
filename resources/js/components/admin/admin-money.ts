@@ -1,7 +1,7 @@
 import type { AdminMoney } from '@/types/admin';
 
 export function formatAdminMoney(
-    money: AdminMoney,
+    money: AdminMoney<string>,
     locale: 'ar' | 'en',
 ): string {
     const minorUnits = BigInt(money.amountMinor);

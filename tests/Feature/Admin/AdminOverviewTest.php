@@ -339,7 +339,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
 
     expect($shell['adminIdentity'])->toBe(['name' => $actor->name, 'role' => $role->value])
         ->and($shell['permissions'])->toBe($expectedPermissions)
-        ->and(array_column($shell['adminNavigation'], 'key'))->toBe(['overview', 'security'])
+        ->and(array_column($shell['adminNavigation'], 'key'))->toBe(['overview', 'orders', 'security'])
         ->and(array_column($shell['adminNavigation'], 'url'))->toBe($expectedUrls)
         ->and($shell['logoutUrl'])->toBe('/logout');
 
@@ -372,7 +372,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
             'settings.view',
             'settings.manage',
         ],
-        ['/admin', '/admin/security/mfa'],
+        ['/admin', '/admin/orders', '/admin/security/mfa'],
     ],
     'English Staff' => [
         UserRole::Staff,
@@ -384,7 +384,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
             'orders.cancel',
             'order_credentials.view',
         ],
-        ['/admin', '/admin/security/mfa'],
+        ['/admin', '/admin/orders', '/admin/security/mfa'],
     ],
 ]);
 

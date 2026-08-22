@@ -9,12 +9,14 @@ import {
 } from '@/lib/page-layout';
 
 describe('usesAdminLayout', () => {
-    it.each(['admin/overview', 'admin/security/mfa'])(
-        'uses the privileged Admin shell for %s',
-        (page) => {
-            expect(usesAdminLayout(page)).toBe(true);
-        },
-    );
+    it.each([
+        'admin/overview',
+        'admin/security/mfa',
+        'admin/orders/index',
+        'admin/orders/show',
+    ])('uses the privileged Admin shell for %s', (page) => {
+        expect(usesAdminLayout(page)).toBe(true);
+    });
 
     it.each(['store/home', 'account/overview', 'auth/login'])(
         'does not apply the Admin shell to %s',
@@ -62,15 +64,17 @@ describe('resolveApplicationLayout', () => {
         },
     );
 
-    it.each(['admin/overview', 'admin/security/mfa'])(
-        'resolves %s to nested [ChatRootLayout, AdminLayout] array',
-        (page) => {
-            expect(resolveApplicationLayout(page)).toEqual([
-                ChatRootLayout,
-                AdminLayout,
-            ]);
-        },
-    );
+    it.each([
+        'admin/overview',
+        'admin/security/mfa',
+        'admin/orders/index',
+        'admin/orders/show',
+    ])('resolves %s to nested [ChatRootLayout, AdminLayout] array', (page) => {
+        expect(resolveApplicationLayout(page)).toEqual([
+            ChatRootLayout,
+            AdminLayout,
+        ]);
+    });
 
     it('never returns a render callback function', () => {
         const storeLayout = resolveApplicationLayout('store/home');
