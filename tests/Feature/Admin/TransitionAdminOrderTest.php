@@ -1,0 +1,338 @@
+<?php
+
+use App\Enums\OrderItemStatus;
+use App\Enums\OrderStatus;
+use App\Enums\OrderStatusHistoryStatus;
+use App\Enums\Platform;
+use App\Enums\ServiceType;
+use App\Enums\UserRole;
+use App\Models\Order;
+use App\Models\OrderStatusHistory;
+use App\Models\StaffAuditLog;
+use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Laravel\Fortify\Fortify;
+
+afterEach(function (): void {
+    Carbon::setTestNow();
+});
+
+test('admin can transition received order to in_progress with item propagation, history, and staff audit', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::Received);
+
+    $receivedItem = $order->items()->create([
+        'sku' => 'AUT-ITEM-REC',
+        'name_ar' => 'عنصر مستلم',
+        'name_en' => 'Received item',
+        'service_type' => ServiceType::Coins,
+        'platform' => Platform::PlayStation,
+        'status' => OrderItemStatus::Received,
+        'quantity' => 1,
+        'unit_price_halalah' => 5000,
+        'subtotal_halalah' => 5000,
+        'discount_halalah' => 0,
+        'total_halalah' => 5000,
+    ]);
+
+    $failedItem = $order->items()->create([
+        'sku' => 'AUT-ITEM-FAIL',
+        'name_ar' => 'عنصر فاشل',
+        'name_en' => 'Failed item',
+        'service_type' => ServiceType::Coins,
+        'platform' => Platform::PlayStation,
+        'status' => OrderItemStatus::Failed,
+        'quantity' => 1,
+        'unit_price_halalah' => 5000,
+        'subtotal_halalah' => 5000,
+        'discount_halalah' => 0,
+        'total_halalah' => 5000,
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'received',
+            'target_status' => 'in_progress',
+        ]);
+
+    $response->assertOk()
+        ->assertJson([
+            'order' => [
+                'id' => (string) $order->public_id,
+                'status' => 'in_progress',
+            ],
+            'status' => 'in_progress',
+        ]);
+
+    $order->refresh();
+    expect($order->status)->toBe(OrderStatus::InProgress);
+
+    // Propagated item status updated; failed item preserved
+    expect($receivedItem->fresh()->status)->toBe(OrderItemStatus::InProgress)
+        ->and($failedItem->fresh()->status)->toBe(OrderItemStatus::Failed);
+
+    // Order status history created: 1 for order, 1 for propagated item
+    $history = OrderStatusHistory::query()->where('order_id', $order->id)->get();
+    expect($history)->toHaveCount(2);
+
+    $orderHistory = $history->firstWhere('order_item_id', null);
+    expect($orderHistory)->not->toBeNull()
+        ->and($orderHistory->status)->toBe(OrderStatusHistoryStatus::InProgress)
+        ->and($orderHistory->metadata['source'])->toBe('admin')
+        ->and($orderHistory->metadata['previous_status'])->toBe('received')
+        ->and($orderHistory->metadata['new_status'])->toBe('in_progress');
+
+    $itemHistory = $history->firstWhere('order_item_id', $receivedItem->id);
+    expect($itemHistory)->not->toBeNull()
+        ->and($itemHistory->status)->toBe(OrderStatusHistoryStatus::InProgress);
+
+    // Exactly one staff audit row recorded
+    $audits = StaffAuditLog::query()
+        ->where('auditable_type', $order->getMorphClass())
+        ->where('auditable_id', $order->id)
+        ->get();
+
+    expect($audits)->toHaveCount(1);
+    $audit = $audits->first();
+    expect($audit->action)->toBe('orders.status_changed')
+        ->and($audit->actor_user_id)->toBe($admin->id)
+        ->and(array_keys($audit->metadata))->toBe([
+            'source',
+            'previous_status',
+            'new_status',
+            'order_public_id',
+            'propagated_item_count',
+        ])
+        ->and($audit->metadata)->toBe([
+            'source' => 'admin',
+            'previous_status' => 'received',
+            'new_status' => 'in_progress',
+            'order_public_id' => (string) $order->public_id,
+            'propagated_item_count' => 1,
+        ]);
+});
+
+test('transitioning to completed sets completed_at timestamp', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::InProgress);
+
+    $item = $order->items()->create([
+        'sku' => 'AUT-ITEM-COMP',
+        'name_ar' => 'عنصر',
+        'name_en' => 'Item',
+        'service_type' => ServiceType::Coins,
+        'platform' => Platform::PlayStation,
+        'status' => OrderItemStatus::InProgress,
+        'quantity' => 1,
+        'unit_price_halalah' => 5000,
+        'subtotal_halalah' => 5000,
+        'discount_halalah' => 0,
+        'total_halalah' => 5000,
+    ]);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'in_progress',
+            'target_status' => 'completed',
+        ])
+        ->assertOk();
+
+    $order->refresh();
+    expect($order->status)->toBe(OrderStatus::Completed)
+        ->and($order->completed_at)->not->toBeNull()
+        ->and($order->cancelled_at)->toBeNull()
+        ->and($item->fresh()->status)->toBe(OrderItemStatus::Completed);
+});
+
+test('transitioning to cancelled sets cancelled_at timestamp and cancels all active items', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::WaitingForCustomer);
+
+    $waitingItem = $order->items()->create([
+        'sku' => 'AUT-ITEM-WAIT',
+        'name_ar' => 'عنصر معلق',
+        'name_en' => 'Waiting item',
+        'service_type' => ServiceType::Coins,
+        'platform' => Platform::PlayStation,
+        'status' => OrderItemStatus::WaitingForCustomer,
+        'quantity' => 1,
+        'unit_price_halalah' => 5000,
+        'subtotal_halalah' => 5000,
+        'discount_halalah' => 0,
+        'total_halalah' => 5000,
+    ]);
+
+    $completedItem = $order->items()->create([
+        'sku' => 'AUT-ITEM-DONE',
+        'name_ar' => 'عنصر مكتمل',
+        'name_en' => 'Completed item',
+        'service_type' => ServiceType::Coins,
+        'platform' => Platform::PlayStation,
+        'status' => OrderItemStatus::Completed,
+        'quantity' => 1,
+        'unit_price_halalah' => 5000,
+        'subtotal_halalah' => 5000,
+        'discount_halalah' => 0,
+        'total_halalah' => 5000,
+    ]);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'waiting_for_customer',
+            'target_status' => 'cancelled',
+        ])
+        ->assertOk();
+
+    $order->refresh();
+    expect($order->status)->toBe(OrderStatus::Cancelled)
+        ->and($order->cancelled_at)->not->toBeNull()
+        ->and($order->completed_at)->toBeNull()
+        ->and($waitingItem->fresh()->status)->toBe(OrderItemStatus::Cancelled)
+        ->and($completedItem->fresh()->status)->toBe(OrderItemStatus::Completed);
+});
+
+test('stale expected_status yields 409 conflict JSON with fresh canonical status and zero writes', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::InProgress);
+
+    $initialHistoryCount = OrderStatusHistory::query()->count();
+    $initialAuditCount = StaffAuditLog::query()->count();
+
+    // Client sends stale expected_status 'received', but DB is 'in_progress'
+    $response = $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'received',
+            'target_status' => 'completed',
+        ]);
+
+    $response->assertStatus(409)
+        ->assertJson([
+            'order' => (string) $order->public_id,
+            'status' => 'in_progress',
+        ]);
+
+    // Zero writes performed
+    expect($order->fresh()->status)->toBe(OrderStatus::InProgress)
+        ->and(OrderStatusHistory::query()->count())->toBe($initialHistoryCount)
+        ->and(StaffAuditLog::query()->count())->toBe($initialAuditCount);
+});
+
+test('illegal transition pairs return 422 validation failure without side effects', function (
+    string $fromStatus,
+    string $toStatus,
+): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::from($fromStatus));
+
+    $initialHistoryCount = OrderStatusHistory::query()->count();
+    $initialAuditCount = StaffAuditLog::query()->count();
+
+    $response = $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => $fromStatus,
+            'target_status' => $toStatus,
+        ]);
+
+    $response->assertStatus(422);
+
+    expect($order->fresh()->status->value)->toBe($fromStatus)
+        ->and(OrderStatusHistory::query()->count())->toBe($initialHistoryCount)
+        ->and(StaffAuditLog::query()->count())->toBe($initialAuditCount);
+})->with([
+    'pending_payment to completed' => ['pending_payment', 'completed'],
+    'completed to in_progress' => ['completed', 'in_progress'],
+    'cancelled to received' => ['cancelled', 'received'],
+    'in_progress to pending_payment' => ['in_progress', 'pending_payment'],
+]);
+
+test('transitioning directly to refunded is rejected with 422 even for Admin', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::Received);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'received',
+            'target_status' => 'refunded',
+        ])
+        ->assertStatus(422);
+
+    expect($order->fresh()->status)->toBe(OrderStatus::Received);
+});
+
+test('transition request rejecting unknown fields with 422', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::Received);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'received',
+            'target_status' => 'in_progress',
+            'unauthorized_field' => 'injection_attempt',
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['unexpected_fields']);
+});
+
+test('transition permissions gate actions per transition type', function (): void {
+    $customer = User::factory()->create(['role' => UserRole::Customer]);
+    $order = createTransitionTestOrder(OrderStatus::Received);
+
+    // Customer denied
+    $this->actingAs($customer)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'received',
+            'target_status' => 'in_progress',
+        ])
+        ->assertForbidden();
+});
+
+test('localized transition alias routes execute successfully', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::Received);
+
+    $this->actingAs($admin)
+        ->postJson("/en/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'received',
+            'target_status' => 'in_progress',
+        ])
+        ->assertOk()
+        ->assertJson([
+            'status' => 'in_progress',
+        ]);
+});
+
+function createTransitionTestActor(UserRole $role, string $locale = 'en'): User
+{
+    $actor = User::factory()->create([
+        'role' => $role,
+        'preferred_locale' => $locale,
+        'password' => 'SecurePassword!12',
+    ]);
+    $actor->forceFill([
+        'two_factor_secret' => Fortify::currentEncrypter()->encrypt('ADMINTRANSITIONSTOTPSECRET'),
+        'two_factor_confirmed_at' => now(),
+    ])->save();
+
+    return $actor;
+}
+
+function createTransitionTestOrder(OrderStatus $status): Order
+{
+    $customer = User::factory()->create([
+        'role' => UserRole::Customer,
+    ]);
+
+    return Order::factory()->for($customer)->create([
+        'order_number' => 'AUT-TRANS-'.Str::random(6),
+        'status' => $status,
+        'subtotal_halalah' => 5000,
+        'discount_halalah' => 0,
+        'wallet_halalah' => 0,
+        'payment_halalah' => 5000,
+        'total_halalah' => 5000,
+        'currency' => 'SAR',
+        'placed_at' => now(),
+    ]);
+}
