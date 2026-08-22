@@ -185,7 +185,7 @@ export default function AdminOrdersToolbar({
                         {search ? (
                             <button
                                 aria-label={copy.clearSearch}
-                                className="absolute end-0 top-0 inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none md:size-9"
+                                className="absolute end-0 top-0 inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
                                 onClick={clearSearch}
                                 type="button"
                             >
