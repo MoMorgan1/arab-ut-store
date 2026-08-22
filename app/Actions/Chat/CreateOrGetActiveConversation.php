@@ -4,6 +4,7 @@ namespace App\Actions\Chat;
 
 use App\Enums\Chat\ChatConversationStatus;
 use App\Models\ChatConversation;
+use App\Models\ChatMessage;
 use App\ValueObjects\Chat\ChatOwner;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -88,6 +89,25 @@ final readonly class CreateOrGetActiveConversation
     {
         if ($conversation->locale !== $locale) {
             $conversation->forceFill(['locale' => $locale])->save();
+
+            $seedMessage = $conversation
+                ->messages()
+                ->where('sender_type', 'system')
+                ->orderBy('id')
+                ->first();
+
+            if ($seedMessage instanceof ChatMessage) {
+                $knownSeeds = [
+                    CreateChatConversation::seedContent('en'),
+                    CreateChatConversation::seedContent('ar'),
+                ];
+
+                if (in_array($seedMessage->content, $knownSeeds, true)) {
+                    $seedMessage->forceFill([
+                        'content' => CreateChatConversation::seedContent($locale),
+                    ])->save();
+                }
+            }
         }
 
         return $conversation;

@@ -264,9 +264,45 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                         : 'المساعد يرد الآن'}
                                                 </span>
                                             )}
-                                            <p className="break-words whitespace-pre-wrap">
-                                                {message.content}
-                                            </p>
+                                            {isStreaming &&
+                                            message.content === '' ? (
+                                                <span
+                                                    aria-hidden="true"
+                                                    className="flex items-center gap-1.5 py-0.5"
+                                                >
+                                                    <span
+                                                        className="h-2 w-2 animate-bounce rounded-full bg-[var(--arabut-gold-bright)] motion-reduce:animate-none"
+                                                        style={{
+                                                            animationDelay:
+                                                                '0ms',
+                                                            animationDuration:
+                                                                '900ms',
+                                                        }}
+                                                    />
+                                                    <span
+                                                        className="h-2 w-2 animate-bounce rounded-full bg-[var(--arabut-gold-bright)] motion-reduce:animate-none"
+                                                        style={{
+                                                            animationDelay:
+                                                                '180ms',
+                                                            animationDuration:
+                                                                '900ms',
+                                                        }}
+                                                    />
+                                                    <span
+                                                        className="h-2 w-2 animate-bounce rounded-full bg-[var(--arabut-gold-bright)] motion-reduce:animate-none"
+                                                        style={{
+                                                            animationDelay:
+                                                                '360ms',
+                                                            animationDuration:
+                                                                '900ms',
+                                                        }}
+                                                    />
+                                                </span>
+                                            ) : (
+                                                <p className="break-words whitespace-pre-wrap">
+                                                    {message.content}
+                                                </p>
+                                            )}
                                         </div>
 
                                         {/* Status / retry for customer messages */}
