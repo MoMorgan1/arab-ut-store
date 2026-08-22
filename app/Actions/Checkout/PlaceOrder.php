@@ -26,6 +26,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Security\CheckoutFingerprint;
+use App\Support\SafeOrderItemConfiguration;
 use App\ValueObjects\Cart\CartOwner;
 use App\ValueObjects\Cart\ManualServiceCredentials;
 use App\ValueObjects\Pricing\SbcCompletionPricing;
@@ -486,25 +487,7 @@ final readonly class PlaceOrder
      */
     private function safeConfiguration(array $configuration, ServiceType $service): array
     {
-        $keys = ['service_type', 'platform', 'market', 'quoted_at', 'price_version'];
-
-        if ($service === ServiceType::Coins) {
-            array_push($keys, 'delivery', 'coins_quantity');
-        }
-
-        if ($service === ServiceType::Sbc) {
-            $keys[] = 'completion_count';
-        }
-
-        if ($service === ServiceType::FutChampions) {
-            array_push($keys, 'pc_store', 'schedule_version', 'rank', 'urgent', 'matches_played');
-        }
-
-        if ($service === ServiceType::Rivals) {
-            array_push($keys, 'pc_store', 'schedule_version', 'current_division', 'target_division');
-        }
-
-        return array_intersect_key($configuration, array_flip($keys));
+        return SafeOrderItemConfiguration::project($configuration, $service);
     }
 
     /** @param array<string, mixed> $snapshot */

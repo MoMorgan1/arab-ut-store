@@ -9,6 +9,7 @@ use App\Models\OrderStatusHistory;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\StaffAuditLog;
+use App\Support\SafeOrderItemConfiguration;
 use BackedEnum;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -136,7 +137,9 @@ final class AdminOrderDetail
                 'discount' => self::money($item->getAttribute('discount_halalah'), $currency),
                 'total' => self::money($item->getAttribute('total_halalah'), $currency),
                 'status' => $item->status->value,
-                'configuration' => $this->projectSafeConfiguration($item->configuration),
+                'configuration' => $item->configuration === null
+                    ? null
+                    : SafeOrderItemConfiguration::project($item->configuration, $item->service_type),
                 'statusHistory' => self::historyList($item->statusHistory),
             ])->all()),
             'payments' => array_values($order->payments->map(fn (Payment $payment): array => [
@@ -237,30 +240,5 @@ final class AdminOrderDetail
     private static function enumValue(mixed $value): string
     {
         return $value instanceof BackedEnum ? (string) $value->value : (string) $value;
-    }
-
-    /**
-     * @param  array<string, mixed>|null  $configuration
-     * @return array<string, mixed>|null
-     */
-    private function projectSafeConfiguration(?array $configuration): ?array
-    {
-        if ($configuration === null) {
-            return null;
-        }
-
-        $safe = [];
-        $allowlist = ['coins_amount', 'squad_rating', 'division', 'rank', 'matches_count', 'options'];
-
-        foreach ($allowlist as $key) {
-            if (isset($configuration[$key])) {
-                $val = $configuration[$key];
-                if (is_scalar($val) || is_array($val)) {
-                    $safe[$key] = $val;
-                }
-            }
-        }
-
-        return $safe;
     }
 }
