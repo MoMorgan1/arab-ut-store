@@ -41,6 +41,8 @@ const mockPage = vi.hoisted(() => ({
                 browse_services: 'تصفح الخدمات',
                 loyalty_remaining: 'تبقى :amount للوصول إلى فئة :tier.',
                 loyalty_complete: 'وصلت إلى أعلى فئة ولاء متاحة.',
+                attention_description:
+                    'نحتاج بيانات دخول الحساب لإكمال التنفيذ.',
             },
             wallet: {
                 title: 'محفظتي',
@@ -267,6 +269,9 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
                 Node.DOCUMENT_POSITION_FOLLOWING,
         ),
     ).toBe(true);
+    expect(
+        screen.getByText('نحتاج بيانات دخول الحساب لإكمال التنفيذ.'),
+    ).toBeVisible();
 
     expect(
         screen.queryByRole('heading', {

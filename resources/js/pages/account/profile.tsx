@@ -152,6 +152,20 @@ export default function AccountProfile() {
         router.post(props.logoutUrl);
     }
 
+    const isContactAttention =
+        !props.profile.email.verified || !props.profile.phone.verified;
+
+    function openPhoneVerification() {
+        setEditingContact('phone');
+        setTimeout(() => {
+            const target =
+                document.getElementById('new_phone') ??
+                document.getElementById('code') ??
+                document.getElementById('contact');
+            target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 0);
+    }
+
     return (
         <MyAccountLayout {...props} current="profile" currentUrl={inertia.url}>
             <Head title={props.accountUi.profile.title} />
@@ -169,7 +183,10 @@ export default function AccountProfile() {
                     <a href="#personal">
                         {props.accountUi.profile.sections.personal}
                     </a>
-                    <a href="#contact">
+                    <a
+                        data-attention={isContactAttention ? 'true' : undefined}
+                        href="#contact"
+                    >
                         {props.accountUi.profile.sections.contact}
                     </a>
                     <a href="#security">
@@ -292,6 +309,19 @@ export default function AccountProfile() {
                         icon={CheckCircle2}
                         title={props.accountUi.profile.contact_title}
                     />
+                    <p className="account-profile-sensitive-hint">
+                        {props.accountUi.profile.sensitive_hint}
+                    </p>
+                    {!props.profile.phone.verified &&
+                    props.accountUi.profile.verify_phone_cta ? (
+                        <button
+                            className="account-profile-verify-cta"
+                            onClick={openPhoneVerification}
+                            type="button"
+                        >
+                            {props.accountUi.profile.verify_phone_cta}
+                        </button>
+                    ) : null}
                     <div className="account-profile-contacts">
                         <ContactValue
                             actionLabel={
@@ -525,9 +555,6 @@ export default function AccountProfile() {
                             ) : null}
                         </ContactValue>
                     </div>
-                    <p className="account-profile-sensitive-hint">
-                        {props.accountUi.profile.sensitive_hint}
-                    </p>
                 </section>
 
                 <section

@@ -47,7 +47,14 @@ export default function AccountOrderRow({
                 <StatusIcon />
             </span>
             <div className="account-order-row__main">
-                <h3>{order.summary}</h3>
+                <h3>
+                    <Link
+                        className="account-order-row__title-link"
+                        href={order.detailUrl}
+                    >
+                        {order.summary}
+                    </Link>
+                </h3>
                 <p className="account-order-row__meta">
                     <span dir="ltr" title={order.number}>
                         {displayNumber}

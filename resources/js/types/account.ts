@@ -41,6 +41,8 @@ export type AccountNavigationItem = {
     key: AccountDestination;
     label: string;
     url: string;
+    attention?: boolean;
+    badge?: string | null;
 };
 
 export type AccountTier = {
@@ -77,6 +79,7 @@ export type AccountTranslations = {
         support: string;
         logout: string;
         admin?: string;
+        coming_soon?: string;
     };
     bottom_nav?: {
         home: string;
@@ -100,6 +103,7 @@ export type AccountTranslations = {
         browse_services: string;
         loyalty_remaining: string;
         loyalty_complete: string;
+        attention_description?: string;
     };
     orders: {
         title: string;
@@ -205,6 +209,12 @@ export type AccountTranslations = {
             contact: string;
             security: string;
         };
+        sections_long?: {
+            personal: string;
+            contact: string;
+            security: string;
+        };
+        verify_phone_cta?: string;
         first_name: string;
         last_name: string;
         email: string;

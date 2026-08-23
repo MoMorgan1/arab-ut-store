@@ -134,6 +134,12 @@ export default function AccountOverview() {
                             {activeOrderHeading}
                         </h2>
                         <AccountOrderCard
+                            description={
+                                isActionNeeded
+                                    ? props.accountUi.overview
+                                          .attention_description
+                                    : undefined
+                            }
                             locale={props.locale}
                             order={props.activeOrder}
                             translations={props.accountUi}
@@ -159,7 +165,7 @@ export default function AccountOverview() {
                                 <Arrow aria-hidden="true" />
                             </Link>
                         </div>
-                        <AccountOrderList>
+                        <AccountOrderList className="account-order-list--compact">
                             {visibleRecentOrders.map((order) => (
                                 <AccountOrderRow
                                     key={order.id}
