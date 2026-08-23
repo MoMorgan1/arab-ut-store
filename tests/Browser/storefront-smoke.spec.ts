@@ -789,6 +789,7 @@ test('authenticated Admin overview and orders are operable across required width
                 dialog: 'Arab UT',
                 overview: 'Overview',
                 orders: 'Orders',
+                products: 'Products',
                 settings: 'Settings',
                 range7: 'Last 7 days',
                 range30: 'Last 30 days',
@@ -896,6 +897,9 @@ test('authenticated Admin overview and orders are operable across required width
                         dialog.getByRole('link', { name: locale.orders }),
                     );
                     await expectMinimumTouchTarget(
+                        dialog.getByRole('link', { name: locale.products }),
+                    );
+                    await expectMinimumTouchTarget(
                         dialog.getByRole('link', { name: locale.settings }),
                     );
                     await expectMinimumTouchTarget(
@@ -906,7 +910,7 @@ test('authenticated Admin overview and orders are operable across required width
                     await expect(
                         dialog.getByRole('link', { name: locale.overview }),
                     ).toHaveAttribute('aria-current', 'page');
-                    await expect(dialog.getByRole('link')).toHaveCount(4);
+                    await expect(dialog.getByRole('link')).toHaveCount(5);
 
                     const sheetBehavior = await dialog.evaluate((element) => {
                         const styles = window.getComputedStyle(element);
@@ -962,12 +966,17 @@ test('authenticated Admin overview and orders are operable across required width
                     ).toBeHidden();
                     const sidebar = page.locator('.admin-sidebar');
                     await expect(sidebar).toBeVisible();
-                    await expect(sidebar.getByRole('link')).toHaveCount(4);
+                    // Products is a desktop sidebar and navigation-sheet
+                    // destination; the mobile tab bar deliberately stays at four.
+                    await expect(sidebar.getByRole('link')).toHaveCount(5);
                     await expect(
                         sidebar.getByRole('link', { name: locale.overview }),
                     ).toHaveAttribute('aria-current', 'page');
                     await expectMinimumTouchTarget(
                         sidebar.getByRole('link', { name: locale.overview }),
+                    );
+                    await expectMinimumTouchTarget(
+                        sidebar.getByRole('link', { name: locale.products }),
                     );
                     await expectMinimumTouchTarget(sidebar.getByRole('button'));
                 }

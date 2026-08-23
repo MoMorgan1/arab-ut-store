@@ -7,7 +7,10 @@ use App\Enums\ServiceType;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** @property ServiceType $service_type */
+/**
+ * @property ServiceType $service_type
+ * @property ProductAuthority $authority
+ */
 class Product extends DomainModel
 {
     /** @return array<string, string> */
