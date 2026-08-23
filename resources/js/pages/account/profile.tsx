@@ -420,38 +420,39 @@ export default function AccountProfile() {
                     passwordMode={props.security.passwordMode}
                     passwordRules={props.security.passwordRules}
                     translations={props.accountUi.security}
-                />
-
-                <div className="account-security-recovery">
-                    <span aria-hidden="true">
-                        <LifeBuoy />
-                    </span>
-                    <div>
-                        <h3>{props.accountUi.security.recovery_title}</h3>
-                        <p>
-                            {props.security.recoveryMode === 'email'
-                                ? props.accountUi.security.recovery_email
-                                : props.accountUi.security.recovery_whatsapp}
-                        </p>
+                >
+                    <div className="account-security-recovery">
+                        <span aria-hidden="true">
+                            <LifeBuoy />
+                        </span>
+                        <div>
+                            <h3>{props.accountUi.security.recovery_title}</h3>
+                            <p>
+                                {props.security.recoveryMode === 'email'
+                                    ? props.accountUi.security.recovery_email
+                                    : props.accountUi.security
+                                          .recovery_whatsapp}
+                            </p>
+                        </div>
+                        {typeof props.security.recoveryUrl === 'string' ? (
+                            <a
+                                href={props.security.recoveryUrl}
+                                rel={
+                                    props.security.recoveryMode === 'whatsapp'
+                                        ? 'noopener noreferrer'
+                                        : undefined
+                                }
+                                target={
+                                    props.security.recoveryMode === 'whatsapp'
+                                        ? '_blank'
+                                        : undefined
+                                }
+                            >
+                                {props.accountUi.security.recovery_action}
+                            </a>
+                        ) : null}
                     </div>
-                    {typeof props.security.recoveryUrl === 'string' ? (
-                        <a
-                            href={props.security.recoveryUrl}
-                            rel={
-                                props.security.recoveryMode === 'whatsapp'
-                                    ? 'noopener noreferrer'
-                                    : undefined
-                            }
-                            target={
-                                props.security.recoveryMode === 'whatsapp'
-                                    ? '_blank'
-                                    : undefined
-                            }
-                        >
-                            {props.accountUi.security.recovery_action}
-                        </a>
-                    ) : null}
-                </div>
+                </AccountPasswordSection>
 
                 <section
                     className="account-profile-section"

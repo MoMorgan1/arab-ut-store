@@ -1,6 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { KeyRound, ShieldCheck } from 'lucide-react';
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 
 import InputError from '@/components/input-error';
 import type { AccountTranslations } from '@/types/account';
@@ -10,6 +10,7 @@ type AccountPasswordSectionProps = {
         changePasswordUrl: string;
         setupPasswordUrl: string;
     };
+    children?: ReactNode;
     passwordMode: 'change' | 'setup';
     passwordRules: string;
     translations: AccountTranslations['security'];
@@ -17,6 +18,7 @@ type AccountPasswordSectionProps = {
 
 export default function AccountPasswordSection({
     actions,
+    children,
     passwordMode,
     passwordRules,
     translations,
@@ -123,6 +125,7 @@ export default function AccountPasswordSection({
                     </p>
                 ) : null}
             </form>
+            {children}
         </section>
     );
 }
