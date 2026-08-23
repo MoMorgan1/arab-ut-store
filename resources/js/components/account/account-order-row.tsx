@@ -54,10 +54,22 @@ export default function AccountOrderRow({
                     </span>
                     {' · '}
                     <time dateTime={order.placedAt}>{date}</time>
-                    {' · '}
-                    <span>{statusLabel}</span>
+                    <span className="account-order-row__meta-status">
+                        {' · '}
+                        <span>{statusLabel}</span>
+                    </span>
                 </p>
             </div>
+            <span
+                className="account-order-row__status"
+                data-status={order.status}
+            >
+                <span
+                    aria-hidden="true"
+                    className="account-order-row__status-dot"
+                />
+                {statusLabel}
+            </span>
             <strong className="account-order-row__total">
                 {formatAccountMoney(order.total, locale)}
             </strong>

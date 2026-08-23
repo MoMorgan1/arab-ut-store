@@ -26,30 +26,69 @@ final readonly class ReadLiveOrders
 
     public function __construct(private LiveOrderCard $presenter) {}
 
-    /** @return array<string, mixed> */
-    public function for(User $user, string $locale, string $status): array
+    /**
+     * @return array{
+     *     orders: array<int, array{
+     *         id: string,
+     *         source: string,
+     *         number: string,
+     *         status: string,
+     *         placedAt: string,
+     *         summary: string,
+     *         itemCount: int,
+     *         total: array{amountMinor: string, currency: string},
+     *         detailUrl: string
+     *     }>,
+     *     filters: array{status: string, q: ?string},
+     *     pagination: array{
+     *         currentPage: int,
+     *         lastPage: int,
+     *         perPage: int,
+     *         total: int,
+     *         nextUrl: ?string,
+     *         previousUrl: ?string
+     *     }
+     * }
+     */
+    public function for(User $user, string $locale, string $status, ?string $q = null): array
     {
+        $trimmedQ = is_string($q) ? trim($q) : '';
+
         $query = Order::query()
             ->select([
-                'id',
-                'public_id',
-                'user_id',
-                'order_number',
-                'status',
-                'currency',
-                'total_halalah',
-                'placed_at',
-                'created_at',
+                'orders.id',
+                'orders.public_id',
+                'orders.user_id',
+                'orders.order_number',
+                'orders.status',
+                'orders.currency',
+                'orders.total_halalah',
+                'orders.placed_at',
+                'orders.created_at',
             ])
-            ->where('user_id', $user->id)
+            ->where('orders.user_id', $user->id)
             ->with(['items' => fn ($items) => $items
                 ->select(['id', 'order_id', 'name_ar', 'name_en', 'status'])
                 ->orderBy('id')]);
 
         if ($status === 'open') {
-            $query->whereIn('status', self::OPEN_STATUSES);
+            $query->whereIn('orders.status', self::OPEN_STATUSES);
         } elseif ($status === 'completed') {
-            $query->whereIn('status', self::COMPLETED_STATUSES);
+            $query->whereIn('orders.status', self::COMPLETED_STATUSES);
+        }
+
+        if ($trimmedQ !== '') {
+            $pattern = '%'.$trimmedQ.'%';
+            $query->where(function ($orderQuery) use ($pattern): void {
+                $orderQuery
+                    ->where('orders.order_number', 'LIKE', $pattern)
+                    ->orWhere('orders.public_id', 'LIKE', $pattern)
+                    ->orWhereHas('items', function ($itemQuery) use ($pattern): void {
+                        $itemQuery
+                            ->where('name_ar', 'LIKE', $pattern)
+                            ->orWhere('name_en', 'LIKE', $pattern);
+                    });
+            });
         }
 
         $paginator = $query
@@ -63,7 +102,10 @@ final readonly class ReadLiveOrders
                 ->map(fn (Order $order): array => $this->presenter->for($order, $locale))
                 ->values()
                 ->all(),
-            'filters' => ['status' => $status],
+            'filters' => [
+                'status' => $status,
+                'q' => $trimmedQ !== '' ? $trimmedQ : null,
+            ],
             'pagination' => [
                 'currentPage' => $paginator->currentPage(),
                 'lastPage' => $paginator->lastPage(),

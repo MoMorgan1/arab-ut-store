@@ -1,14 +1,32 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { CheckCircle2, KeyRound, Mail, Phone, UserRound } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 
 import InputError from '@/components/input-error';
 import OneTimeCodeField from '@/components/one-time-code-field';
 import PhoneNumberField from '@/components/phone-number-field';
+import { useResendCountdown } from '@/hooks/use-resend-countdown';
 import MyAccountLayout from '@/layouts/my-account-layout';
+import { splitE164 } from '@/lib/phone-country-codes';
 import type { AccountProfilePageProps } from '@/types/account';
+
+function maskPhoneNumber(value: string): string {
+    const split = splitE164(value);
+
+    if (!split) {
+        return value;
+    }
+
+    const national = split.national;
+
+    if (national.length <= 4) {
+        return `${split.dial}•••${national}`;
+    }
+
+    return `${split.dial}•••${national.slice(-4)}`;
+}
 
 export default function AccountProfile() {
     const inertia = usePage<AccountProfilePageProps>();
@@ -19,6 +37,12 @@ export default function AccountProfile() {
     const [phoneCodeSent, setPhoneCodeSent] = useState(
         props.profile.phone.pending !== null,
     );
+    const [requestedPhone, setRequestedPhone] = useState(
+        props.profile.phone.pending ?? '',
+    );
+    const [isResending, setIsResending] = useState(false);
+    const countdown = useResendCountdown(60);
+
     const details = useForm({
         display_currency: props.profile.displayCurrency,
         first_name: props.profile.firstName,
@@ -31,6 +55,12 @@ export default function AccountProfile() {
     const resetLink = useForm({});
 
     phoneCode.dontRemember('code');
+
+    useEffect(() => {
+        if (phoneCodeSent && editingContact === 'phone') {
+            document.getElementById('code')?.focus();
+        }
+    }, [phoneCodeSent, editingContact]);
 
     function focusFirstError(
         errors: Record<string, string>,
@@ -66,15 +96,41 @@ export default function AccountProfile() {
 
     function requestPhone(event: FormEvent) {
         event.preventDefault();
+        const targetPhone = phone.data.phone;
         phone.post(props.profileActions.phoneRequestUrl, {
             onError: (errors) =>
                 focusFirstError(errors, { phone: 'new_phone' }),
             onSuccess: () => {
+                setRequestedPhone(targetPhone);
                 phone.reset();
                 setPhoneCodeSent(true);
+                countdown.start(60);
             },
             preserveScroll: true,
         });
+    }
+
+    function resendPhoneCode() {
+        setIsResending(true);
+        router.post(
+            props.profileActions.phoneRequestUrl,
+            { phone: requestedPhone },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    countdown.start(60);
+                },
+                onFinish: () => {
+                    setIsResending(false);
+                },
+            },
+        );
+    }
+
+    function handleChangeNumber() {
+        setPhoneCodeSent(false);
+        phoneCode.reset();
+        countdown.reset();
     }
 
     function confirmPhone(event: FormEvent) {
@@ -85,6 +141,7 @@ export default function AccountProfile() {
                 phoneCode.reset();
                 setPhoneCodeSent(false);
                 setEditingContact(null);
+                countdown.reset();
             },
             preserveScroll: true,
         });
@@ -311,54 +368,72 @@ export default function AccountProfile() {
                         >
                             {editingContact === 'phone' ? (
                                 <>
-                                    <form
-                                        className="account-profile-contact__editor"
-                                        onSubmit={requestPhone}
-                                    >
-                                        <label htmlFor="new_phone">
-                                            <span>
+                                    {!phoneCodeSent ? (
+                                        <form
+                                            className="account-profile-contact__editor"
+                                            onSubmit={requestPhone}
+                                        >
+                                            <label htmlFor="new_phone">
+                                                <span>
+                                                    {
+                                                        props.accountUi.profile
+                                                            .new_phone
+                                                    }
+                                                </span>
+                                            </label>
+                                            <PhoneNumberField
+                                                id="new_phone"
+                                                autoComplete="tel"
+                                                error={phone.errors.phone}
+                                                labels={{
+                                                    country:
+                                                        props.accountUi.profile
+                                                            .phone,
+                                                    number: props.accountUi
+                                                        .profile.new_phone,
+                                                }}
+                                                locale={props.locale}
+                                                onChange={(value) =>
+                                                    phone.setData(
+                                                        'phone',
+                                                        value,
+                                                    )
+                                                }
+                                                value={phone.data.phone}
+                                            />
+                                            <InputError
+                                                id="new_phone-error"
+                                                message={phone.errors.phone}
+                                            />
+                                            <button
+                                                disabled={phone.processing}
+                                                type="submit"
+                                            >
                                                 {
                                                     props.accountUi.profile
-                                                        .new_phone
+                                                        .send_phone_code
                                                 }
-                                            </span>
-                                        </label>
-                                        <PhoneNumberField
-                                            id="new_phone"
-                                            autoComplete="tel"
-                                            error={phone.errors.phone}
-                                            labels={{
-                                                country:
-                                                    props.accountUi.profile
-                                                        .phone,
-                                                number: props.accountUi.profile
-                                                    .new_phone,
-                                            }}
-                                            locale={props.locale}
-                                            onChange={(value) =>
-                                                phone.setData('phone', value)
-                                            }
-                                            value={phone.data.phone}
-                                        />
-                                        <InputError
-                                            id="new_phone-error"
-                                            message={phone.errors.phone}
-                                        />
-                                        <button
-                                            disabled={phone.processing}
-                                            type="submit"
-                                        >
-                                            {
-                                                props.accountUi.profile
-                                                    .send_phone_code
-                                            }
-                                        </button>
-                                    </form>
-                                    {phoneCodeSent ? (
+                                            </button>
+                                        </form>
+                                    ) : (
                                         <form
                                             className="account-profile-contact__editor account-profile-code"
                                             onSubmit={confirmPhone}
                                         >
+                                            <p
+                                                className="account-profile-code__sent-to"
+                                                role="status"
+                                            >
+                                                {props.accountUi.profile.phone_code_sent_to.replace(
+                                                    ':number',
+                                                    maskPhoneNumber(
+                                                        requestedPhone ||
+                                                            props.profile.phone
+                                                                .pending ||
+                                                            '',
+                                                    ),
+                                                )}
+                                            </p>
                                             <OneTimeCodeField
                                                 id="code"
                                                 autoFocus
@@ -394,8 +469,58 @@ export default function AccountProfile() {
                                                         .confirm_phone
                                                 }
                                             </button>
+                                            <div className="account-profile-code__actions">
+                                                {countdown.isActive ? (
+                                                    <p
+                                                        className="account-profile-code__resend-countdown"
+                                                        role="status"
+                                                    >
+                                                        {(
+                                                            props.accountUi
+                                                                .profile
+                                                                .phone_resend_in ??
+                                                            (props.locale ===
+                                                            'ar'
+                                                                ? 'إعادة الإرسال بعد :seconds ثانية'
+                                                                : 'Resend code in :seconds s')
+                                                        ).replace(
+                                                            ':seconds',
+                                                            String(
+                                                                countdown.countdown,
+                                                            ),
+                                                        )}
+                                                    </p>
+                                                ) : (
+                                                    <button
+                                                        className="account-profile-code__resend-btn"
+                                                        disabled={isResending}
+                                                        onClick={
+                                                            resendPhoneCode
+                                                        }
+                                                        type="button"
+                                                    >
+                                                        {props.accountUi.profile
+                                                            .phone_resend ??
+                                                            (props.locale ===
+                                                            'ar'
+                                                                ? 'إعادة إرسال الكود'
+                                                                : 'Resend code')}
+                                                    </button>
+                                                )}
+                                                <button
+                                                    className="account-profile-code__change-btn"
+                                                    onClick={handleChangeNumber}
+                                                    type="button"
+                                                >
+                                                    {props.accountUi.profile
+                                                        .phone_change_number ??
+                                                        (props.locale === 'ar'
+                                                            ? 'تغيير الرقم'
+                                                            : 'Change number')}
+                                                </button>
+                                            </div>
                                         </form>
-                                    ) : null}
+                                    )}
                                 </>
                             ) : null}
                         </ContactValue>
