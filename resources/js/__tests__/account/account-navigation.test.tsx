@@ -36,6 +36,13 @@ it('keeps destination navigation separate from the POST logout action', () => {
             current="orders"
             items={items}
             logoutUrl="/logout"
+            sections={{
+                label: 'Profile sections',
+                personal: 'Personal',
+                contact: 'Contact & verification',
+                security: 'Security',
+                support: 'Support',
+            }}
             translations={{
                 label: 'My Account sections',
                 overview: 'Overview',
@@ -65,4 +72,44 @@ it('keeps destination navigation separate from the POST logout action', () => {
 
     expect(inertia.flushAll).toHaveBeenCalledOnce();
     expect(inertia.post).toHaveBeenCalledWith('/logout');
+});
+
+it('renders section links when current is profile', () => {
+    const items: AccountNavigationItem[] = [
+        { key: 'overview', label: 'Overview', url: '/en/my-account' },
+        { key: 'orders', label: 'Orders', url: '/en/my-account/orders' },
+        { key: 'wallet', label: 'Wallet', url: '/en/my-account/wallet' },
+        { key: 'profile', label: 'Profile', url: '/en/my-account/profile' },
+    ];
+
+    render(
+        <AccountNavigation
+            current="profile"
+            items={items}
+            logoutUrl="/logout"
+            sections={{
+                label: 'Profile sections',
+                personal: 'Personal',
+                contact: 'Contact & verification',
+                security: 'Security',
+                support: 'Support',
+            }}
+            translations={{
+                label: 'My Account sections',
+                overview: 'Overview',
+                orders: 'Orders',
+                wallet: 'Wallet',
+                profile: 'Profile',
+                security: 'Security',
+                support: 'Support',
+                logout: 'Log out',
+            }}
+        />,
+    );
+
+    expect(screen.getAllByRole('link')).toHaveLength(8);
+    expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
+        'aria-current',
+        'page',
+    );
 });

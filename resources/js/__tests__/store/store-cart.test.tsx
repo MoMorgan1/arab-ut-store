@@ -513,8 +513,8 @@ it('verifies an authenticated checkout phone through Whapi before enabling payme
     fireEvent.click(screen.getByRole('button', { name: 'Send WhatsApp code' }));
 
     expect(await screen.findByText(/sent a 6-digit code/i)).toBeVisible();
-    fireEvent.change(screen.getByLabelText('6-digit verification code'), {
-        target: { value: '123456' },
+    fireEvent.paste(screen.getByLabelText('6-digit verification code 1/6'), {
+        clipboardData: { getData: () => '123456' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
 

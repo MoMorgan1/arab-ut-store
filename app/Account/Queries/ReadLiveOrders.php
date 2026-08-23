@@ -11,6 +11,17 @@ final readonly class ReadLiveOrders
 {
     public const FILTERS = ['all', 'open', 'completed'];
 
+    public const OPEN_STATUSES = [
+        OrderStatus::PendingPayment->value,
+        OrderStatus::Received->value,
+        OrderStatus::InProgress->value,
+        OrderStatus::WaitingForCustomer->value,
+    ];
+
+    public const COMPLETED_STATUSES = [
+        OrderStatus::Completed->value,
+    ];
+
     private const PER_PAGE = 10;
 
     public function __construct(private LiveOrderCard $presenter) {}
@@ -36,14 +47,9 @@ final readonly class ReadLiveOrders
                 ->orderBy('id')]);
 
         if ($status === 'open') {
-            $query->whereIn('status', [
-                OrderStatus::PendingPayment->value,
-                OrderStatus::Received->value,
-                OrderStatus::InProgress->value,
-                OrderStatus::WaitingForCustomer->value,
-            ]);
+            $query->whereIn('status', self::OPEN_STATUSES);
         } elseif ($status === 'completed') {
-            $query->where('status', OrderStatus::Completed->value);
+            $query->whereIn('status', self::COMPLETED_STATUSES);
         }
 
         $paginator = $query

@@ -1,19 +1,25 @@
-import { Form, Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { Form, Head, router, usePage } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
+
 import InputError from '@/components/input-error';
+import OneTimeCodeField from '@/components/one-time-code-field';
 import PasswordInput from '@/components/password-input';
+import PhoneNumberField from '@/components/phone-number-field';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { phoneCountryCodes } from '@/lib/phone-country-codes';
 import {
     sendWhatsAppLoginCode,
     verifyWhatsAppLoginCode,
 } from '@/lib/whatsapp-login-api';
-import type { AuthRoutes, AuthUiTranslations } from '@/types/auth';
+import type {
+    AuthRoutes,
+    AuthSharedProps,
+    AuthUiTranslations,
+} from '@/types/auth';
 
 type Props = {
     authRoutes: AuthRoutes;
@@ -28,14 +34,16 @@ export default function Login({
     status,
     canResetPassword,
 }: Props) {
+    const page = usePage<Partial<AuthSharedProps>>();
+    const locale = page.props?.locale ?? 'ar';
     const [method, setMethod] = useState<'email' | 'phone'>('email');
-    const [countryCode, setCountryCode] = useState('+966');
-    const [phoneNumber, setPhoneNumber] = useState('');
+    const [internationalPhone, setInternationalPhone] = useState('');
     const [phoneCode, setPhoneCode] = useState('');
     const [phoneCodeSent, setPhoneCodeSent] = useState(false);
     const [phoneBusy, setPhoneBusy] = useState(false);
     const [phoneError, setPhoneError] = useState<string | null>(null);
-    const internationalPhone = `${countryCode}${phoneNumber.replace(/^0+/, '')}`;
+    const [resendAt, setResendAt] = useState<number | null>(null);
+    const [countdown, setCountdown] = useState(0);
 
     const sendPhoneCode = async () => {
         setPhoneBusy(true);
@@ -47,6 +55,8 @@ export default function Login({
                 internationalPhone,
             );
             setPhoneCodeSent(true);
+            setResendAt(Date.now() + 60_000);
+            setCountdown(60);
         } catch (error) {
             setPhoneError(
                 error instanceof Error && error.message === 'invalid_code'
@@ -79,6 +89,27 @@ export default function Login({
             setPhoneBusy(false);
         }
     };
+
+    useEffect(() => {
+        if (!resendAt) {
+            return;
+        }
+
+        const tick = () => {
+            const remaining = Math.max(
+                0,
+                Math.ceil((resendAt - Date.now()) / 1000),
+            );
+            setCountdown(remaining);
+        };
+
+        tick();
+        const timer = setInterval(tick, 1000);
+
+        return () => {
+            clearInterval(timer);
+        };
+    }, [resendAt]);
 
     return (
         <>
@@ -222,63 +253,17 @@ export default function Login({
                                     <Label htmlFor="phone-number">
                                         {authUi.login.phone_number}
                                     </Label>
-                                    <div className="auth-phone-field" dir="ltr">
-                                        <label
-                                            className="sr-only"
-                                            htmlFor="country-code"
-                                        >
-                                            {authUi.login.country_code}
-                                        </label>
-                                        <select
-                                            id="country-code"
-                                            value={countryCode}
-                                            disabled={
-                                                phoneCodeSent || phoneBusy
-                                            }
-                                            onChange={(event) =>
-                                                setCountryCode(
-                                                    event.target.value,
-                                                )
-                                            }
-                                            className="auth-phone-field__country"
-                                            aria-label={
-                                                authUi.login.country_code
-                                            }
-                                        >
-                                            {phoneCountryCodes.map(
-                                                (countryCode) => (
-                                                    <option
-                                                        key={countryCode}
-                                                        value={countryCode}
-                                                    >
-                                                        {countryCode}
-                                                    </option>
-                                                ),
-                                            )}
-                                        </select>
-                                        <Input
-                                            id="phone-number"
-                                            type="tel"
-                                            required
-                                            autoFocus
-                                            autoComplete="tel-national"
-                                            inputMode="numeric"
-                                            value={phoneNumber}
-                                            disabled={
-                                                phoneCodeSent || phoneBusy
-                                            }
-                                            onChange={(event) =>
-                                                setPhoneNumber(
-                                                    event.target.value.replace(
-                                                        /\D/g,
-                                                        '',
-                                                    ),
-                                                )
-                                            }
-                                            placeholder="501234567"
-                                            className="h-10"
-                                        />
-                                    </div>
+                                    <PhoneNumberField
+                                        id="phone-number"
+                                        locale={locale}
+                                        value={internationalPhone}
+                                        onChange={setInternationalPhone}
+                                        disabled={phoneCodeSent || phoneBusy}
+                                        labels={{
+                                            country: authUi.login.country_code,
+                                            number: authUi.login.phone_number,
+                                        }}
+                                    />
 
                                     <p className="auth-whatsapp-login__note">
                                         {authUi.login.phone_account_hint}
@@ -289,26 +274,13 @@ export default function Login({
                                             <p role="status">
                                                 {authUi.login.phone_code_sent}
                                             </p>
-                                            <Label htmlFor="phone-code">
-                                                {authUi.login.phone_code}
-                                            </Label>
-                                            <Input
+                                            <OneTimeCodeField
                                                 id="phone-code"
-                                                type="text"
-                                                autoFocus
-                                                autoComplete="one-time-code"
-                                                inputMode="numeric"
-                                                maxLength={6}
+                                                label={authUi.login.phone_code}
                                                 value={phoneCode}
-                                                onChange={(event) =>
-                                                    setPhoneCode(
-                                                        event.target.value.replace(
-                                                            /\D/g,
-                                                            '',
-                                                        ),
-                                                    )
-                                                }
-                                                className="h-10"
+                                                onChange={setPhoneCode}
+                                                disabled={phoneBusy}
+                                                autoFocus
                                             />
                                             <Button
                                                 type="button"
@@ -322,6 +294,26 @@ export default function Login({
                                                 {phoneBusy && <Spinner />}
                                                 {authUi.login.phone_verify}
                                             </Button>
+                                            {countdown > 0 ? (
+                                                <p
+                                                    role="status"
+                                                    className="text-center text-sm text-muted-foreground"
+                                                >
+                                                    {authUi.login.phone_resend_in.replace(
+                                                        ':seconds',
+                                                        String(countdown),
+                                                    )}
+                                                </p>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className="auth-inline-link min-h-10"
+                                                    disabled={phoneBusy}
+                                                    onClick={sendPhoneCode}
+                                                >
+                                                    {authUi.login.phone_resend}
+                                                </button>
+                                            )}
                                             <button
                                                 type="button"
                                                 className="auth-inline-link min-h-10"
@@ -329,6 +321,8 @@ export default function Login({
                                                     setPhoneCodeSent(false);
                                                     setPhoneCode('');
                                                     setPhoneError(null);
+                                                    setResendAt(null);
+                                                    setCountdown(0);
                                                 }}
                                             >
                                                 {authUi.login.phone_change}
@@ -340,7 +334,9 @@ export default function Login({
                                             className="auth-form__submit h-10 w-full"
                                             disabled={
                                                 phoneBusy ||
-                                                internationalPhone.length < 9
+                                                !/^\+[1-9][0-9]{7,14}$/.test(
+                                                    internationalPhone,
+                                                )
                                             }
                                             onClick={sendPhoneCode}
                                         >

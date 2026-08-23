@@ -45,6 +45,8 @@ return [
         'phone_invalid' => 'Enter a valid phone number with its country code.',
         'phone_unavailable' => 'We could not send a WhatsApp code right now. Try again shortly.',
         'phone_change' => 'Change number',
+        'phone_resend_in' => 'Resend in :seconds s',
+        'phone_resend' => 'Resend code',
         'google' => 'Continue with Google',
         'google_error' => 'Google sign-in could not be completed. Please try again.',
         'or' => 'or',

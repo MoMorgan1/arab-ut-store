@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Account;
 
 use App\Account\Presenters\AccountShell;
+use App\Account\Presenters\SupportContacts;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Account\ProfileUpdateRequest;
 use App\Models\User;
@@ -15,7 +16,10 @@ use Inertia\Response;
 
 final class ProfileController extends Controller
 {
-    public function __construct(private readonly AccountShell $shell) {}
+    public function __construct(
+        private readonly AccountShell $shell,
+        private readonly SupportContacts $supportContacts,
+    ) {}
 
     public function show(Request $request): Response
     {
@@ -29,6 +33,14 @@ final class ProfileController extends Controller
             ->where('expires_at', '>', now())
             ->get()
             ->keyBy('kind');
+
+        $support = $this->supportContacts->for($user, $request);
+        $recoveryMode = $user->email_verified_at !== null ? 'email' : 'whatsapp';
+        $recoveryUrl = $recoveryMode === 'email'
+            ? ($locale === 'en'
+                ? route('localized.password.request', ['locale' => 'en'], absolute: false)
+                : route('password.request', absolute: false))
+            : $support['whatsappUrl'];
 
         return Inertia::render('account/profile', [
             ...$this->shell->for($user, $locale),
@@ -51,6 +63,8 @@ final class ProfileController extends Controller
             'security' => [
                 'passwordMode' => $this->hasPassword($user) ? 'change' : 'setup',
                 'passwordRules' => Password::defaults()->toPasswordRulesString(),
+                'recoveryMode' => $recoveryMode,
+                'recoveryUrl' => $recoveryUrl,
             ],
             'securityActions' => [
                 'changePasswordUrl' => $this->route('account.security.password.change', $locale),
@@ -62,6 +76,7 @@ final class ProfileController extends Controller
                 'phoneRequestUrl' => $this->route('account.profile.phone.request', $locale),
                 'phoneConfirmUrl' => $this->route('account.profile.phone.confirm', $locale),
             ],
+            'support' => $support,
         ]);
     }
 
