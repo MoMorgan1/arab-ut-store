@@ -60,7 +60,14 @@ class AgentTurnController extends Controller
             return $this->conversationNotFoundResponse();
         }
 
-        $claim = $this->createOrRecoverAgentTurn->execute($conversation, $owner);
+        // The session knows what currency this customer is browsing in; the
+        // model request is built later and may not have a session at all, so
+        // the currency is recorded on the turn while it is still reachable.
+        $claim = $this->createOrRecoverAgentTurn->execute(
+            $conversation,
+            $owner,
+            $request->session()->get('display_currency'),
+        );
 
         if ($claim->shouldStart && $claim->turn instanceof AgentTurn) {
             return $this->streamResponse($claim->turn, $owner);

@@ -22,13 +22,21 @@ final readonly class CreateOrRecoverAgentTurn
         private PendingAgentMessages $pendingAgentMessages,
     ) {}
 
+    /**
+     * @param  string|null  $displayCurrency  The currency the customer is
+     *                                        browsing in, so the reply quotes
+     *                                        the same one its cards show.
+     */
     public function execute(
         ChatConversation $conversation,
         ChatOwner $owner,
+        ?string $displayCurrency = null,
     ): AgentTurnClaim {
+        $currency = $this->supportedCurrency($displayCurrency);
+
         try {
             return DB::transaction(
-                fn (): AgentTurnClaim => $this->claimInTransaction((int) $conversation->id, $owner),
+                fn (): AgentTurnClaim => $this->claimInTransaction((int) $conversation->id, $owner, $currency),
                 3,
             );
         } catch (QueryException $exception) {
@@ -40,7 +48,7 @@ final readonly class CreateOrRecoverAgentTurn
         }
     }
 
-    private function claimInTransaction(int $conversationId, ChatOwner $owner): AgentTurnClaim
+    private function claimInTransaction(int $conversationId, ChatOwner $owner, ?string $displayCurrency): AgentTurnClaim
     {
         $conversation = $this->lockConversation($conversationId, $owner);
         $active = $this->lockActiveTurn($conversation);
@@ -49,10 +57,10 @@ final readonly class CreateOrRecoverAgentTurn
             return $this->existingClaim($conversation, $active);
         }
 
-        return $this->claimPendingRange($conversation);
+        return $this->claimPendingRange($conversation, $displayCurrency);
     }
 
-    private function claimPendingRange(ChatConversation $conversation): AgentTurnClaim
+    private function claimPendingRange(ChatConversation $conversation, ?string $displayCurrency): AgentTurnClaim
     {
         $cursor = (int) (AgentTurn::query()
             ->where('conversation_id', $conversation->id)
@@ -72,7 +80,23 @@ final readonly class CreateOrRecoverAgentTurn
             return AgentTurnClaim::waiting(max(1, (int) ceil(now()->diffInMilliseconds($debounceUntil))));
         }
 
-        return $this->createTurn($conversation, $pending, $debounceUntil);
+        return $this->createTurn($conversation, $pending, $debounceUntil, $displayCurrency);
+    }
+
+    /**
+     * Only a currency the store actually displays is recorded. Anything else
+     * is dropped so the price table falls back to the store default rather
+     * than being built from a value the converter cannot honour.
+     */
+    private function supportedCurrency(?string $displayCurrency): ?string
+    {
+        $supported = config('store.display_currencies');
+
+        if (! is_array($supported) || ! in_array($displayCurrency, $supported, true)) {
+            return null;
+        }
+
+        return $displayCurrency;
     }
 
     /** @param Builder<ChatMessage> $pending */
@@ -80,6 +104,7 @@ final readonly class CreateOrRecoverAgentTurn
         ChatConversation $conversation,
         Builder $pending,
         CarbonInterface $debounceUntil,
+        ?string $displayCurrency = null,
     ): AgentTurnClaim {
         $claimed = (clone $pending)
             ->orderBy('id')
@@ -92,6 +117,7 @@ final readonly class CreateOrRecoverAgentTurn
             'last_customer_message_id' => $claimed->last()->id,
             'debounce_until' => $debounceUntil,
             'prompt_version' => $this->config->promptVersion(),
+            'display_currency' => $displayCurrency,
             'attempt_count' => 0,
         ]);
 

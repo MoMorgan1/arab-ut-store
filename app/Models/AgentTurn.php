@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $first_customer_message_id
  * @property int $last_customer_message_id
  * @property int|null $assistant_message_id
+ * @property string|null $display_currency
  */
 class AgentTurn extends DomainModel
 {

@@ -44,7 +44,7 @@ final readonly class BuildAgentModelRequest
         $messages = $this->modelMessages($prior, $current);
         $instructions = File::get(resource_path("ai-assistant/prompts/{$turn->prompt_version}.md"));
         [$knowledge, $topicIds] = $this->knowledgeBlock($current, $conversation->locale);
-        $knowledge .= $this->livePriceBlock($topicIds, $conversation->locale);
+        $knowledge .= $this->livePriceBlock($topicIds, $conversation->locale, $turn);
 
         return new AgentModelRequest(
             model: $this->config->model(),
@@ -107,7 +107,7 @@ final readonly class BuildAgentModelRequest
      *
      * @param  list<string>  $topicIds
      */
-    private function livePriceBlock(array $topicIds, string $locale): string
+    private function livePriceBlock(array $topicIds, string $locale, AgentTurn $turn): string
     {
         $priced = ['coins-service', 'coins-speeds', 'pricing-policy', 'sbc', 'rivals', 'fut-champions'];
 
@@ -115,8 +115,15 @@ final readonly class BuildAgentModelRequest
             return '';
         }
 
+        // The currency recorded when this turn was claimed, so the numbers the
+        // assistant quotes match the ones on the cards beside its reply. Turns
+        // claimed before that was recorded fall back to the store default.
+        $displayCurrency = $turn->display_currency;
+
         return $this->livePrices->execute(
-            (string) config('store.default_display_currency'),
+            is_string($displayCurrency) && $displayCurrency !== ''
+                ? $displayCurrency
+                : (string) config('store.default_display_currency'),
             $locale,
         );
     }
