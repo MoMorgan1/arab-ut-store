@@ -807,6 +807,7 @@ export type AdminOrderDetailPageProps = {
 
 export type AdminCustomerRow = {
     id: string;
+    number: string | null;
     name: string;
     email: string;
     phone: string | null;
@@ -870,6 +871,7 @@ export type AdminCustomerWalletEntry = {
 
 export type AdminCustomerDetail = {
     id: string;
+    number: string | null;
     name: string;
     firstName: string;
     lastName: string;
