@@ -41,8 +41,8 @@ test('the bilingual profile page exposes only editable identity state', function
             ->where('profile.phone.verified', true)
             ->where('profile.preferredLocale', 'ar')
             ->where('profile.displayCurrency', 'SAR')
-            ->where('security.recoveryMode', 'email')
-            ->has('support')
+            ->where('security.emailVerified', true)
+            ->has('securityActions.resetLinkUrl')
             ->where('accountNavigation', fn ($items): bool => collect($items)->pluck('key')->all() === [
                 'overview', 'orders', 'wallet', 'profile',
             ])

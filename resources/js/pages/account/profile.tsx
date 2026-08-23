@@ -1,19 +1,9 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import {
-    CheckCircle2,
-    LifeBuoy,
-    Mail,
-    MessageCircleMore,
-    Phone,
-    ReceiptText,
-    UserRound,
-} from 'lucide-react';
+import { CheckCircle2, KeyRound, Mail, Phone, UserRound } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 
-import AccountPasswordSection from '@/components/account/account-password-section';
-import AccountSectionError from '@/components/account/account-section-error';
 import InputError from '@/components/input-error';
 import OneTimeCodeField from '@/components/one-time-code-field';
 import PhoneNumberField from '@/components/phone-number-field';
@@ -38,6 +28,7 @@ export default function AccountProfile() {
     const email = useForm({ email: '' });
     const phone = useForm({ phone: '' });
     const phoneCode = useForm({ code: '' });
+    const resetLink = useForm({});
 
     phoneCode.dontRemember('code');
 
@@ -126,9 +117,6 @@ export default function AccountProfile() {
                     </a>
                     <a href="#security">
                         {props.accountUi.profile.sections.security}
-                    </a>
-                    <a href="#support">
-                        {props.accountUi.profile.sections.support}
                     </a>
                 </nav>
 
@@ -269,6 +257,7 @@ export default function AccountProfile() {
                                     ? props.accountUi.verification.verified
                                     : props.accountUi.verification.unverified
                             }
+                            verified={props.profile.email.verified}
                         >
                             {editingContact === 'email' ? (
                                 <form
@@ -318,6 +307,7 @@ export default function AccountProfile() {
                                     ? props.accountUi.verification.verified
                                     : props.accountUi.verification.unverified
                             }
+                            verified={props.profile.phone.verified}
                         >
                             {editingContact === 'phone' ? (
                                 <>
@@ -415,106 +405,63 @@ export default function AccountProfile() {
                     </p>
                 </section>
 
-                <AccountPasswordSection
-                    actions={props.securityActions}
-                    passwordMode={props.security.passwordMode}
-                    passwordRules={props.security.passwordRules}
-                    translations={props.accountUi.security}
-                >
-                    <div className="account-security-recovery">
-                        <span aria-hidden="true">
-                            <LifeBuoy />
-                        </span>
-                        <div>
-                            <h3>{props.accountUi.security.recovery_title}</h3>
-                            <p>
-                                {props.security.recoveryMode === 'email'
-                                    ? props.accountUi.security.recovery_email
-                                    : props.accountUi.security
-                                          .recovery_whatsapp}
-                            </p>
-                        </div>
-                        {typeof props.security.recoveryUrl === 'string' ? (
-                            <a
-                                href={props.security.recoveryUrl}
-                                rel={
-                                    props.security.recoveryMode === 'whatsapp'
-                                        ? 'noopener noreferrer'
-                                        : undefined
-                                }
-                                target={
-                                    props.security.recoveryMode === 'whatsapp'
-                                        ? '_blank'
-                                        : undefined
-                                }
-                            >
-                                {props.accountUi.security.recovery_action}
-                            </a>
-                        ) : null}
-                    </div>
-                </AccountPasswordSection>
-
                 <section
                     className="account-profile-section"
-                    id="support"
+                    id="security"
                     style={{ scrollMarginBlockStart: '5rem' }}
                 >
                     <SectionHeading
-                        icon={LifeBuoy}
-                        title={props.accountUi.support.title}
+                        icon={KeyRound}
+                        title={props.accountUi.security.title}
                     />
-
-                    {props.support.orderNumber ? (
-                        <aside className="account-support-context">
-                            <ReceiptText aria-hidden="true" />
-                            <span>{props.accountUi.support.order_context}</span>
-                            <strong>
-                                <bdi>{props.support.orderNumber}</bdi>
-                            </strong>
-                        </aside>
-                    ) : null}
-
-                    {!props.support.available ? (
-                        <AccountSectionError
-                            description={
-                                props.accountUi.support.unavailable_description
-                            }
-                            title={props.accountUi.support.unavailable_title}
-                        />
+                    <p>{props.accountUi.security.reset_link_description}</p>
+                    {props.security.emailVerified ? (
+                        <>
+                            <button
+                                className="account-security-reset"
+                                disabled={resetLink.processing}
+                                onClick={() =>
+                                    resetLink.post(
+                                        props.securityActions.resetLinkUrl,
+                                        {
+                                            preserveScroll: true,
+                                        },
+                                    )
+                                }
+                                type="button"
+                            >
+                                {props.accountUi.security.reset_link_button}
+                            </button>
+                            {resetLink.recentlySuccessful ? (
+                                <p
+                                    className="account-security-success"
+                                    role="status"
+                                >
+                                    {props.accountUi.security.reset_link_sent}
+                                </p>
+                            ) : null}
+                        </>
                     ) : (
-                        <div className="account-support-grid">
-                            {props.support.whatsappUrl ? (
-                                <SupportCard
-                                    action={
-                                        props.accountUi.support.whatsapp_action
+                        <p className="account-security-notice">
+                            <span>
+                                {
+                                    props.accountUi.security
+                                        .reset_link_needs_email
+                                }
+                            </span>
+                            {props.storeShell.whatsappUrl ? (
+                                <a
+                                    href={props.storeShell.whatsappUrl}
+                                    rel="noopener noreferrer"
+                                    target="_blank"
+                                >
+                                    {
+                                        props.accountUi.security
+                                            .reset_link_support
                                     }
-                                    description={
-                                        props.accountUi.support
-                                            .whatsapp_description
-                                    }
-                                    href={props.support.whatsappUrl}
-                                    icon={<MessageCircleMore />}
-                                    title={
-                                        props.accountUi.support.whatsapp_title
-                                    }
-                                    external
-                                />
+                                </a>
                             ) : null}
-                            {props.support.emailUrl ? (
-                                <SupportCard
-                                    action={
-                                        props.accountUi.support.email_action
-                                    }
-                                    description={
-                                        props.accountUi.support
-                                            .email_description
-                                    }
-                                    href={props.support.emailUrl}
-                                    icon={<Mail />}
-                                    title={props.accountUi.support.email_title}
-                                />
-                            ) : null}
-                        </div>
+                        </p>
                     )}
                 </section>
 
@@ -599,6 +546,7 @@ function ContactValue({
     pending,
     value,
     verification,
+    verified,
 }: {
     actionLabel: string;
     children?: ReactNode;
@@ -609,6 +557,7 @@ function ContactValue({
     pending: string | null;
     value: string;
     verification: string;
+    verified: boolean;
 }) {
     return (
         <div
@@ -628,7 +577,9 @@ function ContactValue({
                     <bdi>{value}</bdi>
                     {pending === null ? null : <small>{pending}</small>}
                 </div>
-                <strong>{verification}</strong>
+                <strong data-state={verified ? 'verified' : 'unverified'}>
+                    {verification}
+                </strong>
                 <button
                     aria-expanded={editing}
                     className="account-profile-contact__edit"
@@ -640,36 +591,5 @@ function ContactValue({
             </div>
             {children}
         </div>
-    );
-}
-
-function SupportCard({
-    action,
-    description,
-    external = false,
-    href,
-    icon,
-    title,
-}: {
-    action: string;
-    description: string;
-    external?: boolean;
-    href: string;
-    icon: ReactNode;
-    title: string;
-}) {
-    return (
-        <article className="account-support-card">
-            <span aria-hidden="true">{icon}</span>
-            <h3>{title}</h3>
-            <p>{description}</p>
-            <a
-                href={href}
-                rel={external ? 'noopener noreferrer' : undefined}
-                target={external ? '_blank' : undefined}
-            >
-                {action}
-            </a>
-        </article>
     );
 }

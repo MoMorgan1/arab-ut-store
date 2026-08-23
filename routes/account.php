@@ -53,6 +53,9 @@ Route::middleware($accountMiddleware)->group(function (): void {
         ->middleware('throttle:account-identity-confirm')
         ->name('account.profile.phone.confirm');
     Route::get('/my-account/security', [SecurityController::class, 'show'])->name('account.security.show');
+    Route::post('/my-account/security/password-link', [SecurityController::class, 'sendResetLink'])
+        ->middleware('throttle:account-identity-send')
+        ->name('account.security.password.link');
     Route::put('/my-account/security/password', [SecurityController::class, 'change'])
         ->middleware('throttle:6,1')
         ->name('account.security.password.change');
@@ -113,6 +116,10 @@ Route::prefix('en')
         Route::get('/my-account/security', [SecurityController::class, 'show'])
             ->defaults('locale', 'en')
             ->name('account.security.show');
+        Route::post('/my-account/security/password-link', [SecurityController::class, 'sendResetLink'])
+            ->middleware('throttle:account-identity-send')
+            ->defaults('locale', 'en')
+            ->name('account.security.password.link');
         Route::put('/my-account/security/password', [SecurityController::class, 'change'])
             ->middleware('throttle:6,1')
             ->defaults('locale', 'en')

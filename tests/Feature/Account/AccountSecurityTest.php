@@ -109,3 +109,32 @@ test('standard email recovery stays generic but sends only to a verified active 
     'Arabic recovery' => '/forgot-password',
     'English recovery' => '/en/forgot-password',
 ]);
+
+test('verified customers can request a password reset link from the account security section', function (
+    string $path,
+    string $target,
+): void {
+    Notification::fake();
+    $user = User::factory()->create([
+        'email' => 'verified@example.test',
+        'email_verified_at' => now(),
+    ]);
+
+    $this->actingAs($user)->post($path)
+        ->assertRedirect($target);
+
+    Notification::assertSentTo($user, ResetPassword::class);
+})->with([
+    'Arabic password link' => ['/my-account/security/password-link', '/my-account/profile'],
+    'English password link' => ['/en/my-account/security/password-link', '/en/my-account/profile'],
+]);
+
+test('unverified email customers cannot request a password reset link', function (): void {
+    Notification::fake();
+    $user = User::factory()->unverified()->create();
+
+    $this->actingAs($user)->post('/my-account/security/password-link')
+        ->assertSessionHasErrors('email');
+
+    Notification::assertNothingSent();
+});
