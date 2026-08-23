@@ -43,17 +43,25 @@ export default function StoreManualService() {
                     {common.back}
                 </a>
                 <header className="manual-service-hero">
-                    <div>
-                        <p>{props.manualServicePage.service.eyebrow}</p>
-                        <h1>{manual.product.name}</h1>
-                        <div>{manual.product.description}</div>
+                    <div className="manual-service-hero__content">
+                        <p className="manual-service-hero__eyebrow">
+                            {props.manualServicePage.service.eyebrow}
+                        </p>
+                        <h1 className="manual-service-hero__title">
+                            {manual.product.name}
+                        </h1>
+                        <div className="manual-service-hero__description">
+                            {manual.product.description}
+                        </div>
                     </div>
-                    <img
-                        alt={manual.product.image.alt}
-                        height="360"
-                        src={manual.product.image.url}
-                        width="480"
-                    />
+                    <div className="manual-service-hero__media">
+                        <img
+                            alt={manual.product.image.alt}
+                            height="360"
+                            src={manual.product.image.url}
+                            width="480"
+                        />
+                    </div>
                 </header>
                 {!ready ? (
                     <section

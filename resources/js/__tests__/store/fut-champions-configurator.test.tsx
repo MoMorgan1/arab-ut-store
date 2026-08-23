@@ -126,7 +126,7 @@ it('submits the selected FUT rank, urgent option, exact credentials, and require
     expect(form.get('credentials[ea_email]')).toBeNull();
     expect(form.get('credentials[playstation_backup_codes][2]')).toBe('Z9Y8X7');
     expect(form.get('squadImage')).toBe(image);
-    expect(screen.getByText(/260\.00/)).toBeVisible();
+    expect(screen.getAllByText(/260\.00/)[0]).toBeVisible();
     expect(screen.getByText('Urgent orders take 24–36 hours')).toBeVisible();
     expect(document.body.textContent).not.toContain('PS secret');
 });
@@ -141,7 +141,7 @@ it('prefills valid rank and urgent option from URL query parameters', () => {
     expect(rankSlider).toHaveValue('1');
     expect(rankSlider.getAttribute('aria-valuetext')).toContain('Rank 1');
     expect(urgentCheckbox).toBeChecked();
-    expect(screen.getByText(/260\.00/)).toBeVisible();
+    expect(screen.getAllByText(/260\.00/)[0]).toBeVisible();
 });
 
 it('prefills rank 6 and urgent=1 from URL query parameters', () => {
@@ -224,6 +224,28 @@ it('keeps controls fully editable after prefilling without fighting user edits',
 
     expect(rankSlider).toHaveValue('4');
     expect(urgentCheckbox).not.toBeChecked();
+});
+
+it('allows selecting rank via interactive stop buttons', () => {
+    renderFut();
+
+    const rank5Button = screen.getByRole('button', { name: 'Target rank: 5' });
+    fireEvent.click(rank5Button);
+
+    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
+    expect(rankSlider).toHaveValue('5');
+    expect(rankSlider.getAttribute('aria-valuetext')).toContain('Rank 5');
+    expect(rankSlider.getAttribute('aria-valuetext')).toContain('130.00');
+});
+
+it('displays live configuration summary pills for rank, platform, and urgent option', () => {
+    renderFut();
+
+    expect(screen.getByText('Rank 1')).toBeVisible();
+    expect(screen.getAllByText('PlayStation').length).toBeGreaterThanOrEqual(1);
+
+    fireEvent.click(screen.getByLabelText(/Urgent/));
+    expect(screen.getAllByText('Urgent').length).toBeGreaterThanOrEqual(1);
 });
 
 function renderFut() {

@@ -35,47 +35,75 @@ export function ServiceSlider({
             <legend>{legend}</legend>
             <div className="manual-service-slider__surface">
                 <div className="manual-service-slider__header">
-                    <span
-                        className="manual-service-slider__value"
-                        key={`label-${selectedValue}-${valueLabel}`}
-                    >
-                        {valueLabel}
-                    </span>
-                    {price === undefined ? null : (
-                        <strong
+                    <div className="manual-service-slider__cluster">
+                        <span
                             className="manual-service-slider__value"
-                            key={`price-${selectedValue}-${price}`}
+                            key={`label-${selectedValue}-${valueLabel}`}
                         >
-                            {price}
-                        </strong>
-                    )}
+                            {valueLabel}
+                        </span>
+                        {price === undefined ? null : (
+                            <strong
+                                className="manual-service-slider__price manual-service-slider__value"
+                                key={`price-${selectedValue}-${price}`}
+                            >
+                                {price}
+                            </strong>
+                        )}
+                    </div>
                 </div>
-                <input
-                    aria-label={legend}
-                    aria-valuetext={accessibleValue}
-                    dir={direction}
-                    max={maxValue}
-                    min={minValue}
-                    name={inputName}
-                    onChange={(event) =>
-                        onValueChange(Number(event.currentTarget.value))
-                    }
-                    step="1"
+                <div className="manual-service-slider__track-wrap">
+                    <input
+                        aria-label={legend}
+                        aria-valuetext={accessibleValue}
+                        dir={direction}
+                        max={maxValue}
+                        min={minValue}
+                        name={inputName}
+                        onChange={(event) =>
+                            onValueChange(Number(event.currentTarget.value))
+                        }
+                        step="1"
+                        style={
+                            {
+                                '--manual-slider-progress': progress,
+                            } as CSSProperties
+                        }
+                        type="range"
+                        value={selectedValue}
+                    />
+                </div>
+                <div
+                    className="manual-service-slider__labels"
                     style={
                         {
-                            '--manual-slider-progress': progress,
+                            '--stop-count': stopLabels.length,
                         } as CSSProperties
                     }
-                    type="range"
-                    value={selectedValue}
-                />
-                <div
-                    aria-hidden="true"
-                    className="manual-service-slider__labels"
                 >
-                    {stopLabels.map((label, index) => (
-                        <span key={`${index}-${label}`}>{label}</span>
-                    ))}
+                    {stopLabels.map((label, index) => {
+                        const stopVal = minValue + index;
+                        const isSelected = selectedValue === stopVal;
+
+                        return (
+                            <button
+                                aria-label={`${legend}: ${label}`}
+                                className="manual-service-slider__tick-btn"
+                                data-active={isSelected}
+                                key={`${index}-${label}`}
+                                onClick={() => onValueChange(stopVal)}
+                                type="button"
+                            >
+                                <span
+                                    aria-hidden="true"
+                                    className="manual-service-slider__tick-dot"
+                                />
+                                <span className="manual-service-slider__tick-label">
+                                    {label}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
         </fieldset>
