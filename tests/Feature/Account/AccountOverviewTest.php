@@ -77,14 +77,14 @@ test('a new customer receives an honest empty current-data overview', function (
             ->where('accountNavigation', [
                 ['key' => 'overview', 'label' => 'نظرة عامة', 'url' => '/my-account'],
                 ['key' => 'orders', 'label' => 'طلباتي', 'url' => '/my-account/orders'],
-                ['key' => 'wallet', 'label' => 'محفظتي', 'url' => '/my-account/wallet', 'badge' => 'قريبًا'],
+                ['key' => 'wallet', 'label' => 'محفظتي', 'url' => '/my-account/wallet'],
                 ['key' => 'profile', 'label' => 'بياناتي', 'url' => '/my-account/profile', 'attention' => true],
             ])
             ->where('logoutUrl', '/logout')
             ->where('summary.orderCount', 0)
             ->where('summary.openOrderCount', 0)
             ->where('summary.completedOrderCount', 0)
-            ->where('summary.walletBalance', null)
+            ->where('summary.walletBalance', ['amountMinor' => '0', 'currency' => 'SAR'])
             ->where('activeOrder', null)
             ->where('recentOrders', [])
             ->where('loyalty', null));

@@ -1,4 +1,6 @@
 import type {
+    AdminServicePricingData,
+    AdminServicePricingUrls,
     AdminTeamData,
     AdminTeamUrls,
     AdminTranslations,
@@ -517,6 +519,77 @@ export const englishAdminUi: AdminTranslations = {
         addMemberRoleLabel: 'Role',
         addMemberSubmit: 'Grant access',
         addMemberSubmitting: 'Granting access…',
+        servicePricingSection: 'Service pricing',
+        servicePricingDescription:
+            'Manage pricing schedules and availability for FUT Champions and Division Rivals.',
+        servicePricing: {
+            futChampions: 'FUT Champions',
+            rivals: 'Division Rivals',
+            urgentSurcharge: 'Urgent surcharge',
+            version: 'Version :version',
+            lastUpdated: 'Last updated: :date',
+            active: 'Available for sale',
+            inactive: 'Unavailable (Off sale)',
+            editPrices: 'Edit prices',
+            editingPrices: 'Saving prices…',
+            tableRank: 'Rank',
+            tableStep: 'Promotion step',
+            tablePrice: 'Price (SAR)',
+            tableHalalah: 'Halalah',
+            ranks: {
+                '1': 'Rank 1',
+                '2': 'Rank 2',
+                '3': 'Rank 3',
+                '4': 'Rank 4',
+                '5': 'Rank 5',
+                '6': 'Rank 6',
+            },
+            steps: {
+                '7:6': 'Division 7 to 6',
+                '6:5': 'Division 6 to 5',
+                '5:4': 'Division 5 to 4',
+                '4:3': 'Division 4 to 3',
+                '3:2': 'Division 3 to 2',
+                '2:1': 'Division 2 to 1',
+                '1:elite': 'Division 1 to Elite',
+            },
+            editDialog: {
+                title: 'Edit :service prices',
+                description:
+                    'Update the price schedule for :service. Prices must be positive integers in halalah.',
+                confirm: 'Save price schedule',
+                cancel: 'Cancel',
+                halalahHint: ':halalah halalah = :sar',
+            },
+            deactivateDialog: {
+                title: 'Deactivate :service?',
+                description:
+                    'Are you sure you want to deactivate :service? Customers will no longer be able to buy this service until it is reactivated.',
+                confirm: 'Deactivate service',
+                cancel: 'Cancel',
+            },
+            activateDialog: {
+                title: 'Activate :service?',
+                description:
+                    'Are you sure you want to activate :service? Customers will be able to buy this service immediately.',
+                confirm: 'Activate service',
+                cancel: 'Cancel',
+            },
+            messages: {
+                pricingUpdated: 'Service prices updated successfully.',
+                statusUpdated: 'Service availability updated successfully.',
+                conflictError:
+                    'This price schedule was modified by another operator. Please review the latest prices before saving.',
+                validationError:
+                    'Please check the entered prices and try again.',
+            },
+            actions: {
+                deactivate: 'Deactivate service',
+                deactivating: 'Deactivating…',
+                reactivate: 'Activate service',
+                reactivating: 'Activating…',
+            },
+        },
         addStaffHint:
             'New staff members are provisioned via the command line: php artisan admin:grant-role user@example.com --role=staff',
         selfBadge: 'You',
@@ -1189,6 +1262,45 @@ export const sampleAdminTeamUrls: AdminTeamUrls = {
     statusUrlTemplate: '/admin/api/team/__ID__/status',
 };
 
+export const sampleAdminServicePricingData: AdminServicePricingData = {
+    schedules: [
+        {
+            serviceType: 'fut_champions',
+            version: 1,
+            isActive: true,
+            updatedAt: '2026-08-20T10:00:00Z',
+            configuration: {
+                ranks: {
+                    '1': 22000,
+                    '2': 19000,
+                    '3': 17000,
+                    '4': 15000,
+                    '5': 13000,
+                    '6': 10000,
+                },
+                urgent_surcharge_halalah: 4000,
+            },
+        },
+        {
+            serviceType: 'rivals',
+            version: 1,
+            isActive: true,
+            updatedAt: '2026-08-20T11:00:00Z',
+            configuration: {
+                steps: {
+                    '7:6': 11000,
+                    '6:5': 12000,
+                    '5:4': 13000,
+                    '4:3': 14000,
+                    '3:2': 15000,
+                    '2:1': 16000,
+                    '1:elite': 17000,
+                },
+            },
+        },
+    ],
+};
+
 export const sampleAdminProductRows = [
     {
         id: '01K5PROD00000000000000001',
@@ -1353,6 +1465,11 @@ export const sampleAdminProductDetail = {
             },
         },
     ],
+};
+
+export const sampleAdminServicePricingUrls: AdminServicePricingUrls = {
+    updateUrlTemplate: '/admin/api/settings/service-pricing/__SERVICE__',
+    statusUrlTemplate: '/admin/api/settings/service-pricing/__SERVICE__/status',
 };
 
 export const sampleAdminAutomationProductDetail = {

@@ -62,9 +62,7 @@ final readonly class ReadAccountOverview
             'orderCount' => (int) $metrics->order_count,
             'openOrderCount' => (int) $metrics->open_order_count,
             'completedOrderCount' => (int) $metrics->completed_order_count,
-            'walletBalance' => is_int($walletBalance)
-                ? AccountMoney::fromMinor($walletBalance, 'SAR')
-                : null,
+            'walletBalance' => AccountMoney::fromMinor(is_int($walletBalance) ? $walletBalance : 0, 'SAR'),
         ];
     }
 

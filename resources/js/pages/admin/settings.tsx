@@ -1,9 +1,10 @@
 'use no memo';
 
 import { Head } from '@inertiajs/react';
-import { ShieldCheck, Users } from 'lucide-react';
+import { ShieldCheck, Tag, Users } from 'lucide-react';
 
 import AdminSecuritySection from '@/components/admin/settings/admin-security-section';
+import AdminServicePricingSection from '@/components/admin/settings/admin-service-pricing-section';
 import AdminTeamSection from '@/components/admin/settings/admin-team-section';
 import type { AdminSettingsPageProps } from '@/types/admin';
 
@@ -13,6 +14,8 @@ export default function AdminSettingsPage({
     direction,
     locale,
     mfa,
+    servicePricing,
+    servicePricingUrls,
     team,
     teamUrls,
 }: AdminSettingsPageProps) {
@@ -59,6 +62,18 @@ export default function AdminSettingsPage({
                                 <span>{copy.teamSection}</span>
                             </a>
                         ) : null}
+                        {servicePricing ? (
+                            <a
+                                className="inline-flex min-h-11 touch-manipulation items-center gap-2 rounded-md border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                                href="#service-pricing"
+                            >
+                                <Tag
+                                    aria-hidden="true"
+                                    className="size-4 text-primary"
+                                />
+                                <span>{copy.servicePricingSection}</span>
+                            </a>
+                        ) : null}
                     </nav>
                 </div>
             </header>
@@ -79,6 +94,17 @@ export default function AdminSettingsPage({
                         locale={locale}
                         team={team}
                         teamUrls={teamUrls}
+                    />
+                ) : null}
+
+                {servicePricing ? (
+                    <AdminServicePricingSection
+                        adminUi={adminUi}
+                        confirmPasswordUrl={confirmPasswordUrl}
+                        direction={direction}
+                        locale={locale}
+                        servicePricing={servicePricing}
+                        servicePricingUrls={servicePricingUrls}
                     />
                 ) : null}
             </div>
