@@ -84,17 +84,6 @@ const routes = {
 
 const arabicUi = {
     brand: 'عرب التيميت',
-    benefits: {
-        eyebrow: 'حسابك مع عرب التيميت',
-        title: 'كمّل طلبك من نفس المكان',
-        description:
-            'تسجيل الدخول يربط حسابك بسلتك الحالية بدون ما تبدأ من جديد.',
-        items: [
-            'سلتك تكمل معك بعد تسجيل الدخول',
-            'بيانات EA مشفّرة داخل السلة المؤقتة',
-            'غيّر اللغة والعملة من نفس المتجر',
-        ],
-    },
     fields: {
         first_name: 'الاسم الأول',
         last_name: 'اسم العائلة',
@@ -118,9 +107,9 @@ const arabicUi = {
         email_tab: 'البريد الإلكتروني',
         tab_email: 'البريد وكلمة المرور',
         tab_email_short: 'البريد',
-        phone_tab: 'واتساب',
+        phone_tab: 'الهاتف',
         country_code: 'رمز الدولة',
-        phone_number: 'رقم واتساب',
+        phone_number: 'رقم الهاتف',
         phone_account_hint:
             'سنرسل كودًا من 6 أرقام على واتساب. إن لم يكن لديك حساب سننشئ واحدًا بهذا الرقم.',
         phone_send_code: 'إرسال الكود',
@@ -208,16 +197,6 @@ const englishUi = {
         remember: 'Remember me',
     },
     password_visibility: { show: 'Show password', hide: 'Hide password' },
-    benefits: {
-        eyebrow: 'Your Arab UT account',
-        title: 'Continue your order in one place',
-        description: 'Sign in to connect your account to your current cart.',
-        items: [
-            'Your cart continues after you sign in',
-            'EA credentials stay encrypted in the temporary cart',
-            'Change language and currency in the same store',
-        ],
-    },
     register: {
         head_title: 'Create account',
         title: 'Create an account',
@@ -341,7 +320,7 @@ it('renders the Arabic login handoff and sends a normalized WhatsApp code reques
         'aria-selected',
         'true',
     );
-    expect(screen.getByRole('tab', { name: 'واتساب' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: 'الهاتف' })).toHaveAttribute(
         'aria-selected',
         'false',
     );
@@ -355,11 +334,11 @@ it('renders the Arabic login handoff and sends a normalized WhatsApp code reques
         screen.getByRole('link', { name: 'سياسة الخصوصية' }),
     ).toHaveAttribute('href', '/privacy');
 
-    fireEvent.click(screen.getByRole('tab', { name: 'واتساب' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'الهاتف' }));
     fireEvent.change(screen.getByLabelText('رمز الدولة'), {
         target: { value: '+20' },
     });
-    fireEvent.change(screen.getByLabelText('رقم واتساب'), {
+    fireEvent.change(screen.getByLabelText('رقم الهاتف'), {
         target: { value: '0100 123-4567' },
     });
     fireEvent.click(
@@ -432,11 +411,11 @@ it('renders the themed OTP error box with role="alert" and without text-red clas
         'aria-selected',
         'true',
     );
-    fireEvent.click(screen.getByRole('tab', { name: 'واتساب' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'الهاتف' }));
     fireEvent.change(screen.getByLabelText('رمز الدولة'), {
         target: { value: '+966' },
     });
-    fireEvent.change(screen.getByLabelText('رقم واتساب'), {
+    fireEvent.change(screen.getByLabelText('رقم الهاتف'), {
         target: { value: '501234567' },
     });
     fireEvent.click(

@@ -29,6 +29,7 @@ final readonly class BuildServicePriceLabels
         private QuoteCoins $quoteCoins,
         private ReadManualServicePricing $manualPricing,
         private ConvertDisplayMoney $convertDisplayMoney,
+        private BuildSbcSuggestions $sbcSuggestions,
     ) {}
 
     /**
@@ -72,6 +73,24 @@ final readonly class BuildServicePriceLabels
                     ];
                 } catch (Throwable) {
                     // omit key
+                }
+
+                // Each shelved SBC challenge, keyed by its slug, so the shelf
+                // can show a real price per card without any of them being
+                // frozen into the message.
+                foreach ($this->sbcSuggestions->execute(app()->getLocale()) as $item) {
+                    try {
+                        $converted = $converter->convert(
+                            Money::fromHalalah($this->sbcHalalahForSlug($item['id'])),
+                        );
+                        $prices['sbc:'.$item['id']] = [
+                            'amountMinor' => $converted['amountMinor'],
+                            'currency' => $converted['currency'],
+                            'unit' => 'total',
+                        ];
+                    } catch (Throwable) {
+                        // omit key
+                    }
                 }
 
                 // rivals: unit = 'total'
@@ -157,6 +176,35 @@ final readonly class BuildServicePriceLabels
 
         if ($lowest === null || ! is_numeric($lowest) || (int) $lowest <= 0) {
             throw new DomainException('No active SBC products available.');
+        }
+
+        return (int) $lowest;
+    }
+
+    /**
+     * The cheapest active variant of one SBC challenge, so a shelf card shows
+     * the price the customer would actually start from on that product's page.
+     */
+    private function sbcHalalahForSlug(string $slug): int
+    {
+        $lowest = ProductVariant::query()
+            ->where('is_active', true)
+            ->whereRaw('COALESCE(sale_price_halalah, price_halalah) > 0')
+            ->whereHas('product', function ($query) use ($slug): void {
+                $query->where('service_type', ServiceType::Sbc)
+                    ->where('slug', $slug)
+                    ->where('is_visible', true)
+                    ->whereNull('archived_at')
+                    ->where(function ($categoryQuery): void {
+                        $categoryQuery->whereNull('category_id')
+                            ->orWhereHas('category', fn ($category) => $category->where('is_visible', true));
+                    });
+            })
+            ->selectRaw('MIN(COALESCE(sale_price_halalah, price_halalah)) as lowest_price')
+            ->value('lowest_price');
+
+        if ($lowest === null || ! is_numeric($lowest) || (int) $lowest <= 0) {
+            throw new DomainException('No active variant for this SBC challenge.');
         }
 
         return (int) $lowest;

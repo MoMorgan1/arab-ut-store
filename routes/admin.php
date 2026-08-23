@@ -12,11 +12,17 @@ use App\Http\Controllers\Admin\OrdersController;
 use App\Http\Controllers\Admin\OrderTransitionController;
 use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\Admin\PaylinkRefundController;
+use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\ProductDetailController;
+use App\Http\Controllers\Admin\ProductsController;
+use App\Http\Controllers\Admin\ServicePricingController;
+use App\Http\Controllers\Admin\ServicePricingStatusController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TeamGrantController;
 use App\Http\Controllers\Admin\TeamRoleController;
 use App\Http\Controllers\Admin\TeamStatusController;
 use App\Http\Controllers\Admin\ToggleCouponStatusController;
+use App\Http\Controllers\Admin\TrustedDeviceController;
 use App\Http\Controllers\Admin\UpdateCouponController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureAdminAccess;
@@ -142,6 +148,30 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $teamGrant->defaults('locale', $locale);
                 }
 
+                $products = Route::get('/products', ProductsController::class)
+                    ->middleware('can:catalog.view')
+                    ->name('products');
+
+                if ($locale !== null) {
+                    $products->defaults('locale', $locale);
+                }
+
+                $productDetail = Route::get('/products/{publicId}', ProductDetailController::class)
+                    ->middleware('can:catalog.view')
+                    ->name('products.show');
+
+                if ($locale !== null) {
+                    $productDetail->defaults('locale', $locale);
+                }
+
+                $product = Route::post('/api/products/{publicId}', ProductController::class)
+                    ->middleware(['password.confirm', 'can:catalog.manage'])
+                    ->name('products.update');
+
+                if ($locale !== null) {
+                    $product->defaults('locale', $locale);
+                }
+
                 $teamRole = Route::post('/api/team/{publicId}/role', TeamRoleController::class)
                     ->middleware(['password.confirm', 'can:staff.manage'])
                     ->name('team.role.store');
@@ -188,6 +218,30 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $toggleCoupon->defaults('locale', $locale);
+                }
+
+                $servicePricing = Route::post('/api/settings/service-pricing/{serviceType}', ServicePricingController::class)
+                    ->middleware(['password.confirm', 'can:settings.manage', 'throttle:staff-identity'])
+                    ->name('settings.service-pricing.store');
+
+                if ($locale !== null) {
+                    $servicePricing->defaults('locale', $locale);
+                }
+
+                $servicePricingStatus = Route::post('/api/settings/service-pricing/{serviceType}/status', ServicePricingStatusController::class)
+                    ->middleware(['password.confirm', 'can:settings.manage', 'throttle:staff-identity'])
+                    ->name('settings.service-pricing.status.store');
+
+                if ($locale !== null) {
+                    $servicePricingStatus->defaults('locale', $locale);
+                }
+
+                $trustedDevices = Route::delete('/api/security/trusted-devices', TrustedDeviceController::class)
+                    ->middleware(['password.confirm', 'throttle:two-factor-management'])
+                    ->name('security.trusted-devices.destroy');
+
+                if ($locale !== null) {
+                    $trustedDevices->defaults('locale', $locale);
                 }
             });
         });

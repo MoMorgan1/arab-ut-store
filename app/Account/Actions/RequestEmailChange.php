@@ -21,7 +21,7 @@ final readonly class RequestEmailChange
             ->whereKeyNot($user->id)
             ->exists()) {
             throw ValidationException::withMessages([
-                'email' => trans('validation.unique', ['attribute' => 'email']),
+                'email' => trans('account.profile.email_taken'),
             ]);
         }
 

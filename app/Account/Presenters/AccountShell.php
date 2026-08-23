@@ -42,7 +42,6 @@ final class AccountShell
                         $localized ? 'localized.account.wallet' : 'account.wallet',
                         absolute: false,
                     ),
-                    'badge' => trans('account.navigation.coming_soon'),
                 ],
                 [
                     'key' => 'profile',

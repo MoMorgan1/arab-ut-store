@@ -25,6 +25,7 @@ final readonly class FinalizeAgentTurn
         private EstimateAgentRunCost $costEstimator,
         private BuildAssistantCards $buildCards,
         private BuildAssistantChoices $buildChoices,
+        private BuildAssistantShelf $buildShelf,
     ) {}
 
     public function execute(
@@ -86,6 +87,12 @@ final readonly class FinalizeAgentTurn
 
             if ($choices !== null) {
                 $metadata['choices'] = $choices;
+            }
+
+            $shelf = $this->buildShelf->execute($customerText, $locale);
+
+            if ($shelf !== []) {
+                $metadata['shelf'] = ['version' => 'shelf.v1', 'items' => $shelf];
             }
 
             $assistantMessage = $lockedConversation->messages()->create([

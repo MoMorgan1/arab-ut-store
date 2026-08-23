@@ -8,6 +8,7 @@ import {
     LoaderCircle,
     RotateCcw,
     ShieldCheck,
+    ShieldOff,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -15,19 +16,27 @@ import {
     AdminMfaApiError,
     confirmAdminMfa,
     enableAdminMfa,
+    forgetAdminMfaTrustedDevices,
     loadAdminMfaQrCode,
     loadAdminMfaRecoveryCodes,
     regenerateAdminMfaRecoveryCodes,
 } from '@/lib/admin-mfa-api';
 import type { AdminMfaState, AdminTranslations } from '@/types/admin';
 
-type Operation = 'enable' | 'confirm' | 'recovery' | 'regenerate' | null;
+type Operation =
+    | 'enable'
+    | 'confirm'
+    | 'recovery'
+    | 'regenerate'
+    | 'forgetTrustedDevices'
+    | null;
 type RetryOperation =
     | 'loadQrCode'
     | 'startEnrollment'
     | 'confirmEnrollment'
     | 'showRecoveryCodes'
-    | 'regenerateRecoveryCodes';
+    | 'regenerateRecoveryCodes'
+    | 'forgetTrustedDevices';
 type FailureRecovery = 'retry' | 'login' | 'home' | 'reauthenticate' | 'wait';
 type FailureState = { message: string; recovery: FailureRecovery };
 
@@ -54,6 +63,11 @@ export default function AdminSecuritySection({
     const [qrSvg, setQrSvg] = useState<string | null>(null);
     const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
     const [confirmingRegeneration, setConfirmingRegeneration] = useState(false);
+    const [trustedDeviceCount, setTrustedDeviceCount] = useState(
+        mfa.trustedDeviceCount,
+    );
+    const [confirmingForgetDevices, setConfirmingForgetDevices] =
+        useState(false);
     const [operation, setOperation] = useState<Operation>(null);
     const [failure, setFailure] = useState<FailureState | null>(null);
 
@@ -63,6 +77,7 @@ export default function AdminSecuritySection({
         setQrSvg(null);
         setRecoveryCodes(null);
         setConfirmingRegeneration(false);
+        setConfirmingForgetDevices(false);
     }, []);
 
     const run = useCallback(
@@ -183,6 +198,20 @@ export default function AdminSecuritySection({
         }
     }, [mfa.routes.regenerateRecoveryCodes, run, showRecoveryCodes]);
 
+    const forgetTrustedDevices = useCallback(async (): Promise<void> => {
+        if (mounted.current) {
+            setConfirmingForgetDevices(false);
+        }
+
+        await run('forgetTrustedDevices', 'forgetTrustedDevices', async () => {
+            await forgetAdminMfaTrustedDevices(mfa.routes.forgetTrustedDevices);
+
+            if (mounted.current) {
+                setTrustedDeviceCount(0);
+            }
+        });
+    }, [mfa.routes.forgetTrustedDevices, run]);
+
     useEffect(() => {
         if (
             enabled &&
@@ -274,6 +303,10 @@ export default function AdminSecuritySection({
                                     retry.current === 'regenerateRecoveryCodes'
                                 ) {
                                     void regenerateRecoveryCodes();
+                                } else if (
+                                    retry.current === 'forgetTrustedDevices'
+                                ) {
+                                    void forgetTrustedDevices();
                                 }
                             }}
                             retryLabel={adminUi.common.retry}
@@ -291,21 +324,33 @@ export default function AdminSecuritySection({
                 ) : confirmed ? (
                     <ConfirmedState
                         cancelLabel={adminUi.common.cancel}
+                        confirmingForgetDevices={confirmingForgetDevices}
                         confirmingRegeneration={confirmingRegeneration}
                         copy={copy}
                         loading={operation}
+                        onCancelForgetDevices={() =>
+                            setConfirmingForgetDevices(false)
+                        }
                         onCancelRegeneration={() =>
                             setConfirmingRegeneration(false)
+                        }
+                        onConfirmForgetDevices={() =>
+                            void forgetTrustedDevices()
                         }
                         onConfirmRegeneration={() =>
                             void regenerateRecoveryCodes()
                         }
                         onHideCodes={() => setRecoveryCodes(null)}
+                        onRequestForgetDevices={() =>
+                            setConfirmingForgetDevices(true)
+                        }
                         onRequestRegeneration={() =>
                             setConfirmingRegeneration(true)
                         }
                         onShowCodes={() => void showRecoveryCodes()}
                         recoveryCodes={recoveryCodes}
+                        trustedDeviceCount={trustedDeviceCount}
+                        trustedDeviceDays={mfa.trustedDeviceDays}
                     />
                 ) : enabled ? (
                     <ConfirmationState
@@ -551,26 +596,38 @@ function ConfirmationState({
 
 function ConfirmedState({
     cancelLabel,
+    confirmingForgetDevices,
     confirmingRegeneration,
     copy,
     loading,
-    onConfirmRegeneration,
+    onCancelForgetDevices,
     onCancelRegeneration,
+    onConfirmForgetDevices,
+    onConfirmRegeneration,
     onHideCodes,
+    onRequestForgetDevices,
     onRequestRegeneration,
     onShowCodes,
     recoveryCodes,
+    trustedDeviceCount,
+    trustedDeviceDays,
 }: {
     cancelLabel: string;
+    confirmingForgetDevices: boolean;
     confirmingRegeneration: boolean;
     copy: MfaCopy;
     loading: Operation;
-    onConfirmRegeneration: () => void;
+    onCancelForgetDevices: () => void;
     onCancelRegeneration: () => void;
+    onConfirmForgetDevices: () => void;
+    onConfirmRegeneration: () => void;
     onHideCodes: () => void;
+    onRequestForgetDevices: () => void;
     onRequestRegeneration: () => void;
     onShowCodes: () => void;
     recoveryCodes: string[] | null;
+    trustedDeviceCount: number;
+    trustedDeviceDays: number;
 }) {
     return (
         <section aria-live="polite" className="space-y-6 py-4">
@@ -672,6 +729,73 @@ function ConfirmedState({
                             disabled={loading !== null}
                             label={cancelLabel}
                             onClick={onCancelRegeneration}
+                            variant="secondary"
+                        />
+                    </div>
+                </section>
+            ) : null}
+
+            <div className="space-y-5 border-t border-border pt-6">
+                <div className="max-w-xl space-y-2">
+                    <h4 className="text-base font-semibold text-foreground">
+                        {copy.trustedDevicesTitle}
+                    </h4>
+                    <p className="text-sm leading-6 text-muted-foreground">
+                        {trustedDeviceCount > 0
+                            ? copy.trustedDevicesDescription
+                                  .replace(':count', String(trustedDeviceCount))
+                                  .replace(':days', String(trustedDeviceDays))
+                            : copy.trustedDevicesNone}
+                    </p>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <ActionButton
+                        disabled={trustedDeviceCount === 0 || loading !== null}
+                        label={copy.forgetTrustedDevices}
+                        onClick={onRequestForgetDevices}
+                        variant="secondary"
+                    />
+                </div>
+            </div>
+
+            {confirmingForgetDevices ? (
+                <section
+                    aria-labelledby="forget-trusted-devices-title"
+                    className="space-y-4 border-t border-border pt-6"
+                >
+                    <div className="flex items-start gap-3">
+                        <ShieldOff
+                            aria-hidden="true"
+                            className="mt-1 size-5 shrink-0 text-primary"
+                        />
+                        <div className="space-y-1">
+                            <h4
+                                className="text-base font-semibold text-foreground"
+                                id="forget-trusted-devices-title"
+                            >
+                                {copy.forgetTrustedDevicesTitle}
+                            </h4>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                                {copy.forgetTrustedDevicesDescription}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                        <ActionButton
+                            disabled={loading !== null}
+                            label={
+                                loading === 'forgetTrustedDevices'
+                                    ? copy.forgettingTrustedDevices
+                                    : copy.confirmForgetTrustedDevices
+                            }
+                            loading={loading === 'forgetTrustedDevices'}
+                            onClick={onConfirmForgetDevices}
+                        />
+                        <ActionButton
+                            disabled={loading !== null}
+                            label={cancelLabel}
+                            onClick={onCancelForgetDevices}
                             variant="secondary"
                         />
                     </div>

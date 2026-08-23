@@ -21,7 +21,6 @@ export default function AuthLayout({
         ui,
     } = page.props as unknown as AuthSharedProps;
     const pageCopy = authUi[authPage];
-    const showsBenefits = authPage === 'login' || authPage === 'register';
 
     return (
         <StoreLayout
@@ -35,10 +34,8 @@ export default function AuthLayout({
             ui={ui}
         >
             <AuthLayoutTemplate
-                benefits={authUi.benefits}
                 description={pageCopy.description}
                 direction={direction}
-                showBenefits={showsBenefits}
                 title={pageCopy.title}
             >
                 {children}

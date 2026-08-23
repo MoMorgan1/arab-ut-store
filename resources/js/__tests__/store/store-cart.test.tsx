@@ -872,7 +872,7 @@ describe('cart coupon field', () => {
         await waitFor(() => {
             expect(document.querySelector('[role="alert"]')).not.toBeNull();
         });
-         
+
         console.log(
             'ALERTS:',
             Array.from(document.querySelectorAll('[role="alert"]')).map(

@@ -2,16 +2,6 @@
 
 return [
     'brand' => 'Arab UT',
-    'benefits' => [
-        'eyebrow' => 'Your Arab UT account',
-        'title' => 'Continue your order in one place',
-        'description' => 'Sign in to connect your account to your current cart.',
-        'items' => [
-            'Your cart continues after you sign in',
-            'EA credentials stay encrypted in the temporary cart',
-            'Change language and currency in the same store',
-        ],
-    ],
     'fields' => [
         'first_name' => 'First name',
         'last_name' => 'Last name',
@@ -35,9 +25,9 @@ return [
         'email_tab' => 'Email',
         'tab_email' => 'Email and password',
         'tab_email_short' => 'Email',
-        'phone_tab' => 'WhatsApp',
+        'phone_tab' => 'Phone',
         'country_code' => 'Country code',
-        'phone_number' => 'WhatsApp number',
+        'phone_number' => 'Phone number',
         'phone_account_hint' => 'We will send a 6-digit code on WhatsApp. If you do not have an account, we will create one with this number.',
         'phone_send_code' => 'Send code',
         'phone_code' => '6-digit WhatsApp code',

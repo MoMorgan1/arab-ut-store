@@ -86,6 +86,28 @@ export async function regenerateAdminMfaRecoveryCodes(
     await mutate(path, {});
 }
 
+export type AdminMfaRevokedTrustedDevices = {
+    revoked: number;
+};
+
+export async function forgetAdminMfaTrustedDevices(
+    path: string,
+): Promise<AdminMfaRevokedTrustedDevices> {
+    const payload = await requestJson(path, {
+        headers: {
+            Accept: 'application/json',
+            'X-CSRF-TOKEN': csrfToken(),
+        },
+        method: 'DELETE',
+    });
+
+    if (!isRecord(payload) || typeof payload.revoked !== 'number') {
+        throw invalidResponse();
+    }
+
+    return { revoked: payload.revoked };
+}
+
 async function mutate(
     path: string,
     body: Record<string, string>,

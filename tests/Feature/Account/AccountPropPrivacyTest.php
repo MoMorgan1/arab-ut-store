@@ -20,6 +20,8 @@ test('account destinations never serialize credential or internal data props', f
     'overview' => '/my-account',
     'orders' => '/my-account/orders',
     'wallet' => '/my-account/wallet',
+    'loyalty' => '/my-account/loyalty',
+    'English loyalty' => '/en/my-account/loyalty',
     'profile' => '/my-account/profile',
     'support' => '/my-account/support',
     'English support' => '/en/my-account/support',

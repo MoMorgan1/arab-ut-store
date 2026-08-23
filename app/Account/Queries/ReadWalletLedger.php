@@ -26,6 +26,7 @@ final class ReadWalletLedger
             return ['wallet' => [
                 'exists' => false,
                 'balance' => null,
+                'lifetimeCashback' => AccountMoney::fromMinor(0, 'SAR'),
                 'entries' => [],
                 'pagination' => $this->emptyPagination(),
             ]];
@@ -57,9 +58,22 @@ final class ReadWalletLedger
             throw new UnexpectedValueException('Wallet balance must be an integer.');
         }
 
+        $cashbackHalalah = (int) WalletEntry::query()
+            ->where('wallet_account_id', $account->id)
+            ->where('type', WalletEntryType::Cashback->value)
+            ->sum('amount_halalah');
+
+        $reversalHalalah = (int) WalletEntry::query()
+            ->where('wallet_account_id', $account->id)
+            ->where('type', WalletEntryType::CashbackReversal->value)
+            ->sum('amount_halalah');
+
+        $lifetimeCashbackHalalah = max(0, $cashbackHalalah - $reversalHalalah);
+
         return ['wallet' => [
             'exists' => true,
             'balance' => AccountMoney::fromMinor($balance, 'SAR'),
+            'lifetimeCashback' => AccountMoney::fromMinor($lifetimeCashbackHalalah, 'SAR'),
             'entries' => $paginator->getCollection()
                 ->map(fn (WalletEntry $entry): array => $this->present($entry, $locale))
                 ->values()
@@ -92,8 +106,8 @@ final class ReadWalletLedger
             'sequence' => $entry->sequence,
             'type' => $type->value,
             'effect' => match ($type) {
-                WalletEntryType::Credit, WalletEntryType::Refund => 'credit',
-                WalletEntryType::Debit => 'debit',
+                WalletEntryType::Credit, WalletEntryType::Refund, WalletEntryType::Cashback => 'credit',
+                WalletEntryType::Debit, WalletEntryType::CashbackReversal => 'debit',
                 WalletEntryType::Adjustment => 'neutral',
             },
             'amount' => AccountMoney::fromMinor($amount, 'SAR'),

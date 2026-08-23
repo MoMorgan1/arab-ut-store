@@ -10,6 +10,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
     englishAdminUi,
+    sampleAdminServicePricingData,
+    sampleAdminServicePricingUrls,
     sampleAdminTeamData,
     sampleAdminTeamUrls,
 } from '@/__tests__/admin/admin-test-fixtures';
@@ -19,6 +21,7 @@ import type { AdminSettingsPageProps } from '@/types/admin';
 const api = vi.hoisted(() => ({
     confirmAdminMfa: vi.fn(),
     enableAdminMfa: vi.fn(),
+    forgetAdminMfaTrustedDevices: vi.fn(),
     loadAdminMfaQrCode: vi.fn(),
     loadAdminMfaRecoveryCodes: vi.fn(),
     regenerateAdminMfaRecoveryCodes: vi.fn(),
@@ -53,6 +56,7 @@ vi.mock('@inertiajs/react', () => ({
 const mfaRoutes = {
     confirm: '/user/confirmed-two-factor-authentication',
     disable: '/user/two-factor-authentication',
+    forgetTrustedDevices: '/admin/api/security/trusted-devices',
     enable: '/user/two-factor-authentication',
     qrCode: '/user/two-factor-qr-code',
     recoveryCodes: '/user/two-factor-recovery-codes',
@@ -72,15 +76,25 @@ function createDefaultProps(
             { key: 'orders', label: 'Orders', url: '/admin/orders' },
             { key: 'settings', label: 'Settings', url: '/admin/settings' },
         ],
-        permissions: ['dashboard.view', 'staff.view', 'staff.manage'],
+        permissions: [
+            'dashboard.view',
+            'staff.view',
+            'staff.manage',
+            'settings.view',
+            'settings.manage',
+        ],
         mfa: {
             confirmed: true,
             enabled: true,
             passwordConfigured: true,
             routes: mfaRoutes,
+            trustedDeviceCount: 2,
+            trustedDeviceDays: 30,
         },
         team: sampleAdminTeamData,
         teamUrls: sampleAdminTeamUrls,
+        servicePricing: sampleAdminServicePricingData,
+        servicePricingUrls: sampleAdminServicePricingUrls,
         confirmPasswordUrl: '/confirm-password',
         logoutUrl: '/logout',
         ...overrides,
@@ -98,7 +112,7 @@ describe('AdminSettingsPage', () => {
         cleanup();
     });
 
-    it('renders the settings header and anchor navigation links for security and team', () => {
+    it('renders the settings header and anchor navigation links for security, team, and service pricing', () => {
         render(<AdminSettingsPage {...createDefaultProps()} />);
 
         expect(
@@ -112,19 +126,36 @@ describe('AdminSettingsPage', () => {
             'href',
             '#team',
         );
+        expect(
+            screen.getByRole('link', { name: 'Service pricing' }),
+        ).toHaveAttribute('href', '#service-pricing');
     });
 
-    it('hides team section and anchor link when team is null (e.g. for Staff)', () => {
+    it('hides team and service pricing section and anchor links when props are null (e.g. for Staff)', () => {
         render(
             <AdminSettingsPage
-                {...createDefaultProps({ team: null, teamUrls: null })}
+                {...createDefaultProps({
+                    servicePricing: null,
+                    servicePricingUrls: null,
+                    team: null,
+                    teamUrls: null,
+                })}
             />,
         );
 
         expect(screen.getByRole('link', { name: 'Security' })).toBeVisible();
         expect(screen.queryByRole('link', { name: 'Team' })).toBeNull();
         expect(
+            screen.queryByRole('link', { name: 'Service pricing' }),
+        ).toBeNull();
+        expect(
             screen.queryByRole('heading', { level: 2, name: 'Team' }),
+        ).toBeNull();
+        expect(
+            screen.queryByRole('heading', {
+                level: 2,
+                name: 'Service pricing',
+            }),
         ).toBeNull();
         expect(
             screen.getByRole('heading', { level: 2, name: 'Security' }),
@@ -371,5 +402,59 @@ describe('AdminSettingsPage', () => {
                 'Your current codes will stop working immediately. Be ready to save the new codes.',
             ),
         ).toBeVisible();
+    });
+
+    it('renders trusted devices block and allows forgetting trusted browsers with confirmation', async () => {
+        api.forgetAdminMfaTrustedDevices.mockResolvedValue({ revoked: 2 });
+
+        render(<AdminSettingsPage {...createDefaultProps()} />);
+
+        expect(
+            screen.getByRole('heading', { name: 'Trusted browsers' }),
+        ).toBeVisible();
+        expect(
+            screen.getByText(
+                '2 browser(s) currently trusted. Trusted browsers skip the two-factor challenge for up to 30 days.',
+            ),
+        ).toBeVisible();
+
+        const forgetButton = screen.getByRole('button', {
+            name: 'Forget trusted browsers',
+        });
+        expect(forgetButton).toBeEnabled();
+
+        fireEvent.click(forgetButton);
+
+        expect(
+            screen.getByRole('heading', {
+                name: 'Forget all trusted browsers?',
+            }),
+        ).toBeVisible();
+        expect(
+            screen.getByText(
+                'Every browser, including this one, will have to enter a two-factor code again at the next sign-in.',
+            ),
+        ).toBeVisible();
+
+        const confirmButton = screen.getByRole('button', {
+            name: 'Forget all browsers',
+        });
+        fireEvent.click(confirmButton);
+
+        await waitFor(() => {
+            expect(api.forgetAdminMfaTrustedDevices).toHaveBeenCalledWith(
+                mfaRoutes.forgetTrustedDevices,
+            );
+            expect(
+                screen.getByText(
+                    'No browsers are currently trusted. Every sign-in will require a two-factor code.',
+                ),
+            ).toBeVisible();
+            expect(
+                screen.getByRole('button', {
+                    name: 'Forget trusted browsers',
+                }),
+            ).toBeDisabled();
+        });
     });
 });

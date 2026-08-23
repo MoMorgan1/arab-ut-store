@@ -3,6 +3,7 @@ import {
     LayoutDashboard,
     LogOut,
     Megaphone,
+    Package,
     Settings,
     ShoppingBag,
     Users,
@@ -19,8 +20,9 @@ const navigationIcons: Record<AdminNavigationItem['key'], LucideIcon> = {
     overview: LayoutDashboard,
     orders: ShoppingBag,
     customers: Users,
-    settings: Settings,
     marketing: Megaphone,
+    products: Package,
+    settings: Settings,
 };
 
 export type AdminNavigationProps = {

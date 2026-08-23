@@ -2,11 +2,13 @@
 
 namespace App\Actions\AI;
 
+use App\Actions\Catalog\StoreCatalogReader;
 use App\Actions\Pricing\ConvertDisplayMoney;
 use App\Actions\Pricing\QuoteCoins;
 use App\Actions\Pricing\ReadManualServicePricing;
 use App\Enums\DeliveryMode;
 use App\Enums\Platform;
+use App\Enums\ServiceType;
 use App\Support\Money;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
@@ -27,6 +29,9 @@ final readonly class BuildLivePriceContext
     /** The Rivals ladder, cheapest division first. */
     private const DIVISIONS = ['7', '6', '5', '4', '3', '2', '1'];
 
+    /** How many SBC challenges to name before the list stops being useful. */
+    private const SBC_LIMIT = 5;
+
     /** FUT Champions ranks the store sells. */
     private const RANKS = [6, 5, 4, 3, 2, 1];
 
@@ -34,6 +39,7 @@ final readonly class BuildLivePriceContext
         private QuoteCoins $quoteCoins,
         private ReadManualServicePricing $manualPricing,
         private ConvertDisplayMoney $convertDisplayMoney,
+        private StoreCatalogReader $catalog,
     ) {}
 
     /**
@@ -72,6 +78,7 @@ final readonly class BuildLivePriceContext
             $this->coinsLines($format),
             $this->rivalsLines($format),
             $this->championsLines($format),
+            $this->sbcLines($locale),
         );
 
         if ($lines === []) {
@@ -180,6 +187,51 @@ final readonly class BuildLivePriceContext
                 if ($price !== null) {
                     $lines[] = "fut champions | rank {$rank} | {$label} | {$price}";
                 }
+            }
+        }
+
+        return $lines;
+    }
+
+    /**
+     * SBC is a catalogue, not a price list: every challenge is priced on its
+     * own. Naming the ones the store actually sells lets the assistant answer
+     * "how much are the challenges?" with real examples instead of a refusal,
+     * while the shelf beside the reply lets the customer pick one.
+     *
+     * @return list<string>
+     */
+    private function sbcLines(string $locale): array
+    {
+        try {
+            $catalog = $this->catalog->category(
+                ServiceType::Sbc,
+                $locale,
+                (string) config('store.default_display_currency'),
+                'all',
+                'recommended',
+                '',
+                1,
+            );
+        } catch (Throwable) {
+            return [];
+        }
+
+        $lines = [];
+
+        foreach ($catalog['products'] as $product) {
+            $name = $product['name'] ?? null;
+            $amount = $product['price']['amountMinor'] ?? null;
+            $currency = $product['price']['currency'] ?? null;
+
+            if (! is_string($name) || ! is_int($amount) || ! is_string($currency)) {
+                continue;
+            }
+
+            $lines[] = 'sbc | '.$name.' | '.number_format($amount / 100, 2).' '.$currency;
+
+            if (count($lines) === self::SBC_LIMIT) {
+                break;
             }
         }
 

@@ -253,6 +253,9 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
         screen.getByRole('progressbar', { name: 'تقدم الولاء' }),
     ).toBeVisible();
     expect(screen.getByText('90%')).toBeVisible();
+    expect(
+        screen.getByRole('link', { name: 'عرض برنامج الولاء' }),
+    ).toHaveAttribute('href', '/my-account/loyalty');
 
     const metricsDl = container.querySelector('dl.account-overview__metrics');
     expect(metricsDl).not.toBeNull();
@@ -293,14 +296,20 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
     fireEvent.click(screen.getByRole('button', { name: 'تسجيل الخروج' }));
 });
 
-it('renders the coming soon label in the wallet metric tile when walletBalance is null', () => {
-    mockPage.props.summary.walletBalance = null;
+it('renders real balance in the wallet metric tile without lock or coming soon label', () => {
+    mockPage.props.summary.walletBalance = {
+        amountMinor: '0',
+        currency: 'SAR',
+    };
 
     const { container } = render(<AccountOverview />);
 
     const metricsDl = container.querySelector('dl.account-overview__metrics');
     expect(metricsDl).not.toBeNull();
-    expect(within(metricsDl as HTMLElement).getByText('قريبًا')).toBeVisible();
+    expect(within(metricsDl as HTMLElement).getByText(/0\.00/)).toBeVisible();
+    expect(
+        within(metricsDl as HTMLElement).queryByText('قريبًا'),
+    ).not.toBeInTheDocument();
 });
 
 it('never duplicates activeOrder inside recentOrders even if present in the recent list', () => {

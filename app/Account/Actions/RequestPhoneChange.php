@@ -27,7 +27,7 @@ final readonly class RequestPhoneChange
             ->whereKeyNot($user->id)
             ->exists()) {
             throw ValidationException::withMessages([
-                'phone' => trans('validation.unique', ['attribute' => 'phone']),
+                'phone' => trans('account.profile.phone_taken'),
             ]);
         }
 

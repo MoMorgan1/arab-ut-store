@@ -56,10 +56,8 @@ export default function AccountProfile() {
     const countdown = useResendCountdown(60);
 
     const details = useForm({
-        display_currency: props.profile.displayCurrency,
         first_name: props.profile.firstName,
         last_name: props.profile.lastName,
-        preferred_locale: props.profile.preferredLocale,
     });
     const email = useForm({ email: '' });
     const phone = useForm({ phone: '' });
@@ -237,74 +235,6 @@ export default function AccountProfile() {
                                 }
                                 value={details.data.last_name}
                             />
-                            <label>
-                                <span>
-                                    {props.accountUi.profile.preferred_locale}
-                                </span>
-                                <select
-                                    aria-describedby={
-                                        details.errors.preferred_locale
-                                            ? 'preferred_locale-error'
-                                            : undefined
-                                    }
-                                    aria-invalid={
-                                        details.errors.preferred_locale
-                                            ? true
-                                            : undefined
-                                    }
-                                    id="preferred_locale"
-                                    onChange={(event) =>
-                                        details.setData(
-                                            'preferred_locale',
-                                            event.currentTarget.value as
-                                                'ar' | 'en',
-                                        )
-                                    }
-                                    value={details.data.preferred_locale}
-                                >
-                                    <option value="ar">العربية</option>
-                                    <option value="en">English</option>
-                                </select>
-                                <InputError
-                                    id="preferred_locale-error"
-                                    message={details.errors.preferred_locale}
-                                />
-                            </label>
-                            <label>
-                                <span>
-                                    {props.accountUi.profile.display_currency}
-                                </span>
-                                <select
-                                    aria-describedby={
-                                        details.errors.display_currency
-                                            ? 'display_currency-error'
-                                            : undefined
-                                    }
-                                    aria-invalid={
-                                        details.errors.display_currency
-                                            ? true
-                                            : undefined
-                                    }
-                                    id="display_currency"
-                                    onChange={(event) =>
-                                        details.setData(
-                                            'display_currency',
-                                            event.currentTarget.value,
-                                        )
-                                    }
-                                    value={details.data.display_currency}
-                                >
-                                    {props.displayCurrencies.map((currency) => (
-                                        <option key={currency} value={currency}>
-                                            {currency}
-                                        </option>
-                                    ))}
-                                </select>
-                                <InputError
-                                    id="display_currency-error"
-                                    message={details.errors.display_currency}
-                                />
-                            </label>
                         </div>
                         <button disabled={details.processing} type="submit">
                             {props.accountUi.profile.save}
