@@ -6355,30 +6355,18 @@ html.admin-document {
     line-height: 1.7;
 }
 
+/* Owner call: the promo art stays exactly as the original hero placed it —
+   plain, unframed, full column width. The wrapper stays only for markup
+   stability. */
 .manual-service-hero__media {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgb(212 168 67 / 18%);
-    border-radius: 1.25rem;
-    background: linear-gradient(
-        145deg,
-        rgb(212 168 67 / 8%),
-        rgb(12 10 8 / 65%)
-    );
-    padding: clamp(0.75rem, 2vw, 1.25rem);
-    box-shadow:
-        0 1.25rem 3rem rgb(0 0 0 / 30%),
-        inset 0 1px 0 rgb(255 255 255 / 6%);
-    margin-bottom: -1rem;
+    min-width: 0;
 }
 
 .manual-service-hero img {
     width: 100%;
-    max-height: 18rem;
+    max-height: 22rem;
     object-fit: contain;
-    filter: drop-shadow(0 1rem 2rem rgb(0 0 0 / 38%));
+    filter: drop-shadow(0 1.5rem 2.5rem rgb(0 0 0 / 32%));
 }
 
 .manual-configurator {
@@ -7465,15 +7453,8 @@ html.admin-document {
         margin-block: 0.5rem 1.75rem;
     }
 
-    .manual-service-hero__media {
-        max-width: 200px;
-        margin-inline: auto;
-        padding: 0.5rem;
-        margin-bottom: 0;
-    }
-
     .manual-service-hero img {
-        max-height: 12.5rem;
+        max-height: 16rem;
     }
 
     .manual-fut-options,
