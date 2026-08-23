@@ -41,6 +41,7 @@ const adminUi = englishAdminUi;
 const routes = {
     confirm: '/user/confirmed-two-factor-authentication',
     disable: '/user/two-factor-authentication',
+    forgetTrustedDevices: '/admin/api/security/trusted-devices',
     enable: '/user/two-factor-authentication',
     qrCode: '/user/two-factor-qr-code',
     recoveryCodes: '/user/two-factor-recovery-codes',
@@ -134,6 +135,8 @@ describe('AdminSecuritySection', () => {
                         enabled: false,
                         passwordConfigured: true,
                         routes,
+                        trustedDeviceCount: 0,
+                        trustedDeviceDays: 30,
                     }}
                 />
             </StrictMode>,
@@ -301,6 +304,8 @@ function renderPage(
             mfa={{
                 passwordConfigured: true,
                 routes,
+                trustedDeviceCount: 0,
+                trustedDeviceDays: 30,
                 ...state,
             }}
         />,

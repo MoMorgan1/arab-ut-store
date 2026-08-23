@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
+use App\Actions\Fortify\RedirectIfTwoFactorAuthenticatable;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Auth\TrustedDeviceRegistry;
 use App\Enums\UserRole;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\PrivateNoStore;
@@ -14,9 +16,11 @@ use App\Http\Responses\LogoutResponse;
 use App\Http\Responses\RegisterResponse;
 use App\Http\Responses\TwoFactorLoginResponse;
 use App\Models\User;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -28,8 +32,12 @@ use Laravel\Fortify\Contracts\FailedTwoFactorLoginResponse as FailedTwoFactorLog
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 use Laravel\Fortify\Contracts\LogoutResponse as LogoutResponseContract;
 use Laravel\Fortify\Contracts\PasswordResetResponse;
+use Laravel\Fortify\Contracts\RedirectsIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
 use Laravel\Fortify\Contracts\TwoFactorLoginResponse as TwoFactorLoginResponseContract;
+use Laravel\Fortify\Events\RecoveryCodesGenerated;
+use Laravel\Fortify\Events\TwoFactorAuthenticationConfirmed;
+use Laravel\Fortify\Events\TwoFactorAuthenticationDisabled;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 
@@ -46,6 +54,10 @@ class FortifyServiceProvider extends ServiceProvider
         $this->app->singleton(PasswordResetResponse::class, LocalizedPasswordResetResponse::class);
         $this->app->singleton(LogoutResponseContract::class, LogoutResponse::class);
         $this->app->singleton(FailedTwoFactorLoginResponseContract::class, LocalizedFailedTwoFactorLoginResponse::class);
+
+        // Fortify's default login pipeline resolves this contract, so binding it
+        // here is all it takes to let a trusted device skip the TOTP challenge.
+        $this->app->bind(RedirectsIfTwoFactorAuthenticatable::class, RedirectIfTwoFactorAuthenticatable::class);
     }
 
     /**
@@ -58,6 +70,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureViews();
         $this->configureRateLimiting();
         $this->configurePasswordResetUrls();
+        $this->revokeTrustedDevicesOnCredentialChange();
         $this->app->booted(fn () => $this->hardenTwoFactorManagementRoutes());
     }
 
@@ -237,6 +250,27 @@ class FortifyServiceProvider extends ServiceProvider
 
             return url(route($routeName, $parameters, absolute: false));
         });
+    }
+
+    /**
+     * A trusted device is a standing bypass of the TOTP challenge, so anything
+     * that invalidates the second factor - or that account recovery would go
+     * through - must drop every remembered device with it.
+     */
+    private function revokeTrustedDevicesOnCredentialChange(): void
+    {
+        $forget = function (object $event): void {
+            $user = $event->user ?? null;
+
+            if ($user instanceof User) {
+                app(TrustedDeviceRegistry::class)->forgetAll($user);
+            }
+        };
+
+        Event::listen(TwoFactorAuthenticationDisabled::class, $forget);
+        Event::listen(TwoFactorAuthenticationConfirmed::class, $forget);
+        Event::listen(RecoveryCodesGenerated::class, $forget);
+        Event::listen(PasswordReset::class, $forget);
     }
 
     private function hardenTwoFactorManagementRoutes(): void

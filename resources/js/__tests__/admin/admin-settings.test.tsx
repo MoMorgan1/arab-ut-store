@@ -53,6 +53,7 @@ vi.mock('@inertiajs/react', () => ({
 const mfaRoutes = {
     confirm: '/user/confirmed-two-factor-authentication',
     disable: '/user/two-factor-authentication',
+    forgetTrustedDevices: '/admin/api/security/trusted-devices',
     enable: '/user/two-factor-authentication',
     qrCode: '/user/two-factor-qr-code',
     recoveryCodes: '/user/two-factor-recovery-codes',
@@ -78,6 +79,8 @@ function createDefaultProps(
             enabled: true,
             passwordConfigured: true,
             routes: mfaRoutes,
+            trustedDeviceCount: 2,
+            trustedDeviceDays: 30,
         },
         team: sampleAdminTeamData,
         teamUrls: sampleAdminTeamUrls,
