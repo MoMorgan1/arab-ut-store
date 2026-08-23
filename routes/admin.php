@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\PaylinkRefundController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductDetailController;
 use App\Http\Controllers\Admin\ProductsController;
+use App\Http\Controllers\Admin\ProductVisibilityController;
 use App\Http\Controllers\Admin\PromotionsController;
 use App\Http\Controllers\Admin\ServicePricingController;
 use App\Http\Controllers\Admin\ServicePricingStatusController;
@@ -33,6 +34,7 @@ use App\Http\Controllers\Admin\TogglePromotionStatusController;
 use App\Http\Controllers\Admin\TrustedDeviceController;
 use App\Http\Controllers\Admin\UpdateCouponController;
 use App\Http\Controllers\Admin\UpdatePromotionController;
+use App\Http\Controllers\Admin\VariantPriceController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureAdminMfa;
@@ -219,6 +221,22 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $product->defaults('locale', $locale);
+                }
+
+                $productVisibility = Route::post('/api/products/{publicId}/visibility', ProductVisibilityController::class)
+                    ->middleware(['password.confirm', 'can:catalog.manage'])
+                    ->name('products.visibility.store');
+
+                if ($locale !== null) {
+                    $productVisibility->defaults('locale', $locale);
+                }
+
+                $variantPrice = Route::post('/api/variants/{publicId}/price', VariantPriceController::class)
+                    ->middleware(['password.confirm', 'can:catalog.manage', 'throttle:staff-payments'])
+                    ->name('variants.price.store');
+
+                if ($locale !== null) {
+                    $variantPrice->defaults('locale', $locale);
                 }
 
                 $teamRole = Route::post('/api/team/{publicId}/role', TeamRoleController::class)

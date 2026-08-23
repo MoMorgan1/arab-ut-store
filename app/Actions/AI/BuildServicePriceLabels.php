@@ -193,7 +193,7 @@ final readonly class BuildServicePriceLabels
     {
         $lowest = ProductVariant::query()
             ->where('is_active', true)
-            ->whereRaw('COALESCE(sale_price_halalah, price_halalah) > 0')
+            ->whereRaw('COALESCE(admin_price_halalah, sale_price_halalah, price_halalah) > 0')
             ->whereHas('product', function ($query): void {
                 $query->where('service_type', ServiceType::Sbc)
                     ->where('is_visible', true)
@@ -203,7 +203,7 @@ final readonly class BuildServicePriceLabels
                             ->orWhereHas('category', fn ($category) => $category->where('is_visible', true));
                     });
             })
-            ->selectRaw('MIN(COALESCE(sale_price_halalah, price_halalah)) as lowest_price')
+            ->selectRaw('MIN(COALESCE(admin_price_halalah, sale_price_halalah, price_halalah)) as lowest_price')
             ->value('lowest_price');
 
         if ($lowest === null || ! is_numeric($lowest) || (int) $lowest <= 0) {
@@ -221,7 +221,7 @@ final readonly class BuildServicePriceLabels
     {
         $lowest = ProductVariant::query()
             ->where('is_active', true)
-            ->whereRaw('COALESCE(sale_price_halalah, price_halalah) > 0')
+            ->whereRaw('COALESCE(admin_price_halalah, sale_price_halalah, price_halalah) > 0')
             ->whereHas('product', function ($query) use ($slug): void {
                 $query->where('service_type', ServiceType::Sbc)
                     ->where('slug', $slug)
@@ -232,7 +232,7 @@ final readonly class BuildServicePriceLabels
                             ->orWhereHas('category', fn ($category) => $category->where('is_visible', true));
                     });
             })
-            ->selectRaw('MIN(COALESCE(sale_price_halalah, price_halalah)) as lowest_price')
+            ->selectRaw('MIN(COALESCE(admin_price_halalah, sale_price_halalah, price_halalah)) as lowest_price')
             ->value('lowest_price');
 
         if ($lowest === null || ! is_numeric($lowest) || (int) $lowest <= 0) {

@@ -12,6 +12,7 @@ use App\Models\ProductVariant;
 use App\Security\CatalogCartFingerprint;
 use App\ValueObjects\Cart\CartOwner;
 use DomainException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use JsonException;
@@ -68,9 +69,7 @@ final readonly class AddCatalogItemToCart
             ->where('public_id', $publicId)
             ->where('is_active', true)
             ->whereNotIn('service_type', [ServiceType::Coins, ServiceType::Sbc])
-            ->whereHas('product', fn ($query) => $query
-                ->where('is_visible', true)
-                ->whereNull('archived_at'))
+            ->whereHas('product', fn (Builder $query) => Product::applyStorefrontVisible($query))
             ->with('product')
             ->lockForUpdate()
             ->first();
@@ -86,8 +85,7 @@ final readonly class AddCatalogItemToCart
 
     private function effectivePrice(ProductVariant $variant): int
     {
-        $salePrice = $variant->getAttribute('sale_price_halalah');
-        $price = is_int($salePrice) ? $salePrice : (int) $variant->getAttribute('price_halalah');
+        $price = $variant->effectivePriceHalalah();
 
         if ($price <= 0) {
             throw new DomainException('The catalog variant price is unavailable.');

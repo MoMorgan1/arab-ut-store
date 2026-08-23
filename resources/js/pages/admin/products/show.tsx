@@ -1,3 +1,5 @@
+'use no memo';
+
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     AlertCircle,
@@ -12,6 +14,8 @@ import {
     Image as ImageIcon,
     Layers,
     Pencil,
+    RotateCcw,
+    Tag,
     UserCheck,
     XCircle,
 } from 'lucide-react';
@@ -20,11 +24,16 @@ import React, { useState } from 'react';
 import AdminBadge from '@/components/admin/admin-badge';
 import { formatAdminMoney } from '@/components/admin/admin-money';
 import AdminProductEditDialog from '@/components/admin/products/admin-product-edit-dialog';
+import AdminProductVisibilityDialog from '@/components/admin/products/admin-product-visibility-dialog';
+import AdminVariantPriceDialog from '@/components/admin/products/admin-variant-price-dialog';
+import AdminVariantRevertDialog from '@/components/admin/products/admin-variant-revert-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import type {
     AdminProductDetail,
     AdminProductDetailPageProps,
+    AdminProductVariant,
+    SbcCompletionPricing,
 } from '@/types/admin';
 
 export default function AdminProductDetailPage() {
@@ -32,6 +41,12 @@ export default function AdminProductDetailPage() {
     const [product, setProduct] = useState<AdminProductDetail>(props.product);
     const [syncedProduct, setSyncedProduct] = useState(props.product);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [visibilityDialogOpen, setVisibilityDialogOpen] = useState(false);
+    const [priceDialogOpen, setPriceDialogOpen] = useState(false);
+    const [revertDialogOpen, setRevertDialogOpen] = useState(false);
+    const [selectedVariant, setSelectedVariant] =
+        useState<AdminProductVariant | null>(null);
+
     const [feedback, setFeedback] = useState<{
         message: string;
         title: string;
@@ -64,6 +79,9 @@ export default function AdminProductDetailPage() {
     const isVisible = product.isVisible;
     const serviceLabel =
         orderServices[product.serviceType] ?? product.serviceType;
+
+    const visibilityUrl = props.visibilityUrl;
+    const variantPriceUrlTemplate = props.variantPriceUrlTemplate;
 
     const handleConflict = () => {
         router.reload({
@@ -105,6 +123,93 @@ export default function AdminProductDetailPage() {
         });
     };
 
+    const handleVisibilitySuccess = (result: { adminHidden: boolean }) => {
+        setProduct((prev) => ({
+            ...prev,
+            adminHidden: result.adminHidden,
+        }));
+        setFeedback({
+            message: result.adminHidden
+                ? copy.visibilityHiddenMessage
+                : copy.visibilityRestoredMessage,
+            title: copy.visibilityUpdatedTitle,
+            type: 'success',
+        });
+    };
+
+    const handleVisibilityConflict = (currentHidden: boolean) => {
+        setProduct((prev) => ({
+            ...prev,
+            adminHidden: currentHidden,
+        }));
+        setFeedback({
+            message: copy.visibilityConflictError,
+            title: copy.conflictTitle,
+            type: 'conflict',
+        });
+    };
+
+    const handleVariantPriceSuccess = (result: {
+        adminCompletionPricing: SbcCompletionPricing | null;
+        adminPriceHalalah: number | null;
+        effectivePriceHalalah: number;
+        hasOverride: boolean;
+        priceVersion: number;
+        variant: string;
+    }) => {
+        setProduct((prev) => ({
+            ...prev,
+            variants: prev.variants.map((v) =>
+                v.id === result.variant
+                    ? {
+                          ...v,
+                          adminCompletionPricing: result.adminCompletionPricing,
+                          adminPriceHalalah: result.adminPriceHalalah,
+                          effectivePriceHalalah: result.effectivePriceHalalah,
+                          hasOverride: result.hasOverride,
+                          priceVersion: result.priceVersion,
+                      }
+                    : v,
+            ),
+        }));
+        setFeedback({
+            message: result.hasOverride
+                ? copy.priceOverrideUpdatedMessage
+                : copy.priceOverrideClearedMessage,
+            title: result.hasOverride
+                ? copy.priceOverrideUpdated
+                : copy.priceOverrideCleared,
+            type: 'success',
+        });
+    };
+
+    const handleVariantPriceConflict = (
+        variantId: string,
+        current: { effectivePriceHalalah: number; priceVersion: number },
+    ) => {
+        setProduct((prev) => ({
+            ...prev,
+            variants: prev.variants.map((v) =>
+                v.id === variantId
+                    ? {
+                          ...v,
+                          effectivePriceHalalah: current.effectivePriceHalalah,
+                          priceVersion: current.priceVersion,
+                      }
+                    : v,
+            ),
+        }));
+        setFeedback({
+            message: copy.priceConflictError,
+            title: copy.conflictTitle,
+            type: 'conflict',
+        });
+    };
+
+    const getVariantPriceUrl = (variantId: string): string => {
+        return variantPriceUrlTemplate.replace('__ID__', variantId);
+    };
+
     return (
         <article className="space-y-8" dir={props.direction}>
             <Head
@@ -143,12 +248,41 @@ export default function AdminProductDetailPage() {
                                     ? copy.authorityManual
                                     : copy.authorityAutomation}
                             </AdminBadge>
-                            <AdminBadge
-                                icon={isVisible ? Eye : EyeOff}
-                                variant={isVisible ? 'success' : 'neutral'}
-                            >
-                                {isVisible ? copy.visible : copy.hidden}
-                            </AdminBadge>
+
+                            {/* Storefront / Admin Hidden Badge */}
+                            {product.adminHidden ? (
+                                <AdminBadge icon={EyeOff} variant="danger">
+                                    {copy.adminHiddenBadge}
+                                </AdminBadge>
+                            ) : null}
+
+                            {/* Visibility Badge */}
+                            {isManual ? (
+                                !product.adminHidden ? (
+                                    <AdminBadge
+                                        icon={isVisible ? Eye : EyeOff}
+                                        variant={
+                                            isVisible ? 'success' : 'neutral'
+                                        }
+                                    >
+                                        {isVisible ? copy.visible : copy.hidden}
+                                    </AdminBadge>
+                                ) : null
+                            ) : (
+                                <AdminBadge
+                                    icon={isVisible ? Eye : EyeOff}
+                                    variant={
+                                        !product.adminHidden && isVisible
+                                            ? 'success'
+                                            : 'neutral'
+                                    }
+                                >
+                                    {isVisible
+                                        ? copy.automationVisibleBadge
+                                        : copy.automationHiddenBadge}
+                                </AdminBadge>
+                            )}
+
                             {product.isArchived ? (
                                 <AdminBadge variant="danger">
                                     {copy.archived}
@@ -178,9 +312,42 @@ export default function AdminProductDetailPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2.5">
+                        {/* Storefront Visibility Action */}
+                        {canManageCatalog ? (
+                            <Button
+                                className={`min-h-11 min-w-11 gap-1.5 text-sm md:text-xs ${
+                                    product.adminHidden
+                                        ? ''
+                                        : 'text-destructive hover:bg-destructive/10'
+                                }`}
+                                onClick={() => setVisibilityDialogOpen(true)}
+                                type="button"
+                                variant="outline"
+                            >
+                                {product.adminHidden ? (
+                                    <>
+                                        <Eye
+                                            aria-hidden="true"
+                                            className="size-3.5"
+                                        />
+                                        <span>{copy.restoreToStore}</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <EyeOff
+                                            aria-hidden="true"
+                                            className="size-3.5"
+                                        />
+                                        <span>{copy.hideFromStore}</span>
+                                    </>
+                                )}
+                            </Button>
+                        ) : null}
+
+                        {/* Edit manual product action */}
                         {product.isEditable && canManageCatalog ? (
                             <Button
-                                className="min-h-11 text-sm md:text-xs"
+                                className="min-h-11 min-w-11 gap-1.5 text-sm md:text-xs"
                                 onClick={() => setEditDialogOpen(true)}
                                 type="button"
                             >
@@ -211,7 +378,7 @@ export default function AdminProductDetailPage() {
                     <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
                         <span>{feedback.message}</span>
                         <Button
-                            className="min-h-11 text-xs"
+                            className="min-h-11 min-w-11 text-xs"
                             onClick={() => setFeedback(null)}
                             type="button"
                             variant="ghost"
@@ -287,6 +454,44 @@ export default function AdminProductDetailPage() {
                             {product.sortOrder}
                         </dd>
                     </div>
+
+                    <div className="flex flex-col gap-1 rounded-md border border-border/50 bg-background/50 p-3">
+                        <dt className="text-xs text-muted-foreground">
+                            {copy.storefrontStatus}
+                        </dt>
+                        <dd className="text-sm font-semibold text-foreground">
+                            {product.adminHidden ? (
+                                <AdminBadge variant="danger">
+                                    {copy.storefrontAdminHidden}
+                                </AdminBadge>
+                            ) : (
+                                <AdminBadge
+                                    variant={
+                                        product.isVisible
+                                            ? 'success'
+                                            : 'neutral'
+                                    }
+                                >
+                                    {product.isVisible
+                                        ? copy.storefrontVisible
+                                        : copy.hidden}
+                                </AdminBadge>
+                            )}
+                        </dd>
+                    </div>
+
+                    {!isManual ? (
+                        <div className="flex flex-col gap-1 rounded-md border border-border/50 bg-background/50 p-3">
+                            <dt className="text-xs text-muted-foreground">
+                                {copy.automationVisibility}
+                            </dt>
+                            <dd className="text-sm font-semibold text-foreground">
+                                {product.isVisible
+                                    ? copy.automationVisible
+                                    : copy.automationHidden}
+                            </dd>
+                        </div>
+                    ) : null}
 
                     <div className="flex flex-col gap-1 rounded-md border border-border/50 bg-background/50 p-3">
                         <dt className="text-xs text-muted-foreground">
@@ -437,75 +642,187 @@ export default function AdminProductDetailPage() {
                                 <th className="px-4 py-3 text-start font-medium">
                                     {copy.status}
                                 </th>
+                                {!isManual && canManageCatalog ? (
+                                    <th className="px-4 py-3 text-start font-medium">
+                                        {copy.variantActions}
+                                    </th>
+                                ) : null}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/60">
                             {product.variants.length > 0 ? (
-                                product.variants.map((variant) => (
-                                    <tr
-                                        className="transition-colors hover:bg-muted/30"
-                                        key={variant.id}
-                                    >
-                                        <td className="px-4 py-3 font-mono font-bold text-foreground">
-                                            {variant.sku}
-                                        </td>
-                                        <td className="px-4 py-3 font-medium text-muted-foreground">
-                                            {variant.platform}
-                                        </td>
-                                        <td className="px-4 py-3 font-medium text-muted-foreground">
-                                            {variant.market}
-                                        </td>
-                                        <td className="px-4 py-3 text-foreground tabular-nums">
-                                            {variant.quantityK !== null
-                                                ? `${variant.quantityK}k`
-                                                : '—'}
-                                        </td>
-                                        <td className="px-4 py-3 font-bold text-foreground tabular-nums">
-                                            {formatAdminMoney(
-                                                variant.price,
-                                                props.locale,
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground tabular-nums">
-                                            {variant.salePrice ? (
-                                                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                                    {formatAdminMoney(
-                                                        variant.salePrice,
+                                product.variants.map((variant) => {
+                                    const hasOverride = Boolean(
+                                        variant.hasOverride ||
+                                        (variant.adminPriceHalalah !==
+                                            undefined &&
+                                            variant.adminPriceHalalah !== null),
+                                    );
+
+                                    return (
+                                        <tr
+                                            className="transition-colors hover:bg-muted/30"
+                                            key={variant.id}
+                                        >
+                                            <td className="px-4 py-3 font-mono font-bold text-foreground">
+                                                {variant.sku}
+                                            </td>
+                                            <td className="px-4 py-3 font-medium text-muted-foreground">
+                                                {variant.platform}
+                                            </td>
+                                            <td className="px-4 py-3 font-medium text-muted-foreground">
+                                                {variant.market}
+                                            </td>
+                                            <td className="px-4 py-3 text-foreground tabular-nums">
+                                                {variant.quantityK !== null
+                                                    ? `${variant.quantityK}k`
+                                                    : '—'}
+                                            </td>
+                                            <td className="px-4 py-3 font-bold text-foreground tabular-nums">
+                                                {hasOverride ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-sm font-bold text-foreground tabular-nums">
+                                                            {formatAdminMoney(
+                                                                {
+                                                                    amountMinor:
+                                                                        String(
+                                                                            variant.adminPriceHalalah ??
+                                                                                variant.effectivePriceHalalah ??
+                                                                                variant
+                                                                                    .price
+                                                                                    .amountMinor,
+                                                                        ),
+                                                                    currency:
+                                                                        'SAR',
+                                                                },
+                                                                props.locale,
+                                                            )}
+                                                        </span>
+                                                        <div className="flex flex-wrap items-center gap-1.5">
+                                                            <AdminBadge variant="warning">
+                                                                {
+                                                                    copy.overrideActiveBadge
+                                                                }
+                                                            </AdminBadge>
+                                                            <span className="text-[11px] text-muted-foreground tabular-nums line-through">
+                                                                {copy.automationPriceLabel.replace(
+                                                                    ':price',
+                                                                    formatAdminMoney(
+                                                                        variant.price,
+                                                                        props.locale,
+                                                                    ),
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    formatAdminMoney(
+                                                        variant.price,
                                                         props.locale,
-                                                    )}
-                                                </span>
-                                            ) : (
-                                                '—'
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground tabular-nums">
-                                            v{variant.priceVersion}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <AdminBadge
-                                                icon={
-                                                    variant.isActive
-                                                        ? CheckCircle2
-                                                        : XCircle
-                                                }
-                                                variant={
-                                                    variant.isActive
-                                                        ? 'success'
-                                                        : 'neutral'
-                                                }
-                                            >
-                                                {variant.isActive
-                                                    ? copy.activeFlag
-                                                    : copy.inactiveFlag}
-                                            </AdminBadge>
-                                        </td>
-                                    </tr>
-                                ))
+                                                    )
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-muted-foreground tabular-nums">
+                                                {variant.salePrice ? (
+                                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                                        {formatAdminMoney(
+                                                            variant.salePrice,
+                                                            props.locale,
+                                                        )}
+                                                    </span>
+                                                ) : (
+                                                    '—'
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-muted-foreground tabular-nums">
+                                                v{variant.priceVersion}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <AdminBadge
+                                                    icon={
+                                                        variant.isActive
+                                                            ? CheckCircle2
+                                                            : XCircle
+                                                    }
+                                                    variant={
+                                                        variant.isActive
+                                                            ? 'success'
+                                                            : 'neutral'
+                                                    }
+                                                >
+                                                    {variant.isActive
+                                                        ? copy.activeFlag
+                                                        : copy.inactiveFlag}
+                                                </AdminBadge>
+                                            </td>
+
+                                            {/* Action column for automation variants */}
+                                            {!isManual && canManageCatalog ? (
+                                                <td className="px-4 py-3">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <Button
+                                                            className="min-h-11 min-w-11 gap-1 text-xs"
+                                                            onClick={() => {
+                                                                setSelectedVariant(
+                                                                    variant,
+                                                                );
+                                                                setPriceDialogOpen(
+                                                                    true,
+                                                                );
+                                                            }}
+                                                            type="button"
+                                                            variant="outline"
+                                                        >
+                                                            <Tag
+                                                                aria-hidden="true"
+                                                                className="size-3.5"
+                                                            />
+                                                            <span>
+                                                                {hasOverride
+                                                                    ? copy.editOverrideButton
+                                                                    : copy.overridePriceButton}
+                                                            </span>
+                                                        </Button>
+                                                        {hasOverride ? (
+                                                            <Button
+                                                                className="min-h-11 min-w-11 gap-1 text-xs text-destructive hover:bg-destructive/10"
+                                                                onClick={() => {
+                                                                    setSelectedVariant(
+                                                                        variant,
+                                                                    );
+                                                                    setRevertDialogOpen(
+                                                                        true,
+                                                                    );
+                                                                }}
+                                                                type="button"
+                                                                variant="outline"
+                                                            >
+                                                                <RotateCcw
+                                                                    aria-hidden="true"
+                                                                    className="size-3.5"
+                                                                />
+                                                                <span>
+                                                                    {
+                                                                        copy.revertToAutomationButton
+                                                                    }
+                                                                </span>
+                                                            </Button>
+                                                        ) : null}
+                                                    </div>
+                                                </td>
+                                            ) : null}
+                                        </tr>
+                                    );
+                                })
                             ) : (
                                 <tr>
                                     <td
                                         className="px-4 py-6 text-center text-muted-foreground"
-                                        colSpan={8}
+                                        colSpan={
+                                            !isManual && canManageCatalog
+                                                ? 9
+                                                : 8
+                                        }
                                     >
                                         {copy.noVariants}
                                     </td>
@@ -718,7 +1035,7 @@ export default function AdminProductDetailPage() {
                 </section>
             ) : null}
 
-            {/* Edit Product Dialog */}
+            {/* Edit Manual Product Dialog */}
             {product.isEditable ? (
                 <AdminProductEditDialog
                     adminUi={props.adminUi}
@@ -729,6 +1046,50 @@ export default function AdminProductDetailPage() {
                     open={editDialogOpen}
                     product={product}
                     updateUrl={props.updateUrl}
+                />
+            ) : null}
+
+            {/* Storefront Visibility Dialog */}
+            {canManageCatalog ? (
+                <AdminProductVisibilityDialog
+                    adminUi={props.adminUi}
+                    confirmPasswordUrl={props.confirmPasswordUrl}
+                    onConflict={handleVisibilityConflict}
+                    onOpenChange={setVisibilityDialogOpen}
+                    onSuccess={handleVisibilitySuccess}
+                    open={visibilityDialogOpen}
+                    product={product}
+                    visibilityUrl={visibilityUrl}
+                />
+            ) : null}
+
+            {/* Override Variant Price Dialog */}
+            {selectedVariant && canManageCatalog ? (
+                <AdminVariantPriceDialog
+                    adminUi={props.adminUi}
+                    key={`${selectedVariant.id}-${selectedVariant.priceVersion}`}
+                    confirmPasswordUrl={props.confirmPasswordUrl}
+                    locale={props.locale}
+                    onConflict={handleVariantPriceConflict}
+                    onOpenChange={setPriceDialogOpen}
+                    onSuccess={handleVariantPriceSuccess}
+                    open={priceDialogOpen}
+                    priceUrl={getVariantPriceUrl(selectedVariant.id)}
+                    variant={selectedVariant}
+                />
+            ) : null}
+
+            {/* Revert Variant Price to Automation Dialog */}
+            {selectedVariant && canManageCatalog ? (
+                <AdminVariantRevertDialog
+                    adminUi={props.adminUi}
+                    confirmPasswordUrl={props.confirmPasswordUrl}
+                    onConflict={handleVariantPriceConflict}
+                    onOpenChange={setRevertDialogOpen}
+                    onSuccess={handleVariantPriceSuccess}
+                    open={revertDialogOpen}
+                    priceUrl={getVariantPriceUrl(selectedVariant.id)}
+                    variant={selectedVariant}
                 />
             ) : null}
         </article>

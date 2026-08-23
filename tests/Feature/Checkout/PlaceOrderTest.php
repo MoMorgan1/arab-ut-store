@@ -12,6 +12,7 @@ use App\Exceptions\IdempotencyConflict;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CartItemSecret;
+use App\Models\Category;
 use App\Models\IdempotencyKey;
 use App\Models\Order;
 use App\Models\OrderItemSecret;
@@ -330,4 +331,101 @@ test('starting payment creates one Paylink invoice and stores only safe provider
             'provider_status' => 'pending',
         ])
         ->and(json_encode($payment->provider_metadata))->not->toContain('merchant-secret');
+});
+
+test('checkout refuses a product an admin hid from the storefront', function () {
+    $state = checkoutSbcCart();
+
+    // The item is already in the cart, so the catalog listing is not the guard
+    // here - only checkout's own re-validation stands between an admin-hidden
+    // product and a completed order.
+    $state['variant']->product->forceFill(['admin_hidden_at' => now()])->save();
+
+    expect(fn () => app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-admin-hidden'))
+        ->toThrow(CheckoutUnavailable::class, 'A cart item is unavailable.')
+        ->and(Order::count())->toBe(0);
+});
+
+test('checkout accepts the product again once the admin restores it', function () {
+    $state = checkoutSbcCart();
+    $state['variant']->product->forceFill(['admin_hidden_at' => now()])->save();
+
+    expect(fn () => app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-restore-1'))
+        ->toThrow(CheckoutUnavailable::class);
+
+    $state['variant']->product->forceFill(['admin_hidden_at' => null])->save();
+
+    expect(app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-restore-2')->order)
+        ->not->toBeNull()
+        ->and(Order::count())->toBe(1);
+});
+
+test('checkout refuses a product whose category an admin hid', function () {
+    $state = checkoutSbcCart();
+    $category = Category::factory()->create(['is_visible' => true]);
+    $state['variant']->product->forceFill(['category_id' => $category->id])->save();
+
+    expect(app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-category-ok')->order)
+        ->not->toBeNull();
+
+    $second = checkoutSbcCart();
+    $second['variant']->product->forceFill(['category_id' => $category->id])->save();
+    // Snapshot-owned is_visible stays true; only the admin override changes.
+    $category->forceFill(['admin_hidden_at' => now()])->save();
+
+    expect(fn () => app(PlaceOrder::class)->execute($second['user'], 'ar', 'checkout-category-hidden'))
+        ->toThrow(CheckoutUnavailable::class, 'A cart item is unavailable.');
+});
+
+test('checkout charges the admin price override, not the automation price', function () {
+    $state = checkoutSbcCart();
+    $variant = $state['variant'];
+
+    // Automation says 1250; the admin overrides to 900.
+    $variant->forceFill(['admin_price_halalah' => 900])->save();
+
+    expect($variant->fresh()->effectivePriceHalalah())->toBe(900);
+
+    // Re-quote the cart the way adding the item again would, at the new price.
+    $item = $state['item'];
+    $item->forceFill([
+        'unit_price_halalah' => 900,
+        'total_halalah' => 900,
+        'configuration' => [...$item->configuration, 'price_version' => (int) $variant->fresh()->price_version],
+    ])->save();
+
+    $order = app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-override')->order;
+
+    expect($order->items()->first()->unit_price_halalah)->toBe(900)
+        // The automation columns are untouched, so the next sync reverts nothing.
+        ->and($variant->fresh()->price_halalah)->toBe(1250);
+});
+
+test('a cart quoted before a price override cannot be checked out at the old price', function () {
+    $state = checkoutSbcCart();
+
+    $state['variant']->forceFill([
+        'admin_price_halalah' => 900,
+        'price_version' => 5,
+    ])->save();
+
+    expect(fn () => app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-stale-quote'))
+        ->toThrow(CheckoutUnavailable::class, 'The cart price has changed.')
+        ->and(Order::count())->toBe(0);
+});
+
+test('clearing the override hands pricing back to automation', function () {
+    $state = checkoutSbcCart();
+    $variant = $state['variant'];
+
+    $variant->forceFill(['admin_price_halalah' => 900])->save();
+    expect($variant->fresh()->effectivePriceHalalah())->toBe(900);
+
+    $variant->forceFill(['admin_price_halalah' => null])->save();
+
+    expect($variant->fresh()->effectivePriceHalalah())->toBe(1250);
+
+    $order = app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-cleared')->order;
+
+    expect($order->items()->first()->unit_price_halalah)->toBe(1250);
 });

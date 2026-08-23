@@ -52,6 +52,10 @@ final readonly class AdminProductDetailPage
             ...$this->shell->for($actor, $locale),
             'product' => $presented,
             'updateUrl' => route($prefix.'products.update', ['publicId' => (string) $detail['product']->public_id], absolute: false),
+            'visibilityUrl' => route($prefix.'products.visibility.store', ['publicId' => (string) $detail['product']->public_id], absolute: false),
+            // A template because the page posts per variant; the id is
+            // substituted client-side rather than building one URL per row.
+            'variantPriceUrlTemplate' => route($prefix.'variants.price.store', ['publicId' => '__ID__'], absolute: false),
             'confirmPasswordUrl' => route('password.confirm', absolute: false),
         ];
     }
