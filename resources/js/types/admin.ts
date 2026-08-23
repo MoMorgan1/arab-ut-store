@@ -473,6 +473,56 @@ export type AdminTranslations = {
         addMemberRoleLabel: string;
         addMemberSubmit: string;
         addMemberSubmitting: string;
+        servicePricingSection: string;
+        servicePricingDescription: string;
+        servicePricing: {
+            futChampions: string;
+            rivals: string;
+            urgentSurcharge: string;
+            version: string;
+            lastUpdated: string;
+            active: string;
+            inactive: string;
+            editPrices: string;
+            editingPrices: string;
+            tableRank: string;
+            tableStep: string;
+            tablePrice: string;
+            tableHalalah: string;
+            ranks: Record<string, string>;
+            steps: Record<string, string>;
+            editDialog: {
+                title: string;
+                description: string;
+                confirm: string;
+                cancel: string;
+                halalahHint: string;
+            };
+            deactivateDialog: {
+                title: string;
+                description: string;
+                confirm: string;
+                cancel: string;
+            };
+            activateDialog: {
+                title: string;
+                description: string;
+                confirm: string;
+                cancel: string;
+            };
+            messages: {
+                pricingUpdated: string;
+                statusUpdated: string;
+                conflictError: string;
+                validationError: string;
+            };
+            actions: {
+                deactivate: string;
+                deactivating: string;
+                reactivate: string;
+                reactivating: string;
+            };
+        };
         addStaffHint: string;
         selfBadge: string;
         columns: {
@@ -878,6 +928,23 @@ export type AdminTeamUrls = {
     statusUrlTemplate: string;
 };
 
+export type AdminServicePricingSchedule = {
+    serviceType: 'fut_champions' | 'rivals';
+    version: number;
+    isActive: boolean;
+    updatedAt: string;
+    configuration: Record<string, unknown>;
+};
+
+export type AdminServicePricingData = {
+    schedules: AdminServicePricingSchedule[];
+};
+
+export type AdminServicePricingUrls = {
+    updateUrlTemplate: string;
+    statusUrlTemplate: string;
+};
+
 export type AdminSettingsPageProps = {
     locale: 'ar' | 'en';
     direction: 'rtl' | 'ltr';
@@ -888,6 +955,8 @@ export type AdminSettingsPageProps = {
     mfa: AdminMfaState;
     team: AdminTeamData | null;
     teamUrls: AdminTeamUrls | null;
+    servicePricing: AdminServicePricingData | null;
+    servicePricingUrls: AdminServicePricingUrls | null;
     confirmPasswordUrl?: string;
     logoutUrl: string;
 };

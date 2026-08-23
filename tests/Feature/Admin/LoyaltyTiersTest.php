@@ -7,7 +7,6 @@ use App\Enums\UserRole;
 use App\Http\Middleware\EnsureAdminMfa;
 use App\Models\LoyaltyTier;
 use App\Models\Order;
-use App\Models\Payment;
 use App\Models\StaffAuditLog;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -268,10 +267,15 @@ test('CountCustomersPerTier counts customers correctly based on completed eligib
         'status' => OrderStatus::Completed,
         'completed_at' => now(),
     ]);
-    Payment::factory()->create([
-        'order_id' => $order2->id,
-        'captured_halalah' => 60000,
+    $order2->payments()->create([
+        'provider' => 'paylink',
+        'provider_payment_id' => (string) str()->ulid(),
         'status' => PaymentStatus::Paid,
+        'currency' => 'SAR',
+        'amount_halalah' => 60000,
+        'captured_halalah' => 60000,
+        'refunded_halalah' => 0,
+        'idempotency_key' => 'paylink:'.hash('sha256', $order2->id.'|'.(string) str()->ulid()),
     ]);
 
     // Customer 3: 200,000 spend -> Gold
@@ -283,10 +287,15 @@ test('CountCustomersPerTier counts customers correctly based on completed eligib
         'status' => OrderStatus::Completed,
         'completed_at' => now(),
     ]);
-    Payment::factory()->create([
-        'order_id' => $order3->id,
-        'captured_halalah' => 200000,
+    $order3->payments()->create([
+        'provider' => 'paylink',
+        'provider_payment_id' => (string) str()->ulid(),
         'status' => PaymentStatus::Paid,
+        'currency' => 'SAR',
+        'amount_halalah' => 200000,
+        'captured_halalah' => 200000,
+        'refunded_halalah' => 0,
+        'idempotency_key' => 'paylink:'.hash('sha256', $order3->id.'|'.(string) str()->ulid()),
     ]);
 
     $counts = app(CountCustomersPerTier::class)->execute();

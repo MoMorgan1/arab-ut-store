@@ -10,6 +10,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
     englishAdminUi,
+    sampleAdminServicePricingData,
+    sampleAdminServicePricingUrls,
     sampleAdminTeamData,
     sampleAdminTeamUrls,
 } from '@/__tests__/admin/admin-test-fixtures';
@@ -74,7 +76,13 @@ function createDefaultProps(
             { key: 'orders', label: 'Orders', url: '/admin/orders' },
             { key: 'settings', label: 'Settings', url: '/admin/settings' },
         ],
-        permissions: ['dashboard.view', 'staff.view', 'staff.manage'],
+        permissions: [
+            'dashboard.view',
+            'staff.view',
+            'staff.manage',
+            'settings.view',
+            'settings.manage',
+        ],
         mfa: {
             confirmed: true,
             enabled: true,
@@ -85,6 +93,8 @@ function createDefaultProps(
         },
         team: sampleAdminTeamData,
         teamUrls: sampleAdminTeamUrls,
+        servicePricing: sampleAdminServicePricingData,
+        servicePricingUrls: sampleAdminServicePricingUrls,
         confirmPasswordUrl: '/confirm-password',
         logoutUrl: '/logout',
         ...overrides,
@@ -102,7 +112,7 @@ describe('AdminSettingsPage', () => {
         cleanup();
     });
 
-    it('renders the settings header and anchor navigation links for security and team', () => {
+    it('renders the settings header and anchor navigation links for security, team, and service pricing', () => {
         render(<AdminSettingsPage {...createDefaultProps()} />);
 
         expect(
@@ -116,19 +126,36 @@ describe('AdminSettingsPage', () => {
             'href',
             '#team',
         );
+        expect(
+            screen.getByRole('link', { name: 'Service pricing' }),
+        ).toHaveAttribute('href', '#service-pricing');
     });
 
-    it('hides team section and anchor link when team is null (e.g. for Staff)', () => {
+    it('hides team and service pricing section and anchor links when props are null (e.g. for Staff)', () => {
         render(
             <AdminSettingsPage
-                {...createDefaultProps({ team: null, teamUrls: null })}
+                {...createDefaultProps({
+                    servicePricing: null,
+                    servicePricingUrls: null,
+                    team: null,
+                    teamUrls: null,
+                })}
             />,
         );
 
         expect(screen.getByRole('link', { name: 'Security' })).toBeVisible();
         expect(screen.queryByRole('link', { name: 'Team' })).toBeNull();
         expect(
+            screen.queryByRole('link', { name: 'Service pricing' }),
+        ).toBeNull();
+        expect(
             screen.queryByRole('heading', { level: 2, name: 'Team' }),
+        ).toBeNull();
+        expect(
+            screen.queryByRole('heading', {
+                level: 2,
+                name: 'Service pricing',
+            }),
         ).toBeNull();
         expect(
             screen.getByRole('heading', { level: 2, name: 'Security' }),
