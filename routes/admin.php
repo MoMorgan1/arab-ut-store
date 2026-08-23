@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ConversationDetailController;
 use App\Http\Controllers\Admin\ConversationsController;
 use App\Http\Controllers\Admin\CouponsController;
 use App\Http\Controllers\Admin\CreateCouponController;
+use App\Http\Controllers\Admin\CreatePromotionController;
 use App\Http\Controllers\Admin\CustomerContactController;
 use App\Http\Controllers\Admin\CustomerDetailController;
 use App\Http\Controllers\Admin\CustomersController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Admin\PaylinkRefundController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductDetailController;
 use App\Http\Controllers\Admin\ProductsController;
+use App\Http\Controllers\Admin\PromotionsController;
 use App\Http\Controllers\Admin\ServicePricingController;
 use App\Http\Controllers\Admin\ServicePricingStatusController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -27,8 +29,10 @@ use App\Http\Controllers\Admin\TeamGrantController;
 use App\Http\Controllers\Admin\TeamRoleController;
 use App\Http\Controllers\Admin\TeamStatusController;
 use App\Http\Controllers\Admin\ToggleCouponStatusController;
+use App\Http\Controllers\Admin\TogglePromotionStatusController;
 use App\Http\Controllers\Admin\TrustedDeviceController;
 use App\Http\Controllers\Admin\UpdateCouponController;
+use App\Http\Controllers\Admin\UpdatePromotionController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureAdminMfa;
@@ -263,6 +267,38 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $toggleCoupon->defaults('locale', $locale);
+                }
+
+                $promotions = Route::get('/marketing/promotions', PromotionsController::class)
+                    ->middleware('can:marketing.view')
+                    ->name('marketing.promotions');
+
+                if ($locale !== null) {
+                    $promotions->defaults('locale', $locale);
+                }
+
+                $createPromotion = Route::post('/api/marketing/promotions', CreatePromotionController::class)
+                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->name('marketing.promotions.store');
+
+                if ($locale !== null) {
+                    $createPromotion->defaults('locale', $locale);
+                }
+
+                $updatePromotion = Route::put('/api/marketing/promotions/{publicId}', UpdatePromotionController::class)
+                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->name('marketing.promotions.update');
+
+                if ($locale !== null) {
+                    $updatePromotion->defaults('locale', $locale);
+                }
+
+                $togglePromotion = Route::post('/api/marketing/promotions/{publicId}/status', TogglePromotionStatusController::class)
+                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->name('marketing.promotions.status.store');
+
+                if ($locale !== null) {
+                    $togglePromotion->defaults('locale', $locale);
                 }
 
                 $servicePricing = Route::post('/api/settings/service-pricing/{serviceType}', ServicePricingController::class)

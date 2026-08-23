@@ -136,6 +136,22 @@ export default function StoreCatalogProduct() {
                                                       variant.price.currency,
                                                       props.locale,
                                                   )}
+                                            {variant?.compareAtPrice ? (
+                                                <del className="store-price-compare">
+                                                    {formatMinorUnits(
+                                                        variant.compareAtPrice
+                                                            .amountMinor,
+                                                        variant.compareAtPrice
+                                                            .currency,
+                                                        props.locale,
+                                                    )}
+                                                </del>
+                                            ) : null}
+                                            {variant?.promotionBadge ? (
+                                                <span className="store-promo-badge">
+                                                    {variant.promotionBadge}
+                                                </span>
+                                            ) : null}
                                         </dd>
                                     </div>
                                 </dl>

@@ -29,75 +29,78 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import type {
-    AdminCouponRow,
-    AdminCouponsPageProps,
-    AdminCouponsQueryState,
+    AdminPromotionRow,
+    AdminPromotionsPageProps,
+    AdminPromotionsQueryState,
 } from '@/types/admin';
 
-type CouponFormData = {
-    code: string;
-    description_ar: string;
-    description_en: string;
+type PromotionFormData = {
+    name_ar: string;
+    name_en: string;
+    badge_ar: string;
+    badge_en: string;
+    scope: 'all' | 'category' | 'service';
+    category: string;
+    service_type: string;
     discount_type: 'percent' | 'fixed';
     value: string;
-    minimum_order_halalah: string;
-    maximum_discount_halalah: string;
-    usage_limit: string;
-    per_user_limit: string;
     starts_at: string;
     ends_at: string;
     is_active: boolean;
 };
 
-const emptyForm: CouponFormData = {
-    code: '',
-    description_ar: '',
-    description_en: '',
+const serviceTypes = [
+    'coins',
+    'sbc',
+    'objectives',
+    'rivals',
+    'fut_champions',
+] as const;
+
+const emptyForm: PromotionFormData = {
+    name_ar: '',
+    name_en: '',
+    badge_ar: '',
+    badge_en: '',
+    scope: 'all',
+    category: '',
+    service_type: '',
     discount_type: 'percent',
     value: '',
-    minimum_order_halalah: '0',
-    maximum_discount_halalah: '',
-    usage_limit: '',
-    per_user_limit: '',
     starts_at: '',
     ends_at: '',
     is_active: true,
 };
 
-function couponToForm(coupon: AdminCouponRow): CouponFormData {
+function promotionToForm(promotion: AdminPromotionRow): PromotionFormData {
     return {
-        code: coupon.code,
-        description_ar: '',
-        description_en: '',
-        discount_type: coupon.discountType,
-        value: String(coupon.value),
-        minimum_order_halalah: String(coupon.minimumOrderHalalah),
-        maximum_discount_halalah:
-            coupon.maximumDiscountHalalah !== null
-                ? String(coupon.maximumDiscountHalalah)
-                : '',
-        usage_limit:
-            coupon.usageLimit !== null ? String(coupon.usageLimit) : '',
-        per_user_limit:
-            coupon.perUserLimit !== null ? String(coupon.perUserLimit) : '',
-        starts_at: coupon.startsAt ? coupon.startsAt.slice(0, 10) : '',
-        ends_at: coupon.endsAt ? coupon.endsAt.slice(0, 10) : '',
-        is_active: coupon.isActive,
+        name_ar: promotion.nameAr,
+        name_en: promotion.nameEn,
+        badge_ar: promotion.badgeAr ?? '',
+        badge_en: promotion.badgeEn ?? '',
+        scope: promotion.scope,
+        category:
+            promotion.scope === 'category' ? (promotion.categoryId ?? '') : '',
+        service_type: promotion.serviceType ?? '',
+        discount_type: promotion.discountType,
+        value: String(promotion.value),
+        starts_at: promotion.startsAt ? promotion.startsAt.slice(0, 10) : '',
+        ends_at: promotion.endsAt ? promotion.endsAt.slice(0, 10) : '',
+        is_active: promotion.isActive,
     };
 }
 
-export default function AdminCouponsPage() {
-    const { props, url } = usePage<AdminCouponsPageProps>();
-    const copy = props.adminUi.coupons;
+export default function AdminPromotionsPage() {
+    const { props, url } = usePage<AdminPromotionsPageProps>();
+    const copy = props.adminUi.promotions;
     const pathname = new URL(url, window.location.origin).pathname;
 
     const [dialogMode, setDialogMode] = useState<'create' | 'edit' | null>(
         null,
     );
-    const [editingCoupon, setEditingCoupon] = useState<AdminCouponRow | null>(
-        null,
-    );
-    const [formData, setFormData] = useState<CouponFormData>(emptyForm);
+    const [editingPromotion, setEditingPromotion] =
+        useState<AdminPromotionRow | null>(null);
+    const [formData, setFormData] = useState<PromotionFormData>(emptyForm);
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [saving, setSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState<{
@@ -105,9 +108,8 @@ export default function AdminCouponsPage() {
         text: string;
     } | null>(null);
 
-    const [toggleCoupon, setToggleCoupon] = useState<AdminCouponRow | null>(
-        null,
-    );
+    const [togglePromotion, setTogglePromotion] =
+        useState<AdminPromotionRow | null>(null);
     const [toggleTargetActive, setToggleTargetActive] = useState(false);
     const [toggling, setToggling] = useState(false);
     const [toggleMessage, setToggleMessage] = useState<{
@@ -118,8 +120,8 @@ export default function AdminCouponsPage() {
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
     const pendingAction = useRef<(() => void) | null>(null);
 
-    const visitCoupons = useCallback(
-        (filters: AdminCouponsQueryState) => {
+    const visitPromotions = useCallback(
+        (filters: AdminPromotionsQueryState) => {
             router.get(
                 pathname,
                 Object.fromEntries(
@@ -141,15 +143,15 @@ export default function AdminCouponsPage() {
         setFormData(emptyForm);
         setFormErrors({});
         setSaveMessage(null);
-        setEditingCoupon(null);
+        setEditingPromotion(null);
         setDialogMode('create');
     }
 
-    function openEdit(coupon: AdminCouponRow) {
-        setFormData(couponToForm(coupon));
+    function openEdit(promotion: AdminPromotionRow) {
+        setFormData(promotionToForm(promotion));
         setFormErrors({});
         setSaveMessage(null);
-        setEditingCoupon(coupon);
+        setEditingPromotion(promotion);
         setDialogMode('edit');
     }
 
@@ -162,10 +164,14 @@ export default function AdminCouponsPage() {
     }
 
     function handleFieldChange(
-        field: keyof CouponFormData,
+        field: keyof PromotionFormData,
         value: string | boolean,
     ) {
-        setFormData((prev) => ({ ...prev, [field]: value }));
+        setFormData((prev) => ({
+            ...prev,
+            ...(field === 'scope' ? { category: '', service_type: '' } : {}),
+            [field]: value,
+        }));
         setFormErrors((prev) => {
             const next = { ...prev };
             delete next[field];
@@ -179,30 +185,28 @@ export default function AdminCouponsPage() {
         setSaveMessage(null);
         setFormErrors({});
 
-        const isEdit = dialogMode === 'edit' && editingCoupon !== null;
+        const isEdit = dialogMode === 'edit' && editingPromotion !== null;
         const url = isEdit
-            ? `/admin/api/marketing/coupons/${editingCoupon.id}`
-            : '/admin/api/marketing/coupons';
+            ? `/admin/api/marketing/promotions/${editingPromotion.id}`
+            : '/admin/api/marketing/promotions';
         const method = isEdit ? 'PUT' : 'POST';
 
         const payload: Record<string, unknown> = {
-            code: formData.code.toUpperCase(),
-            description_ar: formData.description_ar || null,
-            description_en: formData.description_en || null,
+            name_ar: formData.name_ar,
+            name_en: formData.name_en,
+            badge_ar: formData.badge_ar || null,
+            badge_en: formData.badge_en || null,
+            scope: formData.scope,
+            category:
+                formData.scope === 'category'
+                    ? formData.category || null
+                    : null,
+            service_type:
+                formData.scope === 'service'
+                    ? formData.service_type || null
+                    : null,
             discount_type: formData.discount_type,
             value: Number(formData.value),
-            minimum_order_halalah: Number(
-                formData.minimum_order_halalah || '0',
-            ),
-            maximum_discount_halalah: formData.maximum_discount_halalah
-                ? Number(formData.maximum_discount_halalah)
-                : null,
-            usage_limit: formData.usage_limit
-                ? Number(formData.usage_limit)
-                : null,
-            per_user_limit: formData.per_user_limit
-                ? Number(formData.per_user_limit)
-                : null,
             starts_at: formData.starts_at || null,
             ends_at: formData.ends_at || null,
             is_active: formData.is_active,
@@ -253,7 +257,9 @@ export default function AdminCouponsPage() {
                         : copy.messages.created,
                 });
                 setDialogMode(null);
-                router.reload({ only: ['coupons', 'pagination', 'counts'] });
+                router.reload({
+                    only: ['promotions', 'pagination', 'counts'],
+                });
             }
         } catch {
             setSaveMessage({ type: 'error', text: copy.messages.networkError });
@@ -267,14 +273,17 @@ export default function AdminCouponsPage() {
         setPasswordModalOpen(true);
     }
 
-    function requestToggle(coupon: AdminCouponRow, targetActive: boolean) {
-        setToggleCoupon(coupon);
+    function requestToggle(
+        promotion: AdminPromotionRow,
+        targetActive: boolean,
+    ) {
+        setTogglePromotion(promotion);
         setToggleTargetActive(targetActive);
         setToggleMessage(null);
     }
 
     async function confirmToggle() {
-        if (!toggleCoupon) {
+        if (!togglePromotion) {
             return;
         }
 
@@ -284,7 +293,7 @@ export default function AdminCouponsPage() {
 
             try {
                 const res = await fetch(
-                    `/admin/api/marketing/coupons/${toggleCoupon.id}/status`,
+                    `/admin/api/marketing/promotions/${togglePromotion.id}/status`,
                     {
                         body: JSON.stringify({ is_active: toggleTargetActive }),
                         credentials: 'same-origin',
@@ -303,9 +312,9 @@ export default function AdminCouponsPage() {
                         text: copy.messages.genericError,
                     });
                 } else {
-                    setToggleCoupon(null);
+                    setTogglePromotion(null);
                     router.reload({
-                        only: ['coupons', 'pagination', 'counts'],
+                        only: ['promotions', 'pagination', 'counts'],
                     });
                 }
             } catch {
@@ -328,7 +337,7 @@ export default function AdminCouponsPage() {
             <AdminSidebar
                 adminIdentity={props.adminIdentity}
                 adminUi={props.adminUi}
-                current="marketingCoupons"
+                current="marketingPromotions"
                 direction={props.direction}
                 logoutUrl={props.logoutUrl}
                 navigation={props.adminNavigation}
@@ -336,7 +345,7 @@ export default function AdminCouponsPage() {
             <AdminMobileNavigation
                 adminIdentity={props.adminIdentity}
                 adminUi={props.adminUi}
-                current="marketingCoupons"
+                current="marketingPromotions"
                 direction={props.direction}
                 logoutUrl={props.logoutUrl}
                 navigation={props.adminNavigation}
@@ -375,18 +384,18 @@ export default function AdminCouponsPage() {
                         </Alert>
                     ) : null}
 
-                    <CouponsTable
+                    <PromotionsTable
                         copy={copy}
-                        coupons={props.coupons}
                         onEdit={openEdit}
                         onToggle={requestToggle}
                         permissions={props.permissions}
+                        promotions={props.promotions}
                     />
 
-                    <CouponsPagination
+                    <PromotionsPagination
                         copy={props.adminUi.orders}
                         onPageChange={(page) =>
-                            visitCoupons({ ...props.filters, page })
+                            visitPromotions({ ...props.filters, page })
                         }
                         pagination={props.pagination}
                     />
@@ -394,7 +403,7 @@ export default function AdminCouponsPage() {
             </main>
             <AdminMobileTabBar
                 adminUi={props.adminUi}
-                current="marketingCoupons"
+                current="marketingPromotions"
                 navigation={props.adminNavigation}
             />
 
@@ -411,7 +420,8 @@ export default function AdminCouponsPage() {
                                 : copy.createTitle}
                         </DialogTitle>
                     </DialogHeader>
-                    <CouponForm
+                    <PromotionForm
+                        categories={props.categories}
                         copy={copy}
                         data={formData}
                         errors={formErrors}
@@ -451,10 +461,10 @@ export default function AdminCouponsPage() {
             </Dialog>
 
             {/* Toggle Confirmation Dialog */}
-            {toggleCoupon ? (
+            {togglePromotion ? (
                 <Dialog
-                    open={toggleCoupon !== null}
-                    onOpenChange={(open) => !open && setToggleCoupon(null)}
+                    open={togglePromotion !== null}
+                    onOpenChange={(open) => !open && setTogglePromotion(null)}
                 >
                     <DialogContent dir="ltr">
                         <DialogHeader>
@@ -464,15 +474,10 @@ export default function AdminCouponsPage() {
                                     : copy.deactivateTitle}
                             </DialogTitle>
                             <DialogDescription>
-                                {toggleTargetActive
-                                    ? copy.activateDescription.replace(
-                                          ':code',
-                                          toggleCoupon.code,
-                                      )
-                                    : copy.deactivateDescription.replace(
-                                          ':code',
-                                          toggleCoupon.code,
-                                      )}
+                                {(toggleTargetActive
+                                    ? copy.activateDescription
+                                    : copy.deactivateDescription
+                                ).replace(':name', togglePromotion.nameEn)}
                             </DialogDescription>
                         </DialogHeader>
                         {toggleMessage ? (
@@ -485,7 +490,7 @@ export default function AdminCouponsPage() {
                         <DialogFooter>
                             <Button
                                 disabled={toggling}
-                                onClick={() => setToggleCoupon(null)}
+                                onClick={() => setTogglePromotion(null)}
                                 type="button"
                                 variant="outline"
                             >
@@ -529,25 +534,46 @@ export default function AdminCouponsPage() {
     );
 }
 
-function CouponsTable({
+function scopeLabel(
+    promotion: AdminPromotionRow,
+    copy: AdminPromotionsPageProps['adminUi']['promotions'],
+): string {
+    if (promotion.scope === 'category') {
+        return copy.scopeCategoryBadge.replace(
+            ':category',
+            promotion.categoryName ?? '—',
+        );
+    }
+
+    if (promotion.scope === 'service') {
+        return copy.scopeServiceBadge.replace(
+            ':service',
+            promotion.serviceType ?? '—',
+        );
+    }
+
+    return copy.scopeAllBadge;
+}
+
+function PromotionsTable({
     copy,
-    coupons,
+    promotions,
     onEdit,
     onToggle,
     permissions,
 }: {
-    copy: AdminCouponsPageProps['adminUi']['coupons'];
-    coupons: AdminCouponRow[];
-    onEdit: (coupon: AdminCouponRow) => void;
-    onToggle: (coupon: AdminCouponRow, targetActive: boolean) => void;
+    copy: AdminPromotionsPageProps['adminUi']['promotions'];
+    promotions: AdminPromotionRow[];
+    onEdit: (promotion: AdminPromotionRow) => void;
+    onToggle: (promotion: AdminPromotionRow, targetActive: boolean) => void;
     permissions: string[];
 }) {
     const canManage = permissions.includes('marketing.manage');
 
-    if (coupons.length === 0) {
+    if (promotions.length === 0) {
         return (
             <p className="py-8 text-center text-sm text-muted-foreground">
-                {copy.noCoupons}
+                {copy.noPromotions}
             </p>
         );
     }
@@ -568,70 +594,71 @@ function CouponsTable({
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                    {coupons.map((coupon) => (
-                        <tr className="hover:bg-muted/30" key={coupon.id}>
-                            <td className="px-4 py-3 font-mono font-semibold">
-                                {coupon.code}
+                    {promotions.map((promotion) => (
+                        <tr className="hover:bg-muted/30" key={promotion.id}>
+                            <td className="px-4 py-3">
+                                <span className="font-semibold">
+                                    {promotion.nameEn}
+                                </span>
+                                <span className="block text-xs text-muted-foreground">
+                                    {promotion.nameAr}
+                                </span>
                             </td>
                             <td className="px-4 py-3">
                                 <Badge variant="outline">
-                                    {coupon.discountType === 'percent'
+                                    {scopeLabel(promotion, copy)}
+                                </Badge>
+                            </td>
+                            <td className="px-4 py-3">
+                                <Badge variant="outline">
+                                    {promotion.discountType === 'percent'
                                         ? copy.typePercentBadge.replace(
                                               ':value',
-                                              String(coupon.value),
+                                              String(promotion.value),
                                           )
                                         : copy.typeFixedBadge.replace(
                                               ':value',
-                                              String(coupon.value / 100),
+                                              String(promotion.value / 100),
                                           )}
                                 </Badge>
                             </td>
                             <td className="px-4 py-3 text-muted-foreground">
-                                {coupon.startsAt === null &&
-                                coupon.endsAt === null
+                                {promotion.startsAt === null &&
+                                promotion.endsAt === null
                                     ? copy.always
-                                    : coupon.endsAt === null
+                                    : promotion.endsAt === null
                                       ? copy.from.replace(
                                             ':date',
-                                            coupon.startsAt?.slice(0, 10) ?? '',
+                                            promotion.startsAt?.slice(0, 10) ??
+                                                '',
                                         )
-                                      : coupon.startsAt === null
+                                      : promotion.startsAt === null
                                         ? copy.until.replace(
                                               ':date',
-                                              coupon.endsAt.slice(0, 10),
+                                              promotion.endsAt.slice(0, 10),
                                           )
                                         : copy.window
                                               .replace(
                                                   ':from',
-                                                  coupon.startsAt.slice(0, 10),
+                                                  promotion.startsAt.slice(
+                                                      0,
+                                                      10,
+                                                  ),
                                               )
                                               .replace(
                                                   ':until',
-                                                  coupon.endsAt.slice(0, 10),
+                                                  promotion.endsAt.slice(0, 10),
                                               )}
-                            </td>
-                            <td className="px-4 py-3 text-muted-foreground">
-                                {coupon.usageLimit === null
-                                    ? `${coupon.usedCount} / ${copy.unlimited}`
-                                    : copy.usageOf
-                                          .replace(
-                                              ':used',
-                                              String(coupon.usedCount),
-                                          )
-                                          .replace(
-                                              ':limit',
-                                              String(coupon.usageLimit),
-                                          )}
                             </td>
                             <td className="px-4 py-3">
                                 <Badge
                                     variant={
-                                        coupon.isActive
+                                        promotion.isActive
                                             ? 'default'
                                             : 'secondary'
                                     }
                                 >
-                                    {coupon.isActive
+                                    {promotion.isActive
                                         ? copy.active
                                         : copy.inactive}
                                 </Badge>
@@ -642,7 +669,9 @@ function CouponsTable({
                                         <>
                                             <Button
                                                 className="h-8 text-xs"
-                                                onClick={() => onEdit(coupon)}
+                                                onClick={() =>
+                                                    onEdit(promotion)
+                                                }
                                                 size="sm"
                                                 type="button"
                                                 variant="outline"
@@ -653,19 +682,19 @@ function CouponsTable({
                                                 className="h-8 text-xs"
                                                 onClick={() =>
                                                     onToggle(
-                                                        coupon,
-                                                        !coupon.isActive,
+                                                        promotion,
+                                                        !promotion.isActive,
                                                     )
                                                 }
                                                 size="sm"
                                                 type="button"
                                                 variant={
-                                                    coupon.isActive
+                                                    promotion.isActive
                                                         ? 'destructive'
                                                         : 'outline'
                                                 }
                                             >
-                                                {coupon.isActive
+                                                {promotion.isActive
                                                     ? copy.deactivateTitle
                                                     : copy.activateTitle}
                                             </Button>
@@ -681,16 +710,18 @@ function CouponsTable({
     );
 }
 
-function CouponForm({
+function PromotionForm({
+    categories,
     copy,
     data,
     errors,
     onChange,
 }: {
-    copy: AdminCouponsPageProps['adminUi']['coupons'];
-    data: CouponFormData;
+    categories: AdminPromotionsPageProps['categories'];
+    copy: AdminPromotionsPageProps['adminUi']['promotions'];
+    data: PromotionFormData;
     errors: Record<string, string>;
-    onChange: (field: keyof CouponFormData, value: string | boolean) => void;
+    onChange: (field: keyof PromotionFormData, value: string | boolean) => void;
 }) {
     return (
         <div
@@ -698,35 +729,161 @@ function CouponForm({
             style={{ maxHeight: '60vh' }}
         >
             <div className="flex flex-col gap-1.5">
-                <Label htmlFor="coupon-code">{copy.codeLabel}</Label>
+                <Label htmlFor="promotion-name-en">{copy.nameEnLabel}</Label>
                 <Input
-                    id="coupon-code"
-                    placeholder={copy.codePlaceholder}
-                    value={data.code}
-                    onChange={(e) =>
-                        onChange('code', e.target.value.toUpperCase())
-                    }
-                    className="font-mono uppercase"
-                    aria-describedby="coupon-code-help"
+                    id="promotion-name-en"
+                    placeholder={copy.nameEnPlaceholder}
+                    value={data.name_en}
+                    onChange={(e) => onChange('name_en', e.target.value)}
                 />
-                <p
-                    className="text-xs text-muted-foreground"
-                    id="coupon-code-help"
-                >
-                    {copy.codeHelp}
-                </p>
-                {errors.code ? (
-                    <p className="text-xs text-destructive">{errors.code}</p>
+                {errors.name_en ? (
+                    <p className="text-xs text-destructive">{errors.name_en}</p>
                 ) : null}
             </div>
 
             <div className="flex flex-col gap-1.5">
-                <Label htmlFor="coupon-type">{copy.typeLabel}</Label>
+                <Label htmlFor="promotion-name-ar">{copy.nameArLabel}</Label>
+                <Input
+                    id="promotion-name-ar"
+                    dir="rtl"
+                    placeholder={copy.nameArPlaceholder}
+                    value={data.name_ar}
+                    onChange={(e) => onChange('name_ar', e.target.value)}
+                />
+                {errors.name_ar ? (
+                    <p className="text-xs text-destructive">{errors.name_ar}</p>
+                ) : null}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="promotion-badge-ar">
+                        {copy.badgeArLabel}
+                    </Label>
+                    <Input
+                        id="promotion-badge-ar"
+                        dir="rtl"
+                        maxLength={24}
+                        placeholder={copy.badgeArPlaceholder}
+                        value={data.badge_ar}
+                        onChange={(e) => onChange('badge_ar', e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        {copy.badgeArHelp}
+                    </p>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="promotion-badge-en">
+                        {copy.badgeEnLabel}
+                    </Label>
+                    <Input
+                        id="promotion-badge-en"
+                        dir="ltr"
+                        maxLength={24}
+                        placeholder={copy.badgeEnPlaceholder}
+                        value={data.badge_en}
+                        onChange={(e) => onChange('badge_en', e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        {copy.badgeEnHelp}
+                    </p>
+                </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+                <Label htmlFor="promotion-scope">{copy.scopeLabel}</Label>
+                <Select
+                    value={data.scope}
+                    onValueChange={(v) => onChange('scope', v)}
+                >
+                    <SelectTrigger id="promotion-scope">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">{copy.scopeAll}</SelectItem>
+                        <SelectItem value="category">
+                            {copy.scopeCategory}
+                        </SelectItem>
+                        <SelectItem value="service">
+                            {copy.scopeService}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {data.scope === 'category' ? (
+                <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="promotion-category">
+                        {copy.categoryLabel}
+                    </Label>
+                    <Select
+                        value={data.category}
+                        onValueChange={(v) => onChange('category', v)}
+                    >
+                        <SelectTrigger id="promotion-category">
+                            <SelectValue
+                                placeholder={copy.categoryPlaceholder}
+                            />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {categories.map((category) => (
+                                <SelectItem
+                                    key={category.id}
+                                    value={category.id}
+                                >
+                                    {category.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {errors.category ? (
+                        <p className="text-xs text-destructive">
+                            {errors.category}
+                        </p>
+                    ) : null}
+                </div>
+            ) : null}
+
+            {data.scope === 'service' ? (
+                <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="promotion-service-type">
+                        {copy.serviceTypeLabel}
+                    </Label>
+                    <Select
+                        value={data.service_type}
+                        onValueChange={(v) => onChange('service_type', v)}
+                    >
+                        <SelectTrigger id="promotion-service-type">
+                            <SelectValue
+                                placeholder={copy.serviceTypePlaceholder}
+                            />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {serviceTypes.map((serviceType) => (
+                                <SelectItem
+                                    key={serviceType}
+                                    value={serviceType}
+                                >
+                                    {serviceType}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {errors.service_type ? (
+                        <p className="text-xs text-destructive">
+                            {errors.service_type}
+                        </p>
+                    ) : null}
+                </div>
+            ) : null}
+
+            <div className="flex flex-col gap-1.5">
+                <Label htmlFor="promotion-type">{copy.typeLabel}</Label>
                 <Select
                     value={data.discount_type}
                     onValueChange={(v) => onChange('discount_type', v)}
                 >
-                    <SelectTrigger id="coupon-type">
+                    <SelectTrigger id="promotion-type">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -739,9 +896,9 @@ function CouponForm({
             </div>
 
             <div className="flex flex-col gap-1.5">
-                <Label htmlFor="coupon-value">{copy.valueLabel}</Label>
+                <Label htmlFor="promotion-value">{copy.valueLabel}</Label>
                 <Input
-                    id="coupon-value"
+                    id="promotion-value"
                     inputMode="numeric"
                     min="1"
                     type="number"
@@ -758,101 +915,24 @@ function CouponForm({
                 ) : null}
             </div>
 
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="coupon-min-order">
-                    {copy.minimumOrderLabel}
-                </Label>
-                <Input
-                    id="coupon-min-order"
-                    inputMode="numeric"
-                    min="0"
-                    type="number"
-                    value={data.minimum_order_halalah}
-                    onChange={(e) =>
-                        onChange('minimum_order_halalah', e.target.value)
-                    }
-                />
-                <p className="text-xs text-muted-foreground">
-                    {copy.minimumOrderHelp}
-                </p>
-            </div>
-
-            {data.discount_type === 'percent' ? (
-                <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="coupon-max-discount">
-                        {copy.maximumDiscountLabel}
-                    </Label>
-                    <Input
-                        id="coupon-max-discount"
-                        inputMode="numeric"
-                        min="0"
-                        type="number"
-                        value={data.maximum_discount_halalah}
-                        onChange={(e) =>
-                            onChange('maximum_discount_halalah', e.target.value)
-                        }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                        {copy.maximumDiscountHelp}
-                    </p>
-                </div>
-            ) : null}
-
             <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="coupon-usage-limit">
-                        {copy.usageLimitLabel}
-                    </Label>
-                    <Input
-                        id="coupon-usage-limit"
-                        inputMode="numeric"
-                        min="1"
-                        type="number"
-                        value={data.usage_limit}
-                        onChange={(e) =>
-                            onChange('usage_limit', e.target.value)
-                        }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                        {copy.usageLimitHelp}
-                    </p>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="coupon-per-user-limit">
-                        {copy.perUserLimitLabel}
-                    </Label>
-                    <Input
-                        id="coupon-per-user-limit"
-                        inputMode="numeric"
-                        min="1"
-                        type="number"
-                        value={data.per_user_limit}
-                        onChange={(e) =>
-                            onChange('per_user_limit', e.target.value)
-                        }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                        {copy.perUserLimitHelp}
-                    </p>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="coupon-starts-at">
+                    <Label htmlFor="promotion-starts-at">
                         {copy.startsAtLabel}
                     </Label>
                     <Input
-                        id="coupon-starts-at"
+                        id="promotion-starts-at"
                         type="date"
                         value={data.starts_at}
                         onChange={(e) => onChange('starts_at', e.target.value)}
                     />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="coupon-ends-at">{copy.endsAtLabel}</Label>
+                    <Label htmlFor="promotion-ends-at">
+                        {copy.endsAtLabel}
+                    </Label>
                     <Input
-                        id="coupon-ends-at"
+                        id="promotion-ends-at"
                         type="date"
                         value={data.ends_at}
                         onChange={(e) => onChange('ends_at', e.target.value)}
@@ -867,50 +947,28 @@ function CouponForm({
 
             <div className="flex items-center gap-3">
                 <Checkbox
-                    id="coupon-is-active"
+                    id="promotion-is-active"
                     checked={data.is_active}
                     onCheckedChange={(checked) =>
                         onChange('is_active', checked === true)
                     }
                 />
-                <Label htmlFor="coupon-is-active">{copy.isActiveLabel}</Label>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="coupon-description-ar">
-                    {copy.descriptionArLabel}
+                <Label htmlFor="promotion-is-active">
+                    {copy.isActiveLabel}
                 </Label>
-                <Input
-                    id="coupon-description-ar"
-                    dir="rtl"
-                    value={data.description_ar}
-                    onChange={(e) => onChange('description_ar', e.target.value)}
-                />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="coupon-description-en">
-                    {copy.descriptionEnLabel}
-                </Label>
-                <Input
-                    id="coupon-description-en"
-                    dir="ltr"
-                    value={data.description_en}
-                    onChange={(e) => onChange('description_en', e.target.value)}
-                />
             </div>
         </div>
     );
 }
 
-function CouponsPagination({
+function PromotionsPagination({
     copy,
     onPageChange,
     pagination,
 }: {
-    copy: AdminCouponsPageProps['adminUi']['orders'];
+    copy: AdminPromotionsPageProps['adminUi']['orders'];
     onPageChange: (page: number) => void;
-    pagination: AdminCouponsPageProps['pagination'];
+    pagination: AdminPromotionsPageProps['pagination'];
 }) {
     if (pagination.lastPage <= 1) {
         return null;
