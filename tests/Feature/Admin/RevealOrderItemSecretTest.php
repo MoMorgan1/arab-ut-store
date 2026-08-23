@@ -110,7 +110,7 @@ test('unconfirmed MFA privileged actors are redirected to MFA setup', function (
         ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
             'purpose' => 'fulfillment',
         ])
-        ->assertRedirect('/admin/security/mfa');
+        ->assertRedirect('/admin/settings');
 });
 
 test('reveal endpoint reveals without a confirmation step', function (): void {

@@ -119,7 +119,7 @@ test('unconfirmed MFA redirects to security setup and missing recent password re
     $unconfirmedAdmin = createPaylinkAdminActor();
     $unconfirmedAdmin->forceFill(['two_factor_confirmed_at' => null])->save();
     $this->actingAs($unconfirmedAdmin)->postJson($url, $payload)
-        ->assertRedirect('/admin/security/mfa');
+        ->assertRedirect('/admin/settings');
 
     $this->actingAs($admin)
         ->postJson($url, $payload)

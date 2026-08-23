@@ -1,4 +1,8 @@
-import type { AdminTranslations } from '@/types/admin';
+import type {
+    AdminTeamData,
+    AdminTeamUrls,
+    AdminTranslations,
+} from '@/types/admin';
 
 export const englishAdminUi: AdminTranslations = {
     brand: 'Arab UT',
@@ -14,7 +18,8 @@ export const englishAdminUi: AdminTranslations = {
         open: 'Open Admin navigation',
         orders: 'Orders',
         overview: 'Overview',
-        security: 'MFA Security',
+        quick: 'quick navigation',
+        settings: 'Settings',
     },
     overview: {
         capturedRevenue: 'Captured revenue',
@@ -67,6 +72,8 @@ export const englishAdminUi: AdminTranslations = {
         allPlatforms: 'All platforms',
         allServices: 'All services',
         allStatuses: 'All statuses',
+        apply: 'Apply',
+        clearAll: 'Clear all',
         clearSearch: 'Clear search',
         columns: 'Columns',
         customer: 'Customer',
@@ -78,6 +85,7 @@ export const englishAdminUi: AdminTranslations = {
         filterPlatform: 'Filter by platform',
         filterService: 'Filter by service',
         filterStatus: 'Filter by status',
+        filters: 'Filters',
         headTitle: 'Orders',
         items: 'Items',
         loading: 'Loading orders…',
@@ -456,6 +464,87 @@ export const englishAdminUi: AdminTranslations = {
         walletEntriesCount: 'Total transactions',
         walletSection: 'Wallet summary',
     },
+    settings: {
+        headTitle: 'Settings',
+        title: 'Settings',
+        description: 'Manage security and team members for the store admin.',
+        securitySection: 'Security',
+        securityDescription:
+            'Two-factor authentication and account protection.',
+        teamSection: 'Team',
+        teamDescription:
+            'Manage staff accounts, roles, and administrative access.',
+        addStaffHint:
+            'New staff members are provisioned via the command line: php artisan admin:grant-role user@example.com --role=staff',
+        selfBadge: 'You',
+        columns: {
+            member: 'Member',
+            name: 'Name',
+            email: 'Email',
+            role: 'Role',
+            status: 'Status',
+            mfa: 'MFA',
+            joined: 'Joined',
+            actions: 'Actions',
+        },
+        roles: {
+            admin: 'Admin',
+            staff: 'Staff',
+        },
+        status: {
+            active: 'Active',
+            inactive: 'Inactive',
+        },
+        mfa: {
+            confirmed: 'Confirmed',
+            pending: 'Pending',
+        },
+        actions: {
+            applyRole: 'Apply',
+            applyingRole: 'Applying…',
+            changeRole: 'Change role',
+            deactivate: 'Deactivate',
+            deactivating: 'Deactivating…',
+            reactivate: 'Reactivate',
+            reactivating: 'Reactivating…',
+            roleSelectLabel: 'Role for :name',
+        },
+        roleDialog: {
+            title: 'Change staff role',
+            description:
+                'Are you sure you want to change the role of :name from :from to :to?',
+            confirm: 'Change role',
+            cancel: 'Cancel',
+        },
+        deactivateDialog: {
+            title: 'Deactivate staff member',
+            description:
+                'Are you sure you want to deactivate :name? They will be signed out immediately and lose all access to the admin dashboard.',
+            confirm: 'Deactivate account',
+            cancel: 'Cancel',
+        },
+        reactivateDialog: {
+            title: 'Reactivate staff member',
+            description:
+                'Are you sure you want to reactivate :name? They will be able to sign in and access the admin dashboard again.',
+            confirm: 'Reactivate account',
+            cancel: 'Cancel',
+        },
+        messages: {
+            roleUpdated: 'Staff role updated successfully.',
+            statusUpdated: 'Staff status updated successfully.',
+            conflictError:
+                'This account was modified by another action. Please review the latest details before trying again.',
+            genericError:
+                'We could not complete the request. Check your connection and try again.',
+            networkError:
+                'Network error. Please check your connection and try again.',
+            forbiddenError:
+                'You do not have permission to perform this action.',
+            lastAdminError:
+                'Cannot modify or deactivate the last active Admin account.',
+        },
+    },
 };
 
 export const sampleAdminOrderRows = [
@@ -739,4 +828,42 @@ export const sampleAdminCustomerDetail = {
             },
         },
     ],
+};
+
+export const sampleAdminTeamData: AdminTeamData = {
+    currentUserId: '01K5ADM1N00000000000000001',
+    members: [
+        {
+            id: '01K5ADM1N00000000000000001',
+            name: 'Operations Owner',
+            email: 'owner@arabut.test',
+            role: 'admin',
+            isActive: true,
+            mfaConfirmed: true,
+            createdAt: '2026-08-01T08:00:00Z',
+        },
+        {
+            id: '01K5ADM1N00000000000000002',
+            name: 'Staff Operator',
+            email: 'staff@arabut.test',
+            role: 'staff',
+            isActive: true,
+            mfaConfirmed: false,
+            createdAt: '2026-08-05T09:00:00Z',
+        },
+        {
+            id: '01K5ADM1N00000000000000003',
+            name: 'Inactive Admin',
+            email: 'inactive@arabut.test',
+            role: 'admin',
+            isActive: false,
+            mfaConfirmed: true,
+            createdAt: '2026-08-10T10:00:00Z',
+        },
+    ],
+};
+
+export const sampleAdminTeamUrls: AdminTeamUrls = {
+    roleUrlTemplate: '/admin/api/team/__ID__/role',
+    statusUrlTemplate: '/admin/api/team/__ID__/status',
 };

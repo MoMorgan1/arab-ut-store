@@ -341,8 +341,8 @@ test('the Admin shell exposes only safe identity exact permissions and implement
         ->and($shell['permissions'])->toBe($expectedPermissions)
         ->and(array_column($shell['adminNavigation'], 'key'))->toBe(
             $role === UserRole::Admin
-                ? ['overview', 'orders', 'customers', 'security']
-                : ['overview', 'orders', 'security'],
+                ? ['overview', 'orders', 'customers', 'settings']
+                : ['overview', 'orders', 'settings'],
         )
         ->and(array_column($shell['adminNavigation'], 'url'))->toBe($expectedUrls)
         ->and($shell['logoutUrl'])->toBe('/logout');
@@ -376,7 +376,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
             'settings.view',
             'settings.manage',
         ],
-        ['/admin', '/admin/orders', '/admin/customers', '/admin/security/mfa'],
+        ['/admin', '/admin/orders', '/admin/customers', '/admin/settings'],
     ],
     'English Staff' => [
         UserRole::Staff,
@@ -388,7 +388,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
             'orders.cancel',
             'order_credentials.view',
         ],
-        ['/admin', '/admin/orders', '/admin/security/mfa'],
+        ['/admin', '/admin/orders', '/admin/settings'],
     ],
 ]);
 
@@ -474,7 +474,7 @@ test('overview routes reject unsupported ranges and retain the ordinary confirme
     $admin = adminOverviewActor(UserRole::Admin);
     $admin->forceFill(['two_factor_confirmed_at' => null])->save();
 
-    $this->actingAs($admin)->get('/admin')->assertRedirect('/admin/security/mfa');
+    $this->actingAs($admin)->get('/admin')->assertRedirect('/admin/settings');
 
     $admin->forceFill(['two_factor_confirmed_at' => now()])->save();
     $this->actingAs($admin)

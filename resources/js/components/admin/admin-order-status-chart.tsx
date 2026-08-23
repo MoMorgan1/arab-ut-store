@@ -97,9 +97,9 @@ export default function AdminOrderStatusChart({
                     </div>
                 ) : (
                     <>
-                        <div className="h-[140px] w-full">
+                        <div className="h-40 w-full md:h-[140px]">
                             <ResponsiveContainer
-                                height={140}
+                                height="100%"
                                 initialDimension={{ width: 300, height: 140 }}
                                 width="100%"
                             >

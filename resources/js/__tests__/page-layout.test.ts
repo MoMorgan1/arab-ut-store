@@ -11,7 +11,7 @@ import {
 describe('usesAdminLayout', () => {
     it.each([
         'admin/overview',
-        'admin/security/mfa',
+        'admin/settings',
         'admin/orders/index',
         'admin/orders/show',
     ])('uses the privileged Admin shell for %s', (page) => {
@@ -66,7 +66,7 @@ describe('resolveApplicationLayout', () => {
 
     it.each([
         'admin/overview',
-        'admin/security/mfa',
+        'admin/settings',
         'admin/orders/index',
         'admin/orders/show',
     ])('resolves %s to nested [ChatRootLayout, AdminLayout] array', (page) => {

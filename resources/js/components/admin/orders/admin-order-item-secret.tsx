@@ -228,61 +228,20 @@ export default function AdminOrderItemSecret({
 
                     <div className="flex flex-col divide-y divide-border/40 text-xs">
                         {Object.entries(decryptedPayload).map(([key, val]) => {
-                            if (Array.isArray(val)) {
-                                return (
-                                    <div
-                                        className="flex flex-col gap-1 py-2 first:pt-0 last:pb-0"
-                                        key={key}
-                                    >
-                                        <span className="font-semibold text-muted-foreground">
-                                            {key}:
-                                        </span>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {val.map((itemVal, idx) => (
-                                                <div
-                                                    className="inline-flex items-center gap-1.5 rounded border border-border bg-muted/40 px-2 py-1 font-mono text-[11px]"
-                                                    key={idx}
-                                                >
-                                                    <span>
-                                                        {String(itemVal)}
-                                                    </span>
-                                                    <Button
-                                                        aria-label={`${secretsCopy.copyButton} ${key} #${idx + 1}`}
-                                                        className="size-6 p-0"
-                                                        onClick={() =>
-                                                            void handleCopy(
-                                                                String(itemVal),
-                                                                `${key}-${idx}`,
-                                                            )
-                                                        }
-                                                        size="sm"
-                                                        type="button"
-                                                        variant="ghost"
-                                                    >
-                                                        {copiedField ===
-                                                        `${key}-${idx}` ? (
-                                                            <Check className="size-3 text-emerald-500" />
-                                                        ) : (
-                                                            <Copy className="size-3 text-muted-foreground" />
-                                                        )}
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                            }
-
-                            const stringVal =
-                                typeof val === 'object' && val !== null
-                                    ? JSON.stringify(val)
-                                    : String(val ?? '');
-
+                            const isArray = Array.isArray(val);
+                            const displayVal = isArray
+                                ? val.map(String).join(' · ')
+                                : typeof val === 'object' && val !== null
+                                  ? JSON.stringify(val)
+                                  : String(val ?? '');
+                            const copyVal = isArray
+                                ? val.map(String).join('\n')
+                                : displayVal;
                             const isCopied = copiedField === key;
 
                             return (
                                 <div
-                                    className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0"
+                                    className="flex min-h-11 flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0"
                                     key={key}
                                 >
                                     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
@@ -290,7 +249,7 @@ export default function AdminOrderItemSecret({
                                             {key}:
                                         </span>
                                         <span className="font-mono text-xs text-foreground">
-                                            {stringVal}
+                                            {displayVal}
                                         </span>
                                     </div>
 
@@ -298,7 +257,7 @@ export default function AdminOrderItemSecret({
                                         aria-label={`${secretsCopy.copyButton} ${key}`}
                                         className="min-h-11 min-w-11 gap-1 text-xs"
                                         onClick={() =>
-                                            void handleCopy(stringVal, key)
+                                            void handleCopy(copyVal, key)
                                         }
                                         type="button"
                                         variant="outline"
