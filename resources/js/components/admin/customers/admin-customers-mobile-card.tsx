@@ -58,8 +58,11 @@ export default function AdminCustomersMobileCard({
                         >
                             <bdi>{customer.name}</bdi>
                         </Link>
-                        <span className="text-xs [overflow-wrap:anywhere] text-muted-foreground">
-                            <bdi>{customer.id}</bdi>
+                        <span
+                            className="text-xs [overflow-wrap:anywhere] text-muted-foreground tabular-nums"
+                            title={customer.id}
+                        >
+                            <bdi>{customer.number ?? customer.id}</bdi>
                         </span>
                     </div>
                 </div>
