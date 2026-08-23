@@ -2,6 +2,7 @@ import { AlertCircle, ArrowDown, RefreshCw } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { chatServiceCards } from '@/lib/chat-cards';
+import { chatCartOffer } from '@/lib/chat-cart';
 import { chatChoices } from '@/lib/chat-choices';
 import { groupChatMessages } from '@/lib/chat-grouping';
 import { chatShelfItems } from '@/lib/chat-shelf';
@@ -11,6 +12,7 @@ import type {
     ChatMessage,
     ChatServicePrices,
 } from '@/types/chat';
+import { ChatCartOffer } from './chat-cart-offer';
 import { ChatChoiceChips } from './chat-choice-chips';
 import { ChatServiceCards } from './chat-service-cards';
 import { ChatShelf } from './chat-shelf';
@@ -337,6 +339,14 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                             <ChatShelf
                                                 items={chatShelfItems(message)}
                                                 servicePrices={servicePrices}
+                                                locale={locale}
+                                                onNavigate={onCardNavigate}
+                                            />
+                                        )}
+
+                                        {!isCustomer && !isStreaming && (
+                                            <ChatCartOffer
+                                                offer={chatCartOffer(message)}
                                                 locale={locale}
                                                 onNavigate={onCardNavigate}
                                             />

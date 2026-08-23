@@ -24,6 +24,7 @@ final readonly class FinalizeAgentTurn
         private AgentRuntimeConfig $config,
         private EstimateAgentRunCost $costEstimator,
         private BuildAssistantCards $buildCards,
+        private BuildAssistantCartOffer $buildCartOffer,
         private BuildAssistantChoices $buildChoices,
         private BuildAssistantShelf $buildShelf,
     ) {}
@@ -93,6 +94,15 @@ final readonly class FinalizeAgentTurn
 
             if ($shelf !== []) {
                 $metadata['shelf'] = ['version' => 'shelf.v1', 'items' => $shelf];
+            }
+
+            // A cart offer answers the same question the choice chips ask, so
+            // the two never share a reply: chips appear while something is
+            // still unchosen, the offer once nothing is.
+            $cartOffer = $this->buildCartOffer->execute($customerText);
+
+            if ($cartOffer !== null && $choices === null) {
+                $metadata['cart'] = $cartOffer;
             }
 
             $assistantMessage = $lockedConversation->messages()->create([
