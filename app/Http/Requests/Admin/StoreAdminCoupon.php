@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\AdminPermission;
+use App\Enums\ServiceType;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -17,6 +18,23 @@ final class StoreAdminCoupon extends FormRequest
         return $user instanceof User && $user->can(AdminPermission::MarketingManage->value);
     }
 
+    /**
+     * Canonicalise the code before any rule runs.
+     *
+     * Coupons are stored and looked up uppercase, so uniqueness has to be
+     * checked against the canonical form: validating the raw input would let
+     * "arab" through while "ARAB" already exists, and the insert would then
+     * fail on the database unique index instead of as a validation error.
+     */
+    protected function prepareForValidation(): void
+    {
+        $code = $this->input('code');
+
+        if (is_string($code)) {
+            $this->merge(['code' => mb_strtoupper(trim($code))]);
+        }
+    }
+
     /** @return array<string, mixed> */
     public function rules(): array
     {
@@ -26,7 +44,7 @@ final class StoreAdminCoupon extends FormRequest
                 'string',
                 'min:3',
                 'max:24',
-                'regex:/\A[A-Z0-9\-]{3,24}\z/D',
+                'regex:/\A[A-Za-z0-9\-]{3,24}\z/D',
                 Rule::unique('coupons', 'code'),
             ],
             'description_ar' => ['sometimes', 'nullable', 'string', 'max:500'],
@@ -37,6 +55,19 @@ final class StoreAdminCoupon extends FormRequest
             'maximum_discount_halalah' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'usage_limit' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'per_user_limit' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'scope' => ['sometimes', 'string', Rule::in(['order', 'category', 'product', 'service'])],
+            'service_type' => [
+                'nullable',
+                'string',
+                'required_if:scope,service',
+                Rule::in(array_map(fn (ServiceType $type): string => $type->value, ServiceType::cases())),
+                Rule::prohibitedIf($this->input('scope') !== null && $this->input('scope') !== 'service'),
+            ],
+            'first_order_only' => ['sometimes', 'boolean'],
+            'excludes_promoted_items' => ['sometimes', 'boolean'],
+            'targets' => ['sometimes', 'array'],
+            'category_ids' => ['sometimes', 'array'],
+            'product_ids' => ['sometimes', 'array'],
             'starts_at' => ['sometimes', 'nullable', 'date'],
             'ends_at' => ['sometimes', 'nullable', 'date', 'after_or_equal:starts_at'],
             'is_active' => ['sometimes', 'boolean'],

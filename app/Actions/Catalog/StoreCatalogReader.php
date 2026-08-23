@@ -320,6 +320,7 @@ final class StoreCatalogReader
             $product->category_id,
             $product->service_type,
             $basePriceHalalah,
+            $product->id,
         );
     }
 

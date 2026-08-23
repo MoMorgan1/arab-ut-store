@@ -11,4 +11,6 @@ enum CouponRejection: string
     case Limit = 'coupon_limit';
 
     case Minimum = 'coupon_minimum';
+
+    case FirstOrderOnly = 'coupon_first_order_only';
 }
