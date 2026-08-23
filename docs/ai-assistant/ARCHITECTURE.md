@@ -94,7 +94,9 @@ messages are excluded.
 
 `SelectSupportKnowledge` picks at most `ai-assistant.knowledge_max_topics`
 topics lexically from `resources/ai-assistant/knowledge/arab-ut.json`, and
-`support-v3` injects them as a `<store_knowledge>` block. The model answers only
+`support-v6` injects them as a `<store_knowledge>` block, alongside a
+`<live_prices>` block built from the store catalogue in the viewer's own
+display currency. The model answers only
 from that block for store policy and must quote its facts exactly.
 
 Three customer-visible surfaces are derived **server-side from the customer's own
@@ -128,8 +130,8 @@ the fixed Luna model and prompt version, quiet/context/output limits, timeout an
 attempt policy, rate limits, stale recovery, fake delay, and versioned pricing.
 Repository defaults are AI disabled, rollout `disabled`, and an empty provider.
 
-Production runs the accepted configuration: chat enabled, AI enabled, public
-rollout, the OpenAI provider, `support-v3`, and `knowledge_max_topics: 3`.
+Production runs: chat enabled, AI enabled, public rollout, the OpenAI
+provider, `support-v6`, and `knowledge_max_topics: 3`.
 Clearing the AI enable flag is the kill switch and returns new messages to the
 accepted Phase 1 demo reply without a deployment.
 

@@ -39,7 +39,7 @@ final readonly class StreamAgentTurn
     /**
      * @return Generator<int, AppStreamEvent, mixed, void>
      */
-    public function execute(AgentTurn $turn, ChatOwner $owner): Generator
+    public function execute(AgentTurn $turn, ChatOwner $owner, string $displayCurrency): Generator
     {
         yield AppStreamEvent::turnCreated($turn);
 
@@ -51,7 +51,7 @@ final readonly class StreamAgentTurn
         try {
             try {
                 $deadline->throwIfExpired();
-                $request = $this->buildAgentModelRequest->execute($turn, $owner);
+                $request = $this->buildAgentModelRequest->execute($turn, $owner, $displayCurrency);
                 $deadline->throwIfExpired();
                 $provider = $this->config->provider();
                 $agentModel = $this->agentModelResolver->resolve($provider);

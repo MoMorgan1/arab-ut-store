@@ -30,7 +30,7 @@ test('prompt includes every claimed customer and fills only remaining configured
         'last_customer_message_id' => $claimed->last()->id,
     ]);
 
-    $request = app(BuildAgentModelRequest::class)->execute($turn, $owner);
+    $request = app(BuildAgentModelRequest::class)->execute($turn, $owner, 'SAR');
 
     expect($request->messages)->toBe([
         ['role' => 'assistant', 'content' => 'prior-assistant'],
@@ -51,7 +51,7 @@ test('request safety identifier is the exact lowercase owner-scope HMAC', functi
         'last_customer_message_id' => $message->id,
     ]);
 
-    $request = app(BuildAgentModelRequest::class)->execute($turn, $owner);
+    $request = app(BuildAgentModelRequest::class)->execute($turn, $owner, 'SAR');
 
     expect($request->safetyIdentifier)->toBe(hash_hmac(
         'sha256',
@@ -89,7 +89,7 @@ test('invalid prompt versions ranges roles and types are rejected without conten
     $turn->save();
 
     try {
-        app(BuildAgentModelRequest::class)->execute($turn, $owner);
+        app(BuildAgentModelRequest::class)->execute($turn, $owner, 'SAR');
         $this->fail('Expected invalid request rejection.');
     } catch (InvalidAgentRequestException $exception) {
         expect($exception->getMessage())->not->toContain('ordinary-current-message');
@@ -112,7 +112,7 @@ test('sensitive prompt patterns fail before a model request is built', function 
     ]);
 
     try {
-        app(BuildAgentModelRequest::class)->execute($turn, $owner);
+        app(BuildAgentModelRequest::class)->execute($turn, $owner, 'SAR');
         $this->fail('Expected sensitive content rejection.');
     } catch (SensitiveAgentContentException $exception) {
         expect($exception->getMessage())->not->toContain($sensitiveContent);
@@ -152,7 +152,7 @@ test('near misses do not block ordinary support content', function (string $ordi
         'last_customer_message_id' => $message->id,
     ]);
 
-    $request = app(BuildAgentModelRequest::class)->execute($turn, $owner);
+    $request = app(BuildAgentModelRequest::class)->execute($turn, $owner, 'SAR');
 
     expect(array_column($request->messages, 'content'))->toBe([$ordinaryContent]);
 })->with([
@@ -198,7 +198,7 @@ test('prior context tripping guard is excluded without poisoning current claim',
         'last_customer_message_id' => $current->last()->id,
     ]);
 
-    $request = app(BuildAgentModelRequest::class)->execute($turn, $owner);
+    $request = app(BuildAgentModelRequest::class)->execute($turn, $owner, 'SAR');
 
     expect($request->messages)->toBe([
         ['role' => 'user', 'content' => 'prior-customer'],

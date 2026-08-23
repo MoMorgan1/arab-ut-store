@@ -19,7 +19,7 @@ function livePricedInstructions(string $question, string $locale = 'ar'): string
         'last_customer_message_id' => $message->id,
     ]);
 
-    return app(BuildAgentModelRequest::class)->execute($turn, $owner)->instructions;
+    return app(BuildAgentModelRequest::class)->execute($turn, $owner, 'SAR')->instructions;
 }
 
 test('a price question receives the live price table', function () {

@@ -1,7 +1,7 @@
 # Agent runtime
 
-**Lifecycle:** Implemented, deployed, and active on the accepted
-`support-v3` configuration
+**Lifecycle:** Implemented, deployed, and active; running `support-v6`, which
+is newer than the last evaluated prompt
 **Verified:** 2026-08-24
 
 Phase 2 adds a durable provider-neutral turn runtime and a direct OpenAI
@@ -189,8 +189,10 @@ Repository defaults are fail closed:
 | Attempts/retry-wait cap | 3 / 2,000 ms      |
 | Stale recovery          | 60 s              |
 
-Production runs the accepted configuration: AI enabled, public rollout, the
-OpenAI provider, `support-v3`, and `knowledge_max_topics: 3`. The 2026-08-22
+Production runs: AI enabled, public rollout, the OpenAI provider,
+`support-v6`, and `knowledge_max_topics: 3`. `support-v3` is the newest prompt
+to have passed a complete 16-case batch, so the deployed prompt is three
+versions ahead of the last evaluated one. The 2026-08-22
 failed batch and its containment proof remain recorded in
 [the evaluation evidence](evidence/2026-08-22-phase-2-luna-public-eval.md); the
 accepted 2026-08-23 batch is in [EVALS.md](EVALS.md).

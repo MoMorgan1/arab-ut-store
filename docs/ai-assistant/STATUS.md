@@ -108,9 +108,13 @@ Luna configuration. No prompt, threshold, guard, model, token budget, or runtime
 default may be changed silently, and any change to them requires a fresh
 complete evaluation batch and a new owner acceptance.
 
-The accepted configuration is `support-v3` with `knowledge_max_topics: 3`.
-Setting it to 0 disables grounding without touching the prompt. Any mandatory
-evaluation miss disables Luna again. See [AGENT-RUNTIME.md](AGENT-RUNTIME.md),
+**Accepted and deployed are not the same prompt.** The last prompt version to
+pass a complete 16-case batch is `support-v3`. Production currently runs
+`support-v6`; `support-v4`, `support-v5` and `support-v6` each shipped without
+a batch of their own, so the deployed configuration is unevaluated against the
+mandatory thresholds. `knowledge_max_topics` is 3; setting it to 0 disables
+grounding without touching the prompt. Any mandatory evaluation miss disables
+the assistant again. See [EVALS.md](EVALS.md). See [AGENT-RUNTIME.md](AGENT-RUNTIME.md),
 [EVALS.md](EVALS.md), and [OPERATIONS.md](OPERATIONS.md).
 
 ## Open decision

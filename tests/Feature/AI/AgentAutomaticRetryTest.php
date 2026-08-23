@@ -86,7 +86,7 @@ test('automatic 429 retry sleeps outside lock and succeeds on attempt two', func
     app()->instance(AgentSleeper::class, $sleeper);
     $baselineTransactionLevel = DB::transactionLevel();
 
-    $events = iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner));
+    $events = iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner, 'SAR'));
 
     expect($sleeper->levelsAtSleep)->not->toBeEmpty()
         ->and($sleeper->levelsAtSleep)->each->toBe($baselineTransactionLevel);
@@ -123,7 +123,7 @@ test('deadline expiry during automatic retry wait yields one run failed rate lim
         ]),
     ));
 
-    $events = iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner));
+    $events = iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner, 'SAR'));
 
     $freshTurn = $turn->fresh();
     $runs = AgentRun::query()->where('agent_turn_id', $turn->id)->get();
@@ -164,7 +164,7 @@ test('automatic retry delay is capped by retry after cap ms setting', function (
         ]),
     ));
 
-    iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner));
+    iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner, 'SAR'));
 
     expect($mockSleeper->sleptMilliseconds)->toBe(300);
 });

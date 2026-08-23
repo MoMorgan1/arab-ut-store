@@ -33,7 +33,7 @@ test('sensitive range blocks before lazy resolver and a later harmless turn succ
     );
     app()->instance(AgentModelResolver::class, $resolver);
 
-    $events = iterator_to_array(app(StreamAgentTurn::class)->execute($sensitiveTurn, $owner));
+    $events = iterator_to_array(app(StreamAgentTurn::class)->execute($sensitiveTurn, $owner, 'SAR'));
 
     expect($resolver->resolutionCalls)->toBe(0)
         ->and($sensitiveTurn->fresh()->status)->toBe(AgentTurnStatus::Failed)
@@ -58,7 +58,7 @@ test('sensitive range blocks before lazy resolver and a later harmless turn succ
     $next = app(CreateOrRecoverAgentTurn::class)->execute($conversation, $owner);
     expect($next->turn)->not->toBeNull();
 
-    $nextEvents = iterator_to_array(app(StreamAgentTurn::class)->execute($next->turn, $owner));
+    $nextEvents = iterator_to_array(app(StreamAgentTurn::class)->execute($next->turn, $owner, 'SAR'));
 
     expect($resolver->resolutionCalls)->toBe(1)
         ->and($next->turn->fresh()->status)->toBe(AgentTurnStatus::Completed)
