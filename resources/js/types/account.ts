@@ -109,6 +109,14 @@ export type AccountTranslations = {
         completed: string;
         empty_title: string;
         empty_description: string;
+        search_placeholder?: string;
+        search_label?: string;
+        search_empty?: string;
+        columns?: {
+            service: string;
+            status: string;
+            total: string;
+        };
         number: string;
         placed_at: string;
         total: string;
@@ -214,6 +222,10 @@ export type AccountTranslations = {
         send_phone_code: string;
         phone_code: string;
         confirm_phone: string;
+        phone_code_sent_to: string;
+        phone_resend_in: string;
+        phone_resend: string;
+        phone_change_number: string;
         sensitive_hint: string;
         pending_email: string;
         pending_phone: string;
@@ -318,7 +330,7 @@ export type AccountOverviewPageProps = AccountPageShellProps & {
 
 export type AccountOrdersPageProps = AccountPageShellProps & {
     counts: { all: number; open: number; completed: number };
-    filters: { status: 'all' | 'open' | 'completed' };
+    filters: { status: 'all' | 'open' | 'completed'; q?: string | null };
     orders: AccountOrder[];
     pagination: {
         currentPage: number;

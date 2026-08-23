@@ -7,32 +7,58 @@ const page = vi.hoisted(() => ({
     props: {} as Record<string, unknown>,
     url: '/en/my-account/profile',
 }));
+const inertia = vi.hoisted(() => ({
+    flushAll: vi.fn(),
+    post: vi.fn(),
+}));
 const excluded = vi.hoisted(() => [] as string[][]);
 type FormOptions = {
     onError?: (errors: Record<string, string>) => void;
+    onSuccess?: () => void;
 };
+
+let phoneRequestShouldFail = true;
+const formStore = new Map<string, Record<string, string>>();
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
+    router: inertia,
     usePage: () => page,
-    useForm: (initial: Record<string, string>) => ({
-        data: initial,
-        dontRemember: (...fields: string[]) => excluded.push(fields),
-        errors: {},
-        patch: vi.fn(),
-        post: vi.fn((url: string, options?: FormOptions) => {
-            if (url.includes('/profile/email')) {
-                options?.onError?.({ email: 'Invalid email.' });
-            } else if (url.includes('/profile/phone')) {
-                options?.onError?.({ phone: 'Invalid phone.' });
-            }
-        }),
-        put: vi.fn(),
-        processing: false,
-        recentlySuccessful: false,
-        reset: vi.fn(),
-        setData: vi.fn(),
-    }),
+    useForm: (initial: Record<string, string>) => {
+        const key = Object.keys(initial).join('|');
+        let formData = formStore.get(key) ?? { ...initial };
+        formStore.set(key, formData);
+
+        return {
+            data: formData,
+            dontRemember: (...fields: string[]) => excluded.push(fields),
+            errors: {},
+            patch: vi.fn(),
+            post: vi.fn((url: string, options?: FormOptions) => {
+                if (url.includes('/profile/email')) {
+                    options?.onError?.({ email: 'Invalid email.' });
+                } else if (url.includes('/profile/phone/confirm')) {
+                    options?.onSuccess?.();
+                } else if (url.includes('/profile/phone')) {
+                    if (phoneRequestShouldFail) {
+                        options?.onError?.({ phone: 'Invalid phone.' });
+                    } else {
+                        options?.onSuccess?.();
+                    }
+                }
+            }),
+            put: vi.fn(),
+            processing: false,
+            recentlySuccessful: false,
+            reset: vi.fn(() => {
+                formData = { ...initial };
+                formStore.set(key, formData);
+            }),
+            setData: vi.fn((key: string, value: string) => {
+                formData[key] = value;
+            }),
+        };
+    },
 }));
 
 vi.mock('@/layouts/my-account-layout', () => ({
@@ -41,6 +67,8 @@ vi.mock('@/layouts/my-account-layout', () => ({
 
 beforeEach(() => {
     excluded.length = 0;
+    phoneRequestShouldFail = true;
+    formStore.clear();
     page.props = profileProps();
 });
 
@@ -145,6 +173,27 @@ it('renders the unverified notice and support link when email is unverified', ()
     ).toHaveAttribute('href', 'https://wa.me/966537998099');
 });
 
+it('renders masked phone and resend control after successful request and allows changing number', () => {
+    phoneRequestShouldFail = false;
+    render(<AccountProfile />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit number' }));
+    const phoneInput = screen.getByLabelText('New WhatsApp number');
+    fireEvent.change(phoneInput, { target: { value: '+201001234567' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send WhatsApp code' }));
+
+    expect(screen.getByText(/We sent the code to \+966•••4567/)).toBeVisible();
+    expect(screen.getByText(/Resend code in 60 s/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Change number' })).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change number' }));
+    expect(screen.getByLabelText('New WhatsApp number')).toBeVisible();
+    expect(
+        screen.queryByText(/We sent the code to \+966•••4567/),
+    ).not.toBeInTheDocument();
+});
+
 function profileProps() {
     return {
         locale: 'en',
@@ -188,6 +237,10 @@ function profileProps() {
                 send_phone_code: 'Send WhatsApp code',
                 phone_code: '6-digit verification code',
                 confirm_phone: 'Confirm new number',
+                phone_code_sent_to: 'We sent the code to :number',
+                phone_resend_in: 'Resend code in :seconds s',
+                phone_resend: 'Resend code',
+                phone_change_number: 'Change number',
                 sensitive_hint:
                     'A verification link or WhatsApp code will confirm the change.',
                 pending_email: 'New email awaiting verification',

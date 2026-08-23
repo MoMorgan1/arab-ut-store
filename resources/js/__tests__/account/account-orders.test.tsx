@@ -9,6 +9,7 @@ import {
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import AccountOrderCard from '@/components/account/account-order-card';
+import AccountOrderList from '@/components/account/account-order-list';
 import AccountOrderRow from '@/components/account/account-order-row';
 import AccountLiveOrder from '@/pages/account/live-order';
 import AccountOrders from '@/pages/account/orders';
@@ -20,6 +21,7 @@ import type {
 
 const inertia = vi.hoisted(() => ({
     flushAll: vi.fn(),
+    get: vi.fn(),
     post: vi.fn(),
     reload: vi.fn(),
 }));
@@ -338,6 +340,108 @@ it('resumes the existing Paylink payment from the canonical detail', async () =>
     expect(paymentNavigation.order).not.toHaveBeenCalled();
 });
 
+it('renders search input with prop value and submits search with current status', () => {
+    page.props = {
+        ...shellProps(),
+        filters: { status: 'open', q: 'UT-00000001' },
+        orders: [order('01ORDER1', 'UT-00000001', 'in_progress')],
+        pagination: {
+            currentPage: 1,
+            lastPage: 1,
+            perPage: 10,
+            total: 1,
+            nextUrl: null,
+            previousUrl: null,
+        },
+    };
+
+    render(<AccountOrders />);
+
+    const searchInput = screen.getByRole('searchbox', {
+        name: 'Search orders',
+    });
+    expect(searchInput).toBeVisible();
+    expect(searchInput).toHaveValue('UT-00000001');
+
+    const clearButton = screen.getByRole('button', { name: 'Clear search' });
+    expect(clearButton).toBeVisible();
+
+    fireEvent.change(searchInput, { target: { value: 'Coins' } });
+    const searchForm = searchInput.closest('form');
+    expect(searchForm).not.toBeNull();
+    fireEvent.submit(searchForm!);
+
+    expect(inertia.get).toHaveBeenCalledWith(
+        '/en/my-account/orders',
+        { status: 'open', q: 'Coins' },
+        expect.objectContaining({
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        }),
+    );
+});
+
+it('renders search empty state when q is non-empty and orders array is empty', () => {
+    page.props = {
+        ...shellProps(),
+        filters: { status: 'all', q: 'NonExistent' },
+        orders: [],
+        pagination: {
+            currentPage: 1,
+            lastPage: 1,
+            perPage: 10,
+            total: 0,
+            nextUrl: null,
+            previousUrl: null,
+        },
+    };
+
+    render(<AccountOrders />);
+
+    expect(
+        screen.getByRole('heading', {
+            level: 2,
+            name: 'No orders match your search.',
+        }),
+    ).toBeVisible();
+    expect(
+        screen.queryByRole('link', { name: 'Browse services' }),
+    ).not.toBeInTheDocument();
+});
+
+it('renders desktop status pill with dot in order row and column headings in order list', () => {
+    const sampleOrder = order('01STATUS', 'UT-00000077', 'completed');
+    const shell = shellProps();
+
+    const { container } = render(
+        <AccountOrderList
+            aria-label="Orders"
+            headings={{ service: 'Service', status: 'Status', total: 'Total' }}
+        >
+            <AccountOrderRow
+                locale="en"
+                order={sampleOrder}
+                translations={shell.accountUi as unknown as AccountTranslations}
+            />
+        </AccountOrderList>,
+    );
+
+    const head = container.querySelector('.account-order-list__head');
+    expect(head).not.toBeNull();
+    expect(head).toHaveTextContent('Service');
+    expect(head).toHaveTextContent('Status');
+    expect(head).toHaveTextContent('Total');
+
+    const statusPill = container.querySelector('.account-order-row__status');
+    expect(statusPill).not.toBeNull();
+    expect(statusPill).toHaveAttribute('data-status', 'completed');
+    expect(statusPill).toHaveTextContent('Completed');
+    expect(
+        statusPill?.querySelector('.account-order-row__status-dot'),
+    ).not.toBeNull();
+});
+
 function order(id: string, number: string, status: string): AccountOrder {
     return {
         id,
@@ -424,6 +528,14 @@ function shellProps() {
                 completed: 'Completed',
                 empty_title: 'No orders yet',
                 empty_description: 'Orders will appear here.',
+                search_placeholder: 'Search by order number or service name',
+                search_label: 'Search orders',
+                search_empty: 'No orders match your search.',
+                columns: {
+                    service: 'Service',
+                    status: 'Status',
+                    total: 'Total',
+                },
                 number: 'Order number',
                 placed_at: 'Placed on',
                 total: 'Total',
