@@ -16,6 +16,7 @@ import type { AdminMfaState } from '@/types/admin';
 const api = vi.hoisted(() => ({
     confirmAdminMfa: vi.fn(),
     enableAdminMfa: vi.fn(),
+    forgetAdminMfaTrustedDevices: vi.fn(),
     loadAdminMfaQrCode: vi.fn(),
     loadAdminMfaRecoveryCodes: vi.fn(),
     regenerateAdminMfaRecoveryCodes: vi.fn(),
@@ -41,6 +42,7 @@ const adminUi = englishAdminUi;
 const routes = {
     confirm: '/user/confirmed-two-factor-authentication',
     disable: '/user/two-factor-authentication',
+    forgetTrustedDevices: '/admin/api/security/trusted-devices',
     enable: '/user/two-factor-authentication',
     qrCode: '/user/two-factor-qr-code',
     recoveryCodes: '/user/two-factor-recovery-codes',
@@ -134,6 +136,8 @@ describe('AdminSecuritySection', () => {
                         enabled: false,
                         passwordConfigured: true,
                         routes,
+                        trustedDeviceCount: 0,
+                        trustedDeviceDays: 30,
                     }}
                 />
             </StrictMode>,
@@ -287,6 +291,245 @@ describe('AdminSecuritySection', () => {
         ).toHaveAttribute('href', '/en/my-account/security');
         expect(api.enableAdminMfa).not.toHaveBeenCalled();
     });
+
+    it('renders trusted devices count and window from props', () => {
+        renderPage({
+            enabled: true,
+            confirmed: true,
+            trustedDeviceCount: 2,
+            trustedDeviceDays: 30,
+        });
+
+        expect(
+            screen.getByRole('heading', {
+                name: adminUi.mfa.trustedDevicesTitle,
+            }),
+        ).toBeVisible();
+        expect(
+            screen.getByText(
+                '2 browser(s) currently trusted. Trusted browsers skip the two-factor challenge for up to 30 days.',
+            ),
+        ).toBeVisible();
+        expect(
+            screen.getByRole('button', {
+                name: adminUi.mfa.forgetTrustedDevices,
+            }),
+        ).toBeEnabled();
+    });
+
+    it('does not render the forget trusted devices action when mfa is not confirmed', () => {
+        renderPage({
+            enabled: false,
+            confirmed: false,
+            trustedDeviceCount: 2,
+            trustedDeviceDays: 30,
+        });
+
+        expect(
+            screen.queryByRole('button', {
+                name: adminUi.mfa.forgetTrustedDevices,
+            }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(adminUi.mfa.trustedDevicesTitle),
+        ).not.toBeInTheDocument();
+    });
+
+    it('disables the action and displays none copy when trustedDeviceCount is 0', () => {
+        renderPage({
+            enabled: true,
+            confirmed: true,
+            trustedDeviceCount: 0,
+            trustedDeviceDays: 30,
+        });
+
+        expect(screen.getByText(adminUi.mfa.trustedDevicesNone)).toBeVisible();
+        const button = screen.getByRole('button', {
+            name: adminUi.mfa.forgetTrustedDevices,
+        });
+        expect(button).toBeDisabled();
+    });
+
+    it('requires confirmation before calling forget trusted devices endpoint and allows cancellation', () => {
+        renderPage({
+            enabled: true,
+            confirmed: true,
+            trustedDeviceCount: 3,
+            trustedDeviceDays: 30,
+        });
+
+        const forgetButton = screen.getByRole('button', {
+            name: adminUi.mfa.forgetTrustedDevices,
+        });
+        fireEvent.click(forgetButton);
+
+        expect(
+            screen.getByRole('heading', {
+                name: adminUi.mfa.forgetTrustedDevicesTitle,
+            }),
+        ).toBeVisible();
+        expect(
+            screen.getByText(adminUi.mfa.forgetTrustedDevicesDescription),
+        ).toBeVisible();
+        expect(api.forgetAdminMfaTrustedDevices).not.toHaveBeenCalled();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: adminUi.common.cancel }),
+        );
+        expect(
+            screen.queryByRole('heading', {
+                name: adminUi.mfa.forgetTrustedDevicesTitle,
+            }),
+        ).not.toBeInTheDocument();
+        expect(api.forgetAdminMfaTrustedDevices).not.toHaveBeenCalled();
+    });
+
+    it('forgets trusted devices on confirmation and updates displayed count to 0 without reload', async () => {
+        api.forgetAdminMfaTrustedDevices.mockResolvedValue({ revoked: 3 });
+
+        renderPage({
+            enabled: true,
+            confirmed: true,
+            trustedDeviceCount: 3,
+            trustedDeviceDays: 30,
+        });
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: adminUi.mfa.forgetTrustedDevices,
+            }),
+        );
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: adminUi.mfa.confirmForgetTrustedDevices,
+            }),
+        );
+
+        await waitFor(() => {
+            expect(api.forgetAdminMfaTrustedDevices).toHaveBeenCalledWith(
+                routes.forgetTrustedDevices,
+            );
+            expect(
+                screen.getByText(adminUi.mfa.trustedDevicesNone),
+            ).toBeVisible();
+            expect(
+                screen.getByRole('button', {
+                    name: adminUi.mfa.forgetTrustedDevices,
+                }),
+            ).toBeDisabled();
+        });
+    });
+
+    it('handles 423 password confirmation expired and routes to reauthenticate', async () => {
+        api.forgetAdminMfaTrustedDevices.mockRejectedValue(
+            new AdminMfaApiError(
+                'password_confirmation_required',
+                'Password confirmation is required.',
+                423,
+            ),
+        );
+
+        renderPage({
+            enabled: true,
+            confirmed: true,
+            trustedDeviceCount: 2,
+            trustedDeviceDays: 30,
+        });
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: adminUi.mfa.forgetTrustedDevices,
+            }),
+        );
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: adminUi.mfa.confirmForgetTrustedDevices,
+            }),
+        );
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            adminUi.mfa.passwordConfirmationExpired,
+        );
+        expect(
+            screen.getByRole('link', {
+                name: adminUi.mfa.confirmPasswordAgain,
+            }),
+        ).toHaveAttribute('href', '/en/admin/settings');
+    });
+
+    it('handles 429 rate limiting when forgetting trusted devices', async () => {
+        api.forgetAdminMfaTrustedDevices.mockRejectedValue(
+            new AdminMfaApiError('rate_limited', 'Too many requests.', 429),
+        );
+
+        renderPage({
+            enabled: true,
+            confirmed: true,
+            trustedDeviceCount: 2,
+            trustedDeviceDays: 30,
+        });
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: adminUi.mfa.forgetTrustedDevices,
+            }),
+        );
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: adminUi.mfa.confirmForgetTrustedDevices,
+            }),
+        );
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            adminUi.mfa.rateLimited,
+        );
+        expect(
+            screen.getByRole('link', { name: adminUi.mfa.retryAfterWait }),
+        ).toHaveAttribute('href', '/en/admin/settings');
+    });
+
+    it('handles generic failure when forgetting trusted devices and retries on action click', async () => {
+        api.forgetAdminMfaTrustedDevices
+            .mockRejectedValueOnce(
+                new AdminMfaApiError('server', 'Server error.', 500),
+            )
+            .mockResolvedValueOnce({ revoked: 2 });
+
+        renderPage({
+            enabled: true,
+            confirmed: true,
+            trustedDeviceCount: 2,
+            trustedDeviceDays: 30,
+        });
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: adminUi.mfa.forgetTrustedDevices,
+            }),
+        );
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: adminUi.mfa.confirmForgetTrustedDevices,
+            }),
+        );
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            adminUi.mfa.failed,
+        );
+
+        const retryButton = screen.getByRole('button', {
+            name: adminUi.common.retry,
+        });
+        fireEvent.click(retryButton);
+
+        await waitFor(() => {
+            expect(api.forgetAdminMfaTrustedDevices).toHaveBeenCalledTimes(2);
+            expect(
+                screen.getByText(adminUi.mfa.trustedDevicesNone),
+            ).toBeVisible();
+        });
+    });
 });
 
 function renderPage(
@@ -301,6 +544,8 @@ function renderPage(
             mfa={{
                 passwordConfigured: true,
                 routes,
+                trustedDeviceCount: 0,
+                trustedDeviceDays: 30,
                 ...state,
             }}
         />,

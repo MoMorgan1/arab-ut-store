@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TeamGrantController;
 use App\Http\Controllers\Admin\TeamRoleController;
 use App\Http\Controllers\Admin\TeamStatusController;
+use App\Http\Controllers\Admin\TrustedDeviceController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureAdminMfa;
@@ -152,6 +153,14 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $teamStatus->defaults('locale', $locale);
+                }
+
+                $trustedDevices = Route::delete('/api/security/trusted-devices', TrustedDeviceController::class)
+                    ->middleware(['password.confirm', 'throttle:two-factor-management'])
+                    ->name('security.trusted-devices.destroy');
+
+                if ($locale !== null) {
+                    $trustedDevices->defaults('locale', $locale);
                 }
             });
         });

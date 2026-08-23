@@ -5,12 +5,17 @@ export type AdminMfaRoutes = {
     recoveryCodes: string;
     regenerateRecoveryCodes: string;
     disable: string;
+    forgetTrustedDevices: string;
 };
 
 export type AdminMfaState = {
     passwordConfigured: boolean;
     enabled: boolean;
     confirmed: boolean;
+    /** Browsers currently allowed to skip the TOTP challenge. */
+    trustedDeviceCount: number;
+    /** How long a browser stays trusted after passing the challenge. */
+    trustedDeviceDays: number;
     routes: AdminMfaRoutes;
 };
 
@@ -265,6 +270,14 @@ export type AdminTranslations = {
         regenerateDescription: string;
         confirmRegenerate: string;
         regenerating: string;
+        trustedDevicesTitle: string;
+        trustedDevicesDescription: string;
+        trustedDevicesNone: string;
+        forgetTrustedDevices: string;
+        forgettingTrustedDevices: string;
+        forgetTrustedDevicesTitle: string;
+        forgetTrustedDevicesDescription: string;
+        confirmForgetTrustedDevices: string;
         setupPassword: string;
         setupPasswordDescription: string;
         openAccountSecurity: string;
