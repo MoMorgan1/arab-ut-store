@@ -80,7 +80,10 @@ export default function MyAccountLayout({
                             current={current}
                             items={accountNavigation}
                             logoutUrl={logoutUrl}
-                            sections={accountUi.profile?.sections}
+                            sections={
+                                accountUi.profile?.sections_long ??
+                                accountUi.profile?.sections
+                            }
                             translations={accountUi.navigation}
                         />
                     </aside>

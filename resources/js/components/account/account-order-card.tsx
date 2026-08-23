@@ -24,10 +24,12 @@ function actionLabel(
 }
 
 export default function AccountOrderCard({
+    description,
     locale,
     order,
     translations,
 }: {
+    description?: string;
     locale: 'ar' | 'en';
     order: AccountOrder;
     translations: AccountTranslations;
@@ -74,6 +76,11 @@ export default function AccountOrderCard({
                     </span>
                 </div>
                 <h3>{order.summary}</h3>
+                {description ? (
+                    <p className="account-order-card__description">
+                        {description}
+                    </p>
+                ) : null}
             </div>
             <div className="account-order-card__side">
                 <strong className="account-order-card__total">

@@ -27,7 +27,9 @@ type AccountNavigationProps = {
     current: AccountDestination;
     items: AccountNavigationItem[];
     logoutUrl: string;
-    sections?: AccountTranslations['profile']['sections'];
+    sections?:
+        | AccountTranslations['profile']['sections']
+        | AccountTranslations['profile']['sections_long'];
     translations: AccountTranslations['navigation'];
 };
 
@@ -61,6 +63,17 @@ export default function AccountNavigation({
                                 >
                                     <Icon aria-hidden="true" />
                                     <span>{item.label}</span>
+                                    {item.attention ? (
+                                        <span
+                                            aria-hidden="true"
+                                            className="account-navigation__dot"
+                                        />
+                                    ) : null}
+                                    {item.badge ? (
+                                        <span className="account-navigation__badge">
+                                            {item.badge}
+                                        </span>
+                                    ) : null}
                                 </Link>
                                 {item.key === 'profile' &&
                                 selected &&

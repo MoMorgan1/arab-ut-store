@@ -12,6 +12,18 @@ import MyAccountLayout from '@/layouts/my-account-layout';
 import { splitE164 } from '@/lib/phone-country-codes';
 import type { AccountProfilePageProps } from '@/types/account';
 
+function renderWithNumber(template: string, number: string) {
+    const [before, after] = template.split(':number');
+
+    return (
+        <>
+            {before}
+            <bdi dir="ltr">{number}</bdi>
+            {after}
+        </>
+    );
+}
+
 function maskPhoneNumber(value: string): string {
     const split = splitE164(value);
 
@@ -152,6 +164,20 @@ export default function AccountProfile() {
         router.post(props.logoutUrl);
     }
 
+    const isContactAttention =
+        !props.profile.email.verified || !props.profile.phone.verified;
+
+    function openPhoneVerification() {
+        setEditingContact('phone');
+        setTimeout(() => {
+            const target =
+                document.getElementById('new_phone') ??
+                document.getElementById('code') ??
+                document.getElementById('contact');
+            target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 0);
+    }
+
     return (
         <MyAccountLayout {...props} current="profile" currentUrl={inertia.url}>
             <Head title={props.accountUi.profile.title} />
@@ -169,7 +195,10 @@ export default function AccountProfile() {
                     <a href="#personal">
                         {props.accountUi.profile.sections.personal}
                     </a>
-                    <a href="#contact">
+                    <a
+                        data-attention={isContactAttention ? 'true' : undefined}
+                        href="#contact"
+                    >
                         {props.accountUi.profile.sections.contact}
                     </a>
                     <a href="#security">
@@ -292,6 +321,19 @@ export default function AccountProfile() {
                         icon={CheckCircle2}
                         title={props.accountUi.profile.contact_title}
                     />
+                    <p className="account-profile-sensitive-hint">
+                        {props.accountUi.profile.sensitive_hint}
+                    </p>
+                    {!props.profile.phone.verified &&
+                    props.accountUi.profile.verify_phone_cta ? (
+                        <button
+                            className="account-profile-verify-cta"
+                            onClick={openPhoneVerification}
+                            type="button"
+                        >
+                            {props.accountUi.profile.verify_phone_cta}
+                        </button>
+                    ) : null}
                     <div className="account-profile-contacts">
                         <ContactValue
                             actionLabel={
@@ -424,8 +466,9 @@ export default function AccountProfile() {
                                                 className="account-profile-code__sent-to"
                                                 role="status"
                                             >
-                                                {props.accountUi.profile.phone_code_sent_to.replace(
-                                                    ':number',
+                                                {renderWithNumber(
+                                                    props.accountUi.profile
+                                                        .phone_code_sent_to,
                                                     maskPhoneNumber(
                                                         requestedPhone ||
                                                             props.profile.phone
@@ -525,9 +568,6 @@ export default function AccountProfile() {
                             ) : null}
                         </ContactValue>
                     </div>
-                    <p className="account-profile-sensitive-hint">
-                        {props.accountUi.profile.sensitive_hint}
-                    </p>
                 </section>
 
                 <section
