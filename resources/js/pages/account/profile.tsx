@@ -1,9 +1,19 @@
-import { Head, useForm, usePage } from '@inertiajs/react';
-import { CheckCircle2, Mail, Phone, UserRound } from 'lucide-react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import {
+    CheckCircle2,
+    LifeBuoy,
+    Mail,
+    MessageCircleMore,
+    Phone,
+    ReceiptText,
+    UserRound,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 
 import AccountPasswordSection from '@/components/account/account-password-section';
+import AccountSectionError from '@/components/account/account-section-error';
 import InputError from '@/components/input-error';
 import MyAccountLayout from '@/layouts/my-account-layout';
 import type { AccountProfilePageProps } from '@/types/account';
@@ -87,6 +97,11 @@ export default function AccountProfile() {
         });
     }
 
+    function logout() {
+        router.flushAll();
+        router.post(props.logoutUrl);
+    }
+
     return (
         <MyAccountLayout {...props} current="profile" currentUrl={inertia.url}>
             <Head title={props.accountUi.profile.title} />
@@ -97,7 +112,29 @@ export default function AccountProfile() {
                     <span>{props.accountUi.profile.description}</span>
                 </header>
 
-                <section className="account-profile-section">
+                <nav
+                    aria-label={props.accountUi.profile.sections.label}
+                    className="account-profile-sections"
+                >
+                    <a href="#personal">
+                        {props.accountUi.profile.sections.personal}
+                    </a>
+                    <a href="#contact">
+                        {props.accountUi.profile.sections.contact}
+                    </a>
+                    <a href="#security">
+                        {props.accountUi.profile.sections.security}
+                    </a>
+                    <a href="#support">
+                        {props.accountUi.profile.sections.support}
+                    </a>
+                </nav>
+
+                <section
+                    className="account-profile-section"
+                    id="personal"
+                    style={{ scrollMarginBlockStart: '5rem' }}
+                >
                     <SectionHeading
                         icon={UserRound}
                         title={props.accountUi.profile.personal_title}
@@ -199,7 +236,11 @@ export default function AccountProfile() {
                     </form>
                 </section>
 
-                <section className="account-profile-section">
+                <section
+                    className="account-profile-section"
+                    id="contact"
+                    style={{ scrollMarginBlockStart: '5rem' }}
+                >
                     <SectionHeading
                         icon={CheckCircle2}
                         title={props.accountUi.profile.contact_title}
@@ -361,6 +402,109 @@ export default function AccountProfile() {
                     passwordRules={props.security.passwordRules}
                     translations={props.accountUi.security}
                 />
+
+                <div className="account-security-recovery">
+                    <span aria-hidden="true">
+                        <LifeBuoy />
+                    </span>
+                    <div>
+                        <h3>{props.accountUi.security.recovery_title}</h3>
+                        <p>
+                            {props.security.recoveryMode === 'email'
+                                ? props.accountUi.security.recovery_email
+                                : props.accountUi.security.recovery_whatsapp}
+                        </p>
+                    </div>
+                    {typeof props.security.recoveryUrl === 'string' ? (
+                        <a
+                            href={props.security.recoveryUrl}
+                            rel={
+                                props.security.recoveryMode === 'whatsapp'
+                                    ? 'noopener noreferrer'
+                                    : undefined
+                            }
+                            target={
+                                props.security.recoveryMode === 'whatsapp'
+                                    ? '_blank'
+                                    : undefined
+                            }
+                        >
+                            {props.accountUi.security.recovery_action}
+                        </a>
+                    ) : null}
+                </div>
+
+                <section
+                    className="account-profile-section"
+                    id="support"
+                    style={{ scrollMarginBlockStart: '5rem' }}
+                >
+                    <SectionHeading
+                        icon={LifeBuoy}
+                        title={props.accountUi.support.title}
+                    />
+
+                    {props.support.orderNumber ? (
+                        <aside className="account-support-context">
+                            <ReceiptText aria-hidden="true" />
+                            <span>{props.accountUi.support.order_context}</span>
+                            <strong>
+                                <bdi>{props.support.orderNumber}</bdi>
+                            </strong>
+                        </aside>
+                    ) : null}
+
+                    {!props.support.available ? (
+                        <AccountSectionError
+                            description={
+                                props.accountUi.support.unavailable_description
+                            }
+                            title={props.accountUi.support.unavailable_title}
+                        />
+                    ) : (
+                        <div className="account-support-grid">
+                            {props.support.whatsappUrl ? (
+                                <SupportCard
+                                    action={
+                                        props.accountUi.support.whatsapp_action
+                                    }
+                                    description={
+                                        props.accountUi.support
+                                            .whatsapp_description
+                                    }
+                                    href={props.support.whatsappUrl}
+                                    icon={<MessageCircleMore />}
+                                    title={
+                                        props.accountUi.support.whatsapp_title
+                                    }
+                                    external
+                                />
+                            ) : null}
+                            {props.support.emailUrl ? (
+                                <SupportCard
+                                    action={
+                                        props.accountUi.support.email_action
+                                    }
+                                    description={
+                                        props.accountUi.support
+                                            .email_description
+                                    }
+                                    href={props.support.emailUrl}
+                                    icon={<Mail />}
+                                    title={props.accountUi.support.email_title}
+                                />
+                            ) : null}
+                        </div>
+                    )}
+                </section>
+
+                <button
+                    className="account-profile-logout"
+                    onClick={logout}
+                    type="button"
+                >
+                    {props.accountUi.navigation.logout}
+                </button>
             </div>
         </MyAccountLayout>
     );
@@ -412,7 +556,7 @@ function SectionHeading({
     icon: Icon,
     title,
 }: {
-    icon: typeof UserRound;
+    icon: LucideIcon;
     title: string;
 }) {
     return (
@@ -439,7 +583,7 @@ function ContactValue({
     actionLabel: string;
     children?: ReactNode;
     editing: boolean;
-    icon: typeof Mail;
+    icon: LucideIcon;
     label: string;
     onEdit: () => void;
     pending: string | null;
@@ -476,5 +620,36 @@ function ContactValue({
             </div>
             {children}
         </div>
+    );
+}
+
+function SupportCard({
+    action,
+    description,
+    external = false,
+    href,
+    icon,
+    title,
+}: {
+    action: string;
+    description: string;
+    external?: boolean;
+    href: string;
+    icon: ReactNode;
+    title: string;
+}) {
+    return (
+        <article className="account-support-card">
+            <span aria-hidden="true">{icon}</span>
+            <h3>{title}</h3>
+            <p>{description}</p>
+            <a
+                href={href}
+                rel={external ? 'noopener noreferrer' : undefined}
+                target={external ? '_blank' : undefined}
+            >
+                {action}
+            </a>
+        </article>
     );
 }

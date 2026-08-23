@@ -1,10 +1,8 @@
 import { Link, router } from '@inertiajs/react';
 import {
     LayoutDashboard,
-    LifeBuoy,
     LogOut,
     PackageSearch,
-    ShieldCheck,
     UserRound,
     WalletCards,
 } from 'lucide-react';
@@ -21,23 +19,21 @@ const destinationIcons: Record<AccountDestination, LucideIcon> = {
     orders: PackageSearch,
     wallet: WalletCards,
     profile: UserRound,
-    security: ShieldCheck,
-    support: LifeBuoy,
 };
 
 type AccountNavigationProps = {
-    adminUrl?: string | null;
     current: AccountDestination;
     items: AccountNavigationItem[];
     logoutUrl: string;
+    sections?: AccountTranslations['profile']['sections'];
     translations: AccountTranslations['navigation'];
 };
 
 export default function AccountNavigation({
-    adminUrl,
     current,
     items,
     logoutUrl,
+    sections,
     translations,
 }: AccountNavigationProps) {
     function logout() {
@@ -63,20 +59,37 @@ export default function AccountNavigation({
                                     <Icon aria-hidden="true" />
                                     <span>{item.label}</span>
                                 </Link>
+                                {item.key === 'profile' &&
+                                selected &&
+                                sections ? (
+                                    <ul className="account-navigation__sections">
+                                        <li>
+                                            <a href={`${item.url}#personal`}>
+                                                {sections.personal}
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href={`${item.url}#contact`}>
+                                                {sections.contact}
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href={`${item.url}#security`}>
+                                                {sections.security}
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href={`${item.url}#support`}>
+                                                {sections.support}
+                                            </a>
+                                        </li>
+                                    </ul>
+                                ) : null}
                             </li>
                         );
                     })}
                 </ul>
             </nav>
-            {adminUrl ? (
-                <Link
-                    className="account-navigation__link account-navigation__link--admin"
-                    href={adminUrl}
-                >
-                    <ShieldCheck aria-hidden="true" />
-                    <span>{translations.admin}</span>
-                </Link>
-            ) : null}
             <button
                 className="account-navigation__logout"
                 onClick={logout}

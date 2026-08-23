@@ -14,7 +14,6 @@ return [
         'security' => 'Security',
         'support' => 'Support',
         'logout' => 'Log out',
-        'admin' => 'Admin dashboard',
     ],
     'bottom_nav' => [
         'home' => 'Home',
@@ -133,6 +132,13 @@ return [
         'description' => 'Update your name and verified contact details securely.',
         'personal_title' => 'Personal details',
         'contact_title' => 'Verified contact details',
+        'sections' => [
+            'label' => 'Profile sections',
+            'personal' => 'Personal',
+            'contact' => 'Contact & verification',
+            'security' => 'Security',
+            'support' => 'Support',
+        ],
         'first_name' => 'First name',
         'last_name' => 'Last name',
         'email' => 'Email address',

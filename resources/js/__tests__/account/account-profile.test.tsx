@@ -109,11 +109,28 @@ function profileProps() {
         locale: 'en',
         accountUi: {
             eyebrow: 'Arab UT account',
+            navigation: {
+                label: 'Account sections',
+                overview: 'Overview',
+                orders: 'Orders',
+                wallet: 'Wallet',
+                profile: 'Profile',
+                security: 'Security',
+                support: 'Support',
+                logout: 'Log out',
+            },
             profile: {
                 title: 'Profile',
                 description: 'Update your verified account details securely.',
                 personal_title: 'Personal details',
                 contact_title: 'Verified contact details',
+                sections: {
+                    label: 'Profile sections',
+                    personal: 'Personal',
+                    contact: 'Contact & verification',
+                    security: 'Security',
+                    support: 'Support',
+                },
                 first_name: 'First name',
                 last_name: 'Last name',
                 email: 'Email address',
@@ -165,6 +182,20 @@ function profileProps() {
                 recovery_whatsapp: 'Use WhatsApp recovery.',
                 recovery_action: 'View recovery options',
             },
+            support: {
+                title: 'Support',
+                description: 'We are here to help.',
+                whatsapp_title: 'Chat on WhatsApp',
+                whatsapp_description: 'Our support team is available.',
+                whatsapp_action: 'Open WhatsApp',
+                email_title: 'Email us',
+                email_description: 'Send the team a message.',
+                email_action: 'Send an email',
+                order_context: 'Regarding order',
+                unavailable_title: 'Support unavailable',
+                unavailable_description: 'Contact options are not configured.',
+            },
+            actions: { retry: 'Try again' },
         },
         profile: {
             firstName: 'Mohamed',
@@ -185,6 +216,8 @@ function profileProps() {
         security: {
             passwordMode: 'change',
             passwordRules: 'minlength:8',
+            recoveryMode: 'email',
+            recoveryUrl: '/en/forgot-password',
         },
         securityActions: {
             changePasswordUrl: '/en/my-account/security/password',
@@ -196,6 +229,13 @@ function profileProps() {
             phoneRequestUrl: '/en/my-account/profile/phone',
             phoneConfirmUrl: '/en/my-account/profile/phone/confirm',
         },
+        support: {
+            available: true,
+            emailUrl: 'mailto:support@example.test',
+            orderNumber: null,
+            whatsappUrl: 'https://wa.me/966537998099',
+        },
         displayCurrencies: ['SAR', 'AED'],
+        logoutUrl: '/logout',
     };
 }

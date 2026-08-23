@@ -49,7 +49,11 @@ export default function AccountPasswordSection({
     }
 
     return (
-        <section className="account-profile-section account-security-section">
+        <section
+            className="account-profile-section"
+            id="security"
+            style={{ scrollMarginBlockStart: '5rem' }}
+        >
             <header className="account-profile-section__heading">
                 <span aria-hidden="true">
                     <KeyRound />
