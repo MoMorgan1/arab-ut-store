@@ -57,6 +57,11 @@ final readonly class AdminProductsPage
             ServiceType::cases(),
         );
 
+        $currentRouteName = (string) request()->route()?->getName();
+        $prefix = str_starts_with($currentRouteName, 'localized.admin.')
+            ? 'localized.admin.'
+            : 'admin.';
+
         return [
             'locale' => $locale,
             'direction' => $locale === 'en' ? 'ltr' : 'rtl',
@@ -100,6 +105,7 @@ final readonly class AdminProductsPage
                 ],
                 'perPageOptions' => [15, 25, 50, 100],
             ],
+            'categoriesUrl' => route($prefix.'categories', absolute: false),
         ];
     }
 }

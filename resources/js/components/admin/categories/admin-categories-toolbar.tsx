@@ -2,14 +2,8 @@
 
 import { Link } from '@inertiajs/react';
 import type { Table } from '@tanstack/react-table';
-import {
-    Columns3,
-    FolderTree,
-    Search,
-    SlidersHorizontal,
-    X,
-} from 'lucide-react';
-import { useState } from 'react';
+import { Columns3, Package, Search, SlidersHorizontal, X } from 'lucide-react';
+import React, { useState } from 'react';
 import type { FormEvent } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -37,72 +31,59 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { hasActiveProductFilters } from '@/lib/admin-products-query';
+import { hasActiveCategoryFilters } from '@/lib/admin-categories-query';
 import type {
+    AdminCategoriesQueryState,
+    AdminCategoryRow,
     AdminFilterOption,
-    AdminProductRow,
-    AdminProductsQueryState,
     AdminTranslations,
 } from '@/types/admin';
 
-export type AdminProductsToolbarProps = {
+export type AdminCategoriesToolbarProps = {
     adminUi: AdminTranslations;
-    categoriesUrl?: string;
     filterOptions: {
-        services: AdminFilterOption[];
-        authorities: AdminFilterOption[];
         sources: AdminFilterOption[];
         visibilities: AdminFilterOption[];
-        archived: AdminFilterOption[];
     };
-    filters: AdminProductsQueryState;
+    filters: AdminCategoriesQueryState;
     isNavigating: boolean;
-    onFilterChange: (filters: Partial<AdminProductsQueryState>) => void;
+    onFilterChange: (filters: Partial<AdminCategoriesQueryState>) => void;
     onResetFilters: () => void;
-    table: Table<AdminProductRow>;
+    productsUrl?: string;
+    table: Table<AdminCategoryRow>;
 };
 
-export default function AdminProductsToolbar({
+export default function AdminCategoriesToolbar({
     adminUi,
-    categoriesUrl,
     filterOptions,
     filters,
     isNavigating,
     onFilterChange,
     onResetFilters,
+    productsUrl,
     table,
-}: AdminProductsToolbarProps) {
-    const copy = adminUi.products;
+}: AdminCategoriesToolbarProps) {
+    const copy = adminUi.categories;
     const [search, setSearch] = useState(filters.search ?? '');
     const [sheetOpen, setSheetOpen] = useState(false);
     const [draftFilters, setDraftFilters] = useState<{
-        service_type?: string | null;
-        authority?: 'manual' | 'automation' | null;
         source?: string | null;
-        visibility?: 'visible' | 'hidden' | null;
-        archived?: 'active' | 'archived' | null;
+        visibility?: 'visible' | 'admin_hidden' | 'automation_hidden' | null;
     }>({
-        archived: filters.archived,
-        authority: filters.authority,
-        service_type: filters.service_type,
         source: filters.source,
         visibility: filters.visibility,
     });
 
     const columnLabels: Record<string, string> = {
         actions: copy.actions,
-        authority: copy.authority,
         createdAt: copy.createdAt,
-        isVisible: copy.visibility,
-        name: copy.product,
-        product: copy.product,
-        service: copy.service,
-        serviceType: copy.service,
+        name: copy.name,
+        productsCount: copy.products,
         sortOrder: copy.sortOrder,
         source: copy.source,
         updatedAt: copy.updatedAt,
-        variantsCount: copy.variantsCount,
-        visibility: copy.visibility,
+        visibility: copy.status,
+        visibleProductsCount: copy.visibleProducts,
     };
 
     const submitSearch = (event: FormEvent) => {
@@ -117,9 +98,6 @@ export default function AdminProductsToolbar({
 
     const handleOpenSheet = () => {
         setDraftFilters({
-            archived: filters.archived,
-            authority: filters.authority,
-            service_type: filters.service_type,
             source: filters.source,
             visibility: filters.visibility,
         });
@@ -128,13 +106,8 @@ export default function AdminProductsToolbar({
 
     const handleApplySheet = () => {
         const hasChanges =
-            (draftFilters.service_type ?? null) !==
-                (filters.service_type ?? null) ||
-            (draftFilters.authority ?? null) !== (filters.authority ?? null) ||
             (draftFilters.source ?? null) !== (filters.source ?? null) ||
-            (draftFilters.visibility ?? null) !==
-                (filters.visibility ?? null) ||
-            (draftFilters.archived ?? null) !== (filters.archived ?? null);
+            (draftFilters.visibility ?? null) !== (filters.visibility ?? null);
 
         if (hasChanges) {
             onFilterChange(draftFilters);
@@ -148,15 +121,9 @@ export default function AdminProductsToolbar({
         setSheetOpen(false);
     };
 
-    const activeFilterCount = [
-        filters.service_type,
-        filters.authority,
-        filters.source,
-        filters.visibility,
-        filters.archived && filters.archived !== 'active'
-            ? filters.archived
-            : null,
-    ].filter((val) => val !== null && val !== undefined && val !== '').length;
+    const activeFilterCount = [filters.visibility, filters.source].filter(
+        (val) => val !== null && val !== undefined && val !== '',
+    ).length;
 
     const activeChips: Array<{
         key: string;
@@ -168,45 +135,9 @@ export default function AdminProductsToolbar({
     if (filters.search && filters.search.trim() !== '') {
         activeChips.push({
             key: 'search',
-            label: `Search: "${filters.search.trim()}"`,
+            label: `${copy.searchButton}: "${filters.search.trim()}"`,
             name: 'search',
             onClear: clearSearch,
-        });
-    }
-
-    if (filters.service_type) {
-        const option = filterOptions.services.find(
-            (o) => o.value === filters.service_type,
-        );
-        activeChips.push({
-            key: 'service_type',
-            label: `Service: ${option?.label ?? filters.service_type}`,
-            name: 'service',
-            onClear: () => onFilterChange({ service_type: null }),
-        });
-    }
-
-    if (filters.authority) {
-        const option = filterOptions.authorities.find(
-            (o) => o.value === filters.authority,
-        );
-        activeChips.push({
-            key: 'authority',
-            label: `Authority: ${option?.label ?? filters.authority}`,
-            name: 'authority',
-            onClear: () => onFilterChange({ authority: null }),
-        });
-    }
-
-    if (filters.source) {
-        const option = filterOptions.sources.find(
-            (o) => o.value === filters.source,
-        );
-        activeChips.push({
-            key: 'source',
-            label: `Source: ${option?.label ?? filters.source}`,
-            name: 'source',
-            onClear: () => onFilterChange({ source: null }),
         });
     }
 
@@ -216,21 +147,21 @@ export default function AdminProductsToolbar({
         );
         activeChips.push({
             key: 'visibility',
-            label: `Visibility: ${option?.label ?? filters.visibility}`,
+            label: `${copy.status}: ${option?.label ?? filters.visibility}`,
             name: 'visibility',
             onClear: () => onFilterChange({ visibility: null }),
         });
     }
 
-    if (filters.archived && filters.archived !== 'active') {
-        const option = filterOptions.archived.find(
-            (o) => o.value === filters.archived,
+    if (filters.source) {
+        const option = filterOptions.sources.find(
+            (o) => o.value === filters.source,
         );
         activeChips.push({
-            key: 'archived',
-            label: `Archived: ${option?.label ?? filters.archived}`,
-            name: 'archived',
-            onClear: () => onFilterChange({ archived: null }),
+            key: 'source',
+            label: `${copy.source}: ${option?.label ?? filters.source}`,
+            name: 'source',
+            onClear: () => onFilterChange({ source: null }),
         });
     }
 
@@ -280,48 +211,40 @@ export default function AdminProductsToolbar({
 
                 <div className="hidden md:flex md:items-center md:gap-2">
                     <FilterSelect
-                        allLabel={copy.allServices}
-                        disabled={isNavigating}
-                        label={copy.filterService}
-                        onChange={(service_type) =>
-                            onFilterChange({ service_type })
-                        }
-                        options={filterOptions.services}
-                        value={filters.service_type}
-                    />
-                    <FilterSelect
                         allLabel={copy.allVisibilities}
                         disabled={isNavigating}
                         label={copy.filterVisibility}
                         onChange={(visibility) =>
                             onFilterChange({
                                 visibility:
-                                    (visibility as 'visible' | 'hidden') ||
-                                    null,
+                                    (visibility as
+                                        | 'visible'
+                                        | 'admin_hidden'
+                                        | 'automation_hidden') || null,
                             })
                         }
                         options={filterOptions.visibilities}
                         value={filters.visibility}
                     />
+                    <FilterSelect
+                        allLabel={copy.allSources}
+                        disabled={isNavigating}
+                        label={copy.filterSource}
+                        onChange={(source) => onFilterChange({ source })}
+                        options={filterOptions.sources}
+                        value={filters.source}
+                    />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 md:flex md:items-center">
-                    {categoriesUrl ? (
+                    {productsUrl ? (
                         <Link
-                            aria-label={
-                                copy.manageCategories ??
-                                copy.categories ??
-                                'Categories'
-                            }
+                            aria-label={copy.backToProducts}
                             className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring md:text-xs"
-                            href={categoriesUrl}
+                            href={productsUrl}
                         >
-                            <FolderTree aria-hidden="true" className="size-4" />
-                            <span>
-                                {copy.manageCategories ??
-                                    copy.categories ??
-                                    'Categories'}
-                            </span>
+                            <Package aria-hidden="true" className="size-4" />
+                            <span>{copy.backToProducts}</span>
                         </Link>
                     ) : null}
 
@@ -398,28 +321,10 @@ export default function AdminProductsToolbar({
                     <SheetHeader>
                         <SheetTitle>{copy.filters}</SheetTitle>
                         <SheetDescription className="sr-only">
-                            Filter catalog products
+                            {copy.filterVisibility}
                         </SheetDescription>
                     </SheetHeader>
                     <div className="grid grid-cols-1 gap-3 p-4 pt-2 sm:grid-cols-2">
-                        <div className="flex flex-col gap-1.5 md:hidden">
-                            <span className="text-xs font-medium text-muted-foreground">
-                                {copy.filterService}
-                            </span>
-                            <FilterSelect
-                                allLabel={copy.allServices}
-                                disabled={isNavigating}
-                                label={copy.filterService}
-                                onChange={(service_type) =>
-                                    setDraftFilters((prev) => ({
-                                        ...prev,
-                                        service_type,
-                                    }))
-                                }
-                                options={filterOptions.services}
-                                value={draftFilters.service_type}
-                            />
-                        </div>
                         <div className="flex flex-col gap-1.5 md:hidden">
                             <span className="text-xs font-medium text-muted-foreground">
                                 {copy.filterVisibility}
@@ -433,35 +338,16 @@ export default function AdminProductsToolbar({
                                         ...prev,
                                         visibility:
                                             (visibility as
-                                                'visible' | 'hidden') || null,
+                                                | 'visible'
+                                                | 'admin_hidden'
+                                                | 'automation_hidden') || null,
                                     }))
                                 }
                                 options={filterOptions.visibilities}
                                 value={draftFilters.visibility}
                             />
                         </div>
-                        <div className="flex flex-col gap-1.5">
-                            <span className="text-xs font-medium text-muted-foreground">
-                                {copy.filterAuthority}
-                            </span>
-                            <FilterSelect
-                                allLabel={copy.allAuthorities}
-                                disabled={isNavigating}
-                                label={copy.filterAuthority}
-                                onChange={(authority) =>
-                                    setDraftFilters((prev) => ({
-                                        ...prev,
-                                        authority:
-                                            (authority as
-                                                'manual' | 'automation') ||
-                                            null,
-                                    }))
-                                }
-                                options={filterOptions.authorities}
-                                value={draftFilters.authority}
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1.5">
+                        <div className="flex flex-col gap-1.5 md:hidden">
                             <span className="text-xs font-medium text-muted-foreground">
                                 {copy.filterSource}
                             </span>
@@ -477,26 +363,6 @@ export default function AdminProductsToolbar({
                                 }
                                 options={filterOptions.sources}
                                 value={draftFilters.source}
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                            <span className="text-xs font-medium text-muted-foreground">
-                                {copy.filterArchived}
-                            </span>
-                            <FilterSelect
-                                allLabel={copy.allArchived}
-                                disabled={isNavigating}
-                                label={copy.filterArchived}
-                                onChange={(archived) =>
-                                    setDraftFilters((prev) => ({
-                                        ...prev,
-                                        archived:
-                                            (archived as
-                                                'active' | 'archived') || null,
-                                    }))
-                                }
-                                options={filterOptions.archived}
-                                value={draftFilters.archived}
                             />
                         </div>
                     </div>
@@ -522,13 +388,13 @@ export default function AdminProductsToolbar({
                 </SheetContent>
             </Sheet>
 
-            {hasActiveProductFilters(filters) && activeChips.length > 0 ? (
+            {hasActiveCategoryFilters(filters) && activeChips.length > 0 ? (
                 <div
                     aria-label={copy.activeFilters}
                     className="flex items-center gap-1.5 overflow-x-auto pt-1 text-xs md:flex-wrap"
                 >
                     <span className="shrink-0 font-medium text-muted-foreground">
-                        Active filters:
+                        {copy.activeFilters}:
                     </span>
                     {activeChips.map((chip) => (
                         <span

@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\CategoriesController;
+use App\Http\Controllers\Admin\CategoryVisibilityController;
 use App\Http\Controllers\Admin\ConversationDetailController;
 use App\Http\Controllers\Admin\ConversationsController;
 use App\Http\Controllers\Admin\CouponsController;
@@ -237,6 +239,22 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $variantPrice->defaults('locale', $locale);
+                }
+
+                $categories = Route::get('/categories', CategoriesController::class)
+                    ->middleware('can:catalog.view')
+                    ->name('categories');
+
+                if ($locale !== null) {
+                    $categories->defaults('locale', $locale);
+                }
+
+                $categoryVisibility = Route::post('/api/categories/{publicId}/visibility', CategoryVisibilityController::class)
+                    ->middleware(['password.confirm', 'can:catalog.manage'])
+                    ->name('categories.visibility.store');
+
+                if ($locale !== null) {
+                    $categoryVisibility->defaults('locale', $locale);
                 }
 
                 $teamRole = Route::post('/api/team/{publicId}/role', TeamRoleController::class)
