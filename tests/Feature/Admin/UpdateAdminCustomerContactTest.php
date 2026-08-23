@@ -21,7 +21,7 @@ test('guests and nonprivileged accounts cannot update customer contact details',
         'last_name' => 'NewLast',
         'email' => 'new.email@example.test',
         'phone' => '+966500000002',
-        'expected_updated_at' => $customer->updated_at->toIso8601String(),
+        'expected' => currentContactOf($customer),
     ])->assertUnauthorized();
 
     foreach ([UserRole::Customer, UserRole::ServiceAccount] as $role) {
@@ -32,7 +32,7 @@ test('guests and nonprivileged accounts cannot update customer contact details',
                 'last_name' => 'NewLast',
                 'email' => 'new.email@example.test',
                 'phone' => '+966500000002',
-                'expected_updated_at' => $customer->updated_at->toIso8601String(),
+                'expected' => currentContactOf($customer),
             ])
             ->assertForbidden();
     }
@@ -49,7 +49,7 @@ test('staff actors and inactive admin actors are forbidden from updating custome
             'last_name' => 'NewLast',
             'email' => 'new.email@example.test',
             'phone' => '+966500000002',
-            'expected_updated_at' => $customer->updated_at->toIso8601String(),
+            'expected' => currentContactOf($customer),
         ])
         ->assertForbidden();
 
@@ -63,7 +63,7 @@ test('staff actors and inactive admin actors are forbidden from updating custome
             'last_name' => 'NewLast',
             'email' => 'new.email@example.test',
             'phone' => '+966500000002',
-            'expected_updated_at' => $customer->updated_at->toIso8601String(),
+            'expected' => currentContactOf($customer),
         ])
         ->assertForbidden();
 });
@@ -78,7 +78,7 @@ test('admin actor without password confirmation receives 423', function (): void
             'last_name' => 'NewLast',
             'email' => 'new.email@example.test',
             'phone' => '+966500000002',
-            'expected_updated_at' => $customer->updated_at->toIso8601String(),
+            'expected' => currentContactOf($customer),
         ])
         ->assertStatus(423);
 });
@@ -94,7 +94,7 @@ test('confirmed admin can update name, email, and phone successfully', function 
             'last_name' => 'UpdatedLast',
             'email' => 'updated.email@example.test',
             'phone' => '+966501112233',
-            'expected_updated_at' => $customer->updated_at->toIso8601String(),
+            'expected' => currentContactOf($customer),
         ]);
 
     $response->assertOk()
@@ -142,7 +142,7 @@ test('email_verified_at and phone_verified_at are unchanged after edit and sessi
             'last_name' => $customer->last_name,
             'email' => 'new.verified.email@example.test',
             'phone' => '+966509998877',
-            'expected_updated_at' => $customer->updated_at->toIso8601String(),
+            'expected' => currentContactOf($customer),
         ]);
 
     $response->assertOk();
@@ -167,7 +167,7 @@ test('phone can be set to null', function (): void {
             'last_name' => $customer->last_name,
             'email' => $customer->email,
             'phone' => null,
-            'expected_updated_at' => $customer->updated_at->toIso8601String(),
+            'expected' => currentContactOf($customer),
         ]);
 
     $response->assertOk()
@@ -177,7 +177,34 @@ test('phone can be set to null', function (): void {
             ],
         ]);
 
-    expect($customer->fresh()->phone)->toBeNull();
+    $refreshed = $customer->fresh();
+
+    // Clearing the number clears its verification stamp: a verified-at for a
+    // phone that no longer exists is a claim about nothing. The email stamp is
+    // untouched.
+    expect($refreshed->phone)->toBeNull()
+        ->and($refreshed->phone_verified_at)->toBeNull()
+        ->and($refreshed->email_verified_at)->not->toBeNull();
+});
+
+test('replacing a phone keeps its verification stamp', function (): void {
+    $admin = createContactTestAdmin(UserRole::Admin);
+    $customer = createContactTestCustomer();
+    $originalPhoneVerifiedAt = $customer->phone_verified_at;
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
+            'first_name' => $customer->first_name,
+            'last_name' => $customer->last_name,
+            'email' => $customer->email,
+            'phone' => '+966509876543',
+            'expected' => currentContactOf($customer),
+        ])
+        ->assertOk();
+
+    expect($customer->fresh()->phone_verified_at?->timestamp)
+        ->toBe($originalPhoneVerifiedAt?->timestamp);
 });
 
 test('duplicate email belonging to another user is rejected with 422', function (): void {
@@ -192,7 +219,7 @@ test('duplicate email belonging to another user is rejected with 422', function 
             'last_name' => $customer1->last_name,
             'email' => $customer2->email,
             'phone' => $customer1->phone,
-            'expected_updated_at' => $customer1->updated_at->toIso8601String(),
+            'expected' => currentContactOf($customer1),
         ])
         ->assertStatus(422)
         ->assertJsonValidationErrors('email');
@@ -210,7 +237,7 @@ test('duplicate phone belonging to another user is rejected with 422', function 
             'last_name' => $customer1->last_name,
             'email' => $customer1->email,
             'phone' => $customer2->phone,
-            'expected_updated_at' => $customer1->updated_at->toIso8601String(),
+            'expected' => currentContactOf($customer1),
         ])
         ->assertStatus(422)
         ->assertJsonValidationErrors('phone');
@@ -228,26 +255,33 @@ test('an admin cannot edit another admin or their own account through the route'
                 'last_name' => 'NewLast',
                 'email' => 'route.target@example.test',
                 'phone' => '+966500000123',
-                'expected_updated_at' => $target->updated_at->utc()->toIso8601String(),
+                'expected' => currentContactOf($target),
             ])
             ->assertForbidden();
     }
 });
 
-test('a nonempty but unparseable expected_updated_at is a conflict, not a validation error', function (): void {
+test('an edit whose expectation matches is accepted even when the row was touched in the same second', function (): void {
     $admin = createContactTestAdmin(UserRole::Admin);
     $customer = createContactTestCustomer();
+    $expected = currentContactOf($customer);
+
+    // A same-second unrelated write is exactly what a timestamp token could not
+    // distinguish from a stale read.
+    $customer->forceFill(['preferred_locale' => 'en'])->save();
 
     $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
-            'first_name' => $customer->first_name,
+            'first_name' => 'NewFirst',
             'last_name' => $customer->last_name,
             'email' => $customer->email,
             'phone' => $customer->phone,
-            'expected_updated_at' => 'not-a-timestamp',
+            'expected' => $expected,
         ])
-        ->assertStatus(409);
+        ->assertOk();
+
+    expect($customer->fresh()->first_name)->toBe('NewFirst');
 });
 
 test('an email differing only by case is still rejected as a duplicate', function (): void {
@@ -262,7 +296,7 @@ test('an email differing only by case is still rejected as a duplicate', functio
             'last_name' => $customer1->last_name,
             'email' => strtoupper($customer2->email),
             'phone' => $customer1->phone,
-            'expected_updated_at' => $customer1->updated_at->utc()->toIso8601String(),
+            'expected' => currentContactOf($customer1),
         ])
         ->assertStatus(422)
         ->assertJsonValidationErrors('email');
@@ -279,32 +313,39 @@ test('an edited email is stored lowercased', function (): void {
             'last_name' => $customer->last_name,
             'email' => '  MiXeD.Case@Example.Test  ',
             'phone' => $customer->phone,
-            'expected_updated_at' => $customer->updated_at->utc()->toIso8601String(),
+            'expected' => currentContactOf($customer),
         ])
         ->assertOk();
 
     expect($customer->fresh()->email)->toBe('mixed.case@example.test');
 });
 
-test('stale expected_updated_at throws AdminCustomerContactConflict with 409 response', function (): void {
+test('an expectation that no longer matches the row is a 409 carrying the live values', function (): void {
     $admin = createContactTestAdmin(UserRole::Admin);
     $customer = createContactTestCustomer();
+
+    $stale = currentContactOf($customer);
+    $customer->forceFill(['email' => 'moved.by.someone.else@example.test'])->save();
 
     $response = $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
             'first_name' => 'NewName',
             'last_name' => $customer->last_name,
-            'email' => $customer->email,
+            'email' => $stale['email'],
             'phone' => $customer->phone,
-            'expected_updated_at' => '2020-01-01T00:00:00Z',
+            'expected' => $stale,
         ]);
 
     $response->assertStatus(409)
         ->assertJson([
             'customer' => (string) $customer->public_id,
-            'updatedAt' => $customer->updated_at->toIso8601String(),
+            'current' => [
+                'email' => 'moved.by.someone.else@example.test',
+            ],
         ]);
+
+    expect($customer->fresh()->first_name)->toBe('OriginalFirst');
 });
 
 test('staff audit record with action customers.contact_updated names only changed fields', function (): void {
@@ -321,7 +362,7 @@ test('staff audit record with action customers.contact_updated names only change
             'last_name' => $customer->last_name,
             'email' => $newEmail,
             'phone' => $customer->phone,
-            'expected_updated_at' => $customer->updated_at->toIso8601String(),
+            'expected' => currentContactOf($customer),
         ]);
 
     $response->assertOk();
@@ -355,7 +396,7 @@ test('no audit record is written when nothing changed', function (): void {
             'last_name' => $customer->last_name,
             'email' => $customer->email,
             'phone' => $customer->phone,
-            'expected_updated_at' => $customer->updated_at->toIso8601String(),
+            'expected' => currentContactOf($customer),
         ]);
 
     $response->assertOk();
@@ -375,7 +416,7 @@ test('contact request rejects unknown fields and invalid parameters', function (
         'last_name' => 'ValidLast',
         'email' => 'valid.contact@example.test',
         'phone' => '+966501234567',
-        'expected_updated_at' => $customer->updated_at->toIso8601String(),
+        'expected' => currentContactOf($customer),
     ];
 
     $merged = array_merge($basePayload, $payload);
@@ -406,9 +447,9 @@ test('contact request rejects unknown fields and invalid parameters', function (
         ['last_name' => ''],
         'last_name',
     ],
-    'missing expected_updated_at' => [
-        ['expected_updated_at' => ''],
-        'expected_updated_at',
+    'missing expectation' => [
+        ['expected' => ''],
+        'expected',
     ],
 ]);
 
@@ -423,7 +464,7 @@ test('cannot update contact details of non-customer accounts', function (): void
         lastName: 'NewLast',
         email: 'new.staff@example.test',
         phone: null,
-        expectedUpdatedAt: $staff->updated_at->toIso8601String(),
+        expected: currentContactOf($staff),
     ))->toThrow(AuthorizationException::class);
 });
 
@@ -457,4 +498,17 @@ function createContactTestAdmin(UserRole $role): User
     ])->save();
 
     return $actor;
+}
+
+/**
+ * @return array{first_name: string, last_name: string, email: string, phone: string|null}
+ */
+function currentContactOf(User $user): array
+{
+    return [
+        'first_name' => (string) $user->first_name,
+        'last_name' => (string) $user->last_name,
+        'email' => (string) $user->email,
+        'phone' => $user->phone,
+    ];
 }
