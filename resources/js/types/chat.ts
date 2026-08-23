@@ -67,6 +67,15 @@ export type ChatGroupedCluster = {
     lastMessageAt: string;
 };
 
+export type ChatServicePrice = {
+    amountMinor: number;
+    currency: string;
+    unit: string;
+};
+
+export type ChatServicePrices = Record<string, ChatServicePrice>;
+
 export type ChatSharedProps = {
     enabled: boolean;
+    servicePrices?: ChatServicePrices;
 };

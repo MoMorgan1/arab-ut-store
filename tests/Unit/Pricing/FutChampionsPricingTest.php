@@ -54,3 +54,25 @@ it('rejects FUT Champions ranks outside the supported range', function (int $ran
     FutChampionsPricing::fromConfiguration(approvedFutChampionsPricing())
         ->priceForRank($rank, false);
 })->with([0, 7])->throws(DomainException::class);
+
+it('returns the cheapest non-urgent rank price in halalah', function () {
+    $pricing = FutChampionsPricing::fromConfiguration(approvedFutChampionsPricing());
+
+    expect($pricing->cheapestRankHalalah())->toBe(10_000);
+});
+
+it('ignores the urgent surcharge when determining the cheapest rank price', function () {
+    $pricing = FutChampionsPricing::fromConfiguration(approvedFutChampionsPricing([
+        'ranks' => [
+            1 => 30_000,
+            2 => 25_000,
+            3 => 20_000,
+            4 => 15_000,
+            5 => 12_000,
+            6 => 9_500,
+        ],
+        'urgent_surcharge_halalah' => 50_000,
+    ]));
+
+    expect($pricing->cheapestRankHalalah())->toBe(9_500);
+});

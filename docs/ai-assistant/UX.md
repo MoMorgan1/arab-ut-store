@@ -40,6 +40,15 @@ capping it at two cards and refusing any link that is not a same-origin
 storefront path. Support and policy answers get no card: a card is an invitation
 to buy, not decoration on a warranty explanation.
 
+Cards show a live starting price when one is available: coins as a per-100k
+rate (the cheaper of console-normal and PC), and SBC, Rivals, and FUT Champions
+as their cheapest orderable option. The price is never stored on the message —
+chat history is permanent, so a stored price would still be displayed months
+later when it is wrong. `BuildServicePriceLabels` computes it per render behind
+a 60-second cache, ships it in the Inertia shared props, and the card looks it
+up by id. Each service is computed independently: if one price is missing or
+malformed, that card simply shows no price.
+
 The launcher initializes chat lazily. One owner has one open conversation.
 Hourly maintenance closes it after 24 hours without a message. A later open
 request reuses only an inactivity-closed conversation inside the seven-day

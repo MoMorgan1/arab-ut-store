@@ -10,7 +10,12 @@ final readonly class RivalsPricing
 
     private const STEPS = ['7:6', '6:5', '5:4', '4:3', '3:2', '2:1', '1:elite'];
 
-    /** @param array<string, int> $stepPricesHalalah */
+    /**
+     * fromConfiguration() rejects any configuration that does not declare every
+     * ladder step exactly once, so the map is never empty here.
+     *
+     * @param  non-empty-array<string, int>  $stepPricesHalalah
+     */
     private function __construct(private array $stepPricesHalalah) {}
 
     /** @param array<string, mixed> $configuration */
@@ -79,6 +84,11 @@ final readonly class RivalsPricing
     public function availableTargets(string $from): array
     {
         return array_slice(self::LADDER, self::divisionIndex($from) + 1);
+    }
+
+    public function cheapestStepHalalah(): int
+    {
+        return min($this->stepPricesHalalah);
     }
 
     private static function divisionIndex(string $division): int

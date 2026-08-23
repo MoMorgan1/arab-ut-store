@@ -8,7 +8,12 @@ final readonly class FutChampionsPricing
 {
     private const RANKS = [1, 2, 3, 4, 5, 6];
 
-    /** @param array<int, int> $rankPricesHalalah */
+    /**
+     * fromConfiguration() rejects any configuration that does not declare every
+     * rank exactly once, so the map is never empty here.
+     *
+     * @param  non-empty-array<int, int>  $rankPricesHalalah
+     */
     private function __construct(
         private array $rankPricesHalalah,
         private int $urgentSurchargeHalalah,
@@ -76,6 +81,11 @@ final readonly class FutChampionsPricing
     public function urgentSurcharge(): int
     {
         return $this->urgentSurchargeHalalah;
+    }
+
+    public function cheapestRankHalalah(): int
+    {
+        return min($this->rankPricesHalalah);
     }
 
     private static function positiveInteger(mixed $value, string $field): int

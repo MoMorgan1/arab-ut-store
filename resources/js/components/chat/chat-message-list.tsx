@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { chatServiceCards } from '@/lib/chat-cards';
 import { groupChatMessages } from '@/lib/chat-grouping';
 import { chatTopicsFor } from '@/lib/chat-topics';
-import type { AgentTurnState, ChatMessage } from '@/types/chat';
+import type {
+    AgentTurnState,
+    ChatMessage,
+    ChatServicePrices,
+} from '@/types/chat';
 import { ChatServiceCards } from './chat-service-cards';
 import { StreamedText } from './streamed-text';
 import { TypingIndicator } from './typing-indicator';
@@ -12,6 +16,7 @@ import { TypingIndicator } from './typing-indicator';
 type ChatMessageListProps = {
     disabled?: boolean;
     messages: ChatMessage[];
+    servicePrices?: ChatServicePrices;
     isLoading: boolean;
     isAssistantTyping: boolean;
     hasMore: boolean;
@@ -28,6 +33,7 @@ type ChatMessageListProps = {
 export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     disabled = false,
     messages,
+    servicePrices = {},
     isLoading,
     isAssistantTyping,
     hasMore,
@@ -326,6 +332,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                 cards={chatServiceCards(
                                                     message,
                                                 )}
+                                                servicePrices={servicePrices}
                                                 locale={locale}
                                                 onNavigate={onCardNavigate}
                                             />

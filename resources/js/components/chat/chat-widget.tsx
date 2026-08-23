@@ -5,7 +5,7 @@ import {
     playChatNotification,
     setChatSoundEnabled,
 } from '@/lib/chat-sound';
-import type { ChatSurface } from '@/types/chat';
+import type { ChatServicePrices, ChatSurface } from '@/types/chat';
 import { ChatComposer } from './chat-composer';
 import { ChatHeader } from './chat-header';
 import { ChatHome } from './chat-home';
@@ -16,6 +16,7 @@ export type ChatWidgetView = 'home' | 'chat';
 
 export type ChatWidgetProps = {
     enabled?: boolean;
+    servicePrices?: ChatServicePrices;
     locale?: string;
     surface?: ChatSurface;
     /** Which view the widget shows when opened. Defaults to the Home screen. */
@@ -80,6 +81,7 @@ function matchesMobileDialog(surface: ChatSurface): boolean {
 
 export const ChatWidget: React.FC<ChatWidgetProps> = ({
     enabled,
+    servicePrices = {},
     locale = 'ar',
     surface = 'store',
     initialView = 'home',
@@ -672,6 +674,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                                 key={conversation?.publicId ?? 'chat-pending'}
                                 disabled={isRestarting}
                                 messages={messages}
+                                servicePrices={servicePrices}
                                 isLoading={isLoading}
                                 isAssistantTyping={isAssistantTyping}
                                 hasMore={hasMore}

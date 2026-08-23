@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Actions\AI\BuildServicePriceLabels;
 use App\Actions\Cart\ResolveCartOwner;
 use App\Models\Cart;
 use Illuminate\Http\Request;
@@ -9,7 +10,10 @@ use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
-    public function __construct(private readonly ResolveCartOwner $resolveCartOwner) {}
+    public function __construct(
+        private readonly ResolveCartOwner $resolveCartOwner,
+        private readonly BuildServicePriceLabels $buildServicePriceLabels,
+    ) {}
 
     /**
      * The root template that's loaded on the first page visit.
@@ -91,6 +95,11 @@ class HandleInertiaRequests extends Middleware
             ],
             'chat' => [
                 'enabled' => (bool) config('chat.enabled', false),
+                'servicePrices' => (bool) config('chat.enabled', false)
+                    ? $this->buildServicePriceLabels->execute(
+                        (string) ($request->session()->get('display_currency') ?? config('store.default_display_currency')),
+                    )
+                    : [],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

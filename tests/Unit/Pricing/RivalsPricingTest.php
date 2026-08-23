@@ -67,3 +67,25 @@ it('rejects unknown, equal, or lower Rivals routes', function (string $from, str
 it('rejects an unknown current division when listing targets', function () {
     RivalsPricing::fromConfiguration(approvedRivalsPricing())->availableTargets('bronze');
 })->throws(DomainException::class);
+
+it('returns the cheapest single ladder step in halalah', function () {
+    $pricing = RivalsPricing::fromConfiguration(approvedRivalsPricing());
+
+    expect($pricing->cheapestStepHalalah())->toBe(11_000);
+});
+
+it('returns the lowest step price regardless of ladder position', function () {
+    $pricing = RivalsPricing::fromConfiguration(approvedRivalsPricing([
+        'steps' => [
+            '7:6' => 25_000,
+            '6:5' => 20_000,
+            '5:4' => 9_000,
+            '4:3' => 18_000,
+            '3:2' => 16_000,
+            '2:1' => 14_000,
+            '1:elite' => 22_000,
+        ],
+    ]));
+
+    expect($pricing->cheapestStepHalalah())->toBe(9_000);
+});
