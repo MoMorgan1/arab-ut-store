@@ -4,6 +4,7 @@ namespace App\Admin\Presenters;
 
 use App\Enums\AdminPermission;
 use App\Models\User;
+use Illuminate\Support\Facades\Route;
 
 final class AdminShell
 {
@@ -54,39 +55,59 @@ final class AdminShell
             ];
         }
 
-        if ($actor->can(AdminPermission::MarketingView->value)) {
-            $navigation[] = [
-                'key' => 'marketing',
-                'label' => (string) trans('admin.navigation.marketing', locale: $locale),
-                'url' => route($prefix.'marketing.coupons', absolute: false),
-                'children' => [
-                    [
-                        'key' => 'marketingCoupons',
-                        'label' => (string) trans('admin.navigation.marketingCoupons', locale: $locale),
-                        'url' => route($prefix.'marketing.coupons', absolute: false),
-                    ],
-                    [
-                        'key' => 'marketingPromotions',
-                        'label' => (string) trans('admin.navigation.marketingPromotions', locale: $locale),
-                        'url' => route($prefix.'marketing.promotions', absolute: false),
-                    ],
-                ],
-            ];
-        }
-
+        $catalogChildren = [];
         if ($actor->can(AdminPermission::CatalogView->value)) {
-            $navigation[] = [
+            $catalogChildren[] = [
                 'key' => 'products',
                 'label' => (string) trans('admin.navigation.products', locale: $locale),
                 'url' => route($prefix.'products', absolute: false),
             ];
+            $catalogChildren[] = [
+                'key' => 'categories',
+                'label' => (string) trans('admin.navigation.categories', locale: $locale),
+                'url' => Route::has($prefix.'categories')
+                    ? route($prefix.'categories', absolute: false)
+                    : ($prefix === 'localized.admin.' ? '/en/admin/categories' : '/admin/categories'),
+            ];
+        }
+
+        if ($catalogChildren !== []) {
+            $navigation[] = [
+                'key' => 'catalog',
+                'label' => (string) trans('admin.navigation.catalog', locale: $locale),
+                'url' => $catalogChildren[0]['url'],
+                'children' => $catalogChildren,
+            ];
+        }
+
+        $marketingChildren = [];
+        if ($actor->can(AdminPermission::MarketingView->value)) {
+            $marketingChildren[] = [
+                'key' => 'marketingCoupons',
+                'label' => (string) trans('admin.navigation.marketingCoupons', locale: $locale),
+                'url' => route($prefix.'marketing.coupons', absolute: false),
+            ];
+            $marketingChildren[] = [
+                'key' => 'marketingPromotions',
+                'label' => (string) trans('admin.navigation.marketingPromotions', locale: $locale),
+                'url' => route($prefix.'marketing.promotions', absolute: false),
+            ];
         }
 
         if ($actor->can(AdminPermission::LoyaltyView->value)) {
-            $navigation[] = [
+            $marketingChildren[] = [
                 'key' => 'marketingLoyalty',
                 'label' => (string) trans('admin.navigation.marketingLoyalty', locale: $locale),
                 'url' => route($prefix.'marketing.loyalty', absolute: false),
+            ];
+        }
+
+        if ($marketingChildren !== []) {
+            $navigation[] = [
+                'key' => 'marketing',
+                'label' => (string) trans('admin.navigation.marketing', locale: $locale),
+                'url' => $marketingChildren[0]['url'],
+                'children' => $marketingChildren,
             ];
         }
 
@@ -94,6 +115,12 @@ final class AdminShell
             'key' => 'settings',
             'label' => (string) trans('admin.navigation.settings', locale: $locale),
             'url' => route($prefix.'settings', absolute: false),
+        ];
+
+        $navigation[] = [
+            'key' => 'more',
+            'label' => (string) trans('admin.navigation.more', locale: $locale),
+            'url' => route($prefix.'more', absolute: false),
         ];
 
         return [
@@ -111,5 +138,18 @@ final class AdminShell
             )),
             'logoutUrl' => route('logout', absolute: false),
         ];
+    }
+
+    /**
+     * @return array{
+     *     adminIdentity: array{name: string, role: string},
+     *     adminNavigation: list<array{key: string, label: string, url: string, children?: list<array{key: string, label: string, url: string}>}>,
+     *     permissions: list<string>,
+     *     logoutUrl: string
+     * }
+     */
+    public function compose(User $actor, string $locale): array
+    {
+        return $this->for($actor, $locale);
     }
 }

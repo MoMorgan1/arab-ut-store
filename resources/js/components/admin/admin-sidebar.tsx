@@ -1,6 +1,9 @@
 import { Link, router } from '@inertiajs/react';
 import {
     Award,
+    BadgePercent,
+    Ellipsis,
+    FolderTree,
     LayoutDashboard,
     LogOut,
     MessageSquare,
@@ -8,6 +11,7 @@ import {
     Package,
     Settings,
     ShoppingBag,
+    Ticket,
     Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -19,21 +23,26 @@ import type {
     AdminTranslations,
 } from '@/types/admin';
 
-const navigationIcons: Record<AdminNavigationItem['key'], LucideIcon> = {
+const navigationIcons: Record<string, LucideIcon> = {
     overview: LayoutDashboard,
     orders: ShoppingBag,
     customers: Users,
     conversations: MessageSquare,
-    marketing: Megaphone,
+    catalog: Package,
     products: Package,
+    categories: FolderTree,
+    marketing: Megaphone,
+    marketingCoupons: Ticket,
+    marketingPromotions: BadgePercent,
     marketingLoyalty: Award,
     settings: Settings,
+    more: Ellipsis,
 };
 
 export type AdminNavigationProps = {
     adminIdentity: AdminIdentity;
     adminUi: AdminTranslations;
-    current: AdminNavigationItem['key'] | AdminNavigationChild['key'];
+    current: AdminNavigationItem['key'] | AdminNavigationChild['key'] | string;
     direction: 'rtl' | 'ltr';
     logoutUrl: string;
     navigation: AdminNavigationItem[];
@@ -52,19 +61,63 @@ export function AdminNavigationList({
     navigation,
     onNavigate,
 }: NavigationListProps) {
+    // Filter out 'more' on desktop sidebar: desktop presents all 7 primary sections directly.
+    const items = navigation.filter((item) => item.key !== 'more');
+
     return (
         <nav aria-label={adminUi.brand} className="w-full">
             <ul className="flex flex-col gap-1">
-                {navigation.map((item) => {
-                    const Icon = navigationIcons[item.key];
-                    const childSelected =
-                        item.children?.some((child) => child.key === current) ??
-                        false;
-                    const selected = item.key === current || childSelected;
-                    const children =
-                        item.key === current || childSelected
-                            ? (item.children ?? [])
-                            : [];
+                {items.map((item) => {
+                    const Icon = navigationIcons[item.key] ?? Package;
+                    const hasChildren = (item.children?.length ?? 0) > 0;
+
+                    if (hasChildren && item.children) {
+                        return (
+                            <li className="flex flex-col gap-1" key={item.key}>
+                                <div className="flex min-h-[44px] items-center gap-3 px-3 py-2 text-sm font-semibold text-sidebar-foreground/80 select-none">
+                                    <Icon
+                                        aria-hidden="true"
+                                        className="h-[18px] w-[18px] shrink-0 text-sidebar-foreground/60"
+                                    />
+                                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                                        {item.label}
+                                    </span>
+                                </div>
+                                <ul
+                                    aria-label={item.label}
+                                    className="ms-6 flex flex-col gap-1 border-s border-sidebar-border ps-3"
+                                >
+                                    {item.children.map((child) => {
+                                        const isChildSelected =
+                                            child.key === current ||
+                                            (item.key === current &&
+                                                child.url === item.url);
+
+                                        return (
+                                            <li key={child.key}>
+                                                <Link
+                                                    aria-current={
+                                                        isChildSelected
+                                                            ? 'page'
+                                                            : undefined
+                                                    }
+                                                    className="flex min-h-[44px] items-center rounded-md px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-semibold aria-[current=page]:text-sidebar-accent-foreground"
+                                                    href={child.url}
+                                                    onClick={onNavigate}
+                                                >
+                                                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                                                        {child.label}
+                                                    </span>
+                                                </Link>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </li>
+                        );
+                    }
+
+                    const selected = item.key === current;
 
                     return (
                         <li key={item.key}>
@@ -82,31 +135,6 @@ export function AdminNavigationList({
                                     {item.label}
                                 </span>
                             </Link>
-                            {children.length > 0 ? (
-                                <ul
-                                    aria-label={item.label}
-                                    className="ms-6 mt-1 flex flex-col gap-1 border-s border-sidebar-border ps-3"
-                                >
-                                    {children.map((child) => (
-                                        <li key={child.key}>
-                                            <Link
-                                                aria-current={
-                                                    child.key === current
-                                                        ? 'page'
-                                                        : undefined
-                                                }
-                                                className="flex min-h-[44px] items-center rounded-md px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-semibold aria-[current=page]:text-sidebar-accent-foreground"
-                                                href={child.url}
-                                                onClick={onNavigate}
-                                            >
-                                                <span className="min-w-0 [overflow-wrap:anywhere]">
-                                                    {child.label}
-                                                </span>
-                                            </Link>
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : null}
                         </li>
                     );
                 })}

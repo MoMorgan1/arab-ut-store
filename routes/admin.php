@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\CustomerStatusController;
 use App\Http\Controllers\Admin\CustomerWalletAdjustController;
 use App\Http\Controllers\Admin\LoyaltyController;
 use App\Http\Controllers\Admin\LoyaltyTierController;
+use App\Http\Controllers\Admin\MoreController;
 use App\Http\Controllers\Admin\OrderDetailController;
 use App\Http\Controllers\Admin\OrderItemSecretRevealController;
 use App\Http\Controllers\Admin\OrdersController;
@@ -80,6 +81,12 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $route->defaults('locale', $locale);
+                }
+
+                $more = Route::get('/more', MoreController::class)->name('more');
+
+                if ($locale !== null) {
+                    $more->defaults('locale', $locale);
                 }
 
                 $orders = Route::get('/orders', OrdersController::class)

@@ -49,14 +49,31 @@ const navigation: AdminNavigationItem[] = [
         label: 'Settings',
         url: '/en/admin/settings',
     },
+    {
+        key: 'more',
+        label: 'More',
+        url: '/en/admin/more',
+    },
 ];
 
 const adminNavigationFiveTabs: AdminNavigationItem[] = [
     { key: 'overview', label: 'Overview', url: '/en/admin' },
     { key: 'orders', label: 'Orders', url: '/en/admin/orders' },
     { key: 'customers', label: 'Customers', url: '/en/admin/customers' },
-    { key: 'products', label: 'Products', url: '/en/admin/products' },
-    { key: 'settings', label: 'Settings', url: '/en/admin/settings' },
+    {
+        key: 'catalog',
+        label: 'Catalog',
+        url: '/en/admin/products',
+        children: [
+            { key: 'products', label: 'Products', url: '/en/admin/products' },
+            {
+                key: 'categories',
+                label: 'Categories',
+                url: '/en/admin/categories',
+            },
+        ],
+    },
+    { key: 'more', label: 'More', url: '/en/admin/more' },
 ];
 
 const adminUi = englishAdminUi;
@@ -88,6 +105,7 @@ describe('Admin shell', () => {
             />,
         );
 
+        // Sidebar filters out 'more' on desktop, so only overview, orders, settings are links.
         expect(screen.getAllByRole('link')).toHaveLength(3);
         expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute(
             'aria-current',
@@ -98,6 +116,86 @@ describe('Admin shell', () => {
             screen.getByRole('link', { name: 'Settings' }),
         ).not.toHaveAttribute('aria-current');
         expect(screen.queryByText(/customers|wallet|chat/i)).toBeNull();
+    });
+
+    it('renders group parents as labels and child links inline', () => {
+        const fullTree: AdminNavigationItem[] = [
+            { key: 'overview', label: 'Overview', url: '/en/admin' },
+            {
+                key: 'catalog',
+                label: 'Catalog',
+                url: '/en/admin/products',
+                children: [
+                    {
+                        key: 'products',
+                        label: 'Products',
+                        url: '/en/admin/products',
+                    },
+                    {
+                        key: 'categories',
+                        label: 'Categories',
+                        url: '/en/admin/categories',
+                    },
+                ],
+            },
+            {
+                key: 'marketing',
+                label: 'Marketing',
+                url: '/en/admin/marketing/coupons',
+                children: [
+                    {
+                        key: 'marketingCoupons',
+                        label: 'Coupons',
+                        url: '/en/admin/marketing/coupons',
+                    },
+                    {
+                        key: 'marketingPromotions',
+                        label: 'Promotions',
+                        url: '/en/admin/marketing/promotions',
+                    },
+                    {
+                        key: 'marketingLoyalty',
+                        label: 'Loyalty',
+                        url: '/en/admin/marketing/loyalty',
+                    },
+                ],
+            },
+            { key: 'settings', label: 'Settings', url: '/en/admin/settings' },
+            { key: 'more', label: 'More', url: '/en/admin/more' },
+        ];
+
+        render(
+            <AdminSidebar
+                adminIdentity={{ name: 'Operations Owner', role: 'admin' }}
+                adminUi={adminUi}
+                current="products"
+                direction="ltr"
+                logoutUrl="/logout"
+                navigation={fullTree}
+            />,
+        );
+
+        // Group labels exist as text but not as links
+        expect(screen.getByText('Catalog')).toBeVisible();
+        expect(screen.getByText('Marketing')).toBeVisible();
+        expect(screen.queryByRole('link', { name: 'Catalog' })).toBeNull();
+        expect(screen.queryByRole('link', { name: 'Marketing' })).toBeNull();
+
+        // Child links exist
+        expect(screen.getByRole('link', { name: 'Products' })).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+        expect(screen.getByRole('link', { name: 'Categories' })).toBeVisible();
+        expect(screen.getByRole('link', { name: 'Coupons' })).toBeVisible();
+        expect(screen.getByRole('link', { name: 'Promotions' })).toBeVisible();
+        expect(screen.getByRole('link', { name: 'Loyalty' })).toBeVisible();
+
+        // 'more' is not rendered in sidebar
+        expect(screen.queryByRole('link', { name: 'More' })).toBeNull();
+
+        // 7 total rendered links: overview + products + categories + coupons + promotions + loyalty + settings
+        expect(screen.getAllByRole('link')).toHaveLength(7);
     });
 
     it('keeps the actor identity visible and logout separate from navigation', () => {
@@ -215,7 +313,7 @@ describe('Admin shell', () => {
             within(tabbar).getByRole('link', { name: 'Products' }),
         ).toBeVisible();
         expect(
-            within(tabbar).getByRole('link', { name: 'Settings' }),
+            within(tabbar).getByRole('link', { name: 'More' }),
         ).toBeVisible();
     });
 
@@ -223,7 +321,7 @@ describe('Admin shell', () => {
         const staffNavigation: AdminNavigationItem[] = [
             { key: 'overview', label: 'Overview', url: '/en/admin' },
             { key: 'orders', label: 'Orders', url: '/en/admin/orders' },
-            { key: 'settings', label: 'Settings', url: '/en/admin/settings' },
+            { key: 'more', label: 'More', url: '/en/admin/more' },
         ];
 
         render(
@@ -252,7 +350,7 @@ describe('Admin shell', () => {
             within(tabbar).getByRole('link', { name: 'Orders' }),
         ).toBeVisible();
         expect(
-            within(tabbar).getByRole('link', { name: 'Settings' }),
+            within(tabbar).getByRole('link', { name: 'More' }),
         ).toBeVisible();
     });
 });
