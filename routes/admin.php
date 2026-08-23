@@ -9,7 +9,9 @@ use App\Http\Controllers\Admin\OrdersController;
 use App\Http\Controllers\Admin\OrderTransitionController;
 use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\Admin\PaylinkRefundController;
-use App\Http\Controllers\Admin\Security\AdminMfaController;
+use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\TeamRoleController;
+use App\Http\Controllers\Admin\TeamStatusController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureAdminMfa;
@@ -29,14 +31,22 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
     Route::prefix($prefix)
         ->name($name)
         ->middleware($adminMiddleware)
-        ->group(function () use ($locale): void {
+        ->group(function () use ($locale, $name): void {
             Route::middleware([EnsureAdminPassword::class, 'password.confirm'])
-                ->group(function () use ($locale): void {
-                    $route = Route::get('/security/mfa', [AdminMfaController::class, '__invoke'])
-                        ->name('security.mfa');
+                ->group(function () use ($locale, $name): void {
+                    $settings = Route::get('/settings', SettingsController::class)
+                        ->name('settings');
 
                     if ($locale !== null) {
-                        $route->defaults('locale', $locale);
+                        $settings->defaults('locale', $locale);
+                    }
+
+                    $mfa = Route::get('/security/mfa', function () use ($name) {
+                        return redirect()->route($name.'settings', status: 301);
+                    })->name('security.mfa');
+
+                    if ($locale !== null) {
+                        $mfa->defaults('locale', $locale);
                     }
                 });
 
@@ -108,6 +118,22 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $customerStatus->defaults('locale', $locale);
+                }
+
+                $teamRole = Route::post('/api/team/{publicId}/role', TeamRoleController::class)
+                    ->middleware(['password.confirm', 'can:staff.manage'])
+                    ->name('team.role.store');
+
+                if ($locale !== null) {
+                    $teamRole->defaults('locale', $locale);
+                }
+
+                $teamStatus = Route::post('/api/team/{publicId}/status', TeamStatusController::class)
+                    ->middleware(['password.confirm', 'can:staff.manage'])
+                    ->name('team.status.store');
+
+                if ($locale !== null) {
+                    $teamStatus->defaults('locale', $locale);
                 }
             });
         });

@@ -789,7 +789,7 @@ test('authenticated Admin overview and orders are operable across required width
                 dialog: 'Arab UT',
                 overview: 'Overview',
                 orders: 'Orders',
-                security: 'MFA Security',
+                settings: 'Settings',
                 range7: 'Last 7 days',
                 range30: 'Last 30 days',
             },
@@ -896,7 +896,7 @@ test('authenticated Admin overview and orders are operable across required width
                         dialog.getByRole('link', { name: locale.orders }),
                     );
                     await expectMinimumTouchTarget(
-                        dialog.getByRole('link', { name: locale.security }),
+                        dialog.getByRole('link', { name: locale.settings }),
                     );
                     await expectMinimumTouchTarget(
                         dialog.getByRole('button', {
@@ -946,6 +946,7 @@ test('authenticated Admin overview and orders are operable across required width
                         name: 'Arab UT quick navigation',
                     });
                     await expect(tabbar).toBeVisible();
+                    await expect(tabbar.getByRole('link')).toHaveCount(4);
                     await expectMinimumTouchTarget(
                         tabbar.getByRole('link', { name: locale.overview }),
                     );
@@ -953,7 +954,7 @@ test('authenticated Admin overview and orders are operable across required width
                         tabbar.getByRole('link', { name: locale.orders }),
                     );
                     await expectMinimumTouchTarget(
-                        tabbar.getByRole('link', { name: locale.security }),
+                        tabbar.getByRole('link', { name: locale.settings }),
                     );
                 } else {
                     await expect(

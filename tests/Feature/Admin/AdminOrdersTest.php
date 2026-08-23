@@ -80,7 +80,7 @@ test('unconfirmed MFA privileged users are redirected to MFA setup', function ()
     $admin = adminOrdersActor(UserRole::Admin);
     $admin->forceFill(['two_factor_confirmed_at' => null])->save();
 
-    $this->actingAs($admin)->get('/admin/orders')->assertRedirect('/admin/security/mfa');
+    $this->actingAs($admin)->get('/admin/orders')->assertRedirect('/admin/settings');
 });
 
 test('confirmed privileged actors can open localized private orders routes', function (
@@ -119,8 +119,8 @@ test('admin navigation URLs stay inside the matched route family', function (str
             ->where('adminNavigation.2.url', $expectedUrls[2])
             ->where('adminNavigation.3.url', $expectedUrls[3]));
 })->with([
-    'Canonical family' => ['/admin/orders', ['/admin', '/admin/orders', '/admin/customers', '/admin/security/mfa']],
-    'Localized family' => ['/en/admin/orders', ['/en/admin', '/en/admin/orders', '/en/admin/customers', '/en/admin/security/mfa']],
+    'Canonical family' => ['/admin/orders', ['/admin', '/admin/orders', '/admin/customers', '/admin/settings']],
+    'Localized family' => ['/en/admin/orders', ['/en/admin', '/en/admin/orders', '/en/admin/customers', '/en/admin/settings']],
 ]);
 
 test('the orders route requires EnsureAdminMfa and can:orders.view middleware', function (): void {

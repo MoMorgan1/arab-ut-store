@@ -45,9 +45,9 @@ const navigation: AdminNavigationItem[] = [
     { key: 'overview', label: 'Overview', url: '/en/admin' },
     { key: 'orders', label: 'Orders', url: '/en/admin/orders' },
     {
-        key: 'security',
-        label: 'MFA Security',
-        url: '/en/admin/security/mfa',
+        key: 'settings',
+        label: 'Settings',
+        url: '/en/admin/settings',
     },
 ];
 
@@ -87,7 +87,7 @@ describe('Admin shell', () => {
         );
         expect(screen.getByRole('link', { name: 'Orders' })).toBeVisible();
         expect(
-            screen.getByRole('link', { name: 'MFA Security' }),
+            screen.getByRole('link', { name: 'Settings' }),
         ).not.toHaveAttribute('aria-current');
         expect(screen.queryByText(/customers|wallet|chat/i)).toBeNull();
     });
@@ -100,7 +100,7 @@ describe('Admin shell', () => {
                     role: 'admin',
                 }}
                 adminUi={adminUi}
-                current="security"
+                current="settings"
                 direction="ltr"
                 logoutUrl="/logout"
                 navigation={navigation}

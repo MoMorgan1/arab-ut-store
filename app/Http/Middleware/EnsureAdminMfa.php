@@ -16,7 +16,7 @@ final class EnsureAdminMfa
         abort_unless($user instanceof User, 401);
 
         if (! $user->hasEnabledTwoFactorAuthentication()) {
-            return redirect()->to(route('admin.security.mfa', absolute: false));
+            return redirect()->to(route('admin.settings', absolute: false));
         }
 
         return $next($request);

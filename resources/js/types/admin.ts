@@ -26,7 +26,7 @@ export type AdminTranslations = {
         overview: string;
         orders: string;
         customers: string;
-        security: string;
+        settings: string;
         open: string;
         close: string;
         quick?: string;
@@ -406,10 +406,80 @@ export type AdminTranslations = {
         confirmingPassword: string;
         invalidPassword: string;
     };
+    settings: {
+        headTitle: string;
+        title: string;
+        description: string;
+        securitySection: string;
+        securityDescription: string;
+        teamSection: string;
+        teamDescription: string;
+        addStaffHint: string;
+        selfBadge: string;
+        columns: {
+            member: string;
+            name: string;
+            email: string;
+            role: string;
+            status: string;
+            mfa: string;
+            joined: string;
+            actions: string;
+        };
+        roles: {
+            admin: string;
+            staff: string;
+        };
+        status: {
+            active: string;
+            inactive: string;
+        };
+        mfa: {
+            confirmed: string;
+            pending: string;
+        };
+        actions: {
+            applyRole: string;
+            applyingRole: string;
+            changeRole: string;
+            deactivate: string;
+            deactivating: string;
+            reactivate: string;
+            reactivating: string;
+            roleSelectLabel: string;
+        };
+        roleDialog: {
+            title: string;
+            description: string;
+            confirm: string;
+            cancel: string;
+        };
+        deactivateDialog: {
+            title: string;
+            description: string;
+            confirm: string;
+            cancel: string;
+        };
+        reactivateDialog: {
+            title: string;
+            description: string;
+            confirm: string;
+            cancel: string;
+        };
+        messages: {
+            roleUpdated: string;
+            statusUpdated: string;
+            conflictError: string;
+            genericError: string;
+            networkError: string;
+            forbiddenError: string;
+            lastAdminError: string;
+        };
+    };
 };
 
 export type AdminNavigationItem = {
-    key: 'overview' | 'orders' | 'customers' | 'security';
+    key: 'overview' | 'orders' | 'customers' | 'settings';
     label: string;
     url: string;
 };
@@ -507,6 +577,40 @@ export type AdminMfaPageProps = {
         common: Pick<AdminTranslations['common'], 'cancel' | 'retry'>;
     };
     mfa: AdminMfaState;
+};
+
+export type AdminTeamMember = {
+    id: string;
+    name: string;
+    email: string;
+    role: 'admin' | 'staff';
+    isActive: boolean;
+    mfaConfirmed: boolean;
+    createdAt: string;
+};
+
+export type AdminTeamData = {
+    members: AdminTeamMember[];
+    currentUserId: string;
+};
+
+export type AdminTeamUrls = {
+    roleUrlTemplate: string;
+    statusUrlTemplate: string;
+};
+
+export type AdminSettingsPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    mfa: AdminMfaState;
+    team: AdminTeamData | null;
+    teamUrls: AdminTeamUrls | null;
+    confirmPasswordUrl?: string;
+    logoutUrl: string;
 };
 
 export type AdminOrderCustomer = {

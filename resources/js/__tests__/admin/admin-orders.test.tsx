@@ -55,9 +55,9 @@ function defaultProps(): AdminOrdersPageProps {
             { key: 'overview', label: 'Overview', url: '/admin' },
             { key: 'orders', label: 'Orders', url: '/admin/orders' },
             {
-                key: 'security',
-                label: 'MFA Security',
-                url: '/admin/security/mfa',
+                key: 'settings',
+                label: 'Settings',
+                url: '/admin/settings',
             },
         ],
         permissions: ['dashboard.view', 'orders.view'],
