@@ -12227,4 +12227,60 @@ html.admin-document {
             opacity: 1;
         }
     }
+
+    @keyframes chat-beacon-pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgb(212 168 67 / 60%);
+            opacity: 0.85;
+            transform: scale(1);
+        }
+
+        14% {
+            box-shadow: 0 0 0 14px rgb(212 168 67 / 0%);
+            opacity: 0;
+            transform: scale(1.18);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgb(212 168 67 / 0%);
+            opacity: 0;
+            transform: scale(1);
+        }
+    }
+
+    .chat-beacon-ring {
+        animation: chat-beacon-pulse 7s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    }
+
+    @keyframes chat-bubble-slide-in {
+        from {
+            opacity: 0;
+            transform: translateY(-50%) translateX(12px) scale(0.94);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0) scale(1);
+        }
+    }
+
+    .chat-greeting-bubble {
+        animation: chat-bubble-slide-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chat-beacon-ring {
+        display: none !important;
+        animation: none !important;
+    }
+
+    .chat-greeting-bubble {
+        animation: none !important;
+        transform: translateY(-50%) translateX(0) !important;
+    }
+}
+
+.chat-greeting-bubble:hover .chat-greeting-bubble__caret {
+    border-color: rgb(212 168 67 / 75%);
 }

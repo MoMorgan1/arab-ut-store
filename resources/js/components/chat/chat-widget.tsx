@@ -719,6 +719,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                                     // opened, so tapping a card steps aside.
                                     isMobileDialog ? closeChat : undefined
                                 }
+                                onChoose={sendMessage}
                             />
 
                             <ChatComposer

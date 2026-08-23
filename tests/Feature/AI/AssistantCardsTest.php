@@ -83,7 +83,7 @@ test('a fut champions question with rank and urgency preselects rank and urgent 
 test('each service question offers its own card', function () {
     expect(assistantCards('كم سعر تحديات SBC')[0]['url'])->toBe('/sbc')
         ->and(assistantCards('ابغى تصعيد رايفلز')[0]['url'])->toBe('/rivals')
-        ->and(assistantCards('ابغى فوت شامبيونز رانك 1')[0]['url'])->toBe('/fut-champions?rank=1&urgent=0');
+        ->and(assistantCards('ابغى فوت شامبيونز رانك 1')[0]['url'])->toBe('/fut-champions?rank=1');
 });
 
 test('a policy question offers no card', function () {

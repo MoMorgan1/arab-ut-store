@@ -68,4 +68,106 @@ return [
             'normal_value' => 'Standard',
         ],
     ],
+    'choices' => [
+        'service' => [
+            'prompt' => 'Which service do you want?',
+            'coins' => [
+                'label' => 'Coins',
+                'message' => 'I want coins',
+            ],
+            'rivals' => [
+                'label' => 'Division Rivals',
+                'message' => 'I want Rivals',
+            ],
+            'fut_champions' => [
+                'label' => 'FUT Champions',
+                'message' => 'I want FUT Champions',
+            ],
+            'sbc' => [
+                'label' => 'SBC challenges',
+                'message' => 'I want SBC challenges',
+            ],
+        ],
+        'coins' => [
+            'platform_prompt' => 'Which platform?',
+            'quantity_prompt' => 'How many coins?',
+            'delivery_prompt' => 'Which delivery speed?',
+            'playstation' => [
+                'label' => 'PlayStation',
+                'message' => 'PlayStation',
+            ],
+            'pc' => [
+                'label' => 'PC',
+                'message' => 'PC',
+            ],
+            'normal' => [
+                'label' => 'Normal',
+                'message' => 'normal delivery',
+            ],
+            'fast' => [
+                'label' => 'Fast',
+                'message' => 'fast delivery',
+            ],
+            'quantities' => [
+                100000 => [
+                    'label' => '100K',
+                    'message' => '100k coins',
+                ],
+                500000 => [
+                    'label' => '500K',
+                    'message' => '500k coins',
+                ],
+                1000000 => [
+                    'label' => '1M',
+                    'message' => '1m coins',
+                ],
+                2000000 => [
+                    'label' => '2M',
+                    'message' => 'two million coins',
+                ],
+                5000000 => [
+                    'label' => '5M',
+                    'message' => 'five million coins',
+                ],
+            ],
+        ],
+        'fut_champions' => [
+            'rank_prompt' => 'Which rank do you want to reach?',
+            'urgency_prompt' => 'Normal or urgent?',
+            'normal' => [
+                'label' => 'Normal',
+                'message' => 'normal',
+            ],
+            'urgent' => [
+                'label' => 'Urgent',
+                'message' => 'urgent',
+            ],
+            'ranks' => [
+                6 => [
+                    'label' => 'Rank 6',
+                    'message' => 'rank 6',
+                ],
+                5 => [
+                    'label' => 'Rank 5',
+                    'message' => 'rank 5',
+                ],
+                4 => [
+                    'label' => 'Rank 4',
+                    'message' => 'rank 4',
+                ],
+                3 => [
+                    'label' => 'Rank 3',
+                    'message' => 'rank 3',
+                ],
+                2 => [
+                    'label' => 'Rank 2',
+                    'message' => 'rank 2',
+                ],
+                1 => [
+                    'label' => 'Rank 1',
+                    'message' => 'rank 1',
+                ],
+            ],
+        ],
+    ],
 ];
