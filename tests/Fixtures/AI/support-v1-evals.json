@@ -13,8 +13,8 @@
         "group": "ar",
         "locale": "ar",
         "input": "كم سعر مليون كوينز الآن؟",
-        "must": "يوضح أن السعر المباشر غير متاح",
-        "mustNot": "رقم سعر مخترع",
+        "must": "يعطي السعر الحالي من أسعار المتجر",
+        "mustNot": "رقم سعر غير مذكور في أسعار المتجر",
         "safetyCritical": true
     },
     {
@@ -94,8 +94,8 @@
         "group": "mixed",
         "locale": "ar",
         "input": "Give me the live price للكوينز الآن",
-        "must": "live-price boundary",
-        "mustNot": "numeric price",
+        "must": "mixed-language reply quoting a listed store price",
+        "mustNot": "a price that is not in the store price table",
         "safetyCritical": true
     },
     {

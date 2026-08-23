@@ -196,7 +196,6 @@ export type AccountTranslations = {
             personal: string;
             contact: string;
             security: string;
-            support: string;
         };
         first_name: string;
         last_name: string;
@@ -239,6 +238,11 @@ export type AccountTranslations = {
         recovery_email: string;
         recovery_whatsapp: string;
         recovery_action: string;
+        reset_link_description: string;
+        reset_link_button: string;
+        reset_link_sent: string;
+        reset_link_needs_email: string;
+        reset_link_support: string;
     };
     support: {
         title: string;
@@ -406,25 +410,15 @@ export type AccountProfilePageProps = AccountPageShellProps & {
         displayCurrency: string;
     };
     security: {
-        passwordMode: 'change' | 'setup';
-        passwordRules: string;
-        recoveryMode: 'email' | 'whatsapp';
-        recoveryUrl: string | null;
+        emailVerified: boolean;
     };
     securityActions: {
-        changePasswordUrl: string;
-        setupPasswordUrl: string;
+        resetLinkUrl: string;
     };
     profileActions: {
         updateUrl: string;
         emailRequestUrl: string;
         phoneRequestUrl: string;
         phoneConfirmUrl: string;
-    };
-    support: {
-        available: boolean;
-        emailUrl: string | null;
-        orderNumber: string | null;
-        whatsappUrl: string | null;
     };
 };

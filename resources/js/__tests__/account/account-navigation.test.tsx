@@ -41,7 +41,6 @@ it('keeps destination navigation separate from the POST logout action', () => {
                 personal: 'Personal',
                 contact: 'Contact & verification',
                 security: 'Security',
-                support: 'Support',
             }}
             translations={{
                 label: 'My Account sections',
@@ -92,7 +91,6 @@ it('renders section links when current is profile', () => {
                 personal: 'Personal',
                 contact: 'Contact & verification',
                 security: 'Security',
-                support: 'Support',
             }}
             translations={{
                 label: 'My Account sections',
@@ -107,7 +105,7 @@ it('renders section links when current is profile', () => {
         />,
     );
 
-    expect(screen.getAllByRole('link')).toHaveLength(8);
+    expect(screen.getAllByRole('link')).toHaveLength(7);
     expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
         'aria-current',
         'page',

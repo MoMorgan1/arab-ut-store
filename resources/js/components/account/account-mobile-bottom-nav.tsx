@@ -104,6 +104,7 @@ export function AccountMobileBottomNav({
     const bottomNavItems = items.filter((item) =>
         ALLOWED_KEYS.includes(item.key),
     );
+    const fits = bottomNavItems.length + (adminUrl ? 1 : 0) <= 4;
 
     return (
         <nav
@@ -113,7 +114,12 @@ export function AccountMobileBottomNav({
                 isKeyboardOpen && 'account-mobile-bottom-nav--keyboard-open',
             )}
         >
-            <div className="account-mobile-bottom-nav__inner">
+            <div
+                className={cn(
+                    'account-mobile-bottom-nav__inner',
+                    fits && 'account-mobile-bottom-nav__inner--fits',
+                )}
+            >
                 {bottomNavItems.map((item) => {
                     const Icon = destinationIcons[item.key] || LayoutDashboard;
                     const selected = item.key === current;

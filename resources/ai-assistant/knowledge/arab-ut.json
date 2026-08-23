@@ -48,9 +48,9 @@
             "keywords_ar": ["سعر", "أسعار", "كم", "تكلفة", "بكم"],
             "keywords_en": ["price", "cost", "how much", "pricing"],
             "title_ar": "سياسة الأسعار",
-            "body_ar": "الأسعار متغيرة حسب السوق. الأسعار الحالية تظهر في صفحة المنتج داخل المتجر عند اختيار المنصة والكمية، ولا يمكن تأكيد أي سعر خارج الموقع.",
+            "body_ar": "الأسعار متغيرة حسب السوق. أقدر أعطيك السعر الحالي للكميات والخدمات المتوفرة، والسعر النهائي يظهر في صفحة المنتج بعد اختيار المنصة والكمية.",
             "title_en": "Pricing Policy",
-            "body_en": "Prices change according to the market. Current prices appear on the product page in the store when you select the platform and quantity, and no price can be confirmed outside the website."
+            "body_en": "Prices change according to the market. I can give you the current price for the available quantities and services, and the final price appears on the product page after you select the platform and quantity."
         },
         {
             "id": "coins-service",

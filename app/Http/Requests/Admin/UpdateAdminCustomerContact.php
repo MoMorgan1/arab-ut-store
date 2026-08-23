@@ -66,17 +66,18 @@ final class UpdateAdminCustomerContact extends FormRequest
                 'regex:/\A\+[1-9][0-9]{7,14}\z/D',
                 Rule::unique('users', 'phone')->ignore($targetId),
             ],
-            'expected_updated_at' => [
-                'required',
-                'string',
-            ],
+            'expected' => ['required', 'array:first_name,last_name,email,phone'],
+            'expected.first_name' => ['required', 'string', 'max:255'],
+            'expected.last_name' => ['required', 'string', 'max:255'],
+            'expected.email' => ['required', 'string', 'max:255'],
+            'expected.phone' => ['present', 'nullable', 'string', 'max:20'],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $allowedKeys = ['first_name', 'last_name', 'email', 'phone', 'expected_updated_at'];
+            $allowedKeys = ['first_name', 'last_name', 'email', 'phone', 'expected'];
             $extraKeys = array_diff(array_keys($this->all()), $allowedKeys);
 
             if (! empty($extraKeys)) {
@@ -107,8 +108,18 @@ final class UpdateAdminCustomerContact extends FormRequest
         return is_string($value) && $value !== '' ? $value : null;
     }
 
-    public function expectedUpdatedAt(): string
+    /**
+     * @return array{first_name: string, last_name: string, email: string, phone: string|null}
+     */
+    public function expected(): array
     {
-        return (string) $this->input('expected_updated_at');
+        $phone = $this->input('expected.phone');
+
+        return [
+            'first_name' => (string) $this->input('expected.first_name'),
+            'last_name' => (string) $this->input('expected.last_name'),
+            'email' => (string) $this->input('expected.email'),
+            'phone' => is_string($phone) && $phone !== '' ? $phone : null,
+        ];
     }
 }

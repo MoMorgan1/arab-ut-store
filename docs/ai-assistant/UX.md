@@ -44,9 +44,12 @@ Cards show a live starting price when one is available: coins as a per-100k
 rate (the cheaper of console-normal and PC), and SBC, Rivals, and FUT Champions
 as their cheapest orderable option. The price is never stored on the message —
 chat history is permanent, so a stored price would still be displayed months
-later when it is wrong. `BuildServicePriceLabels` computes it per render behind
-a 60-second cache, ships it in the Inertia shared props, and the card looks it
-up by id. Each service is computed independently: if one price is missing or
+later when it is wrong. `BuildServicePriceLabels` computes it behind a
+60-second cache and the widget fetches it from `/chat/service-prices` once, and
+only after a reply actually offers a card. It deliberately does not travel in
+the Inertia shared props: those are built for every request, including JSON
+endpoints, and the storefront enforces per-page query budgets that pricing
+lookups would blow. Each service is computed independently: if one price is missing or
 malformed, that card simply shows no price.
 
 The launcher initializes chat lazily. One owner has one open conversation.
