@@ -28,7 +28,7 @@ test('the configured prompt version exists and carries the mixed-language and gr
 
     expect($configured)->toBe('support-v6')
         ->and($prompt)->toContain('mixes Arabic and English')
-        ->and($prompt)->toContain('mirror that mix')
+        ->and($prompt)->toContain('MUST also mix both languages')
         ->and($prompt)->toContain('never derive a price for a quantity')
         ->and($prompt)->toContain('Never invent or imply availability')
         ->and($prompt)->toContain('Never ask for or repeat passwords')
