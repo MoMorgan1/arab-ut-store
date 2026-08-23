@@ -293,6 +293,11 @@ function CatalogCard({
             <div className="store-catalog-card__body">
                 <h2>{product.name}</h2>
                 <p>{product.description}</p>
+                {selected?.promotionBadge ? (
+                    <span className="store-promo-badge">
+                        {selected.promotionBadge}
+                    </span>
+                ) : null}
                 <strong>
                     {selected?.price === null || selected?.price === undefined
                         ? translations.unavailable_price
@@ -302,6 +307,15 @@ function CatalogCard({
                               locale,
                           )}
                 </strong>
+                {selected?.compareAtPrice ? (
+                    <del className="store-price-compare">
+                        {formatMinorUnits(
+                            selected.compareAtPrice.amountMinor,
+                            selected.compareAtPrice.currency,
+                            locale,
+                        )}
+                    </del>
+                ) : null}
                 {product.variants.length > 1 ? (
                     <label>
                         <span>{translations.platform}</span>

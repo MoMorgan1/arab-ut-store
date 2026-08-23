@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property Platform $platform
  * @property OrderItemStatus $status
  * @property int $quantity
+ * @property int|null $promotion_id
+ * @property int $promotion_discount_halalah
  * @property array<string, mixed>|null $configuration
  */
 class OrderItem extends DomainModel
@@ -32,6 +34,7 @@ class OrderItem extends DomainModel
             'unit_price_halalah' => 'integer',
             'subtotal_halalah' => 'integer',
             'discount_halalah' => 'integer',
+            'promotion_discount_halalah' => 'integer',
             'total_halalah' => 'integer',
             'configuration' => 'array',
         ];
@@ -47,6 +50,12 @@ class OrderItem extends DomainModel
     public function productVariant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class);
+    }
+
+    /** @return BelongsTo<Promotion, $this> */
+    public function promotion(): BelongsTo
+    {
+        return $this->belongsTo(Promotion::class);
     }
 
     /** @return HasOne<OrderItemSecret, $this> */

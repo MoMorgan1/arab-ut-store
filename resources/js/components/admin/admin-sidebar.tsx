@@ -1,7 +1,10 @@
 import { Link, router } from '@inertiajs/react';
 import {
+    Award,
     LayoutDashboard,
     LogOut,
+    MessageSquare,
+    Megaphone,
     Package,
     Settings,
     ShoppingBag,
@@ -11,6 +14,7 @@ import type { LucideIcon } from 'lucide-react';
 
 import type {
     AdminIdentity,
+    AdminNavigationChild,
     AdminNavigationItem,
     AdminTranslations,
 } from '@/types/admin';
@@ -19,14 +23,17 @@ const navigationIcons: Record<AdminNavigationItem['key'], LucideIcon> = {
     overview: LayoutDashboard,
     orders: ShoppingBag,
     customers: Users,
+    conversations: MessageSquare,
+    marketing: Megaphone,
     products: Package,
+    marketingLoyalty: Award,
     settings: Settings,
 };
 
 export type AdminNavigationProps = {
     adminIdentity: AdminIdentity;
     adminUi: AdminTranslations;
-    current: AdminNavigationItem['key'];
+    current: AdminNavigationItem['key'] | AdminNavigationChild['key'];
     direction: 'rtl' | 'ltr';
     logoutUrl: string;
     navigation: AdminNavigationItem[];
@@ -50,7 +57,14 @@ export function AdminNavigationList({
             <ul className="flex flex-col gap-1">
                 {navigation.map((item) => {
                     const Icon = navigationIcons[item.key];
-                    const selected = item.key === current;
+                    const childSelected =
+                        item.children?.some((child) => child.key === current) ??
+                        false;
+                    const selected = item.key === current || childSelected;
+                    const children =
+                        item.key === current || childSelected
+                            ? (item.children ?? [])
+                            : [];
 
                     return (
                         <li key={item.key}>
@@ -68,6 +82,31 @@ export function AdminNavigationList({
                                     {item.label}
                                 </span>
                             </Link>
+                            {children.length > 0 ? (
+                                <ul
+                                    aria-label={item.label}
+                                    className="ms-6 mt-1 flex flex-col gap-1 border-s border-sidebar-border ps-3"
+                                >
+                                    {children.map((child) => (
+                                        <li key={child.key}>
+                                            <Link
+                                                aria-current={
+                                                    child.key === current
+                                                        ? 'page'
+                                                        : undefined
+                                                }
+                                                className="flex min-h-[44px] items-center rounded-md px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-semibold aria-[current=page]:text-sidebar-accent-foreground"
+                                                href={child.url}
+                                                onClick={onNavigate}
+                                            >
+                                                <span className="min-w-0 [overflow-wrap:anywhere]">
+                                                    {child.label}
+                                                </span>
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : null}
                         </li>
                     );
                 })}

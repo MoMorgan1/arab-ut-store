@@ -223,7 +223,12 @@ export async function submitCoinsCart(
     const success = safeSuccess(payload);
 
     if (success === null) {
-        throw new CoinsCartRequestError('unsafe_response', 201, true);
+        // The item was created — a 201 says so — we just could not read the
+        // body (a truncated response on a weak connection does this). That is
+        // not a conclusive failure: reporting it as one would let the caller
+        // mint a fresh idempotency key and add the same item twice. Keeping the
+        // key means a retry replays the stored 201 instead.
+        throw new CoinsCartRequestError('unsafe_response', 201, false);
     }
 
     return success;

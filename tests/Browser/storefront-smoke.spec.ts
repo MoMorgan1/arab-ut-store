@@ -879,7 +879,9 @@ test('authenticated Admin overview and orders are operable across required width
                 } else {
                     const sidebar = page.locator('.admin-sidebar');
                     await expect(sidebar).toBeVisible();
-                    await expect(sidebar.getByRole('link')).toHaveCount(5);
+                    // The sidebar lists every destination; the tab bar caps at
+                    // its five primary ones. Bump this when a nav entry lands.
+                    await expect(sidebar.getByRole('link')).toHaveCount(8);
                     await expect(
                         sidebar.getByRole('link', { name: locale.overview }),
                     ).toHaveAttribute('aria-current', 'page');

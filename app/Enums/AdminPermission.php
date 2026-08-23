@@ -19,9 +19,14 @@ enum AdminPermission: string
     case WalletAdjust = 'wallet.adjust';
     case CatalogView = 'catalog.view';
     case CatalogManage = 'catalog.manage';
+    case LoyaltyView = 'loyalty.view';
+    case LoyaltyManage = 'loyalty.manage';
     case AuditView = 'audit.view';
     case StaffView = 'staff.view';
     case StaffManage = 'staff.manage';
     case SettingsView = 'settings.view';
     case SettingsManage = 'settings.manage';
+    case ChatView = 'chat.view';
+    case MarketingView = 'marketing.view';
+    case MarketingManage = 'marketing.manage';
 }

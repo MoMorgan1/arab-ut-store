@@ -62,7 +62,11 @@ function renderInlineTokens(
                 <span
                     dir="ltr"
                     data-testid="chat-money"
-                    className="chat-money font-semibold text-[var(--chat-accent-ink)]"
+                    // A money token is one unit. Left to wrap, "110.00 SAR"
+                    // splits across lines and the two halves reorder inside an
+                    // RTL paragraph, so the customer reads a number that is not
+                    // the price.
+                    className="chat-money inline-block font-semibold whitespace-nowrap text-[var(--chat-accent-ink)]"
                 >
                     {token.value}
                 </span>

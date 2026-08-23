@@ -106,6 +106,30 @@ export default function AccountLiveOrder() {
                         </span>
                     </div>
                     <div className="account-live-order__total">
+                        {props.order.discount.amountMinor !== '0' ? (
+                            <span className="account-live-order__discount">
+                                {props.accountUi.orders.discount}{' '}
+                                <bdi dir="ltr">
+                                    -
+                                    {formatAccountMoney(
+                                        props.order.discount,
+                                        props.locale,
+                                    )}
+                                </bdi>
+                            </span>
+                        ) : null}
+                        {props.order.walletPayment &&
+                        props.order.walletPayment.amountMinor !== '0' ? (
+                            <span className="account-live-order__wallet-paid">
+                                {props.accountUi.orders.wallet_paid.replace(
+                                    ':amount',
+                                    formatAccountMoney(
+                                        props.order.walletPayment,
+                                        props.locale,
+                                    ),
+                                )}
+                            </span>
+                        ) : null}
                         <span>{props.accountUi.orders.total}</span>
                         <strong>
                             {formatAccountMoney(

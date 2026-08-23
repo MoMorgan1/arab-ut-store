@@ -32,8 +32,13 @@ export type AdminTranslations = {
         overview: string;
         orders: string;
         customers: string;
+        conversations: string;
         products: string;
+        marketingLoyalty?: string;
         settings: string;
+        marketing: string;
+        marketingCoupons: string;
+        marketingPromotions: string;
         open: string;
         close: string;
         quick?: string;
@@ -436,6 +441,26 @@ export type AdminTranslations = {
         confirmPasswordButton: string;
         confirmingPassword: string;
         invalidPassword: string;
+        currentTier: string;
+        lifetimeEligibleSpend: string;
+        noTier: string;
+        adjustBalance: string;
+        adjustBalanceTitle: string;
+        adjustBalanceDescription: string;
+        adjustTypeLabel: string;
+        credit: string;
+        debit: string;
+        amountSarLabel: string;
+        amountHalalahHelp: string;
+        adjustmentReasonLabel: string;
+        adjustmentReasonPlaceholder: string;
+        submitAdjustment: string;
+        adjustingBalance: string;
+        walletAdjustSuccess: string;
+        walletInsufficientBalance: string;
+        walletAdjustFailed: string;
+        walletPasswordModalTitle: string;
+        walletPasswordModalDescription: string;
     };
     settings: {
         headTitle: string;
@@ -568,6 +593,164 @@ export type AdminTranslations = {
             grantAlreadyGranted: string;
             grantInactiveAccount: string;
         };
+    };
+    coupons: {
+        headTitle: string;
+        title: string;
+        description: string;
+        createButton: string;
+        editButton: string;
+        createTitle: string;
+        editTitle: string;
+        codeLabel: string;
+        codePlaceholder: string;
+        codeHelp: string;
+        descriptionArLabel: string;
+        descriptionEnLabel: string;
+        typeLabel: string;
+        typePercent: string;
+        typeFixed: string;
+        valueLabel: string;
+        valuePercentHelp: string;
+        valueFixedHelp: string;
+        minimumOrderLabel: string;
+        minimumOrderHelp: string;
+        maximumDiscountLabel: string;
+        maximumDiscountHelp: string;
+        usageLimitLabel: string;
+        usageLimitHelp: string;
+        perUserLimitLabel: string;
+        perUserLimitHelp: string;
+        startsAtLabel: string;
+        endsAtLabel: string;
+        isActiveLabel: string;
+        saveButton: string;
+        savingButton: string;
+        cancelButton: string;
+        columns: {
+            code: string;
+            type: string;
+            window: string;
+            usage: string;
+            status: string;
+            actions: string;
+        };
+        typePercentBadge: string;
+        typeFixedBadge: string;
+        unlimited: string;
+        usageOf: string;
+        always: string;
+        from: string;
+        until: string;
+        window: string;
+        active: string;
+        inactive: string;
+        noCoupons: string;
+        toggleTitle: string;
+        activateTitle: string;
+        deactivateTitle: string;
+        activateDescription: string;
+        deactivateDescription: string;
+        confirmToggle: string;
+        messages: {
+            created: string;
+            updated: string;
+            toggled: string;
+            genericError: string;
+            networkError: string;
+            forbiddenError: string;
+            conflictError: string;
+            validationError: string;
+        };
+        passwordModalTitle: string;
+        passwordModalDescription: string;
+        passwordLabel: string;
+        passwordPlaceholder: string;
+        confirmPasswordButton: string;
+        confirmingPassword: string;
+        invalidPassword: string;
+    };
+    promotions: {
+        headTitle: string;
+        title: string;
+        description: string;
+        createButton: string;
+        editButton: string;
+        createTitle: string;
+        editTitle: string;
+        nameArLabel: string;
+        nameArPlaceholder: string;
+        nameEnLabel: string;
+        nameEnPlaceholder: string;
+        badgeArLabel: string;
+        badgeArPlaceholder: string;
+        badgeArHelp: string;
+        badgeEnLabel: string;
+        badgeEnPlaceholder: string;
+        badgeEnHelp: string;
+        scopeLabel: string;
+        scopeAll: string;
+        scopeCategory: string;
+        scopeService: string;
+        categoryLabel: string;
+        categoryPlaceholder: string;
+        serviceTypeLabel: string;
+        serviceTypePlaceholder: string;
+        typeLabel: string;
+        typePercent: string;
+        typeFixed: string;
+        valueLabel: string;
+        valuePercentHelp: string;
+        valueFixedHelp: string;
+        startsAtLabel: string;
+        endsAtLabel: string;
+        isActiveLabel: string;
+        saveButton: string;
+        savingButton: string;
+        cancelButton: string;
+        columns: {
+            name: string;
+            scope: string;
+            discount: string;
+            window: string;
+            status: string;
+            actions: string;
+        };
+        scopeAllBadge: string;
+        scopeCategoryBadge: string;
+        scopeServiceBadge: string;
+        typePercentBadge: string;
+        typeFixedBadge: string;
+        always: string;
+        from: string;
+        until: string;
+        window: string;
+        active: string;
+        inactive: string;
+        noPromotions: string;
+        toggleTitle: string;
+        activateTitle: string;
+        deactivateTitle: string;
+        activateDescription: string;
+        deactivateDescription: string;
+        confirmToggle: string;
+        messages: {
+            created: string;
+            updated: string;
+            toggled: string;
+            genericError: string;
+            networkError: string;
+            forbiddenError: string;
+            conflictError: string;
+            validationError: string;
+        };
+        passwordModalTitle: string;
+        passwordModalDescription: string;
+        passwordLabel: string;
+        passwordPlaceholder: string;
+        confirmPasswordButton: string;
+        confirmingPassword: string;
+        invalidPassword: string;
     };
     products: {
         actions: string;
@@ -726,12 +909,168 @@ export type AdminTranslations = {
         visibility: string;
         visible: string;
     };
+    conversations: {
+        actions: string;
+        allLocales: string;
+        allOwners: string;
+        allStatuses: string;
+        clearSearch: string;
+        columns: string;
+        conversation: string;
+        createdAt: string;
+        customer: string;
+        description: string;
+        errorTitle: string;
+        filterLocale: string;
+        filterOwner: string;
+        filterStatus: string;
+        filters: string;
+        firstPage: string;
+        headTitle: string;
+        lastActivity: string;
+        lastPage: string;
+        loadFailed: string;
+        loading: string;
+        locale: string;
+        localeAr: string;
+        localeEn: string;
+        messageCount: string;
+        next: string;
+        noConversations: string;
+        noConversationsMatching: string;
+        of: string;
+        owner: string;
+        ownerCustomer: string;
+        ownerGuest: string;
+        page: string;
+        perPage: string;
+        previous: string;
+        resetFilters: string;
+        results: string;
+        searchButton: string;
+        searchLabel: string;
+        searchPlaceholder: string;
+        showing: string;
+        sortAscending: string;
+        sortBy: string;
+        sortDescending: string;
+        status: string;
+        statusClosed: string;
+        statusOpen: string;
+        tableLabel: string;
+        title: string;
+        to: string;
+        toggleColumns: string;
+        viewDetail: string;
+    };
+    conversationDetail: {
+        assistantSender: string;
+        backToConversations: string;
+        closeReason: string;
+        closeReasons: Record<string, string>;
+        closedAt: string;
+        createdAt: string;
+        customerName: string;
+        customerSender: string;
+        guestSender: string;
+        headTitle: string;
+        inputTokens: string;
+        lastMessageAt: string;
+        latency: string;
+        locale: string;
+        messageCount: string;
+        model: string;
+        noMessages: string;
+        noTurns: string;
+        outputTokens: string;
+        owner: string;
+        promptVersion: string;
+        publicId: string;
+        runStatus: string;
+        status: string;
+        summarySection: string;
+        systemSender: string;
+        title: string;
+        tokens: string;
+        transcriptSection: string;
+        turnCreatedAt: string;
+        turnId: string;
+        turnStatus: string;
+        turnsSection: string;
+    };
+
+    loyalty: {
+        headTitle: string;
+        title: string;
+        description: string;
+        kpi: {
+            cashbackLast30Days: string;
+            totalCustomers: string;
+            customersPerTier: string;
+        };
+        table: {
+            rank: string;
+            tier: string;
+            nameAr: string;
+            nameEn: string;
+            threshold: string;
+            cashbackRate: string;
+            status: string;
+            actions: string;
+            edit: string;
+            active: string;
+            inactive: string;
+            noTiers: string;
+        };
+        editDialog: {
+            title: string;
+            description: string;
+            nameArLabel: string;
+            nameEnLabel: string;
+            thresholdLabel: string;
+            cashbackLabel: string;
+            cashbackBpHelp: string;
+            activeLabel: string;
+            activeHelp: string;
+            saveButton: string;
+            savingButton: string;
+            cancelButton: string;
+            successMessage: string;
+            updateFailed: string;
+            passwordModalTitle: string;
+            passwordModalDescription: string;
+            passwordLabel: string;
+            passwordPlaceholder: string;
+            confirmPasswordButton: string;
+            confirmingPassword: string;
+            invalidPassword: string;
+        };
+        validation: {
+            rankOneZero: string;
+            strictlyIncreasing: string;
+        };
+    };
+};
+
+export type AdminNavigationChild = {
+    key: 'marketingCoupons' | 'marketingPromotions';
+    label: string;
+    url: string;
 };
 
 export type AdminNavigationItem = {
-    key: 'overview' | 'orders' | 'customers' | 'products' | 'settings';
+    key:
+        | 'overview'
+        | 'orders'
+        | 'customers'
+        | 'conversations'
+        | 'marketing'
+        | 'products'
+        | 'marketingLoyalty'
+        | 'settings';
     label: string;
     url: string;
+    children?: AdminNavigationChild[];
 };
 
 export type AdminIdentity = {
@@ -1148,6 +1487,21 @@ export type AdminCustomerDetail = {
         entriesCount: number;
     };
     recentWalletEntries: AdminCustomerWalletEntry[];
+    loyalty?: {
+        eligibleSpend: AdminMoney<'SAR'>;
+        currentTier: {
+            key: string;
+            name: string;
+            minimum: AdminMoney<'SAR'>;
+        } | null;
+        nextTier: {
+            key: string;
+            name: string;
+            minimum: AdminMoney<'SAR'>;
+        } | null;
+        remaining: AdminMoney<'SAR'> | null;
+        progressPercent: number;
+    } | null;
     recentAuditLogs: Array<{
         id: string;
         action: string;
@@ -1167,7 +1521,125 @@ export type AdminCustomerDetailPageProps = {
     customer: AdminCustomerDetail;
     statusUrl: string;
     contactUrl: string;
+    walletAdjustUrl: string;
     confirmPasswordUrl?: string;
+    logoutUrl: string;
+};
+
+export type AdminLoyaltyTier = {
+    id: string;
+    key: string;
+    nameAr: string;
+    nameEn: string;
+    rank: number;
+    minimumLifetimeSpend: AdminMoney<'SAR'>;
+    cashbackBasisPoints: number;
+    cashbackPercent: string;
+    isActive: boolean;
+    updatedAt: string;
+};
+
+export type AdminLoyaltyKpis = {
+    customersPerTier: Record<string, number>;
+    cashbackCreditedLast30Days: AdminMoney<'SAR'>;
+};
+
+export type AdminLoyaltyPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    tiers: AdminLoyaltyTier[];
+    kpis: AdminLoyaltyKpis;
+    updateTierUrlTemplate: string;
+    confirmPasswordUrl?: string;
+    logoutUrl: string;
+};
+
+export type AdminCouponRow = {
+    id: string;
+    code: string;
+    discountType: 'percent' | 'fixed';
+    value: number;
+    minimumOrderHalalah: number;
+    maximumDiscountHalalah: number | null;
+    usageLimit: number | null;
+    perUserLimit: number | null;
+    usedCount: number;
+    startsAt: string | null;
+    endsAt: string | null;
+    isActive: boolean;
+    createdAt: string;
+};
+
+export type AdminCouponsQueryState = {
+    search?: string | null;
+    sort: 'created_at' | 'code' | 'used_count';
+    direction: 'asc' | 'desc';
+    per_page: 15 | 25 | 50;
+    page: number;
+};
+
+export type AdminCouponsPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    coupons: AdminCouponRow[];
+    pagination: AdminPagination;
+    counts: {
+        total: number;
+        active: number;
+    };
+    filters: AdminCouponsQueryState;
+    logoutUrl: string;
+};
+
+export type AdminPromotionRow = {
+    id: string;
+    nameAr: string;
+    nameEn: string;
+    badgeAr: string | null;
+    badgeEn: string | null;
+    scope: 'all' | 'category' | 'service';
+    categoryName: string | null;
+    categoryId: string | null;
+    serviceType: string | null;
+    discountType: 'percent' | 'fixed';
+    value: number;
+    startsAt: string | null;
+    endsAt: string | null;
+    isActive: boolean;
+    createdAt: string;
+};
+
+export type AdminPromotionsQueryState = {
+    search?: string | null;
+    sort: 'created_at' | 'name' | 'value';
+    direction: 'asc' | 'desc';
+    per_page: 15 | 25 | 50;
+    page: number;
+};
+
+export type AdminPromotionsPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    promotions: AdminPromotionRow[];
+    pagination: AdminPagination;
+    counts: {
+        total: number;
+        active: number;
+    };
+    categories: Array<{ id: string; name: string }>;
+    filters: AdminPromotionsQueryState;
     logoutUrl: string;
 };
 
@@ -1301,5 +1773,90 @@ export type AdminProductDetailPageProps = {
     product: AdminProductDetail;
     updateUrl: string;
     confirmPasswordUrl?: string;
+    logoutUrl: string;
+};
+
+export type AdminConversationRow = {
+    publicId: string;
+    status: 'open' | 'closed' | 'archived';
+    locale: string;
+    ownerType: 'guest' | 'customer';
+    customerName: string | null;
+    messageCount: number;
+    lastMessageAt: string | null;
+    createdAt: string;
+};
+
+export type AdminConversationsQueryState = {
+    q?: string | null;
+    status?: 'open' | 'closed' | null;
+    locale?: 'ar' | 'en' | null;
+    owner?: 'guest' | 'customer' | null;
+    per_page: 15 | 25 | 50 | 100;
+    page: number;
+};
+
+export type AdminConversationsPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    rows: AdminConversationRow[];
+    pagination: AdminPagination;
+    filters: AdminConversationsQueryState;
+    filterOptions: {
+        statuses: AdminFilterOption[];
+        locales: AdminFilterOption[];
+        owners: AdminFilterOption[];
+        perPageOptions: number[];
+    };
+    logoutUrl: string;
+};
+
+export type AdminChatMessage = {
+    publicId: string;
+    senderType: 'customer' | 'assistant' | 'system';
+    messageType: 'text' | 'system';
+    content: string;
+    createdAt: string;
+};
+
+export type AdminAgentTurn = {
+    publicId: string;
+    status: 'waiting' | 'running' | 'completed' | 'failed' | 'cancelled';
+    promptVersion: string;
+    createdAt: string;
+    latestRunStatus: 'running' | 'completed' | 'failed' | 'cancelled' | null;
+    latencyMs: number | null;
+    inputTokens: number | null;
+    outputTokens: number | null;
+    model: string | null;
+};
+
+export type AdminConversationDetail = {
+    publicId: string;
+    status: 'open' | 'closed' | 'archived';
+    locale: string;
+    ownerType: 'guest' | 'customer';
+    customerName: string | null;
+    messageCount: number;
+    lastMessageAt: string | null;
+    createdAt: string;
+    closedAt: string | null;
+    closeReason: string | null;
+};
+
+export type AdminConversationDetailPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    conversation: AdminConversationDetail;
+    messages: AdminChatMessage[];
+    turns: AdminAgentTurn[];
     logoutUrl: string;
 };

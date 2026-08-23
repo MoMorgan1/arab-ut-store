@@ -4,6 +4,32 @@
     "source_note": "Adapted from the legacy arab-ut.com knowledge base on 2026-08-23. Links point at store.arab-ut.com pages. Prices, stock, and order state are never answered from this file.",
     "topics": [
         {
+            "id": "services-overview",
+            "url": "/",
+            "faq": true,
+            "keywords_ar": [
+                "الخدمات",
+                "خدمات",
+                "خدماتكم",
+                "وش عندكم",
+                "ايش عندكم",
+                "شنو عندكم",
+                "وش تقدمون",
+                "تقدمون"
+            ],
+            "keywords_en": [
+                "services",
+                "what services",
+                "what do you offer",
+                "offer",
+                "products"
+            ],
+            "title_ar": "خدمات عرب التيميت",
+            "body_ar": "نقدم أربع خدمات: شحن كوينز FC، وتحديات SBC، وتصعيد Division Rivals، ورفع FUT Champions. تقدر تختار الخدمة اللي تناسبك من البطاقات تحت، وكل وحدة فيها التفاصيل والسعر.",
+            "title_en": "Arab Ultimate services",
+            "body_en": "We offer four services: FC coin top-ups, SBC challenges, Division Rivals promotion, and FUT Champions boosting. Pick the one you want from the cards below; each carries its own details and price."
+        },
+        {
             "id": "about-store",
             "url": "/",
             "faq": false,
@@ -98,9 +124,9 @@
             ],
             "keywords_en": ["rivals", "division", "promotion", "weekly wins"],
             "title_ar": "خدمة الرايفلز",
-            "body_ar": "نلعب لك طور Division Rivals ونصعدك من Division 10 حتى Division 1 ثم Elite. تختار عدد الديفيجنات المطلوبة عند الطلب، مثلاً لو أنت في ديفيجن 4 واخترت 2 نوصلك لديفيجن 2. متوفر أيضاً لعب المباريات الأسبوعية (12 فوز) بدون تصعيد. المدة يوم إلى يومين عمل. متاحة على PlayStation و PC فقط.",
+            "body_ar": "نلعب لك طور Division Rivals ونصعدك من Division 7 حتى Division 1 ثم Elite. تختار الديفيجن اللي أنت فيه والديفيجن اللي تبي توصله عند الطلب. السعر يعتمد على هذين الاثنين فقط — ما فيه فرق سعر بين المنصات ولا خيار توصيل سريع. متوفر أيضاً لعب المباريات الأسبوعية (12 فوز) بدون تصعيد. المدة يوم إلى يومين عمل. متاحة على PlayStation و PC فقط.",
             "title_en": "Division Rivals Service",
-            "body_en": "We play Division Rivals mode for you and promote you from Division 10 up to Division 1 then Elite. You select the number of divisions required when ordering; for example, if you are in Division 4 and select 2, we take you to Division 2. Playing weekly matches (12 wins) without promotion is also available. Duration is 1 to 2 business days. Available on PlayStation and PC only."
+            "body_en": "We play Division Rivals for you and promote you from Division 7 up to Division 1, then Elite. You choose the division you are in and the one you want to reach when ordering. The price depends on those two alone — there is no price difference between platforms and no fast-delivery option. Playing weekly matches (12 wins) without promotion is also available. Duration is 1 to 2 business days. Available on PlayStation and PC only."
         },
         {
             "id": "sbc",

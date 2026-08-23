@@ -18,6 +18,7 @@ final class LiveOrderCard
      *     summary: string,
      *     itemCount: int,
      *     total: array{amountMinor: string, currency: string},
+     *     walletPayment: array{amountMinor: string, currency: string}|null,
      *     detailUrl: string
      * }
      */
@@ -27,6 +28,7 @@ final class LiveOrderCard
         $firstItem = $items->first();
         $itemCount = $items->count();
         $placedAt = $order->getAttribute('placed_at') ?? $order->getAttribute('created_at');
+        $walletHalalah = (int) ($order->getAttribute('wallet_halalah') ?? 0);
 
         return [
             'id' => (string) $order->getAttribute('public_id'),
@@ -40,6 +42,12 @@ final class LiveOrderCard
                 (int) $order->getAttribute('total_halalah'),
                 (string) $order->getAttribute('currency'),
             ),
+            'walletPayment' => $walletHalalah > 0
+                ? AccountMoney::fromMinor(
+                    $walletHalalah,
+                    (string) $order->getAttribute('currency'),
+                )
+                : null,
             'detailUrl' => route(
                 $locale === 'en' ? 'localized.account.orders.show' : 'account.orders.show',
                 ['order' => $order->getAttribute('public_id')],

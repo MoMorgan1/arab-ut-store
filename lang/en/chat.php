@@ -94,40 +94,74 @@ return [
             'delivery_prompt' => 'Which delivery speed?',
             'playstation' => [
                 'label' => 'PlayStation',
-                'message' => 'PlayStation',
+                'message' => 'I want coins on PlayStation',
             ],
             'pc' => [
                 'label' => 'PC',
-                'message' => 'PC',
+                'message' => 'I want coins on PC',
             ],
             'normal' => [
                 'label' => 'Normal',
-                'message' => 'normal delivery',
+                'message' => 'I want :amount coins on :platform, normal delivery',
             ],
             'fast' => [
                 'label' => 'Fast',
-                'message' => 'fast delivery',
+                'message' => 'I want :amount coins on :platform, fast delivery',
             ],
+            // A chip's message is sent as the customer's next message, and a
+            // turn reads that message alone. "PlayStation" on its own arrives
+            // with no service attached and the funnel dead-ends, so every chip
+            // restates everything chosen so far.
             'quantities' => [
                 100000 => [
                     'label' => '100K',
-                    'message' => '100k coins',
+                    'amount' => '100k',
+                    'message' => 'I want 100k coins on :platform',
                 ],
                 500000 => [
                     'label' => '500K',
-                    'message' => '500k coins',
+                    'amount' => '500k',
+                    'message' => 'I want 500k coins on :platform',
                 ],
                 1000000 => [
                     'label' => '1M',
-                    'message' => '1m coins',
+                    'amount' => '1m',
+                    'message' => 'I want 1m coins on :platform',
                 ],
                 2000000 => [
                     'label' => '2M',
-                    'message' => 'two million coins',
+                    'amount' => '2m',
+                    'message' => 'I want 2m coins on :platform',
                 ],
                 5000000 => [
                     'label' => '5M',
-                    'message' => 'five million coins',
+                    'amount' => '5m',
+                    'message' => 'I want 5m coins on :platform',
+                ],
+            ],
+        ],
+        'rivals' => [
+            'current_prompt' => 'Which division are you in now?',
+            'target_prompt' => 'Which division do you want to reach?',
+            'current' => [
+                '7' => ['label' => 'Division 7', 'message' => 'I am in division 7'],
+                '6' => ['label' => 'Division 6', 'message' => 'I am in division 6'],
+                '5' => ['label' => 'Division 5', 'message' => 'I am in division 5'],
+                '4' => ['label' => 'Division 4', 'message' => 'I am in division 4'],
+                '3' => ['label' => 'Division 3', 'message' => 'I am in division 3'],
+                '2' => ['label' => 'Division 2', 'message' => 'I am in division 2'],
+                '1' => ['label' => 'Division 1', 'message' => 'I am in division 1'],
+            ],
+            // The message carries the whole route: a turn only ever sees the
+            // latest message, so a target alone would arrive with no start.
+            'target' => [
+                'division' => [
+                    'label' => 'Division :to',
+                    'message' => 'from division :from to division :to',
+                ],
+                'elite' => [
+                    'label' => 'Elite',
+                    'message' => 'from division :from to Elite',
                 ],
             ],
         ],
@@ -136,36 +170,36 @@ return [
             'urgency_prompt' => 'Normal or urgent?',
             'normal' => [
                 'label' => 'Normal',
-                'message' => 'normal',
+                'message' => 'I want FUT Champions rank :rank, normal',
             ],
             'urgent' => [
                 'label' => 'Urgent',
-                'message' => 'urgent',
+                'message' => 'I want FUT Champions rank :rank, urgent',
             ],
             'ranks' => [
                 6 => [
                     'label' => 'Rank 6',
-                    'message' => 'rank 6',
+                    'message' => 'I want FUT Champions rank 6',
                 ],
                 5 => [
                     'label' => 'Rank 5',
-                    'message' => 'rank 5',
+                    'message' => 'I want FUT Champions rank 5',
                 ],
                 4 => [
                     'label' => 'Rank 4',
-                    'message' => 'rank 4',
+                    'message' => 'I want FUT Champions rank 4',
                 ],
                 3 => [
                     'label' => 'Rank 3',
-                    'message' => 'rank 3',
+                    'message' => 'I want FUT Champions rank 3',
                 ],
                 2 => [
                     'label' => 'Rank 2',
-                    'message' => 'rank 2',
+                    'message' => 'I want FUT Champions rank 2',
                 ],
                 1 => [
                     'label' => 'Rank 1',
-                    'message' => 'rank 1',
+                    'message' => 'I want FUT Champions rank 1',
                 ],
             ],
         ],

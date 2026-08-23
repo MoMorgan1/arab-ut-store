@@ -2,6 +2,10 @@
 
 namespace App\Actions\AI;
 
+use App\Actions\Pricing\ReadManualServicePricing;
+use App\ValueObjects\AI\SupportKnowledgeTopic;
+use Throwable;
+
 /**
  * The one question the assistant should ask next, as tappable chips.
  *
@@ -34,9 +38,13 @@ final readonly class BuildAssistantChoices
     /** The coin sizes the configurator sells, smallest first. */
     private const COIN_QUANTITIES = [100_000, 500_000, 1_000_000, 2_000_000, 5_000_000];
 
+    /** The Rivals ladder a customer can start from, lowest division first. */
+    private const DIVISIONS = ['7', '6', '5', '4', '3', '2', '1'];
+
     public function __construct(
         private SelectSupportKnowledge $selectKnowledge,
         private SelectServiceOptions $selectOptions,
+        private ReadManualServicePricing $manualPricing,
     ) {}
 
     /**
@@ -48,7 +56,12 @@ final readonly class BuildAssistantChoices
             return null;
         }
 
-        $topics = $this->selectKnowledge->execute($customerText, 1);
+        // Three, not one: "كم سعر ديفيجن ١؟" scores the generic pricing topic
+        // above Rivals, because it carries two pricing keywords and one service
+        // keyword. A question of the form "how much is X" is a question about
+        // X, so when the winner is the broad topic the runner-up service takes
+        // it. Anywhere else the top topic still decides alone.
+        $topics = $this->selectKnowledge->execute($customerText, 3);
         $topic = $topics[0] ?? null;
 
         if ($topic === null) {
@@ -58,16 +71,41 @@ final readonly class BuildAssistantChoices
         $group = self::SERVICE_TOPICS[$topic->id] ?? null;
 
         if ($group === null) {
-            return in_array($topic->id, self::BROAD_TOPICS, true)
-                ? $this->serviceQuestion($locale)
-                : null;
+            if (! in_array($topic->id, self::BROAD_TOPICS, true)) {
+                return null;
+            }
+
+            $group = $this->namedService($topics);
+
+            if ($group === null) {
+                return $this->serviceQuestion($locale);
+            }
         }
 
         return match ($group) {
             'coins' => $this->coinsQuestion($customerText, $locale),
             'fut_champions' => $this->championsQuestion($customerText, $locale),
+            'rivals' => $this->rivalsQuestion($customerText, $locale),
             default => null,
         };
+    }
+
+    /**
+     * The first service any of these topics names, or null when none does.
+     *
+     * @param  list<SupportKnowledgeTopic>  $topics
+     */
+    private function namedService(array $topics): ?string
+    {
+        foreach ($topics as $topic) {
+            $group = self::SERVICE_TOPICS[$topic->id] ?? null;
+
+            if ($group !== null) {
+                return $group;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -89,33 +127,105 @@ final readonly class BuildAssistantChoices
     private function coinsQuestion(string $customerText, string $locale): ?array
     {
         $options = $this->selectOptions->partial($customerText, 'coins');
+        $platform = $options['platform'] ?? null;
 
-        if (! isset($options['platform'])) {
+        if (! is_string($platform)) {
             return $this->chips('coins-platform', 'chat.choices.coins.platform_prompt', [
                 ['id' => 'playstation', 'key' => 'chat.choices.coins.playstation'],
                 ['id' => 'pc', 'key' => 'chat.choices.coins.pc'],
             ], $locale);
         }
 
-        if (! isset($options['quantity'])) {
+        // Every later chip restates the platform, because the next turn reads
+        // its message and nothing else.
+        $platformName = (string) trans("chat.cards.coins.platforms.{$platform}", [], $locale);
+        $quantity = $options['quantity'] ?? null;
+
+        if (! is_int($quantity)) {
             return $this->chips('coins-quantity', 'chat.choices.coins.quantity_prompt', array_map(
-                fn (int $quantity): array => [
-                    'id' => (string) $quantity,
-                    'key' => 'chat.choices.coins.quantities.'.$quantity,
+                fn (int $size): array => [
+                    'id' => (string) $size,
+                    'key' => 'chat.choices.coins.quantities.'.$size,
+                    'replace' => ['platform' => $platformName],
                 ],
                 self::COIN_QUANTITIES,
             ), $locale);
         }
 
         // PC has a single delivery speed, so there is nothing left to ask.
-        if ($options['platform'] === 'pc' || isset($options['delivery'])) {
+        if ($platform === 'pc' || isset($options['delivery'])) {
             return null;
         }
 
+        $replace = [
+            'amount' => (string) trans('chat.choices.coins.quantities.'.$quantity.'.amount', [], $locale),
+            'platform' => $platformName,
+        ];
+
         return $this->chips('coins-delivery', 'chat.choices.coins.delivery_prompt', [
-            ['id' => 'normal', 'key' => 'chat.choices.coins.normal'],
-            ['id' => 'fast', 'key' => 'chat.choices.coins.fast'],
+            ['id' => 'normal', 'key' => 'chat.choices.coins.normal', 'replace' => $replace],
+            ['id' => 'fast', 'key' => 'chat.choices.coins.fast', 'replace' => $replace],
         ], $locale);
+    }
+
+    /**
+     * Rivals is priced by route, so the question is asked in two steps: where
+     * the customer is now, then where they want to reach.
+     *
+     * The target chips carry the whole route in their message — "from division
+     * 5 to Elite" — because each turn re-derives everything from the latest
+     * message alone. A chip saying only "Elite" would arrive with no start.
+     *
+     * @return array{version: string, prompt: string, items: list<array{id: string, label: string, message: string}>}|null
+     */
+    private function rivalsQuestion(string $customerText, string $locale): ?array
+    {
+        $options = $this->selectOptions->partial($customerText, 'rivals');
+        $current = $options['currentDivision'] ?? null;
+
+        if (! is_string($current)) {
+            return $this->chips('rivals-current', 'chat.choices.rivals.current_prompt', array_map(
+                fn (string $division): array => [
+                    'id' => $division,
+                    'key' => 'chat.choices.rivals.current.'.$division,
+                ],
+                self::DIVISIONS,
+            ), $locale);
+        }
+
+        if (isset($options['targetDivision'])) {
+            return null;
+        }
+
+        $targets = $this->rivalsTargets($current);
+
+        if ($targets === []) {
+            return null;
+        }
+
+        return $this->chips('rivals-target', 'chat.choices.rivals.target_prompt', array_map(
+            fn (string $target): array => [
+                'id' => $target,
+                'key' => 'chat.choices.rivals.target.'.($target === 'elite' ? 'elite' : 'division'),
+                'replace' => ['from' => $current, 'to' => $target],
+            ],
+            $targets,
+        ), $locale);
+    }
+
+    /**
+     * The divisions the store will actually boost this customer to, read from
+     * live pricing so a chip can never offer an unpriced route.
+     *
+     * @return list<string>
+     */
+    private function rivalsTargets(string $current): array
+    {
+        try {
+            return $this->manualPricing->rivals()['pricing']->availableTargets($current);
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     /**
@@ -124,12 +234,13 @@ final readonly class BuildAssistantChoices
     private function championsQuestion(string $customerText, string $locale): ?array
     {
         $options = $this->selectOptions->partial($customerText, 'fut_champions');
+        $rank = $options['rank'] ?? null;
 
-        if (! isset($options['rank'])) {
+        if (! is_int($rank)) {
             return $this->chips('champions-rank', 'chat.choices.fut_champions.rank_prompt', array_map(
-                fn (int $rank): array => [
-                    'id' => (string) $rank,
-                    'key' => 'chat.choices.fut_champions.ranks.'.$rank,
+                fn (int $option): array => [
+                    'id' => (string) $option,
+                    'key' => 'chat.choices.fut_champions.ranks.'.$option,
                 ],
                 [6, 5, 4, 3, 2, 1],
             ), $locale);
@@ -139,9 +250,11 @@ final readonly class BuildAssistantChoices
             return null;
         }
 
+        $replace = ['rank' => (string) $rank];
+
         return $this->chips('champions-urgency', 'chat.choices.fut_champions.urgency_prompt', [
-            ['id' => 'normal', 'key' => 'chat.choices.fut_champions.normal'],
-            ['id' => 'urgent', 'key' => 'chat.choices.fut_champions.urgent'],
+            ['id' => 'normal', 'key' => 'chat.choices.fut_champions.normal', 'replace' => $replace],
+            ['id' => 'urgent', 'key' => 'chat.choices.fut_champions.urgent', 'replace' => $replace],
         ], $locale);
     }
 
@@ -149,7 +262,7 @@ final readonly class BuildAssistantChoices
      * A chip's message is the sentence the customer would have typed, so the
      * next turn re-derives the answer from ordinary text with no hidden state.
      *
-     * @param  list<array{id: string, key: string}>  $items
+     * @param  list<array{id: string, key: string, replace?: array<string, string>}>  $items
      * @return array{version: string, prompt: string, items: list<array{id: string, label: string, message: string}>}
      */
     private function chips(string $group, string $promptKey, array $items, string $locale): array
@@ -158,11 +271,15 @@ final readonly class BuildAssistantChoices
             'version' => 'choices.v1',
             'prompt' => (string) trans($promptKey, [], $locale),
             'items' => array_map(
-                fn (array $item): array => [
-                    'id' => $group.':'.$item['id'],
-                    'label' => (string) trans($item['key'].'.label', [], $locale),
-                    'message' => (string) trans($item['key'].'.message', [], $locale),
-                ],
+                function (array $item) use ($group, $locale): array {
+                    $replace = $item['replace'] ?? [];
+
+                    return [
+                        'id' => $group.':'.$item['id'],
+                        'label' => (string) trans($item['key'].'.label', $replace, $locale),
+                        'message' => (string) trans($item['key'].'.message', $replace, $locale),
+                    ];
+                },
                 $items,
             ),
         ];

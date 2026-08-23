@@ -442,6 +442,48 @@ it('renders desktop status pill with dot in order row and column headings in ord
     ).not.toBeNull();
 });
 
+it('renders paid from wallet in order rows, order cards, and live order page when wallet payment exists', () => {
+    const orderWithWallet: AccountOrder = {
+        ...order('01ORDER_WALLET', 'UT-00000002', 'completed'),
+        walletPayment: { amountMinor: '5000', currency: 'SAR' },
+    };
+    const shell = shellProps();
+
+    const { container: rowContainer } = render(
+        <AccountOrderRow
+            locale="en"
+            order={orderWithWallet}
+            translations={shell.accountUi as AccountTranslations}
+        />,
+    );
+    expect(
+        rowContainer.querySelector('.account-order-row__wallet-paid'),
+    ).toHaveTextContent('Paid from wallet SAR 50.00');
+
+    const { container: cardContainer } = render(
+        <AccountOrderCard
+            locale="en"
+            order={orderWithWallet}
+            translations={shell.accountUi as AccountTranslations}
+        />,
+    );
+    expect(
+        cardContainer.querySelector('.account-order-card__wallet-paid'),
+    ).toHaveTextContent('Paid from wallet SAR 50.00');
+
+    page.props = {
+        ...shell,
+        order: {
+            ...liveOrder(null),
+            walletPayment: { amountMinor: '5000', currency: 'SAR' },
+        },
+    };
+    const { container: liveContainer } = render(<AccountLiveOrder />);
+    expect(
+        liveContainer.querySelector('.account-live-order__wallet-paid'),
+    ).toHaveTextContent('Paid from wallet SAR 50.00');
+});
+
 function order(id: string, number: string, status: string): AccountOrder {
     return {
         id,
@@ -465,6 +507,7 @@ function liveOrder(
         status: 'waiting_for_customer',
         placedAt: '2026-08-15T10:00:00+00:00',
         total: { amountMinor: '12999', currency: 'SAR' },
+        discount: { amountMinor: '0', currency: 'SAR' },
         refreshable: true,
         paymentStartUrl,
         items: [
@@ -539,6 +582,8 @@ function shellProps() {
                 number: 'Order number',
                 placed_at: 'Placed on',
                 total: 'Total',
+                discount: 'Discount',
+                wallet_paid: 'Paid from wallet :amount',
                 status: 'Status',
                 source_live: 'Current order',
                 source_archive: 'Previous order',

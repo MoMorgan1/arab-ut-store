@@ -1,7 +1,7 @@
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import {
-    ChevronDown,
     CheckCircle2,
+    ChevronDown,
     CreditCard,
     ShoppingBag,
     ShieldCheck,
@@ -16,11 +16,17 @@ import { StoreSeoHead } from '@/components/store/store-seo-head';
 import { Label } from '@/components/ui/label';
 import StoreLayout from '@/layouts/store-layout';
 import {
+    applyCartCoupon,
+    CartCouponError,
+    removeCartCoupon,
+} from '@/lib/cart-coupon-api';
+import {
     loadCartCredentials,
     updateCartCredentials,
 } from '@/lib/cart-credentials-api';
 import type { StoredCartCredentials } from '@/lib/cart-credentials-api';
 import { removeCartItem } from '@/lib/cart-items-api';
+import { toggleCartWallet } from '@/lib/cart-wallet-api';
 import {
     CheckoutPhoneError,
     reloadAfterPhoneVerification,
@@ -35,6 +41,7 @@ import {
     startPaylinkCheckout,
 } from '@/lib/paylink-checkout-api';
 import type {
+    StoredCartCoupon,
     StoreCartItem,
     StoreCartPageProps,
     StoreCartTranslations,
@@ -56,7 +63,10 @@ export default function StoreCart() {
     const authenticated = page.props.auth.user !== null;
     const [items, setItems] = useState(cart.items);
     const totalHalalah = items.reduce(
-        (total, cartItem) => total + cartItem.totalHalalah,
+        (total, cartItem) =>
+            total +
+            cartItem.totalHalalah -
+            (cartItem.promotion?.discountHalalah ?? 0),
         0,
     );
 
@@ -127,6 +137,7 @@ export default function StoreCart() {
                             <CheckoutPanel
                                 authenticated={authenticated}
                                 checkout={cartPage.checkout}
+                                coupon={cart.coupon}
                                 locale={locale}
                                 policyLinks={{
                                     terms: {
@@ -140,6 +151,7 @@ export default function StoreCart() {
                                 }}
                                 totalHalalah={totalHalalah}
                                 translations={cartPage.translations}
+                                useWallet={cart.useWallet}
                             />
                         </div>
                     </>
@@ -223,13 +235,16 @@ function CheckoutProgress({
 function CheckoutPanel({
     authenticated,
     checkout,
+    coupon,
     locale,
     policyLinks,
     totalHalalah,
     translations,
+    useWallet: initialUseWallet,
 }: {
     authenticated: boolean;
     checkout: StoreCartPageProps['cartPage']['checkout'];
+    coupon: StoredCartCoupon | null;
     locale: 'ar' | 'en';
     policyLinks: {
         terms: { label: string; url: string };
@@ -237,10 +252,47 @@ function CheckoutPanel({
     };
     totalHalalah: number;
     translations: StoreCartTranslations;
+    useWallet: boolean;
 }) {
     const idempotencyKey = useRef(crypto.randomUUID());
     const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
     const [errorCode, setErrorCode] = useState<string | null>(null);
+    const [useWallet, setUseWallet] = useState(initialUseWallet);
+    const [walletBusy, setWalletBusy] = useState(false);
+
+    const [syncedUseWallet, setSyncedUseWallet] = useState(initialUseWallet);
+
+    if (syncedUseWallet !== initialUseWallet) {
+        setSyncedUseWallet(initialUseWallet);
+        setUseWallet(initialUseWallet);
+    }
+
+    const showWalletToggle =
+        authenticated && (checkout.walletBalanceHalalah ?? 0) > 0;
+    const discountHalalah = coupon?.discountHalalah ?? 0;
+    const totalAfterDiscount = Math.max(totalHalalah - discountHalalah, 0);
+    const walletUsedHalalah =
+        useWallet && showWalletToggle
+            ? Math.min(checkout.walletBalanceHalalah ?? 0, totalAfterDiscount)
+            : 0;
+    const payableHalalah = Math.max(totalAfterDiscount - walletUsedHalalah, 0);
+
+    async function handleWalletToggle(
+        event: React.ChangeEvent<HTMLInputElement>,
+    ) {
+        const nextValue = event.target.checked;
+        setUseWallet(nextValue);
+        setWalletBusy(true);
+
+        try {
+            await toggleCartWallet(checkout.walletToggleUrl, nextValue);
+            router.reload({ only: ['cart'] });
+        } catch {
+            setUseWallet(!nextValue);
+        } finally {
+            setWalletBusy(false);
+        }
+    }
 
     async function startPayment() {
         if (!checkout.canCheckout || state === 'loading') {
@@ -294,9 +346,59 @@ function CheckoutPanel({
                 </span>
                 <h2>{translations.summary_title}</h2>
             </header>
+            <CouponField
+                applyUrl={checkout.couponApplyUrl}
+                coupon={coupon}
+                locale={locale}
+                removeUrl={checkout.couponRemoveUrl}
+                translations={translations}
+            />
+            {showWalletToggle ? (
+                <label className="store-cart-wallet-toggle">
+                    <span>
+                        {interpolate(translations.wallet_toggle, {
+                            balance: formatMinorUnits(
+                                checkout.walletBalanceHalalah,
+                                'SAR',
+                                locale,
+                            ),
+                        })}
+                    </span>
+                    <input
+                        checked={useWallet}
+                        disabled={walletBusy}
+                        name="use_wallet"
+                        onChange={handleWalletToggle}
+                        type="checkbox"
+                    />
+                </label>
+            ) : null}
+            {coupon !== null ? (
+                <div className="store-cart-checkout__discount">
+                    <span>{translations.coupon_discount}</span>
+                    <strong dir="ltr">
+                        -
+                        {formatMinorUnits(
+                            coupon.discountHalalah,
+                            'SAR',
+                            locale,
+                        )}
+                    </strong>
+                </div>
+            ) : null}
+            {useWallet && walletUsedHalalah > 0 ? (
+                <div className="store-cart-checkout__wallet">
+                    <span>{translations.wallet_deduction}</span>
+                    <strong dir="ltr">
+                        -{formatMinorUnits(walletUsedHalalah, 'SAR', locale)}
+                    </strong>
+                </div>
+            ) : null}
             <div className="store-cart-checkout__total">
                 <span>{translations.order_total}</span>
-                <strong>{formatMinorUnits(totalHalalah, 'SAR', locale)}</strong>
+                <strong>
+                    {formatMinorUnits(payableHalalah, 'SAR', locale)}
+                </strong>
             </div>
             <p className="store-cart-checkout__policies">
                 <a href={policyLinks.terms.url}>{policyLinks.terms.label}</a>
@@ -465,6 +567,174 @@ function CheckoutPhoneForm({
                         : errorCode === 'whatsapp_unavailable'
                           ? translations.phone_delivery_error
                           : translations.phone_invalid}
+                </p>
+            ) : null}
+        </div>
+    );
+}
+
+function couponErrorCopy(
+    error: CartCouponError,
+    translations: StoreCartTranslations,
+): string {
+    if (
+        error.code === 'coupon_minimum' &&
+        error.detail !== null &&
+        error.detail !== ''
+    ) {
+        return interpolate(translations.coupon_minimum, {
+            amount: error.detail,
+        });
+    }
+
+    switch (error.code) {
+        case 'coupon_invalid': {
+            return translations.coupon_invalid;
+        }
+        case 'coupon_expired': {
+            return translations.coupon_expired;
+        }
+        case 'coupon_limit': {
+            return translations.coupon_limit;
+        }
+        default: {
+            return error.detail ?? translations.coupon_error;
+        }
+    }
+}
+
+function CouponField({
+    applyUrl,
+    coupon,
+    locale,
+    removeUrl,
+    translations,
+}: {
+    applyUrl: string;
+    coupon: StoredCartCoupon | null;
+    locale: 'ar' | 'en';
+    removeUrl: string;
+    translations: StoreCartTranslations;
+}) {
+    const [code, setCode] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [errorText, setErrorText] = useState<string | null>(null);
+
+    async function apply() {
+        if (busy || code.trim() === '') {
+            return;
+        }
+
+        setBusy(true);
+        setErrorText(null);
+
+        try {
+            await applyCartCoupon(applyUrl, code);
+            setCode('');
+            router.reload({ only: ['cart'] });
+        } catch (error) {
+            setErrorText(
+                couponErrorCopy(
+                    error instanceof CartCouponError
+                        ? error
+                        : new CartCouponError('coupon_error'),
+                    translations,
+                ),
+            );
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function remove() {
+        if (busy) {
+            return;
+        }
+
+        setBusy(true);
+        setErrorText(null);
+
+        try {
+            await removeCartCoupon(removeUrl);
+            router.reload({ only: ['cart'] });
+        } catch {
+            setErrorText(translations.coupon_error);
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    if (coupon !== null) {
+        return (
+            <div className="store-cart-coupon store-cart-coupon--applied">
+                <p className="store-cart-coupon__status" role="status">
+                    <CheckCircle2 aria-hidden="true" />
+                    <span>
+                        {translations.coupon_applied}
+                        {' — '}
+                        <bdi dir="ltr">{coupon.code}</bdi>
+                    </span>
+                </p>
+                <button
+                    className="store-cart-coupon__remove"
+                    disabled={busy}
+                    onClick={remove}
+                    type="button"
+                >
+                    {busy
+                        ? translations.coupon_removing
+                        : translations.coupon_remove}
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="store-cart-coupon">
+            <Label
+                dir={locale === 'ar' ? 'rtl' : 'ltr'}
+                htmlFor="cart-coupon-code"
+            >
+                {translations.coupon_label}
+            </Label>
+            <div className="store-cart-coupon__row">
+                <input
+                    aria-label={translations.coupon_label}
+                    autoComplete="off"
+                    dir="ltr"
+                    id="cart-coupon-code"
+                    maxLength={24}
+                    name="coupon_code"
+                    onChange={(event) =>
+                        setCode(event.currentTarget.value.toUpperCase())
+                    }
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            void apply();
+                        }
+                    }}
+                    placeholder={translations.coupon_placeholder}
+                    spellCheck={false}
+                    type="text"
+                    value={code}
+                />
+                <button
+                    className="store-cart-coupon__apply"
+                    disabled={busy || code.trim() === ''}
+                    onClick={() => {
+                        void apply();
+                    }}
+                    type="button"
+                >
+                    {busy
+                        ? translations.coupon_applying
+                        : translations.coupon_apply}
+                </button>
+            </div>
+            {errorText !== null ? (
+                <p className="store-cart-checkout__error" role="alert">
+                    {errorText}
                 </p>
             ) : null}
         </div>
@@ -654,15 +924,41 @@ function CartLine({
                         )}
                     />
                 ) : null}
-                <CartFact
-                    emphasized
-                    label={translations.total}
-                    value={formatMinorUnits(
-                        cartItem.totalHalalah,
-                        'SAR',
-                        locale,
-                    )}
-                />
+                {cartItem.promotion ? (
+                    <div className="store-cart-line__total">
+                        <dt>{translations.total}</dt>
+                        <dd className="store-cart-line__promo">
+                            <span className="store-promo-badge">
+                                {cartItem.promotion.badge}
+                            </span>
+                            <del className="store-price-compare">
+                                {formatMinorUnits(
+                                    cartItem.totalHalalah,
+                                    'SAR',
+                                    locale,
+                                )}
+                            </del>
+                            <strong>
+                                {formatMinorUnits(
+                                    cartItem.totalHalalah -
+                                        cartItem.promotion.discountHalalah,
+                                    'SAR',
+                                    locale,
+                                )}
+                            </strong>
+                        </dd>
+                    </div>
+                ) : (
+                    <CartFact
+                        emphasized
+                        label={translations.total}
+                        value={formatMinorUnits(
+                            cartItem.totalHalalah,
+                            'SAR',
+                            locale,
+                        )}
+                    />
+                )}
             </dl>
             {isManualService ? (
                 <ManualFulfillmentState

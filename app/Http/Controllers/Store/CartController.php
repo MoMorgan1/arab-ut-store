@@ -3,18 +3,24 @@
 namespace App\Http\Controllers\Store;
 
 use App\Actions\Cart\ResolveCartOwner;
+use App\Actions\Checkout\ApplyCoupon;
 use App\Enums\DeliveryMode;
 use App\Enums\Market;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
+use App\Exceptions\Checkout\CouponRejected;
 use App\Http\Controllers\Controller;
+use App\Marketing\PromotionPrice;
+use App\Marketing\PromotionPricing;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CartItemSecret;
+use App\Models\Coupon;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Models\WalletAccount;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Http\Request;
@@ -25,12 +31,14 @@ use Inertia\Response;
 
 final class CartController extends Controller
 {
+    public function __construct(private readonly PromotionPricing $promotionPricing) {}
+
     public function __invoke(Request $request, ResolveCartOwner $resolveCartOwner): Response
     {
         $localized = $request->route('locale') === 'en';
         $activeCart = Cart::query()
             ->activeForOwner($resolveCartOwner->forRequest($request))
-            ->with(['items.secret', 'items.squadImage', 'items.productVariant.product.media'])
+            ->with(['items.secret', 'items.squadImage', 'items.productVariant.product.media', 'items.productVariant.product.category', 'coupon'])
             ->first();
         $safeCartItems = $activeCart?->items
             ->map(fn (CartItem $cartItem): array => $this->safeCartItem($cartItem, $localized))
@@ -39,6 +47,9 @@ final class CartController extends Controller
 
         $user = $request->user();
         $phoneVerified = $user instanceof User && $user->phone_verified_at !== null;
+        $walletBalance = $user instanceof User
+            ? (int) (WalletAccount::query()->where('user_id', $user->id)->value('balance_halalah') ?? 0)
+            : 0;
 
         return Inertia::render('store/cart', [
             'cartPage' => [
@@ -49,6 +60,22 @@ final class CartController extends Controller
                         $localized ? ['locale' => 'en'] : [],
                         absolute: false,
                     ),
+                    'couponApplyUrl' => route(
+                        $localized ? 'localized.cart.coupons.store' : 'cart.coupons.store',
+                        $localized ? ['locale' => 'en'] : [],
+                        absolute: false,
+                    ),
+                    'couponRemoveUrl' => route(
+                        $localized ? 'localized.cart.coupons.destroy' : 'cart.coupons.destroy',
+                        $localized ? ['locale' => 'en'] : [],
+                        absolute: false,
+                    ),
+                    'walletToggleUrl' => route(
+                        $localized ? 'localized.cart.wallet.store' : 'cart.wallet.store',
+                        $localized ? ['locale' => 'en'] : [],
+                        absolute: false,
+                    ),
+                    'walletBalanceHalalah' => $walletBalance,
                     'loginUrl' => route(
                         $localized ? 'localized.login' : 'login',
                         $localized ? ['locale' => 'en'] : [],
@@ -72,8 +99,64 @@ final class CartController extends Controller
                 'count' => count($safeCartItems),
                 'currency' => 'SAR',
                 'items' => $safeCartItems,
+                'coupon' => $this->safeCoupon($activeCart, $user instanceof User ? $user : null),
+                'useWallet' => $activeCart instanceof Cart ? (bool) $activeCart->use_wallet : false,
             ],
         ]);
+    }
+
+    /** @return array{code: string, discountType: string, discountHalalah: int}|null */
+    private function safeCoupon(?Cart $cart, ?User $user): ?array
+    {
+        if (! $cart instanceof Cart) {
+            return null;
+        }
+
+        $coupon = $cart->coupon;
+
+        if (! $coupon instanceof Coupon || ! $coupon->is_active) {
+            return null;
+        }
+
+        try {
+            $applied = app(ApplyCoupon::class)->evaluate(
+                $coupon,
+                $this->promotedSubtotal($cart),
+                $user,
+            );
+        } catch (CouponRejected) {
+            return null;
+        }
+
+        return [
+            'code' => $applied->code,
+            'discountType' => $applied->discountType,
+            'discountHalalah' => $applied->discountHalalah,
+        ];
+    }
+
+    /** The subtotal after automatic promotion discounts, matching checkout pricing. */
+    private function promotedSubtotal(Cart $cart): int
+    {
+        return (int) $cart->items->sum(function (CartItem $cartItem): int {
+            $promotion = $this->itemPromotion($cartItem);
+
+            return $promotion !== null
+                ? $promotion->discountedHalalah
+                : (int) $cartItem->total_halalah;
+        });
+    }
+
+    private function itemPromotion(CartItem $cartItem): ?PromotionPrice
+    {
+        $variant = $cartItem->productVariant;
+        $category = $variant->product->category;
+
+        return $this->promotionPricing->resolve(
+            $category?->id,
+            $variant->service_type,
+            (int) $cartItem->total_halalah,
+        );
     }
 
     /** @return array<string, mixed> */
@@ -86,12 +169,17 @@ final class CartController extends Controller
         ], true);
         $credentials = $isManualService ? null : $this->safeCredentials($cartItem->secret);
         $fulfillment = $isManualService ? $this->safeManualFulfillment($cartItem) : null;
+        $promotion = $this->itemPromotion($cartItem);
 
         return [
             'id' => $cartItem->public_id,
             'quantity' => $cartItem->quantity,
             'unitPriceHalalah' => $cartItem->unit_price_halalah,
             'totalHalalah' => $cartItem->total_halalah,
+            'promotion' => $promotion === null ? null : [
+                'badge' => $this->promotionBadge($promotion),
+                'discountHalalah' => $promotion->discountHalalah,
+            ],
             'configuration' => $this->safeConfiguration($cartItem->configuration),
             'product' => $this->safeProduct($cartItem->productVariant),
             'credentials' => $credentials,
@@ -102,6 +190,18 @@ final class CartController extends Controller
                 ? ! $fulfillment['credentialsReady']
                 : $credentials === null,
         ];
+    }
+
+    private function promotionBadge(PromotionPrice $promotion): string
+    {
+        $locale = app()->getLocale();
+        $localized = trim((string) $promotion->promotion->{"badge_{$locale}"});
+
+        if ($localized !== '') {
+            return $localized;
+        }
+
+        return trim((string) $promotion->promotion->{'badge_'.($locale === 'ar' ? 'en' : 'ar')});
     }
 
     /** @return array{credentialsReady: bool, squadImagePresent: bool} */

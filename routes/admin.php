@@ -1,9 +1,17 @@
 <?php
 
+use App\Http\Controllers\Admin\ConversationDetailController;
+use App\Http\Controllers\Admin\ConversationsController;
+use App\Http\Controllers\Admin\CouponsController;
+use App\Http\Controllers\Admin\CreateCouponController;
+use App\Http\Controllers\Admin\CreatePromotionController;
 use App\Http\Controllers\Admin\CustomerContactController;
 use App\Http\Controllers\Admin\CustomerDetailController;
 use App\Http\Controllers\Admin\CustomersController;
 use App\Http\Controllers\Admin\CustomerStatusController;
+use App\Http\Controllers\Admin\CustomerWalletAdjustController;
+use App\Http\Controllers\Admin\LoyaltyController;
+use App\Http\Controllers\Admin\LoyaltyTierController;
 use App\Http\Controllers\Admin\OrderDetailController;
 use App\Http\Controllers\Admin\OrderItemSecretRevealController;
 use App\Http\Controllers\Admin\OrdersController;
@@ -13,13 +21,18 @@ use App\Http\Controllers\Admin\PaylinkRefundController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductDetailController;
 use App\Http\Controllers\Admin\ProductsController;
+use App\Http\Controllers\Admin\PromotionsController;
 use App\Http\Controllers\Admin\ServicePricingController;
 use App\Http\Controllers\Admin\ServicePricingStatusController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TeamGrantController;
 use App\Http\Controllers\Admin\TeamRoleController;
 use App\Http\Controllers\Admin\TeamStatusController;
+use App\Http\Controllers\Admin\ToggleCouponStatusController;
+use App\Http\Controllers\Admin\TogglePromotionStatusController;
 use App\Http\Controllers\Admin\TrustedDeviceController;
+use App\Http\Controllers\Admin\UpdateCouponController;
+use App\Http\Controllers\Admin\UpdatePromotionController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureAdminMfa;
@@ -136,12 +149,52 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $customerContact->defaults('locale', $locale);
                 }
 
+                $customerWalletAdjust = Route::post('/api/customers/{publicId}/wallet/adjust', CustomerWalletAdjustController::class)
+                    ->middleware(['password.confirm', 'can:wallet.adjust'])
+                    ->name('customers.wallet.adjust');
+
+                if ($locale !== null) {
+                    $customerWalletAdjust->defaults('locale', $locale);
+                }
+
+                $loyalty = Route::get('/marketing/loyalty', LoyaltyController::class)
+                    ->middleware('can:loyalty.view')
+                    ->name('marketing.loyalty');
+
+                if ($locale !== null) {
+                    $loyalty->defaults('locale', $locale);
+                }
+
+                $loyaltyTierUpdate = Route::put('/api/marketing/loyalty/tiers/{publicId}', LoyaltyTierController::class)
+                    ->middleware(['password.confirm', 'can:loyalty.manage'])
+                    ->name('marketing.loyalty.tiers.update');
+
+                if ($locale !== null) {
+                    $loyaltyTierUpdate->defaults('locale', $locale);
+                }
+
                 $teamGrant = Route::post('/api/team/grants', TeamGrantController::class)
                     ->middleware(['password.confirm', 'can:staff.manage', 'throttle:staff-identity'])
                     ->name('team.grants.store');
 
                 if ($locale !== null) {
                     $teamGrant->defaults('locale', $locale);
+                }
+
+                $conversations = Route::get('/conversations', ConversationsController::class)
+                    ->middleware('can:chat.view')
+                    ->name('conversations');
+
+                if ($locale !== null) {
+                    $conversations->defaults('locale', $locale);
+                }
+
+                $conversationDetail = Route::get('/conversations/{publicId}', ConversationDetailController::class)
+                    ->middleware('can:chat.view')
+                    ->name('conversations.show');
+
+                if ($locale !== null) {
+                    $conversationDetail->defaults('locale', $locale);
                 }
 
                 $products = Route::get('/products', ProductsController::class)
@@ -182,6 +235,70 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $teamStatus->defaults('locale', $locale);
+                }
+
+                $coupons = Route::get('/marketing/coupons', CouponsController::class)
+                    ->middleware('can:marketing.view')
+                    ->name('marketing.coupons');
+
+                if ($locale !== null) {
+                    $coupons->defaults('locale', $locale);
+                }
+
+                $createCoupon = Route::post('/api/marketing/coupons', CreateCouponController::class)
+                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->name('marketing.coupons.store');
+
+                if ($locale !== null) {
+                    $createCoupon->defaults('locale', $locale);
+                }
+
+                $updateCoupon = Route::put('/api/marketing/coupons/{publicId}', UpdateCouponController::class)
+                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->name('marketing.coupons.update');
+
+                if ($locale !== null) {
+                    $updateCoupon->defaults('locale', $locale);
+                }
+
+                $toggleCoupon = Route::post('/api/marketing/coupons/{publicId}/status', ToggleCouponStatusController::class)
+                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->name('marketing.coupons.status.store');
+
+                if ($locale !== null) {
+                    $toggleCoupon->defaults('locale', $locale);
+                }
+
+                $promotions = Route::get('/marketing/promotions', PromotionsController::class)
+                    ->middleware('can:marketing.view')
+                    ->name('marketing.promotions');
+
+                if ($locale !== null) {
+                    $promotions->defaults('locale', $locale);
+                }
+
+                $createPromotion = Route::post('/api/marketing/promotions', CreatePromotionController::class)
+                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->name('marketing.promotions.store');
+
+                if ($locale !== null) {
+                    $createPromotion->defaults('locale', $locale);
+                }
+
+                $updatePromotion = Route::put('/api/marketing/promotions/{publicId}', UpdatePromotionController::class)
+                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->name('marketing.promotions.update');
+
+                if ($locale !== null) {
+                    $updatePromotion->defaults('locale', $locale);
+                }
+
+                $togglePromotion = Route::post('/api/marketing/promotions/{publicId}/status', TogglePromotionStatusController::class)
+                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->name('marketing.promotions.status.store');
+
+                if ($locale !== null) {
+                    $togglePromotion->defaults('locale', $locale);
                 }
 
                 $servicePricing = Route::post('/api/settings/service-pricing/{serviceType}', ServicePricingController::class)

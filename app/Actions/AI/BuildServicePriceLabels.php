@@ -25,6 +25,16 @@ use Throwable;
  */
 final readonly class BuildServicePriceLabels
 {
+    /** The coin sizes the assistant can resolve from a customer's message. */
+    private const CART_QUANTITIES = [100_000, 500_000, 1_000_000, 2_000_000, 5_000_000];
+
+    /** The routes the coins configurator sells, keyed as a cart offer names them. */
+    private const CART_ROUTES = [
+        'pc' => [Platform::Pc, null],
+        'playstation:normal' => [Platform::PlayStation, DeliveryMode::Normal],
+        'playstation:fast' => [Platform::PlayStation, DeliveryMode::Fast],
+    ];
+
     public function __construct(
         private QuoteCoins $quoteCoins,
         private ReadManualServicePricing $manualPricing,
@@ -119,6 +129,28 @@ final readonly class BuildServicePriceLabels
                     ];
                 } catch (Throwable) {
                     // omit key
+                }
+
+                // Every coins configuration the assistant can offer to add to
+                // a cart, keyed exactly as the offer names it. The set is
+                // bounded by the quantities SelectServiceOptions recognises, so
+                // the panel reads its price from this one cached map instead of
+                // quoting itself — a per-panel request would fire once per
+                // reply and log a console error whenever pricing is down.
+                foreach (self::CART_QUANTITIES as $quantity) {
+                    foreach (self::CART_ROUTES as $key => [$platform, $delivery]) {
+                        try {
+                            $quote = $this->quoteCoins->execute($platform, $delivery, $quantity);
+                            $converted = $converter->convert($quote->total);
+                            $prices["coins:{$key}:{$quantity}"] = [
+                                'amountMinor' => $converted['amountMinor'],
+                                'currency' => $converted['currency'],
+                                'unit' => 'total',
+                            ];
+                        } catch (Throwable) {
+                            // This route does not sell this amount; omit key.
+                        }
+                    }
                 }
 
                 return $prices;

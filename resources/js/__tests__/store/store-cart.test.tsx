@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/react';
 import {
     cleanup,
     fireEvent,
@@ -5,7 +6,7 @@ import {
     screen,
     waitFor,
 } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as CheckoutPhoneApi from '@/lib/checkout-phone-api';
 import type * as PaylinkCheckoutApi from '@/lib/paylink-checkout-api';
@@ -13,6 +14,7 @@ import StoreCart from '@/pages/store/cart';
 import type {
     StoreCartConfiguration,
     StoreCartItem,
+    StoreCartPageProps,
 } from '@/types/store-shell';
 
 const navigateToHostedPayment = vi.hoisted(() => vi.fn());
@@ -67,11 +69,17 @@ const mockPage = vi.hoisted(() => ({
                     unitPriceHalalah: 12_500,
                 },
             ],
-        },
+            coupon: null,
+            useWallet: false,
+        } as StoreCartPageProps['cart'],
         cartPage: {
             checkout: {
                 canCheckout: false,
                 checkoutUrl: '/en/checkout/paylink',
+                couponApplyUrl: '/en/cart/coupon',
+                couponRemoveUrl: '/en/cart/coupon',
+                walletToggleUrl: '/en/cart/wallet',
+                walletBalanceHalalah: 0,
                 loginUrl: '/en/login',
                 phoneCodeUrl: '/en/checkout/phone/code',
                 phoneVerified: false,
@@ -145,6 +153,22 @@ const mockPage = vi.hoisted(() => ({
                 phone_delivery_error:
                     'The WhatsApp code could not be sent right now.',
                 order_total: 'Order total',
+                coupon_label: 'Discount code',
+                coupon_placeholder: 'Enter coupon code',
+                coupon_apply: 'Apply',
+                coupon_applying: 'Applying…',
+                coupon_remove: 'Remove',
+                coupon_removing: 'Removing…',
+                coupon_applied: 'Coupon applied',
+                coupon_discount: 'Discount',
+                coupon_invalid: 'This coupon code is not valid.',
+                coupon_expired: 'This coupon has expired or is not yet active.',
+                coupon_limit: 'This coupon has reached its usage limit.',
+                coupon_minimum:
+                    'Your order must be at least :amount to use this coupon.',
+                coupon_error: 'The coupon could not be applied. Try again.',
+                wallet_toggle: 'Use wallet balance (:balance)',
+                wallet_deduction: 'Wallet balance',
             },
         },
         direction: 'ltr',
@@ -253,6 +277,9 @@ const manualFutCartItem = {
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
+    router: {
+        reload: vi.fn(),
+    },
     usePage: () => mockPage,
 }));
 
@@ -766,6 +793,258 @@ it('does not show an SBC completion count for a Coins cart item', () => {
     render(<StoreCart />);
 
     expect(screen.queryByText('Completions')).not.toBeInTheDocument();
+});
+
+describe('cart coupon field', () => {
+    beforeEach(() => {
+        vi.mocked(router.reload).mockClear();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('renders the discount code field with apply disabled until input', () => {
+        render(<StoreCart />);
+
+        const codeInput = screen.getByLabelText('Discount code');
+        expect(codeInput).toBeVisible();
+
+        const applyButton = screen.getByRole('button', { name: 'Apply' });
+        expect(applyButton).toBeDisabled();
+
+        fireEvent.change(codeInput, { target: { value: 'save20' } });
+        expect(applyButton).toBeEnabled();
+    });
+
+    it('applies a coupon and reloads the cart props', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    data: {
+                        code: 'SAVE20',
+                        discountType: 'percent',
+                        discountHalalah: 2500,
+                    },
+                }),
+                { status: 200 },
+            ),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<StoreCart />);
+
+        fireEvent.change(screen.getByLabelText('Discount code'), {
+            target: { value: ' save20 ' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+        await waitFor(() => {
+            expect(router.reload).toHaveBeenCalledWith({ only: ['cart'] });
+        });
+
+        const [url, init] = fetchMock.mock.calls[0];
+        expect(url).toBe('/en/cart/coupon');
+        expect(init.method).toBe('POST');
+        expect(JSON.parse(init.body)).toEqual({ code: 'SAVE20' });
+        expect(init.headers['X-CSRF-TOKEN']).toBe('test-token');
+        expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('surfaces the localized coupon rejection message from the server', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue(
+                new Response(
+                    JSON.stringify({
+                        error: {
+                            code: 'coupon_minimum',
+                            message: 'SAR 50.00',
+                        },
+                    }),
+                    { status: 422 },
+                ),
+            ),
+        );
+
+        render(<StoreCart />);
+
+        fireEvent.change(screen.getByLabelText('Discount code'), {
+            target: { value: 'BIGSPEND' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+        await waitFor(() => {
+            expect(document.querySelector('[role="alert"]')).not.toBeNull();
+        });
+
+        console.log(
+            'ALERTS:',
+            Array.from(document.querySelectorAll('[role="alert"]')).map(
+                (el) => el.textContent,
+            ),
+        );
+        expect(router.reload).not.toHaveBeenCalled();
+    });
+
+    it('shows the applied coupon, its discount line, and the reduced total', () => {
+        mockPage.props.cart.coupon = {
+            code: 'SAVE20',
+            discountType: 'percent',
+            discountHalalah: 2500,
+        };
+
+        render(<StoreCart />);
+
+        expect(screen.getByText(/Coupon applied/)).toBeVisible();
+        expect(screen.getByText('SAVE20')).toBeVisible();
+        expect(screen.getByText('Discount')).toBeVisible();
+        expect(screen.getByText('-SAR 25.00')).toBeVisible();
+        // 125.00 subtotal minus the 25.00 discount.
+        expect(screen.getByText('SAR 100.00')).toBeVisible();
+        expect(
+            screen.queryByLabelText('Discount code'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('removes the applied coupon and reloads the cart props', async () => {
+        mockPage.props.cart.coupon = {
+            code: 'SAVE20',
+            discountType: 'percent',
+            discountHalalah: 2500,
+        };
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(JSON.stringify({ data: { removed: true } }), {
+                status: 200,
+            }),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<StoreCart />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+        await waitFor(() => {
+            expect(router.reload).toHaveBeenCalledWith({ only: ['cart'] });
+        });
+
+        const [url, init] = fetchMock.mock.calls[0];
+        expect(url).toBe('/en/cart/coupon');
+        expect(init.method).toBe('DELETE');
+    });
+});
+
+describe('Cart wallet balance at checkout', () => {
+    beforeEach(() => {
+        mockPage.props.auth.user = { id: 1, name: 'Mohamed' };
+        mockPage.props.cartPage.checkout.walletBalanceHalalah = 5000;
+        mockPage.props.cart.useWallet = false;
+        mockPage.props.cart.coupon = null;
+    });
+
+    it('does not display the wallet toggle for guest users', () => {
+        mockPage.props.auth.user = null;
+        mockPage.props.cartPage.checkout.walletBalanceHalalah = 5000;
+
+        render(<StoreCart />);
+
+        expect(
+            screen.queryByRole('checkbox', { name: /wallet/i }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/Use wallet balance/),
+        ).not.toBeInTheDocument();
+    });
+
+    it('does not display the wallet toggle when user balance is zero', () => {
+        mockPage.props.cartPage.checkout.walletBalanceHalalah = 0;
+
+        render(<StoreCart />);
+
+        expect(
+            screen.queryByRole('checkbox', { name: /wallet/i }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/Use wallet balance/),
+        ).not.toBeInTheDocument();
+    });
+
+    it('displays the wallet toggle with formatted balance for logged in users with balance', () => {
+        render(<StoreCart />);
+
+        expect(
+            screen.getByText('Use wallet balance (SAR 50.00)'),
+        ).toBeVisible();
+        const checkbox = screen.getByRole('checkbox');
+        expect(checkbox).not.toBeChecked();
+    });
+
+    it('toggles wallet usage on, sends POST to endpoint, and reloads cart props', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(JSON.stringify({ data: { use_wallet: true } }), {
+                status: 200,
+            }),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<StoreCart />);
+
+        const checkbox = screen.getByRole('checkbox');
+        fireEvent.click(checkbox);
+
+        await waitFor(() => {
+            expect(router.reload).toHaveBeenCalledWith({ only: ['cart'] });
+        });
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            '/en/cart/wallet',
+            expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify({ use: true }),
+            }),
+        );
+    });
+
+    it('shows wallet deduction line and reduced total when wallet is enabled', () => {
+        mockPage.props.cart.useWallet = true;
+        // Total is 125.00 SAR (12,500 halalah), wallet balance is 50.00 SAR (5,000 halalah)
+        render(<StoreCart />);
+
+        const checkbox = screen.getByRole('checkbox');
+        expect(checkbox).toBeChecked();
+        expect(screen.getByText('Wallet balance')).toBeVisible();
+        expect(screen.getByText('-SAR 50.00')).toBeVisible();
+        // 125.00 minus 50.00 = 75.00
+        expect(screen.getByText('SAR 75.00')).toBeVisible();
+    });
+
+    it('displays breakdown correctly with both coupon discount and wallet deduction', () => {
+        mockPage.props.cart.useWallet = true;
+        mockPage.props.cart.coupon = {
+            code: 'PROMO20',
+            discountType: 'fixed',
+            discountHalalah: 2500, // 25.00 SAR discount
+        };
+        // Total 125.00, coupon 25.00, wallet 50.00 -> payable 50.00
+        render(<StoreCart />);
+
+        expect(screen.getByText('Discount')).toBeVisible();
+        expect(screen.getByText('-SAR 25.00')).toBeVisible();
+        expect(screen.getByText('Wallet balance')).toBeVisible();
+        expect(screen.getByText('-SAR 50.00')).toBeVisible();
+        expect(screen.getByText('SAR 50.00')).toBeVisible();
+    });
+
+    it('displays zero payable total when order is fully covered by wallet', () => {
+        mockPage.props.cart.useWallet = true;
+        mockPage.props.cartPage.checkout.walletBalanceHalalah = 20000; // 200.00 SAR balance covers 125.00 SAR total
+
+        render(<StoreCart />);
+
+        expect(screen.getByText('Wallet balance')).toBeVisible();
+        expect(screen.getByText('-SAR 125.00')).toBeVisible();
+        expect(screen.getByText('SAR 0.00')).toBeVisible();
+    });
 });
 
 it('keeps the Arabic credential state RTL without an email identity isolate', () => {

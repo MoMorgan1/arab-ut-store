@@ -28,6 +28,15 @@ final readonly class BuildAssistantCards
         'fut-champions' => ['path' => '/fut-champions', 'key' => 'fut_champions', 'image' => '/images/store/services/fut-champions.webp'],
     ];
 
+    /**
+     * Topics that mean "show me what you sell". These earn the whole menu as
+     * cards rather than one card, because the customer named no single service.
+     */
+    private const MENU_TOPICS = ['services-overview'];
+
+    /** The menu, in the order the storefront lists it. */
+    private const MENU = ['coins-service', 'sbc', 'rivals', 'fut-champions'];
+
     public function __construct(
         private SelectSupportKnowledge $selectKnowledge,
         private SelectServiceOptions $selectOptions,
@@ -54,8 +63,17 @@ final readonly class BuildAssistantCards
 
         // Only the topic the message is *primarily* about earns a card. A
         // warranty question also brushes the delivery-speed topic, and turning
-        // that into a buy button would be an upsell on a support answer.
-        foreach ($this->selectKnowledge->execute($customerText, $limit) as $topic) {
+        // that into a buy button would be an upsell on a support answer. The
+        // exception is a customer asking what the store sells: that question is
+        // answered by the menu itself.
+        $topics = $this->selectKnowledge->execute($customerText, max($limit, 3));
+        $primary = $topics[0] ?? null;
+
+        if ($primary !== null && in_array($primary->id, self::MENU_TOPICS, true)) {
+            return $this->menu($locale);
+        }
+
+        foreach (array_slice($topics, 0, $limit) as $topic) {
             $card = self::CARDS[$topic->id] ?? null;
 
             if ($card === null || isset($cards[$card['key']])) {
@@ -77,6 +95,40 @@ final readonly class BuildAssistantCards
         }
 
         return array_values($cards);
+    }
+
+    /**
+     * Every service the store sells, as cards.
+     *
+     * @return list<array{
+     *     id: string,
+     *     title: string,
+     *     subtitle: string,
+     *     cta: string,
+     *     url: string,
+     *     image: string,
+     *     options: list<array{label: string, value: string}>
+     * }>
+     */
+    private function menu(string $locale): array
+    {
+        $cards = [];
+
+        foreach (self::MENU as $topicId) {
+            $card = self::CARDS[$topicId];
+
+            $cards[] = [
+                'id' => $card['key'],
+                'title' => (string) trans("chat.cards.{$card['key']}.title", [], $locale),
+                'subtitle' => (string) trans("chat.cards.{$card['key']}.subtitle", [], $locale),
+                'cta' => (string) trans('chat.cards.cta', [], $locale),
+                'url' => self::buildUrl($card['path'], $locale, []),
+                'image' => $card['image'],
+                'options' => [],
+            ];
+        }
+
+        return $cards;
     }
 
     /**

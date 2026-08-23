@@ -14,8 +14,12 @@ export type ChatChoices = {
 /** Payload shape this client understands. A newer server version is ignored. */
 const SUPPORTED_VERSION = 'choices.v1';
 
-/** Six is the widest real question (the FUT Champions ranks). */
-const MAX_ITEMS = 6;
+/**
+ * Seven is the widest real question: the Rivals ladder, which a customer can
+ * start from at any of divisions 7 through 1. Silently slicing it would drop
+ * division 1 and leave a customer unable to answer.
+ */
+const MAX_ITEMS = 7;
 
 /** A chip's text is sent verbatim as the customer's next message. */
 const MAX_MESSAGE_LENGTH = 120;

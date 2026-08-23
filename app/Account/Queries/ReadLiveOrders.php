@@ -62,6 +62,7 @@ final readonly class ReadLiveOrders
                 'orders.order_number',
                 'orders.status',
                 'orders.currency',
+                'orders.wallet_halalah',
                 'orders.total_halalah',
                 'orders.placed_at',
                 'orders.created_at',

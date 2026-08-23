@@ -162,6 +162,10 @@ export type StoreCartItem = {
         serviceType:
             'coins' | 'sbc' | 'objectives' | 'rivals' | 'fut_champions';
     };
+    promotion: {
+        badge: string;
+        discountHalalah: number;
+    } | null;
     quantity: number;
     requiresCredentials: boolean;
     totalHalalah: number;
@@ -247,16 +251,47 @@ export type StoreCartTranslations = {
     phone_unavailable: string;
     phone_delivery_error: string;
     order_total: string;
+    coupon_label: string;
+    coupon_placeholder: string;
+    coupon_apply: string;
+    coupon_applying: string;
+    coupon_remove: string;
+    coupon_removing: string;
+    coupon_applied: string;
+    coupon_discount: string;
+    coupon_invalid: string;
+    coupon_expired: string;
+    coupon_limit: string;
+    coupon_minimum: string;
+    coupon_error: string;
+    wallet_toggle: string;
+    wallet_deduction: string;
+};
+
+export type StoredCartCoupon = {
+    code: string;
+    discountType: 'percent' | 'fixed';
+    discountHalalah: number;
 };
 
 export type StoreCartPageProps = {
     auth: { user: { id: number; name: string } | null };
     cartCount: number;
-    cart: { count: number; currency: 'SAR'; items: StoreCartItem[] };
+    cart: {
+        count: number;
+        currency: 'SAR';
+        items: StoreCartItem[];
+        coupon: StoredCartCoupon | null;
+        useWallet: boolean;
+    };
     cartPage: {
         checkout: {
             canCheckout: boolean;
             checkoutUrl: string;
+            couponApplyUrl: string;
+            couponRemoveUrl: string;
+            walletToggleUrl: string;
+            walletBalanceHalalah: number;
             loginUrl: string;
             phoneCodeUrl: string;
             phoneVerified: boolean;

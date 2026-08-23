@@ -16,6 +16,7 @@ beforeEach(function () {
 test('a guest can initialize and fetch an active conversation with seeded onboarding message', function () {
     config()->set('ai-assistant.enabled', false);
     config()->set('ai-assistant.rollout', 'disabled');
+    config()->set('chat.demo_assistant', false);
 
     $response = $this->postJson(route('chat.conversations.store'), [
         'locale' => 'ar',

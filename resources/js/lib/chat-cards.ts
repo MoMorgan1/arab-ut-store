@@ -12,8 +12,12 @@ export type ChatServiceCard = {
 /** Payload shape this client understands. A newer server version is ignored. */
 const SUPPORTED_VERSION = 'cards.v1';
 
-/** Cards are decoration on an answer; more than a couple would bury the reply. */
-const MAX_CARDS = 2;
+/**
+ * Cards are decoration on an answer, so a reply about one service shows one.
+ * The cap is four because "what do you sell?" is answered by the whole menu,
+ * and the store sells four things.
+ */
+const MAX_CARDS = 4;
 
 function isCard(value: unknown): value is ChatServiceCard {
     if (typeof value !== 'object' || value === null) {

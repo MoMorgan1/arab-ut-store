@@ -10,7 +10,7 @@ final class AdminShell
     /**
      * @return array{
      *     adminIdentity: array{name: string, role: string},
-     *     adminNavigation: list<array{key: string, label: string, url: string}>,
+     *     adminNavigation: list<array{key: string, label: string, url: string, children?: list<array{key: string, label: string, url: string}>}>,
      *     permissions: list<string>,
      *     logoutUrl: string
      * }
@@ -46,11 +46,47 @@ final class AdminShell
             ];
         }
 
+        if ($actor->can(AdminPermission::ChatView->value)) {
+            $navigation[] = [
+                'key' => 'conversations',
+                'label' => (string) trans('admin.navigation.conversations', locale: $locale),
+                'url' => route($prefix.'conversations', absolute: false),
+            ];
+        }
+
+        if ($actor->can(AdminPermission::MarketingView->value)) {
+            $navigation[] = [
+                'key' => 'marketing',
+                'label' => (string) trans('admin.navigation.marketing', locale: $locale),
+                'url' => route($prefix.'marketing.coupons', absolute: false),
+                'children' => [
+                    [
+                        'key' => 'marketingCoupons',
+                        'label' => (string) trans('admin.navigation.marketingCoupons', locale: $locale),
+                        'url' => route($prefix.'marketing.coupons', absolute: false),
+                    ],
+                    [
+                        'key' => 'marketingPromotions',
+                        'label' => (string) trans('admin.navigation.marketingPromotions', locale: $locale),
+                        'url' => route($prefix.'marketing.promotions', absolute: false),
+                    ],
+                ],
+            ];
+        }
+
         if ($actor->can(AdminPermission::CatalogView->value)) {
             $navigation[] = [
                 'key' => 'products',
                 'label' => (string) trans('admin.navigation.products', locale: $locale),
                 'url' => route($prefix.'products', absolute: false),
+            ];
+        }
+
+        if ($actor->can(AdminPermission::LoyaltyView->value)) {
+            $navigation[] = [
+                'key' => 'marketingLoyalty',
+                'label' => (string) trans('admin.navigation.marketingLoyalty', locale: $locale),
+                'url' => route($prefix.'marketing.loyalty', absolute: false),
             ];
         }
 
