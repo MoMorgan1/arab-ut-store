@@ -9,23 +9,25 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('promotions', function (Blueprint $table) {
-            $table->id();
-            $table->ulid('public_id')->unique();
-            $table->string('name_ar');
-            $table->string('name_en');
-            $table->string('badge_ar')->nullable();
-            $table->string('badge_en')->nullable();
-            $table->string('scope')->default('all')->index();
-            $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('service_type')->nullable()->index();
-            $table->string('discount_type');
-            $this->nonnegativeMoneyColumn($table, 'value');
-            $table->timestamp('starts_at')->nullable();
-            $table->timestamp('ends_at')->nullable();
-            $table->boolean('is_active')->default(true)->index();
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('promotions')) {
+            Schema::create('promotions', function (Blueprint $table) {
+                $table->id();
+                $table->ulid('public_id')->unique();
+                $table->string('name_ar');
+                $table->string('name_en');
+                $table->string('badge_ar')->nullable();
+                $table->string('badge_en')->nullable();
+                $table->string('scope')->default('all')->index();
+                $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
+                $table->string('service_type')->nullable()->index();
+                $table->string('discount_type');
+                $this->nonnegativeMoneyColumn($table, 'value');
+                $table->timestamp('starts_at')->nullable();
+                $table->timestamp('ends_at')->nullable();
+                $table->boolean('is_active')->default(true)->index();
+                $table->timestamps();
+            });
+        }
 
         Schema::table('order_items', function (Blueprint $table): void {
             if (DB::connection()->getDriverName() === 'sqlite') {
@@ -37,12 +39,11 @@ return new class extends Migration
 
             $table->foreignId('promotion_id')->nullable()->constrained()->nullOnDelete();
             $table->bigInteger('promotion_discount_halalah')->default(0);
-
-            DB::statement('ALTER TABLE order_items ADD CONSTRAINT order_items_promotion_discount_halalah_nonnegative CHECK (promotion_discount_halalah BETWEEN 0 AND 9223372036854775807)');
         });
 
         if (DB::connection()->getDriverName() === 'mysql' || DB::connection()->getDriverName() === 'mariadb') {
-            DB::statement('ALTER TABLE promotions ADD CONSTRAINT promotions_value_nonnegative CHECK (value BETWEEN 0 AND 9223372036854775807)');
+            DB::statement('ALTER TABLE order_items ADD CONSTRAINT IF NOT EXISTS order_items_promotion_discount_halalah_nonnegative CHECK (promotion_discount_halalah BETWEEN 0 AND 9223372036854775807)');
+            DB::statement('ALTER TABLE promotions ADD CONSTRAINT IF NOT EXISTS promotions_value_nonnegative CHECK (value BETWEEN 0 AND 9223372036854775807)');
         }
     }
 
