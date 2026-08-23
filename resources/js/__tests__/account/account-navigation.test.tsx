@@ -36,12 +36,6 @@ it('keeps destination navigation separate from the POST logout action', () => {
             current="orders"
             items={items}
             logoutUrl="/logout"
-            sections={{
-                label: 'Profile sections',
-                personal: 'Personal',
-                contact: 'Contact & verification',
-                security: 'Security',
-            }}
             translations={{
                 label: 'My Account sections',
                 overview: 'Overview',
@@ -73,7 +67,7 @@ it('keeps destination navigation separate from the POST logout action', () => {
     expect(inertia.post).toHaveBeenCalledWith('/logout');
 });
 
-it('renders section links when current is profile', () => {
+it('keeps the profile destination a single link without a nested sections rail', () => {
     const items: AccountNavigationItem[] = [
         { key: 'overview', label: 'Overview', url: '/en/my-account' },
         { key: 'orders', label: 'Orders', url: '/en/my-account/orders' },
@@ -86,12 +80,6 @@ it('renders section links when current is profile', () => {
             current="profile"
             items={items}
             logoutUrl="/logout"
-            sections={{
-                label: 'Profile sections',
-                personal: 'Personal',
-                contact: 'Contact & verification',
-                security: 'Security',
-            }}
             translations={{
                 label: 'My Account sections',
                 overview: 'Overview',
@@ -105,9 +93,60 @@ it('renders section links when current is profile', () => {
         />,
     );
 
-    expect(screen.getAllByRole('link')).toHaveLength(7);
+    expect(screen.getAllByRole('link')).toHaveLength(4);
     expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
         'aria-current',
         'page',
     );
+    expect(
+        screen.queryByRole('link', { name: 'Personal' }),
+    ).not.toBeInTheDocument();
+    expect(
+        screen.queryByRole('link', { name: 'Contact & verification' }),
+    ).not.toBeInTheDocument();
+    expect(
+        screen.queryByRole('link', { name: 'Security' }),
+    ).not.toBeInTheDocument();
+});
+
+it('renders attention dot for attention items and badge pill for badged items', () => {
+    const items: AccountNavigationItem[] = [
+        { key: 'overview', label: 'Overview', url: '/en/my-account' },
+        { key: 'orders', label: 'Orders', url: '/en/my-account/orders' },
+        {
+            key: 'wallet',
+            label: 'Wallet',
+            url: '/en/my-account/wallet',
+            badge: 'Coming soon',
+        },
+        {
+            key: 'profile',
+            label: 'Profile',
+            url: '/en/my-account/profile',
+            attention: true,
+        },
+    ];
+
+    const { container } = render(
+        <AccountNavigation
+            current="overview"
+            items={items}
+            logoutUrl="/logout"
+            translations={{
+                label: 'My Account sections',
+                overview: 'Overview',
+                orders: 'Orders',
+                wallet: 'Wallet',
+                profile: 'Profile',
+                security: 'Security',
+                support: 'Support',
+                logout: 'Log out',
+            }}
+        />,
+    );
+
+    expect(screen.getByText('Coming soon')).toHaveClass(
+        'account-navigation__badge',
+    );
+    expect(container.querySelector('.account-navigation__dot')).not.toBeNull();
 });

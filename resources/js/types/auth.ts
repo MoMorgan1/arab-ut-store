@@ -44,12 +44,6 @@ export type AuthRoutes = {
 
 export type AuthUiTranslations = {
     brand: string;
-    benefits: {
-        eyebrow: string;
-        title: string;
-        description: string;
-        items: [string, string, string];
-    };
     fields: {
         first_name: string;
         last_name: string;

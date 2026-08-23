@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useChat } from '@/hooks/use-chat';
 import { chatServiceCards } from '@/lib/chat-cards';
 import { fetchChatServicePrices } from '@/lib/chat-service-prices';
+import { chatShelfItems } from '@/lib/chat-shelf';
 import {
     isChatSoundEnabled,
     playChatNotification,
@@ -446,7 +447,8 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
     const hasServiceCard = messages.some(
         (message) =>
             message.senderType === 'assistant' &&
-            chatServiceCards(message).length > 0,
+            (chatServiceCards(message).length > 0 ||
+                chatShelfItems(message).length > 0),
     );
 
     useEffect(() => {
@@ -719,6 +721,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                                     // opened, so tapping a card steps aside.
                                     isMobileDialog ? closeChat : undefined
                                 }
+                                onChoose={sendMessage}
                             />
 
                             <ChatComposer
@@ -738,6 +741,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                 isOpen={isOpen}
                 unreadCount={unreadCount}
                 locale={locale}
+                canGreet={surface !== 'account'}
                 onToggle={toggleOpen}
             />
         </div>

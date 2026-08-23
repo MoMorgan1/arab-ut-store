@@ -24,6 +24,8 @@ final readonly class FinalizeAgentTurn
         private AgentRuntimeConfig $config,
         private EstimateAgentRunCost $costEstimator,
         private BuildAssistantCards $buildCards,
+        private BuildAssistantChoices $buildChoices,
+        private BuildAssistantShelf $buildShelf,
     ) {}
 
     public function execute(
@@ -73,19 +75,32 @@ final readonly class FinalizeAgentTurn
                 throw new LogicException('A completed provider event requires usage.');
             }
 
-            $cards = $this->buildCards->execute(
-                $this->customerText($lockedTurn),
-                (string) $lockedConversation->locale,
-            );
+            $customerText = $this->customerText($lockedTurn);
+            $locale = (string) $lockedConversation->locale;
+            $cards = $this->buildCards->execute($customerText, $locale);
+            $choices = $this->buildChoices->execute($customerText, $locale);
+            $metadata = [];
+
+            if ($cards !== []) {
+                $metadata['cards'] = ['version' => 'cards.v1', 'items' => $cards];
+            }
+
+            if ($choices !== null) {
+                $metadata['choices'] = $choices;
+            }
+
+            $shelf = $this->buildShelf->execute($customerText, $locale);
+
+            if ($shelf !== []) {
+                $metadata['shelf'] = ['version' => 'shelf.v1', 'items' => $shelf];
+            }
 
             $assistantMessage = $lockedConversation->messages()->create([
                 'reply_to_message_id' => $lockedTurn->last_customer_message_id,
                 'sender_type' => ChatSenderType::Assistant,
                 'message_type' => ChatMessageType::Text,
                 'content' => $trimmedText,
-                'metadata' => $cards === []
-                    ? null
-                    : ['cards' => ['version' => 'cards.v1', 'items' => $cards]],
+                'metadata' => $metadata === [] ? null : $metadata,
             ]);
 
             $lockedRun->forceFill([

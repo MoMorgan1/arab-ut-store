@@ -62,7 +62,7 @@ final class AgentRuntimeConfig
 
     public function promptVersion(): string
     {
-        return $this->fixedString('prompt_version', 'support-v4');
+        return $this->fixedString('prompt_version', 'support-v6');
     }
 
     public function knowledgeTopicLimit(): int

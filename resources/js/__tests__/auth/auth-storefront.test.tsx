@@ -148,17 +148,6 @@ const arabicAuthUi = {
         show: 'إظهار كلمة المرور',
         hide: 'إخفاء كلمة المرور',
     },
-    benefits: {
-        eyebrow: 'حسابك مع عرب التيميت',
-        title: 'كمّل طلبك من نفس المكان',
-        description:
-            'تسجيل الدخول يربط حسابك بسلتك الحالية بدون ما تبدأ من جديد.',
-        items: [
-            'سلتك تكمل معك بعد تسجيل الدخول',
-            'بيانات EA مشفّرة داخل السلة المؤقتة',
-            'غيّر اللغة والعملة من نفس المتجر',
-        ],
-    },
     login: {
         head_title: 'تسجيل الدخول',
         title: 'تسجيل الدخول إلى حسابك',
@@ -170,9 +159,9 @@ const arabicAuthUi = {
         email_tab: 'البريد الإلكتروني',
         tab_email: 'البريد وكلمة المرور',
         tab_email_short: 'البريد',
-        phone_tab: 'واتساب',
+        phone_tab: 'الهاتف',
         country_code: 'رمز الدولة',
-        phone_number: 'رقم واتساب',
+        phone_number: 'رقم الهاتف',
         phone_account_hint:
             'سنرسل كودًا من 6 أرقام على واتساب. إن لم يكن لديك حساب سننشئ واحدًا بهذا الرقم.',
         phone_send_code: 'إرسال الكود',
@@ -260,16 +249,6 @@ const englishAuthUi = {
         remember: 'Remember me',
     },
     password_visibility: { show: 'Show password', hide: 'Hide password' },
-    benefits: {
-        eyebrow: 'Your Arab UT account',
-        title: 'Continue your order in one place',
-        description: 'Sign in to connect your account to your current cart.',
-        items: [
-            'Your cart continues after you sign in',
-            'EA credentials stay encrypted in the temporary cart',
-            'Change language and currency in the same store',
-        ],
-    },
     login: {
         head_title: 'Log in',
         title: 'Log in to your account',
@@ -407,15 +386,14 @@ function setPage(
     };
 }
 
-function expectBenefitsBeforeForm() {
+function expectFocusedSingleColumn() {
     const formCard = document.querySelector('.auth-shell__form-card');
-    const benefits = document.querySelector('.auth-shell__benefits');
 
     expect(formCard).not.toBeNull();
-    expect(benefits).not.toBeNull();
-    expect(benefits?.compareDocumentPosition(formCard as Node) ?? 0).toBe(
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    );
+    expect(document.querySelector('.auth-shell__benefits')).toBeNull();
+    expect(
+        document.querySelector('.auth-shell__brand img'),
+    ).toBeInTheDocument();
 }
 
 afterEach(cleanup);
@@ -444,7 +422,7 @@ describe('storefront authentication shell', () => {
         expect(document.querySelector('.auth-shell__benefits')).toBeNull();
     });
 
-    it('keeps Arabic login inside one complete storefront shell with truthful benefits', () => {
+    it('keeps Arabic login inside one complete storefront shell with a focused card', () => {
         setPage('login');
 
         render(
@@ -470,11 +448,7 @@ describe('storefront authentication shell', () => {
         expect(
             screen.getByRole('heading', { name: 'تسجيل الدخول إلى حسابك' }),
         ).toHaveClass('auth-shell__title');
-        expectBenefitsBeforeForm();
-
-        for (const benefit of arabicAuthUi.benefits.items) {
-            expect(screen.getByText(benefit)).toBeVisible();
-        }
+        expectFocusedSingleColumn();
 
         expect(screen.getByRole('link', { name: 'الحساب' })).toHaveAttribute(
             'href',
@@ -499,7 +473,7 @@ describe('storefront authentication shell', () => {
             'aria-selected',
             'true',
         );
-        expect(screen.getByRole('tab', { name: 'واتساب' })).toHaveAttribute(
+        expect(screen.getByRole('tab', { name: 'الهاتف' })).toHaveAttribute(
             'aria-selected',
             'false',
         );
@@ -515,7 +489,7 @@ describe('storefront authentication shell', () => {
         ).toHaveAttribute('href', '/privacy');
     });
 
-    it('renders English registration form first with the localized benefits', () => {
+    it('renders the English registration form in the focused single-column shell', () => {
         setPage('register', 'en');
         const englishRoutes = page.props.authRoutes as typeof routes;
 
@@ -533,11 +507,7 @@ describe('storefront authentication shell', () => {
             'dir',
             'ltr',
         );
-        expectBenefitsBeforeForm();
-
-        for (const benefit of englishAuthUi.benefits.items) {
-            expect(screen.getByText(benefit)).toBeVisible();
-        }
+        expectFocusedSingleColumn();
 
         expect(document.querySelector('form')).toHaveAttribute(
             'action',
@@ -623,7 +593,7 @@ describe('storefront authentication shell', () => {
         ).toBeVisible();
     });
 
-    it('keeps forgot and reset password focused without a benefits panel', () => {
+    it('keeps forgot and reset password in the focused shell without a benefits panel', () => {
         setPage('forgot_password', 'en');
         const englishRoutes = page.props.authRoutes as typeof routes;
         const { container, rerender } = render(
@@ -635,9 +605,7 @@ describe('storefront authentication shell', () => {
             </AuthLayout>,
         );
 
-        expect(container.querySelector('.auth-shell__grid')).toHaveClass(
-            'auth-shell__grid--focused',
-        );
+        expectFocusedSingleColumn();
         expect(
             container.querySelector('.auth-shell__benefits'),
         ).not.toBeInTheDocument();

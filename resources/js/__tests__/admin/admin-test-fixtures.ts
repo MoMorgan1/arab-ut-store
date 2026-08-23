@@ -778,6 +778,7 @@ export const sampleAdminOrderDetail = {
 export const sampleAdminCustomerRows = [
     {
         id: '01K5CUST00000000000000001',
+        number: 'CUS-ROW001',
         name: 'Saud Al-Otaibi',
         email: 'saud@example.test',
         phone: '+966500000001',
@@ -796,6 +797,7 @@ export const sampleAdminCustomerRows = [
     },
     {
         id: '01K5CUST00000000000000002',
+        number: 'CUS-ROW002',
         name: 'Fahad Al-Harbi',
         email: 'fahad@example.test',
         phone: null,
@@ -824,6 +826,7 @@ export const sampleAdminCustomerFilterOptions = {
 
 export const sampleAdminCustomerDetail = {
     id: '01K5CUST00000000000000001',
+    number: 'CUS-7K4QXM',
     name: 'Saud Al-Otaibi',
     firstName: 'Saud',
     lastName: 'Al-Otaibi',

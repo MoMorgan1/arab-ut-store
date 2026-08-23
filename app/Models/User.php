@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Customers\CustomerNumber;
 use App\Enums\UserRole;
 use App\Models\Concerns\HasPublicUlid;
 use Database\Factories\UserFactory;
@@ -21,6 +22,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 /**
  * @property int $id
  * @property string $public_id
+ * @property string|null $customer_number
  * @property string $first_name
  * @property string $last_name
  * @property string $name
@@ -45,6 +47,20 @@ class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasPublicUlid, Notifiable, TwoFactorAuthenticatable;
+
+    /**
+     * Customer accounts get a short, quotable number alongside the ULID public
+     * id, assigned here because customers arrive through several paths
+     * (registration, WhatsApp login, Google sign-in, guest checkout claim).
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $user): void {
+            if ($user->customer_number === null && $user->role === UserRole::Customer) {
+                $user->customer_number = CustomerNumber::generate();
+            }
+        });
+    }
 
     /** @return Attribute<string, never> */
     protected function name(): Attribute

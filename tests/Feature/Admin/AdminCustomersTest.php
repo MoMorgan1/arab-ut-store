@@ -165,6 +165,24 @@ test('customers request validates all query filter boundaries', function (
     'search exceeds 100 chars' => ['search='.str_repeat('a', 101)],
 ]);
 
+test('search finds a customer by the short number staff read aloud', function (): void {
+    $customer = User::factory()->create([
+        'role' => UserRole::Customer,
+        'first_name' => 'Nawaf',
+        'last_name' => 'Al-Dossari',
+    ]);
+
+    $number = (string) $customer->customer_number;
+
+    foreach ([$number, strtolower($number), substr($number, 4)] as $term) {
+        $results = app(ListAdminCustomers::class)->paginate(['search' => $term]);
+
+        expect($results['customers'])->toHaveCount(1)
+            ->and($results['customers'][0]['id'])->toBe((string) $customer->public_id)
+            ->and($results['customers'][0]['number'])->toBe($number);
+    }
+});
+
 test('search finds customers by name, email, phone digits, and public ID', function (): void {
     $customer = User::factory()->create([
         'role' => UserRole::Customer,

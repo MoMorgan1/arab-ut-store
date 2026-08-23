@@ -29,6 +29,18 @@ type Props = {
     canResetPassword: boolean;
 };
 
+function renderWithNumber(template: string, number: string) {
+    const [before, after] = template.split(':number');
+
+    return (
+        <>
+            {before}
+            <bdi dir="ltr">{number}</bdi>
+            {after}
+        </>
+    );
+}
+
 function maskPhoneNumber(phone: string): string {
     const split = splitE164(phone);
 
@@ -296,8 +308,9 @@ export default function Login({
                                     {phoneCodeSent ? (
                                         <>
                                             <p role="status">
-                                                {authUi.login.phone_code_sent_to.replace(
-                                                    ':number',
+                                                {renderWithNumber(
+                                                    authUi.login
+                                                        .phone_code_sent_to,
                                                     maskPhoneNumber(
                                                         internationalPhone,
                                                     ),

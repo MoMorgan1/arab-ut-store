@@ -2,14 +2,18 @@ import { AlertCircle, ArrowDown, RefreshCw } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { chatServiceCards } from '@/lib/chat-cards';
+import { chatChoices } from '@/lib/chat-choices';
 import { groupChatMessages } from '@/lib/chat-grouping';
+import { chatShelfItems } from '@/lib/chat-shelf';
 import { chatTopicsFor } from '@/lib/chat-topics';
 import type {
     AgentTurnState,
     ChatMessage,
     ChatServicePrices,
 } from '@/types/chat';
+import { ChatChoiceChips } from './chat-choice-chips';
 import { ChatServiceCards } from './chat-service-cards';
+import { ChatShelf } from './chat-shelf';
 import { StreamedText } from './streamed-text';
 import { TypingIndicator } from './typing-indicator';
 
@@ -28,6 +32,7 @@ type ChatMessageListProps = {
     retryableTurn?: AgentTurnState | null;
     onRetryAgentTurn?: () => void;
     onCardNavigate?: () => void;
+    onChoose?: (message: string) => void;
 };
 
 export const ChatMessageList: React.FC<ChatMessageListProps> = ({
@@ -45,6 +50,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     retryableTurn,
     onRetryAgentTurn,
     onCardNavigate,
+    onChoose,
 }) => {
     const isEn = locale === 'en';
     const suggestions = chatTopicsFor(locale).map((topic) => topic.label);
@@ -165,6 +171,9 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
         }
     }, [messages, isLoading, isAssistantTyping, isReducedMotion]);
 
+    // Only the newest message may offer chips: a question further up the
+    // transcript has already been answered.
+    const newestMessageId = messages[messages.length - 1]?.publicId ?? null;
     const clusters = groupChatMessages(messages);
 
     return (
@@ -306,24 +315,10 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                     />
                                                 </span>
                                             ) : (
-                                                <p className="break-words whitespace-pre-wrap">
-                                                    <StreamedText
-                                                        content={
-                                                            message.content
-                                                        }
-                                                        isStreaming={
-                                                            isStreaming
-                                                        }
-                                                    />
-                                                    {isStreaming &&
-                                                        message.content !==
-                                                            '' && (
-                                                            <span
-                                                                aria-hidden="true"
-                                                                className="chat-stream-caret"
-                                                            />
-                                                        )}
-                                                </p>
+                                                <StreamedText
+                                                    content={message.content}
+                                                    isStreaming={isStreaming}
+                                                />
                                             )}
                                         </div>
 
@@ -337,6 +332,28 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                 onNavigate={onCardNavigate}
                                             />
                                         )}
+
+                                        {!isCustomer && !isStreaming && (
+                                            <ChatShelf
+                                                items={chatShelfItems(message)}
+                                                servicePrices={servicePrices}
+                                                locale={locale}
+                                                onNavigate={onCardNavigate}
+                                            />
+                                        )}
+
+                                        {!isCustomer &&
+                                            !isStreaming &&
+                                            onChoose !== undefined &&
+                                            message.publicId ===
+                                                newestMessageId && (
+                                                <ChatChoiceChips
+                                                    choices={chatChoices(
+                                                        message,
+                                                    )}
+                                                    onChoose={onChoose}
+                                                />
+                                            )}
 
                                         {/* Status / retry for customer messages */}
                                         {isCustomer && isError && (

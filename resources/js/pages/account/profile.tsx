@@ -12,6 +12,18 @@ import MyAccountLayout from '@/layouts/my-account-layout';
 import { splitE164 } from '@/lib/phone-country-codes';
 import type { AccountProfilePageProps } from '@/types/account';
 
+function renderWithNumber(template: string, number: string) {
+    const [before, after] = template.split(':number');
+
+    return (
+        <>
+            {before}
+            <bdi dir="ltr">{number}</bdi>
+            {after}
+        </>
+    );
+}
+
 function maskPhoneNumber(value: string): string {
     const split = splitE164(value);
 
@@ -44,10 +56,8 @@ export default function AccountProfile() {
     const countdown = useResendCountdown(60);
 
     const details = useForm({
-        display_currency: props.profile.displayCurrency,
         first_name: props.profile.firstName,
         last_name: props.profile.lastName,
-        preferred_locale: props.profile.preferredLocale,
     });
     const email = useForm({ email: '' });
     const phone = useForm({ phone: '' });
@@ -152,6 +162,20 @@ export default function AccountProfile() {
         router.post(props.logoutUrl);
     }
 
+    const isContactAttention =
+        !props.profile.email.verified || !props.profile.phone.verified;
+
+    function openPhoneVerification() {
+        setEditingContact('phone');
+        setTimeout(() => {
+            const target =
+                document.getElementById('new_phone') ??
+                document.getElementById('code') ??
+                document.getElementById('contact');
+            target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 0);
+    }
+
     return (
         <MyAccountLayout {...props} current="profile" currentUrl={inertia.url}>
             <Head title={props.accountUi.profile.title} />
@@ -169,7 +193,10 @@ export default function AccountProfile() {
                     <a href="#personal">
                         {props.accountUi.profile.sections.personal}
                     </a>
-                    <a href="#contact">
+                    <a
+                        data-attention={isContactAttention ? 'true' : undefined}
+                        href="#contact"
+                    >
                         {props.accountUi.profile.sections.contact}
                     </a>
                     <a href="#security">
@@ -208,74 +235,6 @@ export default function AccountProfile() {
                                 }
                                 value={details.data.last_name}
                             />
-                            <label>
-                                <span>
-                                    {props.accountUi.profile.preferred_locale}
-                                </span>
-                                <select
-                                    aria-describedby={
-                                        details.errors.preferred_locale
-                                            ? 'preferred_locale-error'
-                                            : undefined
-                                    }
-                                    aria-invalid={
-                                        details.errors.preferred_locale
-                                            ? true
-                                            : undefined
-                                    }
-                                    id="preferred_locale"
-                                    onChange={(event) =>
-                                        details.setData(
-                                            'preferred_locale',
-                                            event.currentTarget.value as
-                                                'ar' | 'en',
-                                        )
-                                    }
-                                    value={details.data.preferred_locale}
-                                >
-                                    <option value="ar">العربية</option>
-                                    <option value="en">English</option>
-                                </select>
-                                <InputError
-                                    id="preferred_locale-error"
-                                    message={details.errors.preferred_locale}
-                                />
-                            </label>
-                            <label>
-                                <span>
-                                    {props.accountUi.profile.display_currency}
-                                </span>
-                                <select
-                                    aria-describedby={
-                                        details.errors.display_currency
-                                            ? 'display_currency-error'
-                                            : undefined
-                                    }
-                                    aria-invalid={
-                                        details.errors.display_currency
-                                            ? true
-                                            : undefined
-                                    }
-                                    id="display_currency"
-                                    onChange={(event) =>
-                                        details.setData(
-                                            'display_currency',
-                                            event.currentTarget.value,
-                                        )
-                                    }
-                                    value={details.data.display_currency}
-                                >
-                                    {props.displayCurrencies.map((currency) => (
-                                        <option key={currency} value={currency}>
-                                            {currency}
-                                        </option>
-                                    ))}
-                                </select>
-                                <InputError
-                                    id="display_currency-error"
-                                    message={details.errors.display_currency}
-                                />
-                            </label>
                         </div>
                         <button disabled={details.processing} type="submit">
                             {props.accountUi.profile.save}
@@ -292,6 +251,19 @@ export default function AccountProfile() {
                         icon={CheckCircle2}
                         title={props.accountUi.profile.contact_title}
                     />
+                    <p className="account-profile-sensitive-hint">
+                        {props.accountUi.profile.sensitive_hint}
+                    </p>
+                    {!props.profile.phone.verified &&
+                    props.accountUi.profile.verify_phone_cta ? (
+                        <button
+                            className="account-profile-verify-cta"
+                            onClick={openPhoneVerification}
+                            type="button"
+                        >
+                            {props.accountUi.profile.verify_phone_cta}
+                        </button>
+                    ) : null}
                     <div className="account-profile-contacts">
                         <ContactValue
                             actionLabel={
@@ -424,8 +396,9 @@ export default function AccountProfile() {
                                                 className="account-profile-code__sent-to"
                                                 role="status"
                                             >
-                                                {props.accountUi.profile.phone_code_sent_to.replace(
-                                                    ':number',
+                                                {renderWithNumber(
+                                                    props.accountUi.profile
+                                                        .phone_code_sent_to,
                                                     maskPhoneNumber(
                                                         requestedPhone ||
                                                             props.profile.phone
@@ -525,9 +498,6 @@ export default function AccountProfile() {
                             ) : null}
                         </ContactValue>
                     </div>
-                    <p className="account-profile-sensitive-hint">
-                        {props.accountUi.profile.sensitive_hint}
-                    </p>
                 </section>
 
                 <section

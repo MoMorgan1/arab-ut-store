@@ -607,6 +607,40 @@
             "body_ar": "لا ترسل كلمة المرور أو الأكواد الاحتياطية داخل الشات أبداً. بيانات الحساب تُدخل فقط في نموذج البيانات الآمن الخاص بطلبك داخل المتجر، وتُخزَّن مشفّرة. إذا أرسلت كلمة المرور في الشات بالخطأ غيّرها فوراً من حساب EA.",
             "title_en": "Your Data Safety",
             "body_en": "Never send your password or Backup Codes inside the chat. Account credentials are entered only in the secure data form for your order inside the store, and are stored encrypted. If you sent your password in the chat by mistake, change it immediately from your EA account."
+        },
+        {
+            "id": "assistant-identity",
+            "url": "/",
+            "faq": true,
+            "keywords_ar": [
+                "من انت",
+                "مين انت",
+                "انت مين",
+                "وش انت",
+                "شلون تشتغل",
+                "كيف تشتغل",
+                "انت روبوت",
+                "انت بوت",
+                "انت ذكاء اصطناعي",
+                "مساعد",
+                "شلون اسويك",
+                "كيف اسويك",
+                "اسوي نفسك"
+            ],
+            "keywords_en": [
+                "who are you",
+                "what are you",
+                "are you a bot",
+                "are you human",
+                "are you ai",
+                "how do you work",
+                "how were you made",
+                "build you"
+            ],
+            "title_ar": "مساعد عرب التيميت",
+            "body_ar": "أنا المساعد الذكي لمتجر عرب التيميت. أقدر أشرح الخدمات (كوينز، ديفيجن رايفلز، فوت شامبيونز، تحديات SBC)، أقول لك الأسعار الحالية من المتجر، أوضح طريقة الطلب والدفع وسياسات الضمان والاسترجاع، وأساعدك تختار المنصة والكمية وأوديك لصفحة المنتج جاهزة. ما أقدر أنفذ الطلب بنفسي ولا أستقبل بيانات حسابك في الشات — بيانات EA تنكتب في نموذج الطلب المشفّر فقط. لو احتجت موظف بشري، اطلب التحويل للدعم. أنا مساعد آلي وقد أخطئ، فتحقق من المعلومات المهمة.",
+            "title_en": "The Arab UT assistant",
+            "body_en": "I am the Arab UT store assistant. I can explain the services (coins, Division Rivals, FUT Champions, SBC challenges), tell you the store's current prices, walk you through ordering, payment, warranty and refund policy, and help you pick a platform and quantity and open the product page ready to go. I cannot place the order for you and I never take account details in chat — EA credentials go only into the encrypted form on the order. Ask for support if you need a human. I am an automated assistant and can be wrong, so check anything important."
         }
     ]
 }

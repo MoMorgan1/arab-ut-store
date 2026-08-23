@@ -27,7 +27,6 @@ type AccountNavigationProps = {
     current: AccountDestination;
     items: AccountNavigationItem[];
     logoutUrl: string;
-    sections?: AccountTranslations['profile']['sections'];
     translations: AccountTranslations['navigation'];
 };
 
@@ -36,7 +35,6 @@ export default function AccountNavigation({
     current,
     items,
     logoutUrl,
-    sections,
     translations,
 }: AccountNavigationProps) {
     function logout() {
@@ -61,28 +59,18 @@ export default function AccountNavigation({
                                 >
                                     <Icon aria-hidden="true" />
                                     <span>{item.label}</span>
+                                    {item.attention ? (
+                                        <span
+                                            aria-hidden="true"
+                                            className="account-navigation__dot"
+                                        />
+                                    ) : null}
+                                    {item.badge ? (
+                                        <span className="account-navigation__badge">
+                                            {item.badge}
+                                        </span>
+                                    ) : null}
                                 </Link>
-                                {item.key === 'profile' &&
-                                selected &&
-                                sections ? (
-                                    <ul className="account-navigation__sections">
-                                        <li>
-                                            <a href={`${item.url}#personal`}>
-                                                {sections.personal}
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a href={`${item.url}#contact`}>
-                                                {sections.contact}
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a href={`${item.url}#security`}>
-                                                {sections.security}
-                                            </a>
-                                        </li>
-                                    </ul>
-                                ) : null}
                             </li>
                         );
                     })}

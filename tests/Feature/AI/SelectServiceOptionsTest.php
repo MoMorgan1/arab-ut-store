@@ -28,12 +28,11 @@ test('coins happy path extracts platform and quantity for PC without delivery mo
     ]);
 });
 
-test('coins console defaults to normal delivery when fast is not requested', function () {
+test('coins leaves delivery unset when the customer never named a speed', function () {
     $options = selectServiceOptions('ابغى مليون كوينز بلايستيشن', 'coins');
 
     expect($options)->toBe([
         'platform' => 'playstation',
-        'delivery' => 'normal',
         'quantity' => 1_000_000,
     ]);
 });
@@ -42,7 +41,6 @@ test('coins recognises various Arabic and English quantity forms and Arabic-Indi
     // 500k with Arabic-Indic digits
     expect(selectServiceOptions('٥٠٠ الف كوينز سوني 5', 'coins'))->toBe([
         'platform' => 'playstation',
-        'delivery' => 'normal',
         'quantity' => 500_000,
     ]);
 
@@ -145,7 +143,6 @@ test('fut champions happy path extracts rank and urgency in Arabic and English',
 
     expect(selectServiceOptions('ابغى فوت شامبيونز رانك 3', 'fut_champions'))->toBe([
         'rank' => 3,
-        'urgent' => false,
     ]);
 });
 

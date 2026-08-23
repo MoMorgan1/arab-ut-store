@@ -92,8 +92,8 @@ it('renders persistent identity labels, verified states, and safe autocomplete c
     expect(
         screen.queryByLabelText('New email address'),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Edit email' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Edit email' }));
+    expect(screen.getByRole('button', { name: 'Change email' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Change email' }));
     expect(screen.getByLabelText('New email address')).toHaveAttribute(
         'autocomplete',
         'email',
@@ -112,7 +112,7 @@ it('renders persistent identity labels, verified states, and safe autocomplete c
 });
 
 it.each([
-    ['Edit email', 'Send verification link', 'New email address'],
+    ['Change email', 'Send verification link', 'New email address'],
     ['Edit number', 'Send WhatsApp code', 'New WhatsApp number'],
 ])(
     'focuses the inline contact field when %s validation fails',
@@ -173,6 +173,37 @@ it('renders the unverified notice and support link when email is unverified', ()
     ).toHaveAttribute('href', 'https://wa.me/966537998099');
 });
 
+it('renders the mobile verify phone CTA and attention marker when phone is unverified', () => {
+    const baseProps = profileProps();
+    page.props = {
+        ...baseProps,
+        profile: {
+            ...baseProps.profile,
+            phone: {
+                value: null,
+                verified: false,
+                pending: null,
+            },
+        },
+    };
+
+    render(<AccountProfile />);
+
+    const contactNav = screen.getByRole('link', {
+        name: 'Contact & verification',
+    });
+    expect(contactNav).toHaveAttribute('data-attention', 'true');
+
+    const verifyCta = screen.getByRole('button', {
+        name: 'Verify WhatsApp number',
+    });
+    expect(verifyCta).toBeVisible();
+
+    fireEvent.click(verifyCta);
+
+    expect(screen.getByLabelText('New WhatsApp number')).toBeVisible();
+});
+
 it('renders masked phone and resend control after successful request and allows changing number', () => {
     phoneRequestShouldFail = false;
     render(<AccountProfile />);
@@ -183,14 +214,28 @@ it('renders masked phone and resend control after successful request and allows 
 
     fireEvent.click(screen.getByRole('button', { name: 'Send WhatsApp code' }));
 
-    expect(screen.getByText(/We sent the code to \+966•••4567/)).toBeVisible();
+    expect(
+        screen.getByText(
+            (_, element) =>
+                element?.tagName === 'P' &&
+                /We sent the code to \+966•••4567/.test(
+                    element?.textContent ?? '',
+                ),
+        ),
+    ).toBeVisible();
     expect(screen.getByText(/Resend code in 60 s/)).toBeVisible();
     expect(screen.getByRole('button', { name: 'Change number' })).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Change number' }));
     expect(screen.getByLabelText('New WhatsApp number')).toBeVisible();
     expect(
-        screen.queryByText(/We sent the code to \+966•••4567/),
+        screen.queryByText(
+            (_, element) =>
+                element?.tagName === 'P' &&
+                /We sent the code to \+966•••4567/.test(
+                    element?.textContent ?? '',
+                ),
+        ),
     ).not.toBeInTheDocument();
 });
 
@@ -211,15 +256,22 @@ function profileProps() {
             },
             profile: {
                 title: 'Profile',
-                description: 'Update your verified account details securely.',
+                description:
+                    'Your personal details, verified contact info, and security — all in one place.',
                 personal_title: 'Personal details',
-                contact_title: 'Verified contact details',
+                contact_title: 'Contact & verification',
                 sections: {
                     label: 'Profile sections',
                     personal: 'Personal',
                     contact: 'Contact & verification',
                     security: 'Security',
                 },
+                sections_long: {
+                    personal: 'Personal details',
+                    contact: 'Contact & verification',
+                    security: 'Security',
+                },
+                verify_phone_cta: 'Verify WhatsApp number',
                 first_name: 'First name',
                 last_name: 'Last name',
                 email: 'Email address',
@@ -228,7 +280,7 @@ function profileProps() {
                 display_currency: 'Display currency',
                 save: 'Save changes',
                 saved: 'Your details have been saved.',
-                edit_email: 'Edit email',
+                edit_email: 'Change email',
                 edit_phone: 'Edit number',
                 cancel_edit: 'Cancel',
                 new_email: 'New email address',
@@ -242,7 +294,7 @@ function profileProps() {
                 phone_resend: 'Resend code',
                 phone_change_number: 'Change number',
                 sensitive_hint:
-                    'A verification link or WhatsApp code will confirm the change.',
+                    'Any changes require confirmation via an email link or WhatsApp code before they are applied.',
                 pending_email: 'New email awaiting verification',
                 pending_phone: 'New number awaiting verification',
                 email_link_invalid: 'Invalid link.',

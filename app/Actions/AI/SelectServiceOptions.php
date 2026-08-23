@@ -48,6 +48,89 @@ final readonly class SelectServiceOptions
     }
 
     /**
+     * Whatever the message did say, without the completeness gate.
+     *
+     * execute() is all-or-nothing on purpose: a card must not preselect half a
+     * configuration. Asking the customer is the opposite problem — the assistant
+     * needs to know which single thing is still missing so it can ask for that
+     * one and nothing else.
+     *
+     * @return array<string, mixed>
+     */
+    public function partial(string $customerText, string $serviceKey): array
+    {
+        if (trim($customerText) === '') {
+            return [];
+        }
+
+        $normalized = SelectSupportKnowledge::normalize($customerText);
+
+        if ($this->isOrderOrSupportInquiry($normalized)) {
+            return [];
+        }
+
+        return match ($serviceKey) {
+            'coins' => $this->partialCoins($normalized),
+            'fut_champions' => $this->partialChampions($normalized),
+            default => [],
+        };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function partialCoins(string $normalized): array
+    {
+        $found = [];
+        $platform = $this->parseCoinsPlatform($normalized);
+
+        // Xbox is deliberately absent from the coins configurator, so it counts
+        // as "console chosen" for the purpose of what is left to ask.
+        if ($platform !== null) {
+            $found['platform'] = $platform === Platform::Xbox->value
+                ? Platform::PlayStation->value
+                : $platform;
+        }
+
+        $quantity = $this->parseCoinQuantity($normalized);
+
+        if ($quantity !== null) {
+            $found['quantity'] = $quantity;
+        }
+
+        if (isset($found['platform'])) {
+            $delivery = $this->parseCoinsDelivery($normalized, $found['platform']);
+
+            if ($delivery !== null) {
+                $found['delivery'] = $delivery;
+            }
+        }
+
+        return $found;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function partialChampions(string $normalized): array
+    {
+        $found = [];
+        $rank = $this->parseFutChampionsRank($normalized);
+
+        if ($rank !== null) {
+            $found['rank'] = $rank;
+        }
+
+        $urgent = $this->parseFutChampionsUrgency($normalized);
+
+        if ($urgent !== null) {
+            $found['urgent'] = $urgent;
+        }
+
+        return $found;
+    }
+
+    /**
      * Coins require both a known platform and a supported quantity tier.
      * PlayStation and Xbox also default to normal delivery unless fast delivery
      * was explicitly requested.
@@ -88,7 +171,10 @@ final readonly class SelectServiceOptions
         $delivery = $this->parseCoinsDelivery($normalized, $platform);
 
         if ($delivery === null) {
-            return [];
+            return [
+                'platform' => $platform,
+                'quantity' => $quantity,
+            ];
         }
 
         return [
@@ -167,7 +253,7 @@ final readonly class SelectServiceOptions
 
         try {
             $pricing = $this->manualPricing->futChampions()['pricing'];
-            $price = $pricing->priceForRank($rank, $urgent);
+            $price = $pricing->priceForRank($rank, $urgent ?? false);
 
             if ($price <= 0) {
                 return [];
@@ -176,10 +262,9 @@ final readonly class SelectServiceOptions
             return [];
         }
 
-        return [
-            'rank' => $rank,
-            'urgent' => $urgent,
-        ];
+        return $urgent === null
+            ? ['rank' => $rank]
+            : ['rank' => $rank, 'urgent' => $urgent];
     }
 
     /**
@@ -356,7 +441,14 @@ final readonly class SelectServiceOptions
             return DeliveryMode::Fast->value;
         }
 
-        return DeliveryMode::Normal->value;
+        if ($hasNormal) {
+            return DeliveryMode::Normal->value;
+        }
+
+        // Silence is not a choice. Assuming normal delivery would preselect a
+        // speed the customer never named and quote them a price for it, so the
+        // assistant asks instead.
+        return null;
     }
 
     /**
@@ -440,9 +532,20 @@ final readonly class SelectServiceOptions
     /**
      * Checks if urgent completion was requested for FUT Champions.
      */
-    private function parseFutChampionsUrgency(string $normalized): bool
+    private function parseFutChampionsUrgency(string $normalized): ?bool
     {
-        return preg_match('/\b(?:urgent|express|fast)\b/i', $normalized) === 1
-            || preg_match('/(?:عاجل|مستعجل|مستعجله|سريع|سريعه)/u', $normalized) === 1;
+        if (preg_match('/\b(?:urgent|express|fast)\b/i', $normalized) === 1
+            || preg_match('/(?:عاجل|مستعجل|مستعجله|سريع|سريعه)/u', $normalized) === 1) {
+            return true;
+        }
+
+        if (preg_match('/\b(?:normal|standard)\b/i', $normalized) === 1
+            || preg_match('/(?:عادي|عاديه)/u', $normalized) === 1) {
+            return false;
+        }
+
+        // Silence is not a choice: urgency changes the price, so an unstated
+        // one is a question for the customer, not a default.
+        return null;
     }
 }

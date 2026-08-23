@@ -207,33 +207,19 @@ export default function AdminOrderDetailPage() {
                 </div>
             </header>
 
-            <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3 shadow-xs md:hidden">
-                <AdminOrderTransitionControls
-                    adminUi={props.adminUi}
-                    allowedTransitions={props.allowedTransitions}
-                    onStatusUpdated={(freshOrder) => setOrder(freshOrder)}
-                    order={order}
-                    permissions={props.permissions}
-                    transitionUrl={props.transitionUrl}
-                    variant="bar"
-                />
-                {props.permissions.includes('orders.refund') &&
-                props.refund.eligible ? (
-                    <AdminOrderRefundControl
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
+                <div className="lg:col-span-1 lg:col-start-3 lg:row-start-1">
+                    <AdminOrderTransitionControls
                         adminUi={props.adminUi}
-                        confirmPasswordUrl={props.confirmPasswordUrl}
-                        direction={props.direction}
-                        locale={props.locale}
+                        allowedTransitions={props.allowedTransitions}
+                        onStatusUpdated={(freshOrder) => setOrder(freshOrder)}
                         order={order}
-                        refund={props.refund}
-                        refundUrl={props.refundUrl}
-                        variant="bar"
+                        permissions={props.permissions}
+                        transitionUrl={props.transitionUrl}
                     />
-                ) : null}
-            </div>
+                </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <div className="flex flex-col gap-6 lg:col-span-2">
+                <div className="flex flex-col gap-6 lg:col-span-2 lg:col-start-1 lg:row-span-2 lg:row-start-1">
                     <section
                         aria-labelledby="order-items-heading"
                         className="order-1 flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs md:order-2"
@@ -341,6 +327,19 @@ export default function AdminOrderDetailPage() {
                                 ))}
                             </div>
                         )}
+
+                        {props.permissions.includes('orders.refund') &&
+                        props.refund.eligible ? (
+                            <AdminOrderRefundControl
+                                adminUi={props.adminUi}
+                                confirmPasswordUrl={props.confirmPasswordUrl}
+                                direction={props.direction}
+                                locale={props.locale}
+                                order={order}
+                                refund={props.refund}
+                                refundUrl={props.refundUrl}
+                            />
+                        ) : null}
                     </section>
 
                     <section
@@ -576,40 +575,10 @@ export default function AdminOrderDetailPage() {
                                 </div>
                             </div>
                         ) : null}
-
-                        {props.permissions.includes('orders.refund') &&
-                        props.refund.eligible ? (
-                            <div className="hidden md:block">
-                                <AdminOrderRefundControl
-                                    adminUi={props.adminUi}
-                                    confirmPasswordUrl={
-                                        props.confirmPasswordUrl
-                                    }
-                                    direction={props.direction}
-                                    locale={props.locale}
-                                    order={order}
-                                    refund={props.refund}
-                                    refundUrl={props.refundUrl}
-                                />
-                            </div>
-                        ) : null}
                     </section>
                 </div>
 
-                <div className="flex flex-col gap-6 lg:col-span-1">
-                    <div className="hidden md:block">
-                        <AdminOrderTransitionControls
-                            adminUi={props.adminUi}
-                            allowedTransitions={props.allowedTransitions}
-                            onStatusUpdated={(freshOrder) =>
-                                setOrder(freshOrder)
-                            }
-                            order={order}
-                            permissions={props.permissions}
-                            transitionUrl={props.transitionUrl}
-                        />
-                    </div>
-
+                <div className="flex flex-col gap-6 lg:col-span-1 lg:col-start-3 lg:row-start-2">
                     <AdminOrderHistory
                         adminUi={props.adminUi}
                         locale={props.locale}

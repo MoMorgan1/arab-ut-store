@@ -187,6 +187,27 @@ test('phone changes use a bounded hashed OTP and swap atomically after proof', f
         ->assertUnprocessable();
 });
 
+test('a taken phone candidate returns the translated phone-taken message instead of the raw attribute error', function (): void {
+    Http::fake(fn () => Http::response(['sent' => true]));
+    $user = User::factory()->create([
+        'phone' => '+201001234567',
+        'phone_verified_at' => now(),
+    ]);
+    User::factory()->create(['phone' => '+966501112233']);
+
+    $response = $this->actingAs($user)->postJson('/my-account/profile/phone', [
+        'phone' => '+966501112233',
+    ]);
+
+    $response->assertUnprocessable();
+    expect($response->json('errors.phone.0'))
+        ->toBe(trans('account.profile.phone_taken', [], 'ar'))
+        ->and($response->json('errors.phone.0'))
+        ->not->toContain('قيمة phone')
+        ->and(UserIdentityChange::query()->where('user_id', $user->id)->count())
+        ->toBe(0);
+});
+
 test('phone resend cooldown avoids duplicate delivery and expired codes fail closed', function (): void {
     $sentCode = null;
     Http::fake(function (Request $request) use (&$sentCode) {

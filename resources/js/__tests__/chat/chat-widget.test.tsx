@@ -90,6 +90,27 @@ describe('ChatWidget Component', () => {
         expect(launcherButton.querySelector('.lucide-sparkles')).toBeNull();
     });
 
+    it('shows desktop greeting bubble after delay when widget is closed and dismisses on open', () => {
+        vi.useFakeTimers();
+        sessionStorage.clear();
+        render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
+
+        expect(screen.queryByTestId('chat-greeting-bubble')).toBeNull();
+
+        act(() => {
+            vi.advanceTimersByTime(3000);
+        });
+
+        const bubble = screen.getByTestId('chat-greeting-bubble');
+        expect(bubble).toBeInTheDocument();
+        expect(bubble).toHaveTextContent('محتاج مساعدة؟ اسألني');
+
+        // Opening chat dismisses the bubble
+        fireEvent.click(screen.getByRole('button', { name: /فتح الشات/i }));
+
+        expect(screen.queryByTestId('chat-greeting-bubble')).toBeNull();
+    });
+
     it('anchors the desktop panel one spacing step above the launcher', () => {
         render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
 
@@ -154,7 +175,7 @@ describe('ChatWidget Component', () => {
         expect(mobileStart).toBeGreaterThan(-1);
         expect(desktopStart).toBeGreaterThan(mobileStart);
         expect(mobileChat).toContain(
-            'bottom: calc(112px + env(safe-area-inset-bottom));',
+            'bottom: calc(120px + env(safe-area-inset-bottom));',
         );
         expect(mobileDialog).toContain('inset: 0;');
         expect(chatLayer).toBe(70);
