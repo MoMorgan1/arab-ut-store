@@ -67,6 +67,7 @@ return [
         'placed_at' => 'تاريخ الطلب',
         'total' => 'الإجمالي',
         'discount' => 'الخصم',
+        'wallet_paid' => 'مدفوع من المحفظة :amount',
         'status' => 'الحالة',
         'source_live' => 'طلب حالي',
         'source_archive' => 'طلب سابق',

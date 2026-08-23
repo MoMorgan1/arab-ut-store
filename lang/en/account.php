@@ -67,6 +67,7 @@ return [
         'placed_at' => 'Placed on',
         'total' => 'Total',
         'discount' => 'Discount',
+        'wallet_paid' => 'Paid from wallet :amount',
         'status' => 'Status',
         'source_live' => 'Current order',
         'source_archive' => 'Previous order',

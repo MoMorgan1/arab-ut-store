@@ -33,6 +33,7 @@ export type AccountOrder = {
     summary: string;
     itemCount: number;
     total: AccountMoney;
+    walletPayment?: AccountMoney | null;
     detailUrl: string;
     action?: { type: AccountOrderAction };
 };
@@ -126,6 +127,7 @@ export type AccountTranslations = {
         placed_at: string;
         total: string;
         discount: string;
+        wallet_paid: string;
         status: string;
         source_live: string;
         source_archive: string;
@@ -395,6 +397,7 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
         placedAt: string;
         total: AccountMoney;
         discount: AccountMoney;
+        walletPayment?: AccountMoney | null;
         refreshable: boolean;
         paymentStartUrl: string | null;
         items: Array<{
