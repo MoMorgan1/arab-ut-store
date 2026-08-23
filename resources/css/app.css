@@ -3451,6 +3451,13 @@ html.admin-document {
         font-variant-numeric: tabular-nums;
     }
 
+    .store-cart-line__promo {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.45rem;
+    }
+
     .store-cart-credentials {
         margin-block-start: 1.25rem;
         color: var(--arabut-muted);
@@ -8120,6 +8127,27 @@ html.admin-document {
     line-height: 1;
     text-align: center;
     box-shadow: 0 0.35rem 1rem rgb(0 0 0 / 30%);
+}
+
+.store-promo-badge {
+    display: inline-flex;
+    min-height: 1.5rem;
+    align-items: center;
+    justify-self: start;
+    border: 1px solid rgb(212 168 67 / 45%);
+    border-radius: 999px;
+    padding-inline: 0.6rem;
+    background: rgb(212 168 67 / 12%);
+    color: var(--arabut-gold-bright);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.store-price-compare {
+    color: var(--arabut-muted);
+    font-size: 0.85em;
+    margin-inline-start: 0.45rem;
 }
 
 .store-catalog-card--sbc .store-catalog-card__image img {

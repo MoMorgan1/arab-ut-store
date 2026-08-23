@@ -18,6 +18,8 @@ use App\Exceptions\Checkout\CheckoutUnavailable;
 use App\Exceptions\Checkout\CouponRejected;
 use App\Exceptions\Checkout\StaleCartCoupon;
 use App\Exceptions\IdempotencyConflict;
+use App\Marketing\PromotionPrice;
+use App\Marketing\PromotionPricing;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CartItemSecret;
@@ -52,6 +54,7 @@ final readonly class PlaceOrder
         private QuoteCoins $quoteCoins,
         private ReadManualServicePricing $readManualServicePricing,
         private ApplyCoupon $applyCoupon,
+        private PromotionPricing $promotionPricing,
     ) {}
 
     public function execute(User $user, string $locale, string $idempotencyKey): CheckoutResult
@@ -119,7 +122,7 @@ final readonly class PlaceOrder
             CheckoutFingerprint::generate($cart, $locale, (string) config('app.key')),
         );
         $snapshots = $cart->items->map(fn (CartItem $item): array => $this->validateItem($item));
-        $subtotal = (int) $snapshots->sum('total_halalah');
+        $subtotal = (int) $snapshots->sum(fn (array $snapshot): int => $this->promotedLineTotal($snapshot));
 
         if ($subtotal < self::PAYLINK_MINIMUM_HALALAH) {
             throw new CheckoutUnavailable('The order total is below the Paylink minimum.');
@@ -313,6 +316,7 @@ final readonly class PlaceOrder
             default => null,
         };
         $attachment = $isManualService ? $this->requiredManualAttachment($item) : null;
+        $category = $variant->product->category;
 
         return [
             'variant' => $variant,
@@ -321,10 +325,25 @@ final readonly class PlaceOrder
             'quantity' => $item->quantity,
             'unit_price_halalah' => $item->unit_price_halalah,
             'total_halalah' => $item->total_halalah,
+            'promotion' => $this->promotionPricing->resolve(
+                $category?->id,
+                $service,
+                $item->total_halalah,
+            ),
             'configuration' => $this->safeConfiguration($configuration, $service),
             'secret' => $secret,
             'attachment' => $attachment,
         ];
+    }
+
+    /** @param array<string, mixed> $snapshot */
+    private function promotedLineTotal(array $snapshot): int
+    {
+        $promotion = $snapshot['promotion'];
+
+        return $promotion instanceof PromotionPrice
+            ? $promotion->discountedHalalah
+            : (int) $snapshot['total_halalah'];
     }
 
     /** @param array<string, mixed> $configuration
@@ -577,6 +596,11 @@ final readonly class PlaceOrder
         $variant = $snapshot['variant'];
         /** @var Product $product */
         $product = $variant->product;
+        /** @var PromotionPrice|null $promotion */
+        $promotion = $snapshot['promotion'];
+        $promotionDiscountHalalah = $promotion instanceof PromotionPrice
+            ? $promotion->discountHalalah
+            : 0;
         $orderItem = $order->items()->create([
             'product_variant_id' => $variant->id,
             'sku' => $variant->sku,
@@ -588,8 +612,10 @@ final readonly class PlaceOrder
             'quantity' => $snapshot['quantity'],
             'unit_price_halalah' => $snapshot['unit_price_halalah'],
             'subtotal_halalah' => $snapshot['total_halalah'],
-            'discount_halalah' => 0,
-            'total_halalah' => $snapshot['total_halalah'],
+            'discount_halalah' => $promotionDiscountHalalah,
+            'promotion_id' => $promotion?->promotion->id,
+            'promotion_discount_halalah' => $promotionDiscountHalalah,
+            'total_halalah' => (int) $snapshot['total_halalah'] - $promotionDiscountHalalah,
             'configuration' => $snapshot['configuration'],
         ]);
 

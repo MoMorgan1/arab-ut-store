@@ -132,6 +132,11 @@ export function SbcCatalogCard({
                     <span className="store-catalog-card__included">
                         {translations.included}
                     </span>
+                    {product.promotionBadge ? (
+                        <span className="store-promo-badge">
+                            {product.promotionBadge}
+                        </span>
+                    ) : null}
                     <h2>{product.name}</h2>
                     <ul
                         aria-label={translations.platform_prices}
@@ -152,6 +157,16 @@ export function SbcCatalogCard({
                                               variant.price.currency,
                                               locale,
                                           )}
+                                    {variant.compareAtPrice ? (
+                                        <del className="store-price-compare">
+                                            {formatMinorUnits(
+                                                variant.compareAtPrice
+                                                    .amountMinor,
+                                                variant.compareAtPrice.currency,
+                                                locale,
+                                            )}
+                                        </del>
+                                    ) : null}
                                 </span>
                             </li>
                         ))}

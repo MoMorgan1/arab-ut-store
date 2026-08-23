@@ -66,19 +66,23 @@ export type CatalogCompletionTier = {
     price: CatalogMoney;
 };
 export type CatalogVariant = {
+    compareAtPrice: CatalogMoney | null;
     completionTiers: CatalogCompletionTier[];
     id: string;
     name: string;
     platform: string;
     price: CatalogMoney | null;
+    promotionBadge: string | null;
 };
 export type CatalogProduct = {
+    compareAtPrice: CatalogMoney | null;
     description: string;
     id: string;
     image: { alt: string; url: string } | null;
     name: string;
     platforms: string[];
     price: CatalogMoney | null;
+    promotionBadge: string | null;
     slug: string;
     url: string | null;
     variants: CatalogVariant[];

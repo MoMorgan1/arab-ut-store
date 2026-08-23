@@ -10,7 +10,7 @@ final class AdminShell
     /**
      * @return array{
      *     adminIdentity: array{name: string, role: string},
-     *     adminNavigation: list<array{key: string, label: string, url: string}>,
+     *     adminNavigation: list<array{key: string, label: string, url: string, children?: list<array{key: string, label: string, url: string}>}>,
      *     permissions: list<string>,
      *     logoutUrl: string
      * }
@@ -51,6 +51,18 @@ final class AdminShell
                 'key' => 'marketing',
                 'label' => (string) trans('admin.navigation.marketing', locale: $locale),
                 'url' => route($prefix.'marketing.coupons', absolute: false),
+                'children' => [
+                    [
+                        'key' => 'marketingCoupons',
+                        'label' => (string) trans('admin.navigation.marketingCoupons', locale: $locale),
+                        'url' => route($prefix.'marketing.coupons', absolute: false),
+                    ],
+                    [
+                        'key' => 'marketingPromotions',
+                        'label' => (string) trans('admin.navigation.marketingPromotions', locale: $locale),
+                        'url' => route($prefix.'marketing.promotions', absolute: false),
+                    ],
+                ],
             ];
         }
 

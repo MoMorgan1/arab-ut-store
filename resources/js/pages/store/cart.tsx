@@ -62,7 +62,10 @@ export default function StoreCart() {
     const authenticated = page.props.auth.user !== null;
     const [items, setItems] = useState(cart.items);
     const totalHalalah = items.reduce(
-        (total, cartItem) => total + cartItem.totalHalalah,
+        (total, cartItem) =>
+            total +
+            cartItem.totalHalalah -
+            (cartItem.promotion?.discountHalalah ?? 0),
         0,
     );
 
@@ -855,15 +858,41 @@ function CartLine({
                         )}
                     />
                 ) : null}
-                <CartFact
-                    emphasized
-                    label={translations.total}
-                    value={formatMinorUnits(
-                        cartItem.totalHalalah,
-                        'SAR',
-                        locale,
-                    )}
-                />
+                {cartItem.promotion ? (
+                    <div className="store-cart-line__total">
+                        <dt>{translations.total}</dt>
+                        <dd className="store-cart-line__promo">
+                            <span className="store-promo-badge">
+                                {cartItem.promotion.badge}
+                            </span>
+                            <del className="store-price-compare">
+                                {formatMinorUnits(
+                                    cartItem.totalHalalah,
+                                    'SAR',
+                                    locale,
+                                )}
+                            </del>
+                            <strong>
+                                {formatMinorUnits(
+                                    cartItem.totalHalalah -
+                                        cartItem.promotion.discountHalalah,
+                                    'SAR',
+                                    locale,
+                                )}
+                            </strong>
+                        </dd>
+                    </div>
+                ) : (
+                    <CartFact
+                        emphasized
+                        label={translations.total}
+                        value={formatMinorUnits(
+                            cartItem.totalHalalah,
+                            'SAR',
+                            locale,
+                        )}
+                    />
+                )}
             </dl>
             {isManualService ? (
                 <ManualFulfillmentState

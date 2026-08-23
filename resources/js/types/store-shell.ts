@@ -162,6 +162,10 @@ export type StoreCartItem = {
         serviceType:
             'coins' | 'sbc' | 'objectives' | 'rivals' | 'fut_champions';
     };
+    promotion: {
+        badge: string;
+        discountHalalah: number;
+    } | null;
     quantity: number;
     requiresCredentials: boolean;
     totalHalalah: number;

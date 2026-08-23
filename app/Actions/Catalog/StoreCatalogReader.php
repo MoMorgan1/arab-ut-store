@@ -4,6 +4,8 @@ namespace App\Actions\Catalog;
 
 use App\Actions\Pricing\ConvertDisplayMoney;
 use App\Enums\ServiceType;
+use App\Marketing\PromotionPrice;
+use App\Marketing\PromotionPricing;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
@@ -17,7 +19,10 @@ use Illuminate\Support\Facades\Storage;
 
 final class StoreCatalogReader
 {
-    public function __construct(private readonly ConvertDisplayMoney $convertDisplayMoney) {}
+    public function __construct(
+        private readonly ConvertDisplayMoney $convertDisplayMoney,
+        private readonly PromotionPricing $promotionPricing,
+    ) {}
 
     /**
      * @return array{
@@ -175,10 +180,25 @@ final class StoreCatalogReader
         ?PreparedDisplayMoneyConverter $converter,
     ): array {
         $variants = $product->variants;
-        $lowest = $variants
-            ->map(fn (ProductVariant $variant): int => $this->effectivePrice($variant))
-            ->filter(fn (int $price): bool => $price > 0)
-            ->min();
+        $lowest = null;
+        $lowestPromotion = null;
+
+        foreach ($variants as $variant) {
+            $base = $this->effectivePrice($variant);
+
+            if ($base < 1) {
+                continue;
+            }
+
+            $promotion = $this->itemPromotion($product, $base);
+            $promoted = $promotion !== null ? $promotion->discountedHalalah : $base;
+
+            if (! is_int($lowest) || $promoted < $lowest) {
+                $lowest = $promoted;
+                $lowestPromotion = $promotion;
+            }
+        }
+
         $media = $product->media->first();
 
         return [
@@ -194,6 +214,14 @@ final class StoreCatalogReader
             'price' => is_int($lowest) && $converter instanceof PreparedDisplayMoneyConverter
                 ? $this->convert($converter, $lowest)
                 : null,
+            'compareAtPrice' => is_int($lowest)
+                && $lowestPromotion instanceof PromotionPrice
+                && $converter instanceof PreparedDisplayMoneyConverter
+                ? $this->convert($converter, $lowestPromotion->baseHalalah)
+                : null,
+            'promotionBadge' => $lowestPromotion instanceof PromotionPrice
+                ? $this->promotionBadge($lowestPromotion, $locale)
+                : null,
             'platforms' => $variants
                 ->map(fn (ProductVariant $variant): string => $variant->platform->value)
                 ->unique()
@@ -201,6 +229,7 @@ final class StoreCatalogReader
                 ->all(),
             'variants' => $variants->map(fn (ProductVariant $variant): array => $this->presentVariant(
                 $variant,
+                $product,
                 $locale,
                 $converter,
                 $product->service_type === ServiceType::Sbc,
@@ -227,21 +256,31 @@ final class StoreCatalogReader
     /** @return array<string, mixed> */
     private function presentVariant(
         ProductVariant $variant,
+        Product $product,
         string $locale,
         ?PreparedDisplayMoneyConverter $converter,
         bool $includeCompletionTiers,
     ): array {
-        $effectivePrice = $this->effectivePrice($variant);
+        $basePrice = $this->effectivePrice($variant);
+        $promotion = $this->itemPromotion($product, $basePrice);
+        $promotedPrice = $promotion !== null ? $promotion->discountedHalalah : $basePrice;
 
         return [
             'id' => $variant->public_id,
             'name' => $this->localized($variant, 'name', $locale),
             'platform' => $variant->platform->value,
             'price' => $converter instanceof PreparedDisplayMoneyConverter
-                ? $this->convert($converter, $effectivePrice)
+                ? $this->convert($converter, $promotedPrice)
+                : null,
+            'compareAtPrice' => $promotion instanceof PromotionPrice
+                && $converter instanceof PreparedDisplayMoneyConverter
+                ? $this->convert($converter, $promotion->baseHalalah)
+                : null,
+            'promotionBadge' => $promotion instanceof PromotionPrice
+                ? $this->promotionBadge($promotion, $locale)
                 : null,
             'completionTiers' => $includeCompletionTiers
-                ? $this->completionTiers($variant, $effectivePrice, $converter)
+                ? $this->completionTiers($variant, $product, $promotion, $converter)
                 : [],
         ];
     }
@@ -249,7 +288,8 @@ final class StoreCatalogReader
     /** @return list<array{completions:int,price:array{amountMinor:int,currency:string}}> */
     private function completionTiers(
         ProductVariant $variant,
-        int $effectivePrice,
+        Product $product,
+        ?PromotionPrice $promotion,
         ?PreparedDisplayMoneyConverter $converter,
     ): array {
         if (! $converter instanceof PreparedDisplayMoneyConverter) {
@@ -259,12 +299,15 @@ final class StoreCatalogReader
         $configuration = $variant->getAttribute('configuration');
         $pricing = SbcCompletionPricing::fromConfiguration(
             is_array($configuration) ? $configuration : [],
-            $effectivePrice,
+            $this->effectivePrice($variant),
             false,
         );
 
-        return array_map(function (array $tier) use ($converter): array {
-            $price = $this->convert($converter, $tier['totalMinor']);
+        return array_map(function (array $tier) use ($converter, $promotion): array {
+            $promoted = $promotion instanceof PromotionPrice
+                ? $tier['totalMinor'] - $this->promotionPricing->discountFor($promotion->promotion, $tier['totalMinor'])
+                : $tier['totalMinor'];
+            $price = $this->convert($converter, $promoted);
 
             if ($price === null) {
                 throw new DomainException('The SBC completion tier could not be converted.');
@@ -275,6 +318,28 @@ final class StoreCatalogReader
                 'price' => $price,
             ];
         }, $pricing->tiers());
+    }
+
+    private function itemPromotion(Product $product, int $basePriceHalalah): ?PromotionPrice
+    {
+        return $this->promotionPricing->resolve(
+            $product->category_id,
+            $product->service_type,
+            $basePriceHalalah,
+        );
+    }
+
+    private function promotionBadge(PromotionPrice $promotion, string $locale): string
+    {
+        $localized = trim((string) $promotion->promotion->{"badge_{$locale}"});
+
+        if ($localized !== '') {
+            return $localized;
+        }
+
+        $fallback = trim((string) $promotion->promotion->{'badge_'.($locale === 'ar' ? 'en' : 'ar')});
+
+        return $fallback !== '' ? $fallback : $this->localized($promotion->promotion, 'name', $locale);
     }
 
     /** @param Collection<int, ProductVariant> $variants
