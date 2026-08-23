@@ -9,6 +9,7 @@ import {
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import AccountOrderCard from '@/components/account/account-order-card';
+import AccountOrderRow from '@/components/account/account-order-row';
 import AccountLiveOrder from '@/pages/account/live-order';
 import AccountOrders from '@/pages/account/orders';
 import type {
@@ -70,6 +71,7 @@ afterEach(cleanup);
 it('renders canonical filters, safe order cards, and bounded pagination', () => {
     page.props = {
         ...shellProps(),
+        counts: { all: 11, open: 1, completed: 10 },
         filters: { status: 'open' },
         orders: [order('01ORDER1', 'UT-00000001', 'in_progress')],
         pagination: {
@@ -90,10 +92,13 @@ it('renders canonical filters, safe order cards, and bounded pagination', () => 
     const filters = screen.getByRole('navigation', { name: 'Filter orders' });
 
     expect(
-        within(filters).getByRole('link', { name: 'In progress' }),
+        within(filters).getByRole('link', { name: /In progress/ }),
     ).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByTitle('UT-00000001')).toBeVisible();
+    expect(within(filters).getByText('1')).toBeVisible();
+    expect(within(filters).getByText('10')).toBeVisible();
+    expect(screen.getByText('#000001')).toBeVisible();
     expect(screen.getByText('FC 27 Coins service')).toBeVisible();
+    expect(screen.getByText('Showing 1 of 11 orders')).toBeVisible();
     expect(screen.getByRole('link', { name: /Next/ })).toHaveAttribute(
         'href',
         '/en/my-account/orders?status=open&page=2',
@@ -101,6 +106,49 @@ it('renders canonical filters, safe order cards, and bounded pagination', () => 
     expect(
         screen.queryByText(/password|configuration/i),
     ).not.toBeInTheDocument();
+});
+
+it('renders attention styling and provide_details action for waiting_for_customer row', () => {
+    const waitingOrder: AccountOrder = {
+        ...order('01WAITING', 'UT-00000042', 'waiting_for_customer'),
+        action: { type: 'provide_details' },
+    };
+    const shell = shellProps();
+
+    const { container } = render(
+        <AccountOrderRow
+            locale="en"
+            order={waitingOrder}
+            translations={shell.accountUi as unknown as AccountTranslations}
+        />,
+    );
+
+    const row = container.querySelector('.account-order-row');
+    expect(row).not.toBeNull();
+    expect(row).toHaveClass('account-order-row--attention');
+    expect(screen.getByRole('link', { name: 'Provide details' })).toBeVisible();
+});
+
+it('renders prominent active order card', () => {
+    const sampleOrder = order(
+        '01PROMINENT',
+        'UT-00000099',
+        'waiting_for_customer',
+    ) as unknown as AccountOrder;
+    const shell = shellProps();
+
+    const { container } = render(
+        <AccountOrderCard
+            locale="en"
+            order={sampleOrder}
+            translations={shell.accountUi as unknown as AccountTranslations}
+        />,
+    );
+
+    const prominentCard = container.querySelector('.account-order-card');
+    expect(prominentCard).not.toBeNull();
+    expect(prominentCard).toHaveClass('account-order-card--prominent');
+    expect(screen.getByTitle('UT-00000099')).toBeVisible();
 });
 
 it('refreshes only current safe order data and keeps credentials opaque', () => {
@@ -290,41 +338,6 @@ it('resumes the existing Paylink payment from the canonical detail', async () =>
     expect(paymentNavigation.order).not.toHaveBeenCalled();
 });
 
-it('renders distinct classes for prominent and standard order cards without class name concatenation errors', () => {
-    const sampleOrder = order(
-        '01PROMINENT',
-        'UT-00000099',
-        'waiting_for_customer',
-    ) as unknown as AccountOrder;
-    const shell = shellProps();
-
-    const { container, rerender } = render(
-        <AccountOrderCard
-            locale="en"
-            order={sampleOrder}
-            prominent
-            translations={shell.accountUi as unknown as AccountTranslations}
-        />,
-    );
-
-    const prominentCard = container.querySelector('.account-order-card');
-    expect(prominentCard).not.toBeNull();
-    expect(prominentCard).toHaveClass('account-order-card');
-    expect(prominentCard).toHaveClass('account-order-card--prominent');
-
-    rerender(
-        <AccountOrderCard
-            locale="en"
-            order={sampleOrder}
-            prominent={false}
-            translations={shell.accountUi as unknown as AccountTranslations}
-        />,
-    );
-
-    expect(prominentCard).toHaveClass('account-order-card');
-    expect(prominentCard).not.toHaveClass('account-order-card--prominent');
-});
-
 function order(id: string, number: string, status: string): AccountOrder {
     return {
         id,
@@ -371,6 +384,7 @@ function shellProps() {
             { key: 'overview', label: 'Overview', url: '/en/my-account' },
             { key: 'orders', label: 'Orders', url: '/en/my-account/orders' },
         ],
+        counts: { all: 0, open: 0, completed: 0 },
         accountUi: {
             page_title: 'My Account',
             eyebrow: 'Arab UT account',
@@ -421,6 +435,7 @@ function shellProps() {
                 next: 'Next',
                 pagination: 'Order pages',
                 page_status: 'Page :current of :total',
+                showing: 'Showing :shown of :total orders',
                 items_title: 'Service details',
                 item_quantity: 'Quantity: :count',
                 credentials_ready: 'Fulfilment details stored securely',

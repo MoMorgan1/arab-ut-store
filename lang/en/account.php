@@ -62,6 +62,7 @@ return [
         'next' => 'Next',
         'pagination' => 'Order pages',
         'page_status' => 'Page :current of :total',
+        'showing' => 'Showing :shown of :total orders',
         'items_title' => 'Service details',
         'item_quantity' => 'Quantity: :count',
         'credentials_ready' => 'Fulfilment details stored securely',

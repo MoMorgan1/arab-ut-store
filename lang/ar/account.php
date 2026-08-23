@@ -62,6 +62,7 @@ return [
         'next' => 'التالي',
         'pagination' => 'صفحات الطلبات',
         'page_status' => 'صفحة :current من :total',
+        'showing' => 'عرض :shown من :total طلبات',
         'items_title' => 'تفاصيل الخدمات',
         'item_quantity' => 'الكمية: :count',
         'credentials_ready' => 'بيانات التنفيذ محفوظة بأمان',

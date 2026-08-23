@@ -5,11 +5,12 @@ import {
     ShieldAlert,
     Sparkles,
     Trophy,
-    WalletCards,
 } from 'lucide-react';
 
 import AccountMetric from '@/components/account/account-metric';
 import AccountOrderCard from '@/components/account/account-order-card';
+import AccountOrderList from '@/components/account/account-order-list';
+import AccountOrderRow from '@/components/account/account-order-row';
 import MyAccountLayout from '@/layouts/my-account-layout';
 import { formatAccountMoney } from '@/lib/account-money';
 import type { AccountOverviewPageProps } from '@/types/account';
@@ -84,6 +85,46 @@ export default function AccountOverview() {
                     </aside>
                 ) : null}
 
+                <dl
+                    aria-label={props.accountUi.overview.title}
+                    className="account-overview__metrics"
+                >
+                    <AccountMetric
+                        kind="orders"
+                        label={props.accountUi.overview.orders_metric}
+                        value={numberFormatter.format(props.summary.orderCount)}
+                    />
+                    <AccountMetric
+                        accent
+                        kind="open"
+                        label={props.accountUi.overview.open_orders_metric}
+                        value={numberFormatter.format(
+                            props.summary.openOrderCount,
+                        )}
+                    />
+                    <AccountMetric
+                        kind="completed"
+                        label={props.accountUi.overview.completed_orders_metric}
+                        value={numberFormatter.format(
+                            props.summary.completedOrderCount,
+                        )}
+                    />
+                    <AccountMetric
+                        kind="wallet"
+                        label={props.accountUi.overview.wallet_metric}
+                        locked={props.summary.walletBalance === null}
+                        value={
+                            props.summary.walletBalance === null
+                                ? (props.accountUi.wallet?.coming_soon ??
+                                  'قريبًا')
+                                : formatAccountMoney(
+                                      props.summary.walletBalance,
+                                      props.locale,
+                                  )
+                        }
+                    />
+                </dl>
+
                 {props.activeOrder === null ? null : (
                     <section
                         aria-labelledby="account-active-order-title"
@@ -95,7 +136,6 @@ export default function AccountOverview() {
                         <AccountOrderCard
                             locale={props.locale}
                             order={props.activeOrder}
-                            prominent
                             translations={props.accountUi}
                         />
                     </section>
@@ -119,85 +159,18 @@ export default function AccountOverview() {
                                 <Arrow aria-hidden="true" />
                             </Link>
                         </div>
-                        <div className="account-overview__orders">
+                        <AccountOrderList>
                             {visibleRecentOrders.map((order) => (
-                                <AccountOrderCard
+                                <AccountOrderRow
                                     key={order.id}
                                     locale={props.locale}
                                     order={order}
                                     translations={props.accountUi}
                                 />
                             ))}
-                        </div>
+                        </AccountOrderList>
                     </section>
                 ) : null}
-
-                <section
-                    aria-labelledby="account-wallet-overview-title"
-                    className="account-overview__wallet-card"
-                >
-                    <div className="account-overview__wallet-header">
-                        <div className="account-overview__wallet-info">
-                            <span
-                                aria-hidden="true"
-                                className="account-overview__wallet-icon"
-                            >
-                                <WalletCards />
-                            </span>
-                            <div>
-                                <h2 id="account-wallet-overview-title">
-                                    {props.accountUi.overview.wallet_metric}
-                                </h2>
-                                <p>
-                                    {props.accountUi.wallet
-                                        ?.coming_soon_notice ??
-                                        'ستظهر أرصدتك وعمليات الاسترداد هنا عند إطلاق المحفظة.'}
-                                </p>
-                            </div>
-                        </div>
-                        <span className="account-overview__coming-soon-badge">
-                            {props.accountUi.wallet?.coming_soon ?? 'قريبًا'}
-                        </span>
-                    </div>
-                </section>
-
-                <dl
-                    aria-label={props.accountUi.overview.title}
-                    className="account-overview__metrics"
-                >
-                    <AccountMetric
-                        kind="orders"
-                        label={props.accountUi.overview.orders_metric}
-                        value={numberFormatter.format(props.summary.orderCount)}
-                    />
-                    <AccountMetric
-                        kind="open"
-                        label={props.accountUi.overview.open_orders_metric}
-                        value={numberFormatter.format(
-                            props.summary.openOrderCount,
-                        )}
-                    />
-                    <AccountMetric
-                        kind="completed"
-                        label={props.accountUi.overview.completed_orders_metric}
-                        value={numberFormatter.format(
-                            props.summary.completedOrderCount,
-                        )}
-                    />
-                    <AccountMetric
-                        kind="wallet"
-                        label={props.accountUi.overview.wallet_metric}
-                        value={
-                            props.summary.walletBalance === null
-                                ? (props.accountUi.wallet?.coming_soon ??
-                                  'قريبًا')
-                                : formatAccountMoney(
-                                      props.summary.walletBalance,
-                                      props.locale,
-                                  )
-                        }
-                    />
-                </dl>
 
                 {props.loyalty === null ? null : (
                     <section

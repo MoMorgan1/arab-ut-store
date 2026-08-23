@@ -5235,9 +5235,161 @@
     color: var(--arabut-gold-bright);
 }
 
-.account-orders-page__list {
+.account-order-filters__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding-inline: 0.35rem;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 8%);
+    color: var(--arabut-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-inline-start: 0.4rem;
+}
+
+.account-order-filters a[aria-current='page'] .account-order-filters__count {
+    background: rgb(212 168 67 / 25%);
+    color: var(--arabut-gold-bright);
+}
+
+.account-order-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--arabut-line);
+    border-radius: 1rem;
+    background: rgb(28 24 20 / 62%);
+    overflow: hidden;
+}
+
+.account-order-row {
     display: grid;
-    gap: 0.75rem;
+    grid-template-columns: 34px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-block-end: 1px solid rgb(255 255 255 / 6%);
+    transition: background 160ms ease;
+}
+
+.account-order-row:last-child {
+    border-block-end: none;
+}
+
+.account-order-row--attention {
+    background: rgb(212 168 67 / 5%);
+    box-shadow: inset 3px 0 0 var(--arabut-gold);
+}
+
+:dir(rtl) .account-order-row--attention,
+[dir='rtl'] .account-order-row--attention {
+    box-shadow: inset -3px 0 0 var(--arabut-gold);
+}
+
+.account-order-row__mark {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background: rgb(212 168 67 / 10%);
+    color: var(--arabut-gold-bright);
+}
+
+.account-order-row[data-status='completed'] .account-order-row__mark {
+    background: rgb(101 193 140 / 12%);
+    color: #65c18c;
+}
+
+.account-order-row:is([data-status='cancelled'], [data-status='refunded'])
+    .account-order-row__mark {
+    background: rgb(255 255 255 / 6%);
+    color: var(--arabut-muted);
+}
+
+.account-order-row__mark svg {
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+.account-order-row__main {
+    min-width: 0;
+}
+
+.account-order-row__main h3 {
+    margin: 0;
+    color: var(--arabut-ink);
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.account-order-row__meta {
+    margin: 0.25rem 0 0;
+    color: var(--arabut-muted);
+    font-size: 12.5px;
+    line-height: 1.4;
+}
+
+.account-order-row__total {
+    flex: 0 0 auto;
+    color: var(--arabut-ink);
+    font-size: 15px;
+    font-weight: 850;
+    white-space: nowrap;
+}
+
+.account-order-row__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--arabut-gold-bright);
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 160ms ease;
+}
+
+.account-order-row__action:hover {
+    color: #ffffff;
+}
+
+.account-order-row__action--primary {
+    border-radius: 10px;
+    background: linear-gradient(
+        135deg,
+        rgb(214 175 71 / 95%),
+        rgb(190 148 45 / 95%)
+    );
+    padding: 9px 14px;
+    color: var(--arabut-navy-deep);
+    box-shadow: 0 2px 8px rgb(214 175 71 / 20%);
+}
+
+.account-order-row__action--primary:hover {
+    background: linear-gradient(
+        135deg,
+        rgb(230 190 85 / 100%),
+        rgb(214 175 71 / 100%)
+    );
+    color: #000000;
+}
+
+.account-pagination__summary {
+    margin: 0 0 0.75rem;
+    color: var(--arabut-muted);
+    font-size: 0.85rem;
+    line-height: 1.4;
 }
 
 .account-pagination {
@@ -9658,62 +9810,6 @@
     height: 0.85rem;
 }
 
-.account-overview__wallet-card {
-    border: 1px solid var(--arabut-line);
-    border-radius: 1rem;
-    background:
-        linear-gradient(120deg, rgb(212 168 67 / 10%), transparent 55%),
-        rgb(28 24 20 / 72%);
-    padding: 1.15rem 1.35rem;
-    box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
-}
-
-.account-overview__wallet-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-}
-
-.account-overview__wallet-info {
-    display: flex;
-    align-items: center;
-    gap: 0.9rem;
-}
-
-.account-overview__wallet-icon {
-    display: flex;
-    width: 2.75rem;
-    height: 2.75rem;
-    flex: 0 0 auto;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0.75rem;
-    border: 1px solid rgb(212 168 67 / 25%);
-    background: rgb(212 168 67 / 12%);
-    color: var(--arabut-gold-bright);
-}
-
-.account-overview__wallet-icon svg {
-    width: 1.35rem;
-    height: 1.35rem;
-}
-
-.account-overview__wallet-info h2 {
-    margin: 0;
-    color: var(--arabut-ink);
-    font-size: 1.05rem;
-    font-weight: 800;
-}
-
-.account-overview__wallet-info p {
-    margin: 0.2rem 0 0;
-    color: var(--arabut-muted);
-    font-size: 0.82rem;
-    line-height: 1.4;
-}
-
-.account-overview__coming-soon-badge,
 .account-wallet-coming-soon__badge {
     display: inline-flex;
     align-items: center;
@@ -9944,38 +10040,46 @@
 
 .account-overview__metrics {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     margin: 0;
     gap: 0.75rem;
 }
 
 .account-metric {
     display: flex;
+    flex-direction: column;
+    align-items: flex-start;
     min-width: 0;
-    min-height: 7rem;
-    align-items: center;
-    gap: 0.8rem;
+    min-height: auto;
+    gap: 0.35rem;
     border: 1px solid var(--arabut-line);
     border-radius: 0.9rem;
     background: rgb(28 24 20 / 58%);
     padding: 1rem;
 }
 
+.account-metric__header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
 .account-metric__icon {
     display: inline-flex;
-    width: 2.5rem;
-    height: 2.5rem;
-    flex: 0 0 2.5rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    flex: 0 0 1.5rem;
     align-items: center;
     justify-content: center;
-    border-radius: 0.7rem;
+    border-radius: 0.45rem;
     background: rgb(212 168 67 / 9%);
     color: var(--arabut-gold-bright);
 }
 
 .account-metric__icon svg {
-    width: 1.2rem;
-    height: 1.2rem;
+    width: 0.95rem;
+    height: 0.95rem;
 }
 
 .account-metric dt {
@@ -9985,13 +10089,37 @@
 }
 
 .account-metric dd {
-    margin: 0.25rem 0 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
     overflow-wrap: anywhere;
     color: var(--arabut-ink);
     font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
     font-size: clamp(1.25rem, 4vw, 1.7rem);
     font-weight: 850;
     line-height: 1;
+}
+
+.account-metric--accent dd {
+    color: var(--arabut-gold-bright);
+}
+
+.account-metric--wallet {
+    display: none;
+}
+
+.account-metric--locked {
+    border-style: dashed;
+    border-color: rgb(212 168 67 / 28%);
+    background: rgb(28 24 20 / 45%);
+}
+
+.account-metric__lock {
+    width: 0.85rem;
+    height: 0.85rem;
+    color: var(--arabut-gold-bright);
+    flex-shrink: 0;
 }
 
 .account-order-card {
@@ -10013,16 +10141,16 @@
     box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 22%);
 }
 
-.account-order-card__topline,
-.account-order-card__body {
-    display: flex;
-    min-width: 0;
-    justify-content: space-between;
-    gap: 0.85rem;
+.account-order-card__mark {
+    display: none;
 }
 
 .account-order-card__topline {
+    display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 0.85rem;
+    margin-block-end: 0.75rem;
 }
 
 .account-order-card__status {
@@ -10036,15 +10164,6 @@
     color: var(--arabut-ink);
     font-size: 0.78rem;
     font-weight: 700;
-}
-
-.account-order-card__date {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    color: var(--arabut-muted);
-    font-size: 0.78rem;
-    font-weight: 600;
 }
 
 .account-order-card__status > span {
@@ -10069,14 +10188,10 @@
     box-shadow: 0 0 0 0.18rem rgb(255 180 169 / 12%);
 }
 
-.account-order-card__date svg {
-    width: 0.95rem;
-    height: 0.95rem;
-}
-
-.account-order-card__body {
-    align-items: end;
-    margin-block: 1rem;
+.account-order-card__meta {
+    color: var(--arabut-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
 }
 
 .account-order-card__number {
@@ -10089,7 +10204,7 @@
 }
 
 .account-order-card h3 {
-    margin: 0.35rem 0 0;
+    margin: 0;
     overflow: hidden;
     display: -webkit-box;
     -webkit-box-orient: vertical;
@@ -10101,38 +10216,20 @@
     line-height: 1.35;
 }
 
+.account-order-card__side {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-block-start: 1rem;
+}
+
 .account-order-card__total {
-    flex: 0 0 auto;
     color: var(--arabut-ink);
     font-size: 1.05rem;
     font-weight: 800;
-    white-space: nowrap;
 }
 
 .account-order-card__action {
-    display: inline-flex;
-    min-height: 2.75rem;
-    align-items: center;
-    gap: 0.45rem;
-    border-block-start: 1px solid var(--arabut-line);
-    padding-block-start: 0.8rem;
-    color: var(--arabut-gold-bright);
-    font-size: 0.9rem;
-    font-weight: 800;
-    text-decoration: none;
-    transition: all 160ms ease;
-}
-
-.account-order-card__action:hover {
-    color: #ffffff;
-}
-
-.account-order-card__action svg {
-    width: 1rem;
-    height: 1rem;
-}
-
-.account-order-card--prominent .account-order-card__action {
     display: flex;
     width: 100%;
     min-height: 3rem;
@@ -10151,9 +10248,10 @@
     font-weight: 800;
     text-decoration: none;
     box-shadow: 0 4px 14px rgb(214 175 71 / 25%);
+    transition: all 160ms ease;
 }
 
-.account-order-card--prominent .account-order-card__action:hover {
+.account-order-card__action:hover {
     background: linear-gradient(
         135deg,
         rgb(230 190 85 / 100%),
@@ -10164,13 +10262,10 @@
     box-shadow: 0 6px 18px rgb(214 175 71 / 35%);
 }
 
-.account-order-card--prominent .account-order-card__action svg {
+.account-order-card__action svg {
+    width: 1rem;
+    height: 1rem;
     color: #0d0b08;
-}
-
-.account-overview__orders {
-    display: grid;
-    gap: 0.75rem;
 }
 
 .account-overview__loyalty {
@@ -11010,9 +11105,66 @@
         grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
-    .account-metric {
-        align-items: flex-start;
-        flex-direction: column;
+    .account-metric--wallet {
+        display: flex;
+    }
+
+    .account-order-row {
+        grid-template-columns: 34px minmax(0, 1fr) 7.5rem 7.25rem;
+    }
+
+    .account-order-row__total {
+        justify-self: end;
+        text-align: end;
+    }
+
+    .account-order-row__action {
+        justify-self: end;
+    }
+
+    .account-order-card {
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 1.25rem;
+    }
+
+    .account-order-card__mark {
+        display: inline-flex;
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.75rem;
+        background: rgb(212 168 67 / 14%);
+        border: 1px solid rgb(212 168 67 / 25%);
+        color: var(--arabut-gold-bright);
+    }
+
+    .account-order-card__mark svg {
+        width: 1.35rem;
+        height: 1.35rem;
+    }
+
+    .account-order-card__main {
+        min-width: 0;
+    }
+
+    .account-order-card__side {
+        margin-block-start: 0;
+        align-items: flex-end;
+        gap: 0.5rem;
+    }
+
+    .account-order-card__total {
+        font-size: 1.15rem;
+    }
+
+    .account-order-card__action {
+        width: auto;
+        min-height: 2.6rem;
+        padding-inline: 1.25rem;
     }
 
     .account-profile-grid,
@@ -11117,10 +11269,6 @@
 
     .account-shell__content {
         padding-bottom: calc(110px + env(safe-area-inset-bottom));
-    }
-
-    .account-overview__metrics {
-        display: none !important;
     }
 
     .account-mobile-bottom-nav {
@@ -11367,8 +11515,7 @@
 }
 
 @media (max-width: 34rem) {
-    .account-overview__intro,
-    .account-order-card__body {
+    .account-overview__intro {
         align-items: stretch;
         flex-direction: column;
     }
@@ -11377,8 +11524,32 @@
         width: 100%;
     }
 
-    .account-order-card__total {
-        white-space: normal;
+    .account-order-row {
+        grid-template-columns: 34px minmax(0, 1fr);
+        row-gap: 0.75rem;
+    }
+
+    .account-order-row__mark {
+        grid-column: 1;
+        grid-row: 1;
+        align-self: start;
+    }
+
+    .account-order-row__main {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .account-order-row__total {
+        grid-column: 2;
+        grid-row: 2;
+        justify-self: start;
+    }
+
+    .account-order-row__action {
+        grid-column: 2;
+        grid-row: 2;
+        justify-self: end;
     }
 
     .account-wallet-ledger li {
@@ -11416,8 +11587,12 @@
         width: min(100% - 1rem, 68.75rem);
     }
 
-    .account-overview__metrics {
-        grid-template-columns: minmax(0, 1fr);
+    .account-metric {
+        padding: 0.75rem;
+    }
+
+    .account-metric dd {
+        font-size: 1.1rem;
     }
 }
 

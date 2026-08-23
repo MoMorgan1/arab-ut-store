@@ -119,6 +119,7 @@ export type AccountTranslations = {
         next: string;
         pagination: string;
         page_status: string;
+        showing: string;
         items_title: string;
         item_quantity: string;
         credentials_ready: string;
@@ -310,6 +311,7 @@ export type AccountOverviewPageProps = AccountPageShellProps & {
 };
 
 export type AccountOrdersPageProps = AccountPageShellProps & {
+    counts: { all: number; open: number; completed: number };
     filters: { status: 'all' | 'open' | 'completed' };
     orders: AccountOrder[];
     pagination: {

@@ -42,6 +42,29 @@ const mockPage = vi.hoisted(() => ({
                 loyalty_remaining: 'تبقى :amount للوصول إلى فئة :tier.',
                 loyalty_complete: 'وصلت إلى أعلى فئة ولاء متاحة.',
             },
+            wallet: {
+                title: 'محفظتي',
+                description: 'رصيدك وحركات المحفظة.',
+                coming_soon: 'قريبًا',
+                coming_soon_notice:
+                    'ستظهر أرصدتك وعمليات الاسترداد هنا عند إطلاق المحفظة.',
+                available_balance: 'الرصيد المتاح',
+                unavailable_balance: 'المحفظة غير مفعّلة',
+                loyalty_title: 'برنامج الولاء',
+                ledger_title: 'حركات المحفظة',
+                empty_title: 'لا توجد حركات',
+                empty_description: 'ستظهر العمليات هنا.',
+                credit: 'إضافة',
+                debit: 'خصم',
+                refund: 'استرداد',
+                adjustment: 'تسوية',
+                balance_after: 'الرصيد بعد الحركة',
+                related_order: 'الطلب :number',
+                previous: 'السابق',
+                next: 'التالي',
+                pagination: 'الصفحات',
+                page_status: 'صفحة :current من :total',
+            },
             statuses: {
                 pending_payment: 'بانتظار الدفع',
                 received: 'تم استلام الدفع',
@@ -182,7 +205,10 @@ const mockPage = vi.hoisted(() => ({
             orderCount: 2,
             openOrderCount: 1,
             completedOrderCount: 1,
-            walletBalance: { amountMinor: '2500', currency: 'SAR' },
+            walletBalance: { amountMinor: '2500', currency: 'SAR' } as {
+                amountMinor: string;
+                currency: string;
+            } | null,
         },
     },
     url: '/my-account',
@@ -205,7 +231,7 @@ vi.mock('@inertiajs/react', () => ({
 afterEach(cleanup);
 
 it('uses the canonical Arabic customer account identity inside the storefront shell', () => {
-    render(<AccountOverview />);
+    const { container } = render(<AccountOverview />);
 
     expect(
         screen.getByRole('heading', { level: 1, name: 'مرحبًا، محمد' }),
@@ -226,6 +252,29 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
     ).toBeVisible();
     expect(screen.getByText('90%')).toBeVisible();
 
+    const metricsDl = container.querySelector('dl.account-overview__metrics');
+    expect(metricsDl).not.toBeNull();
+    expect(metricsDl?.querySelectorAll('dt')).toHaveLength(4);
+
+    const activeOrderHeading = screen.getByRole('heading', {
+        level: 2,
+        name: 'طلب يحتاج متابعتك',
+    });
+    expect(
+        Boolean(
+            metricsDl &&
+            metricsDl.compareDocumentPosition(activeOrderHeading) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+    ).toBe(true);
+
+    expect(
+        screen.queryByRole('heading', {
+            level: 2,
+            name: 'رصيد المحفظة',
+        }),
+    ).not.toBeInTheDocument();
+
     const recentOrders = screen.getByRole('region', { name: 'أحدث الطلبات' });
 
     expect(within(recentOrders).getByTitle('UT-10000000')).toBeVisible();
@@ -237,6 +286,16 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
     expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'تسجيل الخروج' }));
+});
+
+it('renders the coming soon label in the wallet metric tile when walletBalance is null', () => {
+    mockPage.props.summary.walletBalance = null;
+
+    const { container } = render(<AccountOverview />);
+
+    const metricsDl = container.querySelector('dl.account-overview__metrics');
+    expect(metricsDl).not.toBeNull();
+    expect(within(metricsDl as HTMLElement).getByText('قريبًا')).toBeVisible();
 });
 
 it('never duplicates activeOrder inside recentOrders even if present in the recent list', () => {
