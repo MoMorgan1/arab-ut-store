@@ -12,6 +12,7 @@ use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia;
 use Laravel\Fortify\Fortify;
@@ -103,16 +104,19 @@ test('admin navigation includes conversations between customers and products', f
     $this->actingAs($actor)
         ->get($path)
         ->assertOk()
+        // Compare the whole list, not a fixed number of indexes: an
+        // enumeration silently stops checking whatever it does not reach, so
+        // a nav entry added at the end went unasserted.
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('adminNavigation.0.url', $expectedUrls[0])
-            ->where('adminNavigation.1.url', $expectedUrls[1])
-            ->where('adminNavigation.2.url', $expectedUrls[2])
-            ->where('adminNavigation.3.url', $expectedUrls[3])
-            ->where('adminNavigation.4.url', $expectedUrls[4])
-            ->where('adminNavigation.5.url', $expectedUrls[5]));
+            ->where(
+                'adminNavigation',
+                fn (Collection $navigation): bool => $navigation
+                    ->pluck('url')
+                    ->all() === $expectedUrls,
+            ));
 })->with([
-    'Canonical family' => ['/admin/conversations', ['/admin', '/admin/orders', '/admin/customers', '/admin/conversations', '/admin/products', '/admin/settings']],
-    'Localized family' => ['/en/admin/conversations', ['/en/admin', '/en/admin/orders', '/en/admin/customers', '/en/admin/conversations', '/en/admin/products', '/en/admin/settings']],
+    'Canonical family' => ['/admin/conversations', ['/admin', '/admin/orders', '/admin/customers', '/admin/conversations', '/admin/products', '/admin/marketing/loyalty', '/admin/settings']],
+    'Localized family' => ['/en/admin/conversations', ['/en/admin', '/en/admin/orders', '/en/admin/customers', '/en/admin/conversations', '/en/admin/products', '/en/admin/marketing/loyalty', '/en/admin/settings']],
 ]);
 
 test('status filter returns only open conversations when status=open', function (): void {

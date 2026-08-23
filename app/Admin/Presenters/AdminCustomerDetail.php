@@ -2,6 +2,7 @@
 
 namespace App\Admin\Presenters;
 
+use App\Account\Queries\ResolveLoyaltyProgress;
 use App\Enums\WalletEntryType;
 use App\Models\Order;
 use App\Models\StaffAuditLog;
@@ -12,6 +13,10 @@ use Illuminate\Support\Carbon;
 
 final class AdminCustomerDetail
 {
+    public function __construct(
+        private readonly ResolveLoyaltyProgress $resolveLoyaltyProgress,
+    ) {}
+
     /**
      * @param  array{ordersCount: int, totalSpent: int, lastOrderAt: ?string}  $ordersSummary
      * @param  list<Order>  $recentOrders
@@ -56,6 +61,13 @@ final class AdminCustomerDetail
      *         createdAt: string,
      *         reference: ?string
      *     }>,
+     *     loyalty: array{
+     *         eligibleSpend: array{amountMinor: string, currency: string},
+     *         currentTier: array{key: string, name: string, minimum: array{amountMinor: string, currency: string}}|null,
+     *         nextTier: array{key: string, name: string, minimum: array{amountMinor: string, currency: string}}|null,
+     *         remaining: array{amountMinor: string, currency: string}|null,
+     *         progressPercent: int
+     *     }|null,
      *     recentAuditLogs: list<array{
      *         id: string,
      *         action: string,
@@ -130,6 +142,7 @@ final class AdminCustomerDetail
                 ],
                 $recentWalletEntries,
             ),
+            'loyalty' => $this->resolveLoyaltyProgress->for($user, $locale),
             'recentAuditLogs' => $auditLogs !== null
                 ? array_map(
                     fn (StaffAuditLog $log): array => [

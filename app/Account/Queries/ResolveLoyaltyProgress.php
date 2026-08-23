@@ -13,7 +13,15 @@ final class ResolveLoyaltyProgress
         private readonly EligibleOrderSpend $eligibleOrderSpend,
     ) {}
 
-    /** @return array<string, mixed>|null */
+    /**
+     * @return array{
+     *     eligibleSpend: array{amountMinor: string, currency: string},
+     *     currentTier: array{key: string, name: string, minimum: array{amountMinor: string, currency: string}}|null,
+     *     nextTier: array{key: string, name: string, minimum: array{amountMinor: string, currency: string}}|null,
+     *     remaining: array{amountMinor: string, currency: string}|null,
+     *     progressPercent: int
+     * }|null
+     */
     public function for(User $user, string $locale): ?array
     {
         $tiers = LoyaltyTier::query()

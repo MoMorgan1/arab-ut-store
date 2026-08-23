@@ -2,6 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     AlertCircle,
     ArrowLeft,
+    Award,
     CheckCircle2,
     History,
     Pencil,
@@ -21,11 +22,14 @@ import {
 } from '@/components/admin/admin-order-status';
 import AdminCustomerContactDialog from '@/components/admin/customers/admin-customer-contact-dialog';
 import AdminCustomerStatusDialog from '@/components/admin/customers/admin-customer-status-dialog';
+import AdminCustomerWalletAdjustDialog from '@/components/admin/customers/admin-customer-wallet-adjust-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import type {
     AdminCustomerDetail,
     AdminCustomerDetailPageProps,
+    AdminCustomerWalletEntry,
+    AdminMoney,
 } from '@/types/admin';
 
 export default function AdminCustomerDetailPage() {
@@ -36,6 +40,7 @@ export default function AdminCustomerDetailPage() {
     const [syncedCustomer, setSyncedCustomer] = useState(props.customer);
     const [statusDialogOpen, setStatusDialogOpen] = useState(false);
     const [contactDialogOpen, setContactDialogOpen] = useState(false);
+    const [walletAdjustDialogOpen, setWalletAdjustDialogOpen] = useState(false);
     const [statusAction, setStatusAction] = useState<'suspend' | 'reactivate'>(
         customer.isActive ? 'suspend' : 'reactivate',
     );
@@ -75,6 +80,7 @@ export default function AdminCustomerDetailPage() {
     const canUpdateContact = props.permissions.includes(
         'customers.update_contact',
     );
+    const canAdjustWallet = props.permissions.includes('wallet.adjust');
 
     const handleOpenStatusDialog = (action: 'suspend' | 'reactivate') => {
         setStatusAction(action);
@@ -141,6 +147,30 @@ export default function AdminCustomerDetailPage() {
             message: copy.contactConflictError,
             title: copy.conflictTitle,
             type: 'conflict',
+        });
+        router.reload({ only: ['customer'] });
+    };
+
+    const handleWalletAdjustSuccess = (result: {
+        balance: AdminMoney<'SAR'>;
+        entry: AdminCustomerWalletEntry;
+    }) => {
+        setCustomer((prev) => ({
+            ...prev,
+            walletSummary: {
+                ...prev.walletSummary,
+                balance: result.balance,
+                entriesCount: prev.walletSummary.entriesCount + 1,
+            },
+            recentWalletEntries: [
+                result.entry,
+                ...prev.recentWalletEntries.slice(0, 9),
+            ],
+        }));
+        setFeedback({
+            message: '',
+            title: copy.walletAdjustSuccess,
+            type: 'success',
         });
         router.reload({ only: ['customer'] });
     };
@@ -626,7 +656,7 @@ export default function AdminCustomerDetailPage() {
                         aria-labelledby="customer-wallet-heading"
                         className="rounded-lg border border-border bg-card p-5 text-card-foreground shadow-xs"
                     >
-                        <div className="flex items-center justify-between border-b border-border pb-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
                             <div className="flex items-center gap-2">
                                 <Wallet
                                     aria-hidden="true"
@@ -639,22 +669,80 @@ export default function AdminCustomerDetailPage() {
                                     {copy.walletSection}
                                 </h2>
                             </div>
-                            <span className="text-xs font-semibold text-muted-foreground tabular-nums">
-                                {customer.walletSummary.entriesCount}{' '}
-                                {copy.walletEntriesCount}
-                            </span>
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs font-semibold text-muted-foreground tabular-nums">
+                                    {customer.walletSummary.entriesCount}{' '}
+                                    {copy.walletEntriesCount}
+                                </span>
+                                {canAdjustWallet && props.walletAdjustUrl ? (
+                                    <Button
+                                        className="min-h-11 gap-1.5 text-xs font-semibold"
+                                        onClick={() =>
+                                            setWalletAdjustDialogOpen(true)
+                                        }
+                                        size="sm"
+                                        variant="outline"
+                                    >
+                                        <Pencil
+                                            aria-hidden="true"
+                                            className="size-3.5"
+                                        />
+                                        <span>{copy.adjustBalance}</span>
+                                    </Button>
+                                ) : null}
+                            </div>
                         </div>
 
-                        <div className="mt-4 border-b border-border pb-4 text-xs">
-                            <span className="font-medium text-muted-foreground">
-                                {copy.walletBalance}
-                            </span>
-                            <p className="mt-1 text-base font-bold text-foreground tabular-nums">
-                                {formatAdminMoney(
-                                    customer.walletSummary.balance,
-                                    props.locale,
-                                )}
-                            </p>
+                        <div className="mt-4 grid grid-cols-1 gap-4 border-b border-border pb-4 sm:grid-cols-3">
+                            <div className="text-xs">
+                                <span className="font-medium text-muted-foreground">
+                                    {copy.walletBalance}
+                                </span>
+                                <p className="mt-1 text-base font-bold text-foreground tabular-nums">
+                                    {formatAdminMoney(
+                                        customer.walletSummary.balance,
+                                        props.locale,
+                                    )}
+                                </p>
+                            </div>
+                            <div className="text-xs">
+                                <span className="font-medium text-muted-foreground">
+                                    {copy.currentTier}
+                                </span>
+                                <p className="mt-1 flex items-center gap-1.5 text-base font-bold text-foreground">
+                                    {customer.loyalty?.currentTier ? (
+                                        <span className="inline-flex items-center gap-1 text-primary">
+                                            <Award
+                                                aria-hidden="true"
+                                                className="size-4"
+                                            />
+                                            <span>
+                                                {
+                                                    customer.loyalty.currentTier
+                                                        .name
+                                                }
+                                            </span>
+                                        </span>
+                                    ) : (
+                                        <span className="text-muted-foreground">
+                                            {copy.noTier}
+                                        </span>
+                                    )}
+                                </p>
+                            </div>
+                            <div className="text-xs">
+                                <span className="font-medium text-muted-foreground">
+                                    {copy.lifetimeEligibleSpend}
+                                </span>
+                                <p className="mt-1 text-base font-bold text-foreground tabular-nums">
+                                    {customer.loyalty?.eligibleSpend
+                                        ? formatAdminMoney(
+                                              customer.loyalty.eligibleSpend,
+                                              props.locale,
+                                          )
+                                        : '—'}
+                                </p>
+                            </div>
                         </div>
 
                         <div className="mt-4">
@@ -859,6 +947,18 @@ export default function AdminCustomerDetailPage() {
                 onSuccess={handleContactSuccess}
                 open={contactDialogOpen}
             />
+
+            {props.walletAdjustUrl ? (
+                <AdminCustomerWalletAdjustDialog
+                    adminUi={props.adminUi}
+                    confirmPasswordUrl={props.confirmPasswordUrl}
+                    customer={customer}
+                    onOpenChange={setWalletAdjustDialogOpen}
+                    onSuccess={handleWalletAdjustSuccess}
+                    open={walletAdjustDialogOpen}
+                    walletAdjustUrl={props.walletAdjustUrl}
+                />
+            ) : null}
         </article>
     );
 }

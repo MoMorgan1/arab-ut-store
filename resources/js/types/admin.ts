@@ -34,6 +34,7 @@ export type AdminTranslations = {
         customers: string;
         conversations: string;
         products: string;
+        marketingLoyalty?: string;
         settings: string;
         open: string;
         close: string;
@@ -437,6 +438,26 @@ export type AdminTranslations = {
         confirmPasswordButton: string;
         confirmingPassword: string;
         invalidPassword: string;
+        currentTier: string;
+        lifetimeEligibleSpend: string;
+        noTier: string;
+        adjustBalance: string;
+        adjustBalanceTitle: string;
+        adjustBalanceDescription: string;
+        adjustTypeLabel: string;
+        credit: string;
+        debit: string;
+        amountSarLabel: string;
+        amountHalalahHelp: string;
+        adjustmentReasonLabel: string;
+        adjustmentReasonPlaceholder: string;
+        submitAdjustment: string;
+        adjustingBalance: string;
+        walletAdjustSuccess: string;
+        walletInsufficientBalance: string;
+        walletAdjustFailed: string;
+        walletPasswordModalTitle: string;
+        walletPasswordModalDescription: string;
     };
     settings: {
         headTitle: string;
@@ -816,6 +837,58 @@ export type AdminTranslations = {
         turnStatus: string;
         turnsSection: string;
     };
+
+    loyalty: {
+        headTitle: string;
+        title: string;
+        description: string;
+        kpi: {
+            cashbackLast30Days: string;
+            totalCustomers: string;
+            customersPerTier: string;
+        };
+        table: {
+            rank: string;
+            tier: string;
+            nameAr: string;
+            nameEn: string;
+            threshold: string;
+            cashbackRate: string;
+            status: string;
+            actions: string;
+            edit: string;
+            active: string;
+            inactive: string;
+            noTiers: string;
+        };
+        editDialog: {
+            title: string;
+            description: string;
+            nameArLabel: string;
+            nameEnLabel: string;
+            thresholdLabel: string;
+            cashbackLabel: string;
+            cashbackBpHelp: string;
+            activeLabel: string;
+            activeHelp: string;
+            saveButton: string;
+            savingButton: string;
+            cancelButton: string;
+            successMessage: string;
+            updateFailed: string;
+            passwordModalTitle: string;
+            passwordModalDescription: string;
+            passwordLabel: string;
+            passwordPlaceholder: string;
+            confirmPasswordButton: string;
+            confirmingPassword: string;
+            invalidPassword: string;
+        };
+        validation: {
+            rankOneZero: string;
+            strictlyIncreasing: string;
+        };
+    };
 };
 
 export type AdminNavigationItem = {
@@ -825,6 +898,7 @@ export type AdminNavigationItem = {
         | 'customers'
         | 'conversations'
         | 'products'
+        | 'marketingLoyalty'
         | 'settings';
     label: string;
     url: string;
@@ -1244,6 +1318,21 @@ export type AdminCustomerDetail = {
         entriesCount: number;
     };
     recentWalletEntries: AdminCustomerWalletEntry[];
+    loyalty?: {
+        eligibleSpend: AdminMoney<'SAR'>;
+        currentTier: {
+            key: string;
+            name: string;
+            minimum: AdminMoney<'SAR'>;
+        } | null;
+        nextTier: {
+            key: string;
+            name: string;
+            minimum: AdminMoney<'SAR'>;
+        } | null;
+        remaining: AdminMoney<'SAR'> | null;
+        progressPercent: number;
+    } | null;
     recentAuditLogs: Array<{
         id: string;
         action: string;
@@ -1263,6 +1352,39 @@ export type AdminCustomerDetailPageProps = {
     customer: AdminCustomerDetail;
     statusUrl: string;
     contactUrl: string;
+    walletAdjustUrl: string;
+    confirmPasswordUrl?: string;
+    logoutUrl: string;
+};
+
+export type AdminLoyaltyTier = {
+    id: string;
+    key: string;
+    nameAr: string;
+    nameEn: string;
+    rank: number;
+    minimumLifetimeSpend: AdminMoney<'SAR'>;
+    cashbackBasisPoints: number;
+    cashbackPercent: string;
+    isActive: boolean;
+    updatedAt: string;
+};
+
+export type AdminLoyaltyKpis = {
+    customersPerTier: Record<string, number>;
+    cashbackCreditedLast30Days: AdminMoney<'SAR'>;
+};
+
+export type AdminLoyaltyPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    tiers: AdminLoyaltyTier[];
+    kpis: AdminLoyaltyKpis;
+    updateTierUrlTemplate: string;
     confirmPasswordUrl?: string;
     logoutUrl: string;
 };
