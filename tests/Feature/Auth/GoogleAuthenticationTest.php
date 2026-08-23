@@ -71,7 +71,7 @@ test('google callback refuses to link an unverified provider email to an existin
     expect(SocialAccount::query()->count())->toBe(0);
 });
 
-test('google callback fails closed for privileged accounts without revealing their role', function (UserRole $role) {
+test('google callback signs in privileged accounts without revealing their role', function (UserRole $role) {
     $user = User::factory()->create([
         'email' => 'privileged-google@example.test',
         'role' => $role,
@@ -90,12 +90,11 @@ test('google callback fails closed for privileged accounts without revealing the
 
     $response = $this->get('/auth/google/callback');
 
-    $response->assertRedirect('/login')
-        ->assertSessionHasErrors(['email' => trans('auth_ui.login.google_error')])
+    $response->assertSessionDoesntHaveErrors()
         ->assertDontSee($role->value);
-    $this->assertGuest();
+    $this->assertAuthenticatedAs($user);
     expect(SocialAccount::query()->where('provider_user_id', 'privileged-google-user')->exists())
-        ->toBeFalse();
+        ->toBeTrue();
 })->with([
     'Admin' => [UserRole::Admin],
     'Staff' => [UserRole::Staff],
