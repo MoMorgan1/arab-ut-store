@@ -41,6 +41,7 @@ export default function AdminCustomerDetailPage() {
     );
     const [feedback, setFeedback] = useState<{
         type: 'success' | 'error' | 'conflict';
+        title: string;
         message: string;
     } | null>(null);
 
@@ -93,6 +94,7 @@ export default function AdminCustomerDetailPage() {
             message: result.isActive
                 ? copy.reactivatedMessage
                 : copy.suspendedMessage,
+            title: copy.statusUpdated,
             type: 'success',
         });
         router.reload({ only: ['customer'] });
@@ -104,6 +106,7 @@ export default function AdminCustomerDetailPage() {
             : customersCopy.statusSuspended;
         setFeedback({
             message: copy.conflictError.replace(':status', readableStatus),
+            title: copy.conflictTitle,
             type: 'conflict',
         });
         router.reload({ only: ['customer'] });
@@ -127,6 +130,7 @@ export default function AdminCustomerDetailPage() {
         }));
         setFeedback({
             message: copy.contactUpdatedMessage,
+            title: copy.contactUpdated,
             type: 'success',
         });
         router.reload({ only: ['customer'] });
@@ -135,6 +139,7 @@ export default function AdminCustomerDetailPage() {
     const handleContactConflict = () => {
         setFeedback({
             message: copy.contactConflictError,
+            title: copy.conflictTitle,
             type: 'conflict',
         });
         router.reload({ only: ['customer'] });
@@ -212,11 +217,7 @@ export default function AdminCustomerDetailPage() {
                             <AlertCircle className="size-4" />
                         )}
                         <AlertTitle className="text-xs font-semibold">
-                            {feedback.type === 'success'
-                                ? copy.statusUpdated
-                                : feedback.type === 'conflict'
-                                  ? 'Conflict'
-                                  : 'Error'}
+                            {feedback.title}
                         </AlertTitle>
                         <AlertDescription>{feedback.message}</AlertDescription>
                     </Alert>

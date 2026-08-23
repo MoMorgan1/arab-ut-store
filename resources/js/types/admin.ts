@@ -354,6 +354,8 @@ export type AdminTranslations = {
         suspending: string;
         reactivating: string;
         statusUpdated: string;
+        conflictTitle: string;
+        contactUpdated: string;
         conflictError: string;
         updateFailed: string;
         forbiddenError: string;

@@ -362,6 +362,8 @@ return [
         'suspending' => 'Suspending customer…',
         'reactivating' => 'Reactivating customer…',
         'statusUpdated' => 'Customer status updated successfully.',
+        'conflictTitle' => 'Conflict',
+        'contactUpdated' => 'Customer details updated',
         'suspendedMessage' => 'The customer has been signed out and can no longer log in or place orders.',
         'reactivatedMessage' => 'The customer can log in and place orders again.',
         'conflictError' => 'This customer was modified by another action. Current status is :status. Please review before proceeding.',

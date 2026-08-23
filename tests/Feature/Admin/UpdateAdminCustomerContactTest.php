@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Laravel\Fortify\Fortify;
 
 afterEach(function (): void {
@@ -123,17 +122,18 @@ test('email_verified_at and phone_verified_at are unchanged after edit and sessi
     $originalEmailVerifiedAt = $customer->email_verified_at;
     $originalPhoneVerifiedAt = $customer->phone_verified_at;
 
-    // Create session for the customer
-    if (Schema::hasTable('sessions')) {
-        DB::table('sessions')->insert([
-            'id' => 'cust-contact-session-1',
-            'user_id' => $customer->id,
-            'ip_address' => '127.0.0.1',
-            'user_agent' => 'TestBrowser',
-            'payload' => 'payload-data',
-            'last_activity' => time(),
-        ]);
-    }
+    // The app runs the array session driver under test, so there is no
+    // sessions table unless one is created here. Without it both assertions
+    // below silently skip and this test proves nothing.
+    createSessionsTableForTest();
+    DB::table('sessions')->insert([
+        'id' => 'cust-contact-session-1',
+        'user_id' => $customer->id,
+        'ip_address' => '127.0.0.1',
+        'user_agent' => 'TestBrowser',
+        'payload' => 'payload-data',
+        'last_activity' => time(),
+    ]);
 
     $response = $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => time()])
@@ -152,9 +152,7 @@ test('email_verified_at and phone_verified_at are unchanged after edit and sessi
         ->and($refreshed->phone_verified_at?->timestamp)->toBe($originalPhoneVerifiedAt?->timestamp);
 
     // Verify session was NOT destroyed
-    if (Schema::hasTable('sessions')) {
-        expect(DB::table('sessions')->where('user_id', $customer->id)->count())->toBe(1);
-    }
+    expect(DB::table('sessions')->where('user_id', $customer->id)->count())->toBe(1);
 });
 
 test('phone can be set to null', function (): void {
@@ -218,6 +216,76 @@ test('duplicate phone belonging to another user is rejected with 422', function 
         ->assertJsonValidationErrors('phone');
 });
 
+test('an admin cannot edit another admin or their own account through the route', function (): void {
+    $admin = createContactTestAdmin(UserRole::Admin);
+    $otherAdmin = createContactTestAdmin(UserRole::Admin);
+
+    foreach ([$otherAdmin, $admin] as $target) {
+        $this->actingAs($admin)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->postJson("/admin/api/customers/{$target->public_id}/contact", [
+                'first_name' => 'NewFirst',
+                'last_name' => 'NewLast',
+                'email' => 'route.target@example.test',
+                'phone' => '+966500000123',
+                'expected_updated_at' => $target->updated_at->utc()->toIso8601String(),
+            ])
+            ->assertForbidden();
+    }
+});
+
+test('a nonempty but unparseable expected_updated_at is a conflict, not a validation error', function (): void {
+    $admin = createContactTestAdmin(UserRole::Admin);
+    $customer = createContactTestCustomer();
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
+            'first_name' => $customer->first_name,
+            'last_name' => $customer->last_name,
+            'email' => $customer->email,
+            'phone' => $customer->phone,
+            'expected_updated_at' => 'not-a-timestamp',
+        ])
+        ->assertStatus(409);
+});
+
+test('an email differing only by case is still rejected as a duplicate', function (): void {
+    $admin = createContactTestAdmin(UserRole::Admin);
+    $customer1 = createContactTestCustomer();
+    $customer2 = createContactTestCustomer();
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->postJson("/admin/api/customers/{$customer1->public_id}/contact", [
+            'first_name' => $customer1->first_name,
+            'last_name' => $customer1->last_name,
+            'email' => strtoupper($customer2->email),
+            'phone' => $customer1->phone,
+            'expected_updated_at' => $customer1->updated_at->utc()->toIso8601String(),
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('email');
+});
+
+test('an edited email is stored lowercased', function (): void {
+    $admin = createContactTestAdmin(UserRole::Admin);
+    $customer = createContactTestCustomer();
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
+            'first_name' => $customer->first_name,
+            'last_name' => $customer->last_name,
+            'email' => '  MiXeD.Case@Example.Test  ',
+            'phone' => $customer->phone,
+            'expected_updated_at' => $customer->updated_at->utc()->toIso8601String(),
+        ])
+        ->assertOk();
+
+    expect($customer->fresh()->email)->toBe('mixed.case@example.test');
+});
+
 test('stale expected_updated_at throws AdminCustomerContactConflict with 409 response', function (): void {
     $admin = createContactTestAdmin(UserRole::Admin);
     $customer = createContactTestCustomer();
@@ -268,9 +336,9 @@ test('staff audit record with action customers.contact_updated names only change
         ->and($log->action)->toBe('customers.contact_updated')
         ->and($log->actor_user_id)->toBe($admin->id)
         ->and($log->metadata)->toMatchArray([
-            'changed' => ['email'],
-            'previous' => ['email' => $oldEmail],
-            'new' => ['email' => $newEmail],
+            'contact_changed' => ['email'],
+            'contact_previous' => ['email' => $oldEmail],
+            'contact_new' => ['email' => $newEmail],
         ]);
 });
 

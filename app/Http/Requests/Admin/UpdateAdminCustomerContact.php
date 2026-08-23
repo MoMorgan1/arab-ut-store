@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Enums\AdminPermission;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -15,6 +16,21 @@ final class UpdateAdminCustomerContact extends FormRequest
         $user = $this->user();
 
         return $user instanceof User && $user->can(AdminPermission::CustomersUpdateContact->value);
+    }
+
+    /**
+     * Normalized before validation so the uniqueness rule and the stored value
+     * agree: MySQL compares email case-insensitively but SQLite does not, so a
+     * case variant would otherwise pass validation and then hit the unique
+     * index.
+     */
+    protected function prepareForValidation(): void
+    {
+        $email = $this->input('email');
+
+        if (is_string($email)) {
+            $this->merge(['email' => Str::lower(trim($email))]);
+        }
     }
 
     /**

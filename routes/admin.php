@@ -112,7 +112,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $customerContact = Route::post('/api/customers/{publicId}/contact', CustomerContactController::class)
-                    ->middleware(['password.confirm', 'can:customers.update_contact'])
+                    ->middleware(['password.confirm', 'can:customers.update_contact', 'throttle:staff-identity'])
                     ->name('customers.contact.store');
 
                 if ($locale !== null) {

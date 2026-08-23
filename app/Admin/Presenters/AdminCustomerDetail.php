@@ -174,7 +174,15 @@ final class AdminCustomerDetail
      */
     private function filterSafeAuditMetadata(array $metadata): array
     {
-        $safeKeys = ['reason_code', 'case_reference', 'previous_active', 'new_active', 'changed', 'previous', 'new'];
+        $safeKeys = [
+            'reason_code',
+            'case_reference',
+            'previous_active',
+            'new_active',
+            'contact_changed',
+            'contact_previous',
+            'contact_new',
+        ];
 
         return array_intersect_key($metadata, array_flip($safeKeys));
     }

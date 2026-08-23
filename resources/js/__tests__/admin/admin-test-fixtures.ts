@@ -459,6 +459,8 @@ export const englishAdminUi: AdminTranslations = {
         statusDescription:
             'Control customer account activation and store access.',
         statusUpdated: 'Customer status updated successfully.',
+        conflictTitle: 'Conflict',
+        contactUpdated: 'Customer details updated',
         suspendedMessage:
             'The customer has been signed out and can no longer log in or place orders.',
         reactivatedMessage: 'The customer can log in and place orders again.',

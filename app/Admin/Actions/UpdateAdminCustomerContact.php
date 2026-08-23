@@ -54,7 +54,7 @@ final class UpdateAdminCustomerContact
                 throw new AuthorizationException('Only customer accounts can have their contact details updated.');
             }
 
-            $currentUpdatedAtIso = $target->updated_at?->toIso8601String() ?? '';
+            $currentUpdatedAtIso = $target->updated_at?->utc()->toIso8601String() ?? '';
             if ($currentUpdatedAtIso !== $expectedUpdatedAt) {
                 throw new AdminCustomerContactConflict((string) $target->public_id, $currentUpdatedAtIso);
             }
@@ -101,9 +101,9 @@ final class UpdateAdminCustomerContact
                     new StaffAuditEvent(
                         action: 'customers.contact_updated',
                         metadata: [
-                            'changed' => $changed,
-                            'previous' => $previous,
-                            'new' => $new,
+                            'contact_changed' => $changed,
+                            'contact_previous' => $previous,
+                            'contact_new' => $new,
                         ],
                         ipAddress: $ipAddress,
                     ),

@@ -82,12 +82,12 @@ export default function AdminCustomerContactDialog({
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
     const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false);
 
-    // Sync form fields with customer when dialog opens or customer changes
-    const [prevCustomer, setPrevCustomer] = useState(customer);
+    // Seed the form from the customer each time the dialog opens. Deliberately
+    // keyed on the open transition alone: a partial reload landing while the
+    // dialog is up would otherwise discard whatever the admin has typed.
     const [prevOpen, setPrevOpen] = useState(open);
 
-    if (customer !== prevCustomer || open !== prevOpen) {
-        setPrevCustomer(customer);
+    if (open !== prevOpen) {
         setPrevOpen(open);
 
         if (open) {
