@@ -99,10 +99,11 @@ describe('chatChoices', () => {
             message: `rank ${i}`,
         }));
 
+        // Seven, the width of the Rivals ladder — the widest real question.
         expect(
             chatChoices(message({ choices: { ...choices, items: many } }))
                 ?.items,
-        ).toHaveLength(6);
+        ).toHaveLength(7);
     });
 
     it('returns null when nothing survives validation', () => {

@@ -85,9 +85,14 @@ final readonly class BuildLivePriceContext
             return '';
         }
 
+        // The columns differ per service on purpose — coins have a platform and
+        // a speed, Rivals has only a route. Saying so stops the model carrying a
+        // field from one service onto another and inventing a question.
         $heading = $locale === 'en'
-            ? 'Current store prices. Quote these exactly; never calculate or estimate a price that is not listed.'
-            : 'أسعار المتجر الحالية. اقتبسها كما هي، ولا تحسب أو تقدّر أي سعر غير مذكور.';
+            ? "Current store prices. Quote these exactly; never calculate or estimate a price that is not listed.
+Each line reads: service | what the price depends on | price. A service's price depends only on the fields shown on its own lines."
+            : 'أسعار المتجر الحالية. اقتبسها كما هي، ولا تحسب أو تقدّر أي سعر غير مذكور.
+كل سطر: الخدمة | ما يعتمد عليه السعر | السعر. سعر أي خدمة يعتمد فقط على الحقول الظاهرة في أسطرها.';
 
         return "\n\n<live_prices>\n{$heading}\n".implode("\n", $lines)."\n</live_prices>";
     }

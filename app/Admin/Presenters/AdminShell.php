@@ -46,6 +46,14 @@ final class AdminShell
             ];
         }
 
+        if ($actor->can(AdminPermission::ChatView->value)) {
+            $navigation[] = [
+                'key' => 'conversations',
+                'label' => (string) trans('admin.navigation.conversations', locale: $locale),
+                'url' => route($prefix.'conversations', absolute: false),
+            ];
+        }
+
         if ($actor->can(AdminPermission::MarketingView->value)) {
             $navigation[] = [
                 'key' => 'marketing',
