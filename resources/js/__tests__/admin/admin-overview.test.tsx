@@ -63,13 +63,14 @@ function pageProps(
         adminIdentity: { name: 'Operations Owner', role: 'admin' },
         adminNavigation: [
             { key: 'overview', label: 'Overview', url: '/en/admin' },
+            { key: 'orders', label: 'Orders', url: '/en/admin/orders' },
             {
                 key: 'settings',
                 label: 'Settings',
                 url: '/en/admin/settings',
             },
         ],
-        permissions: ['dashboard.view', 'audit.view'],
+        permissions: ['dashboard.view', 'audit.view', 'orders.view'],
         overview: {
             rangeDays: 7,
             orders: { received: 12, inProgress: 3, waitingForCustomer: 4 },
@@ -77,7 +78,7 @@ function pageProps(
             refunds: { failed: 1 },
             capturedRevenue: { amountMinor: '123456', currency: 'SAR' },
             previousCapturedRevenue: { amountMinor: '100000', currency: 'SAR' },
-            totalOrders: { current: 19, previous: 15 },
+            totalOrders: { current: 23, previous: 15 },
             newCustomers: { current: 8, previous: 5 },
             attentionCount: 7,
             revenueTrend: [
@@ -89,15 +90,6 @@ function pageProps(
                 { date: '2026-08-19', amountMinor: '0', currency: 'SAR' },
                 { date: '2026-08-20', amountMinor: '123456', currency: 'SAR' },
                 { date: '2026-08-21', amountMinor: '0', currency: 'SAR' },
-            ],
-            orderStatusDistribution: [
-                { status: 'pending_payment', count: 0 },
-                { status: 'received', count: 12 },
-                { status: 'in_progress', count: 3 },
-                { status: 'waiting_for_customer', count: 4 },
-                { status: 'completed', count: 0 },
-                { status: 'cancelled', count: 0 },
-                { status: 'refunded', count: 0 },
             ],
             recentOrders: [
                 {
@@ -114,15 +106,14 @@ function pageProps(
                 status: 'received',
                 placedAt: '2026-08-20T10:00:00.000000Z',
             },
-            recentAuditEvents: [
-                {
-                    id: 'audit-1',
-                    action: 'order.status_updated',
-                    createdAt: '2026-08-20T12:30:00.000000Z',
-                },
-            ],
         },
         rangeOptions: [
+            {
+                days: 1,
+                label: 'Today',
+                url: '/en/admin?range=1',
+                active: false,
+            },
             {
                 days: 7,
                 label: 'Last 7 days',
@@ -153,9 +144,33 @@ describe('Admin operational overview', () => {
         vi.clearAllMocks();
     });
 
-    it('renders dominant gross captured revenue and supporting metrics in deliberate reading order with literal values', () => {
+    it('renders the compact attention strip and links to the filtered orders list', () => {
+        render(<AdminOverviewPage />);
+
+        const attentionStrip = screen.getByRole('complementary', {
+            name: 'Needs attention',
+        });
+        expect(attentionStrip).toBeVisible();
+
+        const strip = within(attentionStrip);
+        expect(strip.getByText('7')).toBeVisible();
+        expect(
+            strip.getByText('AUT-RECEIVED-1001-WITH-A-LONG-IDENTIFIER'),
+        ).toBeVisible();
+        expect(strip.getByText('Received')).toBeVisible();
+
+        const filterLink = strip.getByRole('link', {
+            name: /view unresolved orders/i,
+        });
+        expect(filterLink).toBeVisible();
+        expect(filterLink).toHaveAttribute(
+            'href',
+            '/en/admin/orders?status=received',
+        );
+    });
+
+    it('renders the 2x2 KPI grid with four values and deltas in deliberate reading order', () => {
         const { container } = render(<AdminOverviewPage />);
-        const text = container.textContent ?? '';
 
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
             'Operations dashboard',
@@ -165,34 +180,28 @@ describe('Admin operational overview', () => {
         expect(kpiStrip).not.toBeNull();
         const kpi = within(kpiStrip as HTMLElement);
 
+        // 1. Captured revenue
+        expect(kpi.getByText('Captured revenue')).toBeVisible();
         expect(kpi.getByText(/SAR\s+1,234\.56/)).toBeVisible();
         expect(kpi.getByText('+23.5% vs. previous period')).toBeVisible();
+
+        // 2. Total orders
         expect(kpi.getByText('Total placed orders')).toBeVisible();
-        expect(kpi.getByText('19')).toBeVisible();
+        expect(kpi.getByText('23')).toBeVisible();
+        expect(kpi.getByText('+53.3% vs. previous period')).toBeVisible();
+
+        // 3. Orders in flight (received + inProgress + waitingForCustomer = 12 + 3 + 4 = 19)
+        expect(kpi.getByText('Orders in flight')).toBeVisible();
+        expect(kpi.getByText('12 Received orders')).toBeVisible();
+
+        // 4. New customers
         expect(kpi.getByText('New customers')).toBeVisible();
         expect(kpi.getByText('8')).toBeVisible();
-        expect(kpi.getByText('Needs attention')).toBeVisible();
-        expect(kpi.getByText('7')).toBeVisible();
+        expect(kpi.getByText('+60.0% vs. previous period')).toBeVisible();
 
-        const rail = within(
-            screen.getByRole('complementary', { name: 'Operational focus' }),
-        );
-        expect(rail.getByText('12')).toBeVisible();
-        expect(rail.getByText('3')).toBeVisible();
-        expect(rail.getByText('4')).toBeVisible();
-        expect(rail.getByText('5')).toBeVisible();
-        expect(rail.getByText('2')).toBeVisible();
-        expect(rail.getByText('1')).toBeVisible();
-
-        expect(text.indexOf('Captured revenue')).toBeLessThan(
-            text.indexOf('Total placed orders'),
-        );
-        expect(text.indexOf('Total placed orders')).toBeLessThan(
-            text.indexOf('Captured revenue trend'),
-        );
-        expect(text.indexOf('Captured revenue trend')).toBeLessThan(
-            text.indexOf('Recent placed orders'),
-        );
+        // Exactly 4 KPI cells
+        const ddElements = container.querySelectorAll('.admin-kpi-strip dd');
+        expect(ddElements).toHaveLength(4);
     });
 
     it('preserves signed 64-bit revenue precision when formatting minor units', () => {
@@ -285,63 +294,54 @@ describe('Admin operational overview', () => {
         ).toBeGreaterThanOrEqual(1);
     });
 
-    it('shows recent orders as plain records without pretending to be links', () => {
+    it('renders revenue bar chart and recent orders linking through to /admin/orders', () => {
         render(<AdminOverviewPage />);
 
         expect(
-            screen.getAllByText('AUT-RECEIVED-1001-WITH-A-LONG-IDENTIFIER')
-                .length,
-        ).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText('Received').length).toBeGreaterThanOrEqual(
-            1,
-        );
-        expect(
-            screen.queryByRole('link', {
-                name: /AUT-RECEIVED-1001-WITH-A-LONG-IDENTIFIER/,
+            screen.getByRole('heading', {
+                level: 2,
+                name: 'Captured revenue trend',
             }),
-        ).not.toBeInTheDocument();
+        ).toBeVisible();
+
+        expect(
+            screen.getByRole('heading', {
+                level: 2,
+                name: 'Recent placed orders',
+            }),
+        ).toBeVisible();
+
+        const viewAllLinks = screen.getAllByRole('link', {
+            name: /view all orders/i,
+        });
+        expect(viewAllLinks.length).toBeGreaterThanOrEqual(2);
+
+        for (const link of viewAllLinks) {
+            expect(link).toHaveAttribute('href', '/en/admin/orders');
+        }
     });
 
-    it('shows global audit only when the server supplies Admin events', () => {
-        const { rerender } = render(<AdminOverviewPage />);
-
-        expect(screen.getByText('Recent Admin activity')).toBeVisible();
-        expect(screen.getByText('order.status_updated')).toBeVisible();
-
-        inertia.props = pageProps({
-            adminIdentity: { name: 'Order Operator', role: 'staff' },
-            permissions: ['dashboard.view'],
-            overview: {
-                ...pageProps().overview,
-                recentAuditEvents: null,
-            },
-        });
-        rerender(<AdminOverviewPage />);
+    it('confirms the audit feed and status distribution donut are completely removed', () => {
+        const { container } = render(<AdminOverviewPage />);
 
         expect(screen.queryByText('Recent Admin activity')).toBeNull();
-        expect(screen.queryByText('order.status_updated')).toBeNull();
+        expect(screen.queryByText('Order status distribution')).toBeNull();
+        expect(
+            container.querySelector('[aria-label="Order status distribution"]'),
+        ).toBeNull();
     });
 
-    it('renders purposeful empty chart and queue states when series are all-zero without credential content', () => {
+    it('renders purposeful empty chart and attention states when series are all-zero without credential content', () => {
         inertia.props = pageProps({
             overview: {
                 ...pageProps().overview,
+                attentionCount: 0,
                 revenueTrend: [
                     { date: '2026-08-20', amountMinor: '0', currency: 'SAR' },
                     { date: '2026-08-21', amountMinor: '0', currency: 'SAR' },
                 ],
-                orderStatusDistribution: [
-                    { status: 'pending_payment', count: 0 },
-                    { status: 'received', count: 0 },
-                    { status: 'in_progress', count: 0 },
-                    { status: 'waiting_for_customer', count: 0 },
-                    { status: 'completed', count: 0 },
-                    { status: 'cancelled', count: 0 },
-                    { status: 'refunded', count: 0 },
-                ],
                 recentOrders: [],
                 oldestUnresolvedOrder: null,
-                recentAuditEvents: [],
             },
         });
 
@@ -351,37 +351,35 @@ describe('Admin operational overview', () => {
             screen.getByText('No captured revenue in this period.'),
         ).toBeVisible();
         expect(
-            screen.getByText('No orders placed in this period.'),
-        ).toBeVisible();
-        expect(
             screen.getByText('There are no recent orders in this period.'),
         ).toBeVisible();
         expect(
             screen.getByText('There are no unresolved orders.'),
-        ).toBeVisible();
-        expect(
-            screen.getByText('There is no recent Admin activity.'),
         ).toBeVisible();
         expect(container).not.toHaveTextContent(
             /credential|password|provider/i,
         );
     });
 
-    it('exposes exact 7 and 30 day links with current and loading feedback', () => {
+    it('exposes exact Today, 7, and 30 day links with current and loading feedback', () => {
         render(<AdminOverviewPage />);
-        const current = screen.getByRole('link', { name: 'Last 7 days' });
-        const next = screen.getByRole('link', { name: 'Last 30 days' });
 
-        expect(current).toHaveAttribute('href', '/en/admin?range=7');
-        expect(current).toHaveAttribute('aria-current', 'page');
-        expect(next).toHaveAttribute('href', '/en/admin?range=30');
+        const today = screen.getByRole('link', { name: 'Today' });
+        const current7 = screen.getByRole('link', { name: 'Last 7 days' });
+        const next30 = screen.getByRole('link', { name: 'Last 30 days' });
 
-        fireEvent.click(next);
+        expect(today).toHaveAttribute('href', '/en/admin?range=1');
+        expect(today).not.toHaveAttribute('aria-current');
+        expect(current7).toHaveAttribute('href', '/en/admin?range=7');
+        expect(current7).toHaveAttribute('aria-current', 'page');
+        expect(next30).toHaveAttribute('href', '/en/admin?range=30');
+
+        fireEvent.click(today);
 
         expect(
             screen.getByRole('navigation', { name: 'Date range' }),
         ).toHaveAttribute('aria-busy', 'true');
-        expect(next).toHaveAttribute('data-loading', 'true');
+        expect(today).toHaveAttribute('data-loading', 'true');
 
         act(() => inertia.finish?.());
 

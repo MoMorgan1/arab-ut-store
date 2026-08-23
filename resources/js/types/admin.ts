@@ -42,6 +42,7 @@ export type AdminTranslations = {
         headTitle: string;
         title: string;
         description: string;
+        range1: string;
         range7: string;
         range30: string;
         receivedOrders: string;
@@ -58,6 +59,7 @@ export type AdminTranslations = {
         totalOrders: string;
         newCustomers: string;
         needsAttention: string;
+        ordersInFlight?: string;
         previousPeriod: string;
         newThisPeriod: string;
         noChange: string;
@@ -79,6 +81,10 @@ export type AdminTranslations = {
         orderPlacedAt: string;
         noRecentOrders: string;
         attentionRailTitle: string;
+        attentionStripTitle?: string;
+        viewAllOrders: string;
+        viewUnresolvedOrders: string;
+        viewAllReports?: string;
     };
     orders: {
         headTitle: string;
@@ -783,7 +789,7 @@ export type AdminOverviewPageProps = {
     adminNavigation: AdminNavigationItem[];
     permissions: string[];
     overview: {
-        rangeDays: 7 | 30;
+        rangeDays: 1 | 7 | 30;
         orders: {
             received: number;
             inProgress: number;
@@ -797,7 +803,6 @@ export type AdminOverviewPageProps = {
         newCustomers: AdminComparisonCount;
         attentionCount: number;
         revenueTrend: AdminRevenueTrendPoint[];
-        orderStatusDistribution: AdminOrderStatusCount[];
         recentOrders: AdminRecentOrder[];
         oldestUnresolvedOrder: null | {
             id: string;
@@ -805,14 +810,9 @@ export type AdminOverviewPageProps = {
             status: string;
             placedAt: string;
         };
-        recentAuditEvents: null | Array<{
-            id: string;
-            action: string;
-            createdAt: string;
-        }>;
     };
     rangeOptions: Array<{
-        days: 7 | 30;
+        days: 1 | 7 | 30;
         label: string;
         url: string;
         active: boolean;

@@ -2,9 +2,8 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
 import { useState } from 'react';
 
-import AdminAttentionRail from '@/components/admin/admin-attention-rail';
+import AdminAttentionStrip from '@/components/admin/admin-attention-strip';
 import AdminKpiStrip from '@/components/admin/admin-kpi-strip';
-import AdminOrderStatusChart from '@/components/admin/admin-order-status-chart';
 import AdminRecentOrders from '@/components/admin/admin-recent-orders';
 import AdminRevenueChart from '@/components/admin/admin-revenue-chart';
 import { cn } from '@/lib/utils';
@@ -12,7 +11,7 @@ import type { AdminOverviewPageProps } from '@/types/admin';
 
 export default function AdminOverviewPage() {
     const { props } = usePage<AdminOverviewPageProps>();
-    const [loadingDays, setLoadingDays] = useState<7 | 30 | null>(null);
+    const [loadingDays, setLoadingDays] = useState<1 | 7 | 30 | null>(null);
     const copy = props.adminUi.overview;
     const dateFormatter = new Intl.DateTimeFormat(props.locale, {
         dateStyle: 'medium',
@@ -20,9 +19,25 @@ export default function AdminOverviewPage() {
         timeZone: 'UTC',
     });
 
+    const ordersUrl =
+        props.adminNavigation.find((item) => item.key === 'orders')?.url ??
+        (props.locale === 'en' ? '/en/admin/orders' : '/admin/orders');
+
     return (
         <article className="space-y-6" dir={props.direction}>
             <Head title={copy.headTitle} />
+
+            {/* 1. Attention strip */}
+            <AdminAttentionStrip
+                dateFormatter={dateFormatter}
+                locale={props.locale}
+                ordersUrl={ordersUrl}
+                overview={props.overview}
+                statuses={props.adminUi.statuses}
+                translations={copy}
+            />
+
+            {/* 2. Period toggle & Header */}
             <OverviewHeader
                 copy={copy}
                 loadingDays={loadingDays}
@@ -32,47 +47,30 @@ export default function AdminOverviewPage() {
                 rangeOptions={props.rangeOptions}
             />
 
+            {/* 2x2 KPI grid */}
             <AdminKpiStrip
                 locale={props.locale}
                 overview={props.overview}
                 translations={copy}
             />
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-                <div className="order-2 md:order-1 lg:col-span-8">
-                    <AdminRevenueChart
-                        locale={props.locale}
-                        overview={props.overview}
-                        translations={copy}
-                    />
-                </div>
-                <div className="order-3 md:order-2 lg:col-span-4">
-                    <AdminOrderStatusChart
-                        locale={props.locale}
-                        overview={props.overview}
-                        statuses={props.adminUi.statuses}
-                        translations={copy}
-                    />
-                </div>
-                <div className="order-4 md:order-3 lg:col-span-8">
-                    <AdminRecentOrders
-                        dateFormatter={dateFormatter}
-                        locale={props.locale}
-                        orders={props.overview.recentOrders}
-                        statuses={props.adminUi.statuses}
-                        translations={copy}
-                    />
-                </div>
-                <div className="order-1 md:order-4 lg:col-span-4">
-                    <AdminAttentionRail
-                        dateFormatter={dateFormatter}
-                        locale={props.locale}
-                        overview={props.overview}
-                        statuses={props.adminUi.statuses}
-                        translations={copy}
-                    />
-                </div>
-            </div>
+            {/* 3. Revenue bar chart */}
+            <AdminRevenueChart
+                locale={props.locale}
+                ordersUrl={ordersUrl}
+                overview={props.overview}
+                translations={copy}
+            />
+
+            {/* 4. Recent orders */}
+            <AdminRecentOrders
+                dateFormatter={dateFormatter}
+                locale={props.locale}
+                orders={props.overview.recentOrders}
+                ordersUrl={ordersUrl}
+                statuses={props.adminUi.statuses}
+                translations={copy}
+            />
         </article>
     );
 }
@@ -86,10 +84,10 @@ function OverviewHeader({
     rangeOptions,
 }: {
     copy: AdminOverviewPageProps['adminUi']['overview'];
-    loadingDays: 7 | 30 | null;
+    loadingDays: 1 | 7 | 30 | null;
     locale: 'ar' | 'en';
     onFinish: () => void;
-    onStart: (days: 7 | 30) => void;
+    onStart: (days: 1 | 7 | 30) => void;
     rangeOptions: AdminOverviewPageProps['rangeOptions'];
 }) {
     const rangeLabel = locale === 'ar' ? 'نطاق التاريخ' : 'Date range';
@@ -116,7 +114,7 @@ function OverviewHeader({
                         <Link
                             aria-current={option.active ? 'page' : undefined}
                             className={cn(
-                                'inline-flex min-h-[44px] items-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
+                                'inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-md border px-3.5 text-sm font-medium hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
                                 option.active
                                     ? 'border-transparent bg-primary text-primary-foreground'
                                     : 'border-border bg-card text-muted-foreground',
