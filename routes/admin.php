@@ -10,6 +10,9 @@ use App\Http\Controllers\Admin\OrdersController;
 use App\Http\Controllers\Admin\OrderTransitionController;
 use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\Admin\PaylinkRefundController;
+use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\ProductDetailController;
+use App\Http\Controllers\Admin\ProductsController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TeamGrantController;
 use App\Http\Controllers\Admin\TeamRoleController;
@@ -137,6 +140,30 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $teamGrant->defaults('locale', $locale);
+                }
+
+                $products = Route::get('/products', ProductsController::class)
+                    ->middleware('can:catalog.view')
+                    ->name('products');
+
+                if ($locale !== null) {
+                    $products->defaults('locale', $locale);
+                }
+
+                $productDetail = Route::get('/products/{publicId}', ProductDetailController::class)
+                    ->middleware('can:catalog.view')
+                    ->name('products.show');
+
+                if ($locale !== null) {
+                    $productDetail->defaults('locale', $locale);
+                }
+
+                $product = Route::post('/api/products/{publicId}', ProductController::class)
+                    ->middleware(['password.confirm', 'can:catalog.manage'])
+                    ->name('products.update');
+
+                if ($locale !== null) {
+                    $product->defaults('locale', $locale);
                 }
 
                 $teamRole = Route::post('/api/team/{publicId}/role', TeamRoleController::class)
