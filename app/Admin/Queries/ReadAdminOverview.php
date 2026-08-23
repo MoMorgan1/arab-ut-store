@@ -3,7 +3,6 @@
 namespace App\Admin\Queries;
 
 use App\Admin\Support\CapturedRevenueAmount;
-use App\Enums\AdminPermission;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
@@ -29,10 +28,8 @@ final class ReadAdminOverview
      *     newCustomers: array{current: int, previous: int},
      *     attentionCount: int,
      *     revenueTrend: list<array{date: string, amountMinor: string, currency: string}>,
-     *     orderStatusDistribution: list<array{status: string, count: int}>,
      *     recentOrders: list<array{id: string, number: string, status: string, placedAt: string, total: array{amountMinor: string, currency: string}}>,
-     *     oldestUnresolvedOrder: null|array{id: string, number: string, status: string, placedAt: string},
-     *     recentAuditEvents: null|list<array{id: string, action: string, createdAt: string}>
+     *     oldestUnresolvedOrder: null|array{id: string, number: string, status: string, placedAt: string}
      * }
      */
     public function for(User $actor, int $days): array
@@ -47,7 +44,6 @@ final class ReadAdminOverview
         $totalOrders = $this->totalOrders($previousStartsAt, $windowStartsAt, $windowEndsAt);
         $newCustomers = $this->newCustomers($previousStartsAt, $windowStartsAt, $windowEndsAt);
         $revenueTrend = $this->revenueTrend($windowStartsAt, $windowEndsAt);
-        $orderStatusDistribution = $this->orderStatusDistribution($windowStartsAt, $windowEndsAt);
         $recentOrders = $this->recentOrders($windowStartsAt, $windowEndsAt);
 
         $attentionCount = $orderMetrics['waitingForCustomer']
@@ -65,10 +61,8 @@ final class ReadAdminOverview
             'newCustomers' => $newCustomers,
             'attentionCount' => $attentionCount,
             'revenueTrend' => $revenueTrend,
-            'orderStatusDistribution' => $orderStatusDistribution,
             'recentOrders' => $recentOrders,
             'oldestUnresolvedOrder' => $this->oldestUnresolvedOrder($windowEndsAt),
-            'recentAuditEvents' => $this->recentAuditEvents($actor),
         ];
     }
 
@@ -246,38 +240,6 @@ final class ReadAdminOverview
         return $trend;
     }
 
-    /** @return list<array{status: string, count: int}> */
-    private function orderStatusDistribution(DateTimeInterface $windowStartsAt, DateTimeInterface $windowEndsAt): array
-    {
-        $statusCounts = [];
-        foreach (OrderStatus::cases() as $case) {
-            $statusCounts[$case->value] = 0;
-        }
-
-        $rows = DB::table('orders')
-            ->whereBetween('placed_at', [$windowStartsAt, $windowEndsAt])
-            ->selectRaw('status, COUNT(*) AS status_count')
-            ->groupBy('status')
-            ->get();
-
-        foreach ($rows as $row) {
-            $statusKey = (string) $row->status;
-            if (array_key_exists($statusKey, $statusCounts)) {
-                $statusCounts[$statusKey] = (int) $row->status_count;
-            }
-        }
-
-        $distribution = [];
-        foreach ($statusCounts as $status => $count) {
-            $distribution[] = [
-                'status' => $status,
-                'count' => $count,
-            ];
-        }
-
-        return $distribution;
-    }
-
     /** @return list<array{id: string, number: string, status: string, placedAt: string, total: array{amountMinor: string, currency: string}}> */
     private function recentOrders(DateTimeInterface $windowStartsAt, DateTimeInterface $windowEndsAt): array
     {
@@ -330,29 +292,5 @@ final class ReadAdminOverview
             'status' => (string) $order->status,
             'placedAt' => Carbon::parse($order->activity_at, 'UTC')->utc()->toIso8601String(),
         ];
-    }
-
-    /** @return null|list<array{id: string, action: string, createdAt: string}> */
-    private function recentAuditEvents(User $actor): ?array
-    {
-        if (! $actor->can(AdminPermission::AuditView->value)) {
-            return null;
-        }
-
-        // The overview contract intentionally allowlists no audit metadata.
-        $events = DB::table('staff_audit_logs')
-            ->select(['public_id', 'action', 'created_at'])
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->limit(5)
-            ->get()
-            ->map(fn (object $event): array => [
-                'id' => (string) $event->public_id,
-                'action' => (string) $event->action,
-                'createdAt' => Carbon::parse($event->created_at, 'UTC')->utc()->toIso8601String(),
-            ])
-            ->all();
-
-        return array_values($events);
     }
 }

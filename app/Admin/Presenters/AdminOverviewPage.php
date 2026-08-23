@@ -22,6 +22,7 @@ final readonly class AdminOverviewPage
             ...$this->shell->for($actor, $locale),
             'overview' => $this->overview->for($actor, $days),
             'rangeOptions' => [
+                $this->rangeOption('admin.overview', $locale, 1, $days),
                 $this->rangeOption('admin.overview', $locale, 7, $days),
                 $this->rangeOption('admin.overview', $locale, 30, $days),
             ],

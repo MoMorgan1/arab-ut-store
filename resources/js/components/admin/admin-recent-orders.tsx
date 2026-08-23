@@ -1,4 +1,5 @@
-import { CircleAlert, Package } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { ArrowRight, CircleAlert, Package } from 'lucide-react';
 
 import AdminBadge from '@/components/admin/admin-badge';
 import { formatAdminMoney } from '@/components/admin/admin-money';
@@ -12,12 +13,14 @@ export default function AdminRecentOrders({
     dateFormatter,
     locale,
     orders,
+    ordersUrl,
     statuses,
     translations,
 }: {
     dateFormatter: Intl.DateTimeFormat;
     locale: 'ar' | 'en';
     orders: AdminOverviewPageProps['overview']['recentOrders'];
+    ordersUrl: string;
     statuses: AdminOverviewPageProps['adminUi']['statuses'];
     translations: AdminTranslations['overview'];
 }) {
@@ -26,19 +29,34 @@ export default function AdminRecentOrders({
             aria-label={translations.recentOrdersTitle}
             className="flex flex-col rounded-xl border border-border bg-card p-4 md:p-6"
         >
-            <header className="flex flex-col gap-1 pb-4">
-                <div className="flex items-center gap-2">
-                    <Package
-                        aria-hidden="true"
-                        className="h-4 w-4 shrink-0 text-muted-foreground"
-                    />
-                    <h2 className="text-base font-semibold text-card-foreground">
-                        {translations.recentOrdersTitle}
-                    </h2>
+            <header className="flex flex-col gap-2 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                        <Package
+                            aria-hidden="true"
+                            className="h-4 w-4 shrink-0 text-muted-foreground"
+                        />
+                        <h2 className="text-base font-semibold text-card-foreground">
+                            {translations.recentOrdersTitle}
+                        </h2>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        {translations.recentOrdersDescription}
+                    </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                    {translations.recentOrdersDescription}
-                </p>
+
+                <Link
+                    className="inline-flex min-h-[44px] items-center gap-1.5 text-xs font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                    href={ordersUrl}
+                >
+                    <span>
+                        {translations.viewAllOrders ?? 'View all orders'}
+                    </span>
+                    <ArrowRight
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5 rtl:rotate-180"
+                    />
+                </Link>
             </header>
 
             {orders.length === 0 ? (

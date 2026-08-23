@@ -92,55 +92,26 @@ test('the overview returns literal bounded operational metrics and the oldest un
             'status' => 'received',
             'placedAt' => '2026-08-20T10:00:00+00:00',
         ],
-    ])->and($overview['recentAuditEvents'])->toHaveCount(5)
-        ->and($overview['revenueTrend'])->toHaveCount(8)
-        ->and($overview['orderStatusDistribution'])->toHaveCount(7)
-        ->and($overview['recentOrders'])->toHaveCount(4);
+    ])->and($overview['revenueTrend'])->toHaveCount(8)
+        ->and($overview['recentOrders'])->toHaveCount(4)
+        ->and($overview)->not->toHaveKey('recentAuditEvents')
+        ->and($overview)->not->toHaveKey('orderStatusDistribution');
 });
 
-test('revenue trend points zero-fill all touched UTC dates in the rolling window', function (): void {
+test('the today range narrows the operational metrics window to one day', function (): void {
     Carbon::setTestNow(Carbon::parse('2026-08-21 12:00:00', 'UTC'));
     $admin = adminOverviewActor(UserRole::Admin);
-    $order = adminOverviewOrder($admin, OrderStatus::Completed, now()->subDay(), 'AUT-REV-TREND-1');
-    adminOverviewPayment($order, PaymentStatus::Paid, 500, Carbon::parse('2026-08-20 15:00:00', 'UTC'));
+    adminOverviewOrder($admin, OrderStatus::Received, now()->subHours(6), 'AUT-TODAY-1');
+    adminOverviewOrder($admin, OrderStatus::Received, now()->subDays(2), 'AUT-OLDER-1');
 
-    $overview7 = app(ReadAdminOverview::class)->for($admin, 7);
-    $overview30 = app(ReadAdminOverview::class)->for($admin, 30);
+    $overviewToday = app(ReadAdminOverview::class)->for($admin, 1);
 
-    expect($overview7['revenueTrend'])->toHaveCount(8)
-        ->and($overview7['revenueTrend'][0]['date'])->toBe('2026-08-14')
-        ->and($overview7['revenueTrend'][7]['date'])->toBe('2026-08-21')
-        ->and(collect($overview7['revenueTrend'])->firstWhere('date', '2026-08-20'))->toBe([
-            'date' => '2026-08-20',
-            'amountMinor' => '500',
-            'currency' => 'SAR',
-        ])
-        ->and(collect($overview7['revenueTrend'])->firstWhere('date', '2026-08-14')['amountMinor'])->toBe('0')
-        ->and($overview30['revenueTrend'])->toHaveCount(31)
-        ->and($overview30['revenueTrend'][0]['date'])->toBe('2026-07-22')
-        ->and($overview30['revenueTrend'][30]['date'])->toBe('2026-08-21');
-});
-
-test('order status distribution includes all canonical OrderStatus cases in stable order with zero counts', function (): void {
-    Carbon::setTestNow(Carbon::parse('2026-08-21 12:00:00', 'UTC'));
-    $admin = adminOverviewActor(UserRole::Admin);
-    adminOverviewOrder($admin, OrderStatus::Received, now()->subDay(), 'AUT-DIST-1');
-    adminOverviewOrder($admin, OrderStatus::Completed, now()->subDays(2), 'AUT-DIST-2');
-
-    $distribution = app(ReadAdminOverview::class)->for($admin, 7)['orderStatusDistribution'];
-
-    expect(array_column($distribution, 'status'))->toBe([
-        'pending_payment',
-        'received',
-        'in_progress',
-        'waiting_for_customer',
-        'completed',
-        'cancelled',
-        'refunded',
-    ])->and(collect($distribution)->firstWhere('status', 'received')['count'])->toBe(1)
-        ->and(collect($distribution)->firstWhere('status', 'completed')['count'])->toBe(1)
-        ->and(collect($distribution)->firstWhere('status', 'cancelled')['count'])->toBe(0)
-        ->and(collect($distribution)->firstWhere('status', 'pending_payment')['count'])->toBe(0);
+    expect($overviewToday['rangeDays'])->toBe(1)
+        ->and($overviewToday['orders']['received'])->toBe(1)
+        ->and($overviewToday['totalOrders']['current'])->toBe(1)
+        ->and($overviewToday['revenueTrend'])->toHaveCount(2)
+        ->and($overviewToday['revenueTrend'][0]['date'])->toBe('2026-08-20')
+        ->and($overviewToday['revenueTrend'][1]['date'])->toBe('2026-08-21');
 });
 
 test('recent orders returns at most five orders ordered newest first without customer PII or provider payloads', function (): void {
@@ -270,37 +241,6 @@ test('captured revenue normalization preserves exact database decimal strings', 
     'MariaDB decimal beyond PHP integer range' => ['18446744073709551614', '18446744073709551614'],
 ]);
 
-test('Staff receive no global audit events while Admin receive at most five safe event fields', function (): void {
-    Carbon::setTestNow(Carbon::parse('2026-08-21 12:00:00', 'UTC'));
-    $admin = adminOverviewActor(UserRole::Admin);
-    $staff = adminOverviewActor(UserRole::Staff);
-
-    foreach (range(1, 7) as $sequence) {
-        StaffAuditLog::query()->create([
-            'actor_user_id' => $admin->id,
-            'action' => "orders.event_{$sequence}",
-            'metadata' => [
-                'case_reference' => "CASE-{$sequence}",
-                'nested' => ['provider_payload' => "provider-secret-{$sequence}"],
-            ],
-            'ip_address' => '2001:db8::1',
-            'created_at' => now()->subSeconds($sequence),
-        ]);
-    }
-
-    $adminEvents = app(ReadAdminOverview::class)->for($admin, 7)['recentAuditEvents'];
-    $staffEvents = app(ReadAdminOverview::class)->for($staff, 7)['recentAuditEvents'];
-
-    expect($adminEvents)->toHaveCount(5)
-        ->and(array_keys($adminEvents[0]))->toBe(['id', 'action', 'createdAt'])
-        ->and($staffEvents)->toBeNull();
-
-    $serializedEvents = json_encode($adminEvents, JSON_THROW_ON_ERROR);
-    foreach (['provider-secret', 'metadata', 'ip_address'] as $forbiddenField) {
-        expect($serializedEvents)->not->toContain($forbiddenField);
-    }
-});
-
 test('the overview query count stays bounded and its selects omit secret and provider payload columns', function (
     UserRole $role,
     int $maximumQueries,
@@ -323,8 +263,8 @@ test('the overview query count stays bounded and its selects omit secret and pro
         expect($sql)->not->toContain($forbiddenColumn);
     }
 })->with([
-    'Admin has one bounded audit query' => [UserRole::Admin, 10],
-    'Staff skips the global audit query' => [UserRole::Staff, 9],
+    'Admin query count stays bounded' => [UserRole::Admin, 8],
+    'Staff query count stays bounded' => [UserRole::Staff, 8],
 ]);
 
 test('the Admin shell exposes only safe identity exact permissions and implemented localized navigation', function (
@@ -418,11 +358,18 @@ test('the page presenter composes exact localized range URLs and active state', 
         ->and($page['overview']['rangeDays'])->toBe($days)
         ->and($page['rangeOptions'])->toBe($expectedOptions);
 })->with([
+    'English one day' => ['en', 1, [
+        ['days' => 1, 'label' => 'Today', 'url' => '/admin?range=1', 'active' => true],
+        ['days' => 7, 'label' => 'Last 7 days', 'url' => '/admin?range=7', 'active' => false],
+        ['days' => 30, 'label' => 'Last 30 days', 'url' => '/admin?range=30', 'active' => false],
+    ]],
     'English seven days' => ['en', 7, [
+        ['days' => 1, 'label' => 'Today', 'url' => '/admin?range=1', 'active' => false],
         ['days' => 7, 'label' => 'Last 7 days', 'url' => '/admin?range=7', 'active' => true],
         ['days' => 30, 'label' => 'Last 30 days', 'url' => '/admin?range=30', 'active' => false],
     ]],
     'English thirty days' => ['en', 30, [
+        ['days' => 1, 'label' => 'Today', 'url' => '/admin?range=1', 'active' => false],
         ['days' => 7, 'label' => 'Last 7 days', 'url' => '/admin?range=7', 'active' => false],
         ['days' => 30, 'label' => 'Last 30 days', 'url' => '/admin?range=30', 'active' => true],
     ]],
@@ -482,13 +429,14 @@ test('the overview controller authorizes the actor resolved from its request', f
         ->toThrow(AuthorizationException::class);
 });
 
-test('overview routes reject unsupported ranges and retain the ordinary confirmed MFA boundary', function (): void {
+test('overview routes accept today range, reject unsupported ranges, and retain confirmed MFA boundary', function (): void {
     $admin = adminOverviewActor(UserRole::Admin);
     $admin->forceFill(['two_factor_confirmed_at' => null])->save();
 
     $this->actingAs($admin)->get('/admin')->assertRedirect('/admin/settings');
 
     $admin->forceFill(['two_factor_confirmed_at' => now()])->save();
+    $this->actingAs($admin)->get('/admin?range=1')->assertOk();
     $this->actingAs($admin)
         ->get('/admin?range=8')
         ->assertSessionHasErrors('range');
