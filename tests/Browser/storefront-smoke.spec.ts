@@ -1184,3 +1184,68 @@ test('authenticated Admin overview and orders are operable across required width
         mutateLocalBrowserUser(email, 'delete');
     }
 });
+
+test('reaching the dashboard by a client-side visit still applies the admin palette', async ({
+    page,
+}) => {
+    test.setTimeout(120_000);
+    const syntheticId = randomUUID();
+    const email = `${syntheticId}@example.test`;
+    const password = `ArabUT-${syntheticId}-Aa1!`;
+
+    try {
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await page.goto('/register');
+        await page.locator('#first_name').fill('Admin');
+        await page.locator('#last_name').fill('Client Side Visit Owner');
+        await page.locator('#email').fill(email);
+        await page.locator('#password').fill(password);
+        await page.locator('#password_confirmation').fill(password);
+        await Promise.all([
+            page.waitForURL((url) => url.pathname === '/my-account'),
+            page.locator('[data-test="register-user-button"]').click(),
+        ]);
+
+        mutateLocalBrowserUser(email, 'promote');
+
+        // A full load of the account page: Blade stamps the non-admin shell.
+        await page.goto('/my-account');
+        await expect(page.locator('html')).not.toHaveClass(/admin-document/);
+
+        // The account navigation links into the dashboard with an Inertia Link,
+        // so this is a client-side visit — Blade never runs again. The palette
+        // used to stay on the previous shell, which rendered the whole
+        // dashboard without a single gold accent until the visitor refreshed.
+        // An Inertia visit never fires a document load event, so wait on the
+        // URL settling rather than on navigation.
+        await page.locator('.account-navigation__link--admin').first().click();
+        await expect(page).toHaveURL(/\/admin$/);
+        await expect(
+            page.getByRole('heading', {
+                level: 1,
+                name: 'Operations dashboard',
+            }),
+        ).toBeVisible();
+
+        await expect(page.locator('html')).toHaveClass(/admin-document/);
+        await expect(page.locator('html')).toHaveClass(/dark/);
+        expect(
+            await page
+                .locator('meta[name="theme-color"]')
+                .evaluateAll((elements) =>
+                    elements.map((element) => element.getAttribute('content')),
+                ),
+        ).toEqual(['#080705']);
+
+        // The gold accent is the visible symptom, so assert the resolved value
+        // rather than only the class that carries it.
+        const primary = await page.evaluate(() =>
+            getComputedStyle(document.documentElement)
+                .getPropertyValue('--primary')
+                .trim(),
+        );
+        expect(primary.toLowerCase()).toBe('#d4a843');
+    } finally {
+        mutateLocalBrowserUser(email, 'delete');
+    }
+});
