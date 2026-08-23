@@ -725,6 +725,67 @@ export type AdminTranslations = {
         variantsCount: string;
         visibility: string;
         visible: string;
+        // Visibility
+        adminHiddenBadge: string;
+        automationVisibleBadge: string;
+        automationHiddenBadge: string;
+        hideFromStore: string;
+        hidingFromStore: string;
+        restoreToStore: string;
+        restoringToStore: string;
+        hideDialogTitle: string;
+        hideDialogDescription: string;
+        confirmHideButton: string;
+        restoreDialogTitle: string;
+        restoreDialogDescription: string;
+        confirmRestoreButton: string;
+        visibilityUpdatedTitle: string;
+        visibilityHiddenMessage: string;
+        visibilityRestoredMessage: string;
+        visibilityConflictError: string;
+        visibilityUpdateFailed: string;
+        storefrontStatus: string;
+        storefrontVisible: string;
+        storefrontAdminHidden: string;
+        automationVisibility: string;
+        automationVisible: string;
+        automationHidden: string;
+        // Pricing override & revert
+        effectivePrice: string;
+        overrideActiveBadge: string;
+        automationPriceLabel: string;
+        overridePriceButton: string;
+        editOverrideButton: string;
+        revertToAutomationButton: string;
+        revertingToAutomation: string;
+        variantActions: string;
+        priceOverrideDialogTitle: string;
+        priceOverrideDialogDescription: string;
+        repriceWarning: string;
+        priceHalalahLabel: string;
+        priceHalalahHelp: string;
+        saveOverrideButton: string;
+        savingOverrideButton: string;
+        tierTableTitle: string;
+        tierTableDescription: string;
+        tierCompletions: string;
+        tierDiscount: string;
+        tierTotalHalalah: string;
+        tierEquivalentSar: string;
+        tierCountLabel: string;
+        singlePriceTitle: string;
+        revertDialogTitle: string;
+        revertDialogDescription: string;
+        confirmRevertButton: string;
+        priceOverrideUpdated: string;
+        priceOverrideUpdatedMessage: string;
+        priceOverrideCleared: string;
+        priceOverrideClearedMessage: string;
+        priceConflictError: string;
+        priceOverrideFailed: string;
+        revertFailed: string;
+        positivePriceRequired: string;
+        firstTierMustMatchPrice: string;
     };
 };
 
@@ -1222,6 +1283,19 @@ export type AdminProductsPageProps = {
     logoutUrl: string;
 };
 
+export type SbcCompletionPricingTier = {
+    completions: number;
+    multiplierBps: number;
+    totalMinor: number;
+};
+
+export type SbcCompletionPricing = {
+    version: 1;
+    repeatable: boolean;
+    maximum: number | null;
+    tiers: SbcCompletionPricingTier[];
+};
+
 export type AdminProductVariant = {
     id: string;
     sku: string;
@@ -1236,6 +1310,10 @@ export type AdminProductVariant = {
     salePrice: AdminMoney<'SAR'> | null;
     priceVersion: number;
     configuration: Record<string, unknown> | null;
+    adminPriceHalalah?: number | null;
+    adminCompletionPricing?: SbcCompletionPricing | null;
+    effectivePriceHalalah?: number;
+    hasOverride?: boolean;
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -1272,6 +1350,8 @@ export type AdminProductDetail = {
     authority: 'manual' | 'automation';
     isEditable: boolean;
     isVisible: boolean;
+    adminHidden?: boolean;
+    adminHiddenAt?: string | null;
     sortOrder: number;
     isArchived: boolean;
     archivedAt: string | null;
@@ -1300,6 +1380,8 @@ export type AdminProductDetailPageProps = {
     permissions: string[];
     product: AdminProductDetail;
     updateUrl: string;
+    visibilityUrl: string;
+    variantPriceUrlTemplate: string;
     confirmPasswordUrl?: string;
     logoutUrl: string;
 };

@@ -836,6 +836,82 @@ export const englishAdminUi: AdminTranslations = {
         variantsSection: 'Variants & pricing',
         visibility: 'Visibility',
         visible: 'Visible',
+        // Visibility
+        adminHiddenBadge: 'Admin hidden',
+        automationVisibleBadge: 'Automation: Visible',
+        automationHiddenBadge: 'Automation: Hidden',
+        hideFromStore: 'Hide from store',
+        hidingFromStore: 'Hiding from store…',
+        restoreToStore: 'Restore to store',
+        restoringToStore: 'Restoring to store…',
+        hideDialogTitle: 'Hide product from store?',
+        hideDialogDescription:
+            'Are you sure you want to hide this product from the storefront? Customers will no longer see or be able to buy it.',
+        confirmHideButton: 'Hide from store',
+        restoreDialogTitle: 'Restore product to store?',
+        restoreDialogDescription:
+            'Are you sure you want to restore this product to the storefront? Customers will be able to see and buy it again if automation has it marked visible.',
+        confirmRestoreButton: 'Restore to store',
+        visibilityUpdatedTitle: 'Visibility updated',
+        visibilityHiddenMessage: 'Product has been hidden from the storefront.',
+        visibilityRestoredMessage:
+            'Product has been restored to the storefront.',
+        visibilityConflictError:
+            'The storefront visibility was modified by another operator. Current state has been refreshed.',
+        visibilityUpdateFailed:
+            'We could not update the product visibility. Please check your connection and try again.',
+        storefrontStatus: 'Storefront status',
+        storefrontVisible: 'Visible in store',
+        storefrontAdminHidden: 'Hidden by admin',
+        automationVisibility: 'Automation visibility',
+        automationVisible: 'Automation: Visible',
+        automationHidden: 'Automation: Hidden',
+        // Pricing override & revert
+        effectivePrice: 'Effective price',
+        overrideActiveBadge: 'Override active',
+        automationPriceLabel: 'Automation: :price',
+        overridePriceButton: 'Override price',
+        editOverrideButton: 'Edit override',
+        revertToAutomationButton: 'Revert to automation',
+        revertingToAutomation: 'Reverting to automation…',
+        variantActions: 'Pricing actions',
+        priceOverrideDialogTitle: 'Override variant price',
+        priceOverrideDialogDescription:
+            'Set a manual price override for this automation variant. This price will take precedence over automation snapshots.',
+        repriceWarning:
+            'Saving this override re-prices the variant immediately and creates a new price version. Customers holding an older quote or cart will be asked to re-add the item.',
+        priceHalalahLabel: 'Price (Halalah)',
+        priceHalalahHelp: ':halalah halalah = :sar',
+        saveOverrideButton: 'Save price override',
+        savingOverrideButton: 'Saving override…',
+        tierTableTitle: 'SBC Completion Pricing Tiers',
+        tierTableDescription:
+            'Configure the price for each completion tier. The first tier total must equal the base variant price.',
+        tierCompletions: 'Completions',
+        tierDiscount: 'Multiplier',
+        tierTotalHalalah: 'Total (Halalah)',
+        tierEquivalentSar: 'Equivalent',
+        tierCountLabel: ':count completion(s)',
+        singlePriceTitle: 'Variant Price',
+        revertDialogTitle: 'Revert price to automation?',
+        revertDialogDescription:
+            'Are you sure you want to clear the price override for variant :sku? Future catalog snapshots will resume controlling the price and tiers for this variant.',
+        confirmRevertButton: 'Revert to automation',
+        priceOverrideUpdated: 'Price override updated',
+        priceOverrideUpdatedMessage:
+            'The price override has been saved successfully.',
+        priceOverrideCleared: 'Price override cleared',
+        priceOverrideClearedMessage:
+            'The variant has been reverted to automation pricing.',
+        priceConflictError:
+            'This variant was repriced by another process. Latest version and pricing have been loaded. Please review before saving.',
+        priceOverrideFailed:
+            'We could not save the price override. Please check your connection and try again.',
+        revertFailed:
+            'We could not revert the price to automation. Please check your connection and try again.',
+        positivePriceRequired: 'Price must be a positive integer in halalah.',
+        firstTierMustMatchPrice:
+            'The first SBC completion tier must match the variant price.',
     },
 };
 
@@ -1417,7 +1493,44 @@ export const sampleAdminAutomationProductDetail = {
             price: { amountMinor: '5000', currency: 'SAR' as const },
             salePrice: null,
             priceVersion: 1,
-            configuration: { difficulty: 'hard' },
+            configuration: {
+                difficulty: 'hard',
+                completionPricing: {
+                    version: 1,
+                    repeatable: true,
+                    maximum: 10,
+                    tiers: [
+                        {
+                            completions: 5,
+                            multiplierBps: 10000,
+                            totalMinor: 5000,
+                        },
+                        {
+                            completions: 10,
+                            multiplierBps: 9500,
+                            totalMinor: 9500,
+                        },
+                    ],
+                },
+            },
+            isActive: true,
+            createdAt: '2026-08-16T10:00:00Z',
+            updatedAt: '2026-08-16T10:00:00Z',
+        },
+        {
+            id: '01K5VAR00000000000000004',
+            sku: 'SBC-NO-TIERS',
+            serviceType: 'sbc',
+            platform: 'pc',
+            market: 'global',
+            authority: 'automation',
+            nameAr: 'تحدي بدون مستويات',
+            nameEn: 'SBC Without Tiers',
+            quantityK: null,
+            price: { amountMinor: '2500', currency: 'SAR' as const },
+            salePrice: null,
+            priceVersion: 1,
+            configuration: null,
             isActive: true,
             createdAt: '2026-08-16T10:00:00Z',
             updatedAt: '2026-08-16T10:00:00Z',
