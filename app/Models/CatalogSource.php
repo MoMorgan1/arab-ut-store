@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ProductAuthority;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/** @property ProductAuthority $authority */
 class CatalogSource extends DomainModel
 {
     /** @return array<string, string> */

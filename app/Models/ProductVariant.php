@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $price_halalah
  * @property int|null $sale_price_halalah
  * @property ServiceType $service_type
+ * @property ProductAuthority $authority
  */
 class ProductVariant extends DomainModel
 {

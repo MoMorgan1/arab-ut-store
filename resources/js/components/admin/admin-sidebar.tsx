@@ -2,6 +2,7 @@ import { Link, router } from '@inertiajs/react';
 import {
     LayoutDashboard,
     LogOut,
+    Package,
     Settings,
     ShoppingBag,
     Users,
@@ -18,6 +19,7 @@ const navigationIcons: Record<AdminNavigationItem['key'], LucideIcon> = {
     overview: LayoutDashboard,
     orders: ShoppingBag,
     customers: Users,
+    products: Package,
     settings: Settings,
 };
 

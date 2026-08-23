@@ -4,6 +4,7 @@ import type { AdminMfaApiError } from '@/lib/admin-mfa-api';
 import {
     confirmAdminMfa,
     enableAdminMfa,
+    forgetAdminMfaTrustedDevices,
     loadAdminMfaQrCode,
     loadAdminMfaRecoveryCodes,
     regenerateAdminMfaRecoveryCodes,
@@ -167,6 +168,42 @@ it('maps password-confirmation and validation responses to typed failures', asyn
         fieldErrors: { code: 'Invalid code.' },
         status: 422,
     });
+});
+
+it('sends DELETE to forget trusted devices with CSRF and returns revoked count', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ revoked: 2 }));
+
+    const result = await forgetAdminMfaTrustedDevices(
+        '/admin/api/security/trusted-devices',
+    );
+
+    expect(result).toEqual({ revoked: 2 });
+    expect(fetchMock).toHaveBeenCalledWith(
+        '/admin/api/security/trusted-devices',
+        expect.objectContaining({
+            cache: 'no-store',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': 'csrf-admin-token',
+            },
+            method: 'DELETE',
+        }),
+    );
+});
+
+it('rejects forget trusted devices with invalid response or missing CSRF', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ not_revoked: 'bad' }));
+
+    await expect(
+        forgetAdminMfaTrustedDevices('/admin/api/security/trusted-devices'),
+    ).rejects.toMatchObject({ code: 'invalid_response' });
+
+    document.head.innerHTML = '';
+
+    await expect(
+        forgetAdminMfaTrustedDevices('/admin/api/security/trusted-devices'),
+    ).rejects.toMatchObject({ code: 'csrf_missing' });
 });
 
 function jsonResponse(body: unknown, status = 200): Response {
