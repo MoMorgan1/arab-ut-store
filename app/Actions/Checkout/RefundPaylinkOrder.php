@@ -11,6 +11,7 @@ use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
 use App\Exceptions\Checkout\CheckoutUnavailable;
 use App\Exceptions\Payments\PaymentConfigurationException;
+use App\Loyalty\Actions\ReverseOrderCashback;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Refund;
@@ -26,6 +27,7 @@ final readonly class RefundPaylinkOrder
     public function __construct(
         private PaymentManager $payments,
         private RecordStaffAudit $recordStaffAudit,
+        private ReverseOrderCashback $reverseOrderCashback,
     ) {}
 
     public function execute(Order $order, string $reason, User $actor, ?string $ipAddress = null): Refund
@@ -236,6 +238,8 @@ final readonly class RefundPaylinkOrder
             ],
             'completed_at' => now(),
         ])->save();
+
+        $this->reverseOrderCashback->execute($locked);
 
         $this->recordStaffAudit->execute(
             actor: $actor,
