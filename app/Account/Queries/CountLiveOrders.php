@@ -4,6 +4,7 @@ namespace App\Account\Queries;
 
 use App\Models\Order;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 final readonly class CountLiveOrders
 {
@@ -15,29 +16,34 @@ final readonly class CountLiveOrders
      */
     public function for(User $user): array
     {
-        $open = ReadLiveOrders::OPEN_STATUSES;
-        $completed = ReadLiveOrders::COMPLETED_STATUSES;
-
-        $row = Order::query()
+        /** @var array<string, int> $perStatus */
+        $perStatus = Order::query()
             ->where('user_id', $user->getKey())
-            ->selectRaw(
-                'COUNT(*) AS count_all, '
-                .'SUM(CASE WHEN status IN ('.$this->placeholders($open).') THEN 1 ELSE 0 END) AS count_open, '
-                .'SUM(CASE WHEN status IN ('.$this->placeholders($completed).') THEN 1 ELSE 0 END) AS count_completed',
-                [...$open, ...$completed],
-            )
-            ->first();
+            ->select('status', DB::raw('COUNT(*) AS total'))
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->map(fn (mixed $total): int => (int) $total)
+            ->all();
 
         return [
-            'all' => (int) ($row?->count_all ?? 0),
-            'open' => (int) ($row?->count_open ?? 0),
-            'completed' => (int) ($row?->count_completed ?? 0),
+            'all' => array_sum($perStatus),
+            'open' => $this->sum($perStatus, ReadLiveOrders::OPEN_STATUSES),
+            'completed' => $this->sum($perStatus, ReadLiveOrders::COMPLETED_STATUSES),
         ];
     }
 
-    /** @param  list<string>  $values */
-    private function placeholders(array $values): string
+    /**
+     * @param  array<string, int>  $perStatus
+     * @param  list<string>  $statuses
+     */
+    private function sum(array $perStatus, array $statuses): int
     {
-        return implode(', ', array_fill(0, count($values), '?'));
+        $total = 0;
+
+        foreach ($statuses as $status) {
+            $total += $perStatus[$status] ?? 0;
+        }
+
+        return $total;
     }
 }
