@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useChat } from '@/hooks/use-chat';
+import { chatServiceCards } from '@/lib/chat-cards';
+import { fetchChatServicePrices } from '@/lib/chat-service-prices';
 import {
     isChatSoundEnabled,
     playChatNotification,
@@ -16,7 +18,6 @@ export type ChatWidgetView = 'home' | 'chat';
 
 export type ChatWidgetProps = {
     enabled?: boolean;
-    servicePrices?: ChatServicePrices;
     locale?: string;
     surface?: ChatSurface;
     /** Which view the widget shows when opened. Defaults to the Home screen. */
@@ -81,7 +82,6 @@ function matchesMobileDialog(surface: ChatSurface): boolean {
 
 export const ChatWidget: React.FC<ChatWidgetProps> = ({
     enabled,
-    servicePrices = {},
     locale = 'ar',
     surface = 'store',
     initialView = 'home',
@@ -437,6 +437,35 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
             }
         };
     }, [isMobileDialog, isOpen]);
+
+    // Service-card prices are fetched once, and only after a reply actually
+    // offers a card, so a page that never shows one pays nothing. They are not
+    // stored on the message: chat history is permanent and a stored price would
+    // go stale.
+    const [servicePrices, setServicePrices] = useState<ChatServicePrices>({});
+    const hasServiceCard = messages.some(
+        (message) =>
+            message.senderType === 'assistant' &&
+            chatServiceCards(message).length > 0,
+    );
+
+    useEffect(() => {
+        if (!hasServiceCard || Object.keys(servicePrices).length > 0) {
+            return;
+        }
+
+        let cancelled = false;
+
+        void fetchChatServicePrices().then((prices) => {
+            if (!cancelled) {
+                setServicePrices(prices);
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [hasServiceCard, servicePrices]);
 
     // Presence animation management
     useEffect(() => {

@@ -18,7 +18,6 @@ export default function ChatRootLayout({ children }: { children: ReactNode }) {
             {children}
             <ChatWidget
                 enabled={chatConfig?.enabled}
-                servicePrices={chatConfig?.servicePrices ?? {}}
                 locale={locale}
                 surface={surface}
             />
