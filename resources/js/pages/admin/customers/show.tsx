@@ -227,46 +227,6 @@ export default function AdminCustomerDetailPage() {
                 </div>
             </header>
 
-            {/* Mobile Account Status Card */}
-            <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs md:hidden">
-                <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">
-                        {customersCopy.status}
-                    </span>
-                    <AdminBadge
-                        icon={customer.isActive ? CheckCircle2 : XCircle}
-                        variant={customer.isActive ? 'success' : 'danger'}
-                    >
-                        {customer.isActive
-                            ? customersCopy.statusActive
-                            : customersCopy.statusSuspended}
-                    </AdminBadge>
-                </div>
-                {canUpdateStatus ? (
-                    customer.isActive ? (
-                        <Button
-                            className="min-h-11 w-full text-xs font-medium"
-                            onClick={() => handleOpenStatusDialog('suspend')}
-                            type="button"
-                            variant="outline"
-                        >
-                            <XCircle className="size-4 text-destructive" />
-                            <span>{copy.suspendButton}</span>
-                        </Button>
-                    ) : (
-                        <Button
-                            className="min-h-11 w-full text-xs font-medium"
-                            onClick={() => handleOpenStatusDialog('reactivate')}
-                            type="button"
-                            variant="default"
-                        >
-                            <CheckCircle2 className="size-4" />
-                            <span>{copy.reactivateButton}</span>
-                        </Button>
-                    )
-                ) : null}
-            </div>
-
             <div aria-atomic="true" aria-live="polite" className="empty:hidden">
                 {feedback ? (
                     <Alert
@@ -290,9 +250,80 @@ export default function AdminCustomerDetailPage() {
                 ) : null}
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
+                {/* Account Status Control */}
+                <section
+                    aria-labelledby="account-status-heading"
+                    className="rounded-lg border border-border bg-card p-5 text-card-foreground shadow-xs lg:col-span-1 lg:col-start-3 lg:row-start-1"
+                >
+                    <div className="flex items-center gap-2 border-b border-border pb-3">
+                        <Shield
+                            aria-hidden="true"
+                            className="size-4 text-primary"
+                        />
+                        <h2
+                            className="text-sm font-semibold text-foreground"
+                            id="account-status-heading"
+                        >
+                            {copy.accountStatus}
+                        </h2>
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-4">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-muted-foreground">
+                                {customersCopy.status}
+                            </span>
+                            <AdminBadge
+                                icon={
+                                    customer.isActive ? CheckCircle2 : XCircle
+                                }
+                                variant={
+                                    customer.isActive ? 'success' : 'danger'
+                                }
+                            >
+                                {customer.isActive
+                                    ? customersCopy.statusActive
+                                    : customersCopy.statusSuspended}
+                            </AdminBadge>
+                        </div>
+
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                            {copy.statusDescription}
+                        </p>
+
+                        {canUpdateStatus ? (
+                            customer.isActive ? (
+                                <Button
+                                    className="min-h-11 w-full text-xs font-medium"
+                                    onClick={() =>
+                                        handleOpenStatusDialog('suspend')
+                                    }
+                                    type="button"
+                                    variant="outline"
+                                >
+                                    <XCircle className="size-4 text-destructive" />
+                                    <span>{copy.suspendButton}</span>
+                                </Button>
+                            ) : (
+                                <Button
+                                    className="min-h-11 w-full text-xs font-medium"
+                                    onClick={() =>
+                                        handleOpenStatusDialog('reactivate')
+                                    }
+                                    type="button"
+                                    variant="default"
+                                >
+                                    <CheckCircle2 className="size-4" />
+                                    <span>{copy.reactivateButton}</span>
+                                </Button>
+                            )
+                        ) : null}
+                    </div>
+                </section>
+
                 {/* Main Left Column (2 Cols) */}
-                <div className="space-y-6 lg:col-span-2">
+                <div className="space-y-6 lg:col-span-2 lg:col-start-1 lg:row-start-1">
                     {/* Customer Identity Section */}
                     <section
                         aria-labelledby="customer-identity-heading"
@@ -800,81 +831,6 @@ export default function AdminCustomerDetailPage() {
                             </div>
                         </section>
                     ) : null}
-                </div>
-
-                {/* Right Column (1 Col) - Account Status Control */}
-                <div className="hidden space-y-6 md:block lg:col-span-1">
-                    <section
-                        aria-labelledby="account-status-heading"
-                        className="rounded-lg border border-border bg-card p-5 text-card-foreground shadow-xs"
-                    >
-                        <div className="flex items-center gap-2 border-b border-border pb-3">
-                            <Shield
-                                aria-hidden="true"
-                                className="size-4 text-primary"
-                            />
-                            <h2
-                                className="text-sm font-semibold text-foreground"
-                                id="account-status-heading"
-                            >
-                                {copy.accountStatus}
-                            </h2>
-                        </div>
-
-                        <div className="mt-4 flex flex-col gap-4">
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-medium text-muted-foreground">
-                                    {customersCopy.status}
-                                </span>
-                                <AdminBadge
-                                    icon={
-                                        customer.isActive
-                                            ? CheckCircle2
-                                            : XCircle
-                                    }
-                                    variant={
-                                        customer.isActive ? 'success' : 'danger'
-                                    }
-                                >
-                                    {customer.isActive
-                                        ? customersCopy.statusActive
-                                        : customersCopy.statusSuspended}
-                                </AdminBadge>
-                            </div>
-
-                            <p className="text-xs leading-relaxed text-muted-foreground">
-                                {copy.statusDescription}
-                            </p>
-
-                            {canUpdateStatus ? (
-                                customer.isActive ? (
-                                    <Button
-                                        className="min-h-11 w-full text-xs font-medium"
-                                        onClick={() =>
-                                            handleOpenStatusDialog('suspend')
-                                        }
-                                        type="button"
-                                        variant="outline"
-                                    >
-                                        <XCircle className="size-4 text-destructive" />
-                                        <span>{copy.suspendButton}</span>
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        className="min-h-11 w-full text-xs font-medium"
-                                        onClick={() =>
-                                            handleOpenStatusDialog('reactivate')
-                                        }
-                                        type="button"
-                                        variant="default"
-                                    >
-                                        <CheckCircle2 className="size-4" />
-                                        <span>{copy.reactivateButton}</span>
-                                    </Button>
-                                )
-                            ) : null}
-                        </div>
-                    </section>
                 </div>
             </div>
 

@@ -131,10 +131,10 @@ describe('AdminOrderDetailPage', () => {
     it('opens confirmation modal when applying cancelled status and directly transitions for other statuses', () => {
         render(<AdminOrderDetailPage />);
 
-        const statusSelect = screen.getAllByLabelText('Next status')[0];
-        const applyButton = screen.getAllByRole('button', {
+        const statusSelect = screen.getByLabelText('Next status');
+        const applyButton = screen.getByRole('button', {
             name: 'Apply status',
-        })[0];
+        });
         expect(applyButton).toBeDisabled();
 
         fireEvent.change(statusSelect, { target: { value: 'cancelled' } });
@@ -176,12 +176,12 @@ describe('AdminOrderDetailPage', () => {
 
         render(<AdminOrderDetailPage />);
 
-        const statusSelect = screen.getAllByLabelText('Next status')[0];
+        const statusSelect = screen.getByLabelText('Next status');
         fireEvent.change(statusSelect, { target: { value: 'in_progress' } });
 
-        const applyButton = screen.getAllByRole('button', {
+        const applyButton = screen.getByRole('button', {
             name: 'Apply status',
-        })[0];
+        });
         fireEvent.click(applyButton);
 
         await waitFor(() => {
@@ -199,10 +199,14 @@ describe('AdminOrderDetailPage', () => {
         });
 
         await waitFor(() => {
+            // Scoped to the alert title: the Alert renders the same message as
+            // both its title and its description, so an unscoped text query
+            // matches twice for one on-screen message.
             expect(
-                screen.getAllByText('Order status updated successfully.')
-                    .length,
-            ).toBeGreaterThanOrEqual(1);
+                screen.getByText('Order status updated successfully.', {
+                    selector: '[data-slot="alert-title"]',
+                }),
+            ).toBeVisible();
         });
     });
 
@@ -232,12 +236,12 @@ describe('AdminOrderDetailPage', () => {
 
         render(<AdminOrderDetailPage />);
 
-        const statusSelect = screen.getAllByLabelText('Next status')[0];
+        const statusSelect = screen.getByLabelText('Next status');
         fireEvent.change(statusSelect, { target: { value: 'in_progress' } });
 
-        const applyButton = screen.getAllByRole('button', {
+        const applyButton = screen.getByRole('button', {
             name: 'Apply status',
-        })[0];
+        });
         fireEvent.click(applyButton);
 
         await waitFor(() => {
@@ -565,9 +569,9 @@ describe('AdminOrderDetailPage', () => {
             pageState.props = refundProps();
             render(<AdminOrderDetailPage />);
 
-            const refundButton = screen.getAllByRole('button', {
+            const refundButton = screen.getByRole('button', {
                 name: /Refund order/i,
-            })[0];
+            });
             expect(refundButton).toBeVisible();
 
             fireEvent.click(refundButton);
@@ -590,17 +594,14 @@ describe('AdminOrderDetailPage', () => {
             ).toBeVisible();
         });
 
-        it('renders mobile action bar under header with status transition and refund controls', () => {
+        it('renders status transition and refund controls cleanly when actor has permission', () => {
             pageState.props = refundProps();
             render(<AdminOrderDetailPage />);
 
-            const statusSelects = screen.getAllByLabelText('Next status');
-            expect(statusSelects.length).toBeGreaterThanOrEqual(2);
-
-            const refundButtons = screen.getAllByRole('button', {
-                name: /Refund order/i,
-            });
-            expect(refundButtons.length).toBeGreaterThanOrEqual(2);
+            expect(screen.getByLabelText('Next status')).toBeVisible();
+            expect(
+                screen.getByRole('button', { name: /Refund order/i }),
+            ).toBeVisible();
         });
 
         it('hides refund control when actor lacks orders.refund permission', () => {
@@ -662,7 +663,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getAllByRole('button', { name: /Refund order/i })[0],
+                screen.getByRole('button', { name: /Refund order/i }),
             );
 
             const submitBtn = screen.getByRole('button', {
@@ -708,7 +709,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getAllByRole('button', { name: /Refund order/i })[0],
+                screen.getByRole('button', { name: /Refund order/i }),
             );
 
             const reasonInput = screen.getByLabelText('Staff reason');
@@ -802,7 +803,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getAllByRole('button', { name: /Refund order/i })[0],
+                screen.getByRole('button', { name: /Refund order/i }),
             );
 
             fireEvent.change(screen.getByLabelText('Staff reason'), {
@@ -929,7 +930,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getAllByRole('button', { name: /Refund order/i })[0],
+                screen.getByRole('button', { name: /Refund order/i }),
             );
 
             fireEvent.change(screen.getByLabelText('Staff reason'), {
@@ -1027,7 +1028,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getAllByRole('button', { name: /Refund order/i })[0],
+                screen.getByRole('button', { name: /Refund order/i }),
             );
 
             fireEvent.change(screen.getByLabelText('Staff reason'), {
@@ -1078,7 +1079,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getAllByRole('button', { name: /Refund order/i })[0],
+                screen.getByRole('button', { name: /Refund order/i }),
             );
 
             fireEvent.change(screen.getByLabelText('Staff reason'), {
@@ -1129,7 +1130,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getAllByRole('button', { name: /Refund order/i })[0],
+                screen.getByRole('button', { name: /Refund order/i }),
             );
 
             fireEvent.change(screen.getByLabelText('Staff reason'), {
@@ -1177,7 +1178,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getAllByRole('button', { name: /Refund order/i })[0],
+                screen.getByRole('button', { name: /Refund order/i }),
             );
 
             fireEvent.change(screen.getByLabelText('Staff reason'), {
@@ -1217,7 +1218,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getAllByRole('button', { name: /Refund order/i })[0],
+                screen.getByRole('button', { name: /Refund order/i }),
             );
 
             fireEvent.change(screen.getByLabelText('Staff reason'), {

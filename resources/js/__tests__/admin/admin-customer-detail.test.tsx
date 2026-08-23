@@ -151,9 +151,9 @@ describe('AdminCustomerDetailPage', () => {
 
         render(<AdminCustomerDetailPage />);
 
-        const suspendBtn = screen.getAllByRole('button', {
+        const suspendBtn = screen.getByRole('button', {
             name: 'Suspend customer',
-        })[0];
+        });
         fireEvent.click(suspendBtn);
 
         expect(
@@ -224,7 +224,7 @@ describe('AdminCustomerDetailPage', () => {
         render(<AdminCustomerDetailPage />);
 
         fireEvent.click(
-            screen.getAllByRole('button', { name: 'Suspend customer' })[0],
+            screen.getByRole('button', { name: 'Suspend customer' }),
         );
 
         const reasonSelect = screen.getByRole('combobox', {
@@ -251,9 +251,9 @@ describe('AdminCustomerDetailPage', () => {
 
         render(<AdminCustomerDetailPage />);
 
-        const reactivateBtn = screen.getAllByRole('button', {
+        const reactivateBtn = screen.getByRole('button', {
             name: 'Reactivate customer',
-        })[0];
+        });
         expect(reactivateBtn).toBeVisible();
 
         fireEvent.click(reactivateBtn);
