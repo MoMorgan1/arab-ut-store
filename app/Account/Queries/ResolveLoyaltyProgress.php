@@ -3,13 +3,16 @@
 namespace App\Account\Queries;
 
 use App\Account\Presenters\AccountMoney;
-use App\Enums\PaymentStatus;
+use App\Loyalty\Support\EligibleOrderSpend;
 use App\Models\LoyaltyTier;
-use App\Models\Order;
 use App\Models\User;
 
 final class ResolveLoyaltyProgress
 {
+    public function __construct(
+        private readonly EligibleOrderSpend $eligibleOrderSpend,
+    ) {}
+
     /** @return array<string, mixed>|null */
     public function for(User $user, string $locale): ?array
     {
@@ -24,7 +27,7 @@ final class ResolveLoyaltyProgress
             return null;
         }
 
-        $eligibleSpend = $this->eligibleSpend($user);
+        $eligibleSpend = $this->eligibleOrderSpend->lifetime($user->id);
         $current = $tiers->last(fn (LoyaltyTier $tier): bool => $tier->minimum_lifetime_spend_halalah <= $eligibleSpend);
         $next = $tiers->first(fn (LoyaltyTier $tier): bool => $tier->minimum_lifetime_spend_halalah > $eligibleSpend);
 
@@ -37,40 +40,6 @@ final class ResolveLoyaltyProgress
                 : null,
             'progressPercent' => $this->progressPercent($eligibleSpend, $current, $next),
         ];
-    }
-
-    private function eligibleSpend(User $user): int
-    {
-        $orders = Order::query()
-            ->select(['id', 'total_halalah', 'wallet_halalah'])
-            ->where('user_id', $user->id)
-            ->where('currency', 'SAR')
-            ->whereNotNull('completed_at')
-            ->withSum([
-                'payments as settled_payment_halalah' => fn ($query) => $query->whereIn('status', [
-                    PaymentStatus::Paid->value,
-                    PaymentStatus::PartiallyRefunded->value,
-                    PaymentStatus::Refunded->value,
-                ]),
-            ], 'captured_halalah')
-            ->withSum([
-                'refunds as completed_refund_halalah' => fn ($query) => $query->where('status', 'completed'),
-            ], 'amount_halalah')
-            ->get();
-
-        return $orders->sum(function (Order $order): int {
-            $total = (int) $order->getAttribute('total_halalah');
-            $wallet = (int) $order->getAttribute('wallet_halalah');
-            $settledPayment = (int) ($order->getAttribute('settled_payment_halalah') ?? 0);
-
-            if ($wallet + $settledPayment < $total) {
-                return 0;
-            }
-
-            $completedRefunds = (int) ($order->getAttribute('completed_refund_halalah') ?? 0);
-
-            return max(0, $total - $completedRefunds);
-        });
     }
 
     /** @return array{key: string, name: string, minimum: array{amountMinor: string, currency: string}} */

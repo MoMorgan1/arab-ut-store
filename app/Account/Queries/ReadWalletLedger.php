@@ -92,8 +92,8 @@ final class ReadWalletLedger
             'sequence' => $entry->sequence,
             'type' => $type->value,
             'effect' => match ($type) {
-                WalletEntryType::Credit, WalletEntryType::Refund => 'credit',
-                WalletEntryType::Debit => 'debit',
+                WalletEntryType::Credit, WalletEntryType::Refund, WalletEntryType::Cashback => 'credit',
+                WalletEntryType::Debit, WalletEntryType::CashbackReversal => 'debit',
                 WalletEntryType::Adjustment => 'neutral',
             },
             'amount' => AccountMoney::fromMinor($amount, 'SAR'),

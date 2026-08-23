@@ -132,6 +132,8 @@ return [
         'debit' => 'Debit',
         'refund' => 'Refund',
         'adjustment' => 'Adjustment',
+        'cashback' => 'Cashback',
+        'cashback_reversal' => 'Cashback reversal',
         'balance_after' => 'Balance after entry',
         'related_order' => 'Order :number',
         'previous' => 'Previous',
