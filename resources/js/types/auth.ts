@@ -68,6 +68,8 @@ export type AuthUiTranslations = {
         registration_prompt: string;
         registration_link: string;
         email_tab: string;
+        tab_email: string;
+        tab_email_short: string;
         phone_tab: string;
         country_code: string;
         phone_number: string;
@@ -76,15 +78,22 @@ export type AuthUiTranslations = {
         phone_code: string;
         phone_verify: string;
         phone_code_sent: string;
+        phone_code_sent_to: string;
         phone_code_invalid: string;
         phone_invalid: string;
         phone_unavailable: string;
         phone_change: string;
         phone_resend_in: string;
         phone_resend: string;
+        phone_help: string;
+        phone_help_support: string;
         google: string;
         google_error: string;
         or: string;
+        terms_prefix: string;
+        terms_link: string;
+        terms_and: string;
+        privacy_link: string;
     };
     register: {
         head_title: string;

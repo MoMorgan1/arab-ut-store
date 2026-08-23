@@ -116,14 +116,18 @@ const arabicUi = {
         registration_prompt: 'ما عندك حساب؟',
         registration_link: 'أنشئ حسابًا',
         email_tab: 'البريد الإلكتروني',
-        phone_tab: 'الهاتف',
+        tab_email: 'البريد وكلمة المرور',
+        tab_email_short: 'البريد',
+        phone_tab: 'واتساب',
         country_code: 'رمز الدولة',
-        phone_number: 'رقم الهاتف',
-        phone_account_hint: 'استخدم واتساب للدخول أو إنشاء حساب جديد.',
-        phone_send_code: 'أرسل كود واتساب',
+        phone_number: 'رقم واتساب',
+        phone_account_hint:
+            'سنرسل كودًا من 6 أرقام على واتساب. إن لم يكن لديك حساب سننشئ واحدًا بهذا الرقم.',
+        phone_send_code: 'إرسال الكود',
         phone_code: 'كود واتساب المكوّن من 6 أرقام',
         phone_verify: 'تحقق وتابع',
         phone_code_sent: 'أرسلنا لك كودًا على واتساب.',
+        phone_code_sent_to: 'أرسلنا 6 أرقام على واتساب إلى :number',
         phone_code_invalid: 'الكود غير صحيح أو انتهت صلاحيته.',
         phone_invalid: 'أدخل رقم هاتف صحيحًا مع رمز الدولة.',
         phone_unavailable:
@@ -131,9 +135,15 @@ const arabicUi = {
         phone_change: 'تغيير الرقم',
         phone_resend_in: 'إعادة الإرسال بعد :seconds ث',
         phone_resend: 'إعادة إرسال الكود',
-        google: 'المتابعة باستخدام Google',
+        phone_help: 'لم يصلك الكود؟ تأكد أن واتساب مفعّل على هذا الرقم، أو',
+        phone_help_support: 'تواصل مع الدعم',
+        google: 'المتابعة بحساب Google',
         google_error: 'تعذر تسجيل الدخول باستخدام Google. حاول مرة أخرى.',
         or: 'أو',
+        terms_prefix: 'بالمتابعة أنت توافق على',
+        terms_link: 'الشروط والأحكام',
+        terms_and: 'و',
+        privacy_link: 'سياسة الخصوصية',
     },
     register: {
         head_title: 'إنشاء حساب',
@@ -301,6 +311,11 @@ it('renders the Arabic login handoff and sends a normalized WhatsApp code reques
         authUi: arabicUi,
         direction: 'rtl',
         locale: 'ar',
+        storeShell: {
+            whatsappUrl: 'https://wa.me/966537998099',
+            termsUrl: '/terms',
+            privacyUrl: '/privacy',
+        },
     };
 
     render(
@@ -322,16 +337,29 @@ it('renders the Arabic login handoff and sends a normalized WhatsApp code reques
         '/register',
     );
     expect(document.querySelector('.auth-shell')).toHaveAttribute('dir', 'rtl');
-    expect(screen.getByRole('tab', { name: 'الهاتف' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: /البريد/ })).toHaveAttribute(
+        'aria-selected',
+        'true',
+    );
+    expect(screen.getByRole('tab', { name: 'واتساب' })).toHaveAttribute(
+        'aria-selected',
+        'false',
+    );
     expect(
-        screen.getByRole('link', { name: 'المتابعة باستخدام Google' }),
+        screen.getByRole('link', { name: 'المتابعة بحساب Google' }),
     ).toHaveAttribute('href', '/auth/google/redirect');
+    expect(
+        screen.getByRole('link', { name: 'الشروط والأحكام' }),
+    ).toHaveAttribute('href', '/terms');
+    expect(
+        screen.getByRole('link', { name: 'سياسة الخصوصية' }),
+    ).toHaveAttribute('href', '/privacy');
 
-    fireEvent.click(screen.getByRole('tab', { name: 'الهاتف' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'واتساب' }));
     fireEvent.change(screen.getByLabelText('رمز الدولة'), {
         target: { value: '+20' },
     });
-    fireEvent.change(screen.getByLabelText('رقم الهاتف'), {
+    fireEvent.change(screen.getByLabelText('رقم واتساب'), {
         target: { value: '0100 123-4567' },
     });
     fireEvent.click(
@@ -346,8 +374,15 @@ it('renders the Arabic login handoff and sends a normalized WhatsApp code reques
         phone: '+201001234567',
     });
     expect(
+        screen.getByText('أرسلنا 6 أرقام على واتساب إلى +20•••4567'),
+    ).toBeVisible();
+    expect(
         screen.getByLabelText(`${arabicUi.login.phone_code} 1/6`),
     ).toBeVisible();
+    expect(screen.getByText(/لم يصلك الكود؟/)).toBeVisible();
+    expect(
+        screen.getByRole('link', { name: 'تواصل مع الدعم' }),
+    ).toHaveAttribute('href', 'https://wa.me/966537998099');
 
     fireEvent.paste(screen.getByLabelText(`${arabicUi.login.phone_code} 1/6`), {
         clipboardData: { getData: () => '123456' },
@@ -357,6 +392,73 @@ it('renders the Arabic login handoff and sends a normalized WhatsApp code reques
     );
 
     await waitFor(() => expect(router.visit).toHaveBeenCalledWith('/register'));
+});
+
+it('renders the themed OTP error box with role="alert" and without text-red classes on invalid code', async () => {
+    document.head.innerHTML =
+        '<meta name="csrf-token" content="csrf-test-token">';
+    vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+            new Response(JSON.stringify({ data: { sent: true } }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+            }),
+        )
+        .mockResolvedValueOnce(
+            new Response(JSON.stringify({ message: 'invalid_code' }), {
+                status: 422,
+                headers: { 'Content-Type': 'application/json' },
+            }),
+        );
+    page.props = {
+        authPage: 'login',
+        authRoutes: routes,
+        authUi: arabicUi,
+        direction: 'rtl',
+        locale: 'ar',
+    };
+
+    render(
+        <AuthLayout>
+            <Login authRoutes={routes} authUi={arabicUi} canResetPassword />
+        </AuthLayout>,
+    );
+
+    expect(screen.getByRole('tab', { name: /البريد/ })).toHaveAttribute(
+        'aria-selected',
+        'true',
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'واتساب' }));
+    fireEvent.change(screen.getByLabelText('رمز الدولة'), {
+        target: { value: '+966' },
+    });
+    fireEvent.change(screen.getByLabelText('رقم واتساب'), {
+        target: { value: '501234567' },
+    });
+    fireEvent.click(
+        screen.getByRole('button', { name: arabicUi.login.phone_send_code }),
+    );
+
+    await waitFor(() =>
+        expect(
+            screen.getByText('أرسلنا 6 أرقام على واتساب إلى +966•••4567'),
+        ).toBeVisible(),
+    );
+
+    fireEvent.paste(screen.getByLabelText(`${arabicUi.login.phone_code} 1/6`), {
+        clipboardData: { getData: () => '123456' },
+    });
+    fireEvent.click(
+        screen.getByRole('button', { name: arabicUi.login.phone_verify }),
+    );
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeVisible());
+
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveClass('auth-otp-error');
+    expect(alert.className).not.toContain('text-red-400');
+    expect(alert.className).not.toMatch(/text-red/);
+    expect(alert).toHaveTextContent(arabicUi.login.phone_code_invalid);
 });
 
 it('renders English register forgot and reset forms with the localized route contract', () => {

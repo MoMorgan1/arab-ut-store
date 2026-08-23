@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { splitE164 } from '@/lib/phone-country-codes';
 import {
     sendWhatsAppLoginCode,
     verifyWhatsAppLoginCode,
@@ -28,6 +29,16 @@ type Props = {
     canResetPassword: boolean;
 };
 
+function maskPhoneNumber(phone: string): string {
+    const split = splitE164(phone);
+
+    if (!split || split.national.length < 4) {
+        return phone;
+    }
+
+    return `${split.dial}•••${split.national.slice(-4)}`;
+}
+
 export default function Login({
     authRoutes,
     authUi,
@@ -36,6 +47,14 @@ export default function Login({
 }: Props) {
     const page = usePage<Partial<AuthSharedProps>>();
     const locale = page.props?.locale ?? 'ar';
+    const whatsappUrl = page.props?.storeShell?.whatsappUrl;
+    const termsUrl =
+        page.props?.storeShell?.termsUrl ??
+        (locale === 'en' ? '/en/terms' : '/terms');
+    const privacyUrl =
+        page.props?.storeShell?.privacyUrl ??
+        (locale === 'en' ? '/en/privacy' : '/privacy');
+
     const [method, setMethod] = useState<'email' | 'phone'>('email');
     const [internationalPhone, setInternationalPhone] = useState('');
     const [phoneCode, setPhoneCode] = useState('');
@@ -132,7 +151,12 @@ export default function Login({
                                     className="auth-login-method__tab"
                                     onClick={() => setMethod('email')}
                                 >
-                                    {authUi.login.email_tab}
+                                    <span className="auth-login-method__tab-long">
+                                        {authUi.login.tab_email}
+                                    </span>
+                                    <span className="auth-login-method__tab-short">
+                                        {authUi.login.tab_email_short}
+                                    </span>
                                 </button>
                                 <button
                                     type="button"
@@ -272,7 +296,12 @@ export default function Login({
                                     {phoneCodeSent ? (
                                         <>
                                             <p role="status">
-                                                {authUi.login.phone_code_sent}
+                                                {authUi.login.phone_code_sent_to.replace(
+                                                    ':number',
+                                                    maskPhoneNumber(
+                                                        internationalPhone,
+                                                    ),
+                                                )}
                                             </p>
                                             <OneTimeCodeField
                                                 id="phone-code"
@@ -282,6 +311,25 @@ export default function Login({
                                                 disabled={phoneBusy}
                                                 autoFocus
                                             />
+                                            <p className="auth-whatsapp-login__help">
+                                                {authUi.login.phone_help}{' '}
+                                                {whatsappUrl ? (
+                                                    <a
+                                                        href={whatsappUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                    >
+                                                        {
+                                                            authUi.login
+                                                                .phone_help_support
+                                                        }
+                                                    </a>
+                                                ) : (
+                                                    authUi.login
+                                                        .phone_help_support
+                                                )}
+                                                .
+                                            </p>
                                             <Button
                                                 type="button"
                                                 className="auth-form__submit h-10 w-full"
@@ -348,7 +396,7 @@ export default function Login({
                                     {phoneError && (
                                         <p
                                             role="alert"
-                                            className="text-red-400"
+                                            className="auth-otp-error"
                                         >
                                             {phoneError}
                                         </p>
@@ -398,6 +446,18 @@ export default function Login({
                                 </a>
                             </div>
                         )}
+
+                        <p className="auth-terms">
+                            {authUi.login.terms_prefix}{' '}
+                            <a href={termsUrl} className="auth-terms__link">
+                                {authUi.login.terms_link}
+                            </a>{' '}
+                            {authUi.login.terms_and}{' '}
+                            <a href={privacyUrl} className="auth-terms__link">
+                                {authUi.login.privacy_link}
+                            </a>
+                            .
+                        </p>
                     </>
                 )}
             </Form>
