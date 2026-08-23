@@ -54,7 +54,18 @@ export function CoinsConfigurator({
 }: CoinsConfiguratorProps) {
     const [state, dispatch] = useReducer(
         coinsConfiguratorReducer,
-        createInitialConfiguratorState(amount.minimum, cart.initialSelection),
+        undefined,
+        () => {
+            const search =
+                typeof window !== 'undefined' ? window.location.search : '';
+
+            return createInitialConfiguratorState(
+                amount,
+                cart.initialSelection,
+                platforms,
+                search,
+            );
+        },
     );
     const [credentials, setCredentials] = useState<CoinsCredentials>(
         emptyCoinsCredentials,

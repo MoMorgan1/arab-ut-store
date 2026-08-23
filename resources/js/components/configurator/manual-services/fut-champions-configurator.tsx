@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { announceCartAddition } from '@/lib/cart-added-event';
 import { submitManualServiceCart } from '@/lib/manual-service-cart-api';
 import { formatInteger, formatMinorUnits } from '@/lib/money';
+import { getInitialFutChampionsConfig } from '@/lib/query-params';
 import type {
     FutServiceTranslations,
     ManualServiceCommonTranslations,
@@ -53,8 +54,18 @@ export function FutChampionsConfigurator({
     const [platform, setPlatform] =
         useState<ManualServicePlatform>('playstation');
     const [launcher, setLauncher] = useState<PcLauncher | null>(null);
-    const [rank, setRank] = useState(3);
-    const [urgent, setUrgent] = useState(false);
+    const [rank, setRank] = useState(() => {
+        const search =
+            typeof window !== 'undefined' ? window.location.search : '';
+
+        return getInitialFutChampionsConfig(search, pricing.rankOptions).rank;
+    });
+    const [urgent, setUrgent] = useState(() => {
+        const search =
+            typeof window !== 'undefined' ? window.location.search : '';
+
+        return getInitialFutChampionsConfig(search, pricing.rankOptions).urgent;
+    });
     const [hasPlayed, setHasPlayed] = useState(false);
     const [matchesPlayed, setMatchesPlayed] = useState(0);
     const [credentials, setCredentials] = useState(emptyManualCredentials);

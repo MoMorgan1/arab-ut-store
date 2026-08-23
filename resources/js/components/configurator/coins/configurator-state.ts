@@ -1,5 +1,8 @@
+import { getInitialCoinsConfig } from '@/lib/query-params';
 import type {
+    CoinsAmountRules,
     CoinsDeliveryValue,
+    CoinsPlatformOption,
     CoinsPlatformValue,
     CoinsQuote,
     CoinsQuoteViewState,
@@ -80,8 +83,10 @@ export function clampAndSnapQuantity(
 }
 
 export function createInitialConfiguratorState(
-    minimum: number,
+    minimumOrAmount: number | CoinsAmountRules,
     initialSelection: CoinsResumeSelection | null = null,
+    platforms?: readonly CoinsPlatformOption[],
+    search?: string,
 ): CoinsConfiguratorState {
     if (initialSelection !== null) {
         return {
@@ -94,6 +99,29 @@ export function createInitialConfiguratorState(
             step: 'credentials',
         };
     }
+
+    if (search !== undefined && search !== '') {
+        const prefill = getInitialCoinsConfig(
+            search,
+            minimumOrAmount,
+            platforms,
+        );
+
+        return {
+            announcement: '',
+            deliveryValue: prefill.deliveryValue,
+            lastValidQuantity: prefill.lastValidQuantity,
+            platformValue: prefill.platformValue,
+            quantityInput: String(prefill.lastValidQuantity),
+            quoteState: { status: 'idle' },
+            step: prefill.step,
+        };
+    }
+
+    const minimum =
+        typeof minimumOrAmount === 'number'
+            ? minimumOrAmount
+            : minimumOrAmount.minimum;
 
     return {
         announcement: '',

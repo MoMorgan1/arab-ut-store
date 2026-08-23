@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { announceCartAddition } from '@/lib/cart-added-event';
 import { submitManualServiceCart } from '@/lib/manual-service-cart-api';
 import { formatInteger, formatMinorUnits } from '@/lib/money';
+import { getInitialRivalsRoute } from '@/lib/query-params';
 import type {
     Division,
     ManualServiceCommonTranslations,
@@ -54,8 +55,18 @@ export function RivalsConfigurator({
     const [platform, setPlatform] =
         useState<ManualServicePlatform>('playstation');
     const [launcher, setLauncher] = useState<PcLauncher | null>(null);
-    const [from, setFrom] = useState<Division>('5');
-    const [to, setTo] = useState<Division>('elite');
+    const [from, setFrom] = useState<Division>(() => {
+        const search =
+            typeof window !== 'undefined' ? window.location.search : '';
+
+        return getInitialRivalsRoute(search, pricing.ladder).from;
+    });
+    const [to, setTo] = useState<Division>(() => {
+        const search =
+            typeof window !== 'undefined' ? window.location.search : '';
+
+        return getInitialRivalsRoute(search, pricing.ladder).to;
+    });
     const [credentials, setCredentials] = useState(emptyManualCredentials);
     const [image, setImage] = useState<File | null>(null);
     const [imageError, setImageError] = useState<string>();

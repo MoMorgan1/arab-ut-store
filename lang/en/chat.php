@@ -26,6 +26,21 @@ return [
         'coins' => [
             'title' => 'FC Coins',
             'subtitle' => 'Pick your platform and amount to see the price',
+            'options' => [
+                'platform' => 'Platform',
+                'delivery' => 'Delivery',
+                'quantity' => 'Quantity',
+            ],
+            'platforms' => [
+                'playstation' => 'PlayStation',
+                'xbox' => 'Xbox',
+                'pc' => 'PC',
+            ],
+            'deliveries' => [
+                'normal' => 'Normal',
+                'fast' => 'Fast',
+            ],
+            'quantity_value' => ':count Coins',
         ],
         'sbc' => [
             'title' => 'SBC Challenges',
@@ -34,10 +49,23 @@ return [
         'rivals' => [
             'title' => 'Division Rivals',
             'subtitle' => 'We play and promote you to the division you want',
+            'options' => [
+                'current_division' => 'Current division',
+                'target_division' => 'Target division',
+            ],
+            'division_value' => 'Division :division',
+            'elite' => 'Elite',
         ],
         'fut_champions' => [
             'title' => 'FUT Champions',
             'subtitle' => 'From Rank 6 to Rank 1',
+            'options' => [
+                'rank' => 'Rank',
+                'urgent' => 'Speed',
+            ],
+            'rank_value' => 'Rank :rank',
+            'urgent_value' => 'Urgent',
+            'normal_value' => 'Standard',
         ],
     ],
 ];

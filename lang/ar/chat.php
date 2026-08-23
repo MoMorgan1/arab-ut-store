@@ -26,6 +26,21 @@ return [
         'coins' => [
             'title' => 'شحن كوينز FC',
             'subtitle' => 'اختر منصتك والكمية وشوف السعر',
+            'options' => [
+                'platform' => 'المنصة',
+                'delivery' => 'التسليم',
+                'quantity' => 'الكمية',
+            ],
+            'platforms' => [
+                'playstation' => 'بلايستيشن',
+                'xbox' => 'إكسبوكس',
+                'pc' => 'بي سي',
+            ],
+            'deliveries' => [
+                'normal' => 'عادي',
+                'fast' => 'سريع',
+            ],
+            'quantity_value' => ':count كوينز',
         ],
         'sbc' => [
             'title' => 'تحديات SBC',
@@ -34,10 +49,23 @@ return [
         'rivals' => [
             'title' => 'ديفيجن رايفلز',
             'subtitle' => 'نلعب لك ونصعدك للديفيجن اللي تبيه',
+            'options' => [
+                'current_division' => 'الديفجن الحالي',
+                'target_division' => 'الديفجن المطلوب',
+            ],
+            'division_value' => 'ديفجن :division',
+            'elite' => 'إيليت',
         ],
         'fut_champions' => [
             'title' => 'فوت شامبيونز',
             'subtitle' => 'من رانك 6 إلى رانك 1',
+            'options' => [
+                'rank' => 'الرانك',
+                'urgent' => 'السرعة',
+            ],
+            'rank_value' => 'رانك :rank',
+            'urgent_value' => 'مستعجل',
+            'normal_value' => 'عادي',
         ],
     ],
 ];

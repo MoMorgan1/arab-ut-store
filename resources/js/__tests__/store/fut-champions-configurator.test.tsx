@@ -131,6 +131,101 @@ it('submits the selected FUT rank, urgent option, exact credentials, and require
     expect(document.body.textContent).not.toContain('PS secret');
 });
 
+it('prefills valid rank and urgent option from URL query parameters', () => {
+    window.history.pushState({}, '', '/fut-champions?rank=1&urgent=true');
+    renderFut();
+
+    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
+    const urgentCheckbox = screen.getByRole('checkbox', { name: /Urgent/ });
+
+    expect(rankSlider).toHaveValue('1');
+    expect(rankSlider.getAttribute('aria-valuetext')).toContain('Rank 1');
+    expect(urgentCheckbox).toBeChecked();
+    expect(screen.getByText(/260\.00/)).toBeVisible();
+});
+
+it('prefills rank 6 and urgent=1 from URL query parameters', () => {
+    window.history.pushState({}, '', '/fut-champions?rank=6&urgent=1');
+    renderFut();
+
+    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
+    const urgentCheckbox = screen.getByRole('checkbox', { name: /Urgent/ });
+
+    expect(rankSlider).toHaveValue('6');
+    expect(rankSlider.getAttribute('aria-valuetext')).toContain('Rank 6');
+    expect(urgentCheckbox).toBeChecked();
+});
+
+it('degrades invalid rank to default rank 3 while preserving valid urgent', () => {
+    window.history.pushState({}, '', '/fut-champions?rank=99&urgent=1');
+    renderFut();
+
+    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
+    const urgentCheckbox = screen.getByRole('checkbox', { name: /Urgent/ });
+
+    expect(rankSlider).toHaveValue('3');
+    expect(rankSlider.getAttribute('aria-valuetext')).toContain('Rank 3');
+    expect(urgentCheckbox).toBeChecked();
+});
+
+it('degrades invalid urgent to false while preserving valid rank', () => {
+    window.history.pushState({}, '', '/fut-champions?rank=2&urgent=banana');
+    renderFut();
+
+    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
+    const urgentCheckbox = screen.getByRole('checkbox', { name: /Urgent/ });
+
+    expect(rankSlider).toHaveValue('2');
+    expect(rankSlider.getAttribute('aria-valuetext')).toContain('Rank 2');
+    expect(urgentCheckbox).not.toBeChecked();
+});
+
+it('never prefills secret credential fields from URL parameters', () => {
+    window.history.pushState(
+        {},
+        '',
+        '/fut-champions?playstation_email=hacker@evil.test&playstation_password=secret&ea_password=secret',
+    );
+    renderFut();
+
+    expect(screen.getByLabelText('PlayStation email')).toHaveValue('');
+    expect(screen.getByLabelText('PlayStation password')).toHaveValue('');
+    expect(document.body.textContent).not.toContain('hacker@evil.test');
+    expect(document.body.textContent).not.toContain('secret');
+});
+
+it('does not throw on hostile URL input and falls back to defaults', () => {
+    window.history.pushState(
+        {},
+        '',
+        '/fut-champions?rank=%E0%A4%A&urgent=%zz&__proto__=polluted',
+    );
+    renderFut();
+
+    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
+    const urgentCheckbox = screen.getByRole('checkbox', { name: /Urgent/ });
+
+    expect(rankSlider).toHaveValue('3');
+    expect(urgentCheckbox).not.toBeChecked();
+});
+
+it('keeps controls fully editable after prefilling without fighting user edits', () => {
+    window.history.pushState({}, '', '/fut-champions?rank=1&urgent=true');
+    renderFut();
+
+    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
+    const urgentCheckbox = screen.getByRole('checkbox', { name: /Urgent/ });
+
+    expect(rankSlider).toHaveValue('1');
+    expect(urgentCheckbox).toBeChecked();
+
+    fireEvent.change(rankSlider, { target: { value: '4' } });
+    fireEvent.click(urgentCheckbox);
+
+    expect(rankSlider).toHaveValue('4');
+    expect(urgentCheckbox).not.toBeChecked();
+});
+
 function renderFut() {
     render(
         <FutChampionsConfigurator

@@ -105,6 +105,129 @@ it('submits 5 to Elite as SAR 750 and never sends an urgent field', async () => 
     expect(document.body.textContent).not.toContain('PS secret');
 });
 
+it('prefills valid currentDivision and targetDivision from URL query parameters', () => {
+    window.history.pushState(
+        {},
+        '',
+        '/rivals?currentDivision=7&targetDivision=6',
+    );
+    renderRivals();
+
+    const currentSlider = screen.getByRole('slider', {
+        name: 'Current division',
+    });
+    const targetSlider = screen.getByRole('slider', {
+        name: 'Target division',
+    });
+    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 7');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Division 6');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('110.00');
+});
+
+it('ignores half-valid pair when one parameter is missing and keeps default 5 to Elite', () => {
+    window.history.pushState({}, '', '/rivals?currentDivision=7');
+    renderRivals();
+
+    const currentSlider = screen.getByRole('slider', {
+        name: 'Current division',
+    });
+    const targetSlider = screen.getByRole('slider', {
+        name: 'Target division',
+    });
+    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 5');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Elite');
+});
+
+it('ignores half-valid pair when one parameter is invalid and keeps default 5 to Elite', () => {
+    window.history.pushState(
+        {},
+        '',
+        '/rivals?currentDivision=7&targetDivision=invalid',
+    );
+    renderRivals();
+
+    const currentSlider = screen.getByRole('slider', {
+        name: 'Current division',
+    });
+    const targetSlider = screen.getByRole('slider', {
+        name: 'Target division',
+    });
+    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 5');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Elite');
+});
+
+it('ignores reverse route pair wholesale and keeps default 5 to Elite', () => {
+    window.history.pushState(
+        {},
+        '',
+        '/rivals?currentDivision=2&targetDivision=6',
+    );
+    renderRivals();
+
+    const currentSlider = screen.getByRole('slider', {
+        name: 'Current division',
+    });
+    const targetSlider = screen.getByRole('slider', {
+        name: 'Target division',
+    });
+    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 5');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Elite');
+});
+
+it('never prefills secret credential fields from URL parameters', () => {
+    window.history.pushState(
+        {},
+        '',
+        '/rivals?playstation_email=hacker@evil.test&playstation_password=secret&ea_password=secret',
+    );
+    renderRivals();
+
+    expect(screen.getByLabelText('PlayStation email')).toHaveValue('');
+    expect(screen.getByLabelText('PlayStation password')).toHaveValue('');
+    expect(document.body.textContent).not.toContain('hacker@evil.test');
+    expect(document.body.textContent).not.toContain('secret');
+});
+
+it('does not throw on hostile URL input and keeps default route', () => {
+    window.history.pushState(
+        {},
+        '',
+        '/rivals?currentDivision=%E0%A4%A&__proto__=polluted',
+    );
+    renderRivals();
+
+    const currentSlider = screen.getByRole('slider', {
+        name: 'Current division',
+    });
+    const targetSlider = screen.getByRole('slider', {
+        name: 'Target division',
+    });
+    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 5');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Elite');
+});
+
+it('keeps controls fully editable after prefilling without fighting user edits', () => {
+    window.history.pushState(
+        {},
+        '',
+        '/rivals?currentDivision=7&targetDivision=6',
+    );
+    renderRivals();
+
+    const currentSlider = screen.getByRole('slider', {
+        name: 'Current division',
+    });
+    const targetSlider = screen.getByRole('slider', {
+        name: 'Target division',
+    });
+    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 7');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Division 6');
+
+    fireEvent.change(currentSlider, { target: { value: '2' } });
+    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 5');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Elite');
+});
+
 function renderRivals() {
     render(
         <RivalsConfigurator
