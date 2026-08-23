@@ -15,6 +15,8 @@ import type { FormEvent, ReactNode } from 'react';
 import AccountPasswordSection from '@/components/account/account-password-section';
 import AccountSectionError from '@/components/account/account-section-error';
 import InputError from '@/components/input-error';
+import OneTimeCodeField from '@/components/one-time-code-field';
+import PhoneNumberField from '@/components/phone-number-field';
 import MyAccountLayout from '@/layouts/my-account-layout';
 import type { AccountProfilePageProps } from '@/types/account';
 
@@ -323,19 +325,34 @@ export default function AccountProfile() {
                                         className="account-profile-contact__editor"
                                         onSubmit={requestPhone}
                                     >
-                                        <Field
-                                            autocomplete="tel"
-                                            error={phone.errors.phone}
+                                        <label htmlFor="new_phone">
+                                            <span>
+                                                {
+                                                    props.accountUi.profile
+                                                        .new_phone
+                                                }
+                                            </span>
+                                        </label>
+                                        <PhoneNumberField
                                             id="new_phone"
-                                            label={
-                                                props.accountUi.profile
-                                                    .new_phone
-                                            }
+                                            autoComplete="tel"
+                                            error={phone.errors.phone}
+                                            labels={{
+                                                country:
+                                                    props.accountUi.profile
+                                                        .phone,
+                                                number: props.accountUi.profile
+                                                    .new_phone,
+                                            }}
+                                            locale={props.locale}
                                             onChange={(value) =>
                                                 phone.setData('phone', value)
                                             }
-                                            type="tel"
                                             value={phone.data.phone}
+                                        />
+                                        <InputError
+                                            id="new_phone-error"
+                                            message={phone.errors.phone}
                                         />
                                         <button
                                             disabled={phone.processing}
@@ -352,25 +369,27 @@ export default function AccountProfile() {
                                             className="account-profile-contact__editor account-profile-code"
                                             onSubmit={confirmPhone}
                                         >
-                                            <Field
-                                                autocomplete="one-time-code"
-                                                error={phoneCode.errors.code}
+                                            <OneTimeCodeField
                                                 id="code"
-                                                inputMode="numeric"
+                                                autoFocus
+                                                disabled={phoneCode.processing}
+                                                error={phoneCode.errors.code}
                                                 label={
                                                     props.accountUi.profile
                                                         .phone_code
                                                 }
-                                                maxLength={6}
+                                                name="code"
                                                 onChange={(value) =>
                                                     phoneCode.setData(
                                                         'code',
-                                                        value
-                                                            .replace(/\D/g, '')
-                                                            .slice(0, 6),
+                                                        value,
                                                     )
                                                 }
                                                 value={phoneCode.data.code}
+                                            />
+                                            <InputError
+                                                id="code-error"
+                                                message={phoneCode.errors.code}
                                             />
                                             <button
                                                 disabled={

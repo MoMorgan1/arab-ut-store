@@ -175,6 +175,8 @@ const arabicAuthUi = {
         phone_unavailable:
             'تعذر إرسال كود واتساب الآن. حاول مرة أخرى بعد قليل.',
         phone_change: 'تغيير الرقم',
+        phone_resend_in: 'إعادة الإرسال بعد :seconds ث',
+        phone_resend: 'إعادة إرسال الكود',
         google: 'المتابعة باستخدام Google',
         google_error: 'تعذر تسجيل الدخول باستخدام Google. حاول مرة أخرى.',
         or: 'أو',
@@ -273,6 +275,8 @@ const englishAuthUi = {
         phone_invalid: 'Enter a valid phone number.',
         phone_unavailable: 'Could not send a WhatsApp code.',
         phone_change: 'Change number',
+        phone_resend_in: 'Resend in :seconds s',
+        phone_resend: 'Resend code',
         google: 'Continue with Google',
         google_error:
             'Google sign-in could not be completed. Please try again.',

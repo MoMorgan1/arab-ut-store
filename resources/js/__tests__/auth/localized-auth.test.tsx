@@ -129,6 +129,8 @@ const arabicUi = {
         phone_unavailable:
             'تعذر إرسال كود واتساب الآن. حاول مرة أخرى بعد قليل.',
         phone_change: 'تغيير الرقم',
+        phone_resend_in: 'إعادة الإرسال بعد :seconds ث',
+        phone_resend: 'إعادة إرسال الكود',
         google: 'المتابعة باستخدام Google',
         google_error: 'تعذر تسجيل الدخول باستخدام Google. حاول مرة أخرى.',
         or: 'أو',
@@ -343,10 +345,12 @@ it('renders the Arabic login handoff and sends a normalized WhatsApp code reques
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
         phone: '+201001234567',
     });
-    expect(screen.getByLabelText(arabicUi.login.phone_code)).toBeVisible();
+    expect(
+        screen.getByLabelText(`${arabicUi.login.phone_code} 1/6`),
+    ).toBeVisible();
 
-    fireEvent.change(screen.getByLabelText(arabicUi.login.phone_code), {
-        target: { value: '123456' },
+    fireEvent.paste(screen.getByLabelText(`${arabicUi.login.phone_code} 1/6`), {
+        clipboardData: { getData: () => '123456' },
     });
     fireEvent.click(
         screen.getByRole('button', { name: arabicUi.login.phone_verify }),
