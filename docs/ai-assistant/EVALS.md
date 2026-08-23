@@ -224,8 +224,7 @@ check that a price answer stays within the two-price limit.
 ## Persona and protocol contract on 2026-08-23 (owner decision)
 
 `support-v6` replaces the generic support persona with the owner's own WhatsApp
-bot prompt, adapted to this surface. Adopted from it: the Saudi white dialect,
-the one-to-four line limit, one clarifying question per reply, no repeated
+bot prompt, adapted to this surface. Adopted from it: the one-to-four line limit, one clarifying question per reply, no repeated
 phrasing, never promising compensation or an exception, never speaking about
 "contacting support" as though it were someone else, and the order-late,
 credential-fix, cart-limit and installment protocols.
@@ -239,3 +238,7 @@ image, video and sticker handling, and the WhatsApp-only formatting rules.
 A `support-v6` batch must additionally check: the reply stays within four lines,
 carries at most one question, never promises compensation or a refund, and
 declines an out-of-scope request outright rather than partially.
+
+Mohamed's instruction on the dialect, same day: do not prescribe it. The
+prompt no longer lists greetings or filler phrases to use; it asks only that
+Arabic reads like a real person and follows the customer's own register.
