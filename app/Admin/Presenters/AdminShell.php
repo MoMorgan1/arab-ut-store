@@ -54,6 +54,14 @@ final class AdminShell
             ];
         }
 
+        if ($actor->can(AdminPermission::LoyaltyView->value)) {
+            $navigation[] = [
+                'key' => 'marketingLoyalty',
+                'label' => (string) trans('admin.navigation.marketingLoyalty', locale: $locale),
+                'url' => route($prefix.'marketing.loyalty', absolute: false),
+            ];
+        }
+
         $navigation[] = [
             'key' => 'settings',
             'label' => (string) trans('admin.navigation.settings', locale: $locale),

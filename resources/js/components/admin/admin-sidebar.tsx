@@ -1,5 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import {
+    Award,
     LayoutDashboard,
     LogOut,
     Package,
@@ -20,6 +21,7 @@ const navigationIcons: Record<AdminNavigationItem['key'], LucideIcon> = {
     orders: ShoppingBag,
     customers: Users,
     products: Package,
+    marketingLoyalty: Award,
     settings: Settings,
 };
 
