@@ -2,6 +2,7 @@ import { AlertCircle, ArrowDown, RefreshCw } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { chatServiceCards } from '@/lib/chat-cards';
+import { chatCartOffer } from '@/lib/chat-cart';
 import { chatChoices } from '@/lib/chat-choices';
 import { groupChatMessages } from '@/lib/chat-grouping';
 import { chatShelfItems } from '@/lib/chat-shelf';
@@ -11,6 +12,7 @@ import type {
     ChatMessage,
     ChatServicePrices,
 } from '@/types/chat';
+import { ChatCartOffer } from './chat-cart-offer';
 import { ChatChoiceChips } from './chat-choice-chips';
 import { ChatServiceCards } from './chat-service-cards';
 import { ChatShelf } from './chat-shelf';
@@ -341,6 +343,30 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                 onNavigate={onCardNavigate}
                                             />
                                         )}
+
+                                        {/*
+                                            Only the newest reply carries a
+                                            buy panel. An offer further up the
+                                            transcript describes a selection
+                                            the conversation has moved past,
+                                            and every one of them would price
+                                            itself again on open.
+                                        */}
+                                        {!isCustomer &&
+                                            !isStreaming &&
+                                            message.publicId ===
+                                                newestMessageId && (
+                                                <ChatCartOffer
+                                                    offer={chatCartOffer(
+                                                        message,
+                                                    )}
+                                                    locale={locale}
+                                                    servicePrices={
+                                                        servicePrices
+                                                    }
+                                                    onNavigate={onCardNavigate}
+                                                />
+                                            )}
 
                                         {!isCustomer &&
                                             !isStreaming &&

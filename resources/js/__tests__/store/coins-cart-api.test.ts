@@ -151,9 +151,13 @@ describe('secure Coins cart API', () => {
             ),
         );
 
+        // Inconclusive, not conclusive: a 201 means the item was created, so
+        // the caller must keep its idempotency key. Reporting this as a
+        // conclusive failure let a retry mint a fresh key and add the same
+        // item a second time.
         await expect(request()).rejects.toMatchObject({
             code: 'unsafe_response',
-            conclusive: true,
+            conclusive: false,
         });
     });
 });

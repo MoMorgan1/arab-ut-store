@@ -32,6 +32,7 @@ export type AdminTranslations = {
         overview: string;
         orders: string;
         customers: string;
+        conversations: string;
         products: string;
         marketingLoyalty?: string;
         settings: string;
@@ -824,6 +825,96 @@ export type AdminTranslations = {
         visibility: string;
         visible: string;
     };
+    conversations: {
+        actions: string;
+        allLocales: string;
+        allOwners: string;
+        allStatuses: string;
+        clearSearch: string;
+        columns: string;
+        conversation: string;
+        createdAt: string;
+        customer: string;
+        description: string;
+        errorTitle: string;
+        filterLocale: string;
+        filterOwner: string;
+        filterStatus: string;
+        filters: string;
+        firstPage: string;
+        headTitle: string;
+        lastActivity: string;
+        lastPage: string;
+        loadFailed: string;
+        loading: string;
+        locale: string;
+        localeAr: string;
+        localeEn: string;
+        messageCount: string;
+        next: string;
+        noConversations: string;
+        noConversationsMatching: string;
+        of: string;
+        owner: string;
+        ownerCustomer: string;
+        ownerGuest: string;
+        page: string;
+        perPage: string;
+        previous: string;
+        resetFilters: string;
+        results: string;
+        searchButton: string;
+        searchLabel: string;
+        searchPlaceholder: string;
+        showing: string;
+        sortAscending: string;
+        sortBy: string;
+        sortDescending: string;
+        status: string;
+        statusClosed: string;
+        statusOpen: string;
+        tableLabel: string;
+        title: string;
+        to: string;
+        toggleColumns: string;
+        viewDetail: string;
+    };
+    conversationDetail: {
+        assistantSender: string;
+        backToConversations: string;
+        closeReason: string;
+        closeReasons: Record<string, string>;
+        closedAt: string;
+        createdAt: string;
+        customerName: string;
+        customerSender: string;
+        guestSender: string;
+        headTitle: string;
+        inputTokens: string;
+        lastMessageAt: string;
+        latency: string;
+        locale: string;
+        messageCount: string;
+        model: string;
+        noMessages: string;
+        noTurns: string;
+        outputTokens: string;
+        owner: string;
+        promptVersion: string;
+        publicId: string;
+        runStatus: string;
+        status: string;
+        summarySection: string;
+        systemSender: string;
+        title: string;
+        tokens: string;
+        transcriptSection: string;
+        turnCreatedAt: string;
+        turnId: string;
+        turnStatus: string;
+        turnsSection: string;
+    };
+
     loyalty: {
         headTitle: string;
         title: string;
@@ -882,6 +973,7 @@ export type AdminNavigationItem = {
         | 'overview'
         | 'orders'
         | 'customers'
+        | 'conversations'
         | 'marketing'
         | 'products'
         | 'products'
@@ -1547,5 +1639,90 @@ export type AdminProductDetailPageProps = {
     product: AdminProductDetail;
     updateUrl: string;
     confirmPasswordUrl?: string;
+    logoutUrl: string;
+};
+
+export type AdminConversationRow = {
+    publicId: string;
+    status: 'open' | 'closed' | 'archived';
+    locale: string;
+    ownerType: 'guest' | 'customer';
+    customerName: string | null;
+    messageCount: number;
+    lastMessageAt: string | null;
+    createdAt: string;
+};
+
+export type AdminConversationsQueryState = {
+    q?: string | null;
+    status?: 'open' | 'closed' | null;
+    locale?: 'ar' | 'en' | null;
+    owner?: 'guest' | 'customer' | null;
+    per_page: 15 | 25 | 50 | 100;
+    page: number;
+};
+
+export type AdminConversationsPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    rows: AdminConversationRow[];
+    pagination: AdminPagination;
+    filters: AdminConversationsQueryState;
+    filterOptions: {
+        statuses: AdminFilterOption[];
+        locales: AdminFilterOption[];
+        owners: AdminFilterOption[];
+        perPageOptions: number[];
+    };
+    logoutUrl: string;
+};
+
+export type AdminChatMessage = {
+    publicId: string;
+    senderType: 'customer' | 'assistant' | 'system';
+    messageType: 'text' | 'system';
+    content: string;
+    createdAt: string;
+};
+
+export type AdminAgentTurn = {
+    publicId: string;
+    status: 'waiting' | 'running' | 'completed' | 'failed' | 'cancelled';
+    promptVersion: string;
+    createdAt: string;
+    latestRunStatus: 'running' | 'completed' | 'failed' | 'cancelled' | null;
+    latencyMs: number | null;
+    inputTokens: number | null;
+    outputTokens: number | null;
+    model: string | null;
+};
+
+export type AdminConversationDetail = {
+    publicId: string;
+    status: 'open' | 'closed' | 'archived';
+    locale: string;
+    ownerType: 'guest' | 'customer';
+    customerName: string | null;
+    messageCount: number;
+    lastMessageAt: string | null;
+    createdAt: string;
+    closedAt: string | null;
+    closeReason: string | null;
+};
+
+export type AdminConversationDetailPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    conversation: AdminConversationDetail;
+    messages: AdminChatMessage[];
+    turns: AdminAgentTurn[];
     logoutUrl: string;
 };

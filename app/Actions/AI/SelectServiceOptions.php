@@ -72,6 +72,7 @@ final readonly class SelectServiceOptions
         return match ($serviceKey) {
             'coins' => $this->partialCoins($normalized),
             'fut_champions' => $this->partialChampions($normalized),
+            'rivals' => $this->partialRivals($normalized),
             default => [],
         };
     }
@@ -449,6 +450,50 @@ final readonly class SelectServiceOptions
         // speed the customer never named and quote them a price for it, so the
         // assistant asks instead.
         return null;
+    }
+
+    /**
+     * What a Rivals message did say about the route.
+     *
+     * Rivals is priced by route, not by a list of independent options, and one
+     * message rarely carries both ends. A customer who says "I'm in division 5"
+     * has named the start; a customer who names a bare division has named
+     * nothing usable, because the same number reads as either end. So the
+     * question is always asked from the start.
+     *
+     * @return array<string, mixed>
+     */
+    private function partialRivals(string $normalized): array
+    {
+        $route = $this->parseRivalsRoute($normalized);
+
+        if ($route !== null) {
+            return ['currentDivision' => $route[0], 'targetDivision' => $route[1]];
+        }
+
+        $current = $this->parseRivalsCurrentDivision($normalized);
+
+        return $current === null ? [] : ['currentDivision' => $current];
+    }
+
+    /**
+     * The division a customer says they are in right now.
+     *
+     * This needs explicit "I am in" phrasing. A bare number in a Rivals message
+     * is ambiguous — "ديفيجن ٣" is as likely to be where they want to reach as
+     * where they are — and guessing wrong would quote a price for a route they
+     * never asked for.
+     */
+    private function parseRivalsCurrentDivision(string $normalized): ?string
+    {
+        $pattern = '/(?:انا\s*في|حاليا|الحين|وصلت|عندي|واقف\s*(?:في|ب)?|i\s*am\s*in|i\x27?m\s*in|currently\s*(?:in|at)?)\s*'
+            .'(?:ديفيجن|ديفجن|ديف|div|division)?\s*([1-7]|elite|ايليت|الايليت|إيليت)(?![\w.])/ui';
+
+        if (preg_match($pattern, $normalized, $matches) !== 1) {
+            return null;
+        }
+
+        return self::normalizeDivision($matches[1]);
     }
 
     /**

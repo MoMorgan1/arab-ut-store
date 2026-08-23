@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\ConversationDetailController;
+use App\Http\Controllers\Admin\ConversationsController;
 use App\Http\Controllers\Admin\CouponsController;
 use App\Http\Controllers\Admin\CreateCouponController;
 use App\Http\Controllers\Admin\CustomerContactController;
@@ -173,6 +175,22 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $teamGrant->defaults('locale', $locale);
+                }
+
+                $conversations = Route::get('/conversations', ConversationsController::class)
+                    ->middleware('can:chat.view')
+                    ->name('conversations');
+
+                if ($locale !== null) {
+                    $conversations->defaults('locale', $locale);
+                }
+
+                $conversationDetail = Route::get('/conversations/{publicId}', ConversationDetailController::class)
+                    ->middleware('can:chat.view')
+                    ->name('conversations.show');
+
+                if ($locale !== null) {
+                    $conversationDetail->defaults('locale', $locale);
                 }
 
                 $products = Route::get('/products', ProductsController::class)
