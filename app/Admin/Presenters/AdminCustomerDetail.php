@@ -160,8 +160,8 @@ final class AdminCustomerDetail
         $direction = is_array($metadata) ? ($metadata['direction'] ?? null) : null;
 
         return match ($type) {
-            WalletEntryType::Credit, WalletEntryType::Refund => 'credit',
-            WalletEntryType::Debit => 'debit',
+            WalletEntryType::Credit, WalletEntryType::Refund, WalletEntryType::Cashback => 'credit',
+            WalletEntryType::Debit, WalletEntryType::CashbackReversal => 'debit',
             WalletEntryType::Adjustment => match ($direction) {
                 'credit' => 'credit',
                 'debit' => 'debit',

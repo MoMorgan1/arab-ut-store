@@ -132,6 +132,8 @@ return [
         'debit' => 'خصم',
         'refund' => 'استرداد',
         'adjustment' => 'تسوية',
+        'cashback' => 'كاش باك',
+        'cashback_reversal' => 'استرجاع كاش باك',
         'balance_after' => 'الرصيد بعد الحركة',
         'related_order' => 'الطلب :number',
         'previous' => 'السابق',
