@@ -325,6 +325,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
             'settings.view',
             'settings.manage',
             'chat.view',
+            'chat.reply',
             'marketing.view',
             'marketing.manage',
         ],

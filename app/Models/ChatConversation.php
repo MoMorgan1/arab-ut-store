@@ -4,11 +4,15 @@ namespace App\Models;
 
 use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatConversationStatus;
+use App\Enums\Chat\ChatHandoffState;
+use App\Enums\Support\SupportTicketStatus;
+use App\Support\ChatNumber;
 use App\ValueObjects\Chat\ChatOwner;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ChatConversation extends DomainModel
 {
@@ -18,10 +22,18 @@ class ChatConversation extends DomainModel
         'last_message_at' => 'datetime',
         'closed_at' => 'datetime',
         'close_reason' => ChatConversationCloseReason::class,
+        'handoff_state' => ChatHandoffState::class,
+        'last_staff_message_at' => 'datetime',
     ];
 
     protected static function booted(): void
     {
+        static::creating(function (ChatConversation $conversation): void {
+            if ($conversation->short_id === null || $conversation->short_id === '') {
+                $conversation->short_id = ChatNumber::generate();
+            }
+        });
+
         static::saving(function (ChatConversation $conversation): void {
             $hasUser = $conversation->user_id !== null;
             $hasGuest = $conversation->guest_key !== null;
@@ -55,6 +67,15 @@ class ChatConversation extends DomainModel
     public function scopeOpen(Builder $query): void
     {
         $query->where('status', ChatConversationStatus::Open);
+    }
+
+    /** @param Builder<ChatConversation> $query */
+    public function scopeWithLiveHandoff(Builder $query): void
+    {
+        $query->whereIn('handoff_state', array_map(
+            static fn (ChatHandoffState $state): string => $state->value,
+            ChatHandoffState::liveStates(),
+        ));
     }
 
     /** @param Builder<ChatConversation> $query */
@@ -104,5 +125,18 @@ class ChatConversation extends DomainModel
     public function agentTurns(): HasMany
     {
         return $this->hasMany(AgentTurn::class, 'conversation_id')->orderBy('id', 'asc');
+    }
+
+    /** @return HasMany<SupportTicket, $this> */
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(SupportTicket::class, 'conversation_id');
+    }
+
+    /** @return HasOne<SupportTicket, $this> */
+    public function liveTicket(): HasOne
+    {
+        return $this->hasOne(SupportTicket::class, 'conversation_id')
+            ->where('status', SupportTicketStatus::Open);
     }
 }

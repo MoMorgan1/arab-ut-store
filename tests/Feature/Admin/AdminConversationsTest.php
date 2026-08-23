@@ -121,9 +121,10 @@ test('admin navigation includes conversations between customers and products', f
 
 test('status filter returns only open conversations when status=open', function (): void {
     $admin = adminConversationsActor(UserRole::Admin);
+    $customer = User::factory()->create(['role' => UserRole::Customer]);
 
-    $openConv = ChatConversation::factory()->open()->create();
-    $closedConv = ChatConversation::factory()->closed(ChatConversationCloseReason::Inactive, now()->subHour())->create();
+    $openConv = ChatConversation::factory()->forUser($customer)->open()->create();
+    $closedConv = ChatConversation::factory()->forUser($customer)->closed(ChatConversationCloseReason::Inactive, now()->subHour())->create();
 
     $response = $this->actingAs($admin)->get('/admin/conversations?status=open');
     $response->assertOk();
@@ -135,7 +136,7 @@ test('status filter returns only open conversations when status=open', function 
         ->and($publicIds)->not->toContain((string) $closedConv->public_id);
 });
 
-test('owner=guest filter returns only guest conversations', function (): void {
+test('owner=guest filter normalizes to all customers and excludes guests', function (): void {
     $admin = adminConversationsActor(UserRole::Admin);
 
     $customer = User::factory()->create(['role' => UserRole::Customer]);
@@ -148,15 +149,20 @@ test('owner=guest filter returns only guest conversations', function (): void {
     $rows = $response->original->getData()['page']['props']['rows'];
     $publicIds = array_column($rows, 'publicId');
 
-    expect($publicIds)->toContain((string) $guestConv->public_id)
-        ->and($publicIds)->not->toContain((string) $customerConv->public_id);
+    expect($publicIds)->toContain((string) $customerConv->public_id)
+        ->and($publicIds)->not->toContain((string) $guestConv->public_id);
 });
 
 test('searching a known public_id returns exactly that conversation', function (): void {
     $admin = adminConversationsActor(UserRole::Admin);
+    $customer = User::factory()->create(['role' => UserRole::Customer]);
 
-    $targetConv = ChatConversation::factory()->create();
-    $otherConv = ChatConversation::factory()->create();
+    // A second customer, not a second open conversation for the same one: an owner
+    // may only ever have one open conversation.
+    $otherCustomer = User::factory()->create(['role' => UserRole::Customer]);
+
+    $targetConv = ChatConversation::factory()->forUser($customer)->create();
+    ChatConversation::factory()->forUser($otherCustomer)->create();
 
     $response = $this->actingAs($admin)->get('/admin/conversations?q='.(string) $targetConv->public_id);
     $response->assertOk();
@@ -253,7 +259,7 @@ test('an unknown publicId returns 404', function (): void {
         ->assertNotFound();
 });
 
-test('guest_key never appears anywhere in the index or detail Inertia payload', function (): void {
+test('guest_key never appears anywhere in the index or detail Inertia payload and guests 404', function (): void {
     $admin = adminConversationsActor(UserRole::Admin);
     $guestSecret = 'GUEST_SECRET_KEY_NEVER_LEAK_1234567890abcdef';
 
@@ -275,14 +281,10 @@ test('guest_key never appears anywhere in the index or detail Inertia payload', 
     expect($indexContent)->not->toContain($guestSecret)
         ->and($indexProps)->not->toContain($guestSecret);
 
-    // Test detail response
-    $detailResponse = $this->actingAs($admin)->get("/admin/conversations/{$guestConv->public_id}");
-    $detailResponse->assertOk();
-    $detailContent = $detailResponse->getContent();
-    $detailProps = json_encode($detailResponse->original->getData()['page']['props']);
-
-    expect($detailContent)->not->toContain($guestSecret)
-        ->and($detailProps)->not->toContain($guestSecret);
+    // Test detail response: guests 404
+    $this->actingAs($admin)
+        ->get("/admin/conversations/{$guestConv->public_id}")
+        ->assertNotFound();
 });
 
 function adminConversationsActor(UserRole $role, string $locale = 'en'): User

@@ -3,6 +3,7 @@
 namespace App\Http\Presenters;
 
 use App\Enums\AI\AssistantMode;
+use App\Enums\Chat\ChatMessageType;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use Illuminate\Support\Collection;
@@ -63,11 +64,13 @@ final class ChatPresenter
     ): array {
         $query = ChatMessage::query()
             ->where('conversation_id', $conversation->id)
+            ->where('message_type', '!=', ChatMessageType::InternalNote)
             ->orderBy('id', 'desc');
 
         if ($beforePublicId !== null && $beforePublicId !== '') {
             $beforeMessage = ChatMessage::query()
                 ->where('conversation_id', $conversation->id)
+                ->where('message_type', '!=', ChatMessageType::InternalNote)
                 ->where('public_id', $beforePublicId)
                 ->first();
 

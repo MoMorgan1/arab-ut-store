@@ -27,13 +27,20 @@ final class ListAdminConversations extends FormRequest
         return $user instanceof User && $user->can(AdminPermission::ChatView->value);
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('owner') && $this->input('owner') !== 'customer') {
+            $this->merge(['owner' => null]);
+        }
+    }
+
     /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
             'status' => ['sometimes', 'nullable', 'string', Rule::in(['open', 'closed'])],
             'locale' => ['sometimes', 'nullable', 'string', Rule::in(['ar', 'en'])],
-            'owner' => ['sometimes', 'nullable', 'string', Rule::in(['guest', 'customer'])],
+            'owner' => ['sometimes', 'nullable', 'string', Rule::in(['customer'])],
             'q' => ['sometimes', 'nullable', 'string', 'max:64'],
             'per_page' => ['sometimes', 'integer', Rule::in([15, 25, 50, 100])],
             'page' => ['sometimes', 'integer', 'min:1'],
@@ -59,7 +66,7 @@ final class ListAdminConversations extends FormRequest
      * @return array{
      *     status: 'open'|'closed'|null,
      *     locale: 'ar'|'en'|null,
-     *     owner: 'guest'|'customer'|null,
+     *     owner: 'customer'|null,
      *     q: ?string,
      *     per_page: 15|25|50|100,
      *     page: int
@@ -79,10 +86,7 @@ final class ListAdminConversations extends FormRequest
             $locale = null;
         }
 
-        $owner = ! empty($validated['owner']) ? (string) $validated['owner'] : null;
-        if ($owner !== 'guest' && $owner !== 'customer') {
-            $owner = null;
-        }
+        $owner = ! empty($validated['owner']) && (string) $validated['owner'] === 'customer' ? 'customer' : null;
 
         $q = isset($validated['q']) ? trim((string) $validated['q']) : null;
         if ($q === '') {

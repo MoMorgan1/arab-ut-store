@@ -173,7 +173,7 @@ export const ChatLauncher = React.forwardRef<
                 }`}
                 aria-hidden="true"
             >
-                {isEn ? 'Ask Luna' : 'اسأل لونا'}
+                {isEn ? 'Ask Nawaf' : 'اسأل نواف'}
             </span>
 
             {/* Online status indicator dot (closed only) */}

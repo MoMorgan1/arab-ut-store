@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatConversationStatus;
+use App\Enums\Chat\ChatHandoffState;
 use App\Models\ChatConversation;
 use App\Models\User;
 use Carbon\CarbonInterface;
@@ -27,10 +28,20 @@ class ChatConversationFactory extends Factory
             'status' => ChatConversationStatus::Open,
             'closed_at' => null,
             'close_reason' => null,
+            'handoff_state' => ChatHandoffState::None,
+            'last_staff_message_at' => null,
             'locale' => 'ar',
             'subject' => null,
             'last_message_at' => now(),
         ];
+    }
+
+    public function guest(): static
+    {
+        return $this->state(fn () => [
+            'user_id' => null,
+            'guest_key' => hash_hmac('sha256', bin2hex(random_bytes(32)), (string) config('app.key')),
+        ]);
     }
 
     public function forUser(User $user): static

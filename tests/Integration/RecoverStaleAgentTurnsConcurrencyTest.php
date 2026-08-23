@@ -25,14 +25,14 @@ test('maintenance and stale recovery racing on the same candidate cannot corrupt
     }
 
     Carbon::setTestNow('2026-08-20 12:00:00');
-    config()->set('chat.guest_retention_days', 30);
+    config()->set('chat.guest_retention_hours', 48);
     config()->set('ai-assistant.stale_turn_seconds', 60);
 
     $guestKey = hash('sha256', 'stale-recovery-maintenance-race');
     $conversation = ChatConversation::factory()->forGuest($guestKey)->closed(
         ChatConversationCloseReason::Inactive,
-        now()->subDays(30),
-    )->create(['last_message_at' => now()->subDays(30)]);
+        now()->subHours(48),
+    )->create(['last_message_at' => now()->subHours(48)]);
 
     $turn = AgentTurn::factory()->running()->for($conversation, 'conversation')->create([
         'updated_at' => now()->subSeconds(70),

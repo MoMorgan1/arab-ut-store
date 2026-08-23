@@ -27,6 +27,7 @@ final class ConversationsController extends Controller
         $filters = $request->normalizedFilters();
 
         $query = ChatConversation::query()
+            ->whereNotNull('user_id')
             ->with('user')
             ->withCount('messages')
             ->orderByLastActivityDesc();
@@ -37,12 +38,6 @@ final class ConversationsController extends Controller
 
         if ($filters['locale'] !== null) {
             $query->where('locale', $filters['locale']);
-        }
-
-        if ($filters['owner'] === 'guest') {
-            $query->whereNull('user_id');
-        } elseif ($filters['owner'] === 'customer') {
-            $query->whereNotNull('user_id');
         }
 
         if ($filters['q'] !== null) {
@@ -112,10 +107,6 @@ final class ConversationsController extends Controller
                     [
                         'value' => 'customer',
                         'label' => (string) trans('admin.conversations.ownerCustomer', locale: $locale),
-                    ],
-                    [
-                        'value' => 'guest',
-                        'label' => (string) trans('admin.conversations.ownerGuest', locale: $locale),
                     ],
                 ],
                 'perPageOptions' => [15, 25, 50, 100],

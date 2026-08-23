@@ -1009,7 +1009,7 @@ return [
     'conversations' => [
         'headTitle' => 'Support conversations',
         'title' => 'Support conversations',
-        'description' => 'Review AI assistant support conversations with customers and guests.',
+        'description' => 'Review AI assistant support conversations with customers.',
         'searchPlaceholder' => 'Search by conversation ID…',
         'searchLabel' => 'Search conversations',
         'searchButton' => 'Search',

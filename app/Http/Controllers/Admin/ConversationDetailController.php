@@ -30,6 +30,7 @@ final class ConversationDetailController extends Controller
         /** @var ChatConversation|null $conversation */
         $conversation = ChatConversation::query()
             ->where('public_id', $publicId)
+            ->whereNotNull('user_id')
             ->with([
                 'user',
                 'messages' => fn ($q) => $q->orderBy('id', 'asc'),

@@ -6,7 +6,7 @@ use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 
-test('the admin permission enum contains exactly the approved twenty-five abilities', function (): void {
+test('the admin permission enum contains exactly the approved twenty-six abilities', function (): void {
     expect(array_map(
         static fn (AdminPermission $permission): string => $permission->value,
         AdminPermission::cases(),
@@ -88,6 +88,7 @@ function adminPermissionAbilities(): array
         'settings.view',
         'settings.manage',
         'chat.view',
+        'chat.reply',
         'marketing.view',
         'marketing.manage',
     ];
