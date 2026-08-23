@@ -35,6 +35,7 @@ final class SettingsController extends Controller
             : 'admin.';
 
         $teamUrls = $canViewTeam ? [
+            'grantUrl' => route($prefix.'team.grants.store', absolute: false),
             'roleUrlTemplate' => route($prefix.'team.role.store', ['publicId' => '__ID__'], absolute: false),
             'statusUrlTemplate' => route($prefix.'team.status.store', ['publicId' => '__ID__'], absolute: false),
         ] : null;

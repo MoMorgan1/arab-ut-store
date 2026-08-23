@@ -495,6 +495,14 @@ export const englishAdminUi: AdminTranslations = {
         teamSection: 'Team',
         teamDescription:
             'Manage staff accounts, roles, and administrative access.',
+        addMemberButton: 'Add team member',
+        addMemberTitle: 'Grant Admin access',
+        addMemberDescription:
+            'Grant access to someone who already has an Arab UT account. Accounts are never created here, and no password is set.',
+        addMemberEmailLabel: 'Account email',
+        addMemberRoleLabel: 'Role',
+        addMemberSubmit: 'Grant access',
+        addMemberSubmitting: 'Granting access…',
         addStaffHint:
             'New staff members are provisioned via the command line: php artisan admin:grant-role user@example.com --role=staff',
         selfBadge: 'You',
@@ -562,6 +570,14 @@ export const englishAdminUi: AdminTranslations = {
                 'Network error. Please check your connection and try again.',
             forbiddenError:
                 'You do not have permission to perform this action.',
+            grantSucceeded:
+                'Admin access granted. They sign in with their existing password and set up two-factor authentication before Admin opens.',
+            grantNoSuchAccount:
+                'No account exists for that email address. Ask them to sign up first, then grant access here.',
+            grantSelf: 'You cannot change your own role.',
+            grantAlreadyGranted: 'That account already has this role.',
+            grantInactiveAccount:
+                'Reactivate that account before granting Admin access.',
             lastAdminError:
                 'Cannot modify or deactivate the last active Admin account.',
         },
@@ -886,6 +902,7 @@ export const sampleAdminTeamData: AdminTeamData = {
 };
 
 export const sampleAdminTeamUrls: AdminTeamUrls = {
+    grantUrl: '/admin/api/team/grants',
     roleUrlTemplate: '/admin/api/team/__ID__/role',
     statusUrlTemplate: '/admin/api/team/__ID__/status',
 };
