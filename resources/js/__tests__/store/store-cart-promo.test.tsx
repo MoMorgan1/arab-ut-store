@@ -48,6 +48,7 @@ function cartProps(items: StoreCartItem[]): StoreCartPageProps['cart'] {
         currency: 'SAR',
         items,
         coupon: null,
+        useWallet: false,
     };
 }
 
