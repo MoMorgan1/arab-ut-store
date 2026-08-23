@@ -241,7 +241,7 @@ it('allows selecting rank via interactive stop buttons', () => {
 it('displays live configuration summary pills for rank, platform, and urgent option', () => {
     renderFut();
 
-    expect(screen.getByText('Rank 1')).toBeVisible();
+    expect(screen.getAllByText('Rank 1').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('PlayStation').length).toBeGreaterThanOrEqual(1);
 
     fireEvent.click(screen.getByLabelText(/Urgent/));
