@@ -49,6 +49,14 @@ export default [
         },
     },
     {
+        files: ['tools/**/*.mjs'],
+        languageOptions: {
+            globals: {
+                ...globals.node,
+            },
+        },
+    },
+    {
         plugins: {
             import: importPlugin,
         },
@@ -104,6 +112,7 @@ export default [
     },
     {
         ignores: [
+            '.agents/**',
             '.worktrees',
             'vendor',
             'node_modules',

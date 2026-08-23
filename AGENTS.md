@@ -83,3 +83,35 @@ Before changing chat, support, model, RAG, tool, or admin-inbox behavior, read
 `docs/ai-assistant/STATUS.md`, then the relevant canonical document linked from
 `docs/ai-assistant/README.md`. Historical plans and specs do not override the
 newest explicit owner decision or canonical status.
+
+## Delegated implementation fleet
+
+### Authority and lane selection
+
+- GPT-5.6 Sol is the lead engineer, orchestrator, and final authority for planning, architecture, difficult problems, security-sensitive work, migrations, and final review.
+- Delegate only bounded implementation after all applicable discovery, research, UI, planning, and owner-approval gates above are complete.
+- Use project lane `feature` for Gemini 3.7 Flash High implementation, `fast` for GPT-5.6 Luna at `xhigh`, and `tests` for GPT-5.6 Luna at `max`.
+- Workers implement an approved direction; they do not make consequential product, architecture, security, data, or visual decisions.
+- Do not delegate work whose scope cannot be expressed as one self-contained brief with explicit allowed paths and observable acceptance criteria.
+
+### Brief and dispatch contract
+
+- Every brief must contain `Objective`, `Allowed paths`, `Non-goals`, `Acceptance criteria`, and `Required checks` sections. Never put secrets in a brief.
+- For Gemini, run `tools/gemini-worker.cmd <brief-path>`; add `-ReadOnly` for non-mutating review or `-ResumeLast` for a precise correction to the previous conversation.
+- For Luna, run `tools/codex-worker.cmd <brief-path> -Lane fast` or `tools/codex-worker.cmd <brief-path> -Lane tests`; add `-ReadOnly` for a non-mutating review.
+- Never pass arbitrary extra directories or permission-bypass flags. Use the worker's normal sandbox and permission model.
+
+### Worker prohibitions
+
+- A worker must never run Git add, commit, push, pull, fetch, reset, restore, checkout, switch, rebase, merge, cherry-pick, clean, stash, branch, or worktree operations; edit `.git`; or change branches, commits, tags, or refs.
+- A worker must never use `--dangerously-skip-permissions`, `--dangerously-bypass-approvals-and-sandbox`, or an equivalent permission bypass.
+- A worker must never inspect `.env`, credential stores, browser profiles, private keys, tokens, or files outside the approved repository paths.
+- A worker must preserve all pre-existing user changes and avoid unrelated cleanup, refactors, dependency changes, or generated files.
+
+### Lead review and correction loop
+
+1. After every worker run, inspect `git status --porcelain=v1 --untracked-files=all`, every untracked file, `git diff --no-ext-diff`, `git diff --cached --no-ext-diff`, and `git diff --check`.
+2. Review existing-test edits before trusting any green gate. Reject weakened assertions, disabled tests, hardcoded success paths, scope creep, and unverified APIs.
+3. Independently run the relevant targeted checks and the applicable repository gates: `composer test` and/or `npm run ci:check`. Worker-reported results are claims, not evidence.
+4. If review finds an issue, send a precise correction containing the file and location, observed versus expected behavior, reproduction command, allowed paths, and acceptance criteria. Resume the same worker conversation when appropriate.
+5. Review the complete Git state and rerun all relevant gates after every correction. Only the Sol lead may approve the result for delivery; workers never commit or push it.
