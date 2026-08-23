@@ -144,6 +144,7 @@ test('live order detail exposes current safe item progress and payment recovery 
     $owner = User::factory()->create();
     $other = User::factory()->create();
     $order = ordersTestOrder($owner, 7, OrderStatus::PendingPayment);
+    $order->update(['discount_halalah' => 500]);
     $item = $order->items()->sole();
     $item->secret()->forceCreate([
         'encrypted_payload' => ['password' => 'detail-page-must-not-serialize-this'],
@@ -160,6 +161,7 @@ test('live order detail exposes current safe item progress and payment recovery 
             ->where('order.number', 'UT-00000007')
             ->where('order.status', 'pending_payment')
             ->where('order.total', ['amountMinor' => '7000', 'currency' => 'SAR'])
+            ->where('order.discount', ['amountMinor' => '500', 'currency' => 'SAR'])
             ->where('order.refreshable', true)
             ->where('order.paymentStartUrl', '/en/orders/'.$order->public_id.'/payments/paylink')
             ->has('order.items', 1)

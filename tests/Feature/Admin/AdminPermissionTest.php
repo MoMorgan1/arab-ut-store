@@ -87,6 +87,8 @@ function adminPermissionAbilities(): array
         'staff.manage',
         'settings.view',
         'settings.manage',
+        'marketing.view',
+        'marketing.manage',
     ];
 }
 

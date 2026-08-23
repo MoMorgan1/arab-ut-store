@@ -125,6 +125,7 @@ export type AccountTranslations = {
         number: string;
         placed_at: string;
         total: string;
+        discount: string;
         status: string;
         source_live: string;
         source_archive: string;
@@ -393,6 +394,7 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
         status: AccountOrderStatus;
         placedAt: string;
         total: AccountMoney;
+        discount: AccountMoney;
         refreshable: boolean;
         paymentStartUrl: string | null;
         items: Array<{

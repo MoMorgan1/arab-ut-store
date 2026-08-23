@@ -910,7 +910,7 @@ test('authenticated Admin overview and orders are operable across required width
                     await expect(
                         dialog.getByRole('link', { name: locale.overview }),
                     ).toHaveAttribute('aria-current', 'page');
-                    await expect(dialog.getByRole('link')).toHaveCount(6);
+                    await expect(dialog.getByRole('link')).toHaveCount(7);
 
                     const sheetBehavior = await dialog.evaluate((element) => {
                         const styles = window.getComputedStyle(element);
@@ -968,7 +968,7 @@ test('authenticated Admin overview and orders are operable across required width
                     await expect(sidebar).toBeVisible();
                     // Products is a desktop sidebar and navigation-sheet
                     // destination; the mobile tab bar deliberately stays at four.
-                    await expect(sidebar.getByRole('link')).toHaveCount(6);
+                    await expect(sidebar.getByRole('link')).toHaveCount(7);
                     await expect(
                         sidebar.getByRole('link', { name: locale.overview }),
                     ).toHaveAttribute('aria-current', 'page');

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\GoogleAuthenticationController;
 use App\Http\Controllers\Auth\WhatsAppLoginController;
 use App\Http\Controllers\Store\CartController;
+use App\Http\Controllers\Store\CartCouponController;
 use App\Http\Controllers\Store\CartItemController;
 use App\Http\Controllers\Store\CartItemCredentialsController;
 use App\Http\Controllers\Store\CatalogCartController;
@@ -65,6 +66,12 @@ Route::patch('/cart/items/{cartItem}/credentials', [CartItemCredentialsControlle
 Route::delete('/cart/items/{cartItem}', [CartItemController::class, 'destroy'])
     ->middleware([NoStore::class, 'throttle:coins-cart'])
     ->name('cart.items.destroy');
+Route::post('/cart/coupon', [CartCouponController::class, 'store'])
+    ->middleware([NoStore::class, 'throttle:coins-cart'])
+    ->name('cart.coupons.store');
+Route::delete('/cart/coupon', [CartCouponController::class, 'destroy'])
+    ->middleware([NoStore::class, 'throttle:coins-cart'])
+    ->name('cart.coupons.destroy');
 Route::get('/reviews', ReviewsController::class)->name('store.reviews');
 Route::post('/cart/items/coins', CoinsCartController::class)
     ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])
@@ -168,6 +175,12 @@ Route::prefix('{locale}')
         Route::delete('/cart/items/{cartItem}', [CartItemController::class, 'destroy'])
             ->middleware([NoStore::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.destroy');
+        Route::post('/cart/coupon', [CartCouponController::class, 'store'])
+            ->middleware([NoStore::class, 'throttle:coins-cart'])
+            ->name('localized.cart.coupons.store');
+        Route::delete('/cart/coupon', [CartCouponController::class, 'destroy'])
+            ->middleware([NoStore::class, 'throttle:coins-cart'])
+            ->name('localized.cart.coupons.destroy');
         Route::get('/reviews', ReviewsController::class)->name('localized.store.reviews');
         Route::post('/cart/items/coins', CoinsCartController::class)
             ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])

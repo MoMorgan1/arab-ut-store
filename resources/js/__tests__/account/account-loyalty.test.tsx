@@ -270,6 +270,7 @@ function loyaltyProps(): AccountLoyaltyPageProps {
                 number: 'Order number',
                 placed_at: 'Placed on',
                 total: 'Total',
+                discount: 'Discount',
                 status: 'Status',
                 source_live: 'Current order',
                 source_archive: 'Previous order',
