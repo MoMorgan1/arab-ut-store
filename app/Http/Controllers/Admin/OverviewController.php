@@ -19,7 +19,7 @@ final class OverviewController extends Controller
     public function __invoke(Request $request): Response
     {
         $validated = $request->validate([
-            'range' => ['sometimes', 'integer', Rule::in([7, 30])],
+            'range' => ['sometimes', 'integer', Rule::in([1, 7, 30])],
         ]);
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);

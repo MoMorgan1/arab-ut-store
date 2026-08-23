@@ -153,13 +153,8 @@ final class StoreCatalogReader
     {
         return Product::query()
             ->where('service_type', $service)
-            ->where('is_visible', true)
-            ->whereNull('archived_at')
-            ->whereHas('variants', fn ($query) => $query->where('is_active', true))
-            ->where(function ($query): void {
-                $query->whereNull('category_id')
-                    ->orWhereHas('category', fn ($category) => $category->where('is_visible', true));
-            });
+            ->storefrontVisible()
+            ->whereHas('variants', fn ($query) => $query->where('is_active', true));
     }
 
     /** @param Builder<Product> $query
@@ -296,9 +291,8 @@ final class StoreCatalogReader
             return [];
         }
 
-        $configuration = $variant->getAttribute('configuration');
         $pricing = SbcCompletionPricing::fromConfiguration(
-            is_array($configuration) ? $configuration : [],
+            $variant->effectivePricingConfiguration(),
             $this->effectivePrice($variant),
             false,
         );
@@ -421,11 +415,14 @@ final class StoreCatalogReader
     /** @param Builder<Product> $query */
     private function applyPriceSort(Builder $query, string $sort): void
     {
+        // Must mirror ProductVariant::effectivePriceHalalah(), or sorting by
+        // price would order on the automation price while the card shows the
+        // admin override.
         $effectivePrice = ProductVariant::query()
-            ->selectRaw('MIN(COALESCE(sale_price_halalah, price_halalah))')
+            ->selectRaw('MIN(COALESCE(admin_price_halalah, sale_price_halalah, price_halalah))')
             ->whereColumn('product_id', 'products.id')
             ->where('is_active', true)
-            ->whereRaw('COALESCE(sale_price_halalah, price_halalah) > 0');
+            ->whereRaw('COALESCE(admin_price_halalah, sale_price_halalah, price_halalah) > 0');
 
         $query->addSelect(['effective_price_halalah' => $effectivePrice])
             ->orderByRaw('CASE WHEN effective_price_halalah IS NULL THEN 1 ELSE 0 END')
@@ -458,9 +455,7 @@ final class StoreCatalogReader
 
     private function effectivePrice(ProductVariant $variant): int
     {
-        $sale = $variant->getAttribute('sale_price_halalah');
-
-        return is_int($sale) ? $sale : (int) $variant->getAttribute('price_halalah');
+        return $variant->effectivePriceHalalah();
     }
 
     private function converter(string $displayCurrency): ?PreparedDisplayMoneyConverter

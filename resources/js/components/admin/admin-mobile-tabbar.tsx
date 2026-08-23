@@ -1,5 +1,11 @@
 import { Link } from '@inertiajs/react';
-import { LayoutGrid, Settings, ShoppingBag, Users } from 'lucide-react';
+import {
+    LayoutGrid,
+    Package,
+    Settings,
+    ShoppingBag,
+    Users,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import type { AdminNavigationProps } from '@/components/admin/admin-sidebar';
@@ -9,6 +15,7 @@ const PRIMARY_TAB_KEYS = [
     'overview',
     'orders',
     'customers',
+    'products',
     'settings',
 ] as const;
 
@@ -18,6 +25,7 @@ const navigationIcons: Record<PrimaryTabKey, LucideIcon> = {
     overview: LayoutGrid,
     orders: ShoppingBag,
     customers: Users,
+    products: Package,
     settings: Settings,
 };
 
@@ -29,10 +37,9 @@ export default function AdminMobileTabBar({
     const quickLabel = adminUi.navigation.quick ?? 'quick navigation';
     const navAriaLabel = `${adminUi.brand} ${quickLabel}`;
 
-    // Selected explicitly rather than mapped over `navigation`, so a nav entry
-    // added later (Products) reaches the sidebar and the navigation sheet
-    // without crowding a four-tab bar. `navigation` is permission-gated, so a
-    // Staff user legitimately resolves fewer than four tabs here.
+    // Selected explicitly rather than mapped over `navigation`, preserving
+    // destination order and filtering. `navigation` is permission-gated, so a
+    // Staff user legitimately resolves fewer tabs here.
     const primaryTabs = PRIMARY_TAB_KEYS.flatMap((key) => {
         const item = navigation.find(
             (entry): entry is AdminNavigationItem => entry.key === key,

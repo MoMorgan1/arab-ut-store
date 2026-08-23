@@ -13,6 +13,7 @@ use App\Security\SbcCartFingerprint;
 use App\ValueObjects\Cart\CartOwner;
 use App\ValueObjects\Pricing\SbcCompletionPricing;
 use DomainException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use JsonException;
@@ -53,7 +54,7 @@ final readonly class AddSbcToCart
         $variant = $this->eligibleVariant((string) $validated['variantId']);
         $completionCount = (int) $validated['completionCount'];
         $pricing = SbcCompletionPricing::fromConfiguration(
-            is_array($variant->configuration) ? $variant->configuration : [],
+            $variant->effectivePricingConfiguration(),
             $this->effectivePrice($variant),
             requireDeclared: false,
         );
@@ -78,14 +79,10 @@ final readonly class AddSbcToCart
             ->where('public_id', $publicId)
             ->where('service_type', ServiceType::Sbc)
             ->where('is_active', true)
-            ->whereHas('product', fn ($query) => $query
-                ->where('service_type', ServiceType::Sbc)
-                ->where('is_visible', true)
-                ->whereNull('archived_at')
-                ->where(function ($product): void {
-                    $product->whereNull('category_id')
-                        ->orWhereHas('category', fn ($category) => $category->where('is_visible', true));
-                }))
+            ->whereHas('product', function (Builder $query): void {
+                $query->where('service_type', ServiceType::Sbc);
+                Product::applyStorefrontVisible($query);
+            })
             ->with('product')
             ->lockForUpdate()
             ->first();
@@ -103,8 +100,7 @@ final readonly class AddSbcToCart
 
     private function effectivePrice(ProductVariant $variant): int
     {
-        $salePrice = $variant->getAttribute('sale_price_halalah');
-        $price = is_int($salePrice) ? $salePrice : (int) $variant->getAttribute('price_halalah');
+        $price = $variant->effectivePriceHalalah();
 
         if ($price <= 0) {
             throw new DomainException('The SBC variant price is unavailable.');

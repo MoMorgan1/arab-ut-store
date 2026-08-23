@@ -14,6 +14,7 @@ use App\Models\ProductVariant;
 use App\ValueObjects\Cart\CartOwner;
 use App\ValueObjects\Cart\ManualServiceCredentials;
 use DomainException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use JsonException;
@@ -87,11 +88,11 @@ final readonly class ManualServiceCartSupport
             ->where('platform', $platform)
             ->where('authority', ProductAuthority::Manual)
             ->where('is_active', true)
-            ->whereHas('product', fn ($query) => $query
-                ->where('service_type', $service)
-                ->where('authority', ProductAuthority::Manual)
-                ->where('is_visible', true)
-                ->whereNull('archived_at'))
+            ->whereHas('product', function (Builder $query) use ($service): void {
+                $query->where('service_type', $service)
+                    ->where('authority', ProductAuthority::Manual);
+                Product::applyStorefrontVisible($query);
+            })
             ->with('product')
             ->lockForUpdate()
             ->first();
