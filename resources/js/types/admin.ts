@@ -270,6 +270,14 @@ export type AdminTranslations = {
         regenerateDescription: string;
         confirmRegenerate: string;
         regenerating: string;
+        trustedDevicesTitle: string;
+        trustedDevicesDescription: string;
+        trustedDevicesNone: string;
+        forgetTrustedDevices: string;
+        forgettingTrustedDevices: string;
+        forgetTrustedDevicesTitle: string;
+        forgetTrustedDevicesDescription: string;
+        confirmForgetTrustedDevices: string;
         setupPassword: string;
         setupPasswordDescription: string;
         openAccountSecurity: string;

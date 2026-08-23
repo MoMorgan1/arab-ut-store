@@ -19,6 +19,7 @@ import type { AdminSettingsPageProps } from '@/types/admin';
 const api = vi.hoisted(() => ({
     confirmAdminMfa: vi.fn(),
     enableAdminMfa: vi.fn(),
+    forgetAdminMfaTrustedDevices: vi.fn(),
     loadAdminMfaQrCode: vi.fn(),
     loadAdminMfaRecoveryCodes: vi.fn(),
     regenerateAdminMfaRecoveryCodes: vi.fn(),
@@ -374,5 +375,59 @@ describe('AdminSettingsPage', () => {
                 'Your current codes will stop working immediately. Be ready to save the new codes.',
             ),
         ).toBeVisible();
+    });
+
+    it('renders trusted devices block and allows forgetting trusted browsers with confirmation', async () => {
+        api.forgetAdminMfaTrustedDevices.mockResolvedValue({ revoked: 2 });
+
+        render(<AdminSettingsPage {...createDefaultProps()} />);
+
+        expect(
+            screen.getByRole('heading', { name: 'Trusted browsers' }),
+        ).toBeVisible();
+        expect(
+            screen.getByText(
+                '2 browser(s) currently trusted. Trusted browsers skip the two-factor challenge for up to 30 days.',
+            ),
+        ).toBeVisible();
+
+        const forgetButton = screen.getByRole('button', {
+            name: 'Forget trusted browsers',
+        });
+        expect(forgetButton).toBeEnabled();
+
+        fireEvent.click(forgetButton);
+
+        expect(
+            screen.getByRole('heading', {
+                name: 'Forget all trusted browsers?',
+            }),
+        ).toBeVisible();
+        expect(
+            screen.getByText(
+                'Every browser, including this one, will have to enter a two-factor code again at the next sign-in.',
+            ),
+        ).toBeVisible();
+
+        const confirmButton = screen.getByRole('button', {
+            name: 'Forget all browsers',
+        });
+        fireEvent.click(confirmButton);
+
+        await waitFor(() => {
+            expect(api.forgetAdminMfaTrustedDevices).toHaveBeenCalledWith(
+                mfaRoutes.forgetTrustedDevices,
+            );
+            expect(
+                screen.getByText(
+                    'No browsers are currently trusted. Every sign-in will require a two-factor code.',
+                ),
+            ).toBeVisible();
+            expect(
+                screen.getByRole('button', {
+                    name: 'Forget trusted browsers',
+                }),
+            ).toBeDisabled();
+        });
     });
 });

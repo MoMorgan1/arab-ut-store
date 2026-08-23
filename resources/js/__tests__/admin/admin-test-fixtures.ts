@@ -319,6 +319,17 @@ export const englishAdminUi: AdminTranslations = {
             'We will create a QR code for this account. Scan it in your authenticator app, then confirm the code it shows.',
         startTitle: 'Connect your authenticator app',
         title: 'Set up two-factor authentication',
+        trustedDevicesTitle: 'Trusted browsers',
+        trustedDevicesDescription:
+            ':count browser(s) currently trusted. Trusted browsers skip the two-factor challenge for up to :days days.',
+        trustedDevicesNone:
+            'No browsers are currently trusted. Every sign-in will require a two-factor code.',
+        forgetTrustedDevices: 'Forget trusted browsers',
+        forgettingTrustedDevices: 'Forgetting browsers…',
+        forgetTrustedDevicesTitle: 'Forget all trusted browsers?',
+        forgetTrustedDevicesDescription:
+            'Every browser, including this one, will have to enter a two-factor code again at the next sign-in.',
+        confirmForgetTrustedDevices: 'Forget all browsers',
     },
     customers: {
         allStatuses: 'All statuses',
