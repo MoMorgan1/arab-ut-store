@@ -48,7 +48,7 @@ test('unconfirmed MFA admin users are redirected to MFA setup', function (): voi
 
     $this->actingAs($admin)
         ->get("/admin/customers/{$customer->public_id}")
-        ->assertRedirect('/admin/security/mfa');
+        ->assertRedirect('/admin/settings');
 });
 
 test('confirmed Admin can open localized private customer detail routes', function (string $prefix): void {

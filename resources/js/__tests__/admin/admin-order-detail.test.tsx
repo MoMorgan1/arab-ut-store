@@ -62,9 +62,9 @@ function defaultProps(): AdminOrderDetailPageProps {
             { key: 'overview', label: 'Overview', url: '/admin' },
             { key: 'orders', label: 'Orders', url: '/admin/orders' },
             {
-                key: 'security',
-                label: 'MFA Security',
-                url: '/admin/security/mfa',
+                key: 'settings',
+                label: 'Settings',
+                url: '/admin/settings',
             },
         ],
         permissions: [
@@ -131,10 +131,10 @@ describe('AdminOrderDetailPage', () => {
     it('opens confirmation modal when applying cancelled status and directly transitions for other statuses', () => {
         render(<AdminOrderDetailPage />);
 
-        const statusSelect = screen.getByLabelText('Next status');
-        const applyButton = screen.getByRole('button', {
+        const statusSelect = screen.getAllByLabelText('Next status')[0];
+        const applyButton = screen.getAllByRole('button', {
             name: 'Apply status',
-        });
+        })[0];
         expect(applyButton).toBeDisabled();
 
         fireEvent.change(statusSelect, { target: { value: 'cancelled' } });
@@ -176,12 +176,12 @@ describe('AdminOrderDetailPage', () => {
 
         render(<AdminOrderDetailPage />);
 
-        const statusSelect = screen.getByLabelText('Next status');
+        const statusSelect = screen.getAllByLabelText('Next status')[0];
         fireEvent.change(statusSelect, { target: { value: 'in_progress' } });
 
-        const applyButton = screen.getByRole('button', {
+        const applyButton = screen.getAllByRole('button', {
             name: 'Apply status',
-        });
+        })[0];
         fireEvent.click(applyButton);
 
         await waitFor(() => {
@@ -232,12 +232,12 @@ describe('AdminOrderDetailPage', () => {
 
         render(<AdminOrderDetailPage />);
 
-        const statusSelect = screen.getByLabelText('Next status');
+        const statusSelect = screen.getAllByLabelText('Next status')[0];
         fireEvent.change(statusSelect, { target: { value: 'in_progress' } });
 
-        const applyButton = screen.getByRole('button', {
+        const applyButton = screen.getAllByRole('button', {
             name: 'Apply status',
-        });
+        })[0];
         fireEvent.click(applyButton);
 
         await waitFor(() => {
@@ -363,8 +363,7 @@ describe('AdminOrderDetailPage', () => {
                 expect(screen.getByText('Decrypted credentials')).toBeVisible();
                 expect(screen.getByText('player@example.com')).toBeVisible();
                 expect(screen.getByText('SecretPassword123!')).toBeVisible();
-                expect(screen.getByText('11111111')).toBeVisible();
-                expect(screen.getByText('22222222')).toBeVisible();
+                expect(screen.getByText('11111111 · 22222222')).toBeVisible();
             });
 
             // Test Copy button for single value
@@ -376,10 +375,10 @@ describe('AdminOrderDetailPage', () => {
 
             // Test Copy button for array element
             const copyCodeBtn = screen.getByRole('button', {
-                name: /Copy ea_backup_codes #1/i,
+                name: /Copy ea_backup_codes/i,
             });
             fireEvent.click(copyCodeBtn);
-            expect(clipboardSpy).toHaveBeenCalledWith('11111111');
+            expect(clipboardSpy).toHaveBeenCalledWith('11111111\n22222222');
         });
 
         it('handles 410 purged secret and displays purged notice', async () => {
@@ -566,9 +565,9 @@ describe('AdminOrderDetailPage', () => {
             pageState.props = refundProps();
             render(<AdminOrderDetailPage />);
 
-            const refundButton = screen.getByRole('button', {
+            const refundButton = screen.getAllByRole('button', {
                 name: /Refund order/i,
-            });
+            })[0];
             expect(refundButton).toBeVisible();
 
             fireEvent.click(refundButton);
@@ -589,6 +588,19 @@ describe('AdminOrderDetailPage', () => {
             expect(
                 screen.getByRole('button', { name: /Refund SAR\s*150\.00/i }),
             ).toBeVisible();
+        });
+
+        it('renders mobile action bar under header with status transition and refund controls', () => {
+            pageState.props = refundProps();
+            render(<AdminOrderDetailPage />);
+
+            const statusSelects = screen.getAllByLabelText('Next status');
+            expect(statusSelects.length).toBeGreaterThanOrEqual(2);
+
+            const refundButtons = screen.getAllByRole('button', {
+                name: /Refund order/i,
+            });
+            expect(refundButtons.length).toBeGreaterThanOrEqual(2);
         });
 
         it('hides refund control when actor lacks orders.refund permission', () => {
@@ -650,7 +662,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getByRole('button', { name: /Refund order/i }),
+                screen.getAllByRole('button', { name: /Refund order/i })[0],
             );
 
             const submitBtn = screen.getByRole('button', {
@@ -696,7 +708,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getByRole('button', { name: /Refund order/i }),
+                screen.getAllByRole('button', { name: /Refund order/i })[0],
             );
 
             const reasonInput = screen.getByLabelText('Staff reason');
@@ -790,7 +802,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getByRole('button', { name: /Refund order/i }),
+                screen.getAllByRole('button', { name: /Refund order/i })[0],
             );
 
             fireEvent.change(screen.getByLabelText('Staff reason'), {
@@ -917,7 +929,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getByRole('button', { name: /Refund order/i }),
+                screen.getAllByRole('button', { name: /Refund order/i })[0],
             );
 
             fireEvent.change(screen.getByLabelText('Staff reason'), {
@@ -1015,7 +1027,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getByRole('button', { name: /Refund order/i }),
+                screen.getAllByRole('button', { name: /Refund order/i })[0],
             );
 
             fireEvent.change(screen.getByLabelText('Staff reason'), {
@@ -1066,7 +1078,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getByRole('button', { name: /Refund order/i }),
+                screen.getAllByRole('button', { name: /Refund order/i })[0],
             );
 
             fireEvent.change(screen.getByLabelText('Staff reason'), {
@@ -1117,7 +1129,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getByRole('button', { name: /Refund order/i }),
+                screen.getAllByRole('button', { name: /Refund order/i })[0],
             );
 
             fireEvent.change(screen.getByLabelText('Staff reason'), {
@@ -1165,7 +1177,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getByRole('button', { name: /Refund order/i }),
+                screen.getAllByRole('button', { name: /Refund order/i })[0],
             );
 
             fireEvent.change(screen.getByLabelText('Staff reason'), {
@@ -1205,7 +1217,7 @@ describe('AdminOrderDetailPage', () => {
             render(<AdminOrderDetailPage />);
 
             fireEvent.click(
-                screen.getByRole('button', { name: /Refund order/i }),
+                screen.getAllByRole('button', { name: /Refund order/i })[0],
             );
 
             fireEvent.change(screen.getByLabelText('Staff reason'), {

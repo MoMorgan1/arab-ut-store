@@ -31,6 +31,7 @@ export type AdminOrderRefundControlProps = {
     locale: 'ar' | 'en';
     direction: 'ltr' | 'rtl';
     confirmPasswordUrl?: string;
+    variant?: 'card' | 'bar';
 };
 
 type RefundPayload = {
@@ -58,6 +59,7 @@ export default function AdminOrderRefundControl({
     locale,
     direction,
     confirmPasswordUrl,
+    variant = 'card',
 }: AdminOrderRefundControlProps) {
     const copy = adminUi.orderDetail.refund;
 
@@ -230,7 +232,14 @@ export default function AdminOrderRefundControl({
     };
 
     return (
-        <div className="border-t border-border/60 pt-4" dir={direction}>
+        <div
+            className={
+                variant === 'bar'
+                    ? 'flex flex-col gap-3'
+                    : 'border-t border-border/60 pt-4'
+            }
+            dir={direction}
+        >
             <div className="flex flex-col gap-3">
                 <div
                     aria-atomic="true"

@@ -47,14 +47,14 @@ export default function AdminMobileNavigation({
 
     return (
         <Dialog.Root onOpenChange={changeOpen} open={open}>
-            <div className="flex min-h-[calc(3rem+env(safe-area-inset-top))] items-center justify-between gap-4 border-b border-border bg-card px-[max(1rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] pl-[max(1rem,env(safe-area-inset-left))] md:hidden">
+            <div className="flex min-h-[calc(3.5rem+env(safe-area-inset-top))] items-center justify-between gap-4 border-b border-border bg-card px-[max(1rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] pl-[max(1rem,env(safe-area-inset-left))] md:hidden">
                 <div className="flex items-center gap-3">
                     <img
                         alt=""
-                        height="40"
+                        height="32"
                         src="/images/arabut-logo-header.webp"
-                        width="40"
-                        className="h-10 w-10 shrink-0 object-contain"
+                        width="32"
+                        className="h-8 w-8 shrink-0 object-contain"
                     />
                     <span
                         className="font-display text-lg font-bold tracking-tight text-foreground"

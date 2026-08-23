@@ -34,11 +34,11 @@ beforeEach(function (): void {
     Route::getRoutes()->refreshActionLookups();
 });
 
-test('guests cannot enter the Admin MFA enrollment route', function (string $path, string $login): void {
+test('guests cannot enter the Admin settings route', function (string $path, string $login): void {
     $this->get($path)->assertRedirect($login);
 })->with([
-    'Canonical' => ['/admin/security/mfa', '/en/login'],
-    'English' => ['/en/admin/security/mfa', '/en/login'],
+    'Canonical' => ['/admin/settings', '/en/login'],
+    'English' => ['/en/admin/settings', '/en/login'],
 ]);
 
 test('nonprivileged accounts receive a forbidden Admin response', function (UserRole $role): void {
@@ -46,7 +46,7 @@ test('nonprivileged accounts receive a forbidden Admin response', function (User
 
     $this->actingAs($user)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
-        ->get('/admin/security/mfa')
+        ->get('/admin/settings')
         ->assertForbidden();
 })->with([
     'Customer' => [UserRole::Customer],
@@ -61,7 +61,7 @@ test('inactive Staff cannot retain Admin route admission', function (): void {
 
     $this->actingAs($staff)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
-        ->get('/admin/security/mfa')
+        ->get('/admin/settings')
         ->assertForbidden();
 });
 
@@ -78,8 +78,24 @@ test('passwordless Staff are sent to the localized account security setup', func
 
     $this->actingAs($staff)->get($path)->assertRedirect($destination);
 })->with([
-    'Canonical' => ['en', '/admin/security/mfa', '/en/my-account/security'],
-    'English' => ['en', '/en/admin/security/mfa', '/en/my-account/security'],
+    'Canonical' => ['en', '/admin/settings', '/en/my-account/security'],
+    'English' => ['en', '/en/admin/settings', '/en/my-account/security'],
+]);
+
+test('legacy MFA route redirects permanently to settings', function (
+    string $path,
+    string $destination,
+): void {
+    $user = privilegedUser(UserRole::Admin, confirmed: true);
+
+    $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->get($path)
+        ->assertStatus(301)
+        ->assertRedirect($destination);
+})->with([
+    'Canonical' => ['/admin/security/mfa', '/admin/settings'],
+    'English' => ['/en/admin/security/mfa', '/en/admin/settings'],
 ]);
 
 test('ordinary Admin routes send unconfirmed Staff through localized MFA enrollment', function (
@@ -93,8 +109,8 @@ test('ordinary Admin routes send unconfirmed Staff through localized MFA enrollm
         ->get($path)
         ->assertRedirect($destination);
 })->with([
-    'Canonical' => ['en', '/__tests/admin-admission', '/admin/security/mfa'],
-    'English' => ['en', '/en/__tests/admin-admission', '/admin/security/mfa'],
+    'Canonical' => ['en', '/__tests/admin-admission', '/admin/settings'],
+    'English' => ['en', '/en/__tests/admin-admission', '/admin/settings'],
 ]);
 
 test('confirmed Admin and Staff can enter ordinary private Admin responses', function (UserRole $role): void {
@@ -110,7 +126,7 @@ test('confirmed Admin and Staff can enter ordinary private Admin responses', fun
     'Staff' => [UserRole::Staff],
 ]);
 
-test('Admin enrollment routes retain the complete localized admission middleware', function (
+test('Admin settings routes retain the complete localized admission middleware', function (
     string $routeName,
 ): void {
     $route = Route::getRoutes()->getByName($routeName);
@@ -126,8 +142,8 @@ test('Admin enrollment routes retain the complete localized admission middleware
             'password.confirm',
         );
 })->with([
-    'Canonical' => ['admin.security.mfa'],
-    'English alias' => ['localized.admin.security.mfa'],
+    'Canonical' => ['admin.settings'],
+    'English alias' => ['localized.admin.settings'],
 ]);
 
 test('every Fortify MFA management route is private and independently throttled', function (string $routeName): void {

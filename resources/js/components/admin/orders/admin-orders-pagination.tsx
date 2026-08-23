@@ -51,9 +51,9 @@ export default function AdminOrdersPagination({
 
     return (
         <div className="flex flex-wrap items-center justify-between gap-4 px-2 py-3 text-sm text-muted-foreground">
-            <div className="flex-1 text-xs">
+            <div className="w-full text-xs whitespace-nowrap md:w-auto md:flex-1">
                 {selectedCount > 0 ? (
-                    <span>
+                    <span className="tabular-nums">
                         {copy.selectedRows
                             .replace(':count', String(selectedCount))
                             .replace(':total', String(pageRowsCount))}
@@ -62,26 +62,37 @@ export default function AdminOrdersPagination({
                     <span>
                         {total > 0 && from !== null && to !== null ? (
                             <>
-                                {copy.showing}{' '}
-                                <strong className="text-foreground tabular-nums">
-                                    {from}
-                                </strong>{' '}
-                                {copy.to}{' '}
-                                <strong className="text-foreground tabular-nums">
-                                    {to}
-                                </strong>{' '}
-                                {copy.of}{' '}
-                                <strong className="text-foreground tabular-nums">
-                                    {total}
-                                </strong>{' '}
-                                {copy.results}
+                                <span className="md:hidden">
+                                    <strong className="text-foreground tabular-nums">
+                                        {from}–{to}
+                                    </strong>{' '}
+                                    {copy.of}{' '}
+                                    <strong className="text-foreground tabular-nums">
+                                        {total}
+                                    </strong>
+                                </span>
+                                <span className="hidden md:inline">
+                                    {copy.showing}{' '}
+                                    <strong className="text-foreground tabular-nums">
+                                        {from}
+                                    </strong>{' '}
+                                    {copy.to}{' '}
+                                    <strong className="text-foreground tabular-nums">
+                                        {to}
+                                    </strong>{' '}
+                                    {copy.of}{' '}
+                                    <strong className="text-foreground tabular-nums">
+                                        {total}
+                                    </strong>{' '}
+                                    {copy.results}
+                                </span>
                             </>
                         ) : null}
                     </span>
                 )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-6">
+            <div className="flex w-full flex-wrap items-center justify-between gap-3 md:w-auto md:justify-end md:gap-6">
                 <div className="flex items-center gap-2">
                     <span className="text-xs">{copy.perPage}</span>
                     <Select
@@ -126,7 +137,7 @@ export default function AdminOrdersPagination({
                 <div className="flex items-center gap-1">
                     <Button
                         aria-label={copy.firstPage}
-                        className="h-9 min-h-[44px] w-9 min-w-[44px] p-0"
+                        className="hidden h-9 min-h-[44px] w-9 min-w-[44px] p-0 md:inline-flex"
                         disabled={!canPreviousPage || isNavigating}
                         onClick={() => onPageChange(1)}
                         type="button"
@@ -156,7 +167,7 @@ export default function AdminOrdersPagination({
                     </Button>
                     <Button
                         aria-label={copy.lastPage}
-                        className="h-9 min-h-[44px] w-9 min-w-[44px] p-0"
+                        className="hidden h-9 min-h-[44px] w-9 min-w-[44px] p-0 md:inline-flex"
                         disabled={!canNextPage || isNavigating}
                         onClick={() => onPageChange(lastPage)}
                         type="button"

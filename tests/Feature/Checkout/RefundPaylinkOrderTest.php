@@ -271,7 +271,7 @@ test('the admin refund endpoint is authenticated, admin restricted, mfa gated, p
         ->postJson($url, $payload)
         ->assertForbidden();
     $this->actingAs($unconfirmedMfaAdmin)->postJson($url, $payload)
-        ->assertRedirect('/admin/security/mfa');
+        ->assertRedirect('/admin/settings');
     $this->actingAs($admin)->postJson($url, [...$payload, 'amountHalalah' => 1249])
         ->assertUnprocessable()
         ->assertHeader('Cache-Control', 'no-store, private');

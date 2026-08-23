@@ -30,6 +30,16 @@ swipe down from the header or an unscrolled list dismisses it. With a keyboard
 open the sheet takes the whole remaining viewport; when the keyboard closes and
 iOS leaves the viewport scrolled, the sync resets that offset.
 
+When a customer's message is primarily about a service the store sells, the
+reply carries clickable service cards (`cards.v1` in the message metadata,
+rendered by `ChatServiceCards`). The model never authors a card: cards are
+derived server-side from the customer's own message, so a reply cannot advertise
+a service or link the store does not offer. Cards carry no price — prices are
+live data and belong on the product page — and the client validates the payload,
+capping it at two cards and refusing any link that is not a same-origin
+storefront path. Support and policy answers get no card: a card is an invitation
+to buy, not decoration on a warranty explanation.
+
 The launcher initializes chat lazily. One owner has one open conversation.
 Hourly maintenance closes it after 24 hours without a message. A later open
 request reuses only an inactivity-closed conversation inside the seven-day

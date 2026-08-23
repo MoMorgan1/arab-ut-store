@@ -1,9 +1,11 @@
 import { AlertCircle, ArrowDown, RefreshCw } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { chatServiceCards } from '@/lib/chat-cards';
 import { groupChatMessages } from '@/lib/chat-grouping';
 import { chatTopicsFor } from '@/lib/chat-topics';
 import type { AgentTurnState, ChatMessage } from '@/types/chat';
+import { ChatServiceCards } from './chat-service-cards';
 import { StreamedText } from './streamed-text';
 import { TypingIndicator } from './typing-indicator';
 
@@ -316,6 +318,15 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                 </p>
                                             )}
                                         </div>
+
+                                        {!isCustomer && !isStreaming && (
+                                            <ChatServiceCards
+                                                cards={chatServiceCards(
+                                                    message,
+                                                )}
+                                                locale={locale}
+                                            />
+                                        )}
 
                                         {/* Status / retry for customer messages */}
                                         {isCustomer && isError && (

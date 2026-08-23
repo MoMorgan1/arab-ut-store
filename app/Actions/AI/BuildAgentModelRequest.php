@@ -24,6 +24,7 @@ final readonly class BuildAgentModelRequest
         private PendingAgentMessages $pendingAgentMessages,
         private CompletedAgentContextMessages $completedContextMessages,
         private GuardAgentPromptContent $guardPromptContent,
+        private SelectSupportKnowledge $selectKnowledge,
     ) {}
 
     public function execute(AgentTurn $turn, ChatOwner $owner): AgentModelRequest
@@ -41,16 +42,57 @@ final readonly class BuildAgentModelRequest
         );
         $messages = $this->modelMessages($prior, $current);
         $instructions = File::get(resource_path("ai-assistant/prompts/{$turn->prompt_version}.md"));
+        $knowledge = $this->knowledgeBlock($current, $conversation->locale);
 
         return new AgentModelRequest(
             model: $this->config->model(),
-            instructions: $instructions."\n\nConversation locale: {$conversation->locale}. Authenticated customer: ".($owner->userId() === null ? 'no' : 'yes').'.',
+            instructions: $instructions."\n\nConversation locale: {$conversation->locale}. Authenticated customer: ".($owner->userId() === null ? 'no' : 'yes').'.'.$knowledge,
             messages: $messages,
             safetyIdentifier: hash_hmac('sha256', $owner->idempotencyScope(), (string) config('app.key')),
             maxOutputTokens: $this->config->maxOutputTokens(),
             reasoningEffort: $this->config->reasoningEffort(),
             locale: $conversation->locale,
         );
+    }
+
+    /**
+     * Approved store knowledge for the question being asked, injected as a
+     * delimited block so the model can quote it and cite the topic it used.
+     *
+     * @param  Collection<int, ChatMessage>  $current
+     */
+    private function knowledgeBlock(Collection $current, string $locale): string
+    {
+        $limit = $this->config->knowledgeTopicLimit();
+
+        if ($limit === 0) {
+            return '';
+        }
+
+        $question = $current
+            ->filter(fn (ChatMessage $message): bool => $message->sender_type === ChatSenderType::Customer)
+            ->pluck('content')
+            ->implode(' ');
+
+        $topics = $this->selectKnowledge->execute($question, $limit);
+
+        if ($topics === []) {
+            return '';
+        }
+
+        $rendered = array_map(
+            static fn ($topic): string => "[id: {$topic->id}] {$topic->title($locale)}
+{$topic->body($locale)}",
+            $topics,
+        );
+
+        return '
+
+<store_knowledge>
+'.implode('
+
+', $rendered).'
+</store_knowledge>';
     }
 
     /** @return array{int, int} */

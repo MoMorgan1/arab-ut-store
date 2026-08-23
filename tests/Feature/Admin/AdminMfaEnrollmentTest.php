@@ -6,7 +6,7 @@ use Inertia\Testing\AssertableInertia;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use Laravel\Fortify\Fortify;
 
-test('the Admin MFA page exposes only safe booleans and relative endpoint URLs', function (
+test('the Admin settings page exposes only safe booleans and relative endpoint URLs', function (
     string $locale,
     string $path,
 ): void {
@@ -22,7 +22,7 @@ test('the Admin MFA page exposes only safe booleans and relative endpoint URLs',
     $response->assertOk()
         ->assertHeader('Cache-Control', 'no-store, private')
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('admin/security/mfa')
+            ->component('admin/settings')
             ->where('locale', 'en')
             ->where('direction', 'ltr')
             ->where('auth', null)
@@ -34,11 +34,12 @@ test('the Admin MFA page exposes only safe booleans and relative endpoint URLs',
             ->where('mfa.routes.qrCode', '/user/two-factor-qr-code')
             ->where('mfa.routes.recoveryCodes', '/user/two-factor-recovery-codes')
             ->where('mfa.routes.regenerateRecoveryCodes', '/user/two-factor-recovery-codes')
-            ->where('mfa.routes.disable', '/user/two-factor-authentication'));
+            ->where('mfa.routes.disable', '/user/two-factor-authentication')
+            ->where('team', null)
+            ->where('teamUrls', null));
 
     expect($response->getContent())
         ->not->toContain(
-            $user->email,
             $secret,
             'recovery-code-one',
             'two_factor_secret',
@@ -46,24 +47,24 @@ test('the Admin MFA page exposes only safe booleans and relative endpoint URLs',
             (string) $user->getRawOriginal('password'),
         );
 })->with([
-    'Canonical' => ['en', '/admin/security/mfa'],
-    'English alias' => ['en', '/en/admin/security/mfa'],
+    'Canonical' => ['en', '/admin/settings'],
+    'English alias' => ['en', '/en/admin/settings'],
 ]);
 
-test('the MFA page requires a recent password confirmation', function (): void {
+test('the settings page requires a recent password confirmation', function (): void {
     $staff = adminMfaUser(UserRole::Staff, confirmed: false);
 
     $this->actingAs($staff)
-        ->get('/admin/security/mfa')
+        ->get('/admin/settings')
         ->assertRedirect(route('password.confirm'));
 });
 
-test('password-confirmed Admin and Staff can render private MFA management', function (UserRole $role): void {
+test('password-confirmed Admin and Staff can render private settings page', function (UserRole $role): void {
     $user = adminMfaUser($role, confirmed: true);
 
     $this->actingAs($user)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
-        ->get('/admin/security/mfa')
+        ->get('/admin/settings')
         ->assertOk()
         ->assertHeader('Cache-Control', 'no-store, private');
 })->with([

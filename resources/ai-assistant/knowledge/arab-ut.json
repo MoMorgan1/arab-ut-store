@@ -1,0 +1,601 @@
+{
+    "version": "knowledge.v1",
+    "locale_authority": "ar",
+    "source_note": "Adapted from the legacy arab-ut.com knowledge base on 2026-08-23. Links point at store.arab-ut.com pages. Prices, stock, and order state are never answered from this file.",
+    "topics": [
+        {
+            "id": "about-store",
+            "url": "/",
+            "faq": false,
+            "keywords_ar": ["من انتم", "نبذة", "المتجر", "موثوق", "تعريف"],
+            "keywords_en": ["about", "who are you", "store", "trusted"],
+            "title_ar": "نبذة عن متجر عرب التيميت",
+            "body_ar": "متجر عرب التيميت متجر سعودي متخصص في بيع كوينز EA Sports FC وتقديم خدمات اللعب، ويخدم اللاعبين في السعودية والوطن العربي. المتجر مسجل رسمياً وموثق في منصة معروف.",
+            "title_en": "About Arab UT Store",
+            "body_en": "Arab UT Store is a Saudi store specializing in selling EA Sports FC coins and providing play services, serving players in Saudi Arabia and the Arab world. The store is officially registered and verified on the Maroof platform."
+        },
+        {
+            "id": "verification",
+            "url": "/terms",
+            "faq": true,
+            "keywords_ar": ["معروف", "سجل تجاري", "توثيق", "ترخيص", "رسمي"],
+            "keywords_en": [
+                "maroof",
+                "commercial registration",
+                "verified",
+                "license"
+            ],
+            "title_ar": "توثيق وتراخيص المتجر",
+            "body_ar": "المتجر مسجل في وزارة التجارة السعودية برقم سجل تجاري 7039599043، وموثق في منصة معروف برقم 329433. يمكن التحقق عبر: https://maroof.sa/businesses/details/329433",
+            "title_en": "Store Verification and Licenses",
+            "body_en": "The store is registered with the Saudi Ministry of Commerce under commercial registration number 7039599043, and verified on the Maroof platform under number 329433. Verification is available via: https://maroof.sa/businesses/details/329433"
+        },
+        {
+            "id": "working-hours",
+            "url": "/",
+            "faq": true,
+            "keywords_ar": ["ساعات العمل", "متى", "دوام", "متاح", "24"],
+            "keywords_en": ["hours", "open", "available", "24/7"],
+            "title_ar": "ساعات العمل",
+            "body_ar": "المتجر متاح 24 ساعة طوال أيام الأسبوع، ونظام الشحن أوتوماتيكي بالكامل. تقدر تسأل هنا في الشات في أي وقت وفريق الدعم يتابع معك.",
+            "title_en": "Working Hours",
+            "body_en": "The store is available 24 hours a day, 7 days a week, and the delivery system is fully automated. You can ask here in the chat at any time and the support team will follow up with you."
+        },
+        {
+            "id": "pricing-policy",
+            "url": "/",
+            "faq": true,
+            "keywords_ar": ["سعر", "أسعار", "كم", "تكلفة", "بكم"],
+            "keywords_en": ["price", "cost", "how much", "pricing"],
+            "title_ar": "سياسة الأسعار",
+            "body_ar": "الأسعار متغيرة حسب السوق. الأسعار الحالية تظهر في صفحة المنتج داخل المتجر عند اختيار المنصة والكمية، ولا يمكن تأكيد أي سعر خارج الموقع.",
+            "title_en": "Pricing Policy",
+            "body_en": "Prices change according to the market. Current prices appear on the product page in the store when you select the platform and quantity, and no price can be confirmed outside the website."
+        },
+        {
+            "id": "coins-service",
+            "url": "/#coins",
+            "faq": true,
+            "keywords_ar": ["كوينز", "شحن", "coins", "مليون", "كمية"],
+            "keywords_en": ["coins", "top up", "million", "amount"],
+            "title_ar": "خدمة شحن الكوينز",
+            "body_ar": "نشحن كوينز EA Sports FC على PlayStation و Xbox و PC. بلايستيشن وإكس بوكس يتشاركان نفس سوق الانتقالات، وPC له سوق منفصل. الكميات المتوفرة تبدأ من 20,000 كوينز، وللكميات الكبيرة جداً تواصل معنا هنا.",
+            "title_en": "Coins Delivery Service",
+            "body_en": "We deliver EA Sports FC coins on PlayStation, Xbox, and PC. PlayStation and Xbox share the same Transfer Market, and PC has a separate market. Available quantities start from 20,000 coins, and for very large quantities contact us here in the chat."
+        },
+        {
+            "id": "coins-speeds",
+            "url": "/#coins",
+            "faq": true,
+            "keywords_ar": ["سريع", "عادي", "مدة", "وقت التسليم", "كم ياخذ"],
+            "keywords_en": ["fast", "normal", "delivery time", "how long"],
+            "title_ar": "طرق شحن الكوينز والمدة",
+            "body_ar": "الشحن السريع: المليون كوينز من 30 إلى 45 دقيقة، ويجب مرور 36 ساعة على آخر طلب سريع قبل تكراره. الشحن العادي: المليون من ساعة إلى 3 ساعات، ويفضل مرة واحدة يومياً. الفرق بينهما الوقت فقط، وكلاهما آمن ومشمول بالضمان.",
+            "title_en": "Coins Delivery Methods and Duration",
+            "body_en": "Fast delivery: 1 million coins takes 30 to 45 minutes, and 36 hours must pass since your last fast order before repeating it. Normal delivery: 1 million coins takes 1 to 3 hours, and is preferred once daily. The only difference between them is time, and both are safe and covered by warranty."
+        },
+        {
+            "id": "fut-champions",
+            "url": "/fut-champions",
+            "faq": true,
+            "keywords_ar": ["فوت شامبيونز", "champions", "رانك", "ويك اند"],
+            "keywords_en": ["fut champions", "rank", "weekend league"],
+            "title_ar": "خدمة الفوت شامبيونز",
+            "body_ar": "نلعب لك طور FUT Champions ونوصلك من رانك 6 إلى رانك 1. متاحة على PlayStation و PC فقط وغير متاحة على Xbox. التنفيذ: مستعجل خلال 24 ساعة، أو عادي من يوم إلى 3 أيام. الطور يبدأ الجمعة 8 مساءً وينتهي عادة الاثنين 10 صباحاً وقد يمتد للثلاثاء حسب تحديثات اللعبة.",
+            "title_en": "FUT Champions Service",
+            "body_en": "We play FUT Champions mode for you and take you from Rank 6 to Rank 1. Available on PlayStation and PC only, and not available on Xbox. Execution: urgent within 24 hours, or normal from 1 to 3 days. The mode starts Friday at 8:00 PM and usually ends Monday at 10:00 AM, and may extend to Tuesday depending on game updates."
+        },
+        {
+            "id": "rivals",
+            "url": "/rivals",
+            "faq": true,
+            "keywords_ar": [
+                "رايفلز",
+                "rivals",
+                "ديفيجن",
+                "تصعيد",
+                "مباريات اسبوعية"
+            ],
+            "keywords_en": ["rivals", "division", "promotion", "weekly wins"],
+            "title_ar": "خدمة الرايفلز",
+            "body_ar": "نلعب لك طور Division Rivals ونصعدك من Division 10 حتى Division 1 ثم Elite. تختار عدد الديفيجنات المطلوبة عند الطلب، مثلاً لو أنت في ديفيجن 4 واخترت 2 نوصلك لديفيجن 2. متوفر أيضاً لعب المباريات الأسبوعية (12 فوز) بدون تصعيد. المدة يوم إلى يومين عمل. متاحة على PlayStation و PC فقط.",
+            "title_en": "Division Rivals Service",
+            "body_en": "We play Division Rivals mode for you and promote you from Division 10 up to Division 1 then Elite. You select the number of divisions required when ordering; for example, if you are in Division 4 and select 2, we take you to Division 2. Playing weekly matches (12 wins) without promotion is also available. Duration is 1 to 2 business days. Available on PlayStation and PC only."
+        },
+        {
+            "id": "sbc",
+            "url": "/sbc",
+            "faq": true,
+            "keywords_ar": ["تحديات", "sbc", "بناء التشكيلات", "تشكيلة"],
+            "keywords_en": ["sbc", "squad building", "challenge"],
+            "title_ar": "خدمة تحديات بناء التشكيلات (SBC)",
+            "body_ar": "ننفذ تحديات SBC كاملة ونشحن الكوينز اللازمة ونسلمك اللاعب المطلوب، على جميع المنصات. لا نأخذ أي لاعب من تشكيلتك أو ناديك، وإذا احتجنا أي لاعب ستجد قيمته موجودة في النادي. مدة تنفيذ التحدي نفسه: 5 تشكيلات حوالي 30 دقيقة، و10 تشكيلات حوالي 60 دقيقة، غير شامل وقت شحن الكوينز. إذا ما لقيت التحدي في الموقع اطلبه هنا ونضيفه.",
+            "title_en": "Squad Building Challenges (SBC) Service",
+            "body_en": "We complete full SBC challenges, deliver the required coins, and hand over the requested player, on all platforms. We do not take any player from your squad or club, and if we need any player, you will find their value in the club. Execution time for the challenge itself: 5 squads takes about 30 minutes, and 10 squads takes about 60 minutes, not including coin delivery time. If you do not find the challenge on the website, request it here in the chat and we will add it."
+        },
+        {
+            "id": "sniping",
+            "url": "/",
+            "faq": false,
+            "keywords_ar": ["صيد", "صيد اللاعبين", "sniping", "مقطوع"],
+            "keywords_en": ["sniping", "player sniping", "extinct"],
+            "title_ar": "خدمة صيد اللاعبين",
+            "body_ar": "خدمة صيد اللاعبين المقطوعين من السوق قادمة قريباً للمتجر الجديد وغير متاحة للطلب حالياً. إذا كنت مهتم بها اذكر ذلك هنا ونبلغك أول ما تتوفر.",
+            "title_en": "Player Sniping Service",
+            "body_en": "The player sniping service for players extinct from the market is coming soon to the new store and is not available for order currently. If you are interested in it, mention it here in the chat and we will inform you as soon as it becomes available."
+        },
+        {
+            "id": "warranty",
+            "url": "/warranty",
+            "faq": true,
+            "keywords_ar": ["ضمان", "باند", "حظر", "تعويض", "192"],
+            "keywords_en": ["warranty", "ban", "compensation", "guarantee"],
+            "title_ar": "سياسة الضمان",
+            "body_ar": "مدة الضمان 192 ساعة (8 أيام) من تاريخ إتمام الشحن. يشترط أن يكون قد مر 72 ساعة على الأقل على آخر شحن من أي متجر آخر قبل الطلب. يسقط الضمان فوراً في حال التعامل مع أي مصدر كوينز آخر بيعاً أو شراءً خلال فترة الضمان، أو نقل الكوينز إلى حساب آخر. لا يفضل طلب الشحن أكثر من مرة واحدة يومياً.",
+            "title_en": "Warranty Policy",
+            "body_en": "The warranty duration is 192 hours (8 days) from the date of delivery completion. At least 72 hours must have passed since your last top-up from any other store before ordering. The warranty is void immediately if you deal with any other coin source by buying or selling during the warranty period, or transfer coins to another account. It is not recommended to order delivery more than once daily."
+        },
+        {
+            "id": "ban-compensation",
+            "url": "/warranty",
+            "faq": false,
+            "keywords_ar": [
+                "باند",
+                "تعويض",
+                "محظور",
+                "ايميل EA",
+                "coin distribution"
+            ],
+            "keywords_en": [
+                "ban",
+                "compensation",
+                "banned",
+                "coin distribution"
+            ],
+            "title_ar": "إثبات الباند وآلية التعويض",
+            "body_ar": "في حال حدوث باند نحتاج صورة من الإيميل الرسمي من EA يوضح أن سبب الباند هو استلام كوينز (Coin Distribution). التعويض في حالة الشحن على سوق مفتوح: نقدّر قيمة النادي واللاعبين ونعوضك بحساب مقارب؛ اللاعبون القابلون للبيع تُحسب قيمتهم كاملة وغير القابلين للبيع نصف القيمة، والتقييم يشمل التشكيلة الأساسية فقط. الشحن على سوق مقفول يكون على مسؤولية العميل ولا يشمله التعويض.",
+            "title_en": "Ban Proof and Compensation Mechanism",
+            "body_en": "In case of a ban, we need a screenshot of the official email from EA showing that the reason for the ban is receiving coins (Coin Distribution). Compensation in case of delivery on an open market: we estimate the value of the club and players and compensate you with a comparable account; tradable players are counted at full value and untradable players at half value, and the valuation includes the starting squad only. Delivery on a closed market is at the customer's own risk and is not covered by compensation."
+        },
+        {
+            "id": "returns",
+            "url": "/returns",
+            "faq": true,
+            "keywords_ar": [
+                "استرجاع",
+                "إلغاء",
+                "استرداد",
+                "فلوسي",
+                "الغاء الطلب"
+            ],
+            "keywords_en": ["refund", "cancel", "return", "money back"],
+            "title_ar": "سياسة الاسترجاع والإلغاء",
+            "body_ar": "الكوينز والحسابات منتجات رقمية فورية الاستهلاك وغير قابلة للاسترداد بعد إتمام التسليم. قبل بدء التنفيذ يحق لك إلغاء الطلب واسترداد المبلغ مخصوماً منه 5% رسوم إدارية وعمولات بوابات الدفع. يتم اعتماد طلب الاسترجاع خلال 48 ساعة، ووصول المبلغ للبنك من 3 إلى 14 يوم عمل حسب سياسة البنك.",
+            "title_en": "Refund and Cancellation Policy",
+            "body_en": "Coins and accounts are digital products consumed instantly and are non-refundable after delivery is complete. Before execution begins, you have the right to cancel the order and get a refund minus 5% administrative fees and payment gateway commissions. The refund request is approved within 48 hours, and the amount reaches the bank within 3 to 14 business days depending on bank policy."
+        },
+        {
+            "id": "returns-play-services",
+            "url": "/returns",
+            "faq": false,
+            "keywords_ar": ["استرجاع رانك", "لم ينفذ", "متأخر", "فرق السعر"],
+            "keywords_en": [
+                "rank refund",
+                "not delivered",
+                "late",
+                "price difference"
+            ],
+            "title_ar": "استرجاع خدمات الرانك واللعب",
+            "body_ar": "في خدمات FUT Champions و Rivals يحق لك استرجاع قيمة الطلب المستعجل إذا لم يبدأ التنفيذ خلال المدة المتفق عليها. وإذا طلبت رانك معين ولم نتمكن من تحقيقه بالكامل، يحق لك استرجاع فرق السعر بين الرانك المطلوب والرانك الذي تحقق فعلياً.",
+            "title_en": "Refund for Rank and Play Services",
+            "body_en": "In FUT Champions and Rivals services, you are entitled to a refund for the urgent order if execution does not start within the agreed duration. If you requested a specific rank and we could not achieve it completely, you are entitled to a refund of the price difference between the requested rank and the rank actually achieved."
+        },
+        {
+            "id": "closed-market-refund",
+            "url": "/warranty",
+            "faq": false,
+            "keywords_ar": ["سوق مغلق", "معلق", "on hold", "ما ينشحن"],
+            "keywords_en": ["market closed", "on hold", "pending"],
+            "title_ar": "الطلب وسوق الانتقالات مغلق",
+            "body_ar": "تأكد أن سوق الانتقالات مفتوح قبل الطلب: افتح EA Sports FC Web App أو Companion App وجرّب البحث عن أي لاعب في Transfer Market. إذا قدرت تبحث فالسوق مفتوح، وإذا ظهرت رسالة Continue playing فالسوق مقفل. لو طلبت والسوق مغلق لا يتم استرجاع المبلغ، ويتحول الطلب إلى حالة معلق ويبقى المبلغ رصيداً محفوظاً، وننفذ الشحن فور فتح السوق. لفتح السوق العب 3 مباريات يومياً على الأقل؛ الأمر بيد EA.",
+            "title_en": "Ordering While the Transfer Market Is Closed",
+            "body_en": "Make sure the Transfer Market is open before ordering: open the EA Sports FC Web App or Companion App and try searching for any player in the Transfer Market. If you can search, the market is open. If the Continue playing message appears, the market is locked. If you order while the market is closed, the amount is not refunded; the order changes to on-hold status and the amount remains as saved credit, and we execute the delivery as soon as the market opens. To open the market, play at least 3 matches daily; the matter is in EA's hands."
+        },
+        {
+            "id": "customer-data-errors",
+            "url": "/terms",
+            "faq": false,
+            "keywords_ar": ["بيانات خاطئة", "منتج خاطئ", "منصة غلط", "مسؤولية"],
+            "keywords_en": [
+                "wrong data",
+                "wrong product",
+                "wrong platform",
+                "liability"
+            ],
+            "title_ar": "الأخطاء في البيانات وإخلاء المسؤولية",
+            "body_ar": "المتجر غير مسؤول عن التأخير أو الخسارة الناتجة عن بيانات خاطئة مثل اختيار منصة غير صحيحة أو إيميل خاطئ أو أكواد احتياطية خاطئة. لو اشتريت منتج خاطئ ولم يبدأ التنفيذ نقدر نعدل الطلب مع تطبيق فارق السعر إن وجد. المتجر يخلي مسؤوليته عن أي اختراق للحساب بعد الشحن إذا لم تُغيّر كلمة المرور فور الاستلام.",
+            "title_en": "Data Errors and Disclaimer",
+            "body_en": "The store is not responsible for delay or loss resulting from incorrect data, such as selecting the wrong platform, wrong email, or incorrect Backup Codes. If you purchased the wrong product and execution has not started, we can edit the order with price difference applied if any. The store disclaims liability for any account compromise after delivery if you do not change your password immediately upon receipt."
+        },
+        {
+            "id": "payment-methods",
+            "url": "/cart",
+            "faq": true,
+            "keywords_ar": [
+                "الدفع",
+                "طرق الدفع",
+                "مدى",
+                "فيزا",
+                "ابل باي",
+                "stc"
+            ],
+            "keywords_en": ["payment", "mada", "visa", "apple pay", "stc pay"],
+            "title_ar": "طرق الدفع",
+            "body_ar": "الدفع يتم عبر بوابة الدفع الإلكتروني في صفحة إتمام الطلب. جميع المعاملات مشفرة ولا نحتفظ ببيانات البطاقة، ولا توجد رسوم إضافية على أي طريقة دفع. لو واجهت مشكلة في الدفع اذكرها هنا ونساعدك.",
+            "title_en": "Payment Methods",
+            "body_en": "Payment is made via the electronic payment gateway on the checkout page. All transactions are encrypted and we do not store card data, and there are no additional fees on any payment method. If you face a payment problem, mention it here in the chat and we will help you."
+        },
+        {
+            "id": "installments",
+            "url": "/cart",
+            "faq": false,
+            "keywords_ar": ["تقسيط", "تابي", "tabby", "تمارا", "اقساط"],
+            "keywords_en": ["installments", "tabby", "tamara", "split payment"],
+            "title_ar": "التقسيط",
+            "body_ar": "التقسيط غير متاح تلقائياً في صفحة الدفع حالياً، لكن يمكن ترتيبه يدوياً لعملاء السعودية. اذكر هنا أنك تريد التقسيط مع المبلغ والخدمة المطلوبة، وفريق الدعم يجهز لك رابط الدفع وينفذ الطلب بعد إتمامه.",
+            "title_en": "Installments",
+            "body_en": "Installments are not automatically available on the checkout page currently, but can be arranged manually for Saudi Arabia customers. Mention here in the chat that you want installments along with the amount and requested service, and the support team will prepare the payment link for you and execute the order after completion."
+        },
+        {
+            "id": "required-data-coins",
+            "url": "/ea-backup-codes",
+            "faq": true,
+            "keywords_ar": ["بيانات", "مطلوب", "ايميل", "كلمة المرور", "أكواد"],
+            "keywords_en": [
+                "required data",
+                "email",
+                "password",
+                "backup codes"
+            ],
+            "title_ar": "البيانات المطلوبة لشحن الكوينز و SBC",
+            "body_ar": "لخدمات شحن الكوينز وتحديات SBC على جميع المنصات نحتاج: إيميل حساب EA، كلمة مرور حساب EA، وأكواد EA الاحتياطية، وهي بيانات تطبيق Companion أو Web App. تُدخل هذه البيانات في نموذج البيانات الآمن الخاص بطلبك داخل المتجر فقط، ولا تُرسل أبداً داخل الشات.",
+            "title_en": "Required Data for Coins Delivery and SBC",
+            "body_en": "For coins delivery and SBC challenge services on all platforms, we need: EA account email, EA account password, and EA Backup Codes, which are the Companion App or Web App credentials. This data is entered only in the secure data form for your order inside the store, and is never sent inside the chat."
+        },
+        {
+            "id": "required-data-play",
+            "url": "/ea-backup-codes",
+            "faq": false,
+            "keywords_ar": ["بيانات اللعب", "psn", "بلايستيشن", "أكواد سوني"],
+            "keywords_en": [
+                "psn",
+                "playstation",
+                "backup codes",
+                "play services data"
+            ],
+            "title_ar": "البيانات المطلوبة لخدمات FUT Champions و Rivals",
+            "body_ar": "خدمات FUT Champions و Rivals متاحة على PlayStation و PC فقط. للبلايستيشن نحتاج: إيميل وكلمة مرور حساب PlayStation، وأكواد PlayStation الاحتياطية، بالإضافة إلى أكواد EA الاحتياطية. للـ PC نحتاج: إيميل وكلمة مرور حساب EA وأكواد EA الاحتياطية. تُدخل البيانات في نموذج الطلب الآمن وليس في الشات.",
+            "title_en": "Required Data for FUT Champions and Rivals Services",
+            "body_en": "FUT Champions and Rivals services are available on PlayStation and PC only. For PlayStation, we need: PlayStation account email and password, and PlayStation Backup Codes, in addition to EA Backup Codes. For PC, we need: EA account email and password, and EA Backup Codes. Data is entered in the secure order form and not in the chat."
+        },
+        {
+            "id": "ea-backup-codes",
+            "url": "/ea-backup-codes",
+            "faq": true,
+            "keywords_ar": [
+                "أكواد احتياطية",
+                "backup codes",
+                "كيف اطلع",
+                "استخراج"
+            ],
+            "keywords_en": ["backup codes", "how to get", "two factor"],
+            "title_ar": "كيفية استخراج أكواد EA الاحتياطية",
+            "body_ar": "نحتاج الأكواد غير المستخدمة فقط. افتح https://myaccount.ea.com/am/ui/security-privacy وسجّل الدخول، ثم Security and Privacy ثم Two-factor authentication وتأكد أن Login Verification مفعّل، ثم أدخل كود التحقق المرسل لإيميلك، ثم اضغط View Backup Codes. الأكواد غير المستخدمة تظهر باللون الأسود والمستخدمة رمادية ولا تصلح. إذا كانت كلها رمادية اضغط Create New Codes. الشرح المفصل في صفحة أكواد EA داخل المتجر.",
+            "title_en": "How to Get EA Backup Codes",
+            "body_en": "We only need unused codes. Open https://myaccount.ea.com/am/ui/security-privacy and log in, then Security and Privacy, then Two-factor authentication and make sure Login Verification is enabled, then enter the verification code sent to your email, then click View Backup Codes. Unused codes appear in black, and used codes appear in grey and do not work. If all codes are grey, click Create New Codes. Detailed explanation is on the EA backup codes page inside the store."
+        },
+        {
+            "id": "pre-order-requirements",
+            "url": "/#coins",
+            "faq": true,
+            "keywords_ar": [
+                "قبل الشحن",
+                "شروط",
+                "1500",
+                "تسجيل خروج",
+                "جاهزية"
+            ],
+            "keywords_en": [
+                "before order",
+                "requirements",
+                "1500 coins",
+                "log out"
+            ],
+            "title_ar": "شروط ما قبل الشحن",
+            "body_ar": "قبل الطلب تأكد أن سوق الانتقالات مفتوح، وأن في حسابك 1,500 كوينز على الأقل لأننا نشحن عن طريق شراء اللاعبين من السوق، وسجّل الخروج من طور Ultimate Team.",
+            "title_en": "Pre-Delivery Requirements",
+            "body_en": "Before ordering, make sure the Transfer Market is open, your account has at least 1,500 coins because we deliver coins by buying players from the market, and log out of Ultimate Team mode."
+        },
+        {
+            "id": "logout-rules",
+            "url": "/#coins",
+            "faq": false,
+            "keywords_ar": [
+                "تسجيل خروج",
+                "افتح اللعبة",
+                "اثناء التنفيذ",
+                "المحترف"
+            ],
+            "keywords_en": ["log out", "during service", "playing"],
+            "title_ar": "تسجيل الخروج حسب نوع الخدمة",
+            "body_ar": "لشحن الكوينز و SBC: يكفي تسجيل الخروج من طور Ultimate Team، وتقدر تلعب أطوار ثانية مثل Pro Clubs أو Kick Off أو Career Mode، بشرط عدم فتح Ultimate Team أثناء الخدمة. لخدمات FUT Champions و Rivals: لا تفتح حساب PlayStation نهائياً أثناء التنفيذ، ويمكن استخدام يوزر ثاني. للتأكد إذا كان المحترف يلعب الآن افتح تطبيق Companion؛ إذا فتح عادي فالمحترف غير متصل، وإذا ظهرت رسالة someone is logged in فهو يلعب حالياً.",
+            "title_en": "Logout Rules by Service Type",
+            "body_en": "For coins delivery and SBC: logging out of Ultimate Team mode is sufficient, and you can play other modes such as Pro Clubs, Kick Off, or Career Mode, provided you do not open Ultimate Team during service. For FUT Champions and Rivals services: do not open your PlayStation account at all during execution; you can use a second user profile. To check if the pro is currently playing, open the Companion App: if it opens normally, the pro is not connected; if the someone is logged in message appears, the pro is currently playing."
+        },
+        {
+            "id": "post-order-steps",
+            "url": "/warranty",
+            "faq": true,
+            "keywords_ar": [
+                "بعد الشحن",
+                "تغيير كلمة المرور",
+                "فيفا بوينت",
+                "تعليمات"
+            ],
+            "keywords_en": ["after delivery", "change password", "fifa points"],
+            "title_ar": "تعليمات ما بعد الشحن",
+            "body_ar": "غيّر كلمة مرور حساب EA فوراً بعد الشحن من https://myaccount.ea.com لحماية حسابك. ممنوع الشحن من أي متجر آخر خلال فترة الضمان (8 أيام)، وممنوع نقل الكوينز لحساب آخر أو بيعها، ومخالفة ذلك تسقط الضمان. لا تشحن FIFA Points قبل أو بعد الشحن بمدة 72 ساعة. ويُستحسن توليد أكواد احتياطية جديدة وحفظها في مكان آمن.",
+            "title_en": "Post-Delivery Instructions",
+            "body_en": "Change your EA account password immediately after delivery from https://myaccount.ea.com to protect your account. Ordering delivery from any other store during the warranty period (8 days) is prohibited, and transferring coins to another account or selling them is prohibited; violating this voids the warranty. Do not buy FIFA Points 72 hours before or after delivery. It is recommended to generate new Backup Codes and save them in a safe place."
+        },
+        {
+            "id": "order-tracking",
+            "url": "/orders",
+            "faq": true,
+            "keywords_ar": ["تتبع", "حالة الطلب", "وين طلبي", "متى يوصل"],
+            "keywords_en": ["track", "order status", "where is my order"],
+            "title_ar": "تتبع حالة الطلب",
+            "body_ar": "تقدر تتابع حالة طلبك من صفحة الطلب في حسابك داخل المتجر. تحديات SBC تظهر بعد انتهاء شحن الكوينز، وإذا ما ظهرت بعد 5 دقائق أخبرنا هنا. خدمات FUT Champions و Rivals لا تظهر في نظام التتبع ونحدّثك عنها من خلال الدعم.",
+            "title_en": "Order Status Tracking",
+            "body_en": "You can track your order status from the order page in your account inside the store. SBC challenges appear after coin delivery finishes; if they do not appear after 5 minutes, let us know here in the chat. FUT Champions and Rivals services do not appear in the tracking system and we update you about them through support."
+        },
+        {
+            "id": "issue-backup-codes",
+            "url": "/ea-backup-codes",
+            "faq": false,
+            "keywords_ar": [
+                "أكواد خاطئة",
+                "تحديث الأكواد",
+                "الأكواد الاحتياطية غير صحيحة"
+            ],
+            "keywords_en": [
+                "wrong backup codes",
+                "update codes",
+                "invalid codes"
+            ],
+            "title_ar": "مشكلة: الأكواد الاحتياطية خاطئة",
+            "body_ar": "رسالة الخطأ: يرجى تحديث الأكواد الاحتياطية. السبب أن الأكواد غير صحيحة أو مستخدمة سابقاً أو قديمة. الحل: افتح https://myaccount.ea.com/am/ui/security-privacy وسجّل الدخول، ثم Two-factor authentication وأدخل كود التحقق، ثم View backup codes وتأكد أن الأكواد سوداء؛ إذا كانت رمادية اضغط Create New Codes ثم حدّث بيانات الطلب بالأكواد الجديدة.",
+            "title_en": "Issue: Invalid Backup Codes",
+            "body_en": "Error message: Please update Backup Codes. Cause: The codes are incorrect, previously used, or outdated. Fix: Open https://myaccount.ea.com/am/ui/security-privacy and log in, then Two-factor authentication and enter the verification code, then View backup codes and make sure the codes are black; if they are grey, click Create New Codes, then update the order data with the new codes."
+        },
+        {
+            "id": "issue-credentials",
+            "url": "/ea-backup-codes",
+            "faq": false,
+            "keywords_ar": ["ايميل خطأ", "كلمة المرور خطأ", "ما يدخل الحساب"],
+            "keywords_en": ["wrong email", "wrong password", "login failed"],
+            "title_ar": "مشكلة: خطأ في الإيميل أو كلمة المرور",
+            "body_ar": "رسالة الخطأ: يرجى التأكد من الإيميل وكلمة المرور. السبب أن الإيميل غير صحيح أو كلمة المرور خاطئة أو تم تغييرها مؤخراً. الحل: جرّب تسجيل الدخول من تطبيق Companion أو من موقع EA للتأكد من صحة البيانات، ثم حدّث بيانات الطلب من نموذج البيانات الآمن.",
+            "title_en": "Issue: Incorrect Email or Password",
+            "body_en": "Error message: Please verify email and password. Cause: The email is incorrect, the password is wrong, or it was recently changed. Fix: Try logging in from the Companion App or the EA website to verify credentials, then update the order data in the secure data form."
+        },
+        {
+            "id": "issue-platform",
+            "url": "/#coins",
+            "faq": false,
+            "keywords_ar": ["منصة خاطئة", "بلايستيشن او اكسبوكس", "منصة الطلب"],
+            "keywords_en": ["wrong platform", "platform mismatch"],
+            "title_ar": "مشكلة: المنصة المختارة خاطئة",
+            "body_ar": "رسالة الخطأ: منصة الحساب تختلف عن منصة الطلب. السبب اختيار منصة غير منصة حسابك. الحل: تحقق من منصة حسابك من إعدادات تطبيق Companion ثم عدّل الطلب واختر المنصة الصحيحة.",
+            "title_en": "Issue: Wrong Platform Selected",
+            "body_en": "Error message: Account platform differs from order platform. Cause: Selecting a platform different from your account platform. Fix: Check your account platform in Companion App settings, then edit the order and select the correct platform."
+        },
+        {
+            "id": "issue-market-locked",
+            "url": "/warranty",
+            "faq": false,
+            "keywords_ar": ["السوق مقفل", "transfer market", "مقفول"],
+            "keywords_en": ["market locked", "transfer market locked"],
+            "title_ar": "مشكلة: سوق الانتقالات مقفول",
+            "body_ar": "رسالة الخطأ: سوق الانتقالات مقفل في تطبيق الويب. السبب أن EA أقفلت السوق مؤقتاً بسبب نشاط غير عادي أو أن الحساب جديد. الحل: إما تزودنا بحساب EA آخر سوقه مفتوح، أو يتحول الطلب لحالة معلق وتلعب 3 مباريات يومياً على الأقل حتى يفتح السوق وننفذ مباشرة. لا يتم استرجاع المبلغ في هذه الحالة ويبقى أمانة حتى فتح السوق.",
+            "title_en": "Issue: Transfer Market Locked",
+            "body_en": "Error message: Transfer Market is locked on Web App. Cause: EA temporarily locked the market due to unusual activity or the account is new. Fix: Either provide another EA account with an open market, or the order changes to on-hold status and you play at least 3 matches daily until the market opens and we execute immediately. The amount is not refunded in this case and remains held as credit until the market opens."
+        },
+        {
+            "id": "issue-insufficient-coins",
+            "url": "/#coins",
+            "faq": false,
+            "keywords_ar": ["رصيد غير كاف", "1500 كوينز", "ما عندي كوينز"],
+            "keywords_en": ["insufficient coins", "1500 coins", "not enough"],
+            "title_ar": "مشكلة: رصيد الكوينز غير كافٍ",
+            "body_ar": "رسالة الخطأ: رصيد الكوينز في الحساب غير كافٍ. السبب أن الحساب لا يحتوي على الحد الأدنى 1,500 كوينز. الحل: العب بعض المباريات أو بع لاعبين من ناديك حتى يصل رصيدك 1,500 كوينز على الأقل ثم حدّث الطلب. نحتاج هذا الرصيد لأننا نشحن عن طريق شراء اللاعبين من السوق.",
+            "title_en": "Issue: Insufficient Coin Balance",
+            "body_en": "Error message: Coin balance in account is insufficient. Cause: The account does not have the minimum 1,500 coins. Fix: Play some matches or sell players from your club until your balance reaches at least 1,500 coins, then update the order. We need this balance because we deliver coins by buying players from the market."
+        },
+        {
+            "id": "issue-active-session",
+            "url": "/#coins",
+            "faq": false,
+            "keywords_ar": ["الحساب متصل", "جلسة نشطة", "سجل خروج"],
+            "keywords_en": ["active session", "logged in", "sign out"],
+            "title_ar": "مشكلة: الحساب متصل أو جلسة نشطة",
+            "body_ar": "رسالة الخطأ: يرجى تسجيل الخروج من اللعبة وتطبيق الجوال. الحل: من الكونسول ادخل Ultimate Team ثم اخرج للقائمة الرئيسية وأقفل اللعبة تماماً، وأقفل تطبيق Companion بالكامل واسحبه من التطبيقات المفتوحة، وسجّل الخروج من Web App وأقفل المتصفح، ثم انتظر دقيقة أو دقيقتين وحدّث الطلب.",
+            "title_en": "Issue: Account Connected or Active Session",
+            "body_en": "Error message: Please log out of the game and mobile app. Fix: On console, enter Ultimate Team then exit to the main menu and close the game completely, close the Companion App completely and swipe it away from open apps, log out of the Web App and close the browser, then wait 1 or 2 minutes and update the order."
+        },
+        {
+            "id": "issue-ea-servers",
+            "url": "/",
+            "faq": false,
+            "keywords_ar": ["سيرفر", "ما يدخل", "خطأ مؤقت", "صيانة"],
+            "keywords_en": ["server error", "ea servers", "temporary"],
+            "title_ar": "مشكلة: فشل تسجيل الدخول أو خطأ في السيرفر",
+            "body_ar": "رسالة الخطأ: تعذر الدخول للحساب حالياً. السبب ضغط أو صيانة مؤقتة في سيرفرات EA وليست مشكلة من العميل. الحل: انتظر 5 إلى 10 دقائق ثم حدّث الطلب أو شغّله مرة أخرى؛ غالباً تحل تلقائياً.",
+            "title_en": "Issue: Login Failed or Server Error",
+            "body_en": "Error message: Unable to log in to account currently. Cause: High load or temporary maintenance on EA servers and not an issue from the customer. Fix: Wait 5 to 10 minutes then update the order or run it again; it is usually resolved automatically."
+        },
+        {
+            "id": "issue-no-club",
+            "url": "/#coins",
+            "faq": false,
+            "keywords_ar": ["ما فيه نادي", "حساب جديد", "انشاء نادي"],
+            "keywords_en": ["no club", "new account", "create club"],
+            "title_ar": "مشكلة: لا يوجد نادي في الحساب",
+            "body_ar": "رسالة الخطأ: الحساب لا يحتوي على نادي. السبب أن الحساب جديد ولم يُنشأ نادي في Ultimate Team. الحل: افتح اللعبة وادخل Ultimate Team وأنشئ ناديك والعب مباراة واحدة على الأقل ثم حدّث الطلب.",
+            "title_en": "Issue: No Club in Account",
+            "body_en": "Error message: Account does not contain a club. Cause: The account is new and no club has been created in Ultimate Team. Fix: Open the game, enter Ultimate Team, create your club, and play at least one match, then update the order."
+        },
+        {
+            "id": "issue-transfer-list-full",
+            "url": "/#coins",
+            "faq": false,
+            "keywords_ar": ["قائمة النقل", "transfer list", "ممتلئة"],
+            "keywords_en": ["transfer list full"],
+            "title_ar": "مشكلة: قائمة النقل ممتلئة",
+            "body_ar": "رسالة الخطأ: قائمة النقل ممتلئة. الحل: افتح Companion أو Web App واذهب إلى Transfer List واحذف أو انقل اللاعبين المعروضين حتى يتوفر 3 أماكن فارغة على الأقل ثم حدّث الطلب.",
+            "title_en": "Issue: Transfer List Full",
+            "body_en": "Error message: Transfer List is full. Fix: Open Companion App or Web App, go to Transfer List, and remove or move listed players until at least 3 empty slots are available, then update the order."
+        },
+        {
+            "id": "issue-captcha",
+            "url": "/#coins",
+            "faq": false,
+            "keywords_ar": ["كابتشا", "captcha", "كود تحقق"],
+            "keywords_en": ["captcha", "verification"],
+            "title_ar": "مشكلة: مطلوب حل كود التحقق",
+            "body_ar": "رسالة الخطأ: مطلوب حل كود التحقق. السبب أن EA تطلب تأكيد أنك مستخدم حقيقي. الحل: افتح تطبيق Companion أو Web App وسجّل الدخول وحل الكابتشا ثم حدّث الطلب.",
+            "title_en": "Issue: Captcha Verification Required",
+            "body_en": "Error message: Verification code resolution required. Cause: EA requires confirmation that you are a real user. Fix: Open Companion App or Web App, log in, solve the captcha, then update the order."
+        },
+        {
+            "id": "issue-unassigned",
+            "url": "/#coins",
+            "faq": false,
+            "keywords_ar": ["unassigned", "عناصر غير معينة", "50 عنصر"],
+            "keywords_en": ["unassigned items"],
+            "title_ar": "مشكلة: عناصر غير معينة (Unassigned Items)",
+            "body_ar": "رسالة الخطأ: عناصر غير معينة موجودة. السبب وجود أكثر من 50 عنصر في Unassigned Items. الحل: افتح Companion أو Web App وأرسل اللاعبين إلى النادي أو بعهم حتى يقل العدد عن 50 ثم حدّث الطلب.",
+            "title_en": "Issue: Unassigned Items",
+            "body_en": "Error message: Unassigned items exist. Cause: There are more than 50 items in Unassigned Items. Fix: Open Companion App or Web App and send players to the club or sell them until the count is below 50, then update the order."
+        },
+        {
+            "id": "issue-account-banned",
+            "url": "/warranty",
+            "faq": false,
+            "keywords_ar": ["الحساب محظور", "banned", "حظر"],
+            "keywords_en": ["account banned", "ban"],
+            "title_ar": "مشكلة: الحساب محظور",
+            "body_ar": "رسالة الخطأ: الحساب محظور. الحل: تحقق من إيميلك لمعرفة سبب الحظر ومدته؛ إذا كان مؤقتاً انتظر انتهاء المدة، وإذا كان دائماً لا يمكن الشحن على هذا الحساب. إذا كان الحظر بسبب شحن سابق خلال فترة الضمان راجع سياسة الضمان للتعويض.",
+            "title_en": "Issue: Account Banned",
+            "body_en": "Error message: Account is banned. Fix: Check your email to find out the ban reason and duration; if temporary, wait until the duration ends, and if permanent, delivery cannot be performed on this account. If the ban was due to a previous delivery during the warranty period, review the warranty policy for compensation."
+        },
+        {
+            "id": "issue-store-stock",
+            "url": "/",
+            "faq": false,
+            "keywords_ar": ["رصيد المتجر", "مخزون", "نفذ"],
+            "keywords_en": ["store balance", "stock"],
+            "title_ar": "مشكلة: رصيد المتجر غير كافٍ",
+            "body_ar": "رسالة الخطأ: رصيد المتجر غير كافٍ. السبب نفاد رصيد الكوينز في مخزن المتجر مؤقتاً. الحل: أخبرنا هنا فوراً ونعيد تعبئة المخزون ونكمل طلبك.",
+            "title_en": "Issue: Store Stock Insufficient",
+            "body_en": "Error message: Store balance is insufficient. Cause: Store coin stock is temporarily depleted. Fix: Tell us here in the chat immediately and we will restock inventory and complete your order."
+        },
+        {
+            "id": "issue-connection",
+            "url": "/",
+            "faq": false,
+            "keywords_ar": ["الخادم غير متاح", "اعادة الاتصال", "انقطاع"],
+            "keywords_en": ["server unavailable", "reconnecting"],
+            "title_ar": "مشكلة: الخادم غير متاح أو مشكلة اتصال",
+            "body_ar": "رسالة الخطأ: جاري إعادة الاتصال بالخادم أو الخادم غير متاح مؤقتاً. السبب انقطاع مؤقت في الاتصال. الحل: انتظر 5 إلى 10 دقائق ثم شغّل الطلب مرة أخرى.",
+            "title_en": "Issue: Server Unavailable or Connection Problem",
+            "body_en": "Error message: Reconnecting to server or server temporarily unavailable. Cause: Temporary connection interruption. Fix: Wait 5 to 10 minutes then run the order again."
+        },
+        {
+            "id": "issue-no-player",
+            "url": "/",
+            "faq": false,
+            "keywords_ar": ["ما لقينا لاعب", "لا يوجد لاعب", "تأخر الشحن"],
+            "keywords_en": ["no suitable player", "delay"],
+            "title_ar": "مشكلة: لا يوجد لاعب مناسب للشحن",
+            "body_ar": "رسالة الخطأ: ما لقينا لاعب مناسب حالياً. السبب عدم توفر لاعبين مناسبين في السوق في هذا الوقت، وهي مشكلة مؤقتة شائعة. الحل: ننتظر من 10 إلى 30 دقيقة ثم نعيد تشغيل الطلب.",
+            "title_en": "Issue: No Suitable Player for Delivery",
+            "body_en": "Error message: We did not find a suitable player currently. Cause: No suitable players are available on the market at this time, which is a common temporary issue. Fix: We wait 10 to 30 minutes then restart the order."
+        },
+        {
+            "id": "issue-maintenance",
+            "url": "/",
+            "faq": false,
+            "keywords_ar": ["صيانة", "maintenance", "الأربعاء"],
+            "keywords_en": ["maintenance", "downtime"],
+            "title_ar": "مشكلة: خوادم اللعبة في صيانة",
+            "body_ar": "رسالة الخطأ: خوادم اللعبة في صيانة مؤقتة. السبب صيانة دورية من EA، وعادة تكون يوم الأربعاء صباحاً بتوقيت المملكة المتحدة وتستمر من ساعة إلى 3 ساعات. الحل: ننتظر انتهاء الصيانة ونعاود المحاولة تلقائياً.",
+            "title_en": "Issue: Game Servers Under Maintenance",
+            "body_en": "Error message: Game servers are under temporary maintenance. Cause: Routine maintenance by EA, usually on Wednesday morning UK time lasting 1 to 3 hours. Fix: We wait for maintenance to finish and retry automatically."
+        },
+        {
+            "id": "issue-paused",
+            "url": "/orders",
+            "faq": false,
+            "keywords_ar": ["الطلب متوقف", "ايقاف", "استئناف"],
+            "keywords_en": ["paused order", "resume"],
+            "title_ar": "مشكلة: الطلب متوقف مؤقتاً",
+            "body_ar": "رسالة الخطأ: الطلب متوقف مؤقتاً. السبب أنك أوقفت الطلب أو أوقفه الموظف لسبب ما. الحل: تقدر تستأنف الطلب في أي وقت، وإذا لم تكن أنت من أوقفه أخبرنا هنا لنتحقق.",
+            "title_en": "Issue: Order Temporarily Paused",
+            "body_en": "Error message: Order is temporarily paused. Cause: You paused the order or a staff member paused it for a reason. Fix: You can resume the order at any time, and if you did not pause it, let us know here in the chat so we can check."
+        },
+        {
+            "id": "prevention-tips",
+            "url": "/#coins",
+            "faq": false,
+            "keywords_ar": ["نصائح", "تجنب المشاكل", "قبل الطلب"],
+            "keywords_en": ["tips", "avoid problems", "checklist"],
+            "title_ar": "نصائح لتجنب المشاكل التقنية",
+            "body_ar": "تأكد من صحة البيانات قبل إدخالها، واستخدم أكواد احتياطية غير مستخدمة فقط، وتحقق أن سوق الانتقالات مفتوح، وسجّل الخروج من اللعبة وتطبيق Companion، وتأكد من وجود 1,500 كوينز على الأقل، وأفرغ قائمة النقل، وتجنب فتح اللعبة أثناء التنفيذ، واختر المنصة الصحيحة.",
+            "title_en": "Tips to Avoid Technical Issues",
+            "body_en": "Make sure data is correct before entering it, use unused Backup Codes only, verify that the Transfer Market is open, log out of the game and Companion App, make sure you have at least 1,500 coins, clear the Transfer List, avoid opening the game during execution, and choose the correct platform."
+        },
+        {
+            "id": "safety",
+            "url": "/warranty",
+            "faq": true,
+            "keywords_ar": ["آمن", "الأمان", "باند", "خطر", "طريقة الشحن"],
+            "keywords_en": ["safe", "safety", "ban risk", "method"],
+            "title_ar": "أمان الشحن",
+            "body_ar": "نستخدم طريقة نقل آمنة عبر شراء اللاعبين من سوق الانتقالات، مع ضمان كامل خلال فترة الضمان. الالتزام بتعليمات ما قبل وما بعد الشحن يقلل أي مخاطر، وأهمها عدم الشحن من مصدر آخر خلال فترة الضمان.",
+            "title_en": "Delivery Safety",
+            "body_en": "We use a safe transfer method via buying players from the Transfer Market, with full guarantee during the warranty period. Following pre-delivery and post-delivery instructions minimizes any risks, most importantly not ordering delivery from another source during the warranty period."
+        },
+        {
+            "id": "credentials-safety",
+            "url": "/cart",
+            "faq": true,
+            "keywords_ar": [
+                "بياناتي",
+                "كلمة المرور بالشات",
+                "امان البيانات",
+                "خصوصية"
+            ],
+            "keywords_en": [
+                "credentials",
+                "password in chat",
+                "data safety",
+                "privacy"
+            ],
+            "title_ar": "أمان بياناتك",
+            "body_ar": "لا ترسل كلمة المرور أو الأكواد الاحتياطية داخل الشات أبداً. بيانات الحساب تُدخل فقط في نموذج البيانات الآمن الخاص بطلبك داخل المتجر، وتُخزَّن مشفّرة. إذا أرسلت كلمة المرور في الشات بالخطأ غيّرها فوراً من حساب EA.",
+            "title_en": "Your Data Safety",
+            "body_en": "Never send your password or Backup Codes inside the chat. Account credentials are entered only in the secure data form for your order inside the store, and are stored encrypted. If you sent your password in the chat by mistake, change it immediately from your EA account."
+        }
+    ]
+}

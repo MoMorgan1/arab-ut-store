@@ -47,9 +47,9 @@ final class AdminShell
         }
 
         $navigation[] = [
-            'key' => 'security',
-            'label' => (string) trans('admin.navigation.security', locale: $locale),
-            'url' => route($prefix.'security.mfa', absolute: false),
+            'key' => 'settings',
+            'label' => (string) trans('admin.navigation.settings', locale: $locale),
+            'url' => route($prefix.'settings', absolute: false),
         ];
 
         return [

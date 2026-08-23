@@ -80,7 +80,7 @@ test('unconfirmed MFA admin users are redirected to MFA setup', function (): voi
     $admin = adminCustomersActor(UserRole::Admin);
     $admin->forceFill(['two_factor_confirmed_at' => null])->save();
 
-    $this->actingAs($admin)->get('/admin/customers')->assertRedirect('/admin/security/mfa');
+    $this->actingAs($admin)->get('/admin/customers')->assertRedirect('/admin/settings');
 });
 
 test('confirmed Admin can open localized private customers routes', function (string $path): void {
@@ -104,7 +104,7 @@ test('confirmed Admin can open localized private customers routes', function (st
     'English Admin' => ['/en/admin/customers'],
 ]);
 
-test('admin navigation URLs include customers between orders and security', function (string $path, array $expectedUrls): void {
+test('admin navigation URLs include customers between orders and settings', function (string $path, array $expectedUrls): void {
     $actor = adminCustomersActor(UserRole::Admin);
 
     $this->actingAs($actor)
@@ -116,8 +116,8 @@ test('admin navigation URLs include customers between orders and security', func
             ->where('adminNavigation.2.url', $expectedUrls[2])
             ->where('adminNavigation.3.url', $expectedUrls[3]));
 })->with([
-    'Canonical family' => ['/admin/customers', ['/admin', '/admin/orders', '/admin/customers', '/admin/security/mfa']],
-    'Localized family' => ['/en/admin/customers', ['/en/admin', '/en/admin/orders', '/en/admin/customers', '/en/admin/security/mfa']],
+    'Canonical family' => ['/admin/customers', ['/admin', '/admin/orders', '/admin/customers', '/admin/settings']],
+    'Localized family' => ['/en/admin/customers', ['/en/admin', '/en/admin/orders', '/en/admin/customers', '/en/admin/settings']],
 ]);
 
 test('the customers route requires EnsureAdminMfa and can:customers.view middleware', function (): void {

@@ -20,4 +20,24 @@ return [
     'provider_malformed' => 'The assistant received an unexpected response format. Please try again.',
     'provider_terminal_failure' => 'The assistant is unable to process this request. Please try again later.',
     'cancelled' => 'The request was cancelled.',
+
+    'cards' => [
+        'cta' => 'Order now',
+        'coins' => [
+            'title' => 'FC Coins',
+            'subtitle' => 'Pick your platform and amount to see the price',
+        ],
+        'sbc' => [
+            'title' => 'SBC Challenges',
+            'subtitle' => 'We complete the challenge and supply the coins',
+        ],
+        'rivals' => [
+            'title' => 'Division Rivals',
+            'subtitle' => 'We play and promote you to the division you want',
+        ],
+        'fut_champions' => [
+            'title' => 'FUT Champions',
+            'subtitle' => 'From Rank 6 to Rank 1',
+        ],
+    ],
 ];
