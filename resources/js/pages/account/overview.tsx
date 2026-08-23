@@ -112,16 +112,13 @@ export default function AccountOverview() {
                     <AccountMetric
                         kind="wallet"
                         label={props.accountUi.overview.wallet_metric}
-                        locked={props.summary.walletBalance === null}
-                        value={
-                            props.summary.walletBalance === null
-                                ? (props.accountUi.wallet?.coming_soon ??
-                                  'قريبًا')
-                                : formatAccountMoney(
-                                      props.summary.walletBalance,
-                                      props.locale,
-                                  )
-                        }
+                        value={formatAccountMoney(
+                            props.summary.walletBalance ?? {
+                                amountMinor: '0',
+                                currency: 'SAR',
+                            },
+                            props.locale,
+                        )}
                     />
                 </dl>
 
@@ -226,6 +223,20 @@ export default function AccountOverview() {
                                           props.loyalty.nextTier.name,
                                       )}
                         </p>
+                        <div className="account-overview__loyalty-actions">
+                            <Link
+                                className="account-overview__loyalty-link"
+                                href={
+                                    props.locale === 'en'
+                                        ? '/en/my-account/loyalty'
+                                        : '/my-account/loyalty'
+                                }
+                            >
+                                {props.accountUi.overview.view_loyalty ??
+                                    'عرض برنامج الولاء'}
+                                <Arrow aria-hidden="true" />
+                            </Link>
+                        </div>
                     </section>
                 )}
 

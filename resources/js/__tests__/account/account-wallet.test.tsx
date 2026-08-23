@@ -26,19 +26,25 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-it('renders exact balance, typed text semantics, order context, and bounded pagination', () => {
+it('renders exact balance, lifetime cashback, typed text semantics, order context, and bounded pagination', () => {
     render(<AccountWallet />);
 
     expect(
         screen.getByRole('heading', { level: 2, name: 'Wallet' }),
     ).toBeVisible();
     expect(screen.getByText(/90,071,992,547,409\.91/)).toBeVisible();
+    expect(screen.getByText('Cashback earned')).toBeVisible();
+    expect(screen.getByText(/^SAR\s50\.00$/)).toBeVisible();
 
     const ledger = screen.getByRole('region', { name: 'Wallet activity' });
     expect(within(ledger).getByText('Refund')).toBeVisible();
     expect(within(ledger).getByText(/^\+SAR\s12\.50$/)).toBeVisible();
     expect(within(ledger).getByText('Debit')).toBeVisible();
     expect(within(ledger).getByText(/^−SAR\s5\.00$/)).toBeVisible();
+    expect(within(ledger).getByText('Cashback')).toBeVisible();
+    expect(within(ledger).getByText(/^\+SAR\s25\.00$/)).toBeVisible();
+    expect(within(ledger).getByText('Cashback reversal')).toBeVisible();
+    expect(within(ledger).getByText(/^−SAR\s10\.00$/)).toBeVisible();
     expect(within(ledger).getByText('Adjustment')).toBeVisible();
     expect(within(ledger).getByText(/^SAR\s1\.00$/)).toBeVisible();
     expect(
@@ -53,54 +59,41 @@ it('renders exact balance, typed text semantics, order context, and bounded pagi
     );
 });
 
-it('distinguishes coming-soon, unavailable, and active zero balance states', () => {
+it('renders balance as 0.00 and empty state when customer has no wallet account yet', () => {
     page.props = {
         ...walletProps(),
         wallet: {
             exists: false,
-            status: 'coming_soon',
             balance: null,
+            lifetimeCashback: { amountMinor: '0', currency: 'SAR' },
             entries: [],
             pagination: pagination(0),
         },
     };
     const { rerender } = render(<AccountWallet />);
 
+    expect(screen.getAllByText(/^SAR\s0\.00$/)).toHaveLength(2);
+    expect(screen.getByText('No wallet activity yet')).toBeVisible();
     expect(
-        screen.getByText('Your wallet will be available soon'),
+        screen.getByText(
+            'No activity yet — earn cashback with your first completed order.',
+        ),
     ).toBeVisible();
 
     page.props = {
         ...walletProps(),
         wallet: {
-            exists: false,
-            status: 'unavailable',
-            balance: null,
-            entries: [],
-            pagination: pagination(0),
-        },
-    };
-    rerender(<AccountWallet />);
-
-    expect(screen.getByText('Wallet is not active yet')).toBeVisible();
-    expect(screen.getByText('No wallet activity yet')).toBeVisible();
-
-    page.props = {
-        ...walletProps(),
-        wallet: {
             exists: true,
-            status: 'active',
             balance: { amountMinor: '0', currency: 'SAR' },
+            lifetimeCashback: { amountMinor: '0', currency: 'SAR' },
             entries: [],
             pagination: pagination(0),
         },
     };
     rerender(<AccountWallet />);
 
-    expect(screen.getByText(/^SAR\s0\.00$/)).toBeVisible();
-    expect(
-        screen.queryByText('Wallet is not active yet'),
-    ).not.toBeInTheDocument();
+    expect(screen.getAllByText(/^SAR\s0\.00$/)).toHaveLength(2);
+    expect(screen.getByText('No wallet activity yet')).toBeVisible();
 });
 
 function walletProps() {
@@ -111,24 +104,20 @@ function walletProps() {
             wallet: {
                 title: 'Wallet',
                 description: 'Your balance and verified wallet activity.',
-                coming_soon: 'Coming soon',
-                page_coming_soon_title: 'Your wallet will be available soon',
-                page_coming_soon_desc:
-                    'You will be able to track your balance in one place.',
-                feature_balance: 'Instant balance',
-                feature_refund: 'Automatic refund',
-                feature_checkout: 'Direct checkout',
                 available_balance: 'Available balance',
                 unavailable_balance: 'Wallet is not active yet',
+                lifetime_cashback: 'Cashback earned',
                 loyalty_title: 'Loyalty programme',
                 ledger_title: 'Wallet activity',
                 empty_title: 'No wallet activity yet',
                 empty_description:
-                    'Credits, charges, and refunds will appear here.',
+                    'No activity yet — earn cashback with your first completed order.',
                 credit: 'Credit',
                 debit: 'Debit',
                 refund: 'Refund',
                 adjustment: 'Adjustment',
+                cashback: 'Cashback',
+                cashback_reversal: 'Cashback reversal',
                 balance_after: 'Balance after entry',
                 related_order: 'Order :number',
                 previous: 'Previous',
@@ -147,7 +136,13 @@ function walletProps() {
                 amountMinor: '9007199254740991',
                 currency: 'SAR',
             },
+            lifetimeCashback: {
+                amountMinor: '5000',
+                currency: 'SAR',
+            },
             entries: [
+                entry(5, 'cashback', 'credit', '2500'),
+                entry(4, 'cashback_reversal', 'debit', '1000'),
                 entry(3, 'refund', 'credit', '1250', {
                     number: 'UT-00000071',
                     url: '/en/my-account/orders/01K00000000000000000000000',
