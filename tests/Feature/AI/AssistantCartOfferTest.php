@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\AI\BuildAssistantCartOffer;
 use App\Actions\AI\BuildAssistantChoices;
+use App\Validation\CoinsSelectionRules;
 
 function cartOffer(string $text): ?array
 {
@@ -91,4 +92,52 @@ test('the offer never carries a price', function () {
     expect(array_keys($offer ?? []))->toBe(['version', 'service', 'selection'])
         ->and(array_keys($offer['selection'] ?? []))
         ->toBe(['platform', 'delivery', 'quantity']);
+});
+
+test('an amount the route cannot sell earns no button', function () {
+    // Console normal stops at two million; console fast goes to twenty. Five
+    // million is a thing a customer can say and the store cannot sell on that
+    // route, and a button for it could only ever fail.
+    expect(cartOffer('ابي 5 مليون كوينز بلايستيشن عادي'))->toBeNull()
+        ->and(cartOffer('ابي 5 مليون كوينز بلايستيشن سريع'))->not->toBeNull();
+});
+
+test('the same amount is offered on the route that does sell it', function () {
+    expect(cartOffer('ابي مليونين كوينز بلايستيشن عادي'))->toBe([
+        'version' => 'cart.v1',
+        'service' => 'coins',
+        'selection' => [
+            'platform' => 'playstation',
+            'delivery' => 'normal',
+            'quantity' => 2_000_000,
+        ],
+    ]);
+});
+
+test('every offer the builder emits is one the cart endpoint accepts', function () {
+    // The panel's button is only honest if the endpoint agrees. Validate each
+    // emitted selection against the store's own rules rather than trusting the
+    // builder's arithmetic.
+    $messages = [
+        'ابي مليون كوينز بلايستيشن سريع',
+        'ابي مليون كوينز بلايستيشن عادي',
+        'ابي نص مليون كوينز بي سي',
+        'ابي 5 مليون كوينز بلايستيشن سريع',
+        'ابي ميه الف كوينز بلايستيشن عادي',
+    ];
+
+    foreach ($messages as $message) {
+        $offer = cartOffer($message);
+
+        expect($offer)->not->toBeNull("no offer for: {$message}");
+
+        $selection = $offer['selection'];
+        $rules = app(CoinsSelectionRules::class)->for(
+            $selection['platform'],
+            $selection['delivery'] ?? null,
+        );
+
+        expect(validator($selection, $rules)->fails())
+            ->toBeFalse("the endpoint would reject: {$message}");
+    }
 });

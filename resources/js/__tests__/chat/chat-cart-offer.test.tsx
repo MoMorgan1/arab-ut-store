@@ -27,7 +27,6 @@ const fastOffer: ChatCoinsCartOffer = { ...consoleOffer, delivery: 'fast' };
 
 function quoteResponse() {
     return {
-        ok: true,
         status: 200,
         json: async () => ({
             data: { displayTotal: { amountMinor: 910, currency: 'SAR' } },
@@ -51,13 +50,28 @@ function cartCreatedResponse() {
 /** Every request the component made, in order, as [url, init] pairs. */
 let calls: Array<[string, RequestInit | undefined]>;
 
-function stubFetch(cartResponse: () => Response) {
+function stubFetch(
+    cartResponse: () => Response,
+    quote: () => Response = quoteResponse,
+) {
     return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = input instanceof URL ? input.toString() : String(input);
         calls.push([url, init]);
 
-        return url.includes('/coins/quote') ? quoteResponse() : cartResponse();
+        return url.includes('/coins/quote') ? quote() : cartResponse();
     });
+}
+
+function cartCalls() {
+    return calls.filter(([url]) => url.includes('/cart/items/coins'));
+}
+
+/** The add button only exists once the store has quoted a real price. */
+async function openForm() {
+    await waitFor(() => {
+        expect(screen.getByTestId('chat-cart-start')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('chat-cart-start'));
 }
 
 function fillCredentials() {
@@ -122,7 +136,7 @@ describe('ChatCartOffer', () => {
         vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
         render(<ChatCartOffer offer={consoleOffer} locale="en" />);
 
-        fireEvent.click(screen.getByTestId('chat-cart-start'));
+        await openForm();
         fillCredentials();
         fireEvent.click(screen.getByTestId('chat-cart-submit'));
 
@@ -130,12 +144,7 @@ describe('ChatCartOffer', () => {
             expect(screen.getByTestId('chat-cart-added')).toBeInTheDocument();
         });
 
-        const cartCall = calls.find(([url]) =>
-            url.includes('/cart/items/coins'),
-        );
-        expect(cartCall).toBeDefined();
-
-        const [, init] = cartCall ?? [];
+        const [, init] = cartCalls()[0] ?? [];
         const body = JSON.parse(String(init?.body));
 
         expect(body).toEqual({
@@ -155,11 +164,26 @@ describe('ChatCartOffer', () => {
         expect(calls.filter(([url]) => url.includes('/chat'))).toHaveLength(0);
     });
 
+    it('posts to the localized endpoint so the cart link matches the language', async () => {
+        vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
+        render(<ChatCartOffer offer={consoleOffer} locale="en" />);
+
+        await openForm();
+        fillCredentials();
+        fireEvent.click(screen.getByTestId('chat-cart-submit'));
+
+        await waitFor(() => {
+            expect(cartCalls()).toHaveLength(1);
+        });
+
+        expect(cartCalls()[0]?.[0]).toContain('/en/cart/items/coins');
+    });
+
     it('clears the password from the panel once the item is in the cart', async () => {
         vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
         render(<ChatCartOffer offer={consoleOffer} locale="en" />);
 
-        fireEvent.click(screen.getByTestId('chat-cart-start'));
+        await openForm();
         fillCredentials();
         fireEvent.click(screen.getByTestId('chat-cart-submit'));
 
@@ -178,7 +202,7 @@ describe('ChatCartOffer', () => {
         vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
         render(<ChatCartOffer offer={consoleOffer} locale="en" />);
 
-        fireEvent.click(screen.getByTestId('chat-cart-start'));
+        await openForm();
         fireEvent.change(screen.getByLabelText('EA email'), {
             target: { value: 'not-an-email' },
         });
@@ -188,9 +212,39 @@ describe('ChatCartOffer', () => {
             expect(screen.getByTestId('chat-cart-error')).toBeInTheDocument();
         });
 
-        expect(
-            calls.filter(([url]) => url.includes('/cart/items/coins')),
-        ).toHaveLength(0);
+        expect(cartCalls()).toHaveLength(0);
+    });
+
+    it('marks a rejected field invalid, not merely a different colour', async () => {
+        vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
+        render(<ChatCartOffer offer={consoleOffer} locale="en" />);
+
+        await openForm();
+        fireEvent.click(screen.getByTestId('chat-cart-submit'));
+
+        await waitFor(() => {
+            expect(screen.getByTestId('chat-cart-error')).toBeInTheDocument();
+        });
+
+        const email = screen.getByLabelText('EA email');
+        expect(email).toHaveAttribute('aria-invalid', 'true');
+        expect(email).toHaveAttribute(
+            'aria-describedby',
+            screen.getByTestId('chat-cart-error').id,
+        );
+    });
+
+    it('moves focus into the form when it expands', async () => {
+        vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
+        render(<ChatCartOffer offer={consoleOffer} locale="en" />);
+
+        await openForm();
+
+        await waitFor(() => {
+            expect(document.activeElement).toBe(
+                screen.getByLabelText('EA email'),
+            );
+        });
     });
 
     it('asks for the current balance only on the fast console route', async () => {
@@ -199,13 +253,13 @@ describe('ChatCartOffer', () => {
             <ChatCartOffer offer={consoleOffer} locale="en" />,
         );
 
-        fireEvent.click(screen.getByTestId('chat-cart-start'));
+        await openForm();
         expect(
             screen.queryByLabelText('Current coin balance'),
         ).not.toBeInTheDocument();
 
         rerender(<ChatCartOffer offer={fastOffer} locale="en" />);
-        fireEvent.click(screen.getByTestId('chat-cart-start'));
+        await openForm();
 
         expect(
             screen.getByLabelText('Current coin balance'),
@@ -225,7 +279,7 @@ describe('ChatCartOffer', () => {
         vi.stubGlobal('fetch', stubFetch(rejected));
         render(<ChatCartOffer offer={consoleOffer} locale="en" />);
 
-        fireEvent.click(screen.getByTestId('chat-cart-start'));
+        await openForm();
         fillCredentials();
         fireEvent.click(screen.getByTestId('chat-cart-submit'));
 
@@ -236,24 +290,65 @@ describe('ChatCartOffer', () => {
         expect(screen.queryByTestId('chat-cart-added')).not.toBeInTheDocument();
     });
 
-    it('renders no price when the store cannot quote one', async () => {
-        const unavailable = vi.fn(async (input: RequestInfo | URL) => {
-            calls.push([String(input), undefined]);
+    it('offers no button at all when the store cannot quote a price', async () => {
+        const unavailable = () =>
+            ({ status: 503, json: async () => ({}) }) as unknown as Response;
 
-            return {
-                status: 503,
-                json: async () => ({}),
-            } as unknown as Response;
-        });
-
-        vi.stubGlobal('fetch', unavailable);
+        vi.stubGlobal('fetch', stubFetch(cartCreatedResponse, unavailable));
         render(<ChatCartOffer offer={consoleOffer} locale="en" />);
 
         await waitFor(() => {
-            expect(unavailable).toHaveBeenCalled();
+            expect(
+                screen.getByTestId('chat-cart-unpriced'),
+            ).toBeInTheDocument();
         });
 
+        // Committing to a purchase having seen no number is not a choice the
+        // panel should offer.
         expect(screen.queryByTestId('chat-cart-price')).not.toBeInTheDocument();
-        expect(screen.getByTestId('chat-cart-start')).toBeInTheDocument();
+        expect(screen.queryByTestId('chat-cart-start')).not.toBeInTheDocument();
+    });
+
+    it('reuses the idempotency key when a created item could not be read back', async () => {
+        // A 201 whose body is truncated means the item exists. Minting a fresh
+        // key on retry would add it a second time.
+        let attempt = 0;
+        const flaky = () => {
+            attempt += 1;
+
+            return attempt === 1
+                ? ({
+                      status: 201,
+                      json: async () => {
+                          throw new SyntaxError('truncated');
+                      },
+                  } as unknown as Response)
+                : cartCreatedResponse();
+        };
+
+        vi.stubGlobal('fetch', stubFetch(flaky));
+        render(<ChatCartOffer offer={consoleOffer} locale="en" />);
+
+        await openForm();
+        fillCredentials();
+        fireEvent.click(screen.getByTestId('chat-cart-submit'));
+
+        await waitFor(() => {
+            expect(screen.getByTestId('chat-cart-error')).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByTestId('chat-cart-submit'));
+
+        await waitFor(() => {
+            expect(screen.getByTestId('chat-cart-added')).toBeInTheDocument();
+        });
+
+        const keys = cartCalls().map(
+            ([, init]) =>
+                (init?.headers as Record<string, string>)['Idempotency-Key'],
+        );
+
+        expect(keys).toHaveLength(2);
+        expect(keys[0]).toBe(keys[1]);
     });
 });

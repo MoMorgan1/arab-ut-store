@@ -71,6 +71,26 @@ final readonly class BuildAssistantCartOffer
     }
 
     /**
+     * Whether the store will actually sell this amount on this route.
+     *
+     * The caps differ per delivery speed — console normal stops well below
+     * console fast — so a quantity the customer can legitimately name is not
+     * always one the endpoint accepts. Offering it anyway ships a button that
+     * can only ever fail, with a validation error that maps to no field the
+     * panel can highlight.
+     */
+    private function sellable(int $quantity, int $maximum): bool
+    {
+        $minimum = (int) config('coins.quantity.minimum');
+        $increment = (int) config('coins.quantity.increment');
+
+        return $increment > 0
+            && $quantity >= $minimum
+            && $quantity <= $maximum
+            && $quantity % $increment === 0;
+    }
+
+    /**
      * A cart-ready coins selection, or null when the customer has not named
      * enough for the store to price it.
      *
@@ -92,7 +112,9 @@ final readonly class BuildAssistantCartOffer
         }
 
         if ($platform === Platform::Pc->value) {
-            return ['platform' => $platform, 'quantity' => $quantity];
+            return $this->sellable($quantity, (int) config('coins.platforms.pc.maximum'))
+                ? ['platform' => $platform, 'quantity' => $quantity]
+                : null;
         }
 
         if ($platform !== Platform::PlayStation->value) {
@@ -102,6 +124,12 @@ final readonly class BuildAssistantCartOffer
         $delivery = $options['delivery'] ?? null;
 
         if (! is_string($delivery)) {
+            return null;
+        }
+
+        $maximum = config("coins.platforms.playstation.deliveries.{$delivery}.maximum");
+
+        if (! is_int($maximum) || ! $this->sellable($quantity, $maximum)) {
             return null;
         }
 

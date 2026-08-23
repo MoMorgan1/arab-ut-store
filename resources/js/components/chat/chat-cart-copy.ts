@@ -15,6 +15,7 @@ export type ChatCartCopy = {
     eaEmail: string;
     eaPassword: string;
     fixFields: string;
+    noPrice: string;
     platforms: Record<CoinsPlatformValue, string>;
     policy: string;
     quantity: (formatted: string) => string;
@@ -47,6 +48,8 @@ export function chatCartCopy(locale: 'ar' | 'en'): ChatCartCopy {
             eaEmail: 'EA email',
             eaPassword: 'EA password',
             fixFields: 'Check the highlighted fields.',
+            noPrice:
+                'Pricing for this one is not available right now — open the product page to order it.',
             platforms: { pc: 'PC', playstation: 'PS / Xbox' },
             policy: 'I accept the terms and the delivery policy.',
             quantity: (formatted) => `${formatted} coins`,
@@ -70,6 +73,7 @@ export function chatCartCopy(locale: 'ar' | 'en'): ChatCartCopy {
         eaEmail: 'إيميل EA',
         eaPassword: 'كلمة مرور EA',
         fixFields: 'راجع الحقول المعلّمة.',
+        noPrice: 'سعر هذا الطلب غير متاح الحين — افتح صفحة المنتج لإتمامه.',
         platforms: { pc: 'PC', playstation: 'PS / Xbox' },
         policy: 'أوافق على الشروط وسياسة التسليم.',
         quantity: (formatted) => `${formatted} كوينز`,

@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { Check, Loader2, ShoppingCart } from 'lucide-react';
 import type { FormEvent } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { announceCartAddition } from '@/lib/cart-added-event';
 import type { ChatCoinsCartOffer } from '@/lib/chat-cart';
@@ -135,7 +135,9 @@ function CoinsCartPanel({
     const { delivery, platform, quantity } = offer;
     const requiresBalance = platform === 'playstation' && delivery === 'fast';
 
-    const [price, setPrice] = useState<string | null>(null);
+    const [quote, setQuote] = useState<'loading' | 'unavailable' | string>(
+        'loading',
+    );
     const [expanded, setExpanded] = useState(false);
     const [credentials, setCredentials] =
         useState<CoinsCredentials>(EMPTY_CREDENTIALS);
@@ -148,6 +150,8 @@ function CoinsCartPanel({
     // an inconclusive failure: a timeout that actually landed adds one item,
     // not two.
     const idempotencyKey = useRef<string | null>(null);
+    const formRef = useRef<HTMLFormElement | null>(null);
+    const errorId = useId();
 
     useEffect(() => {
         const controller = new AbortController();
@@ -156,23 +160,23 @@ function CoinsCartPanel({
         void fetchChatCartQuote(
             { delivery, platform, quantity },
             controller.signal,
-        ).then((quote) => {
+        ).then((result) => {
             if (!active) {
                 return;
             }
 
             try {
-                setPrice(
-                    quote === null
-                        ? null
+                setQuote(
+                    result === null
+                        ? 'unavailable'
                         : formatMinorUnits(
-                              quote.amountMinor,
-                              quote.currency,
+                              result.amountMinor,
+                              result.currency,
                               moneyLocale,
                           ),
                 );
             } catch {
-                setPrice(null);
+                setQuote('unavailable');
             }
         });
 
@@ -182,6 +186,10 @@ function CoinsCartPanel({
         };
     }, [delivery, moneyLocale, platform, quantity]);
 
+    // Nobody should commit to a purchase without having seen the number. When
+    // the store cannot quote, the panel says so instead of offering a button.
+    const priced = quote !== 'loading' && quote !== 'unavailable';
+
     const selectionLabel = [
         copy.platforms[platform],
         delivery === null ? null : copy.deliveries[delivery],
@@ -189,6 +197,15 @@ function CoinsCartPanel({
     ]
         .filter((part): part is string => part !== null)
         .join(' · ');
+
+    function expand() {
+        setExpanded(true);
+        // The button that had focus is about to unmount. Without this, focus
+        // falls to the document and a keyboard user is dropped out of the panel.
+        window.requestAnimationFrame(() => {
+            formRef.current?.querySelector('input')?.focus();
+        });
+    }
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -208,7 +225,7 @@ function CoinsCartPanel({
 
         try {
             const addition = await submitCoinsCart({
-                cartUrl: '/cart/items/coins',
+                cartUrl: isEn ? '/en/cart/items/coins' : '/cart/items/coins',
                 credentials,
                 delivery,
                 idempotencyKey: idempotencyKey.current,
@@ -262,11 +279,50 @@ function CoinsCartPanel({
         setCredentials({ ...credentials, backupCodes: codes });
     }
 
-    function borderFor(field: CoinsCredentialField): string {
-        return rejected.includes(field)
-            ? 'border-[var(--chat-danger)]'
-            : 'border-[var(--chat-line-strong)]';
+    /**
+     * Colour alone does not communicate a rejected field — `aria-invalid` and
+     * a pointer at the error text do, for anyone not reading the border.
+     */
+    function fieldProps(field: CoinsCredentialField, extra = '') {
+        const invalid = rejected.includes(field);
+
+        return {
+            'aria-describedby': invalid ? errorId : undefined,
+            'aria-invalid': invalid,
+            className: `${INPUT_CLASS} ${extra} ${
+                invalid
+                    ? 'border-[var(--chat-danger)]'
+                    : 'border-[var(--chat-line-strong)]'
+            }`,
+        };
     }
+
+    function checkboxProps(field: CoinsCredentialField) {
+        const invalid = rejected.includes(field);
+
+        return {
+            'aria-describedby': invalid ? errorId : undefined,
+            'aria-invalid': invalid,
+            className: `h-5 w-5 flex-shrink-0 rounded border ${
+                invalid
+                    ? 'border-[var(--chat-danger)]'
+                    : 'border-[var(--chat-line-strong)]'
+            }`,
+        };
+    }
+
+    /**
+     * Third-party password managers offer to save whatever they recognise. An
+     * EA account is not the customer's Arab UT login, and a manager quietly
+     * filing it under this site is a footgun the storefront form already
+     * declines the same way.
+     */
+    const SECRET_INPUT = {
+        autoComplete: 'off' as const,
+        'data-1p-ignore': true,
+        'data-lpignore': 'true',
+        spellCheck: false,
+    };
 
     return (
         <div
@@ -282,13 +338,21 @@ function CoinsCartPanel({
                     <p className="text-[13px] font-semibold text-[var(--chat-ink)]">
                         {selectionLabel}
                     </p>
-                    {price !== null && (
+                    {priced && (
                         <p
                             className="mt-0.5 text-start text-sm font-bold text-[var(--chat-accent-ink)]"
                             data-testid="chat-cart-price"
                             dir="ltr"
                         >
-                            {price}
+                            {quote}
+                        </p>
+                    )}
+                    {quote === 'unavailable' && (
+                        <p
+                            className="mt-0.5 text-[11px] text-[var(--chat-muted)]"
+                            data-testid="chat-cart-unpriced"
+                        >
+                            {copy.noPrice}
                         </p>
                     )}
                 </div>
@@ -318,18 +382,18 @@ function CoinsCartPanel({
                 </div>
             )}
 
-            {addedCartUrl === null && !expanded && (
+            {addedCartUrl === null && !expanded && priced && (
                 <button
                     className="chat-press mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--chat-accent)] px-3 py-2 text-[13px] font-semibold text-[var(--chat-on-accent)]"
                     data-testid="chat-cart-start"
-                    onClick={() => setExpanded(true)}
+                    onClick={expand}
                     type="button"
                 >
                     {copy.addToCart}
                 </button>
             )}
 
-            {addedCartUrl === null && expanded && (
+            {addedCartUrl === null && expanded && priced && (
                 // The panel reports its own errors, in the store's language:
                 // the browser's native bubbles arrive in the browser's locale
                 // and would contradict the Arabic beside them.
@@ -337,6 +401,7 @@ function CoinsCartPanel({
                     className="mt-2.5 space-y-2"
                     noValidate
                     onSubmit={handleSubmit}
+                    ref={formRef}
                 >
                     <p className="text-[11px] leading-snug text-[var(--chat-muted)]">
                         {copy.credentialsNotice}
@@ -347,8 +412,8 @@ function CoinsCartPanel({
                             {copy.eaEmail}
                         </span>
                         <input
-                            autoComplete="off"
-                            className={`${INPUT_CLASS} ${borderFor('email')}`}
+                            {...SECRET_INPUT}
+                            {...fieldProps('email')}
                             dir="ltr"
                             name="ea_email"
                             onChange={(event) =>
@@ -367,8 +432,8 @@ function CoinsCartPanel({
                             {copy.eaPassword}
                         </span>
                         <input
-                            autoComplete="off"
-                            className={`${INPUT_CLASS} ${borderFor('password')}`}
+                            {...SECRET_INPUT}
+                            {...fieldProps('password')}
                             dir="ltr"
                             name="ea_password"
                             onChange={(event) =>
@@ -389,9 +454,12 @@ function CoinsCartPanel({
                         <div className="flex gap-1.5" dir="ltr">
                             {([0, 1, 2] as const).map((index) => (
                                 <input
+                                    {...SECRET_INPUT}
+                                    {...fieldProps(
+                                        `code-${index}`,
+                                        'text-center',
+                                    )}
                                     aria-label={copy.backupCode(index + 1)}
-                                    autoComplete="off"
-                                    className={`${INPUT_CLASS} text-center ${borderFor(`code-${index}`)}`}
                                     inputMode="numeric"
                                     key={index}
                                     maxLength={8}
@@ -411,10 +479,11 @@ function CoinsCartPanel({
                                 {copy.currentBalance}
                             </span>
                             <input
-                                autoComplete="off"
-                                className={`${INPUT_CLASS} ${borderFor('current-balance')}`}
+                                {...SECRET_INPUT}
+                                {...fieldProps('current-balance')}
                                 dir="ltr"
                                 inputMode="numeric"
+                                maxLength={9}
                                 onChange={(event) =>
                                     setCredentials({
                                         ...credentials,
@@ -433,8 +502,8 @@ function CoinsCartPanel({
 
                     <label className="flex items-start gap-2">
                         <input
+                            {...checkboxProps('companion')}
                             checked={credentials.companionMarketOpen === true}
-                            className={`mt-0.5 h-4 w-4 flex-shrink-0 rounded border ${borderFor('companion')}`}
                             onChange={(event) =>
                                 setCredentials({
                                     ...credentials,
@@ -450,8 +519,8 @@ function CoinsCartPanel({
 
                     <label className="flex items-start gap-2">
                         <input
+                            {...checkboxProps('policy')}
                             checked={credentials.policyAccepted === true}
-                            className={`mt-0.5 h-4 w-4 flex-shrink-0 rounded border ${borderFor('policy')}`}
                             onChange={(event) =>
                                 setCredentials({
                                     ...credentials,
@@ -469,6 +538,7 @@ function CoinsCartPanel({
                         <p
                             className="text-[11px] font-semibold text-[var(--chat-danger)]"
                             data-testid="chat-cart-error"
+                            id={errorId}
                             role="alert"
                         >
                             {errorMessage}

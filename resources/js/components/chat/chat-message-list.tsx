@@ -344,13 +344,26 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                             />
                                         )}
 
-                                        {!isCustomer && !isStreaming && (
-                                            <ChatCartOffer
-                                                offer={chatCartOffer(message)}
-                                                locale={locale}
-                                                onNavigate={onCardNavigate}
-                                            />
-                                        )}
+                                        {/*
+                                            Only the newest reply carries a
+                                            buy panel. An offer further up the
+                                            transcript describes a selection
+                                            the conversation has moved past,
+                                            and every one of them would price
+                                            itself again on open.
+                                        */}
+                                        {!isCustomer &&
+                                            !isStreaming &&
+                                            message.publicId ===
+                                                newestMessageId && (
+                                                <ChatCartOffer
+                                                    offer={chatCartOffer(
+                                                        message,
+                                                    )}
+                                                    locale={locale}
+                                                    onNavigate={onCardNavigate}
+                                                />
+                                            )}
 
                                         {!isCustomer &&
                                             !isStreaming &&
