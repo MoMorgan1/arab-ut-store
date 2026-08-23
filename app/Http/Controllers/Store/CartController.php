@@ -20,6 +20,7 @@ use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Models\WalletAccount;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Http\Request;
@@ -46,6 +47,9 @@ final class CartController extends Controller
 
         $user = $request->user();
         $phoneVerified = $user instanceof User && $user->phone_verified_at !== null;
+        $walletBalance = $user instanceof User
+            ? (int) (WalletAccount::query()->where('user_id', $user->id)->value('balance_halalah') ?? 0)
+            : 0;
 
         return Inertia::render('store/cart', [
             'cartPage' => [
@@ -66,6 +70,12 @@ final class CartController extends Controller
                         $localized ? ['locale' => 'en'] : [],
                         absolute: false,
                     ),
+                    'walletToggleUrl' => route(
+                        $localized ? 'localized.cart.wallet.store' : 'cart.wallet.store',
+                        $localized ? ['locale' => 'en'] : [],
+                        absolute: false,
+                    ),
+                    'walletBalanceHalalah' => $walletBalance,
                     'loginUrl' => route(
                         $localized ? 'localized.login' : 'login',
                         $localized ? ['locale' => 'en'] : [],
@@ -90,6 +100,7 @@ final class CartController extends Controller
                 'currency' => 'SAR',
                 'items' => $safeCartItems,
                 'coupon' => $this->safeCoupon($activeCart, $user instanceof User ? $user : null),
+                'useWallet' => $activeCart instanceof Cart ? (bool) $activeCart->use_wallet : false,
             ],
         ]);
     }

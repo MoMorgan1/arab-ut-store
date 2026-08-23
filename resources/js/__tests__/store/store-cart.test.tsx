@@ -70,6 +70,7 @@ const mockPage = vi.hoisted(() => ({
                 },
             ],
             coupon: null,
+            useWallet: false,
         } as StoreCartPageProps['cart'],
         cartPage: {
             checkout: {
@@ -77,6 +78,8 @@ const mockPage = vi.hoisted(() => ({
                 checkoutUrl: '/en/checkout/paylink',
                 couponApplyUrl: '/en/cart/coupon',
                 couponRemoveUrl: '/en/cart/coupon',
+                walletToggleUrl: '/en/cart/wallet',
+                walletBalanceHalalah: 0,
                 loginUrl: '/en/login',
                 phoneCodeUrl: '/en/checkout/phone/code',
                 phoneVerified: false,
@@ -164,6 +167,8 @@ const mockPage = vi.hoisted(() => ({
                 coupon_minimum:
                     'Your order must be at least :amount to use this coupon.',
                 coupon_error: 'The coupon could not be applied. Try again.',
+                wallet_toggle: 'Use wallet balance (:balance)',
+                wallet_deduction: 'Wallet balance',
             },
         },
         direction: 'ltr',
@@ -926,6 +931,119 @@ describe('cart coupon field', () => {
         const [url, init] = fetchMock.mock.calls[0];
         expect(url).toBe('/en/cart/coupon');
         expect(init.method).toBe('DELETE');
+    });
+});
+
+describe('Cart wallet balance at checkout', () => {
+    beforeEach(() => {
+        mockPage.props.auth.user = { id: 1, name: 'Mohamed' };
+        mockPage.props.cartPage.checkout.walletBalanceHalalah = 5000;
+        mockPage.props.cart.useWallet = false;
+        mockPage.props.cart.coupon = null;
+    });
+
+    it('does not display the wallet toggle for guest users', () => {
+        mockPage.props.auth.user = null;
+        mockPage.props.cartPage.checkout.walletBalanceHalalah = 5000;
+
+        render(<StoreCart />);
+
+        expect(
+            screen.queryByRole('checkbox', { name: /wallet/i }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/Use wallet balance/),
+        ).not.toBeInTheDocument();
+    });
+
+    it('does not display the wallet toggle when user balance is zero', () => {
+        mockPage.props.cartPage.checkout.walletBalanceHalalah = 0;
+
+        render(<StoreCart />);
+
+        expect(
+            screen.queryByRole('checkbox', { name: /wallet/i }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/Use wallet balance/),
+        ).not.toBeInTheDocument();
+    });
+
+    it('displays the wallet toggle with formatted balance for logged in users with balance', () => {
+        render(<StoreCart />);
+
+        expect(
+            screen.getByText('Use wallet balance (SAR 50.00)'),
+        ).toBeVisible();
+        const checkbox = screen.getByRole('checkbox');
+        expect(checkbox).not.toBeChecked();
+    });
+
+    it('toggles wallet usage on, sends POST to endpoint, and reloads cart props', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(JSON.stringify({ data: { use_wallet: true } }), {
+                status: 200,
+            }),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<StoreCart />);
+
+        const checkbox = screen.getByRole('checkbox');
+        fireEvent.click(checkbox);
+
+        await waitFor(() => {
+            expect(router.reload).toHaveBeenCalledWith({ only: ['cart'] });
+        });
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            '/en/cart/wallet',
+            expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify({ use: true }),
+            }),
+        );
+    });
+
+    it('shows wallet deduction line and reduced total when wallet is enabled', () => {
+        mockPage.props.cart.useWallet = true;
+        // Total is 125.00 SAR (12,500 halalah), wallet balance is 50.00 SAR (5,000 halalah)
+        render(<StoreCart />);
+
+        const checkbox = screen.getByRole('checkbox');
+        expect(checkbox).toBeChecked();
+        expect(screen.getByText('Wallet balance')).toBeVisible();
+        expect(screen.getByText('-SAR 50.00')).toBeVisible();
+        // 125.00 minus 50.00 = 75.00
+        expect(screen.getByText('SAR 75.00')).toBeVisible();
+    });
+
+    it('displays breakdown correctly with both coupon discount and wallet deduction', () => {
+        mockPage.props.cart.useWallet = true;
+        mockPage.props.cart.coupon = {
+            code: 'PROMO20',
+            discountType: 'fixed',
+            discountHalalah: 2500, // 25.00 SAR discount
+        };
+        // Total 125.00, coupon 25.00, wallet 50.00 -> payable 50.00
+        render(<StoreCart />);
+
+        expect(screen.getByText('Discount')).toBeVisible();
+        expect(screen.getByText('-SAR 25.00')).toBeVisible();
+        expect(screen.getByText('Wallet balance')).toBeVisible();
+        expect(screen.getByText('-SAR 50.00')).toBeVisible();
+        expect(screen.getByText('SAR 50.00')).toBeVisible();
+    });
+
+    it('displays zero payable total when order is fully covered by wallet', () => {
+        mockPage.props.cart.useWallet = true;
+        mockPage.props.cartPage.checkout.walletBalanceHalalah = 20000; // 200.00 SAR balance covers 125.00 SAR total
+
+        render(<StoreCart />);
+
+        expect(screen.getByText('Wallet balance')).toBeVisible();
+        expect(screen.getByText('-SAR 125.00')).toBeVisible();
+        expect(screen.getByText('SAR 0.00')).toBeVisible();
     });
 });
 

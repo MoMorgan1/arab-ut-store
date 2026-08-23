@@ -255,6 +255,7 @@ function loyaltyProps(): AccountLoyaltyPageProps {
                 title: 'Orders',
                 description: 'Orders desc',
                 all: 'All',
+                wallet_paid: 'Paid from wallet :amount',
                 open: 'Open',
                 completed: 'Completed',
                 empty_title: 'No orders',

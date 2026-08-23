@@ -7,8 +7,20 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property bool $use_wallet
+ * @property int|null $coupon_id
+ */
 class Cart extends DomainModel
 {
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return [
+            'use_wallet' => 'boolean',
+        ];
+    }
+
     /** @param Builder<Cart> $query */
     public function scopeActiveForOwner(Builder $query, CartOwner $owner): void
     {

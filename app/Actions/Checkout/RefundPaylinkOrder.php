@@ -9,13 +9,16 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
+use App\Enums\WalletEntryType;
 use App\Exceptions\Checkout\CheckoutUnavailable;
 use App\Exceptions\Payments\PaymentConfigurationException;
 use App\Loyalty\Actions\ReverseOrderCashback;
+use App\Loyalty\Support\WalletLedgerWriter;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
+use App\Models\WalletEntry;
 use App\Payments\RefundResult;
 use App\Services\Payments\PaymentManager;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +31,7 @@ final readonly class RefundPaylinkOrder
         private PaymentManager $payments,
         private RecordStaffAudit $recordStaffAudit,
         private ReverseOrderCashback $reverseOrderCashback,
+        private WalletLedgerWriter $walletLedgerWriter,
     ) {}
 
     public function execute(Order $order, string $reason, User $actor, ?string $ipAddress = null): Refund
@@ -166,7 +170,7 @@ final readonly class RefundPaylinkOrder
             || $payment->currency !== 'SAR'
             || $payment->captured_halalah <= 0
             || $payment->refunded_halalah !== 0
-            || $payment->captured_halalah !== $lockedOrder->total_halalah) {
+            || $payment->captured_halalah !== (int) $lockedOrder->payment_halalah) {
             throw new CheckoutUnavailable('The Paylink payment is not refundable.');
         }
 
@@ -218,6 +222,33 @@ final readonly class RefundPaylinkOrder
 
         $payment = Payment::query()->whereKey($locked->payment_id)->lockForUpdate()->sole();
         $order = Order::query()->whereKey($locked->order_id)->lockForUpdate()->sole();
+
+        if ((int) $order->wallet_halalah > 0) {
+            $walletRefundReference = "order-wallet-refund:{$locked->id}";
+            $existingWalletRefund = $this->walletLedgerWriter->lockedEntryByReference($walletRefundReference);
+
+            if (! $existingWalletRefund instanceof WalletEntry) {
+                $walletAccount = $this->walletLedgerWriter->lockAccountFor((int) $order->user_id);
+                $racingWalletRefund = $this->walletLedgerWriter->lockedEntryByReference($walletRefundReference);
+
+                if (! $racingWalletRefund instanceof WalletEntry) {
+                    $this->walletLedgerWriter->append($walletAccount, [
+                        'type' => WalletEntryType::Refund,
+                        'amount_halalah' => (int) $order->wallet_halalah,
+                        'balance_delta_halalah' => (int) $order->wallet_halalah,
+                        'order_id' => $order->id,
+                        'refund_id' => $locked->id,
+                        'created_by_user_id' => $actor->id,
+                        'reference' => $walletRefundReference,
+                        'metadata' => [
+                            'refund_public_id' => (string) $locked->public_id,
+                            'order_number' => $order->order_number,
+                        ],
+                    ]);
+                }
+            }
+        }
+
         $payment->forceFill([
             'status' => PaymentStatus::Refunded,
             'refunded_halalah' => $result->amountHalalah,

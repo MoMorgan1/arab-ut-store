@@ -118,6 +118,18 @@ export default function AccountLiveOrder() {
                                 </bdi>
                             </span>
                         ) : null}
+                        {props.order.walletPayment &&
+                        props.order.walletPayment.amountMinor !== '0' ? (
+                            <span className="account-live-order__wallet-paid">
+                                {props.accountUi.orders.wallet_paid.replace(
+                                    ':amount',
+                                    formatAccountMoney(
+                                        props.order.walletPayment,
+                                        props.locale,
+                                    ),
+                                )}
+                            </span>
+                        ) : null}
                         <span>{props.accountUi.orders.total}</span>
                         <strong>
                             {formatAccountMoney(

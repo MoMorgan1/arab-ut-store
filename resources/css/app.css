@@ -3788,6 +3788,58 @@ html.admin-document {
         font-variant-numeric: tabular-nums;
     }
 
+    .store-cart-checkout__wallet {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        color: var(--arabut-gold-bright);
+    }
+
+    .store-cart-checkout__wallet span {
+        font-size: 0.9rem;
+    }
+
+    .store-cart-checkout__wallet strong {
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+        font-size: 1.05rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .store-cart-wallet-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.75rem 0.9rem;
+        border: 1px solid var(--arabut-line);
+        border-radius: 0.75rem;
+        background: rgb(255 255 255 / 2%);
+        cursor: pointer;
+        user-select: none;
+        transition:
+            border-color 150ms ease,
+            background-color 150ms ease;
+    }
+
+    .store-cart-wallet-toggle:hover {
+        border-color: var(--arabut-gold-dim);
+        background: rgb(255 255 255 / 4%);
+    }
+
+    .store-cart-wallet-toggle span {
+        color: var(--arabut-ink);
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .store-cart-wallet-toggle input[type='checkbox'] {
+        accent-color: var(--arabut-gold-bright);
+        width: 1.15rem;
+        height: 1.15rem;
+        cursor: pointer;
+    }
+
     .store-cart-coupon {
         display: grid;
         gap: 0.45rem;
@@ -5811,6 +5863,18 @@ html.admin-document {
 .account-live-order__discount {
     margin-block-end: 0.25rem;
     color: #8ce3ad;
+}
+
+.account-live-order__wallet-paid {
+    margin-block-end: 0.25rem;
+    color: var(--arabut-gold-bright);
+    font-size: 0.85rem;
+}
+
+.account-order-row__wallet-paid,
+.account-order-card__wallet-paid {
+    color: var(--arabut-gold-bright);
+    font-weight: 600;
 }
 
 .account-live-order__total span,

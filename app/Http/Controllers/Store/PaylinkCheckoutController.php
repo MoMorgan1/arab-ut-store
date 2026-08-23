@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Store;
 use App\Actions\Checkout\PlaceOrder;
 use App\Actions\Checkout\ReconcilePaylinkPayment;
 use App\Actions\Checkout\StartPaylinkPayment;
+use App\Enums\OrderStatus;
 use App\Exceptions\Checkout\CheckoutUnavailable;
 use App\Exceptions\IdempotencyConflict;
 use App\Exceptions\Payments\PaymentConfigurationException;
@@ -34,6 +35,22 @@ final class PaylinkCheckoutController extends Controller
                 $request->route('locale') === 'en' ? 'en' : 'ar',
                 $request->idempotencyKey(),
             );
+
+            $localized = $checkout->order->locale === 'en';
+            $orderUrl = route(
+                $localized ? 'localized.store.orders.show' : 'store.orders.show',
+                [...($localized ? ['locale' => 'en'] : []), 'order' => $checkout->order->public_id],
+                absolute: false,
+            );
+
+            if ($checkout->payment->provider === 'wallet' || $checkout->order->status !== OrderStatus::PendingPayment) {
+                return response()->json(['data' => [
+                    'paymentUrl' => null,
+                    'orderUrl' => $orderUrl,
+                    'status' => 'paid',
+                ]], $checkout->replayed ? 200 : 201)->header('Cache-Control', 'no-store, private');
+            }
+
             $invoice = $startPayment->execute($checkout->order, $checkout->payment);
         } catch (IdempotencyConflict) {
             return $this->error('idempotency_conflict', trans('store.checkout.idempotency_conflict'), 409);
@@ -48,13 +65,6 @@ final class PaylinkCheckoutController extends Controller
         } catch (PaymentConfigurationException|PaymentGatewayException) {
             return $this->error('payment_unavailable', trans('store.checkout.payment_unavailable'), 503);
         }
-
-        $localized = $checkout->order->locale === 'en';
-        $orderUrl = route(
-            $localized ? 'localized.store.orders.show' : 'store.orders.show',
-            [...($localized ? ['locale' => 'en'] : []), 'order' => $checkout->order->public_id],
-            absolute: false,
-        );
 
         if ($invoice->status !== 'pending') {
             try {

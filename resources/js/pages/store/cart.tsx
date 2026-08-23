@@ -26,6 +26,7 @@ import {
 } from '@/lib/cart-credentials-api';
 import type { StoredCartCredentials } from '@/lib/cart-credentials-api';
 import { removeCartItem } from '@/lib/cart-items-api';
+import { toggleCartWallet } from '@/lib/cart-wallet-api';
 import {
     CheckoutPhoneError,
     reloadAfterPhoneVerification,
@@ -150,6 +151,7 @@ export default function StoreCart() {
                                 }}
                                 totalHalalah={totalHalalah}
                                 translations={cartPage.translations}
+                                useWallet={cart.useWallet}
                             />
                         </div>
                     </>
@@ -238,6 +240,7 @@ function CheckoutPanel({
     policyLinks,
     totalHalalah,
     translations,
+    useWallet: initialUseWallet,
 }: {
     authenticated: boolean;
     checkout: StoreCartPageProps['cartPage']['checkout'];
@@ -249,12 +252,47 @@ function CheckoutPanel({
     };
     totalHalalah: number;
     translations: StoreCartTranslations;
+    useWallet: boolean;
 }) {
     const idempotencyKey = useRef(crypto.randomUUID());
     const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
     const [errorCode, setErrorCode] = useState<string | null>(null);
+    const [useWallet, setUseWallet] = useState(initialUseWallet);
+    const [walletBusy, setWalletBusy] = useState(false);
+
+    const [syncedUseWallet, setSyncedUseWallet] = useState(initialUseWallet);
+
+    if (syncedUseWallet !== initialUseWallet) {
+        setSyncedUseWallet(initialUseWallet);
+        setUseWallet(initialUseWallet);
+    }
+
+    const showWalletToggle =
+        authenticated && (checkout.walletBalanceHalalah ?? 0) > 0;
     const discountHalalah = coupon?.discountHalalah ?? 0;
-    const payableHalalah = Math.max(totalHalalah - discountHalalah, 0);
+    const totalAfterDiscount = Math.max(totalHalalah - discountHalalah, 0);
+    const walletUsedHalalah =
+        useWallet && showWalletToggle
+            ? Math.min(checkout.walletBalanceHalalah ?? 0, totalAfterDiscount)
+            : 0;
+    const payableHalalah = Math.max(totalAfterDiscount - walletUsedHalalah, 0);
+
+    async function handleWalletToggle(
+        event: React.ChangeEvent<HTMLInputElement>,
+    ) {
+        const nextValue = event.target.checked;
+        setUseWallet(nextValue);
+        setWalletBusy(true);
+
+        try {
+            await toggleCartWallet(checkout.walletToggleUrl, nextValue);
+            router.reload({ only: ['cart'] });
+        } catch {
+            setUseWallet(!nextValue);
+        } finally {
+            setWalletBusy(false);
+        }
+    }
 
     async function startPayment() {
         if (!checkout.canCheckout || state === 'loading') {
@@ -315,6 +353,26 @@ function CheckoutPanel({
                 removeUrl={checkout.couponRemoveUrl}
                 translations={translations}
             />
+            {showWalletToggle ? (
+                <label className="store-cart-wallet-toggle">
+                    <span>
+                        {interpolate(translations.wallet_toggle, {
+                            balance: formatMinorUnits(
+                                checkout.walletBalanceHalalah,
+                                'SAR',
+                                locale,
+                            ),
+                        })}
+                    </span>
+                    <input
+                        checked={useWallet}
+                        disabled={walletBusy}
+                        name="use_wallet"
+                        onChange={handleWalletToggle}
+                        type="checkbox"
+                    />
+                </label>
+            ) : null}
             {coupon !== null ? (
                 <div className="store-cart-checkout__discount">
                     <span>{translations.coupon_discount}</span>
@@ -325,6 +383,14 @@ function CheckoutPanel({
                             'SAR',
                             locale,
                         )}
+                    </strong>
+                </div>
+            ) : null}
+            {useWallet && walletUsedHalalah > 0 ? (
+                <div className="store-cart-checkout__wallet">
+                    <span>{translations.wallet_deduction}</span>
+                    <strong dir="ltr">
+                        -{formatMinorUnits(walletUsedHalalah, 'SAR', locale)}
                     </strong>
                 </div>
             ) : null}
