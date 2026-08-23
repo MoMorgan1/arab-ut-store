@@ -1,10 +1,19 @@
 # Admin and support inbox
 
-**Lifecycle:** Planned
-**Verified:** 2026-08-20
+**Lifecycle:** Read-only inbox implemented; handoff planned
+**Verified:** 2026-08-23
 
-No support inbox, operator route, assignment system, realtime transport, or
-assistant-to-human handoff workflow is implemented.
+A read-only inbox is implemented: `ConversationsController` lists conversations
+with status, locale, owner and public-id filters, and
+`ConversationDetailController` shows one transcript alongside its agent turns.
+Both sit behind `chat.view`, which is admin-only — support transcripts are not
+general staff reading — inside the existing MFA group, registered under both the
+bare and `/en` admin prefixes. `guest_key` is never sent to the client: it
+identifies an anonymous person and has no place in a UI payload.
+
+No assignment system, realtime transport, operator reply path, or
+assistant-to-human handoff workflow is implemented. Those remain gated on the
+decisions below.
 
 ## Goals
 

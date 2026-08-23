@@ -81,6 +81,8 @@ checks.
    never enter a transcript or model context. Rivals and FUT Champions are
    excluded because both require a squad screenshot upload at cart-add time.
 6. Add the admin inbox, live handoff, transcript controls, SLAs, and realtime.
-   A read-only conversation inbox is the first slice, because reading needs
-   none of the routing, staffing, SLA, or retention decisions that
-   [ADMIN-INBOX.md](ADMIN-INBOX.md) still leaves open.
+   The read-only conversation inbox landed 2026-08-23: list, filter, look up by
+   public id, and read a transcript with its agent-turn runtime, behind an
+   admin-only `chat.view`. Guest keys never leave the server. Handoff,
+   assignment, SLAs and realtime still wait on the routing, staffing and
+   retention decisions [ADMIN-INBOX.md](ADMIN-INBOX.md) leaves open.
