@@ -341,16 +341,22 @@ test('the Admin shell exposes only safe identity exact permissions and implement
         ->and($shell['permissions'])->toBe($expectedPermissions)
         ->and(array_column($shell['adminNavigation'], 'key'))->toBe(
             $role === UserRole::Admin
-                ? ['overview', 'orders', 'customers', 'products', 'settings']
+                ? ['overview', 'orders', 'customers', 'conversations', 'products', 'settings']
                 : ['overview', 'orders', 'settings'],
         )
         ->and(array_column($shell['adminNavigation'], 'url'))->toBe($expectedUrls)
         ->and($shell['logoutUrl'])->toBe('/logout');
 
     $serializedShell = json_encode($shell, JSON_THROW_ON_ERROR);
-    foreach ([$actor->email, 'password', 'two_factor', 'ordersUrl', 'chat'] as $forbiddenField) {
+    foreach ([$actor->email, 'password', 'two_factor', 'ordersUrl'] as $forbiddenField) {
         expect($serializedShell)->not->toContain($forbiddenField);
     }
+
+    // The customer chat widget's shared config must never ride along on an
+    // admin page. This is a key check, not a substring one: the admin shell
+    // legitimately carries the `chat.view` permission, which is a different
+    // thing entirely.
+    expect($shell)->not->toHaveKey('chat');
 })->with([
     'English Admin' => [
         UserRole::Admin,
@@ -376,8 +382,9 @@ test('the Admin shell exposes only safe identity exact permissions and implement
             'staff.manage',
             'settings.view',
             'settings.manage',
+            'chat.view',
         ],
-        ['/admin', '/admin/orders', '/admin/customers', '/admin/products', '/admin/settings'],
+        ['/admin', '/admin/orders', '/admin/customers', '/admin/conversations', '/admin/products', '/admin/settings'],
     ],
     'English Staff' => [
         UserRole::Staff,
