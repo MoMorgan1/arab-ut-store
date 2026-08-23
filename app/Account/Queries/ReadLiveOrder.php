@@ -24,6 +24,7 @@ final class ReadLiveOrder
                 'status',
                 'currency',
                 'discount_halalah',
+                'wallet_halalah',
                 'total_halalah',
                 'placed_at',
                 'created_at',
@@ -54,6 +55,7 @@ final class ReadLiveOrder
             OrderStatus::Refunded,
         ], true);
         $placedAt = $order->getAttribute('placed_at') ?? $order->getAttribute('created_at');
+        $walletHalalah = (int) ($order->getAttribute('wallet_halalah') ?? 0);
 
         return [
             'id' => (string) $order->getAttribute('public_id'),
@@ -68,6 +70,12 @@ final class ReadLiveOrder
                 (int) $order->getAttribute('discount_halalah'),
                 (string) $order->getAttribute('currency'),
             ),
+            'walletPayment' => $walletHalalah > 0
+                ? AccountMoney::fromMinor(
+                    $walletHalalah,
+                    (string) $order->getAttribute('currency'),
+                )
+                : null,
             'refreshable' => ! $terminal,
             'paymentStartUrl' => $order->status === OrderStatus::PendingPayment
                 ? route(

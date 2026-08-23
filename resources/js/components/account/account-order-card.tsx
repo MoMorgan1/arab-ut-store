@@ -73,6 +73,21 @@ export default function AccountOrderCard({
                         </span>
                         {' · '}
                         <time dateTime={order.placedAt}>{date}</time>
+                        {order.walletPayment &&
+                        order.walletPayment.amountMinor !== '0' ? (
+                            <>
+                                {' · '}
+                                <span className="account-order-card__wallet-paid">
+                                    {translations.orders.wallet_paid.replace(
+                                        ':amount',
+                                        formatAccountMoney(
+                                            order.walletPayment,
+                                            locale,
+                                        ),
+                                    )}
+                                </span>
+                            </>
+                        ) : null}
                     </span>
                 </div>
                 <h3>{order.summary}</h3>

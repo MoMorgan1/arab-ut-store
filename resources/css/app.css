@@ -386,7 +386,7 @@ html.admin-document {
 
         display: flex;
         flex-direction: column;
-        gap: clamp(1.5rem, 3vw, 2rem);
+        gap: clamp(1.25rem, 2.6vw, 1.65rem);
         padding: clamp(1.25rem, 4vw, 2.25rem);
     }
 
@@ -397,30 +397,48 @@ html.admin-document {
     }
 
     .auth-shell__heading {
-        gap: 0.625rem;
+        gap: 0.45rem;
         text-align: start;
     }
 
     .auth-shell__title {
-        max-width: 17ch;
         margin: 0;
         color: var(--arabut-ink);
         font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
-        font-size: clamp(2rem, 5vw, 2.75rem);
+        font-size: clamp(1.6rem, 4.2vw, 2.1rem);
         font-weight: 700;
-        line-height: 1.08;
+        line-height: 1.2;
     }
 
     .auth-shell__heading p {
-        max-width: 44ch;
+        max-width: 40ch;
         margin: 0;
         color: var(--arabut-muted);
-        font-size: 1rem;
-        line-height: 1.65;
+        font-size: 0.95rem;
+        line-height: 1.6;
     }
 
     .auth-form {
-        gap: 1rem;
+        gap: 1.25rem;
+    }
+
+    /* Field rhythm: bind the credential fields together and give the
+       method tabs their own beat above them, so the column reads
+       tabs → credentials → action → footer instead of one flat stack. */
+    .auth-form .grid.gap-6 {
+        gap: 1.1rem;
+    }
+
+    .auth-login-method {
+        margin-block-end: 0.35rem;
+    }
+
+    .auth-form__switch {
+        margin-block-start: 0.15rem;
+    }
+
+    .auth-terms {
+        margin-block-start: -0.45rem;
     }
 
     .password-input__toggle {
@@ -3451,6 +3469,13 @@ html.admin-document {
         font-variant-numeric: tabular-nums;
     }
 
+    .store-cart-line__promo {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.45rem;
+    }
+
     .store-cart-credentials {
         margin-block-start: 1.25rem;
         color: var(--arabut-muted);
@@ -3779,6 +3804,58 @@ html.admin-document {
         font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
         font-size: 1.05rem;
         font-variant-numeric: tabular-nums;
+    }
+
+    .store-cart-checkout__wallet {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        color: var(--arabut-gold-bright);
+    }
+
+    .store-cart-checkout__wallet span {
+        font-size: 0.9rem;
+    }
+
+    .store-cart-checkout__wallet strong {
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+        font-size: 1.05rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .store-cart-wallet-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.75rem 0.9rem;
+        border: 1px solid var(--arabut-line);
+        border-radius: 0.75rem;
+        background: rgb(255 255 255 / 2%);
+        cursor: pointer;
+        user-select: none;
+        transition:
+            border-color 150ms ease,
+            background-color 150ms ease;
+    }
+
+    .store-cart-wallet-toggle:hover {
+        border-color: var(--arabut-gold-dim);
+        background: rgb(255 255 255 / 4%);
+    }
+
+    .store-cart-wallet-toggle span {
+        color: var(--arabut-ink);
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .store-cart-wallet-toggle input[type='checkbox'] {
+        accent-color: var(--arabut-gold-bright);
+        width: 1.15rem;
+        height: 1.15rem;
+        cursor: pointer;
     }
 
     .store-cart-coupon {
@@ -5804,6 +5881,18 @@ html.admin-document {
 .account-live-order__discount {
     margin-block-end: 0.25rem;
     color: #8ce3ad;
+}
+
+.account-live-order__wallet-paid {
+    margin-block-end: 0.25rem;
+    color: var(--arabut-gold-bright);
+    font-size: 0.85rem;
+}
+
+.account-order-row__wallet-paid,
+.account-order-card__wallet-paid {
+    color: var(--arabut-gold-bright);
+    font-weight: 600;
 }
 
 .account-live-order__total span,
@@ -8120,6 +8209,27 @@ html.admin-document {
     line-height: 1;
     text-align: center;
     box-shadow: 0 0.35rem 1rem rgb(0 0 0 / 30%);
+}
+
+.store-promo-badge {
+    display: inline-flex;
+    min-height: 1.5rem;
+    align-items: center;
+    justify-self: start;
+    border: 1px solid rgb(212 168 67 / 45%);
+    border-radius: 999px;
+    padding-inline: 0.6rem;
+    background: rgb(212 168 67 / 12%);
+    color: var(--arabut-gold-bright);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.store-price-compare {
+    color: var(--arabut-muted);
+    font-size: 0.85em;
+    margin-inline-start: 0.45rem;
 }
 
 .store-catalog-card--sbc .store-catalog-card__image img {

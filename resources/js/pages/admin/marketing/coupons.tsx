@@ -328,7 +328,7 @@ export default function AdminCouponsPage() {
             <AdminSidebar
                 adminIdentity={props.adminIdentity}
                 adminUi={props.adminUi}
-                current="marketing"
+                current="marketingCoupons"
                 direction={props.direction}
                 logoutUrl={props.logoutUrl}
                 navigation={props.adminNavigation}
@@ -336,7 +336,7 @@ export default function AdminCouponsPage() {
             <AdminMobileNavigation
                 adminIdentity={props.adminIdentity}
                 adminUi={props.adminUi}
-                current="marketing"
+                current="marketingCoupons"
                 direction={props.direction}
                 logoutUrl={props.logoutUrl}
                 navigation={props.adminNavigation}
@@ -394,7 +394,7 @@ export default function AdminCouponsPage() {
             </main>
             <AdminMobileTabBar
                 adminUi={props.adminUi}
-                current="marketing"
+                current="marketingCoupons"
                 navigation={props.adminNavigation}
             />
 

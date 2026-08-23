@@ -77,6 +77,7 @@ final readonly class ReadAccountOverview
                 'order_number',
                 'status',
                 'currency',
+                'wallet_halalah',
                 'total_halalah',
                 'placed_at',
                 'created_at',

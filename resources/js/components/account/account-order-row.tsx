@@ -65,6 +65,21 @@ export default function AccountOrderRow({
                         {' · '}
                         <span>{statusLabel}</span>
                     </span>
+                    {order.walletPayment &&
+                    order.walletPayment.amountMinor !== '0' ? (
+                        <>
+                            {' · '}
+                            <span className="account-order-row__wallet-paid">
+                                {translations.orders.wallet_paid.replace(
+                                    ':amount',
+                                    formatAccountMoney(
+                                        order.walletPayment,
+                                        locale,
+                                    ),
+                                )}
+                            </span>
+                        </>
+                    ) : null}
                 </p>
             </div>
             <span

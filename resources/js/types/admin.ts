@@ -37,6 +37,8 @@ export type AdminTranslations = {
         marketingLoyalty?: string;
         settings: string;
         marketing: string;
+        marketingCoupons: string;
+        marketingPromotions: string;
         open: string;
         close: string;
         quick?: string;
@@ -668,6 +670,88 @@ export type AdminTranslations = {
         confirmingPassword: string;
         invalidPassword: string;
     };
+    promotions: {
+        headTitle: string;
+        title: string;
+        description: string;
+        createButton: string;
+        editButton: string;
+        createTitle: string;
+        editTitle: string;
+        nameArLabel: string;
+        nameArPlaceholder: string;
+        nameEnLabel: string;
+        nameEnPlaceholder: string;
+        badgeArLabel: string;
+        badgeArPlaceholder: string;
+        badgeArHelp: string;
+        badgeEnLabel: string;
+        badgeEnPlaceholder: string;
+        badgeEnHelp: string;
+        scopeLabel: string;
+        scopeAll: string;
+        scopeCategory: string;
+        scopeService: string;
+        categoryLabel: string;
+        categoryPlaceholder: string;
+        serviceTypeLabel: string;
+        serviceTypePlaceholder: string;
+        typeLabel: string;
+        typePercent: string;
+        typeFixed: string;
+        valueLabel: string;
+        valuePercentHelp: string;
+        valueFixedHelp: string;
+        startsAtLabel: string;
+        endsAtLabel: string;
+        isActiveLabel: string;
+        saveButton: string;
+        savingButton: string;
+        cancelButton: string;
+        columns: {
+            name: string;
+            scope: string;
+            discount: string;
+            window: string;
+            status: string;
+            actions: string;
+        };
+        scopeAllBadge: string;
+        scopeCategoryBadge: string;
+        scopeServiceBadge: string;
+        typePercentBadge: string;
+        typeFixedBadge: string;
+        always: string;
+        from: string;
+        until: string;
+        window: string;
+        active: string;
+        inactive: string;
+        noPromotions: string;
+        toggleTitle: string;
+        activateTitle: string;
+        deactivateTitle: string;
+        activateDescription: string;
+        deactivateDescription: string;
+        confirmToggle: string;
+        messages: {
+            created: string;
+            updated: string;
+            toggled: string;
+            genericError: string;
+            networkError: string;
+            forbiddenError: string;
+            conflictError: string;
+            validationError: string;
+        };
+        passwordModalTitle: string;
+        passwordModalDescription: string;
+        passwordLabel: string;
+        passwordPlaceholder: string;
+        confirmPasswordButton: string;
+        confirmingPassword: string;
+        invalidPassword: string;
+    };
     products: {
         actions: string;
         allArchived: string;
@@ -968,6 +1052,12 @@ export type AdminTranslations = {
     };
 };
 
+export type AdminNavigationChild = {
+    key: 'marketingCoupons' | 'marketingPromotions';
+    label: string;
+    url: string;
+};
+
 export type AdminNavigationItem = {
     key:
         | 'overview'
@@ -976,11 +1066,11 @@ export type AdminNavigationItem = {
         | 'conversations'
         | 'marketing'
         | 'products'
-        | 'products'
         | 'marketingLoyalty'
         | 'settings';
     label: string;
     url: string;
+    children?: AdminNavigationChild[];
 };
 
 export type AdminIdentity = {
@@ -1506,6 +1596,50 @@ export type AdminCouponsPageProps = {
         active: number;
     };
     filters: AdminCouponsQueryState;
+    logoutUrl: string;
+};
+
+export type AdminPromotionRow = {
+    id: string;
+    nameAr: string;
+    nameEn: string;
+    badgeAr: string | null;
+    badgeEn: string | null;
+    scope: 'all' | 'category' | 'service';
+    categoryName: string | null;
+    categoryId: string | null;
+    serviceType: string | null;
+    discountType: 'percent' | 'fixed';
+    value: number;
+    startsAt: string | null;
+    endsAt: string | null;
+    isActive: boolean;
+    createdAt: string;
+};
+
+export type AdminPromotionsQueryState = {
+    search?: string | null;
+    sort: 'created_at' | 'name' | 'value';
+    direction: 'asc' | 'desc';
+    per_page: 15 | 25 | 50;
+    page: number;
+};
+
+export type AdminPromotionsPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    promotions: AdminPromotionRow[];
+    pagination: AdminPagination;
+    counts: {
+        total: number;
+        active: number;
+    };
+    categories: Array<{ id: string; name: string }>;
+    filters: AdminPromotionsQueryState;
     logoutUrl: string;
 };
 

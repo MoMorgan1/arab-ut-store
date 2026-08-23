@@ -162,6 +162,10 @@ export type StoreCartItem = {
         serviceType:
             'coins' | 'sbc' | 'objectives' | 'rivals' | 'fut_champions';
     };
+    promotion: {
+        badge: string;
+        discountHalalah: number;
+    } | null;
     quantity: number;
     requiresCredentials: boolean;
     totalHalalah: number;
@@ -260,6 +264,8 @@ export type StoreCartTranslations = {
     coupon_limit: string;
     coupon_minimum: string;
     coupon_error: string;
+    wallet_toggle: string;
+    wallet_deduction: string;
 };
 
 export type StoredCartCoupon = {
@@ -276,6 +282,7 @@ export type StoreCartPageProps = {
         currency: 'SAR';
         items: StoreCartItem[];
         coupon: StoredCartCoupon | null;
+        useWallet: boolean;
     };
     cartPage: {
         checkout: {
@@ -283,6 +290,8 @@ export type StoreCartPageProps = {
             checkoutUrl: string;
             couponApplyUrl: string;
             couponRemoveUrl: string;
+            walletToggleUrl: string;
+            walletBalanceHalalah: number;
             loginUrl: string;
             phoneCodeUrl: string;
             phoneVerified: boolean;
