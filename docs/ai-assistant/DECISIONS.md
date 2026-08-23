@@ -1,7 +1,37 @@
 # Decision record
 
 **Lifecycle:** Implemented record
-**Verified:** 2026-08-22
+**Verified:** 2026-08-23
+
+## 2026-08-23 — In-chat add to cart takes EA details, outside the transcript
+
+Mohamed asked for the assistant to place an order rather than only describe one,
+and authorized it to collect credentials: *"i wanted it to add to cart and it
+can take the credential no problem at all."*
+
+Every service the assistant sells requires EA account details at the moment an
+item enters the cart — `CoinsCartRequest` and `SbcCartRequest` demand an email,
+a password and three backup codes in the same request, and
+`ValidatesManualServiceCart` additionally demands a squad screenshot file. There
+is no credential-free path: `AddCatalogItemToCart` explicitly excludes coins and
+SBC. So the feature cannot exist without collecting them somewhere.
+
+**Decision:** collect them in a panel inside the chat widget, posted directly to
+the existing cart endpoint over the customer's own session — not as chat
+messages. This delivers the authorized feature. It declines only the specific
+mechanism of routing secrets through the message stream, because a credential
+typed as a message is persisted to `chat_messages` indefinitely, is replayed
+into every subsequent model prompt as conversation context, and would later be
+readable in the admin inbox. That is a data-handling consequence of the
+transport, not a product preference, and it is avoidable at no cost to the
+feature.
+
+Consequences: the runtime still has no tool-calling and the model still cannot
+take an action. The offer is server-derived from the customer's own message; the
+button and the form are the human confirmation. Rivals and FUT Champions are
+excluded — a screenshot upload does not belong in a chat panel. The
+`TOOLS.md` rule that credentials and secrets never enter model context is
+preserved unchanged.
 
 ## 2026-08-22 — Failed public gate requires disable and remediate
 

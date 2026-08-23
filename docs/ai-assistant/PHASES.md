@@ -70,6 +70,17 @@ checks.
    Accepted 2026-08-23.
 3. ~~Add scoped grounding with a curated corpus.~~ Implemented 2026-08-23 as
    knowledge grounding plus server-derived service cards.
-4. Show live service prices on those cards, resolved at render time.
-5. Add least-privilege tools, with human confirmation for writes.
+4. ~~Show live service prices on those cards, resolved at render time.~~
+   Implemented 2026-08-23.
+5. ~~Let a customer act on a reply without leaving the chat.~~ Implemented
+   2026-08-23 as a server-derived add-to-cart offer for coins, not as model
+   tools. The runtime still has no tool-calling and the model still cannot take
+   an action: the offer is derived from the customer's own message, the button
+   and the EA form are the human confirmation, and the request goes to the
+   store's existing cart endpoint over the customer's own session. Credentials
+   never enter a transcript or model context. Rivals and FUT Champions are
+   excluded because both require a squad screenshot upload at cart-add time.
 6. Add the admin inbox, live handoff, transcript controls, SLAs, and realtime.
+   A read-only conversation inbox is the first slice, because reading needs
+   none of the routing, staffing, SLA, or retention decisions that
+   [ADMIN-INBOX.md](ADMIN-INBOX.md) still leaves open.

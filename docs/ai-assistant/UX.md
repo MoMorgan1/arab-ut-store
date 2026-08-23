@@ -52,6 +52,34 @@ endpoints, and the storefront enforces per-page query budgets that pricing
 lookups would blow. Each service is computed independently: if one price is missing or
 malformed, that card simply shows no price.
 
+When the customer has named a coins configuration the store can actually
+price, the reply carries an add-to-cart offer (`cart.v1` in the message
+metadata, rendered by `ChatCartOffer`). Like every other block it is derived on
+the server from the customer's own words — `BuildAssistantCartOffer` reads the
+same typed options the cards use, and the model never authors one. The offer and
+the choice chips never share a reply: chips ask while something is still
+unchosen, the offer appears once nothing is. A console order is not cart-ready
+without a chosen speed, because normal and fast are different products at
+different prices; PC carries no speed at all and is complete without one.
+
+The offer stores no price. The panel quotes the exact total at render time from
+`/coins/quote` — the same endpoint the storefront configurator uses — for the
+same reason cards store no price: chat history is permanent. When the store
+cannot quote, the panel shows the selection and the button with no number
+rather than a stale one.
+
+The store requires EA account details at the moment an item enters the cart
+(`CoinsCartRequest`), so the panel collects them. They are typed into the widget
+and posted straight to `/cart/items/coins` over the customer's own session, and
+they are cleared from component state as soon as the item is in the cart. They
+are never sent as a chat message, never written to a transcript, and never
+reach model context — a credential typed as a message would persist in history
+indefinitely and travel in every later prompt. The panel reports its own
+validation errors in the store's language rather than the browser's, and maps
+the endpoint's 422 back onto the same fields. Rivals and FUT Champions have no
+in-chat offer: both require a squad screenshot upload at cart-add time, which
+belongs on the service page.
+
 The launcher initializes chat lazily. One owner has one open conversation.
 Hourly maintenance closes it after 24 hours without a message. A later open
 request reuses only an inactivity-closed conversation inside the seven-day
