@@ -28,7 +28,9 @@ const api = vi.hoisted(() => ({
 }));
 
 const inertia = vi.hoisted(() => ({
+    flushAll: vi.fn(),
     on: vi.fn(() => vi.fn()),
+    post: vi.fn(),
     reload: vi.fn(),
 }));
 
@@ -47,7 +49,9 @@ vi.mock('@/lib/admin-mfa-api', async () => ({
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
     router: {
+        flushAll: inertia.flushAll,
         on: inertia.on,
+        post: inertia.post,
         reload: inertia.reload,
     },
     useHttp: () => http,
@@ -104,6 +108,8 @@ function createDefaultProps(
 describe('AdminSettingsPage', () => {
     beforeEach(() => {
         Object.values(api).forEach((mock) => mock.mockReset());
+        inertia.flushAll.mockReset();
+        inertia.post.mockReset();
         inertia.reload.mockReset();
         vi.restoreAllMocks();
     });
@@ -456,5 +462,63 @@ describe('AdminSettingsPage', () => {
                 }),
             ).toBeDisabled();
         });
+    });
+
+    it('renders the identity and logout card for Admin and allows logging out', () => {
+        render(
+            <AdminSettingsPage
+                {...createDefaultProps({
+                    adminIdentity: { name: 'Operations Owner', role: 'admin' },
+                    logoutUrl: '/logout',
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByRole('heading', {
+                level: 2,
+                name: 'Operations Owner',
+            }),
+        ).toBeVisible();
+        expect(screen.getAllByText('Admin')[0]).toBeVisible();
+
+        const logoutButton = screen.getByRole('button', { name: 'Log out' });
+        expect(logoutButton).toBeVisible();
+
+        fireEvent.click(logoutButton);
+
+        expect(inertia.flushAll).toHaveBeenCalledOnce();
+        expect(inertia.post).toHaveBeenCalledWith('/logout');
+    });
+
+    it('renders the identity and logout card for Staff even when team and pricing are null', () => {
+        render(
+            <AdminSettingsPage
+                {...createDefaultProps({
+                    adminIdentity: { name: 'Staff Operator', role: 'staff' },
+                    servicePricing: null,
+                    servicePricingUrls: null,
+                    team: null,
+                    teamUrls: null,
+                    logoutUrl: '/logout',
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByRole('heading', {
+                level: 2,
+                name: 'Staff Operator',
+            }),
+        ).toBeVisible();
+        expect(screen.getByText('Staff')).toBeVisible();
+
+        const logoutButton = screen.getByRole('button', { name: 'Log out' });
+        expect(logoutButton).toBeVisible();
+
+        fireEvent.click(logoutButton);
+
+        expect(inertia.flushAll).toHaveBeenCalledOnce();
+        expect(inertia.post).toHaveBeenCalledWith('/logout');
     });
 });

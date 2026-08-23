@@ -1,7 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import type { PropsWithChildren } from 'react';
 
-import AdminMobileNavigation from '@/components/admin/admin-mobile-navigation';
 import AdminMobileTabBar from '@/components/admin/admin-mobile-tabbar';
 import AdminSidebar from '@/components/admin/admin-sidebar';
 import type {
@@ -86,7 +85,21 @@ export default function AdminLayout({ children }: PropsWithChildren) {
             >
                 {skipLabel}
             </a>
-            <AdminMobileNavigation {...navigationProps} />
+            <header className="flex min-h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-3 border-b border-border bg-card px-[max(1rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] pl-[max(1rem,env(safe-area-inset-left))] md:hidden">
+                <img
+                    alt=""
+                    height="32"
+                    src="/images/arabut-logo-header.webp"
+                    width="32"
+                    className="h-8 w-8 shrink-0 object-contain"
+                />
+                <span
+                    className="font-display text-lg font-bold tracking-tight text-foreground"
+                    translate="no"
+                >
+                    {page.props.adminUi.brand}
+                </span>
+            </header>
             <div className="md:grid md:grid-cols-[16rem_minmax(0,1fr)]">
                 <AdminSidebar {...navigationProps} />
                 <main
