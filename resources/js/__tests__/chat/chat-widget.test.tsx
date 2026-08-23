@@ -1411,6 +1411,21 @@ describe('ChatWidget Component', () => {
             mockConversationResponse('demo');
         }
 
+        /**
+         * Home actions are disabled until the conversation finishes loading,
+         * so a click fired during that window is silently dropped and the view
+         * never changes. CI hit exactly that race. Wait for the control to be
+         * enabled before clicking it.
+         */
+        async function clickWhenEnabled(name: string | RegExp) {
+            const button = await screen.findByRole('button', { name });
+
+            await waitFor(() => expect(button).toBeEnabled());
+            fireEvent.click(button);
+
+            return button;
+        }
+
         it('lands on Home when opened and hides the composer', async () => {
             mockEmptyConversation();
             render(<ChatWidget enabled={true} locale="ar" />);
@@ -1429,11 +1444,7 @@ describe('ChatWidget Component', () => {
             render(<ChatWidget enabled={true} locale="en" />);
 
             fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
-            fireEvent.click(
-                await screen.findByRole('button', {
-                    name: 'Start a conversation',
-                }),
-            );
+            await clickWhenEnabled('Start a conversation');
 
             expect(await screen.findByRole('textbox')).toBeInTheDocument();
             const dialog = screen.getByRole('dialog');
@@ -1456,9 +1467,7 @@ describe('ChatWidget Component', () => {
             render(<ChatWidget enabled={true} locale="en" />);
 
             fireEvent.click(screen.getByRole('button', { name: /Open chat/i }));
-            fireEvent.click(
-                await screen.findByRole('button', { name: 'Prices' }),
-            );
+            await clickWhenEnabled('Prices');
 
             expect(await screen.findByRole('textbox')).toBeInTheDocument();
             expect(screen.getAllByText('Prices').length).toBeGreaterThan(0);
@@ -1471,11 +1480,7 @@ describe('ChatWidget Component', () => {
 
             const launcher = screen.getByRole('button', { name: /Open chat/i });
             fireEvent.click(launcher);
-            fireEvent.click(
-                await screen.findByRole('button', {
-                    name: 'Start a conversation',
-                }),
-            );
+            await clickWhenEnabled('Start a conversation');
             await screen.findByRole('textbox');
 
             fireEvent.keyDown(window, { key: 'Escape' });
