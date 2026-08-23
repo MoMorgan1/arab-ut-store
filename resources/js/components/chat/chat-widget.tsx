@@ -739,6 +739,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                 isOpen={isOpen}
                 unreadCount={unreadCount}
                 locale={locale}
+                canGreet={surface !== 'account'}
                 onToggle={toggleOpen}
             />
         </div>
