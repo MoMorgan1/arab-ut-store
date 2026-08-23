@@ -341,7 +341,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
         ->and($shell['permissions'])->toBe($expectedPermissions)
         ->and(array_column($shell['adminNavigation'], 'key'))->toBe(
             $role === UserRole::Admin
-                ? ['overview', 'orders', 'customers', 'settings']
+                ? ['overview', 'orders', 'customers', 'products', 'settings']
                 : ['overview', 'orders', 'settings'],
         )
         ->and(array_column($shell['adminNavigation'], 'url'))->toBe($expectedUrls)
@@ -377,7 +377,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
             'settings.view',
             'settings.manage',
         ],
-        ['/admin', '/admin/orders', '/admin/customers', '/admin/settings'],
+        ['/admin', '/admin/orders', '/admin/customers', '/admin/products', '/admin/settings'],
     ],
     'English Staff' => [
         UserRole::Staff,

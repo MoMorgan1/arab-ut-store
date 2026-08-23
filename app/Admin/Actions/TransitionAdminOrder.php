@@ -9,6 +9,7 @@ use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
 use App\Exceptions\AdminOrderStatusConflict;
+use App\Loyalty\Actions\AccrueOrderCashback;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
@@ -23,6 +24,7 @@ final class TransitionAdminOrder
     public function __construct(
         private readonly OrderStatusTransitionRules $rules,
         private readonly RecordStaffAudit $recordStaffAudit,
+        private readonly AccrueOrderCashback $accrueOrderCashback,
     ) {}
 
     public function execute(
@@ -120,6 +122,10 @@ final class TransitionAdminOrder
                         ],
                     ]);
                 }
+            }
+
+            if ($targetStatus === OrderStatus::Completed) {
+                $this->accrueOrderCashback->execute($order);
             }
 
             $this->recordStaffAudit->execute(

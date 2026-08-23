@@ -98,6 +98,12 @@ class User extends Authenticatable
         return $this->hasMany(PhoneVerification::class);
     }
 
+    /** @return HasMany<TwoFactorTrustedDevice, $this> */
+    public function trustedDevices(): HasMany
+    {
+        return $this->hasMany(TwoFactorTrustedDevice::class);
+    }
+
     /** @return HasMany<UserIdentityChange, $this> */
     public function identityChanges(): HasMany
     {

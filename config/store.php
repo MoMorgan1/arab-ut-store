@@ -8,6 +8,7 @@ return [
     'features' => [
         'my_account_enabled' => env('MY_ACCOUNT_ENABLED', true),
         'legacy_history_enabled' => env('LEGACY_HISTORY_ENABLED', false),
+        'loyalty_enabled' => env('STORE_LOYALTY_ENABLED', false),
     ],
     'display_currencies' => ['SAR', 'AED', 'KWD', 'BHD', 'OMR', 'QAR', 'USD', 'EUR', 'GBP'],
     'display_exchange_rates' => [

@@ -46,6 +46,14 @@ final class AdminShell
             ];
         }
 
+        if ($actor->can(AdminPermission::CatalogView->value)) {
+            $navigation[] = [
+                'key' => 'products',
+                'label' => (string) trans('admin.navigation.products', locale: $locale),
+                'url' => route($prefix.'products', absolute: false),
+            ];
+        }
+
         $navigation[] = [
             'key' => 'settings',
             'label' => (string) trans('admin.navigation.settings', locale: $locale),

@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
+ * @property int $subtotal_halalah
+ * @property int $discount_halalah
+ * @property int $wallet_halalah
+ * @property int $payment_halalah
  * @property int $total_halalah
  * @property string $currency
  * @property string $locale

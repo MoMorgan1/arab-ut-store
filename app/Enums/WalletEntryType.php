@@ -8,4 +8,6 @@ enum WalletEntryType: string
     case Debit = 'debit';
     case Refund = 'refund';
     case Adjustment = 'adjustment';
+    case Cashback = 'cashback';
+    case CashbackReversal = 'cashback_reversal';
 }
