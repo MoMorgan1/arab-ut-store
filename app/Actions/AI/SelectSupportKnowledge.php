@@ -105,13 +105,9 @@ final readonly class SelectSupportKnowledge
                 return true;
             }
 
-            // Either side may carry the extra letters: the customer writes
-            // "الضمان" for the keyword "ضمان", and types "كوينز" for the
-            // multi-word keyword "شحن كوينز".
-            if (mb_strlen($token) > 2 && str_contains($keyword, $token)) {
-                return true;
-            }
-
+            // Only the customer's word may carry extra letters: "الضمان"
+            // matches the keyword "ضمان". The reverse would match a fragment
+            // inside a word — "وين" (where) sits inside "كوينز" (coins).
             if (mb_strlen($keyword) > 2 && str_contains($token, $keyword)) {
                 return true;
             }

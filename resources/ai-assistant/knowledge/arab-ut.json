@@ -352,8 +352,19 @@
             "id": "order-tracking",
             "url": "/orders",
             "faq": true,
-            "keywords_ar": ["تتبع", "حالة الطلب", "وين طلبي", "متى يوصل"],
-            "keywords_en": ["track", "order status", "where is my order"],
+            "keywords_ar": [
+                "تتبع",
+                "حالة الطلب",
+                "وين طلبي",
+                "متى يوصل",
+                "طلبي"
+            ],
+            "keywords_en": [
+                "track",
+                "order status",
+                "where is my order",
+                "my order"
+            ],
             "title_ar": "تتبع حالة الطلب",
             "body_ar": "تقدر تتابع حالة طلبك من صفحة الطلب في حسابك داخل المتجر. تحديات SBC تظهر بعد انتهاء شحن الكوينز، وإذا ما ظهرت بعد 5 دقائق أخبرنا هنا. خدمات FUT Champions و Rivals لا تظهر في نظام التتبع ونحدّثك عنها من خلال الدعم.",
             "title_en": "Order Status Tracking",

@@ -52,3 +52,13 @@ it('orders topics deterministically for the same question', function (): void {
 
     expect($first)->toBe($second);
 });
+
+it('does not match a keyword fragment hiding inside another word', function (): void {
+    // Regression from the 2026-08-23 production batch: "وين" (where) is a
+    // literal substring of "كوينز" (coins), so an order-status question was
+    // pulling in the coins topic and, with it, a buy card.
+    $topics = selectKnowledge('شيك طلبي وقولي وين وصل');
+
+    expect($topics)->toContain('order-tracking')
+        ->and($topics)->not->toContain('coins-service');
+});

@@ -22,6 +22,7 @@ type ChatMessageListProps = {
     onRetry: (tempId: string) => void;
     retryableTurn?: AgentTurnState | null;
     onRetryAgentTurn?: () => void;
+    onCardNavigate?: () => void;
 };
 
 export const ChatMessageList: React.FC<ChatMessageListProps> = ({
@@ -37,6 +38,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     onRetry,
     retryableTurn,
     onRetryAgentTurn,
+    onCardNavigate,
 }) => {
     const isEn = locale === 'en';
     const suggestions = chatTopicsFor(locale).map((topic) => topic.label);
@@ -325,6 +327,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                     message,
                                                 )}
                                                 locale={locale}
+                                                onNavigate={onCardNavigate}
                                             />
                                         )}
 

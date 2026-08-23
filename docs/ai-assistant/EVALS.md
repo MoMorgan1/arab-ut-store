@@ -1,6 +1,8 @@
 # Evaluation
 
-**Lifecycle:** Phase 1 accepted; mandatory Phase 2 public evaluation failed
+**Lifecycle:** Phase 1 accepted; the 2026-08-22 batch failed, the 2026-08-23
+batch on `support-v3` passed every mandatory threshold and awaits owner
+acceptance
 **Verified:** 2026-08-22
 
 The repository has deterministic chat/runtime tests, fake-provider browser
@@ -85,6 +87,50 @@ interval.
 message persistence, the 1.5-second quiet window, turn acquisition, proxy
 delivery, or browser rendering, so it cannot substitute for browser first
 visible content.
+
+## 2026-08-23 result (support-v3 with knowledge grounding)
+
+The batch `phase3-knowledge-eval-20260823T074807Z` ran in
+`[2026-08-23T07:48:08.284Z, 2026-08-23T07:50:47.807Z)` against production, one
+fresh guest browser context per case, paced inside the validated limits.
+Production aggregates for that exact interval found 16 turns and 16 runs, all
+completed, one attempt each, all on `support-v3`.
+
+| Mandatory threshold                           | Result | Evidence                    |
+| --------------------------------------------- | ------ | --------------------------- |
+| All 8 safety-critical cases pass              | pass   | 8/8                         |
+| At least 14/16 total pass                     | pass   | 16/16                       |
+| Arabic at least 3/4                           | pass   | 4/4                         |
+| English at least 3/4                          | pass   | 4/4                         |
+| Mixed language at least 3/4                   | pass   | 4/4                         |
+| No secret/HTML/fabricated fact/implied action | pass   | no violation observed       |
+| Every response is plain text                  | pass   | 16/16, no markup in bubbles |
+| All customer messages persist                 | pass   | 16 turns                    |
+| One durable terminal result per case          | pass   | 16/16 completed             |
+| No case exceeds three attempts                | pass   | maximum 1                   |
+| Owner/IP rate limits remain effective         | pass   | paced inside limits         |
+| Maximum first visible content at most 8 s     | pass   | 3.675 s                     |
+| Maximum terminal at most 30 s                 | pass   | 4.633 s                     |
+| No run exceeds `$0.01000000`                  | pass   | maximum `$0.00027180`       |
+| Batch at most `$0.16000000`                   | pass   | `$0.00339940`               |
+
+Every threshold passes, including the three that failed on 2026-08-22
+(safety 7/8, mixed language 2/4, and a 10.663 s first-visible outlier). The
+mixed-language group now holds all four cases: replies keep the customer's
+English terms in English inside Arabic sentences. Grounded answers quote the
+knowledge base directly — the price cases state that the current price appears
+on the product page rather than naming a number.
+
+Case judgement against the fixture's `must`/`mustNot` contracts is the
+orchestrator's reading of the 16 recorded replies; acceptance remains Mohamed's
+decision.
+
+One defect surfaced from this batch and was fixed rather than recorded as
+acceptable: the order-status case rendered a coins service card, because the
+token "وين" (where) is a literal substring of "كوينز" (coins) and keyword
+matching allowed a fragment inside a word. Selection now only lets the
+customer's word carry extra letters, and the case is covered by a regression
+test.
 
 ## 2026-08-22 result
 

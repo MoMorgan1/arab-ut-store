@@ -19,6 +19,7 @@ const card = {
     subtitle: 'اختر منصتك والكمية',
     cta: 'اطلب الآن',
     url: '/#coins',
+    image: '/images/store/coins/ut-coin-240.webp',
 };
 
 describe('chatServiceCards', () => {
@@ -69,6 +70,20 @@ describe('chatServiceCards', () => {
         expect(
             chatServiceCards(
                 message({ cards: { version: 'cards.v1', items: offsite } }),
+            ),
+        ).toEqual([]);
+    });
+
+    it('refuses an image that is not a local asset', () => {
+        const remote = [
+            { ...card, image: 'https://evil.example/pixel.png' },
+            { ...card, image: '//evil.example/pixel.png' },
+            { ...card, image: '/uploads/pixel.png' },
+        ];
+
+        expect(
+            chatServiceCards(
+                message({ cards: { version: 'cards.v1', items: remote } }),
             ),
         ).toEqual([]);
     });

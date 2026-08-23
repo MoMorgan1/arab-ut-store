@@ -6,6 +6,7 @@ export type ChatServiceCard = {
     subtitle: string;
     cta: string;
     url: string;
+    image: string;
 };
 
 /** Payload shape this client understands. A newer server version is ignored. */
@@ -21,9 +22,9 @@ function isCard(value: unknown): value is ChatServiceCard {
 
     const card = value as Record<string, unknown>;
 
-    const hasText = (['id', 'title', 'subtitle', 'cta', 'url'] as const).every(
-        (key) => typeof card[key] === 'string' && card[key] !== '',
-    );
+    const hasText = (
+        ['id', 'title', 'subtitle', 'cta', 'url', 'image'] as const
+    ).every((key) => typeof card[key] === 'string' && card[key] !== '');
 
     if (!hasText) {
         return false;
@@ -33,8 +34,14 @@ function isCard(value: unknown): value is ChatServiceCard {
     // customer taps, so an absolute or scheme-relative URL from a malformed
     // payload must never become an off-site navigation.
     const url = card.url as string;
+    const image = card.image as string;
 
-    return url.startsWith('/') && !url.startsWith('//');
+    return (
+        url.startsWith('/') &&
+        !url.startsWith('//') &&
+        image.startsWith('/images/') &&
+        !image.startsWith('//')
+    );
 }
 
 /**

@@ -682,6 +682,11 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                                 onRetry={retryMessage}
                                 retryableTurn={retryableTurn}
                                 onRetryAgentTurn={retryAgentTurn}
+                                onCardNavigate={
+                                    // The phone sheet covers the page it just
+                                    // opened, so tapping a card steps aside.
+                                    isMobileDialog ? closeChat : undefined
+                                }
                             />
 
                             <ChatComposer

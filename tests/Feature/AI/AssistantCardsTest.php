@@ -53,3 +53,19 @@ test('cards never carry a price', function () {
             ->and($card)->not->toHaveKey('price');
     }
 });
+
+test('every card image exists in the public build', function () {
+    // A typo here ships a broken image into a customer's chat, and nothing
+    // else would catch it: the path is a plain string.
+    foreach (['ابغى كوينز', 'تحديات SBC', 'رايفلز', 'فوت شامبيونز'] as $question) {
+        foreach (assistantCards($question) as $card) {
+            expect($card['image'])->toStartWith('/images/')
+                ->and(file_exists(public_path(ltrim($card['image'], '/'))))
+                ->toBeTrue("missing image {$card['image']}");
+        }
+    }
+});
+
+test('an order-status question offers no buy card', function () {
+    expect(assistantCards('شيك طلبي وقولي وين وصل'))->toBe([]);
+});

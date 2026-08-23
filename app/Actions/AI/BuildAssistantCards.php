@@ -18,20 +18,20 @@ final readonly class BuildAssistantCards
      * to the storefront route that sells it. Troubleshooting and policy topics
      * are intentionally absent: a card is an invitation to buy.
      *
-     * @var array<string, array{path: string, key: string}>
+     * @var array<string, array{path: string, key: string, image: string}>
      */
     private const CARDS = [
-        'coins-service' => ['path' => '/#coins', 'key' => 'coins'],
-        'coins-speeds' => ['path' => '/#coins', 'key' => 'coins'],
-        'sbc' => ['path' => '/sbc', 'key' => 'sbc'],
-        'rivals' => ['path' => '/rivals', 'key' => 'rivals'],
-        'fut-champions' => ['path' => '/fut-champions', 'key' => 'fut_champions'],
+        'coins-service' => ['path' => '/#coins', 'key' => 'coins', 'image' => '/images/store/coins/ut-coin-240.webp'],
+        'coins-speeds' => ['path' => '/#coins', 'key' => 'coins', 'image' => '/images/store/coins/ut-coin-240.webp'],
+        'sbc' => ['path' => '/sbc', 'key' => 'sbc', 'image' => '/images/store/services/sbc.webp'],
+        'rivals' => ['path' => '/rivals', 'key' => 'rivals', 'image' => '/images/store/services/rivals.webp'],
+        'fut-champions' => ['path' => '/fut-champions', 'key' => 'fut_champions', 'image' => '/images/store/services/fut-champions.webp'],
     ];
 
     public function __construct(private SelectSupportKnowledge $selectKnowledge) {}
 
     /**
-     * @return list<array{id: string, title: string, subtitle: string, cta: string, url: string}>
+     * @return list<array{id: string, title: string, subtitle: string, cta: string, url: string, image: string}>
      */
     public function execute(string $customerText, string $locale, int $limit = 1): array
     {
@@ -57,6 +57,7 @@ final readonly class BuildAssistantCards
                 'subtitle' => (string) trans("chat.cards.{$card['key']}.subtitle", [], $locale),
                 'cta' => (string) trans('chat.cards.cta', [], $locale),
                 'url' => self::localizedPath($card['path'], $locale),
+                'image' => $card['image'],
             ];
         }
 

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatMessageList } from '@/components/chat/chat-message-list';
@@ -25,6 +25,7 @@ const card = {
     subtitle: 'اختر منصتك والكمية',
     cta: 'اطلب الآن',
     url: '/#coins',
+    image: '/images/store/coins/ut-coin-240.webp',
 };
 
 function assistantMessage(
@@ -42,7 +43,7 @@ function assistantMessage(
     };
 }
 
-function renderList(messages: ChatMessage[]) {
+function renderList(messages: ChatMessage[], onCardNavigate?: () => void) {
     render(
         <ChatMessageList
             messages={messages}
@@ -54,6 +55,7 @@ function renderList(messages: ChatMessage[]) {
             onLoadOlder={() => {}}
             onSelectSuggestion={() => {}}
             onRetry={() => {}}
+            onCardNavigate={onCardNavigate}
         />,
     );
 }
@@ -75,6 +77,37 @@ describe('service cards in the message list', () => {
         expect(link).toHaveAttribute('href', '/#coins');
         expect(screen.getByText('شحن كوينز FC')).toBeInTheDocument();
         expect(screen.getByText('اطلب الآن')).toBeInTheDocument();
+        expect(link.querySelector('img')).toHaveAttribute(
+            'src',
+            '/images/store/coins/ut-coin-240.webp',
+        );
+    });
+
+    it('shows the whole subtitle rather than truncating it', () => {
+        renderList([
+            assistantMessage({ cards: { version: 'cards.v1', items: [card] } }),
+        ]);
+
+        const subtitle = screen.getByText('اختر منصتك والكمية');
+
+        expect(subtitle.className).not.toContain('truncate');
+    });
+
+    it('steps the sheet aside when a card is tapped on a phone', () => {
+        const onCardNavigate = vi.fn();
+
+        renderList(
+            [
+                assistantMessage({
+                    cards: { version: 'cards.v1', items: [card] },
+                }),
+            ],
+            onCardNavigate,
+        );
+
+        fireEvent.click(screen.getByTestId('chat-service-card'));
+
+        expect(onCardNavigate).toHaveBeenCalledTimes(1);
     });
 
     it('renders no card while the reply is still streaming', () => {
