@@ -6,6 +6,7 @@ import {
     CheckCircle2,
     LoaderCircle,
     UserCheck,
+    UserPlus,
     UserX,
     Users,
 } from 'lucide-react';
@@ -81,6 +82,12 @@ export default function AdminTeamSection({
     const [alertState, setAlertState] = useState<ActionAlert | null>(null);
 
     // Role dialog state
+    const [grantDialogOpen, setGrantDialogOpen] = useState(false);
+    const [grantEmail, setGrantEmail] = useState('');
+    const [grantRole, setGrantRole] = useState<'admin' | 'staff'>('staff');
+    const [grantError, setGrantError] = useState<string | null>(null);
+    const [grantSubmitting, setGrantSubmitting] = useState(false);
+
     const [roleDialogOpen, setRoleDialogOpen] = useState(false);
     const [roleDialogMember, setRoleDialogMember] =
         useState<AdminTeamMember | null>(null);
@@ -127,6 +134,85 @@ export default function AdminTeamSection({
         setStatusDialogAction(action);
         setStatusError(null);
         setStatusDialogOpen(true);
+    };
+
+    const executeGrant = async () => {
+        if (!teamUrls) {
+            return;
+        }
+
+        setGrantSubmitting(true);
+        setGrantError(null);
+
+        try {
+            const response = await fetch(teamUrls.grantUrl, {
+                body: JSON.stringify({
+                    email: grantEmail.trim(),
+                    role: grantRole,
+                }),
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                },
+                method: 'POST',
+            });
+
+            if (response.status === 423) {
+                setGrantDialogOpen(false);
+                pendingAction.current = executeGrant;
+                setPasswordConfirmOpen(true);
+
+                return;
+            }
+
+            if (response.status === 403) {
+                setGrantError(copy.messages.forbiddenError);
+
+                return;
+            }
+
+            if (response.status === 422) {
+                const data = (await response.json().catch(() => null)) as {
+                    errors?: Record<string, string[]>;
+                    reason?: string;
+                } | null;
+
+                const rejection: Record<string, string> = {
+                    already_granted: copy.messages.grantAlreadyGranted,
+                    inactive_account: copy.messages.grantInactiveAccount,
+                    no_such_account: copy.messages.grantNoSuchAccount,
+                    self: copy.messages.grantSelf,
+                };
+
+                setGrantError(
+                    (data?.reason ? rejection[data.reason] : undefined) ??
+                        data?.errors?.email?.[0] ??
+                        copy.messages.genericError,
+                );
+
+                return;
+            }
+
+            if (!response.ok) {
+                setGrantError(copy.messages.genericError);
+
+                return;
+            }
+
+            setGrantDialogOpen(false);
+            setGrantEmail('');
+            setGrantRole('staff');
+            setAlertState({
+                text: copy.messages.grantSucceeded,
+                type: 'success',
+            });
+            router.reload({ only: ['team'] });
+        } catch {
+            setGrantError(copy.messages.networkError);
+        } finally {
+            setGrantSubmitting(false);
+        }
     };
 
     const executeRoleChange = async () => {
@@ -304,6 +390,21 @@ export default function AdminTeamSection({
                             {copy.teamDescription}
                         </p>
                     </div>
+                    {teamUrls ? (
+                        <Button
+                            className="min-h-11 touch-manipulation gap-1.5"
+                            onClick={() => {
+                                setGrantEmail('');
+                                setGrantRole('staff');
+                                setGrantError(null);
+                                setGrantDialogOpen(true);
+                            }}
+                            type="button"
+                        >
+                            <UserPlus aria-hidden="true" className="size-4" />
+                            {copy.addMemberButton}
+                        </Button>
+                    ) : null}
                 </header>
 
                 {alertState ? (
@@ -876,6 +977,114 @@ export default function AdminTeamSection({
             </Dialog>
 
             {/* Replay password confirmation dialog */}
+            <Dialog onOpenChange={setGrantDialogOpen} open={grantDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{copy.addMemberTitle}</DialogTitle>
+                        <DialogDescription>
+                            {copy.addMemberDescription}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-1.5">
+                            <label
+                                className="text-xs font-medium text-muted-foreground"
+                                htmlFor="admin-team-grant-email"
+                            >
+                                {copy.addMemberEmailLabel}
+                            </label>
+                            <input
+                                autoComplete="off"
+                                className="flex min-h-11 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
+                                id="admin-team-grant-email"
+                                onChange={(event) => {
+                                    setGrantEmail(event.target.value);
+                                    setGrantError(null);
+                                }}
+                                type="email"
+                                value={grantEmail}
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                            <label
+                                className="text-xs font-medium text-muted-foreground"
+                                htmlFor="admin-team-grant-role"
+                            >
+                                {copy.addMemberRoleLabel}
+                            </label>
+                            <select
+                                className="flex min-h-11 w-full rounded-md border border-input bg-transparent px-2.5 py-1 text-sm shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
+                                id="admin-team-grant-role"
+                                onChange={(event) => {
+                                    setGrantRole(
+                                        event.target.value as 'admin' | 'staff',
+                                    );
+                                    setGrantError(null);
+                                }}
+                                value={grantRole}
+                            >
+                                <option
+                                    className="bg-popover text-popover-foreground"
+                                    value="staff"
+                                >
+                                    {copy.roles.staff}
+                                </option>
+                                <option
+                                    className="bg-popover text-popover-foreground"
+                                    value="admin"
+                                >
+                                    {copy.roles.admin}
+                                </option>
+                            </select>
+                        </div>
+
+                        {grantError ? (
+                            <p
+                                className="text-sm font-medium text-destructive"
+                                role="alert"
+                            >
+                                {grantError}
+                            </p>
+                        ) : null}
+                    </div>
+
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button
+                                className="min-h-11 touch-manipulation"
+                                disabled={grantSubmitting}
+                                type="button"
+                                variant="outline"
+                            >
+                                {copy.roleDialog.cancel}
+                            </Button>
+                        </DialogClose>
+                        <Button
+                            className="min-h-11 touch-manipulation gap-1.5"
+                            disabled={
+                                grantSubmitting || grantEmail.trim() === ''
+                            }
+                            onClick={() => {
+                                void executeGrant();
+                            }}
+                            type="button"
+                        >
+                            {grantSubmitting ? (
+                                <LoaderCircle
+                                    aria-hidden="true"
+                                    className="size-4 animate-spin motion-reduce:animate-none"
+                                />
+                            ) : null}
+                            {grantSubmitting
+                                ? copy.addMemberSubmitting
+                                : copy.addMemberSubmit}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <AdminPasswordConfirmDialog
                 confirmPasswordUrl={confirmPasswordUrl}
                 description="For security, please enter your password to confirm this team change."

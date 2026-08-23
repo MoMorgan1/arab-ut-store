@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\OrderTransitionController;
 use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\Admin\PaylinkRefundController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\TeamGrantController;
 use App\Http\Controllers\Admin\TeamRoleController;
 use App\Http\Controllers\Admin\TeamStatusController;
 use App\Http\Middleware\EnsureActiveUser;
@@ -127,6 +128,14 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $customerContact->defaults('locale', $locale);
+                }
+
+                $teamGrant = Route::post('/api/team/grants', TeamGrantController::class)
+                    ->middleware(['password.confirm', 'can:staff.manage', 'throttle:staff-identity'])
+                    ->name('team.grants.store');
+
+                if ($locale !== null) {
+                    $teamGrant->defaults('locale', $locale);
                 }
 
                 $teamRole = Route::post('/api/team/{publicId}/role', TeamRoleController::class)

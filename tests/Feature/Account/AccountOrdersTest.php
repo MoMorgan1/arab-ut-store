@@ -101,6 +101,45 @@ test('order status filters are allowlisted and preserve canonical pagination URL
         ->assertSessionHasErrors('status');
 });
 
+test('order search filters by order number and item name while preserving counts', function (): void {
+    $user = User::factory()->create();
+    ordersTestOrder($user, 1, OrderStatus::InProgress);
+    ordersTestOrder($user, 2, OrderStatus::Completed);
+
+    $this->actingAs($user)
+        ->get('/my-account/orders?q=00000001')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.q', '00000001')
+            ->where('counts.all', 2)
+            ->where('counts.open', 1)
+            ->where('counts.completed', 1)
+            ->has('orders', 1)
+            ->where('orders.0.number', 'UT-00000001'));
+
+    $this->actingAs($user)
+        ->get('/my-account/orders?q=خدمة 2')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.q', 'خدمة 2')
+            ->where('counts.all', 2)
+            ->where('counts.open', 1)
+            ->where('counts.completed', 1)
+            ->has('orders', 1)
+            ->where('orders.0.number', 'UT-00000002'));
+
+    $this->actingAs($user)
+        ->get('/en/my-account/orders?q=Service 1')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.q', 'Service 1')
+            ->where('counts.all', 2)
+            ->where('counts.open', 1)
+            ->where('counts.completed', 1)
+            ->has('orders', 1)
+            ->where('orders.0.number', 'UT-00000001'));
+});
+
 test('live order detail exposes current safe item progress and payment recovery only to its owner', function (): void {
     $owner = User::factory()->create();
     $other = User::factory()->create();

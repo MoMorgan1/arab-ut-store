@@ -486,6 +486,24 @@ html.admin-document {
         transition: 180ms var(--store-ease-out);
     }
 
+    .auth-login-method__tab-long {
+        display: none;
+    }
+
+    .auth-login-method__tab-short {
+        display: inline;
+    }
+
+    @media (min-width: 48rem) {
+        .auth-login-method__tab-long {
+            display: inline;
+        }
+
+        .auth-login-method__tab-short {
+            display: none;
+        }
+    }
+
     .auth-login-method__tab[aria-selected='true'] {
         background: rgb(212 168 67 / 18%);
         color: var(--arabut-ink);
@@ -573,11 +591,36 @@ html.admin-document {
         line-height: 1.6;
     }
 
+    .auth-whatsapp-login__help {
+        margin: 0;
+        color: var(--arabut-muted);
+        font-size: 0.875rem;
+        line-height: 1.6;
+    }
+
+    .auth-whatsapp-login__help a {
+        color: var(--arabut-gold-bright);
+        text-decoration: underline;
+        text-underline-offset: 0.25rem;
+    }
+
     .auth-whatsapp-login #phone-code {
         direction: ltr;
         text-align: center;
         letter-spacing: 0.35em;
         font-variant-numeric: tabular-nums;
+    }
+
+    .auth-otp-error {
+        margin: 0;
+        border: 1px solid rgb(255 180 169 / 40%);
+        border-radius: 0.7rem;
+        background: rgb(255 180 169 / 12%);
+        padding: 0.6rem 0.8rem;
+        color: #ffb4a9;
+        font-size: 0.9375rem;
+        line-height: 1.5;
+        text-align: start;
     }
 
     .auth-social-login {
@@ -743,6 +786,20 @@ html.admin-document {
         font-size: 0.9375rem;
         line-height: 1.6;
         text-align: start;
+    }
+
+    .auth-terms {
+        margin: 0;
+        color: var(--arabut-muted);
+        font-size: 0.8rem;
+        line-height: 1.6;
+        text-align: center;
+    }
+
+    .auth-terms a {
+        color: var(--arabut-gold-bright);
+        text-decoration: underline;
+        text-underline-offset: 0.25rem;
     }
 
     .auth-shell__benefits {
@@ -5293,6 +5350,13 @@ html.admin-document {
     line-height: 1.55;
 }
 
+.account-orders-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-block-end: 1rem;
+}
+
 .account-order-filters {
     display: flex;
     flex-wrap: wrap;
@@ -5345,6 +5409,146 @@ html.admin-document {
 .account-order-filters a[aria-current='page'] .account-order-filters__count {
     background: rgb(212 168 67 / 25%);
     color: var(--arabut-gold-bright);
+}
+
+.account-orders-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid var(--arabut-line);
+    border-radius: 999px;
+    background: rgb(28 24 20 / 62%);
+    padding-inline: 0.85rem 0.5rem;
+    transition:
+        border-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.account-orders-search:focus-within {
+    border-color: var(--arabut-gold);
+    box-shadow: 0 0 0 2px rgb(212 168 67 / 25%);
+}
+
+.account-orders-search__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    flex: 0 0 1.1rem;
+    color: var(--arabut-muted);
+    pointer-events: none;
+}
+
+.account-orders-search__icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.account-orders-search__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    min-height: 44px;
+    border: none;
+    background: transparent;
+    padding: 0 0.5rem;
+    color: var(--arabut-ink);
+    font: inherit;
+    font-size: 0.875rem;
+    outline: none;
+}
+
+.account-orders-search__input::placeholder {
+    color: var(--arabut-muted);
+    opacity: 0.8;
+}
+
+.account-orders-search__clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.85rem;
+    height: 1.85rem;
+    flex: 0 0 1.85rem;
+    border: none;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 8%);
+    color: var(--arabut-muted);
+    cursor: pointer;
+    padding: 0;
+    transition:
+        background 150ms ease,
+        color 150ms ease;
+}
+
+.account-orders-search__clear:hover {
+    background: rgb(255 255 255 / 16%);
+    color: var(--arabut-ink);
+}
+
+.account-orders-search__clear svg {
+    width: 0.95rem;
+    height: 0.95rem;
+}
+
+.account-order-list-wrapper {
+    width: 100%;
+}
+
+.account-order-list__head {
+    display: none;
+}
+
+.account-order-row__status {
+    display: none;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--arabut-muted);
+}
+
+.account-order-row__status-dot {
+    display: inline-block;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 999px;
+    background: var(--arabut-muted);
+    flex: 0 0 auto;
+}
+
+.account-order-row__status[data-status='completed'] {
+    color: #78d59e;
+}
+
+.account-order-row__status[data-status='completed']
+    .account-order-row__status-dot {
+    background: #78d59e;
+}
+
+.account-order-row__status:is(
+    [data-status='waiting_for_customer'],
+    [data-status='pending_payment'],
+    [data-status='failed']
+) {
+    color: var(--arabut-gold-bright);
+}
+
+.account-order-row__status:is(
+        [data-status='waiting_for_customer'],
+        [data-status='pending_payment'],
+        [data-status='failed']
+    )
+    .account-order-row__status-dot {
+    background: var(--arabut-gold);
+}
+
+.account-order-row__meta-status {
+    display: inline;
 }
 
 .account-order-list {
@@ -10938,6 +11142,58 @@ html.admin-document {
     padding-block-start: 1rem;
 }
 
+.account-profile-code__sent-to {
+    margin: 0 0 0.75rem;
+    color: var(--arabut-muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.account-profile-code__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-block-start: 1rem;
+}
+
+.account-profile-code__resend-countdown {
+    margin: 0;
+    color: var(--arabut-muted);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.account-profile-code__resend-btn,
+.account-profile-code__change-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    padding: 0;
+    color: var(--arabut-gold-bright);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 750;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    transition: color 150ms ease;
+}
+
+.account-profile-code__resend-btn:hover,
+.account-profile-code__change-btn:hover {
+    color: #ffffff;
+}
+
+.account-profile-code__resend-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    text-decoration: none;
+}
+
 .account-profile-logout {
     display: flex;
     width: 100%;
@@ -11187,8 +11443,59 @@ html.admin-document {
         display: flex;
     }
 
+    .account-orders-toolbar {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .account-orders-search {
+        flex: 0 1 18rem;
+        min-width: 14rem;
+        margin-inline-start: auto;
+    }
+
+    .account-order-list__head {
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr) 8.5rem 7.5rem 7.25rem;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.5rem 1.25rem;
+        color: var(--arabut-muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+
+    .account-order-list__th--service {
+        grid-column: 1 / 3;
+    }
+
+    .account-order-list__th--status {
+        grid-column: 3;
+    }
+
+    .account-order-list__th--total {
+        grid-column: 4;
+        justify-self: end;
+        text-align: end;
+    }
+
+    .account-order-list__th--action {
+        grid-column: 5;
+    }
+
     .account-order-row {
-        grid-template-columns: 34px minmax(0, 1fr) 7.5rem 7.25rem;
+        grid-template-columns: 34px minmax(0, 1fr) 8.5rem 7.5rem 7.25rem;
+    }
+
+    .account-order-row__status {
+        display: inline-flex;
+    }
+
+    .account-order-row__meta-status {
+        display: none;
     }
 
     .account-order-row__total {

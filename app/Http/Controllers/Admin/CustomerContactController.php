@@ -34,7 +34,7 @@ final class CustomerContactController extends Controller
                 lastName: $request->lastName(),
                 email: $request->email(),
                 phone: $request->phone(),
-                expectedUpdatedAt: $request->expectedUpdatedAt(),
+                expected: $request->expected(),
                 ipAddress: $request->ip(),
             );
         } catch (UniqueConstraintViolationException $exception) {
@@ -46,7 +46,12 @@ final class CustomerContactController extends Controller
         } catch (AdminCustomerContactConflict $exception) {
             return response()->json([
                 'customer' => $exception->customerPublicId,
-                'updatedAt' => $exception->currentUpdatedAt,
+                'current' => [
+                    'firstName' => $exception->current['first_name'],
+                    'lastName' => $exception->current['last_name'],
+                    'email' => $exception->current['email'],
+                    'phone' => $exception->current['phone'],
+                ],
             ], 409)
                 ->header('Cache-Control', 'no-store, private')
                 ->header('Content-Type', 'application/json');

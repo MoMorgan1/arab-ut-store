@@ -26,6 +26,7 @@ final class OrdersController extends Controller
         abort_unless($user instanceof User, 401);
         $validated = $request->validate([
             'status' => ['nullable', 'string', Rule::in(ReadLiveOrders::FILTERS)],
+            'q' => ['nullable', 'string', 'max:80'],
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
         $locale = app()->getLocale();
@@ -33,7 +34,12 @@ final class OrdersController extends Controller
         return Inertia::render('account/orders', [
             ...$this->shell->for($user, $locale),
             'counts' => $this->counts->for($user),
-            ...$this->orders->for($user, $locale, $validated['status'] ?? 'all'),
+            ...$this->orders->for(
+                $user,
+                $locale,
+                $validated['status'] ?? 'all',
+                $validated['q'] ?? null,
+            ),
         ]);
     }
 }
