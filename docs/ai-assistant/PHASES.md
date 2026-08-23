@@ -4,13 +4,14 @@
 accepted pending remediation
 **Verified:** 2026-08-22
 
-| Phase                                   | State                             | Boundary                                                                                                                                                                                                                                                 |
-| --------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase 0 stabilization                   | Implemented                       | Release audit, CI/MariaDB workflow, and Chromium smoke are in place.                                                                                                                                                                                     |
-| Phase 1 deterministic chat foundation   | Implemented                       | Persistent bilingual widget, owner-scoped storage, guest claim/rekey, messages, retry, pagination, and demo reply.                                                                                                                                       |
-| Phase 1 Completion                      | Accepted by Mohamed on 2026-08-21 | One-open-owner invariant, lifecycle/retention, normalized errors, maintenance, owner revalidation, account placement, recovery, and browser validation are deployed. hPanel scheduling plus real-account and physical iPhone/Safari checks are complete. |
-| Phase 2 AI runtime/Luna                 | Deployed, inactive, not accepted  | Durable provider-neutral turn/run state, prompt guard, direct Luna streaming, retries/recovery, usage/cost accounting, and browser integration are implemented. The mandatory public evaluation failed; AI is disabled while remediation is reviewed.    |
-| Retrieval, tools, admin inbox, realtime | Not started                       | Separate discovery and owner approval are required.                                                                                                                                                                                                      |
+| Phase                                 | State                             | Boundary                                                                                                                                                                                                                                                 |
+| ------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 0 stabilization                 | Implemented                       | Release audit, CI/MariaDB workflow, and Chromium smoke are in place.                                                                                                                                                                                     |
+| Phase 1 deterministic chat foundation | Implemented                       | Persistent bilingual widget, owner-scoped storage, guest claim/rekey, messages, retry, pagination, and demo reply.                                                                                                                                       |
+| Phase 1 Completion                    | Accepted by Mohamed on 2026-08-21 | One-open-owner invariant, lifecycle/retention, normalized errors, maintenance, owner revalidation, account placement, recovery, and browser validation are deployed. hPanel scheduling plus real-account and physical iPhone/Safari checks are complete. |
+| Phase 2 AI runtime/Luna               | Accepted by Mohamed on 2026-08-23 | Durable provider-neutral turn/run state, prompt guard, direct Luna streaming, retries/recovery, usage/cost accounting, and browser integration are implemented and live. The `support-v3` batch passed every mandatory threshold.                        |
+| Phase 3 grounding                     | Implemented                       | A curated bilingual knowledge corpus, lexical topic selection, `support-v3` grounding with exact-fact quoting, and server-derived service cards on replies.                                                                                              |
+| Tools, admin inbox, realtime          | Not started                       | Separate discovery and owner approval are required. The agreed next step is live prices on service cards, resolved at render time rather than frozen into chat history.                                                                                  |
 
 ## Phase 1 acceptance record
 
@@ -64,8 +65,11 @@ checks.
 
 ## Planned sequence
 
-1. Complete the Phase 2 evidence/documentation handoff.
-2. Remediate and accept the safe model runtime with no RAG or tools.
-3. Add scoped retrieval with citations and ingestion review.
-4. Add least-privilege tools, with human confirmation for writes.
-5. Add the admin inbox, live handoff, transcript controls, SLAs, and realtime.
+1. ~~Complete the Phase 2 evidence/documentation handoff.~~ Done.
+2. ~~Remediate and accept the safe model runtime with no RAG or tools.~~
+   Accepted 2026-08-23.
+3. ~~Add scoped grounding with a curated corpus.~~ Implemented 2026-08-23 as
+   knowledge grounding plus server-derived service cards.
+4. Show live service prices on those cards, resolved at render time.
+5. Add least-privilege tools, with human confirmation for writes.
+6. Add the admin inbox, live handoff, transcript controls, SLAs, and realtime.

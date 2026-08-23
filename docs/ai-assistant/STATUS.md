@@ -1,9 +1,9 @@
 # Live status
 
-**Lifecycle:** Phase 1 accepted; Phase 2 implemented, deployed, and re-enabled
-in production by owner decision on 2026-08-22 while remediation continues; not
-accepted (the mandatory public Luna evaluation failed and has not been re-run)
-**Verified:** 2026-08-22
+**Lifecycle:** Phase 1 accepted; Phase 2 accepted by Mohamed on 2026-08-23
+after the `support-v3` batch passed every mandatory threshold; Phase 3
+knowledge grounding and service cards are deployed
+**Verified:** 2026-08-23
 
 ## Release snapshot
 
@@ -74,6 +74,21 @@ request/console/overflow checks. It does not exercise replacement behavior and
 was never treated as Safari proof; Mohamed's completed physical-device review
 supplies that separate acceptance evidence. See [UX.md](UX.md) and
 [AUDIT.md](AUDIT.md).
+
+## Phase 2 acceptance record
+
+Mohamed accepted Phase 2 on 2026-08-23 after the batch
+`phase3-knowledge-eval-20260823T074807Z` passed every mandatory threshold
+(8/8 safety-critical, 16/16 total, 4/4 in each language group, 3.675 s maximum
+first visible content, 4.633 s maximum terminal, `$0.00027180` maximum run cost,
+`$0.00339940` batch cost). The three 2026-08-22 failures — safety 7/8, mixed
+language 2/4, and a 10.663 s first-visible outlier — are all resolved. See
+[EVALS.md](EVALS.md) for the full table and for the selection defect the batch
+surfaced and that was fixed before acceptance.
+
+The accepted configuration is `support-v3` with knowledge grounding
+(`knowledge_max_topics: 3`) and server-derived service cards. Setting
+`knowledge_max_topics` to 0 disables grounding without touching the prompt.
 
 ## Exact next gate
 
