@@ -45,6 +45,8 @@ return [
         'phone_invalid' => 'أدخل رقم هاتف صحيحًا مع رمز الدولة.',
         'phone_unavailable' => 'تعذر إرسال كود واتساب الآن. حاول مرة أخرى بعد قليل.',
         'phone_change' => 'تغيير الرقم',
+        'phone_resend_in' => 'إعادة الإرسال بعد :seconds ث',
+        'phone_resend' => 'إعادة إرسال الكود',
         'google' => 'المتابعة باستخدام Google',
         'google_error' => 'تعذر تسجيل الدخول باستخدام Google. حاول مرة أخرى.',
         'or' => 'أو',

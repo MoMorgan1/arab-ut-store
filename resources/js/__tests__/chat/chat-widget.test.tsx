@@ -154,7 +154,7 @@ describe('ChatWidget Component', () => {
         expect(mobileStart).toBeGreaterThan(-1);
         expect(desktopStart).toBeGreaterThan(mobileStart);
         expect(mobileChat).toContain(
-            'bottom: calc(88px + env(safe-area-inset-bottom));',
+            'bottom: calc(112px + env(safe-area-inset-bottom));',
         );
         expect(mobileDialog).toContain('inset: 0;');
         expect(chatLayer).toBe(70);

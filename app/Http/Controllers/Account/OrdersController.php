@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Account;
 
 use App\Account\Presenters\AccountShell;
+use App\Account\Queries\CountLiveOrders;
 use App\Account\Queries\ReadLiveOrders;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -15,6 +16,7 @@ final class OrdersController extends Controller
 {
     public function __construct(
         private readonly ReadLiveOrders $orders,
+        private readonly CountLiveOrders $counts,
         private readonly AccountShell $shell,
     ) {}
 
@@ -30,6 +32,7 @@ final class OrdersController extends Controller
 
         return Inertia::render('account/orders', [
             ...$this->shell->for($user, $locale),
+            'counts' => $this->counts->for($user),
             ...$this->orders->for($user, $locale, $validated['status'] ?? 'all'),
         ]);
     }

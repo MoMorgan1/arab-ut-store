@@ -1,7 +1,8 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, ArrowRight, PackageSearch } from 'lucide-react';
 
-import AccountOrderCard from '@/components/account/account-order-card';
+import AccountOrderList from '@/components/account/account-order-list';
+import AccountOrderRow from '@/components/account/account-order-row';
 import MyAccountLayout from '@/layouts/my-account-layout';
 import type { AccountOrdersPageProps } from '@/types/account';
 
@@ -13,10 +14,26 @@ export default function AccountOrders() {
         props.accountNavigation.find((item) => item.key === 'orders')?.url ??
         page.url;
     const filters = [
-        { key: 'all', label: props.accountUi.orders.all },
-        { key: 'open', label: props.accountUi.orders.open },
-        { key: 'completed', label: props.accountUi.orders.completed },
+        {
+            key: 'all',
+            label: props.accountUi.orders.all,
+            count: props.counts.all,
+        },
+        {
+            key: 'open',
+            label: props.accountUi.orders.open,
+            count: props.counts.open,
+        },
+        {
+            key: 'completed',
+            label: props.accountUi.orders.completed,
+            count: props.counts.completed,
+        },
     ] as const;
+
+    const showingText = props.accountUi.orders.showing
+        .replace(':shown', String(props.orders.length))
+        .replace(':total', String(props.pagination.total));
 
     return (
         <MyAccountLayout {...props} current="orders" currentUrl={page.url}>
@@ -47,7 +64,10 @@ export default function AccountOrders() {
                             key={filter.key}
                             preserveScroll
                         >
-                            {filter.label}
+                            <span>{filter.label}</span>
+                            <span className="account-order-filters__count">
+                                {filter.count}
+                            </span>
                         </Link>
                     ))}
                 </nav>
@@ -68,63 +88,69 @@ export default function AccountOrders() {
                         </Link>
                     </section>
                 ) : (
-                    <section
-                        aria-label={props.accountUi.orders.title}
-                        className="account-orders-page__list"
-                    >
+                    <AccountOrderList aria-label={props.accountUi.orders.title}>
                         {props.orders.map((order) => (
-                            <AccountOrderCard
+                            <AccountOrderRow
                                 key={order.id}
                                 locale={props.locale}
                                 order={order}
                                 translations={props.accountUi}
                             />
                         ))}
-                    </section>
+                    </AccountOrderList>
                 )}
 
-                {props.pagination.lastPage > 1 ? (
-                    <nav
-                        aria-label={props.accountUi.orders.pagination}
-                        className="account-pagination"
-                    >
-                        {props.pagination.previousUrl === null ? (
-                            <span aria-disabled="true">
-                                {props.accountUi.orders.previous}
-                            </span>
-                        ) : (
-                            <Link
-                                href={props.pagination.previousUrl}
-                                preserveScroll
+                {props.pagination.total > 0 ? (
+                    <footer className="account-orders-page__pagination">
+                        <p className="account-pagination__summary">
+                            {showingText}
+                        </p>
+                        {props.pagination.lastPage > 1 ? (
+                            <nav
+                                aria-label={props.accountUi.orders.pagination}
+                                className="account-pagination"
                             >
-                                {props.accountUi.orders.previous}
-                            </Link>
-                        )}
-                        <bdi>
-                            {props.accountUi.orders.page_status
-                                .replace(
-                                    ':current',
-                                    String(props.pagination.currentPage),
-                                )
-                                .replace(
-                                    ':total',
-                                    String(props.pagination.lastPage),
+                                {props.pagination.previousUrl === null ? (
+                                    <span aria-disabled="true">
+                                        {props.accountUi.orders.previous}
+                                    </span>
+                                ) : (
+                                    <Link
+                                        href={props.pagination.previousUrl}
+                                        preserveScroll
+                                    >
+                                        {props.accountUi.orders.previous}
+                                    </Link>
                                 )}
-                        </bdi>
-                        {props.pagination.nextUrl === null ? (
-                            <span aria-disabled="true">
-                                {props.accountUi.orders.next}
-                            </span>
-                        ) : (
-                            <Link
-                                href={props.pagination.nextUrl}
-                                preserveScroll
-                            >
-                                {props.accountUi.orders.next}
-                                <Arrow aria-hidden="true" />
-                            </Link>
-                        )}
-                    </nav>
+                                <bdi>
+                                    {props.accountUi.orders.page_status
+                                        .replace(
+                                            ':current',
+                                            String(
+                                                props.pagination.currentPage,
+                                            ),
+                                        )
+                                        .replace(
+                                            ':total',
+                                            String(props.pagination.lastPage),
+                                        )}
+                                </bdi>
+                                {props.pagination.nextUrl === null ? (
+                                    <span aria-disabled="true">
+                                        {props.accountUi.orders.next}
+                                    </span>
+                                ) : (
+                                    <Link
+                                        href={props.pagination.nextUrl}
+                                        preserveScroll
+                                    >
+                                        {props.accountUi.orders.next}
+                                        <Arrow aria-hidden="true" />
+                                    </Link>
+                                )}
+                            </nav>
+                        ) : null}
+                    </footer>
                 ) : null}
             </div>
         </MyAccountLayout>

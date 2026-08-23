@@ -10,8 +10,9 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import { interpolate } from '@/components/configurator/coins/configurator-copy';
+import OneTimeCodeField from '@/components/one-time-code-field';
+import PhoneNumberField from '@/components/phone-number-field';
 import { StoreSeoHead } from '@/components/store/store-seo-head';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import StoreLayout from '@/layouts/store-layout';
 import {
@@ -33,7 +34,6 @@ import {
     PaylinkCheckoutError,
     startPaylinkCheckout,
 } from '@/lib/paylink-checkout-api';
-import { phoneCountryCodes } from '@/lib/phone-country-codes';
 import type {
     StoreCartItem,
     StoreCartPageProps,
@@ -315,6 +315,7 @@ function CheckoutPanel({
             ) : !checkout.phoneVerified ? (
                 <CheckoutPhoneForm
                     checkout={checkout}
+                    locale={locale}
                     translations={translations}
                 />
             ) : (
@@ -342,18 +343,18 @@ function CheckoutPanel({
 
 function CheckoutPhoneForm({
     checkout,
+    locale,
     translations,
 }: {
     checkout: StoreCartPageProps['cartPage']['checkout'];
+    locale: 'ar' | 'en';
     translations: StoreCartTranslations;
 }) {
-    const [countryCode, setCountryCode] = useState('+966');
-    const [localNumber, setLocalNumber] = useState('');
+    const [phone, setPhone] = useState('');
     const [code, setCode] = useState('');
     const [stage, setStage] = useState<'phone' | 'code'>('phone');
     const [busy, setBusy] = useState(false);
     const [errorCode, setErrorCode] = useState<string | null>(null);
-    const phone = `${countryCode}${localNumber.replace(/^0+/, '')}`;
     const phoneValid = /^\+[1-9][0-9]{7,14}$/.test(phone);
 
     async function sendCode() {
@@ -407,44 +408,17 @@ function CheckoutPhoneForm({
             <Label htmlFor="checkout-phone-number">
                 {translations.phone_number}
             </Label>
-            <div
-                className="auth-phone-field store-cart-phone__number"
-                dir="ltr"
-            >
-                <label className="sr-only" htmlFor="checkout-country-code">
-                    {translations.phone_country}
-                </label>
-                <select
-                    aria-label={translations.phone_country}
-                    className="auth-phone-field__country"
-                    disabled={busy || stage === 'code'}
-                    id="checkout-country-code"
-                    onChange={(event) =>
-                        setCountryCode(event.currentTarget.value)
-                    }
-                    value={countryCode}
-                >
-                    {phoneCountryCodes.map((countryCode) => (
-                        <option key={countryCode} value={countryCode}>
-                            {countryCode}
-                        </option>
-                    ))}
-                </select>
-                <Input
-                    aria-label={translations.phone_number}
-                    autoComplete="tel-national"
-                    className="h-11"
-                    disabled={busy || stage === 'code'}
+            <div className="store-cart-phone__number">
+                <PhoneNumberField
                     id="checkout-phone-number"
-                    inputMode="numeric"
-                    maxLength={14}
-                    onChange={(event) =>
-                        setLocalNumber(
-                            event.currentTarget.value.replace(/[^0-9]/g, ''),
-                        )
-                    }
-                    type="tel"
-                    value={localNumber}
+                    locale={locale}
+                    value={phone}
+                    onChange={setPhone}
+                    disabled={busy || stage === 'code'}
+                    labels={{
+                        country: translations.phone_country,
+                        number: translations.phone_number,
+                    }}
                 />
             </div>
             {stage === 'phone' ? (
@@ -463,26 +437,15 @@ function CheckoutPhoneForm({
                     <p className="store-cart-phone__sent" role="status">
                         {translations.phone_sent}
                     </p>
-                    <label className="store-cart-phone__code">
-                        <span>{translations.phone_code}</span>
-                        <input
-                            aria-label={translations.phone_code}
-                            autoComplete="one-time-code"
-                            disabled={busy}
-                            inputMode="numeric"
-                            maxLength={6}
-                            onChange={(event) =>
-                                setCode(
-                                    event.currentTarget.value.replace(
-                                        /[^0-9]/g,
-                                        '',
-                                    ),
-                                )
-                            }
-                            pattern="[0-9]{6}"
-                            value={code}
-                        />
-                    </label>
+                    <OneTimeCodeField
+                        id="checkout-phone-code"
+                        label={translations.phone_code}
+                        value={code}
+                        onChange={setCode}
+                        onComplete={verifyCode}
+                        disabled={busy}
+                        autoFocus
+                    />
                     <button
                         className="store-cart-phone__button"
                         disabled={busy || code.length !== 6}

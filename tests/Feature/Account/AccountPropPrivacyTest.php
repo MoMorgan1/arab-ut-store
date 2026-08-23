@@ -9,8 +9,10 @@ test('account destinations never serialize credential or internal data props', f
     ]);
 
     $props = $this->actingAs($user)
+        ->followingRedirects()
         ->get($path)
         ->assertOk()
+        ->assertHeader('Cache-Control', 'no-store, private')
         ->inertiaPage()['props'];
 
     expect(forbiddenAccountPropPaths($props))->toBe([]);

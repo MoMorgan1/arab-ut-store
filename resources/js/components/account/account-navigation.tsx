@@ -1,7 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import {
     LayoutDashboard,
-    LifeBuoy,
     LogOut,
     PackageSearch,
     ShieldCheck,
@@ -21,8 +20,6 @@ const destinationIcons: Record<AccountDestination, LucideIcon> = {
     orders: PackageSearch,
     wallet: WalletCards,
     profile: UserRound,
-    security: ShieldCheck,
-    support: LifeBuoy,
 };
 
 type AccountNavigationProps = {
@@ -30,6 +27,7 @@ type AccountNavigationProps = {
     current: AccountDestination;
     items: AccountNavigationItem[];
     logoutUrl: string;
+    sections?: AccountTranslations['profile']['sections'];
     translations: AccountTranslations['navigation'];
 };
 
@@ -38,6 +36,7 @@ export default function AccountNavigation({
     current,
     items,
     logoutUrl,
+    sections,
     translations,
 }: AccountNavigationProps) {
     function logout() {
@@ -63,6 +62,32 @@ export default function AccountNavigation({
                                     <Icon aria-hidden="true" />
                                     <span>{item.label}</span>
                                 </Link>
+                                {item.key === 'profile' &&
+                                selected &&
+                                sections ? (
+                                    <ul className="account-navigation__sections">
+                                        <li>
+                                            <a href={`${item.url}#personal`}>
+                                                {sections.personal}
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href={`${item.url}#contact`}>
+                                                {sections.contact}
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href={`${item.url}#security`}>
+                                                {sections.security}
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href={`${item.url}#support`}>
+                                                {sections.support}
+                                            </a>
+                                        </li>
+                                    </ul>
+                                ) : null}
                             </li>
                         );
                     })}

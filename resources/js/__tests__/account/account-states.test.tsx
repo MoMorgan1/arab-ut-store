@@ -2,16 +2,28 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import AccountSectionError from '@/components/account/account-section-error';
-import AccountSupport from '@/pages/account/support';
+import AccountProfile from '@/pages/account/profile';
 
 const page = vi.hoisted(() => ({
     props: {} as Record<string, unknown>,
-    url: '/en/my-account/support?order=01TEST',
+    url: '/en/my-account/profile?order=01TEST',
 }));
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
     usePage: () => page,
+    useForm: (initial: Record<string, string>) => ({
+        data: initial,
+        dontRemember: vi.fn(),
+        errors: {},
+        patch: vi.fn(),
+        post: vi.fn(),
+        put: vi.fn(),
+        processing: false,
+        recentlySuccessful: false,
+        reset: vi.fn(),
+        setData: vi.fn(),
+    }),
 }));
 
 vi.mock('@/layouts/my-account-layout', () => ({
@@ -21,16 +33,16 @@ vi.mock('@/layouts/my-account-layout', () => ({
 }));
 
 beforeEach(() => {
-    page.props = supportProps();
+    page.props = profileProps();
 });
 
 afterEach(cleanup);
 
 it('renders safe contact destinations and keeps order context outside their URLs', () => {
-    render(<AccountSupport />);
+    render(<AccountProfile />);
 
     expect(
-        screen.getByRole('heading', { level: 2, name: 'Support' }),
+        screen.getByRole('heading', { level: 3, name: 'Support' }),
     ).toBeVisible();
     expect(screen.getByText('UT-00000091')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Open WhatsApp' })).toHaveAttribute(
@@ -49,19 +61,24 @@ it('renders safe contact destinations and keeps order context outside their URLs
 });
 
 it('keeps the account shell visible when support is unavailable', () => {
-    page.props = supportProps({
+    page.props = profileProps({
         available: false,
         emailUrl: null,
         orderNumber: null,
         whatsappUrl: null,
     });
-    render(<AccountSupport />);
+    render(<AccountProfile />);
 
     expect(screen.getByTestId('account-layout')).toBeVisible();
     expect(
         screen.getByRole('heading', { name: 'Support unavailable' }),
     ).toBeVisible();
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(
+        screen.queryByRole('link', { name: 'Open WhatsApp' }),
+    ).not.toBeInTheDocument();
+    expect(
+        screen.queryByRole('link', { name: 'Send an email' }),
+    ).not.toBeInTheDocument();
 });
 
 it('offers an accessible retry action for reusable section failures', () => {
@@ -79,7 +96,7 @@ it('offers an accessible retry action for reusable section failures', () => {
     expect(retry).toHaveBeenCalledOnce();
 });
 
-function supportProps(
+function profileProps(
     support: {
         available: boolean;
         emailUrl: string | null;
@@ -96,6 +113,79 @@ function supportProps(
         locale: 'en',
         accountUi: {
             eyebrow: 'Arab UT account',
+            navigation: {
+                label: 'Account sections',
+                overview: 'Overview',
+                orders: 'Orders',
+                wallet: 'Wallet',
+                profile: 'Profile',
+                security: 'Security',
+                support: 'Support',
+                logout: 'Log out',
+            },
+            profile: {
+                title: 'Profile',
+                description: 'Update your verified account details securely.',
+                personal_title: 'Personal details',
+                contact_title: 'Verified contact details',
+                sections: {
+                    label: 'Profile sections',
+                    personal: 'Personal',
+                    contact: 'Contact & verification',
+                    security: 'Security',
+                    support: 'Support',
+                },
+                first_name: 'First name',
+                last_name: 'Last name',
+                email: 'Email address',
+                phone: 'WhatsApp number',
+                preferred_locale: 'Preferred language',
+                display_currency: 'Display currency',
+                save: 'Save changes',
+                saved: 'Your details have been saved.',
+                edit_email: 'Edit email',
+                edit_phone: 'Edit number',
+                cancel_edit: 'Cancel',
+                new_email: 'New email address',
+                request_email: 'Send verification link',
+                new_phone: 'New WhatsApp number',
+                send_phone_code: 'Send WhatsApp code',
+                phone_code: '6-digit verification code',
+                confirm_phone: 'Confirm new number',
+                sensitive_hint:
+                    'A verification link or WhatsApp code will confirm the change.',
+                pending_email: 'New email awaiting verification',
+                pending_phone: 'New number awaiting verification',
+                email_link_invalid: 'Invalid link.',
+                phone_code_invalid: 'Invalid code.',
+            },
+            verification: {
+                verified: 'Verified',
+                unverified: 'Not verified',
+                pending: 'Verification pending',
+                send_code: 'Send code',
+                verify: 'Verify',
+                code: 'Verification code',
+            },
+            security: {
+                title: 'Security',
+                description: 'Manage your password.',
+                current_password: 'Current password',
+                new_password: 'New password',
+                confirm_password: 'Confirm new password',
+                change_password: 'Change password',
+                set_password: 'Set a password',
+                password_changed: 'Password updated.',
+                social_login_notice: 'Set a password for your account.',
+                change_title: 'Change your password',
+                setup_title: 'Create an account password',
+                change_description: 'Use your current password.',
+                setup_description: 'Create a secure password.',
+                recovery_title: 'Account recovery',
+                recovery_email: 'Use your verified email.',
+                recovery_whatsapp: 'Use WhatsApp recovery.',
+                recovery_action: 'View recovery options',
+            },
             support: {
                 title: 'Support',
                 description: 'We are here to help.',
@@ -111,6 +201,40 @@ function supportProps(
             },
             actions: { retry: 'Try again' },
         },
+        profile: {
+            firstName: 'Mohamed',
+            lastName: 'Player',
+            email: {
+                value: 'owner@example.test',
+                verified: true,
+                pending: null,
+            },
+            phone: {
+                value: '+201001234567',
+                verified: true,
+                pending: null,
+            },
+            preferredLocale: 'en',
+            displayCurrency: 'SAR',
+        },
+        security: {
+            passwordMode: 'change',
+            passwordRules: 'minlength:8',
+            recoveryMode: 'email',
+            recoveryUrl: '/en/forgot-password',
+        },
+        securityActions: {
+            changePasswordUrl: '/en/my-account/security/password',
+            setupPasswordUrl: '/en/my-account/security/password',
+        },
+        profileActions: {
+            updateUrl: '/en/my-account/profile',
+            emailRequestUrl: '/en/my-account/profile/email',
+            phoneRequestUrl: '/en/my-account/profile/phone',
+            phoneConfirmUrl: '/en/my-account/profile/phone/confirm',
+        },
         support,
+        displayCurrencies: ['SAR', 'AED'],
+        logoutUrl: '/logout',
     };
 }

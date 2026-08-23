@@ -4,8 +4,7 @@ import type {
     StoreShellTranslations,
 } from '@/types/store-shell';
 
-export type AccountDestination =
-    'overview' | 'orders' | 'wallet' | 'profile' | 'security' | 'support';
+export type AccountDestination = 'overview' | 'orders' | 'wallet' | 'profile';
 
 export type AccountMoney = {
     amountMinor: string;
@@ -121,6 +120,7 @@ export type AccountTranslations = {
         next: string;
         pagination: string;
         page_status: string;
+        showing: string;
         items_title: string;
         item_quantity: string;
         credentials_ready: string;
@@ -191,6 +191,13 @@ export type AccountTranslations = {
         description: string;
         personal_title: string;
         contact_title: string;
+        sections: {
+            label: string;
+            personal: string;
+            contact: string;
+            security: string;
+            support: string;
+        };
         first_name: string;
         last_name: string;
         email: string;
@@ -306,6 +313,7 @@ export type AccountOverviewPageProps = AccountPageShellProps & {
 };
 
 export type AccountOrdersPageProps = AccountPageShellProps & {
+    counts: { all: number; open: number; completed: number };
     filters: { status: 'all' | 'open' | 'completed' };
     orders: AccountOrder[];
     pagination: {
@@ -400,6 +408,8 @@ export type AccountProfilePageProps = AccountPageShellProps & {
     security: {
         passwordMode: 'change' | 'setup';
         passwordRules: string;
+        recoveryMode: 'email' | 'whatsapp';
+        recoveryUrl: string | null;
     };
     securityActions: {
         changePasswordUrl: string;
@@ -411,22 +421,6 @@ export type AccountProfilePageProps = AccountPageShellProps & {
         phoneRequestUrl: string;
         phoneConfirmUrl: string;
     };
-};
-
-export type AccountSecurityPageProps = AccountPageShellProps & {
-    security: {
-        passwordMode: 'change' | 'setup';
-        passwordRules: string;
-        recoveryMode: 'email' | 'whatsapp';
-        recoveryUrl: string;
-    };
-    securityActions: {
-        changePasswordUrl: string;
-        setupPasswordUrl: string;
-    };
-};
-
-export type AccountSupportPageProps = AccountPageShellProps & {
     support: {
         available: boolean;
         emailUrl: string | null;

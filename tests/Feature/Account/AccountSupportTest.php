@@ -3,7 +3,22 @@
 use App\Models\Order;
 use App\Models\User;
 
-test('the bilingual support destination projects only configured contact links and an owned public order number', function (
+test('the support URL redirects to the profile page support section forwarding the order query', function (
+    string $path,
+    string $target,
+): void {
+    $owner = User::factory()->create();
+    $order = Order::factory()->for($owner)->create(['order_number' => 'UT-00000091']);
+
+    $this->actingAs($owner)
+        ->get($path.'?order='.$order->public_id)
+        ->assertRedirect($target.'?order='.$order->public_id.'#support');
+})->with([
+    'Arabic support' => ['/my-account/support', '/my-account/profile'],
+    'English support' => ['/en/my-account/support', '/en/my-account/profile'],
+]);
+
+test('the profile page exposes configured support contact links and an owned public order number', function (
     string $path,
     string $locale,
 ): void {
@@ -17,7 +32,7 @@ test('the bilingual support destination projects only configured contact links a
         ->assertOk()
         ->assertHeader('Cache-Control', 'no-store, private')
         ->assertInertia(fn ($page) => $page
-            ->component('account/support')
+            ->component('account/profile')
             ->where('locale', $locale)
             ->where('support.whatsappUrl', 'https://wa.me/966537998099')
             ->where('support.emailUrl', 'mailto:support@example.test')
@@ -33,8 +48,8 @@ test('the bilingual support destination projects only configured contact links a
         ->and($response->inertiaPage()['props']['support']['whatsappUrl'])->not->toContain('UT-00000091')
         ->and($response->inertiaPage()['props']['support']['emailUrl'])->not->toContain('UT-00000091');
 })->with([
-    'Arabic support' => ['/my-account/support', 'ar'],
-    'English support' => ['/en/my-account/support', 'en'],
+    'Arabic profile support' => ['/my-account/profile', 'ar'],
+    'English profile support' => ['/en/my-account/profile', 'en'],
 ]);
 
 test('support does not expose another customers order and has a controlled unavailable state', function (): void {
@@ -44,10 +59,10 @@ test('support does not expose another customers order and has a controlled unava
     $otherOrder = Order::factory()->create(['order_number' => 'UT-PRIVATE-ORDER']);
 
     $response = $this->actingAs($customer)
-        ->get('/my-account/support?order='.$otherOrder->public_id)
+        ->get('/my-account/profile?order='.$otherOrder->public_id)
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('account/support')
+            ->component('account/profile')
             ->where('support.whatsappUrl', null)
             ->where('support.emailUrl', null)
             ->where('support.orderNumber', null)

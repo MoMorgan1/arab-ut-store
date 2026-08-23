@@ -16,7 +16,7 @@ import type {
     AccountTranslations,
 } from '@/types/account';
 
-const destinationIcons: Record<string, LucideIcon> = {
+const destinationIcons: Record<AccountDestination, LucideIcon> = {
     overview: LayoutDashboard,
     orders: PackageSearch,
     wallet: WalletCards,
@@ -100,10 +100,6 @@ export function AccountMobileBottomNav({
         };
     }, []);
 
-    // Active key mapping: security/support map to profile (الحساب)
-    const effectiveActiveKey =
-        current === 'security' || current === 'support' ? 'profile' : current;
-
     // Filter to ensure strictly the 4 destinations
     const bottomNavItems = items.filter((item) =>
         ALLOWED_KEYS.includes(item.key),
@@ -120,7 +116,7 @@ export function AccountMobileBottomNav({
             <div className="account-mobile-bottom-nav__inner">
                 {bottomNavItems.map((item) => {
                     const Icon = destinationIcons[item.key] || LayoutDashboard;
-                    const selected = item.key === effectiveActiveKey;
+                    const selected = item.key === current;
                     const label =
                         item.key === 'overview'
                             ? (bottomNav?.home ?? item.label)
@@ -140,7 +136,7 @@ export function AccountMobileBottomNav({
                             key={item.key}
                         >
                             <span className="account-mobile-bottom-nav__icon-wrap">
-                                <Icon aria-hidden="true" />
+                                <Icon aria-hidden="true" strokeWidth={1.7} />
                             </span>
                             <span className="account-mobile-bottom-nav__label">
                                 {label}
@@ -154,7 +150,7 @@ export function AccountMobileBottomNav({
                         href={adminUrl}
                     >
                         <span className="account-mobile-bottom-nav__icon-wrap">
-                            <ShieldCheck aria-hidden="true" />
+                            <ShieldCheck aria-hidden="true" strokeWidth={1.7} />
                         </span>
                         <span className="account-mobile-bottom-nav__label">
                             {translations.admin}

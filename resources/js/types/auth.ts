@@ -80,6 +80,8 @@ export type AuthUiTranslations = {
         phone_invalid: string;
         phone_unavailable: string;
         phone_change: string;
+        phone_resend_in: string;
+        phone_resend: string;
         google: string;
         google_error: string;
         or: string;
