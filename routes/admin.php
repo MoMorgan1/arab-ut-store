@@ -6,6 +6,9 @@ use App\Http\Controllers\Admin\CustomerContactController;
 use App\Http\Controllers\Admin\CustomerDetailController;
 use App\Http\Controllers\Admin\CustomersController;
 use App\Http\Controllers\Admin\CustomerStatusController;
+use App\Http\Controllers\Admin\CustomerWalletAdjustController;
+use App\Http\Controllers\Admin\LoyaltyController;
+use App\Http\Controllers\Admin\LoyaltyTierController;
 use App\Http\Controllers\Admin\OrderDetailController;
 use App\Http\Controllers\Admin\OrderItemSecretRevealController;
 use App\Http\Controllers\Admin\OrdersController;
@@ -138,6 +141,30 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $customerContact->defaults('locale', $locale);
+                }
+
+                $customerWalletAdjust = Route::post('/api/customers/{publicId}/wallet/adjust', CustomerWalletAdjustController::class)
+                    ->middleware(['password.confirm', 'can:wallet.adjust'])
+                    ->name('customers.wallet.adjust');
+
+                if ($locale !== null) {
+                    $customerWalletAdjust->defaults('locale', $locale);
+                }
+
+                $loyalty = Route::get('/marketing/loyalty', LoyaltyController::class)
+                    ->middleware('can:loyalty.view')
+                    ->name('marketing.loyalty');
+
+                if ($locale !== null) {
+                    $loyalty->defaults('locale', $locale);
+                }
+
+                $loyaltyTierUpdate = Route::put('/api/marketing/loyalty/tiers/{publicId}', LoyaltyTierController::class)
+                    ->middleware(['password.confirm', 'can:loyalty.manage'])
+                    ->name('marketing.loyalty.tiers.update');
+
+                if ($locale !== null) {
+                    $loyaltyTierUpdate->defaults('locale', $locale);
                 }
 
                 $teamGrant = Route::post('/api/team/grants', TeamGrantController::class)

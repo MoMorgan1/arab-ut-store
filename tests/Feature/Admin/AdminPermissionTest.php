@@ -80,6 +80,8 @@ function adminPermissionAbilities(): array
         'wallet.adjust',
         'catalog.view',
         'catalog.manage',
+        'loyalty.view',
+        'loyalty.manage',
         'audit.view',
         'staff.view',
         'staff.manage',
