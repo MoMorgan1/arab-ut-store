@@ -13,8 +13,8 @@ final class ProfileUpdateRequest extends FormRequest
         return [
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'preferred_locale' => ['required', 'string', Rule::in(config('store.locales'))],
-            'display_currency' => ['required', 'string', Rule::in(config('store.display_currencies'))],
+            'preferred_locale' => ['sometimes', 'string', Rule::in(config('store.locales'))],
+            'display_currency' => ['sometimes', 'string', Rule::in(config('store.display_currencies'))],
         ];
     }
 }

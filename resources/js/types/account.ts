@@ -241,6 +241,10 @@ export type AccountTranslations = {
         pending_phone: string;
         email_link_invalid: string;
         phone_code_invalid: string;
+        phone_taken?: string;
+        phone_attribute?: string;
+        email_taken?: string;
+        email_attribute?: string;
     };
     security: {
         title: string;
