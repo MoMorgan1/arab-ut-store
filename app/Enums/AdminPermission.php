@@ -12,6 +12,7 @@ enum AdminPermission: string
     case OrderCredentialsView = 'order_credentials.view';
     case CustomersView = 'customers.view';
     case CustomersUpdateStatus = 'customers.update_status';
+    case CustomersUpdateContact = 'customers.update_contact';
     case PaymentsView = 'payments.view';
     case PaymentsRefund = 'payments.refund';
     case WalletView = 'wallet.view';
