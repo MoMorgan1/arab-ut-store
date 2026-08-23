@@ -236,22 +236,29 @@ export function FutChampionsConfigurator({
                 valueLabel={rankLabel}
             />
             <div className="manual-fut-options">
-                <label>
-                    <input
-                        checked={urgent}
-                        name="urgent"
-                        onChange={(event) =>
-                            setUrgent(event.currentTarget.checked)
-                        }
-                        type="checkbox"
-                    />
-                    <span>
-                        <strong>{service.urgent}</strong>
-                        <small>{service.urgent_price}</small>
-                        <small className="manual-service-eta--urgent-option">
-                            {urgent ? service.urgent_eta : service.standard_eta}
-                        </small>
-                    </span>
+                <label
+                    className="manual-fut-urgent-card"
+                    data-selected={urgent}
+                >
+                    <div className="manual-fut-urgent-card__header">
+                        <div className="manual-fut-urgent-card__control">
+                            <input
+                                checked={urgent}
+                                name="urgent"
+                                onChange={(event) =>
+                                    setUrgent(event.currentTarget.checked)
+                                }
+                                type="checkbox"
+                            />
+                            <strong>{service.urgent}</strong>
+                        </div>
+                        <span className="manual-fut-urgent-card__chip">
+                            <small>{service.urgent_price}</small>
+                        </span>
+                    </div>
+                    <small className="manual-service-eta--urgent-option">
+                        {urgent ? service.urgent_eta : service.standard_eta}
+                    </small>
                 </label>
                 <fieldset className="manual-played-matches">
                     <legend>{service.matches_question}</legend>
@@ -349,18 +356,55 @@ export function FutChampionsConfigurator({
                 price={price}
                 translations={common}
             />
-            <button
-                className="manual-configurator__submit"
-                disabled={
-                    status === 'loading' ||
-                    (platform === 'pc' && launcher === null)
-                }
-                type="submit"
-            >
-                {status === 'loading' ? common.adding : common.add_to_cart}
-            </button>
-            {status === 'success' ? <p role="status">{common.added}</p> : null}
-            {status === 'error' ? <p role="alert">{common.add_error}</p> : null}
+            <div className="manual-configurator__action-bar">
+                <div className="manual-configurator__live-summary">
+                    <div className="manual-configurator__summary-pills">
+                        <span className="manual-configurator__summary-pill">
+                            {rankLabel}
+                        </span>
+                        <span className="manual-configurator__summary-pill">
+                            {platform === 'pc' && launcher !== null
+                                ? `${common.platforms.pc} (${common.pc_stores[launcher]})`
+                                : common.platforms[platform]}
+                        </span>
+                        {urgent ? (
+                            <span className="manual-configurator__summary-pill manual-configurator__summary-pill--urgent">
+                                {service.urgent}
+                            </span>
+                        ) : null}
+                    </div>
+                    <div className="manual-configurator__summary-total">
+                        <span className="manual-configurator__summary-total-label">
+                            {common.review_total}
+                        </span>
+                        <strong className="manual-configurator__summary-total-amount">
+                            {price === null
+                                ? '—'
+                                : formatMinorUnits(
+                                      price.amountMinor,
+                                      price.currency,
+                                      locale,
+                                  )}
+                        </strong>
+                    </div>
+                </div>
+                <button
+                    className="manual-configurator__submit"
+                    disabled={
+                        status === 'loading' ||
+                        (platform === 'pc' && launcher === null)
+                    }
+                    type="submit"
+                >
+                    {status === 'loading' ? common.adding : common.add_to_cart}
+                </button>
+                {status === 'success' ? (
+                    <p role="status">{common.added}</p>
+                ) : null}
+                {status === 'error' ? (
+                    <p role="alert">{common.add_error}</p>
+                ) : null}
+            </div>
         </form>
     );
 }
