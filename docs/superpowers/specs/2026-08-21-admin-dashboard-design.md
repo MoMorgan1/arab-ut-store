@@ -50,6 +50,7 @@ workflow, ticketing model, or realtime transport.
 - Sensitive actions (such as Paylink refunds) require recent password confirmation in addition to the
   authenticated MFA session.
 - On 2026-08-22, Mohamed decided (final) that Admin and Staff see an order item's decrypted fulfillment credentials automatically on the Admin order detail page — no "Reveal" button, no purpose selector, no case reference, and no separate password confirmation step. Credentials remain never serialized into Inertia props or HTML (fetched after load from the existing same-origin JSON endpoint with private no-store headers); every automatic fetch writes a SecretAccessLog and a StaffAuditLog; purged/expired secrets show the 410 notice; the payload is forgotten when the page unmounts; no credential ever appears in URLs, toasts, error text, or logs.
+- On 2026-08-23, Mohamed decided that an Admin may edit a customer's first name, last name, email, and phone from the customer detail page. The new email/phone are trusted as-is without re-verification (email_verified_at and phone_verified_at are left untouched, sessions are not revoked, and no notification is sent to the old or new address). Password confirmation is required and every change writes a staff audit record naming only changed fields.
 - Customer-facing behavior and existing domain actions remain authoritative;
   the Admin does not duplicate business logic in React or a parallel API.
 
@@ -195,9 +196,10 @@ until a time-series question and sufficient data justify them.
   order summary, wallet summary, and recent history.
 - Admin may suspend/reactivate a customer with a reason. The mutation locks the
   user row and is audited.
-- v1 does not directly overwrite email, phone, password, verification state, or
-  social identity. Those require the existing verification workflows or a
-  separately approved recovery design.
+- Admin may edit a customer's first name, last name, email, and phone from the
+  customer detail page with optimistic concurrency locking and staff audit
+  logging. The edit trusts the new values directly without clearing
+  verification timestamps, revoking sessions, or emailing notifications.
 
 ### Wallet
 
@@ -267,6 +269,7 @@ until a time-series question and sufficient data justify them.
 | `order_credentials.view`  | yes   | yes   |
 | `customers.view`          | yes   | no    |
 | `customers.update_status` | yes   | no    |
+| `customers.update_contact`| yes   | no    |
 | `payments.view`           | yes   | no    |
 | `payments.refund`         | yes   | no    |
 | `wallet.view`             | yes   | no    |
@@ -406,7 +409,7 @@ receives any Admin permission. The Admin role is the owner-level role in v1.
 - Custom/dynamic role creation and direct per-user permission editing.
 - Partial or arbitrary provider refunds.
 - Bulk destructive or financial actions.
-- Direct identity/password/verification overrides.
+- Direct password or verification-state overrides (customer contact details are editable by Admin under the 2026-08-23 owner decision).
 - Generic settings storage or editing environment/provider secrets.
 - Manual edits to automation-authoritative catalog fields.
 - Horizon/Pulse deployment and unrelated infrastructure changes.

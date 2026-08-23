@@ -4,6 +4,7 @@ import {
     ArrowLeft,
     CheckCircle2,
     History,
+    Pencil,
     Shield,
     ShoppingBag,
     User as UserIcon,
@@ -18,6 +19,7 @@ import {
     getStatusVariant,
     statusIcons,
 } from '@/components/admin/admin-order-status';
+import AdminCustomerContactDialog from '@/components/admin/customers/admin-customer-contact-dialog';
 import AdminCustomerStatusDialog from '@/components/admin/customers/admin-customer-status-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -33,6 +35,7 @@ export default function AdminCustomerDetailPage() {
     );
     const [syncedCustomer, setSyncedCustomer] = useState(props.customer);
     const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+    const [contactDialogOpen, setContactDialogOpen] = useState(false);
     const [statusAction, setStatusAction] = useState<'suspend' | 'reactivate'>(
         customer.isActive ? 'suspend' : 'reactivate',
     );
@@ -68,6 +71,9 @@ export default function AdminCustomerDetailPage() {
     const canUpdateStatus = props.permissions.includes(
         'customers.update_status',
     );
+    const canUpdateContact = props.permissions.includes(
+        'customers.update_contact',
+    );
 
     const handleOpenStatusDialog = (action: 'suspend' | 'reactivate') => {
         setStatusAction(action);
@@ -81,6 +87,7 @@ export default function AdminCustomerDetailPage() {
         setCustomer((prev) => ({
             ...prev,
             isActive: result.isActive,
+            updatedAt: result.updatedAt,
         }));
         setFeedback({
             message: result.isActive
@@ -97,6 +104,37 @@ export default function AdminCustomerDetailPage() {
             : customersCopy.statusSuspended;
         setFeedback({
             message: copy.conflictError.replace(':status', readableStatus),
+            type: 'conflict',
+        });
+        router.reload({ only: ['customer'] });
+    };
+
+    const handleContactSuccess = (result: {
+        email: string;
+        firstName: string;
+        lastName: string;
+        phone: string | null;
+        updatedAt: string;
+    }) => {
+        setCustomer((prev) => ({
+            ...prev,
+            email: result.email,
+            firstName: result.firstName,
+            lastName: result.lastName,
+            name: `${result.firstName} ${result.lastName}`.trim(),
+            phone: result.phone,
+            updatedAt: result.updatedAt,
+        }));
+        setFeedback({
+            message: copy.contactUpdatedMessage,
+            type: 'success',
+        });
+        router.reload({ only: ['customer'] });
+    };
+
+    const handleContactConflict = () => {
+        setFeedback({
+            message: copy.contactConflictError,
             type: 'conflict',
         });
         router.reload({ only: ['customer'] });
@@ -193,17 +231,33 @@ export default function AdminCustomerDetailPage() {
                         aria-labelledby="customer-identity-heading"
                         className="rounded-lg border border-border bg-card p-5 text-card-foreground shadow-xs"
                     >
-                        <div className="flex items-center gap-2 border-b border-border pb-3">
-                            <UserIcon
-                                aria-hidden="true"
-                                className="size-4 text-primary"
-                            />
-                            <h2
-                                className="text-sm font-semibold text-foreground"
-                                id="customer-identity-heading"
-                            >
-                                {copy.identitySection}
-                            </h2>
+                        <div className="flex items-center justify-between border-b border-border pb-3">
+                            <div className="flex items-center gap-2">
+                                <UserIcon
+                                    aria-hidden="true"
+                                    className="size-4 text-primary"
+                                />
+                                <h2
+                                    className="text-sm font-semibold text-foreground"
+                                    id="customer-identity-heading"
+                                >
+                                    {copy.identitySection}
+                                </h2>
+                            </div>
+                            {canUpdateContact ? (
+                                <Button
+                                    className="min-h-11 gap-1.5 text-xs font-medium"
+                                    onClick={() => setContactDialogOpen(true)}
+                                    type="button"
+                                    variant="outline"
+                                >
+                                    <Pencil
+                                        aria-hidden="true"
+                                        className="size-3.5"
+                                    />
+                                    <span>{copy.editDetailsButton}</span>
+                                </Button>
+                            ) : null}
                         </div>
 
                         <dl className="mt-4 grid grid-cols-1 gap-4 text-xs sm:grid-cols-2">
@@ -708,6 +762,17 @@ export default function AdminCustomerDetailPage() {
                 onSuccess={handleStatusSuccess}
                 open={statusDialogOpen}
                 statusUrl={props.statusUrl}
+            />
+
+            <AdminCustomerContactDialog
+                adminUi={props.adminUi}
+                confirmPasswordUrl={props.confirmPasswordUrl}
+                contactUrl={props.contactUrl}
+                customer={customer}
+                onConflict={handleContactConflict}
+                onOpenChange={setContactDialogOpen}
+                onSuccess={handleContactSuccess}
+                open={contactDialogOpen}
             />
         </article>
     );

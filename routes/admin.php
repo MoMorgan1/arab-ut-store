@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CustomerContactController;
 use App\Http\Controllers\Admin\CustomerDetailController;
 use App\Http\Controllers\Admin\CustomersController;
 use App\Http\Controllers\Admin\CustomerStatusController;
@@ -108,6 +109,14 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $customerStatus->defaults('locale', $locale);
+                }
+
+                $customerContact = Route::post('/api/customers/{publicId}/contact', CustomerContactController::class)
+                    ->middleware(['password.confirm', 'can:customers.update_contact'])
+                    ->name('customers.contact.store');
+
+                if ($locale !== null) {
+                    $customerContact->defaults('locale', $locale);
                 }
             });
         });

@@ -364,6 +364,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
             'order_credentials.view',
             'customers.view',
             'customers.update_status',
+            'customers.update_contact',
             'payments.view',
             'payments.refund',
             'wallet.view',
