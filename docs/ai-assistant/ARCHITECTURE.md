@@ -1,7 +1,7 @@
 # Architecture
 
-**Lifecycle:** Phase 1 and Phase 2 runtime implemented; Phase 2 inactive
-**Verified:** 2026-08-22
+**Lifecycle:** Phases 1-3 implemented and active; read-only support inbox live
+**Verified:** 2026-08-24
 
 The persistent Inertia `ChatRootLayout` renders `ChatWidget` on storefront,
 authentication, and account surfaces. `HandleInertiaRequests` shares chat
@@ -15,6 +15,7 @@ All routes in `routes/chat.php` use `EnsureChatEnabled`, `NoStore`, and
 
 | Method | Route name                   | Path                                                          | Throttle             |
 | ------ | ---------------------------- | ------------------------------------------------------------- | -------------------- |
+| GET    | `chat.service-prices`        | `/chat/service-prices`                                        | `chat-read`          |
 | POST   | `chat.conversations.store`   | `/chat/conversations`                                         | `chat-conversations` |
 | POST   | `chat.conversations.restart` | `/chat/conversations/restart`                                 | `chat-conversations` |
 | GET    | `chat.conversations.show`    | `/chat/conversations/{conversation}`                          | `chat-read`          |
@@ -89,6 +90,33 @@ Prior prompt context comes only from completed agent turns. Demo replies,
 failed turns, arbitrary assistant rows, blocked rows, and legacy ineligible
 messages are excluded.
 
+## Grounding and derived surfaces
+
+`SelectSupportKnowledge` picks at most `ai-assistant.knowledge_max_topics`
+topics lexically from `resources/ai-assistant/knowledge/arab-ut.json`, and
+`support-v3` injects them as a `<store_knowledge>` block. The model answers only
+from that block for store policy and must quote its facts exactly.
+
+Three customer-visible surfaces are derived **server-side from the customer's own
+message**, never authored by the model and never carrying a model-chosen value:
+
+- service cards (`cards.v1` metadata on the assistant message);
+- card prices, resolved at render time through `chat.service-prices` so a price
+  frozen into history cannot go stale;
+- the add-to-cart offer for coins, which posts to the store's existing cart
+  endpoint over the customer's own session. Rivals and FUT Champions are
+  excluded because both need a squad screenshot at cart-add time.
+
+## Operator boundary
+
+`ConversationsController` and `ConversationDetailController` render
+`/admin/conversations` and `/admin/conversations/{publicId}` under both the bare
+and `/en` admin prefixes, inside the existing admin MFA group, behind an
+admin-only `chat.view`. They are read-only: list, filter by status/locale/owner,
+look up by public id, and read a transcript alongside its agent turns and their
+latest run status, latency, model and token counts. `guest_key` is never
+serialized to a client payload.
+
 ## Configuration
 
 `config/chat.php` owns the chat feature flags, 4,000-character message limit,
@@ -100,8 +128,10 @@ the fixed Luna model and prompt version, quiet/context/output limits, timeout an
 attempt policy, rate limits, stale recovery, fake delay, and versioned pricing.
 Repository defaults are AI disabled, rollout `disabled`, and an empty provider.
 
-Production currently keeps chat/demo enabled while the AI enable flag, rollout,
-and provider selector are inactive after the failed public evaluation.
+Production runs the accepted configuration: chat enabled, AI enabled, public
+rollout, the OpenAI provider, `support-v3`, and `knowledge_max_topics: 3`.
+Clearing the AI enable flag is the kill switch and returns new messages to the
+accepted Phase 1 demo reply without a deployment.
 
 ## Error and stream boundary
 
@@ -111,9 +141,8 @@ nonretryable, and safe terminal error behavior. The application stream permits
 only `turn.created`, `response.delta`, `response.completed`, and
 `response.failed`.
 
-The server/browser `response.failed` payload mismatch recorded in
-[AGENT-RUNTIME.md](AGENT-RUNTIME.md) is an open remediation item and must not be
-documented as a stable client contract.
+The browser parses the server's nested `response.failed` payload; the 2026-08-22
+mismatch was fixed before Phase 2 acceptance.
 
 See [SECURITY.md](SECURITY.md), [UX.md](UX.md), [EVALS.md](EVALS.md), and
 [OPERATIONS.md](OPERATIONS.md).

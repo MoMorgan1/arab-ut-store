@@ -1,8 +1,7 @@
 # Operations
 
-**Lifecycle:** Runtime deployment, failed public evaluation, and safe AI
-containment verified
-**Verified:** 2026-08-22
+**Lifecycle:** Runtime deployed and active on the accepted configuration
+**Verified:** 2026-08-24
 
 ## Verified release
 
@@ -134,11 +133,13 @@ and frontend CI checks. CI uses public rollout with the fake provider and no
 OpenAI key; it does not prove Luna quality. Playwright starts the configured
 local Laravel server and must not be repointed to production.
 
-## Luna re-entry
+## Luna configuration changes
 
-The direct-public owner decision remains in force, but acceptance and continued
-enablement require every mandatory threshold in [EVALS.md](EVALS.md). After an
-approved remediation deploys with AI disabled:
+Luna is enabled in production on the accepted configuration and the
+direct-public owner decision remains in force. Continued enablement requires
+every mandatory threshold in [EVALS.md](EVALS.md). Any change to the prompt,
+thresholds, guard, model, budgets, or runtime defaults first deploys with AI
+disabled, then:
 
 1. correct the inspection gap, then verify release SHA, health, seven routes,
    schedule, the adapter's actual deployed handler, wrappers, and timeout values;
@@ -150,5 +151,7 @@ approved remediation deploys with AI disabled:
 5. query only content-free aggregates for its exact half-open UTC interval;
 6. disable again on any mandatory miss.
 
-The prior failed batch is recorded in
-[the evaluation evidence](evidence/2026-08-22-phase-2-luna-public-eval.md).
+The 2026-08-22 failed batch is recorded in
+[the evaluation evidence](evidence/2026-08-22-phase-2-luna-public-eval.md). The
+accepted 2026-08-23 batch `phase3-knowledge-eval-20260823T074807Z` is recorded
+in [EVALS.md](EVALS.md).

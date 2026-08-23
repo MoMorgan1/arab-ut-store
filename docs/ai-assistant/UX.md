@@ -1,8 +1,7 @@
 # Customer experience
 
-**Lifecycle:** Phase 1 implemented and accepted; Phase 2 UX implemented but
-inactive and not accepted
-**Verified:** 2026-08-22
+**Lifecycle:** Phases 1-3 implemented and accepted
+**Verified:** 2026-08-24
 
 ## Conversation behavior
 

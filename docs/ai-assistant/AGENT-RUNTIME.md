@@ -1,8 +1,8 @@
 # Agent runtime
 
-**Lifecycle:** Implemented and deployed; inactive and not accepted after the
-mandatory public evaluation failed
-**Verified:** 2026-08-22
+**Lifecycle:** Implemented, deployed, and active on the accepted
+`support-v3` configuration
+**Verified:** 2026-08-24
 
 Phase 2 adds a durable provider-neutral turn runtime and a direct OpenAI
 Responses adapter for `gpt-5.6-luna`. Mohamed waived the planned production fake
@@ -189,20 +189,21 @@ Repository defaults are fail closed:
 | Attempts/retry-wait cap | 3 / 2,000 ms      |
 | Stale recovery          | 60 s              |
 
-Production currently has AI disabled, rollout `disabled`, an empty provider
-selector, and the Phase 1 demo enabled. The failed batch and containment proof
-are in [the evaluation evidence](evidence/2026-08-22-phase-2-luna-public-eval.md).
+Production runs the accepted configuration: AI enabled, public rollout, the
+OpenAI provider, `support-v3`, and `knowledge_max_topics: 3`. The 2026-08-22
+failed batch and its containment proof remain recorded in
+[the evaluation evidence](evidence/2026-08-22-phase-2-luna-public-eval.md); the
+accepted 2026-08-23 batch is in [EVALS.md](EVALS.md).
 
-## Re-entry gate
+## Change gate
 
-Re-entry requires Mohamed's approval of the remediation scope. It must address
-mixed-language instruction adherence, customer-visible first-content latency,
-and the failed-event payload mismatch without silently changing thresholds.
-After reviewed code/prompt changes deploy with AI disabled, operations run the
-corrected actual-handler inspection, direct-public Luna canary, resilience
-checks, and one fresh complete 16-case batch. See [EVALS.md](EVALS.md),
-[OPERATIONS.md](OPERATIONS.md), [SECURITY.md](SECURITY.md), and
-[DECISIONS.md](DECISIONS.md).
+The accepted configuration is frozen. No prompt, threshold, guard, model, token
+budget, rate limit, or runtime default may be changed silently. Any change to
+them deploys with AI disabled, then requires the actual-handler inspection, a
+live incremental canary, resilience probes, and one fresh complete 16-case batch
+meeting every mandatory threshold before AI is re-enabled. Any mandatory miss
+disables Luna again. See [EVALS.md](EVALS.md), [OPERATIONS.md](OPERATIONS.md),
+[SECURITY.md](SECURITY.md), and [DECISIONS.md](DECISIONS.md).
 
 Official references:
 

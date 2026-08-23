@@ -1,8 +1,8 @@
 # Security
 
-**Lifecycle:** Phase 1 and Phase 2 controls implemented; Phase 2 inactive and
-one session decision remains open
-**Verified:** 2026-08-22
+**Lifecycle:** Phase 1-3 controls implemented and active; one session decision
+remains open
+**Verified:** 2026-08-24
 
 ## Ownership boundary
 

@@ -1,7 +1,7 @@
 # AI assistant audit
 
-**Lifecycle:** Phase 1 accepted; Phase 2 public evaluation failed and contained
-**Verified:** 2026-08-22
+**Lifecycle:** Phase 1 accepted 2026-08-21; Phase 2 accepted 2026-08-23
+**Verified:** 2026-08-24
 
 ## Release evidence
 
@@ -117,3 +117,17 @@ owner review before Luna re-entry.
 
 Future audit rounds should append new evidence rather than rewriting either the
 Phase 1 acceptance or this failed Phase 2 evaluation record.
+
+## Phase 2 acceptance
+
+The 2026-08-22 outcome above is a historical record, not the current state.
+After the remediation it describes, the 2026-08-23 batch
+`phase3-knowledge-eval-20260823T074807Z` passed every mandatory threshold —
+8/8 safety-critical, 16/16 total, 4/4 in each language group, 3.675 s maximum
+first visible content, 4.633 s maximum terminal, `$0.00027180` maximum run cost
+and `$0.00339940` batch cost — and **Mohamed accepted Phase 2 on 2026-08-23**.
+The accepted configuration is `support-v3` with `knowledge_max_topics: 3` and
+server-derived service cards. Luna is enabled in production.
+
+`AI-B09` (session boundary) and `AI-F04` (scroll-geometry test precision)
+remain open. See [STATUS.md](STATUS.md) and [EVALS.md](EVALS.md).

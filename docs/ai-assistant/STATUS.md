@@ -2,8 +2,9 @@
 
 **Lifecycle:** Phase 1 accepted; Phase 2 accepted by Mohamed on 2026-08-23
 after the `support-v3` batch passed every mandatory threshold; Phase 3
-knowledge grounding and service cards are deployed
-**Verified:** 2026-08-23
+knowledge grounding and service cards are deployed; the read-only support inbox
+is live and human handoff is in design
+**Verified:** 2026-08-24
 
 ## Release snapshot
 
@@ -20,13 +21,16 @@ knowledge grounding and service cards are deployed
 | Recurring scheduler execution                              | Verified from owner-provided hPanel evidence: exact custom command, manual `* * * * *` schedule, and successful `orders:publish-paid-events` output at `2026-08-21 10:14:01`. A read-only `schedule:list` on the active final release confirmed the minute publisher and hourly chat maintenance event.                                                   |
 | Phase 1 owner acceptance                                   | Mohamed accepted the deployed Phase 1 release on 2026-08-21 after completing the real-account and physical iPhone/Safari checks. This closes the remaining device/owner gate without changing the scope of the automated Chromium evidence.                                                                                                               |
 | Phase 2 runtime release                                    | [Tests 32578736891](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32578736891) and [deploy 32578995534](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32578995534) passed for `e13ee8bde25263a262788177d0ce78fb4f46f37f`. The active release, seven chat routes, and minute stale-turn recovery schedule were verified in production. |
-| Public Luna evaluation                                     | The exact 16-case batch failed mandatory mixed-language, safety-critical-case, and first-visible-content thresholds. See [the sanitized evidence](evidence/2026-08-22-phase-2-luna-public-eval.md).                                                                                                                                                       |
-| Current production mode                                    | **Luna re-enabled by Mohamed's decision on 2026-08-22** after the first remediation wave deployed at `b08b4475` (nested `response.failed` parsing, real handler inspection, re-enabled tests, docs). Production env was switched by the owner and activated by that deploy. A public storefront probe at `2026-08-22T19:47:57Z` produced `POST /chat/conversations/{id}/agent-turns → 200`, a streamed Luna reply, the agent-mode disclaimer, and zero browser console errors. The 16-case batch has **not** been re-run: the mixed-language prompt fix (`support-v2`) and the first-visible-content investigation are still open, so the mandatory gate remains unmet and this is an owner-accepted exception, not an acceptance. |
+| Public Luna evaluation                                     | The 2026-08-22 batch failed mandatory mixed-language, safety-critical-case, and first-visible-content thresholds; see [the sanitized evidence](evidence/2026-08-22-phase-2-luna-public-eval.md). The 2026-08-23 batch `phase3-knowledge-eval-20260823T074807Z` passed every mandatory threshold and is the accepted evidence. See [EVALS.md](EVALS.md).                                                                                       |
+| Current production mode                                    | **Luna is active in production.** Phase 2 was accepted by Mohamed on 2026-08-23 after the `support-v3` batch passed every mandatory threshold. The accepted configuration is `support-v3` with knowledge grounding at `knowledge_max_topics: 3` and server-derived service cards. The kill switch and rate limits are unchanged: clearing the AI enable flag returns new messages to the accepted Phase 1 demo behavior. |
 
 The deployed application contains the Phase 2 runtime, direct Luna adapter,
-streaming routes, durable turn/run schema, recovery, and cost accounting. Those
-capabilities are inactive in production after the failed gate. RAG, tools, live
-commerce/account access, and the operator inbox remain unimplemented.
+streaming routes, durable turn/run schema, recovery, and cost accounting, plus
+the Phase 3 knowledge grounding, server-derived service cards and in-chat cart
+offer. All of it is active in production. A read-only operator inbox is live at
+`/admin/conversations` behind an admin-only `chat.view`. Model tool calling,
+live commerce/account access for the model, human handoff, and ticketing remain
+unimplemented.
 
 ## Phase status
 
@@ -35,7 +39,9 @@ commerce/account access, and the operator inbox remain unimplemented.
 | Phase 0 stabilization                 | Implemented.                                                                                                                                                                                                                                                                         |
 | Phase 1 deterministic chat foundation | Implemented.                                                                                                                                                                                                                                                                         |
 | Phase 1 Completion                    | **Accepted by Mohamed on 2026-08-21.** Implementation, deployment, scheduler evidence, real-account testing, and physical iPhone/Safari testing are complete.                                                                                                                        |
-| Phase 2 AI runtime/Luna               | Implemented and deployed at `e13ee8bde25263a262788177d0ce78fb4f46f37f`, but **not accepted**. Mohamed approved direct public rollout and waived the fake-production gate; the mandatory public evaluation then failed and AI was disabled while the Phase 1 demo remained available. |
+| Phase 2 AI runtime/Luna               | **Accepted by Mohamed on 2026-08-23** after the `support-v3` batch passed every mandatory threshold. The 2026-08-22 failure and the remediation that resolved it are recorded below and in [EVALS.md](EVALS.md).                                                                     |
+| Phase 3 knowledge grounding           | Implemented 2026-08-23: a curated bilingual corpus, lexical topic selection, `support-v3` grounding, server-derived service cards, live card prices resolved at render time, and a server-derived add-to-cart offer. The model still has no tool calling.                          |
+| Read-only support inbox               | Implemented 2026-08-23: list, filter, look up by public id, and read a transcript with its agent-turn runtime, behind an admin-only `chat.view`. Guest keys never leave the server. Reply, assignment, tickets and realtime are not implemented.                                    |
 
 ## Scheduler evidence
 
@@ -92,26 +98,20 @@ The accepted configuration is `support-v3` with knowledge grounding
 
 ## Exact next gate
 
-Phase 2 re-entry is blocked on an owner-approved remediation for the two
-mixed-language failures and the first-visible-content maximum. Of the five
-source-review items, three were fixed on 2026-08-22 with Mohamed's approval and
-AI still disabled: the browser now parses the server's nested `response.failed`
-payload, `agent:inspect-streaming-http` inspects the adapter's real handler
-stack, and the four previously skipped frontend tests (quiet timing/rescheduling,
-disconnect polling, retry UI) run and pass. The connect timeout is now passed
-as Guzzle `connect_timeout`, with the request timeout as the total budget (also
-2026-08-22). The first-visible-content outlier was traced in production to
-post-server delivery (see [EVALS.md](EVALS.md)); no app change is indicated
-beyond better per-case timing capture. Still open: the `support-v2`
-mixed-language prompt (draft awaiting owner approval) and the accepted
-nearby-value guard decision, which is broader in current source (any qualifying
-label and value in one message can pair). No prompt, threshold, guard, or runtime default may be
-changed silently. After a reviewed fix is deployed with AI still disabled, verify the
-actual deployed handler, enable the approved direct-public Luna configuration
-through secure access, require a live canary, and execute a new complete 16-case
-batch. Any mandatory miss disables Luna again. See
-[AGENT-RUNTIME.md](AGENT-RUNTIME.md), [EVALS.md](EVALS.md), and
-[OPERATIONS.md](OPERATIONS.md).
+Phases 1-3 are accepted and active. The next gate is the approved human support
+handoff and ticketing work designed in
+[`2026-08-24-support-handoff-tickets-design.md`](../superpowers/specs/2026-08-24-support-handoff-tickets-design.md):
+staff replies from the admin inbox, a `support_tickets` record, a 48-hour guest
+retention window with guests removed from the operator inbox, and a
+customer-visible conversation history. That work must not change the accepted
+Luna configuration. No prompt, threshold, guard, model, token budget, or runtime
+default may be changed silently, and any change to them requires a fresh
+complete evaluation batch and a new owner acceptance.
+
+The accepted configuration is `support-v3` with `knowledge_max_topics: 3`.
+Setting it to 0 disables grounding without touching the prompt. Any mandatory
+evaluation miss disables Luna again. See [AGENT-RUNTIME.md](AGENT-RUNTIME.md),
+[EVALS.md](EVALS.md), and [OPERATIONS.md](OPERATIONS.md).
 
 ## Open decision
 

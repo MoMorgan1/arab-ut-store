@@ -1,8 +1,7 @@
 # Delivery phases
 
-**Lifecycle:** Phase 1 accepted; Phase 2 implemented but inactive and not
-accepted pending remediation
-**Verified:** 2026-08-22
+**Lifecycle:** Phases 1-3 accepted and active; human handoff in design
+**Verified:** 2026-08-24
 
 | Phase                                 | State                             | Boundary                                                                                                                                                                                                                                                 |
 | ------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -11,7 +10,9 @@ accepted pending remediation
 | Phase 1 Completion                    | Accepted by Mohamed on 2026-08-21 | One-open-owner invariant, lifecycle/retention, normalized errors, maintenance, owner revalidation, account placement, recovery, and browser validation are deployed. hPanel scheduling plus real-account and physical iPhone/Safari checks are complete. |
 | Phase 2 AI runtime/Luna               | Accepted by Mohamed on 2026-08-23 | Durable provider-neutral turn/run state, prompt guard, direct Luna streaming, retries/recovery, usage/cost accounting, and browser integration are implemented and live. The `support-v3` batch passed every mandatory threshold.                        |
 | Phase 3 grounding                     | Implemented                       | A curated bilingual knowledge corpus, lexical topic selection, `support-v3` grounding with exact-fact quoting, and server-derived service cards on replies.                                                                                              |
-| Tools, admin inbox, realtime          | Not started                       | Separate discovery and owner approval are required. The agreed next step is live prices on service cards, resolved at render time rather than frozen into chat history.                                                                                  |
+| Read-only support inbox               | Implemented 2026-08-23            | List, filter, look up by public id, and read a transcript with its agent-turn runtime, behind an admin-only `chat.view`. Guest keys never leave the server.                                                                                              |
+| Human handoff and ticketing           | Approved design, not implemented  | Staff replies, a durable ticket record, a 48-hour guest retention window, and a customer-visible conversation history. See the 2026-08-24 design.                                                                                                        |
+| Model tools and realtime              | Not started                       | Separate discovery and owner approval are required.                                                                                                                                                                                                     |
 
 ## Phase 1 acceptance record
 
@@ -32,36 +33,38 @@ See [STATUS.md](STATUS.md), [UX.md](UX.md), and [AUDIT.md](AUDIT.md).
 
 ## Phase 2 outcome
 
-The approved implementation stayed inside safe generative support:
-provider-neutral turn/run state, immutable model eligibility, prompt guard,
-bilingual streaming UX, stale recovery, typed retry semantics, versioned
-usage/cost accounting, a fake CI provider, and a direct OpenAI Responses adapter
-for `gpt-5.6-luna`. RAG, tools, live support integrations/data, and the admin
-inbox remain later work.
+The implementation stayed inside safe generative support: provider-neutral
+turn/run state, immutable model eligibility, a prompt guard, bilingual streaming
+UX, stale recovery, typed retry semantics, versioned usage/cost accounting, a
+fake CI provider, and a direct OpenAI Responses adapter for `gpt-5.6-luna`.
 
 Mohamed waived the production fake gate and approved direct public rollout for
-guests and authenticated customers, with the mandatory Task 11 thresholds
-retained. The live canary succeeded. The clean 16-case production batch then
-failed mixed-language quality at 2/4, safety-critical contracts at 7/8, and
-maximum first-visible content at 10.663 seconds. It passed durable completion,
-Arabic, English, boundary, terminal latency, usage/cost completeness, and the
-recorded content-safety observations.
+guests and authenticated customers, keeping the mandatory Task 11 thresholds.
+The live canary succeeded. The 2026-08-22 batch then failed mixed-language
+quality at 2/4, safety-critical contracts at 7/8, and maximum first-visible
+content at 10.663 seconds, and Mohamed selected disable and remediate.
 
-Mohamed selected disable and remediate. Production now resolves new chat
-messages to the accepted Phase 1 demo. Re-entry requires approved remediation,
-a corrected actual-handler inspection, a live direct-public Luna canary,
-resilience checks, and one fresh complete batch meeting every mandatory
-threshold. See [AGENT-RUNTIME.md](AGENT-RUNTIME.md), [EVALS.md](EVALS.md), and
-[the sanitized evidence](evidence/2026-08-22-phase-2-luna-public-eval.md).
+Remediation shipped the `support-v2` then `support-v3` prompt, nested
+`response.failed` parsing, real handler inspection, split Guzzle
+connect/read/total timeouts, four re-enabled frontend tests, and knowledge
+grounding. The first-visible outlier was traced to post-server delivery, not to
+application code. The 2026-08-23 batch `phase3-knowledge-eval-20260823T074807Z`
+then passed every mandatory threshold — 8/8 safety-critical, 16/16 total, 4/4 in
+each language group, 3.675 s maximum first visible content, 4.633 s maximum
+terminal, `$0.00339940` batch cost — and **Mohamed accepted Phase 2 on
+2026-08-23**. See [EVALS.md](EVALS.md) and
+[the sanitized 2026-08-22 evidence](evidence/2026-08-22-phase-2-luna-public-eval.md).
 
 ## Active work
 
-The current work is to preserve the failed Phase 2 evidence, correct canonical
-documentation, and present one bounded remediation proposal. No
-prompt/default/threshold change or production reactivation starts before
-Mohamed approves the exact approach. Work remains reviewable and gated by
-repository tests, CI, deployment, live canary, and the documented evaluation
-checks.
+Phases 1-3 are accepted and active. The current work is the approved human
+support handoff and ticketing design,
+[`2026-08-24-support-handoff-tickets-design.md`](../superpowers/specs/2026-08-24-support-handoff-tickets-design.md):
+staff replies from the admin inbox, a durable ticket record, a 48-hour guest
+retention window with guests removed from the operator inbox, and a
+customer-visible conversation history. No prompt, threshold, guard, model, token
+budget, or runtime default changes as part of it; any such change requires a
+fresh complete evaluation batch and a new owner acceptance.
 
 ## Planned sequence
 
@@ -80,9 +83,9 @@ checks.
    store's existing cart endpoint over the customer's own session. Credentials
    never enter a transcript or model context. Rivals and FUT Champions are
    excluded because both require a squad screenshot upload at cart-add time.
-6. Add the admin inbox, live handoff, transcript controls, SLAs, and realtime.
-   The read-only conversation inbox landed 2026-08-23: list, filter, look up by
-   public id, and read a transcript with its agent-turn runtime, behind an
-   admin-only `chat.view`. Guest keys never leave the server. Handoff,
-   assignment, SLAs and realtime still wait on the routing, staffing and
-   retention decisions [ADMIN-INBOX.md](ADMIN-INBOX.md) leaves open.
+6. ~~Add a read-only admin inbox.~~ Landed 2026-08-23: list, filter, look up
+   by public id, and read a transcript with its agent-turn runtime, behind an
+   admin-only `chat.view`. Guest keys never leave the server.
+7. Add human handoff, ticketing, guest retention and customer chat history.
+   Designed and owner-approved on 2026-08-24; not implemented. Assignment
+   beyond a single assignee, SLAs and realtime transport remain out of scope.
