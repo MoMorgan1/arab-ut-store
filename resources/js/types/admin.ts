@@ -358,12 +358,28 @@ export type AdminTranslations = {
         suspending: string;
         reactivating: string;
         statusUpdated: string;
+        conflictTitle: string;
+        contactUpdated: string;
         conflictError: string;
         updateFailed: string;
         forbiddenError: string;
         name: string;
         email: string;
         phone: string;
+        editDetailsButton: string;
+        editContactTitle: string;
+        editContactDescription: string;
+        firstNameLabel: string;
+        lastNameLabel: string;
+        emailLabel: string;
+        phoneLabel: string;
+        phoneHelp: string;
+        saveButton: string;
+        savingButton: string;
+        contactUpdatedMessage: string;
+        contactConflictError: string;
+        updateContactFailed: string;
+        forbiddenContactError: string;
         preferredLocale: string;
         registeredAt: string;
         emailVerified: string;
@@ -862,6 +878,7 @@ export type AdminCustomerDetail = {
     preferredLocale: string;
     isActive: boolean;
     createdAt: string;
+    updatedAt: string;
     emailVerifiedAt: string | null;
     phoneVerifiedAt: string | null;
     ordersSummary: {
@@ -893,6 +910,7 @@ export type AdminCustomerDetailPageProps = {
     permissions: string[];
     customer: AdminCustomerDetail;
     statusUrl: string;
+    contactUrl: string;
     confirmPasswordUrl?: string;
     logoutUrl: string;
 };

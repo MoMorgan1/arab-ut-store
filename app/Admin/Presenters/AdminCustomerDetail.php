@@ -28,6 +28,7 @@ final class AdminCustomerDetail
      *     preferredLocale: string,
      *     isActive: bool,
      *     createdAt: string,
+     *     updatedAt: string,
      *     emailVerifiedAt: ?string,
      *     phoneVerifiedAt: ?string,
      *     ordersSummary: array{
@@ -82,6 +83,7 @@ final class AdminCustomerDetail
             'preferredLocale' => (string) ($user->preferred_locale ?? 'ar'),
             'isActive' => (bool) $user->is_active,
             'createdAt' => $this->isoString($user->created_at),
+            'updatedAt' => $this->isoString($user->updated_at),
             'emailVerifiedAt' => $this->nullableIsoString($user->email_verified_at),
             'phoneVerifiedAt' => $this->nullableIsoString($user->phone_verified_at),
             'ordersSummary' => [
@@ -172,7 +174,15 @@ final class AdminCustomerDetail
      */
     private function filterSafeAuditMetadata(array $metadata): array
     {
-        $safeKeys = ['reason_code', 'case_reference', 'previous_active', 'new_active'];
+        $safeKeys = [
+            'reason_code',
+            'case_reference',
+            'previous_active',
+            'new_active',
+            'contact_changed',
+            'contact_previous',
+            'contact_new',
+        ];
 
         return array_intersect_key($metadata, array_flip($safeKeys));
     }

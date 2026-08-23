@@ -68,11 +68,13 @@ test('confirmed Admin can open localized private customer detail routes', functi
             ->where('customer.name', $customer->name)
             ->where('customer.email', $customer->email)
             ->where('customer.isActive', true)
+            ->has('customer.updatedAt')
             ->has('customer.ordersSummary')
             ->has('customer.recentOrders')
             ->has('customer.walletSummary')
             ->has('customer.recentWalletEntries')
             ->has('statusUrl')
+            ->has('contactUrl')
             ->has('confirmPasswordUrl')
         );
 })->with([

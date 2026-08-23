@@ -67,6 +67,7 @@ test('confirmed admin can suspend customer, destroying sessions and writing audi
     $customer = createStatusTestCustomer(true);
 
     // Create session for the customer
+    createSessionsTableForTest();
     if (Schema::hasTable('sessions')) {
         DB::table('sessions')->insert([
             'id' => 'cust-session-1',
@@ -98,9 +99,7 @@ test('confirmed admin can suspend customer, destroying sessions and writing audi
     expect($customer->fresh()->is_active)->toBeFalse();
 
     // Verify session was destroyed
-    if (Schema::hasTable('sessions')) {
-        expect(DB::table('sessions')->where('user_id', $customer->id)->count())->toBe(0);
-    }
+    expect(DB::table('sessions')->where('user_id', $customer->id)->count())->toBe(0);
 
     // Verify audit log
     $log = StaffAuditLog::query()

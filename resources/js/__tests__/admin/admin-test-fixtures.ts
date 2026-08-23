@@ -404,6 +404,25 @@ export const englishAdminUi: AdminTranslations = {
         forbiddenError: 'You do not have permission to update customer status.',
         headTitle: 'Customer :name',
         identitySection: 'Customer information',
+        editDetailsButton: 'Edit details',
+        editContactTitle: 'Edit customer details',
+        editContactDescription:
+            "Update the customer's name, email address, and phone number.",
+        firstNameLabel: 'First name',
+        lastNameLabel: 'Last name',
+        emailLabel: 'Email address',
+        phoneLabel: 'Phone number',
+        phoneHelp:
+            'Use international E.164 format (e.g. +966501234567). Leave blank to remove phone.',
+        saveButton: 'Save changes',
+        savingButton: 'Saving changes…',
+        contactUpdatedMessage: 'Customer details updated successfully.',
+        contactConflictError:
+            'This customer was modified by another action. Details have been refreshed. Please review before trying again.',
+        updateContactFailed:
+            'We could not update the customer details. Please check your connection and try again.',
+        forbiddenContactError:
+            'You do not have permission to update customer details.',
         invalidPassword: 'The provided password was incorrect.',
         lastOrderAt: 'Last order placed',
         name: 'Name',
@@ -448,6 +467,8 @@ export const englishAdminUi: AdminTranslations = {
         statusDescription:
             'Control customer account activation and store access.',
         statusUpdated: 'Customer status updated successfully.',
+        conflictTitle: 'Conflict',
+        contactUpdated: 'Customer details updated',
         suspendedMessage:
             'The customer has been signed out and can no longer log in or place orders.',
         reactivatedMessage: 'The customer can log in and place orders again.',
@@ -784,6 +805,7 @@ export const sampleAdminCustomerDetail = {
     preferredLocale: 'ar',
     isActive: true,
     createdAt: '2026-08-15T10:00:00Z',
+    updatedAt: '2026-08-15T10:00:00Z',
     emailVerifiedAt: '2026-08-15T10:05:00Z',
     phoneVerifiedAt: '2026-08-15T10:06:00Z',
     ordersSummary: {

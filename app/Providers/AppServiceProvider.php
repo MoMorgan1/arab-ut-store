@@ -109,6 +109,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('staff-payments', fn (Request $request): Limit => Limit::perMinute(10)
             ->by('staff-payments:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
 
+        RateLimiter::for('staff-identity', fn (Request $request): Limit => Limit::perMinute(10)
+            ->by('staff-identity:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
         RateLimiter::for('chat-conversations', function (Request $request): array {
             if (! config('chat.enabled', false)) {
                 return [Limit::none()];
