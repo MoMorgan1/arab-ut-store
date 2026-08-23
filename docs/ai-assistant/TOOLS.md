@@ -5,6 +5,12 @@
 
 No assistant tool, tool schema, model-to-tool API, or autonomous action is live.
 
+Service cards (see [UX.md](UX.md)) are deliberately _not_ a tool: the model does
+not call anything and does not choose them. They are derived server-side from
+the customer's message, carry no live data, and only link to a storefront page
+the customer then acts on themselves. The read-before-write, confirmation, and
+audit requirements below still gate every real tool.
+
 ## Required principles
 
 - Read before write: the assistant must retrieve the current owner-authorized

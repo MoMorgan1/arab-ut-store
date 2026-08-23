@@ -23,6 +23,7 @@ final readonly class FinalizeAgentTurn
     public function __construct(
         private AgentRuntimeConfig $config,
         private EstimateAgentRunCost $costEstimator,
+        private BuildAssistantCards $buildCards,
     ) {}
 
     public function execute(
@@ -72,11 +73,19 @@ final readonly class FinalizeAgentTurn
                 throw new LogicException('A completed provider event requires usage.');
             }
 
+            $cards = $this->buildCards->execute(
+                $this->customerText($lockedTurn),
+                (string) $lockedConversation->locale,
+            );
+
             $assistantMessage = $lockedConversation->messages()->create([
                 'reply_to_message_id' => $lockedTurn->last_customer_message_id,
                 'sender_type' => ChatSenderType::Assistant,
                 'message_type' => ChatMessageType::Text,
                 'content' => $trimmedText,
+                'metadata' => $cards === []
+                    ? null
+                    : ['cards' => ['version' => 'cards.v1', 'items' => $cards]],
             ]);
 
             $lockedRun->forceFill([
@@ -104,5 +113,20 @@ final readonly class FinalizeAgentTurn
 
             return $assistantMessage;
         }, 3);
+    }
+
+    /** The customer messages this turn answered, used to derive service cards. */
+    private function customerText(AgentTurn $turn): string
+    {
+        return ChatMessage::query()
+            ->where('conversation_id', $turn->conversation_id)
+            ->where('sender_type', ChatSenderType::Customer)
+            ->whereBetween('id', [
+                (int) $turn->first_customer_message_id,
+                (int) $turn->last_customer_message_id,
+            ])
+            ->orderBy('id')
+            ->pluck('content')
+            ->implode(' ');
     }
 }
