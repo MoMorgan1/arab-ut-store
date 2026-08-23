@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { cn } from '@/lib/utils';
+
 export type AccountOrderListHeadings = {
     service: string;
     status: string;
@@ -8,15 +10,17 @@ export type AccountOrderListHeadings = {
 
 export default function AccountOrderList({
     children,
+    className,
     headings,
     'aria-label': ariaLabel,
 }: {
     children: ReactNode;
+    className?: string;
     headings?: AccountOrderListHeadings;
     'aria-label'?: string;
 }) {
     return (
-        <div className="account-order-list-wrapper">
+        <div className={cn('account-order-list-wrapper', className)}>
             {headings ? (
                 <div aria-hidden="true" className="account-order-list__head">
                     <span className="account-order-list__th account-order-list__th--service">
@@ -31,7 +35,10 @@ export default function AccountOrderList({
                     <span className="account-order-list__th account-order-list__th--action" />
                 </div>
             ) : null}
-            <ul aria-label={ariaLabel} className="account-order-list">
+            <ul
+                aria-label={ariaLabel}
+                className={cn('account-order-list', className)}
+            >
                 {children}
             </ul>
         </div>

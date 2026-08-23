@@ -42,6 +42,7 @@ final class AccountShell
                         $localized ? 'localized.account.wallet' : 'account.wallet',
                         absolute: false,
                     ),
+                    'badge' => trans('account.navigation.coming_soon'),
                 ],
                 [
                     'key' => 'profile',
@@ -50,6 +51,7 @@ final class AccountShell
                         $localized ? 'localized.account.profile.show' : 'account.profile.show',
                         absolute: false,
                     ),
+                    'attention' => $user->email_verified_at === null || $user->phone_verified_at === null,
                 ],
             ],
             'adminUrl' => in_array($user->role, [UserRole::Admin, UserRole::Staff], true)
