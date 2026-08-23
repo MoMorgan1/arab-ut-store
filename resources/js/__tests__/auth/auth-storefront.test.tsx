@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    within,
+} from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -162,14 +168,18 @@ const arabicAuthUi = {
         registration_prompt: 'ما عندك حساب؟',
         registration_link: 'أنشئ حسابًا',
         email_tab: 'البريد الإلكتروني',
-        phone_tab: 'الهاتف',
+        tab_email: 'البريد وكلمة المرور',
+        tab_email_short: 'البريد',
+        phone_tab: 'واتساب',
         country_code: 'رمز الدولة',
-        phone_number: 'رقم الهاتف',
-        phone_account_hint: 'استخدم واتساب للدخول أو إنشاء حساب جديد.',
-        phone_send_code: 'أرسل كود واتساب',
+        phone_number: 'رقم واتساب',
+        phone_account_hint:
+            'سنرسل كودًا من 6 أرقام على واتساب. إن لم يكن لديك حساب سننشئ واحدًا بهذا الرقم.',
+        phone_send_code: 'إرسال الكود',
         phone_code: 'كود واتساب المكوّن من 6 أرقام',
         phone_verify: 'تحقق وتابع',
         phone_code_sent: 'أرسلنا لك كودًا على واتساب.',
+        phone_code_sent_to: 'أرسلنا 6 أرقام على واتساب إلى :number',
         phone_code_invalid: 'الكود غير صحيح أو انتهت صلاحيته.',
         phone_invalid: 'أدخل رقم هاتف صحيحًا مع رمز الدولة.',
         phone_unavailable:
@@ -177,9 +187,15 @@ const arabicAuthUi = {
         phone_change: 'تغيير الرقم',
         phone_resend_in: 'إعادة الإرسال بعد :seconds ث',
         phone_resend: 'إعادة إرسال الكود',
-        google: 'المتابعة باستخدام Google',
+        phone_help: 'لم يصلك الكود؟ تأكد أن واتساب مفعّل على هذا الرقم، أو',
+        phone_help_support: 'تواصل مع الدعم',
+        google: 'المتابعة بحساب Google',
         google_error: 'تعذر تسجيل الدخول باستخدام Google. حاول مرة أخرى.',
         or: 'أو',
+        terms_prefix: 'بالمتابعة أنت توافق على',
+        terms_link: 'الشروط والأحكام',
+        terms_and: 'و',
+        privacy_link: 'سياسة الخصوصية',
     },
     register: {
         head_title: 'إنشاء حساب',
@@ -263,24 +279,35 @@ const englishAuthUi = {
         registration_prompt: "Don't have an account?",
         registration_link: 'Create an account',
         email_tab: 'Email',
-        phone_tab: 'Phone',
+        tab_email: 'Email and password',
+        tab_email_short: 'Email',
+        phone_tab: 'WhatsApp',
         country_code: 'Country code',
-        phone_number: 'Phone number',
-        phone_account_hint: 'Use WhatsApp to sign in or create a new account.',
-        phone_send_code: 'Send WhatsApp code',
+        phone_number: 'WhatsApp number',
+        phone_account_hint:
+            'We will send a 6-digit code on WhatsApp. If you do not have an account, we will create one with this number.',
+        phone_send_code: 'Send code',
         phone_code: '6-digit WhatsApp code',
         phone_verify: 'Verify and continue',
         phone_code_sent: 'We sent you a WhatsApp code.',
+        phone_code_sent_to: 'We sent 6 digits on WhatsApp to :number',
         phone_code_invalid: 'The code is invalid or expired.',
         phone_invalid: 'Enter a valid phone number.',
         phone_unavailable: 'Could not send a WhatsApp code.',
         phone_change: 'Change number',
         phone_resend_in: 'Resend in :seconds s',
         phone_resend: 'Resend code',
+        phone_help:
+            "Didn't receive the code? Make sure WhatsApp is active on this number, or",
+        phone_help_support: 'contact support',
         google: 'Continue with Google',
         google_error:
             'Google sign-in could not be completed. Please try again.',
         or: 'or',
+        terms_prefix: 'By continuing, you agree to our',
+        terms_link: 'Terms and Conditions',
+        terms_and: 'and',
+        privacy_link: 'Privacy Policy',
     },
     register: {
         head_title: 'Create account',
@@ -468,6 +495,24 @@ describe('storefront authentication shell', () => {
         expect(
             screen.getByText(arabicAuthUi.fields.remember).closest('label'),
         ).toHaveClass('min-h-10', 'flex-1');
+        expect(screen.getByRole('tab', { name: /البريد/ })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        );
+        expect(screen.getByRole('tab', { name: 'واتساب' })).toHaveAttribute(
+            'aria-selected',
+            'false',
+        );
+        const terms = within(
+            document.querySelector('.auth-terms') as HTMLElement,
+        );
+
+        expect(
+            terms.getByRole('link', { name: 'الشروط والأحكام' }),
+        ).toHaveAttribute('href', '/terms');
+        expect(
+            terms.getByRole('link', { name: 'سياسة الخصوصية' }),
+        ).toHaveAttribute('href', '/privacy');
     });
 
     it('renders English registration form first with the localized benefits', () => {
@@ -559,10 +604,21 @@ describe('storefront authentication shell', () => {
             </AuthLayout>,
         );
 
-        fireEvent.click(screen.getByRole('tab', { name: 'Phone' }));
+        expect(screen.getByRole('tab', { name: /Email/ })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        );
+        expect(
+            screen.getByRole('link', { name: 'Terms and Conditions' }),
+        ).toHaveAttribute('href', '/en/terms');
+        expect(
+            screen.getByRole('link', { name: 'Privacy Policy' }),
+        ).toHaveAttribute('href', '/en/privacy');
+
+        fireEvent.click(screen.getByRole('tab', { name: 'WhatsApp' }));
         expect(
             screen.getByText(
-                'Use WhatsApp to sign in or create a new account.',
+                'We will send a 6-digit code on WhatsApp. If you do not have an account, we will create one with this number.',
             ),
         ).toBeVisible();
     });

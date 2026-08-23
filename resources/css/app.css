@@ -486,6 +486,24 @@ html.admin-document {
         transition: 180ms var(--store-ease-out);
     }
 
+    .auth-login-method__tab-long {
+        display: none;
+    }
+
+    .auth-login-method__tab-short {
+        display: inline;
+    }
+
+    @media (min-width: 48rem) {
+        .auth-login-method__tab-long {
+            display: inline;
+        }
+
+        .auth-login-method__tab-short {
+            display: none;
+        }
+    }
+
     .auth-login-method__tab[aria-selected='true'] {
         background: rgb(212 168 67 / 18%);
         color: var(--arabut-ink);
@@ -573,11 +591,36 @@ html.admin-document {
         line-height: 1.6;
     }
 
+    .auth-whatsapp-login__help {
+        margin: 0;
+        color: var(--arabut-muted);
+        font-size: 0.875rem;
+        line-height: 1.6;
+    }
+
+    .auth-whatsapp-login__help a {
+        color: var(--arabut-gold-bright);
+        text-decoration: underline;
+        text-underline-offset: 0.25rem;
+    }
+
     .auth-whatsapp-login #phone-code {
         direction: ltr;
         text-align: center;
         letter-spacing: 0.35em;
         font-variant-numeric: tabular-nums;
+    }
+
+    .auth-otp-error {
+        margin: 0;
+        border: 1px solid rgb(255 180 169 / 40%);
+        border-radius: 0.7rem;
+        background: rgb(255 180 169 / 12%);
+        padding: 0.6rem 0.8rem;
+        color: #ffb4a9;
+        font-size: 0.9375rem;
+        line-height: 1.5;
+        text-align: start;
     }
 
     .auth-social-login {
@@ -743,6 +786,20 @@ html.admin-document {
         font-size: 0.9375rem;
         line-height: 1.6;
         text-align: start;
+    }
+
+    .auth-terms {
+        margin: 0;
+        color: var(--arabut-muted);
+        font-size: 0.8rem;
+        line-height: 1.6;
+        text-align: center;
+    }
+
+    .auth-terms a {
+        color: var(--arabut-gold-bright);
+        text-decoration: underline;
+        text-underline-offset: 0.25rem;
     }
 
     .auth-shell__benefits {
