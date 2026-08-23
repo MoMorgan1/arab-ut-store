@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Admin\Presenters\AdminMfaState;
+use App\Admin\Presenters\AdminServicePricingPage;
 use App\Admin\Presenters\AdminShell;
 use App\Admin\Presenters\AdminTeamPage;
 use App\Enums\AdminPermission;
@@ -18,6 +19,7 @@ final class SettingsController extends Controller
         private readonly AdminShell $shell,
         private readonly AdminMfaState $mfaState,
         private readonly AdminTeamPage $teamPage,
+        private readonly AdminServicePricingPage $servicePricingPage,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -28,6 +30,11 @@ final class SettingsController extends Controller
 
         $canViewTeam = $actor->can(AdminPermission::StaffView->value) && $actor->hasEnabledTwoFactorAuthentication();
         $team = $canViewTeam ? $this->teamPage->for($actor) : null;
+
+        $canViewPricing = $actor->can(AdminPermission::SettingsView->value) && $actor->hasEnabledTwoFactorAuthentication();
+        $servicePricing = $canViewPricing ? $this->servicePricingPage->for($actor) : null;
+
+        $canManagePricing = $actor->can(AdminPermission::SettingsManage->value) && $actor->hasEnabledTwoFactorAuthentication();
 
         $currentRouteName = (string) $request->route()?->getName();
         $prefix = str_starts_with($currentRouteName, 'localized.admin.')
@@ -40,6 +47,11 @@ final class SettingsController extends Controller
             'statusUrlTemplate' => route($prefix.'team.status.store', ['publicId' => '__ID__'], absolute: false),
         ] : null;
 
+        $servicePricingUrls = $canManagePricing ? [
+            'updateUrlTemplate' => route($prefix.'settings.service-pricing.store', ['serviceType' => '__SERVICE__'], absolute: false),
+            'statusUrlTemplate' => route($prefix.'settings.service-pricing.status.store', ['serviceType' => '__SERVICE__'], absolute: false),
+        ] : null;
+
         return Inertia::render('admin/settings', [
             'auth' => null,
             'locale' => $locale,
@@ -49,6 +61,8 @@ final class SettingsController extends Controller
             'mfa' => $this->mfaState->for($actor, $locale),
             'team' => $team,
             'teamUrls' => $teamUrls,
+            'servicePricing' => $servicePricing,
+            'servicePricingUrls' => $servicePricingUrls,
             'confirmPasswordUrl' => route('password.confirm', absolute: false),
         ]);
     }

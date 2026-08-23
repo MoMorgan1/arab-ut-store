@@ -13,6 +13,8 @@ use App\Http\Controllers\Admin\PaylinkRefundController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductDetailController;
 use App\Http\Controllers\Admin\ProductsController;
+use App\Http\Controllers\Admin\ServicePricingController;
+use App\Http\Controllers\Admin\ServicePricingStatusController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TeamGrantController;
 use App\Http\Controllers\Admin\TeamRoleController;
@@ -180,6 +182,22 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $teamStatus->defaults('locale', $locale);
+                }
+
+                $servicePricing = Route::post('/api/settings/service-pricing/{serviceType}', ServicePricingController::class)
+                    ->middleware(['password.confirm', 'can:settings.manage', 'throttle:staff-identity'])
+                    ->name('settings.service-pricing.store');
+
+                if ($locale !== null) {
+                    $servicePricing->defaults('locale', $locale);
+                }
+
+                $servicePricingStatus = Route::post('/api/settings/service-pricing/{serviceType}/status', ServicePricingStatusController::class)
+                    ->middleware(['password.confirm', 'can:settings.manage', 'throttle:staff-identity'])
+                    ->name('settings.service-pricing.status.store');
+
+                if ($locale !== null) {
+                    $servicePricingStatus->defaults('locale', $locale);
                 }
 
                 $trustedDevices = Route::delete('/api/security/trusted-devices', TrustedDeviceController::class)

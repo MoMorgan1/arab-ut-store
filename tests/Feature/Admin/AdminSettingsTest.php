@@ -34,7 +34,12 @@ test('Admin with confirmed MFA receives settings page with security and team pro
             ->where('team.members.1.role', 'staff')
             ->where('team.members.1.mfaConfirmed', false)
             ->where('teamUrls.roleUrlTemplate', '/admin/api/team/__ID__/role')
-            ->where('teamUrls.statusUrlTemplate', '/admin/api/team/__ID__/status'));
+            ->where('teamUrls.statusUrlTemplate', '/admin/api/team/__ID__/status')
+            ->has('servicePricing.schedules', 2)
+            ->where('servicePricing.schedules.0.serviceType', 'fut_champions')
+            ->where('servicePricing.schedules.1.serviceType', 'rivals')
+            ->where('servicePricingUrls.updateUrlTemplate', '/admin/api/settings/service-pricing/__SERVICE__')
+            ->where('servicePricingUrls.statusUrlTemplate', '/admin/api/settings/service-pricing/__SERVICE__/status'));
 
     expect($response->getContent())
         ->not->toContain(
@@ -45,7 +50,7 @@ test('Admin with confirmed MFA receives settings page with security and team pro
         );
 });
 
-test('Staff actor receives security section but null team prop', function (): void {
+test('Staff actor receives security section but null team and servicePricing props', function (): void {
     $staff = createSettingsUser(UserRole::Staff, confirmed: true);
 
     $response = $this->actingAs($staff)
@@ -57,7 +62,9 @@ test('Staff actor receives security section but null team prop', function (): vo
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/settings')
             ->where('team', null)
-            ->where('teamUrls', null));
+            ->where('teamUrls', null)
+            ->where('servicePricing', null)
+            ->where('servicePricingUrls', null));
 });
 
 test('Unconfirmed Staff actor can reach settings page without EnsureAdminMfa blocking', function (): void {
