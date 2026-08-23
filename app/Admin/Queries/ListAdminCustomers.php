@@ -23,6 +23,7 @@ use stdClass;
  * }
  * @phpstan-type AdminCustomerRow array{
  *     id: string,
+ *     number: string|null,
  *     name: string,
  *     email: string,
  *     phone: ?string,
@@ -79,6 +80,7 @@ final class ListAdminCustomers
         $paginator = $query->select([
             'users.id',
             'users.public_id',
+            'users.customer_number',
             'users.first_name',
             'users.last_name',
             'users.email',
@@ -154,6 +156,8 @@ final class ListAdminCustomers
 
         $query->where(function (Builder $customerQuery) use ($search, $lowercaseSearch, $phoneDigits): void {
             $customerQuery->where('users.public_id', $search)
+                ->orWhereRaw('LOWER(users.customer_number) = ?', [$lowercaseSearch])
+                ->orWhereRaw('LOWER(users.customer_number) = ?', ['cus-'.$lowercaseSearch])
                 ->orWhereRaw('LOWER(users.first_name) LIKE ?', ['%'.$lowercaseSearch.'%'])
                 ->orWhereRaw('LOWER(users.last_name) LIKE ?', ['%'.$lowercaseSearch.'%'])
                 ->orWhereRaw("LOWER(CONCAT(users.first_name, ' ', users.last_name)) LIKE ?", ['%'.$lowercaseSearch.'%'])
@@ -193,6 +197,7 @@ final class ListAdminCustomers
         return array_map(function (stdClass $user): array {
             return [
                 'id' => (string) $user->public_id,
+                'number' => $user->customer_number,
                 'name' => trim((string) $user->first_name.' '.(string) $user->last_name),
                 'email' => (string) $user->email,
                 'phone' => $user->phone !== null ? (string) $user->phone : null,

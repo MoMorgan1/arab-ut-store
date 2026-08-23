@@ -41,10 +41,10 @@ function CustomerNameCell({ row }: { row: { original: AdminCustomerRow } }) {
                 <bdi>{row.original.name}</bdi>
             </Link>
             <span
-                className="truncate text-xs text-muted-foreground"
+                className="truncate text-xs text-muted-foreground tabular-nums"
                 title={row.original.id}
             >
-                <bdi>{row.original.id}</bdi>
+                <bdi>{row.original.number ?? row.original.id}</bdi>
             </span>
         </div>
     );

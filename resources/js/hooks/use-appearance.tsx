@@ -13,7 +13,13 @@ const listeners = new Set<() => void>();
 let currentAppearance: Appearance = 'system';
 
 const prefersDark = (): boolean => {
-    if (typeof window === 'undefined') {
+    // matchMedia is absent in jsdom and in some embedded webviews. This runs on
+    // every Inertia visit now, so treat it as "no preference" rather than
+    // letting a missing API throw out of a layout effect.
+    if (
+        typeof window === 'undefined' ||
+        typeof window.matchMedia !== 'function'
+    ) {
         return false;
     }
 
@@ -46,11 +52,21 @@ const applyTheme = (appearance: Appearance): void => {
         return;
     }
 
-    const isDark = isDarkMode(appearance);
+    // The admin shell is dark-only and pins `dark` on the root element. Without
+    // this the appearance initializer strips that class straight back off for
+    // any visitor whose stored preference resolves to light.
+    const isDark =
+        isDarkMode(appearance) ||
+        document.documentElement.classList.contains('admin-document');
 
     document.documentElement.classList.toggle('dark', isDark);
     document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
 };
+
+/** The visitor's own preference, ignoring any shell that pins dark. */
+export function currentAppearanceIsDark(): boolean {
+    return isDarkMode(currentAppearance);
+}
 
 const subscribe = (callback: () => void) => {
     listeners.add(callback);
@@ -61,7 +77,10 @@ const subscribe = (callback: () => void) => {
 const notify = (): void => listeners.forEach((listener) => listener());
 
 const mediaQuery = (): MediaQueryList | null => {
-    if (typeof window === 'undefined') {
+    if (
+        typeof window === 'undefined' ||
+        typeof window.matchMedia !== 'function'
+    ) {
         return null;
     }
 
