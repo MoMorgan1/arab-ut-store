@@ -182,6 +182,10 @@ return [
         'sensitive_hint' => 'Any changes require confirmation via an email link or WhatsApp code before they are applied.',
         'email_link_invalid' => 'This email verification link is invalid, expired, or already used.',
         'phone_code_invalid' => 'The code is invalid, expired, or has reached its attempt limit.',
+        'phone_taken' => 'This phone number is linked to another account. Use a different number or sign in with that account.',
+        'phone_attribute' => 'phone number',
+        'email_taken' => 'This email address is linked to another account.',
+        'email_attribute' => 'email address',
     ],
     'security' => [
         'title' => 'Security',
