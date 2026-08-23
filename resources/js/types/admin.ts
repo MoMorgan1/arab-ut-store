@@ -299,6 +299,11 @@ export type AdminTranslations = {
     };
     customers: {
         actions: string;
+        activeFilters: string;
+        apply: string;
+        clearAll: string;
+        clearOneFilter: string;
+        filters: string;
         headTitle: string;
         title: string;
         description: string;
@@ -765,11 +770,15 @@ export type AdminTranslations = {
         allServices: string;
         allSources: string;
         allVisibilities: string;
+        apply: string;
         archivedActive: string;
         archivedArchived: string;
         authority: string;
         authorityAutomation: string;
         authorityManual: string;
+        activeFilters: string;
+        clearAll: string;
+        clearOneFilter: string;
         clearSearch: string;
         columns: string;
         createdAt: string;
