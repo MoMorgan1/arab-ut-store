@@ -215,8 +215,12 @@ it('renders masked phone and resend control after successful request and allows 
     fireEvent.click(screen.getByRole('button', { name: 'Send WhatsApp code' }));
 
     expect(
-        screen.getByText((_, element) =>
-            /We sent the code to \+966•••4567/.test(element?.textContent ?? ''),
+        screen.getByText(
+            (_, element) =>
+                element?.tagName === 'P' &&
+                /We sent the code to \+966•••4567/.test(
+                    element?.textContent ?? '',
+                ),
         ),
     ).toBeVisible();
     expect(screen.getByText(/Resend code in 60 s/)).toBeVisible();
@@ -225,8 +229,12 @@ it('renders masked phone and resend control after successful request and allows 
     fireEvent.click(screen.getByRole('button', { name: 'Change number' }));
     expect(screen.getByLabelText('New WhatsApp number')).toBeVisible();
     expect(
-        screen.queryByText((_, element) =>
-            /We sent the code to \+966•••4567/.test(element?.textContent ?? ''),
+        screen.queryByText(
+            (_, element) =>
+                element?.tagName === 'P' &&
+                /We sent the code to \+966•••4567/.test(
+                    element?.textContent ?? '',
+                ),
         ),
     ).not.toBeInTheDocument();
 });
