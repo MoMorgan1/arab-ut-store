@@ -24,7 +24,7 @@ export type AdminCustomerContactDialogProps = {
     confirmPasswordUrl?: string;
     contactUrl: string;
     customer: AdminCustomerDetail;
-    onConflict: (currentUpdatedAt: string) => void;
+    onConflict: () => void;
     onOpenChange: (open: boolean) => void;
     onSuccess: (result: {
         firstName: string;
@@ -36,12 +36,15 @@ export type AdminCustomerContactDialogProps = {
     open: boolean;
 };
 
-type ContactPayload = {
+type ContactExpectation = {
     email: string;
-    expected_updated_at: string;
     first_name: string;
     last_name: string;
     phone: string | null;
+};
+
+type ContactPayload = ContactExpectation & {
+    expected: ContactExpectation;
 };
 
 type ContactResponse = {
@@ -56,7 +59,7 @@ type ContactResponse = {
 
 type FieldErrors = {
     email?: string;
-    expected_updated_at?: string;
+    expected?: string;
     first_name?: string;
     general?: string;
     last_name?: string;
@@ -99,12 +102,16 @@ export default function AdminCustomerContactDialog({
         }
     }
 
-    const http = useHttp<ContactPayload, ContactResponse>('post', contactUrl, {
+    const expectation = (): ContactExpectation => ({
         email: customer.email,
-        expected_updated_at: customer.updatedAt,
         first_name: customer.firstName,
         last_name: customer.lastName,
         phone: customer.phone,
+    });
+
+    const http = useHttp<ContactPayload, ContactResponse>('post', contactUrl, {
+        ...expectation(),
+        expected: expectation(),
     });
 
     const isChanged =
@@ -142,7 +149,7 @@ export default function AdminCustomerContactDialog({
         setFieldErrors({});
         const payload: ContactPayload = {
             email: trimmedEmail,
-            expected_updated_at: customer.updatedAt,
+            expected: expectation(),
             first_name: trimmedFirstName,
             last_name: trimmedLastName,
             phone: trimmedPhone,
@@ -159,12 +166,11 @@ export default function AdminCustomerContactDialog({
                     handled = true;
                     setFieldErrors({
                         email: validationErrors.email,
-                        expected_updated_at:
-                            validationErrors.expected_updated_at,
+                        expected: validationErrors.expected,
                         first_name: validationErrors.first_name,
                         general:
                             validationErrors.unexpected_fields ||
-                            validationErrors.expected_updated_at ||
+                            validationErrors.expected ||
                             copy.updateContactFailed,
                         last_name: validationErrors.last_name,
                         phone: validationErrors.phone,
@@ -180,14 +186,8 @@ export default function AdminCustomerContactDialog({
                     }
 
                     if (response.status === 409) {
-                        const body =
-                            typeof response.data === 'string'
-                                ? (JSON.parse(response.data) as {
-                                      updatedAt?: string;
-                                  })
-                                : (response.data as { updatedAt?: string });
                         onOpenChange(false);
-                        onConflict(body.updatedAt ?? '');
+                        onConflict();
 
                         return false;
                     }
@@ -207,11 +207,11 @@ export default function AdminCustomerContactDialog({
                             )?.errors ?? {};
                         setFieldErrors({
                             email: resErrors.email,
-                            expected_updated_at: resErrors.expected_updated_at,
+                            expected: resErrors.expected,
                             first_name: resErrors.first_name,
                             general:
                                 resErrors.unexpected_fields ||
-                                resErrors.expected_updated_at ||
+                                resErrors.expected ||
                                 copy.updateContactFailed,
                             last_name: resErrors.last_name,
                             phone: resErrors.phone,

@@ -239,6 +239,72 @@ describe('AdminSettingsPage', () => {
         });
     });
 
+    it('grants admin access to an existing account and reloads the team', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                data: {
+                    id: '01K5ADM1N00000000000000003',
+                    name: 'New Operator',
+                    email: 'new.operator@example.test',
+                    role: 'staff',
+                },
+            }),
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<AdminSettingsPage {...createDefaultProps()} />);
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Add team member' }),
+        );
+        fireEvent.change(await screen.findByLabelText('Account email'), {
+            target: { value: 'new.operator@example.test' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledWith(
+                '/admin/api/team/grants',
+                expect.objectContaining({
+                    method: 'POST',
+                    body: JSON.stringify({
+                        email: 'new.operator@example.test',
+                        role: 'staff',
+                    }),
+                }),
+            );
+            expect(inertia.reload).toHaveBeenCalledWith({ only: ['team'] });
+        });
+    });
+
+    it('explains a refused grant instead of showing a generic error', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 422,
+            json: async () => ({ reason: 'no_such_account' }),
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<AdminSettingsPage {...createDefaultProps()} />);
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Add team member' }),
+        );
+        fireEvent.change(await screen.findByLabelText('Account email'), {
+            target: { value: 'stranger@example.test' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+
+        expect(
+            await screen.findByText(
+                'No account exists for that email address. Ask them to sign up first, then grant access here.',
+            ),
+        ).toBeVisible();
+        expect(inertia.reload).not.toHaveBeenCalled();
+    });
+
     it('handles 409 conflict during status change by displaying conflict alert and reloading team', async () => {
         const fetchMock = vi.fn().mockResolvedValue({
             ok: false,

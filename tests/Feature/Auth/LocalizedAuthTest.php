@@ -39,8 +39,8 @@ test('auth screens expose localized copy direction and route contracts', functio
         ->where('authRoutes.googleLoginUrl', "{$prefix}/auth/google/redirect")
         ->where('authRoutes.whatsappSendUrl', "{$prefix}/auth/whatsapp/code")
         ->where('authRoutes.whatsappVerifyUrl', "{$prefix}/auth/whatsapp/verify")
-        ->where('authUi.login.phone_tab', $localized ? 'Phone' : 'الهاتف')
-        ->where('authUi.login.google', $localized ? 'Continue with Google' : 'المتابعة باستخدام Google'));
+        ->where('authUi.login.phone_tab', $localized ? 'WhatsApp' : 'واتساب')
+        ->where('authUi.login.google', $localized ? 'Continue with Google' : 'المتابعة بحساب Google'));
 })->with([
     'Arabic login' => ['/login', 'auth/login', 'login', 'ar', 'rtl', 'تسجيل الدخول إلى حسابك'],
     'English login' => ['/en/login', 'auth/login', 'login', 'en', 'ltr', 'Log in to your account'],

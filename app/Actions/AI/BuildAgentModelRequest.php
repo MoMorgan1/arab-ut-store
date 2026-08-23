@@ -25,6 +25,7 @@ final readonly class BuildAgentModelRequest
         private CompletedAgentContextMessages $completedContextMessages,
         private GuardAgentPromptContent $guardPromptContent,
         private SelectSupportKnowledge $selectKnowledge,
+        private BuildLivePriceContext $livePrices,
     ) {}
 
     public function execute(AgentTurn $turn, ChatOwner $owner): AgentModelRequest
@@ -42,7 +43,8 @@ final readonly class BuildAgentModelRequest
         );
         $messages = $this->modelMessages($prior, $current);
         $instructions = File::get(resource_path("ai-assistant/prompts/{$turn->prompt_version}.md"));
-        $knowledge = $this->knowledgeBlock($current, $conversation->locale);
+        [$knowledge, $topicIds] = $this->knowledgeBlock($current, $conversation->locale);
+        $knowledge .= $this->livePriceBlock($topicIds, $conversation->locale);
 
         return new AgentModelRequest(
             model: $this->config->model(),
@@ -60,13 +62,14 @@ final readonly class BuildAgentModelRequest
      * delimited block so the model can quote it and cite the topic it used.
      *
      * @param  Collection<int, ChatMessage>  $current
+     * @return array{0: string, 1: list<string>}
      */
-    private function knowledgeBlock(Collection $current, string $locale): string
+    private function knowledgeBlock(Collection $current, string $locale): array
     {
         $limit = $this->config->knowledgeTopicLimit();
 
         if ($limit === 0) {
-            return '';
+            return ['', []];
         }
 
         $question = $current
@@ -77,7 +80,7 @@ final readonly class BuildAgentModelRequest
         $topics = $this->selectKnowledge->execute($question, $limit);
 
         if ($topics === []) {
-            return '';
+            return ['', []];
         }
 
         $rendered = array_map(
@@ -86,13 +89,36 @@ final readonly class BuildAgentModelRequest
             $topics,
         );
 
-        return '
+        return [
+            '
 
 <store_knowledge>
 '.implode('
 
 ', $rendered).'
-</store_knowledge>';
+</store_knowledge>',
+            array_map(static fn ($topic): string => $topic->id, $topics),
+        ];
+    }
+
+    /**
+     * The price table is only worth its tokens when the customer is asking
+     * about something the store actually sells.
+     *
+     * @param  list<string>  $topicIds
+     */
+    private function livePriceBlock(array $topicIds, string $locale): string
+    {
+        $priced = ['coins-service', 'coins-speeds', 'pricing-policy', 'sbc', 'rivals', 'fut-champions'];
+
+        if (array_intersect($topicIds, $priced) === []) {
+            return '';
+        }
+
+        return $this->livePrices->execute(
+            (string) config('store.default_display_currency'),
+            $locale,
+        );
     }
 
     /** @return array{int, int} */

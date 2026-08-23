@@ -24,7 +24,12 @@ const inertia = vi.hoisted(() => ({
 const http = vi.hoisted(() => ({
     data: {
         email: '',
-        expected_updated_at: '',
+        expected: {
+            email: '',
+            first_name: '',
+            last_name: '',
+            phone: null as string | null,
+        },
         first_name: '',
         last_name: '',
         phone: null as string | null,
@@ -90,7 +95,12 @@ describe('Admin Customer Contact Management', () => {
         pageState.url = '/admin/customers/01K5CUST00000000000000001';
         http.data = {
             email: sampleAdminCustomerDetail.email,
-            expected_updated_at: sampleAdminCustomerDetail.updatedAt,
+            expected: {
+                email: sampleAdminCustomerDetail.email,
+                first_name: sampleAdminCustomerDetail.firstName,
+                last_name: sampleAdminCustomerDetail.lastName,
+                phone: sampleAdminCustomerDetail.phone,
+            },
             first_name: sampleAdminCustomerDetail.firstName,
             last_name: sampleAdminCustomerDetail.lastName,
             phone: sampleAdminCustomerDetail.phone,
@@ -207,7 +217,12 @@ describe('Admin Customer Contact Management', () => {
 
         expect(http.setData).toHaveBeenCalledWith({
             email: 'saud.new@example.test',
-            expected_updated_at: '2026-08-15T10:00:00Z',
+            expected: {
+                email: sampleAdminCustomerDetail.email,
+                first_name: sampleAdminCustomerDetail.firstName,
+                last_name: sampleAdminCustomerDetail.lastName,
+                phone: sampleAdminCustomerDetail.phone,
+            },
             first_name: 'SaudModified',
             last_name: 'Al-OtaibiModified',
             phone: '+966509998877',
@@ -268,7 +283,12 @@ describe('Admin Customer Contact Management', () => {
 
         expect(http.setData).toHaveBeenCalledWith({
             email: 'saud@example.test',
-            expected_updated_at: '2026-08-15T10:00:00Z',
+            expected: {
+                email: sampleAdminCustomerDetail.email,
+                first_name: sampleAdminCustomerDetail.firstName,
+                last_name: sampleAdminCustomerDetail.lastName,
+                phone: sampleAdminCustomerDetail.phone,
+            },
             first_name: 'Saud',
             last_name: 'Al-Otaibi',
             phone: null,

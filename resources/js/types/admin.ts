@@ -430,6 +430,13 @@ export type AdminTranslations = {
         securityDescription: string;
         teamSection: string;
         teamDescription: string;
+        addMemberButton: string;
+        addMemberTitle: string;
+        addMemberDescription: string;
+        addMemberEmailLabel: string;
+        addMemberRoleLabel: string;
+        addMemberSubmit: string;
+        addMemberSubmitting: string;
         addStaffHint: string;
         selfBadge: string;
         columns: {
@@ -490,6 +497,11 @@ export type AdminTranslations = {
             networkError: string;
             forbiddenError: string;
             lastAdminError: string;
+            grantSucceeded: string;
+            grantNoSuchAccount: string;
+            grantSelf: string;
+            grantAlreadyGranted: string;
+            grantInactiveAccount: string;
         };
     };
 };
@@ -611,6 +623,7 @@ export type AdminTeamData = {
 };
 
 export type AdminTeamUrls = {
+    grantUrl: string;
     roleUrlTemplate: string;
     statusUrlTemplate: string;
 };
