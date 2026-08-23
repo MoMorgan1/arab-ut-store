@@ -33,15 +33,37 @@ export type AdminTranslations = {
         orders: string;
         customers: string;
         conversations: string;
+        catalog?: string;
         products: string;
+        categories?: string;
         marketingLoyalty?: string;
         settings: string;
         marketing: string;
         marketingCoupons: string;
         marketingPromotions: string;
+        more?: string;
         open: string;
         close: string;
         quick?: string;
+    };
+    more?: {
+        headTitle: string;
+        title: string;
+        description: string;
+        groups: {
+            catalog: string;
+            marketing: string;
+            system: string;
+        };
+        tiles: {
+            conversations: { title: string; description: string };
+            categories: { title: string; description: string };
+            coupons: { title: string; description: string };
+            promotions: { title: string; description: string };
+            loyalty: { title: string; description: string };
+            settings: { title: string; description: string };
+        };
+        noTiles: string;
     };
     overview: {
         headTitle: string;
@@ -1129,7 +1151,12 @@ export type AdminTranslations = {
 };
 
 export type AdminNavigationChild = {
-    key: 'marketingCoupons' | 'marketingPromotions';
+    key:
+        | 'products'
+        | 'categories'
+        | 'marketingCoupons'
+        | 'marketingPromotions'
+        | 'marketingLoyalty';
     label: string;
     url: string;
 };
@@ -1140,10 +1167,12 @@ export type AdminNavigationItem = {
         | 'orders'
         | 'customers'
         | 'conversations'
-        | 'marketing'
+        | 'catalog'
         | 'products'
+        | 'marketing'
         | 'marketingLoyalty'
-        | 'settings';
+        | 'settings'
+        | 'more';
     label: string;
     url: string;
     children?: AdminNavigationChild[];
@@ -1949,5 +1978,35 @@ export type AdminConversationDetailPageProps = {
     conversation: AdminConversationDetail;
     messages: AdminChatMessage[];
     turns: AdminAgentTurn[];
+    logoutUrl: string;
+};
+
+export type AdminMoreTile = {
+    key:
+        | 'conversations'
+        | 'categories'
+        | 'coupons'
+        | 'promotions'
+        | 'loyalty'
+        | 'settings';
+    label: string;
+    description: string;
+    url: string;
+};
+
+export type AdminMoreGroup = {
+    key: 'catalog' | 'marketing' | 'system';
+    label: string;
+    tiles: AdminMoreTile[];
+};
+
+export type AdminMorePageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    groups: AdminMoreGroup[];
     logoutUrl: string;
 };

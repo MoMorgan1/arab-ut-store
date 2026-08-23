@@ -196,16 +196,64 @@ export const englishAdminUi: AdminTranslations = {
         close: 'Close Admin navigation',
         conversations: 'Conversations',
         customers: 'Customers',
+        catalog: 'Catalog',
+        products: 'Products',
+        categories: 'Categories',
         marketing: 'Marketing',
         marketingCoupons: 'Coupons',
         marketingPromotions: 'Promotions',
+        marketingLoyalty: 'Loyalty',
         open: 'Open Admin navigation',
         orders: 'Orders',
         overview: 'Overview',
-        products: 'Products',
-        marketingLoyalty: 'Loyalty',
+        more: 'More',
         quick: 'quick navigation',
         settings: 'Settings',
+    },
+    more: {
+        headTitle: 'More destinations',
+        title: 'More',
+        description:
+            'Extended store management, catalog tools, marketing campaigns, and system settings.',
+        groups: {
+            catalog: 'Catalog',
+            marketing: 'Marketing',
+            system: 'Support & System',
+        },
+        tiles: {
+            conversations: {
+                title: 'Conversations',
+                description:
+                    'Review customer support conversations and assistant transcripts.',
+            },
+            categories: {
+                title: 'Categories',
+                description:
+                    'Organize catalog categories, taxonomies, and storefront hierarchy.',
+            },
+            coupons: {
+                title: 'Coupons',
+                description:
+                    'Create and configure checkout discount codes and usage rules.',
+            },
+            promotions: {
+                title: 'Promotions',
+                description:
+                    'Manage automated price promotions, service discounts, and badges.',
+            },
+            loyalty: {
+                title: 'Loyalty',
+                description:
+                    'Tune loyalty tiers, reward multipliers, and customer perks.',
+            },
+            settings: {
+                title: 'Settings',
+                description:
+                    'Manage team access, two-factor security, and service pricing.',
+            },
+        },
+        noTiles:
+            'No additional sections are available for your current permissions.',
     },
     overview: {
         capturedRevenue: 'Captured revenue',
