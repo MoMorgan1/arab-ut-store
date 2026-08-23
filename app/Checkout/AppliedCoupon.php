@@ -4,10 +4,14 @@ namespace App\Checkout;
 
 final readonly class AppliedCoupon
 {
+    /**
+     * @param  array<int|string, int>  $allocations
+     */
     public function __construct(
-        public readonly int $couponId,
-        public readonly string $code,
-        public readonly string $discountType,
-        public readonly int $discountHalalah,
+        public int $couponId,
+        public string $code,
+        public string $discountType,
+        public int $discountHalalah,
+        public array $allocations = [],
     ) {}
 }

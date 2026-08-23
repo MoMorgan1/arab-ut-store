@@ -3,6 +3,7 @@
 use App\Enums\ServiceType;
 use App\Marketing\PromotionPricing;
 use App\Models\Category;
+use App\Models\Product;
 use App\Models\Promotion;
 use Illuminate\Support\Carbon;
 
@@ -65,6 +66,20 @@ test('a service-scoped promotion only applies to that service type', function ()
 
     expect($resolver->resolve(null, ServiceType::FutChampions, 20_000))->not->toBeNull()
         ->and($resolver->resolve(null, ServiceType::Rivals, 20_000))->toBeNull();
+});
+
+test('a product-scoped promotion only applies to that product', function (): void {
+    $product = Product::factory()->create();
+    $other = Product::factory()->create();
+    Promotion::query()->create(resolverPromotionAttributes([
+        'scope' => Promotion::SCOPE_PRODUCT,
+        'product_id' => $product->id,
+    ]));
+    $resolver = new PromotionPricing;
+
+    expect($resolver->resolve(null, ServiceType::Sbc, 10_000, $product->id))->not->toBeNull()
+        ->and($resolver->resolve(null, ServiceType::Sbc, 10_000, $other->id))->toBeNull()
+        ->and($resolver->resolve(null, ServiceType::Sbc, 10_000, null))->toBeNull();
 });
 
 test('the largest discount wins across overlapping promotions', function (): void {

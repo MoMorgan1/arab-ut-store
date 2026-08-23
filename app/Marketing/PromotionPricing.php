@@ -9,13 +9,13 @@ use Illuminate\Database\Eloquent\Collection;
 /**
  * Resolves automatic promotion pricing for a single priced item.
  *
- * Given an item's category, service type, and base price (the price already
- * published by catalog or schedule pricing), this returns the best currently
- * active promotion and the discounted price. Percent discounts are floored to
- * whole halalah; fixed discounts never exceed the base price, so the promoted
- * price is never below zero. Overlapping promotions are allowed and the
- * largest discount wins; ties resolve deterministically by the larger raw
- * value, then the older promotion.
+ * Given an item's category, service type, base price (the price already
+ * published by catalog or schedule pricing), and optional product id, this
+ * returns the best currently active promotion and the discounted price.
+ * Percent discounts are floored to whole halalah; fixed discounts never exceed
+ * the base price, so the promoted price is never below zero. Overlapping
+ * promotions are allowed and the largest discount wins; ties resolve
+ * deterministically by the larger raw value, then the older promotion.
  */
 final class PromotionPricing
 {
@@ -23,8 +23,12 @@ final class PromotionPricing
     /** @var Collection<int, Promotion>|null */
     private ?Collection $activePromotions = null;
 
-    public function resolve(?int $categoryId, ServiceType $serviceType, int $basePriceHalalah): ?PromotionPrice
-    {
+    public function resolve(
+        ?int $categoryId,
+        ServiceType $serviceType,
+        int $basePriceHalalah,
+        ?int $productId = null,
+    ): ?PromotionPrice {
         if ($basePriceHalalah < 1) {
             return null;
         }
@@ -33,7 +37,7 @@ final class PromotionPricing
         $bestDiscount = 0;
 
         foreach ($this->activePromotions() as $promotion) {
-            if (! $this->matches($promotion, $categoryId, $serviceType)) {
+            if (! $this->matches($promotion, $categoryId, $serviceType, $productId)) {
                 continue;
             }
 
@@ -81,12 +85,17 @@ final class PromotionPricing
             ->get();
     }
 
-    private function matches(Promotion $promotion, ?int $categoryId, ServiceType $serviceType): bool
-    {
+    private function matches(
+        Promotion $promotion,
+        ?int $categoryId,
+        ServiceType $serviceType,
+        ?int $productId,
+    ): bool {
         return match ($promotion->scope) {
             Promotion::SCOPE_ALL => true,
             Promotion::SCOPE_CATEGORY => $categoryId !== null && $promotion->category_id === $categoryId,
             Promotion::SCOPE_SERVICE => $promotion->service_type === $serviceType->value,
+            Promotion::SCOPE_PRODUCT => $productId !== null && $promotion->product_id === $productId,
             default => false,
         };
     }

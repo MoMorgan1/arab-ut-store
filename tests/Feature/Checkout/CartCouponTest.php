@@ -257,7 +257,11 @@ test('a discount may not push the payable total below the Paylink minimum', func
     $cart->update(['coupon_id' => $coupon->id]);
 
     expect(fn () => app(PlaceOrder::class)->execute($user, 'ar', 'coupon-too-big'))
-        ->toThrow(CheckoutUnavailable::class, 'The order total is below the Paylink minimum.')
+        ->toThrow(CheckoutUnavailable::class, (string) trans(
+            'store.checkout.paylink_minimum_gap',
+            ['gap' => '3.00'],
+            locale: 'ar',
+        ))
         ->and(Order::query()->count())->toBe(0)
         ->and($cart->fresh()->status)->toBe('active');
 });
