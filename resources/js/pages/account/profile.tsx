@@ -12,6 +12,18 @@ import MyAccountLayout from '@/layouts/my-account-layout';
 import { splitE164 } from '@/lib/phone-country-codes';
 import type { AccountProfilePageProps } from '@/types/account';
 
+function renderWithNumber(template: string, number: string) {
+    const [before, after] = template.split(':number');
+
+    return (
+        <>
+            {before}
+            <bdi dir="ltr">{number}</bdi>
+            {after}
+        </>
+    );
+}
+
 function maskPhoneNumber(value: string): string {
     const split = splitE164(value);
 
@@ -454,8 +466,9 @@ export default function AccountProfile() {
                                                 className="account-profile-code__sent-to"
                                                 role="status"
                                             >
-                                                {props.accountUi.profile.phone_code_sent_to.replace(
-                                                    ':number',
+                                                {renderWithNumber(
+                                                    props.accountUi.profile
+                                                        .phone_code_sent_to,
                                                     maskPhoneNumber(
                                                         requestedPhone ||
                                                             props.profile.phone

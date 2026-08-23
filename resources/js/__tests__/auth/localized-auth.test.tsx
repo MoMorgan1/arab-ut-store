@@ -374,7 +374,11 @@ it('renders the Arabic login handoff and sends a normalized WhatsApp code reques
         phone: '+201001234567',
     });
     expect(
-        screen.getByText('أرسلنا 6 أرقام على واتساب إلى +20•••4567'),
+        screen.getByText(
+            (_, element) =>
+                element?.textContent ===
+                'أرسلنا 6 أرقام على واتساب إلى +20•••4567',
+        ),
     ).toBeVisible();
     expect(
         screen.getByLabelText(`${arabicUi.login.phone_code} 1/6`),
@@ -441,7 +445,11 @@ it('renders the themed OTP error box with role="alert" and without text-red clas
 
     await waitFor(() =>
         expect(
-            screen.getByText('أرسلنا 6 أرقام على واتساب إلى +966•••4567'),
+            screen.getByText(
+                (_, element) =>
+                    element?.textContent ===
+                    'أرسلنا 6 أرقام على واتساب إلى +966•••4567',
+            ),
         ).toBeVisible(),
     );
 
