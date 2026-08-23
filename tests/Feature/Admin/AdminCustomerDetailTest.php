@@ -75,6 +75,7 @@ test('confirmed Admin can open localized private customer detail routes', functi
             ->has('customer.recentWalletEntries')
             ->has('statusUrl')
             ->has('contactUrl')
+            ->has('walletAdjustUrl')
             ->has('confirmPasswordUrl')
         );
 })->with([

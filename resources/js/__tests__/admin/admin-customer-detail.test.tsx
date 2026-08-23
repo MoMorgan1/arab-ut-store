@@ -75,11 +75,14 @@ function defaultProps(): AdminCustomerDetailPageProps {
             'orders.view',
             'customers.view',
             'customers.update_status',
+            'wallet.adjust',
             'audit.view',
         ],
         customer: { ...sampleAdminCustomerDetail },
         statusUrl: '/api/customers/01K5CUST00000000000000001/status',
         contactUrl: '/api/customers/01K5CUST00000000000000001/contact',
+        walletAdjustUrl:
+            '/api/customers/01K5CUST00000000000000001/wallet/adjust',
         confirmPasswordUrl: '/user/confirm-password',
         logoutUrl: '/logout',
     };
@@ -285,5 +288,92 @@ describe('AdminCustomerDetailPage', () => {
             name: /AUT-1001/i,
         });
         expect(orderLinks.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('renders loyalty tier name and lifetime eligible spend in the wallet section', () => {
+        render(<AdminCustomerDetailPage />);
+
+        expect(screen.getByText('Current tier')).toBeVisible();
+        expect(screen.getByText('Bronze')).toBeVisible();
+        expect(screen.getByText('Lifetime eligible spend')).toBeVisible();
+        expect(document.body.textContent?.replace(/\s/g, '')).toContain(
+            '450.00',
+        );
+    });
+
+    it('opens wallet adjustment dialog and submits credit adjustment with amount and reason', async () => {
+        http.submit.mockImplementation(
+            async (
+                _method: string,
+                _url: string,
+                options: {
+                    onSuccess?: (response: {
+                        data: {
+                            balance: { amountMinor: string; currency: 'SAR' };
+                            entry: (typeof sampleAdminCustomerDetail.recentWalletEntries)[0];
+                        };
+                    }) => void;
+                },
+            ) => {
+                options.onSuccess?.({
+                    data: {
+                        balance: { amountMinor: '17000', currency: 'SAR' },
+                        entry: {
+                            id: '01K5WLT00000000000000002',
+                            type: 'adjustment',
+                            direction: 'credit',
+                            amount: { amountMinor: '5000', currency: 'SAR' },
+                            createdAt: '2026-08-20T12:00:00Z',
+                            reference: 'admin-adjustment:01k5adj',
+                        },
+                    },
+                });
+            },
+        );
+
+        render(<AdminCustomerDetailPage />);
+
+        const adjustBtn = screen.getByRole('button', {
+            name: 'Adjust balance',
+        });
+        fireEvent.click(adjustBtn);
+
+        expect(
+            screen.getByRole('heading', {
+                level: 2,
+                name: 'Adjust wallet balance',
+            }),
+        ).toBeVisible();
+
+        const amountInput = screen.getByLabelText(/Amount \(SAR\)/i);
+        fireEvent.change(amountInput, { target: { value: '50.00' } });
+
+        const reasonInput = screen.getByPlaceholderText(
+            /Enter internal reason for this wallet adjustment/i,
+        );
+        fireEvent.change(reasonInput, {
+            target: { value: 'Customer service goodwill compensation' },
+        });
+
+        const submitBtn = screen.getByRole('button', {
+            name: 'Apply adjustment',
+        });
+        fireEvent.click(submitBtn);
+
+        expect(http.submit).toHaveBeenCalledWith(
+            'post',
+            '/api/customers/01K5CUST00000000000000001/wallet/adjust',
+            expect.any(Object),
+        );
+        expect(http.setData).toHaveBeenCalledWith({
+            amount_halalah: 5000,
+            reason: 'Customer service goodwill compensation',
+        });
+
+        await waitFor(() => {
+            expect(
+                screen.getByText('Wallet balance adjusted successfully.'),
+            ).toBeVisible();
+        });
     });
 });

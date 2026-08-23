@@ -118,10 +118,11 @@ test('admin navigation URLs stay inside the matched route family', function (str
             ->where('adminNavigation.1.url', $expectedUrls[1])
             ->where('adminNavigation.2.url', $expectedUrls[2])
             ->where('adminNavigation.3.url', $expectedUrls[3])
-            ->where('adminNavigation.4.url', $expectedUrls[4]));
+            ->where('adminNavigation.4.url', $expectedUrls[4])
+            ->where('adminNavigation.5.url', $expectedUrls[5]));
 })->with([
-    'Canonical family' => ['/admin/orders', ['/admin', '/admin/orders', '/admin/customers', '/admin/products', '/admin/settings']],
-    'Localized family' => ['/en/admin/orders', ['/en/admin', '/en/admin/orders', '/en/admin/customers', '/en/admin/products', '/en/admin/settings']],
+    'Canonical family' => ['/admin/orders', ['/admin', '/admin/orders', '/admin/customers', '/admin/products', '/admin/marketing/loyalty', '/admin/settings']],
+    'Localized family' => ['/en/admin/orders', ['/en/admin', '/en/admin/orders', '/en/admin/customers', '/en/admin/products', '/en/admin/marketing/loyalty', '/en/admin/settings']],
 ]);
 
 test('the orders route requires EnsureAdminMfa and can:orders.view middleware', function (): void {

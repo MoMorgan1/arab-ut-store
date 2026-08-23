@@ -1,4 +1,7 @@
 import type {
+    AdminLoyaltyKpis,
+    AdminLoyaltyPageProps,
+    AdminLoyaltyTier,
     AdminTeamData,
     AdminTeamUrls,
     AdminTranslations,
@@ -20,6 +23,7 @@ export const englishAdminUi: AdminTranslations = {
         orders: 'Orders',
         overview: 'Overview',
         products: 'Products',
+        marketingLoyalty: 'Loyalty',
         quick: 'quick navigation',
         settings: 'Settings',
     },
@@ -497,6 +501,31 @@ export const englishAdminUi: AdminTranslations = {
         walletBalance: 'Current balance',
         walletEntriesCount: 'Total transactions',
         walletSection: 'Wallet summary',
+        currentTier: 'Current tier',
+        lifetimeEligibleSpend: 'Lifetime eligible spend',
+        noTier: 'No tier',
+        adjustBalance: 'Adjust balance',
+        adjustBalanceTitle: 'Adjust wallet balance',
+        adjustBalanceDescription:
+            "Credit or debit funds to this customer's wallet balance.",
+        adjustTypeLabel: 'Adjustment type',
+        credit: 'Credit (+)',
+        debit: 'Debit (-)',
+        amountSarLabel: 'Amount (SAR)',
+        amountHalalahHelp: ':halalah Halalah (maximum 1,000.00 SAR)',
+        adjustmentReasonLabel: 'Reason',
+        adjustmentReasonPlaceholder:
+            'Enter internal reason for this wallet adjustment (5–200 characters)…',
+        submitAdjustment: 'Apply adjustment',
+        adjustingBalance: 'Applying adjustment…',
+        walletAdjustSuccess: 'Wallet balance adjusted successfully.',
+        walletInsufficientBalance:
+            "Debit amount exceeds the customer's current wallet balance.",
+        walletAdjustFailed:
+            'We could not adjust the wallet balance. Please check your connection and try again.',
+        walletPasswordModalTitle: 'Confirm your password',
+        walletPasswordModalDescription:
+            "For security, please enter your password to confirm adjusting the customer's wallet balance.",
     },
     settings: {
         headTitle: 'Settings',
@@ -763,6 +792,63 @@ export const englishAdminUi: AdminTranslations = {
         variantsSection: 'Variants & pricing',
         visibility: 'Visibility',
         visible: 'Visible',
+    },
+    loyalty: {
+        headTitle: 'Loyalty & Rewards',
+        title: 'Loyalty tiers',
+        description:
+            'Configure customer tiers, spend thresholds, and cashback rewards.',
+        kpi: {
+            cashbackLast30Days: 'Cashback credited (30d)',
+            totalCustomers: 'Total customers',
+            customersPerTier: 'Customers per tier',
+        },
+        table: {
+            rank: 'Rank',
+            tier: 'Tier',
+            nameAr: 'Arabic name',
+            nameEn: 'English name',
+            threshold: 'Spend threshold',
+            cashbackRate: 'Cashback rate',
+            status: 'Status',
+            actions: 'Actions',
+            edit: 'Edit tier',
+            active: 'Active',
+            inactive: 'Inactive',
+            noTiers: 'No loyalty tiers found.',
+        },
+        editDialog: {
+            title: 'Edit tier :name',
+            description:
+                'Update spend thresholds and cashback basis points for this tier.',
+            nameArLabel: 'Arabic name',
+            nameEnLabel: 'English name',
+            thresholdLabel: 'Lifetime spend threshold (SAR)',
+            cashbackLabel: 'Cashback rate (%)',
+            cashbackBpHelp: ':bp basis points (:percent)',
+            activeLabel: 'Tier active',
+            activeHelp:
+                'Active tiers are eligible for customer qualification and cashback.',
+            saveButton: 'Save changes',
+            savingButton: 'Saving changes…',
+            cancelButton: 'Cancel',
+            successMessage: 'Loyalty tier updated successfully.',
+            updateFailed:
+                'We could not update the loyalty tier. Please check your connection and try again.',
+            passwordModalTitle: 'Confirm your password',
+            passwordModalDescription:
+                'For security, please enter your password to confirm updating loyalty tier settings.',
+            passwordLabel: 'Password',
+            passwordPlaceholder: 'Enter your current password',
+            confirmPasswordButton: 'Confirm password',
+            confirmingPassword: 'Verifying password…',
+            invalidPassword: 'The provided password was incorrect.',
+        },
+        validation: {
+            rankOneZero: 'The base tier (Rank 1) threshold must remain 0 SAR.',
+            strictlyIncreasing:
+                'Thresholds must remain strictly increasing by tier rank across all active tiers.',
+        },
     },
 };
 
@@ -1037,6 +1123,21 @@ export const sampleAdminCustomerDetail = {
             reference: 'PROMO-2026',
         },
     ],
+    loyalty: {
+        eligibleSpend: { amountMinor: '45000', currency: 'SAR' as const },
+        currentTier: {
+            key: 'bronze',
+            name: 'Bronze',
+            minimum: { amountMinor: '0', currency: 'SAR' as const },
+        },
+        nextTier: {
+            key: 'silver',
+            name: 'Silver',
+            minimum: { amountMinor: '50000', currency: 'SAR' as const },
+        },
+        remaining: { amountMinor: '5000', currency: 'SAR' as const },
+        progressPercent: 90,
+    },
     recentAuditLogs: [
         {
             id: '01K5AUD00000000000000002',
@@ -1317,4 +1418,102 @@ export const sampleAdminAutomationProductDetail = {
         syncedAt: '2026-08-21T10:05:00Z',
     },
     recentAuditLogs: null,
+};
+
+export const sampleAdminLoyaltyTiers: AdminLoyaltyTier[] = [
+    {
+        id: '01K5LOY00000000000000001',
+        key: 'bronze',
+        nameAr: 'برونزي',
+        nameEn: 'Bronze',
+        rank: 1,
+        minimumLifetimeSpend: { amountMinor: '0', currency: 'SAR' },
+        cashbackBasisPoints: 200,
+        cashbackPercent: '2.0%',
+        isActive: true,
+        updatedAt: '2026-08-15T10:00:00Z',
+    },
+    {
+        id: '01K5LOY00000000000000002',
+        key: 'silver',
+        nameAr: 'فضي',
+        nameEn: 'Silver',
+        rank: 2,
+        minimumLifetimeSpend: { amountMinor: '50000', currency: 'SAR' },
+        cashbackBasisPoints: 350,
+        cashbackPercent: '3.5%',
+        isActive: true,
+        updatedAt: '2026-08-15T10:00:00Z',
+    },
+    {
+        id: '01K5LOY00000000000000003',
+        key: 'gold',
+        nameAr: 'ذهبي',
+        nameEn: 'Gold',
+        rank: 3,
+        minimumLifetimeSpend: { amountMinor: '150000', currency: 'SAR' },
+        cashbackBasisPoints: 500,
+        cashbackPercent: '5.0%',
+        isActive: true,
+        updatedAt: '2026-08-15T10:00:00Z',
+    },
+    {
+        id: '01K5LOY00000000000000004',
+        key: 'platinum',
+        nameAr: 'بلاتيني',
+        nameEn: 'Platinum',
+        rank: 4,
+        minimumLifetimeSpend: { amountMinor: '500000', currency: 'SAR' },
+        cashbackBasisPoints: 750,
+        cashbackPercent: '7.5%',
+        isActive: true,
+        updatedAt: '2026-08-15T10:00:00Z',
+    },
+];
+
+export const sampleAdminLoyaltyKpis: AdminLoyaltyKpis = {
+    customersPerTier: {
+        bronze: 45,
+        silver: 12,
+        gold: 5,
+        platinum: 2,
+    },
+    cashbackCreditedLast30Days: {
+        amountMinor: '185000',
+        currency: 'SAR',
+    },
+};
+
+export const sampleAdminLoyaltyPageProps: AdminLoyaltyPageProps = {
+    locale: 'en',
+    direction: 'ltr',
+    adminUi: englishAdminUi,
+    adminIdentity: { name: 'Operations Owner', role: 'admin' },
+    adminNavigation: [
+        { key: 'overview', label: 'Overview', url: '/admin' },
+        { key: 'orders', label: 'Orders', url: '/admin/orders' },
+        { key: 'customers', label: 'Customers', url: '/admin/customers' },
+        { key: 'products', label: 'Products', url: '/admin/products' },
+        {
+            key: 'marketingLoyalty',
+            label: 'Loyalty',
+            url: '/admin/marketing/loyalty',
+        },
+        { key: 'settings', label: 'Settings', url: '/admin/settings' },
+    ],
+    permissions: [
+        'dashboard.view',
+        'orders.view',
+        'customers.view',
+        'catalog.view',
+        'loyalty.view',
+        'loyalty.manage',
+        'audit.view',
+        'settings.view',
+    ],
+    tiers: sampleAdminLoyaltyTiers,
+    kpis: sampleAdminLoyaltyKpis,
+    updateTierUrlTemplate: '/admin/api/marketing/loyalty/tiers/__ID__',
+    confirmPasswordUrl: '/user/confirm-password',
+    logoutUrl: '/logout',
 };
