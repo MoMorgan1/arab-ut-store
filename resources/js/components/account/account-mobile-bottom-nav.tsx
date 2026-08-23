@@ -133,7 +133,7 @@ export function AccountMobileBottomNav({
                             key={item.key}
                         >
                             <span className="account-mobile-bottom-nav__icon-wrap">
-                                <Icon aria-hidden="true" />
+                                <Icon aria-hidden="true" strokeWidth={1.7} />
                             </span>
                             <span className="account-mobile-bottom-nav__label">
                                 {label}
