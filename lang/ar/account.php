@@ -14,6 +14,7 @@ return [
         'security' => 'الأمان',
         'support' => 'الدعم',
         'logout' => 'تسجيل الخروج',
+        'admin' => 'لوحة الإدارة',
     ],
     'bottom_nav' => [
         'home' => 'الرئيسية',

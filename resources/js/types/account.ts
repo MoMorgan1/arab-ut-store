@@ -76,6 +76,7 @@ export type AccountTranslations = {
         security: string;
         support: string;
         logout: string;
+        admin?: string;
     };
     bottom_nav?: {
         home: string;
@@ -288,6 +289,7 @@ export type AccountPageShellProps = {
     accountIdentity: { name: string; greeting: string };
     accountNavigation: AccountNavigationItem[];
     accountUi: AccountTranslations;
+    adminUrl?: string | null;
     cartCount: number;
     direction: 'rtl' | 'ltr';
     displayCurrency: string;

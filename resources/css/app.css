@@ -91,6 +91,44 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html.admin-document {
+    color-scheme: dark;
+    --background: #080705;
+    --foreground: #ede4d0;
+    --card: #14110e;
+    --card-foreground: #ede4d0;
+    --popover: #1c1814;
+    --popover-foreground: #ede4d0;
+    --primary: #d4a843;
+    --primary-foreground: #080705;
+    --secondary: #241e18;
+    --secondary-foreground: #ede4d0;
+    --muted: #241e18;
+    --muted-foreground: #a89880;
+    --accent: #241e18;
+    --accent-foreground: #ede4d0;
+    --destructive: #ffb4a9;
+    --destructive-foreground: #080705;
+    --border: rgb(212 168 67 / 16%);
+    --input: rgb(212 168 67 / 20%);
+    --ring: #d4a843;
+    --sidebar: #0d0b08;
+    --sidebar-foreground: #ede4d0;
+    --sidebar-accent: #1c1814;
+    --sidebar-accent-foreground: #ede4d0;
+    --sidebar-border: rgb(212 168 67 / 16%);
+    --status-success: #67e89a;
+    --status-warning: #e4b756;
+    --status-info: #d4a843;
+    --status-danger: #ffb4a9;
+    --status-neutral: #a89880;
+    --chart-1: #d4a843;
+    --chart-2: #e4b756;
+    --chart-3: #67e89a;
+    --chart-4: #ffb4a9;
+    --chart-5: #a89880;
+}
+
 @theme {
     --font-sans:
         'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
@@ -144,6 +182,12 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+
+    --color-status-success: var(--status-success);
+    --color-status-warning: var(--status-warning);
+    --color-status-info: var(--status-info);
+    --color-status-danger: var(--status-danger);
+    --color-status-neutral: var(--status-neutral);
 }
 
 :root {

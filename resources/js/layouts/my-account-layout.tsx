@@ -19,6 +19,7 @@ export default function MyAccountLayout({
     accountIdentity,
     accountNavigation,
     accountUi,
+    adminUrl,
     cartCount,
     children,
     current,
@@ -75,6 +76,7 @@ export default function MyAccountLayout({
                 <div className="account-shell__container account-shell__grid">
                     <aside className="account-shell__sidebar">
                         <AccountNavigation
+                            adminUrl={adminUrl}
                             current={current}
                             items={accountNavigation}
                             logoutUrl={logoutUrl}
@@ -85,6 +87,7 @@ export default function MyAccountLayout({
                     <div className="account-shell__content">{children}</div>
                 </div>
                 <AccountMobileBottomNav
+                    adminUrl={adminUrl}
                     bottomNav={accountUi.bottom_nav}
                     current={current}
                     items={accountNavigation}

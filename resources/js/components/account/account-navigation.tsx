@@ -3,6 +3,7 @@ import {
     LayoutDashboard,
     LogOut,
     PackageSearch,
+    ShieldCheck,
     UserRound,
     WalletCards,
 } from 'lucide-react';
@@ -22,6 +23,7 @@ const destinationIcons: Record<AccountDestination, LucideIcon> = {
 };
 
 type AccountNavigationProps = {
+    adminUrl?: string | null;
     current: AccountDestination;
     items: AccountNavigationItem[];
     logoutUrl: string;
@@ -30,6 +32,7 @@ type AccountNavigationProps = {
 };
 
 export default function AccountNavigation({
+    adminUrl,
     current,
     items,
     logoutUrl,
@@ -90,6 +93,15 @@ export default function AccountNavigation({
                     })}
                 </ul>
             </nav>
+            {adminUrl ? (
+                <Link
+                    className="account-navigation__link account-navigation__link--admin"
+                    href={adminUrl}
+                >
+                    <ShieldCheck aria-hidden="true" />
+                    <span>{translations.admin}</span>
+                </Link>
+            ) : null}
             <button
                 className="account-navigation__logout"
                 onClick={logout}
