@@ -105,11 +105,13 @@ describe('chatServiceCards', () => {
             id: `card-${index}`,
         }));
 
+        // Four: "what do you sell?" is answered by the whole menu, and the
+        // store sells four things.
         expect(
             chatServiceCards(
                 message({ cards: { version: 'cards.v1', items: many } }),
             ),
-        ).toHaveLength(2);
+        ).toHaveLength(4);
     });
 
     it('survives a payload that is not shaped like cards at all', () => {

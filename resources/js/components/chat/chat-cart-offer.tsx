@@ -1,13 +1,13 @@
 import { Link } from '@inertiajs/react';
 import { Check, Loader2, ShoppingCart } from 'lucide-react';
 import type { FormEvent } from 'react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 
 import { announceCartAddition } from '@/lib/cart-added-event';
 import type { ChatCoinsCartOffer } from '@/lib/chat-cart';
-import { fetchChatCartQuote } from '@/lib/chat-cart-quote';
 import { CoinsCartRequestError, submitCoinsCart } from '@/lib/coins-cart-api';
 import { formatCoins, formatMinorUnits } from '@/lib/money';
+import type { ChatServicePrices } from '@/types/chat';
 import type { CoinsCredentialField, CoinsCredentials } from '@/types/coins';
 
 import { chatCartCopy } from './chat-cart-copy';
@@ -100,10 +100,12 @@ function localValidation(
 export function ChatCartOffer({
     offer,
     locale,
+    servicePrices,
     onNavigate,
 }: {
     offer: ChatCoinsCartOffer | null;
     locale: string;
+    servicePrices?: ChatServicePrices;
     onNavigate?: () => void;
 }) {
     if (offer === null) {
@@ -115,6 +117,7 @@ export function ChatCartOffer({
             key={`${offer.platform}:${offer.delivery ?? '-'}:${offer.quantity}`}
             locale={locale}
             offer={offer}
+            servicePrices={servicePrices}
             onNavigate={onNavigate}
         />
     );
@@ -123,10 +126,12 @@ export function ChatCartOffer({
 function CoinsCartPanel({
     offer,
     locale,
+    servicePrices = {},
     onNavigate,
 }: {
     offer: ChatCoinsCartOffer;
     locale: string;
+    servicePrices?: ChatServicePrices;
     onNavigate?: () => void;
 }) {
     const isEn = locale === 'en';
@@ -135,9 +140,6 @@ function CoinsCartPanel({
     const { delivery, platform, quantity } = offer;
     const requiresBalance = platform === 'playstation' && delivery === 'fast';
 
-    const [quote, setQuote] = useState<'loading' | 'unavailable' | string>(
-        'loading',
-    );
     const [expanded, setExpanded] = useState(false);
     const [credentials, setCredentials] =
         useState<CoinsCredentials>(EMPTY_CREDENTIALS);
@@ -153,42 +155,35 @@ function CoinsCartPanel({
     const formRef = useRef<HTMLFormElement | null>(null);
     const errorId = useId();
 
-    useEffect(() => {
-        const controller = new AbortController();
-        let active = true;
+    // The price comes from the one cached map the widget already fetches for
+    // cards and the shelf, keyed exactly as the server named this offer. A
+    // per-panel quote request would fire once per reply and log a console
+    // error every time pricing was unavailable.
+    const priceKey = `coins:${platform}${delivery === null ? '' : `:${delivery}`}:${quantity}`;
+    const price = servicePrices[priceKey];
 
-        void fetchChatCartQuote(
-            { delivery, platform, quantity },
-            controller.signal,
-        ).then((result) => {
-            if (!active) {
-                return;
-            }
+    let quote: string | null = null;
 
-            try {
-                setQuote(
-                    result === null
-                        ? 'unavailable'
-                        : formatMinorUnits(
-                              result.amountMinor,
-                              result.currency,
-                              moneyLocale,
-                          ),
-                );
-            } catch {
-                setQuote('unavailable');
-            }
-        });
-
-        return () => {
-            active = false;
-            controller.abort();
-        };
-    }, [delivery, moneyLocale, platform, quantity]);
+    if (
+        price !== undefined &&
+        typeof price.amountMinor === 'number' &&
+        typeof price.currency === 'string'
+    ) {
+        try {
+            quote = formatMinorUnits(
+                price.amountMinor,
+                price.currency,
+                moneyLocale,
+            );
+        } catch {
+            quote = null;
+        }
+    }
 
     // Nobody should commit to a purchase without having seen the number. When
-    // the store cannot quote, the panel says so instead of offering a button.
-    const priced = quote !== 'loading' && quote !== 'unavailable';
+    // the store cannot price this configuration, the panel says so instead of
+    // offering a button.
+    const priced = quote !== null;
 
     const selectionLabel = [
         copy.platforms[platform],
@@ -347,7 +342,7 @@ function CoinsCartPanel({
                             {quote}
                         </p>
                     )}
-                    {quote === 'unavailable' && (
+                    {quote === null && (
                         <p
                             className="mt-0.5 text-[11px] text-[var(--chat-muted)]"
                             data-testid="chat-cart-unpriced"

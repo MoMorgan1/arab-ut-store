@@ -140,3 +140,33 @@ test('card URLs always remain same-origin relative paths starting with slash', f
 test('an order-status question offers no buy card', function () {
     expect(assistantCards('شيك طلبي وقولي وين وصل'))->toBe([]);
 });
+
+test('asking what the store sells earns the whole menu as cards', function () {
+    // "الخدمات" used to resolve to no topic at all, so the reply carried no
+    // card and the model answered from general knowledge.
+    foreach (['الخدمات', 'وش الخدمات عندكم', 'what services do you offer'] as $text) {
+        $cards = app(BuildAssistantCards::class)->execute($text, 'ar');
+
+        expect(array_column($cards, 'id'))
+            ->toBe(['coins', 'sbc', 'rivals', 'fut_champions'], $text);
+    }
+});
+
+test('the menu cards link to real storefront paths and carry no preselection', function () {
+    foreach (app(BuildAssistantCards::class)->execute('الخدمات', 'ar') as $card) {
+        expect($card['url'])->toStartWith('/')
+            ->and($card['url'])->not->toStartWith('//')
+            ->and($card['options'])->toBe([])
+            ->and($card['title'])->not->toBe('');
+    }
+});
+
+test('naming one service still earns only that service', function () {
+    $cards = app(BuildAssistantCards::class)->execute('ابي كوينز', 'ar');
+
+    expect(array_column($cards, 'id'))->toBe(['coins']);
+});
+
+test('a support question still earns no card', function () {
+    expect(app(BuildAssistantCards::class)->execute('كم مدة الضمان؟', 'ar'))->toBe([]);
+});

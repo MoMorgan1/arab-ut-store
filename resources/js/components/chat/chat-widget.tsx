@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useChat } from '@/hooks/use-chat';
 import { chatServiceCards } from '@/lib/chat-cards';
+import { chatCartOffer } from '@/lib/chat-cart';
 import { fetchChatServicePrices } from '@/lib/chat-service-prices';
 import { chatShelfItems } from '@/lib/chat-shelf';
 import {
@@ -448,7 +449,8 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         (message) =>
             message.senderType === 'assistant' &&
             (chatServiceCards(message).length > 0 ||
-                chatShelfItems(message).length > 0),
+                chatShelfItems(message).length > 0 ||
+                chatCartOffer(message) !== null),
     );
 
     useEffect(() => {

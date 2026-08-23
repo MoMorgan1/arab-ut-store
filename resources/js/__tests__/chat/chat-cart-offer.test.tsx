@@ -25,14 +25,19 @@ const consoleOffer: ChatCoinsCartOffer = {
 
 const fastOffer: ChatCoinsCartOffer = { ...consoleOffer, delivery: 'fast' };
 
-function quoteResponse() {
-    return {
-        status: 200,
-        json: async () => ({
-            data: { displayTotal: { amountMinor: 910, currency: 'SAR' } },
-        }),
-    } as unknown as Response;
-}
+/** The one cached map the widget fetches for cards, shelf and cart panels. */
+const PRICES = {
+    'coins:playstation:normal:1000000': {
+        amountMinor: 910,
+        currency: 'SAR',
+        unit: 'total',
+    },
+    'coins:playstation:fast:1000000': {
+        amountMinor: 1410,
+        currency: 'SAR',
+        unit: 'total',
+    },
+};
 
 function cartCreatedResponse() {
     return {
@@ -50,15 +55,12 @@ function cartCreatedResponse() {
 /** Every request the component made, in order, as [url, init] pairs. */
 let calls: Array<[string, RequestInit | undefined]>;
 
-function stubFetch(
-    cartResponse: () => Response,
-    quote: () => Response = quoteResponse,
-) {
+function stubFetch(cartResponse: () => Response) {
     return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = input instanceof URL ? input.toString() : String(input);
         calls.push([url, init]);
 
-        return url.includes('/coins/quote') ? quote() : cartResponse();
+        return cartResponse();
     });
 }
 
@@ -66,11 +68,8 @@ function cartCalls() {
     return calls.filter(([url]) => url.includes('/cart/items/coins'));
 }
 
-/** The add button only exists once the store has quoted a real price. */
-async function openForm() {
-    await waitFor(() => {
-        expect(screen.getByTestId('chat-cart-start')).toBeInTheDocument();
-    });
+/** The add button only exists once the store has a price for this selection. */
+function openForm() {
     fireEvent.click(screen.getByTestId('chat-cart-start'));
 }
 
@@ -117,26 +116,37 @@ describe('ChatCartOffer', () => {
         expect(container).toBeEmptyDOMElement();
     });
 
-    it('shows the live price rather than one stored in the message', async () => {
+    it('shows the live price rather than one stored in the message', () => {
         vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
-        render(<ChatCartOffer offer={consoleOffer} locale="en" />);
-
-        await waitFor(() => {
-            expect(screen.getByTestId('chat-cart-price')).toBeInTheDocument();
-        });
+        render(
+            <ChatCartOffer
+                offer={consoleOffer}
+                locale="en"
+                servicePrices={PRICES}
+            />,
+        );
 
         expect(screen.getByTestId('chat-cart-price').textContent).toContain(
             '9.10',
         );
-        expect(calls[0]?.[0]).toContain('/coins/quote');
-        expect(calls[0]?.[0]).toContain('delivery=normal');
+
+        // No request of its own: the price comes from the map the widget
+        // already fetched, so a transcript of offers costs nothing extra and
+        // a pricing outage logs no console error.
+        expect(calls).toHaveLength(0);
     });
 
     it('posts the credentials to the cart endpoint, never as a message', async () => {
         vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
-        render(<ChatCartOffer offer={consoleOffer} locale="en" />);
+        render(
+            <ChatCartOffer
+                offer={consoleOffer}
+                locale="en"
+                servicePrices={PRICES}
+            />,
+        );
 
-        await openForm();
+        openForm();
         fillCredentials();
         fireEvent.click(screen.getByTestId('chat-cart-submit'));
 
@@ -166,9 +176,15 @@ describe('ChatCartOffer', () => {
 
     it('posts to the localized endpoint so the cart link matches the language', async () => {
         vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
-        render(<ChatCartOffer offer={consoleOffer} locale="en" />);
+        render(
+            <ChatCartOffer
+                offer={consoleOffer}
+                locale="en"
+                servicePrices={PRICES}
+            />,
+        );
 
-        await openForm();
+        openForm();
         fillCredentials();
         fireEvent.click(screen.getByTestId('chat-cart-submit'));
 
@@ -181,9 +197,15 @@ describe('ChatCartOffer', () => {
 
     it('clears the password from the panel once the item is in the cart', async () => {
         vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
-        render(<ChatCartOffer offer={consoleOffer} locale="en" />);
+        render(
+            <ChatCartOffer
+                offer={consoleOffer}
+                locale="en"
+                servicePrices={PRICES}
+            />,
+        );
 
-        await openForm();
+        openForm();
         fillCredentials();
         fireEvent.click(screen.getByTestId('chat-cart-submit'));
 
@@ -200,9 +222,15 @@ describe('ChatCartOffer', () => {
 
     it('will not submit an incomplete form', async () => {
         vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
-        render(<ChatCartOffer offer={consoleOffer} locale="en" />);
+        render(
+            <ChatCartOffer
+                offer={consoleOffer}
+                locale="en"
+                servicePrices={PRICES}
+            />,
+        );
 
-        await openForm();
+        openForm();
         fireEvent.change(screen.getByLabelText('EA email'), {
             target: { value: 'not-an-email' },
         });
@@ -217,9 +245,15 @@ describe('ChatCartOffer', () => {
 
     it('marks a rejected field invalid, not merely a different colour', async () => {
         vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
-        render(<ChatCartOffer offer={consoleOffer} locale="en" />);
+        render(
+            <ChatCartOffer
+                offer={consoleOffer}
+                locale="en"
+                servicePrices={PRICES}
+            />,
+        );
 
-        await openForm();
+        openForm();
         fireEvent.click(screen.getByTestId('chat-cart-submit'));
 
         await waitFor(() => {
@@ -236,9 +270,15 @@ describe('ChatCartOffer', () => {
 
     it('moves focus into the form when it expands', async () => {
         vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
-        render(<ChatCartOffer offer={consoleOffer} locale="en" />);
+        render(
+            <ChatCartOffer
+                offer={consoleOffer}
+                locale="en"
+                servicePrices={PRICES}
+            />,
+        );
 
-        await openForm();
+        openForm();
 
         await waitFor(() => {
             expect(document.activeElement).toBe(
@@ -250,16 +290,26 @@ describe('ChatCartOffer', () => {
     it('asks for the current balance only on the fast console route', async () => {
         vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
         const { rerender } = render(
-            <ChatCartOffer offer={consoleOffer} locale="en" />,
+            <ChatCartOffer
+                offer={consoleOffer}
+                locale="en"
+                servicePrices={PRICES}
+            />,
         );
 
-        await openForm();
+        openForm();
         expect(
             screen.queryByLabelText('Current coin balance'),
         ).not.toBeInTheDocument();
 
-        rerender(<ChatCartOffer offer={fastOffer} locale="en" />);
-        await openForm();
+        rerender(
+            <ChatCartOffer
+                offer={fastOffer}
+                locale="en"
+                servicePrices={PRICES}
+            />,
+        );
+        openForm();
 
         expect(
             screen.getByLabelText('Current coin balance'),
@@ -277,9 +327,15 @@ describe('ChatCartOffer', () => {
             }) as unknown as Response;
 
         vi.stubGlobal('fetch', stubFetch(rejected));
-        render(<ChatCartOffer offer={consoleOffer} locale="en" />);
+        render(
+            <ChatCartOffer
+                offer={consoleOffer}
+                locale="en"
+                servicePrices={PRICES}
+            />,
+        );
 
-        await openForm();
+        openForm();
         fillCredentials();
         fireEvent.click(screen.getByTestId('chat-cart-submit'));
 
@@ -290,21 +346,19 @@ describe('ChatCartOffer', () => {
         expect(screen.queryByTestId('chat-cart-added')).not.toBeInTheDocument();
     });
 
-    it('offers no button at all when the store cannot quote a price', async () => {
-        const unavailable = () =>
-            ({ status: 503, json: async () => ({}) }) as unknown as Response;
-
-        vi.stubGlobal('fetch', stubFetch(cartCreatedResponse, unavailable));
-        render(<ChatCartOffer offer={consoleOffer} locale="en" />);
-
-        await waitFor(() => {
-            expect(
-                screen.getByTestId('chat-cart-unpriced'),
-            ).toBeInTheDocument();
-        });
+    it('offers no button at all when the store cannot price the selection', () => {
+        vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
+        render(
+            <ChatCartOffer
+                offer={consoleOffer}
+                locale="en"
+                servicePrices={{}}
+            />,
+        );
 
         // Committing to a purchase having seen no number is not a choice the
         // panel should offer.
+        expect(screen.getByTestId('chat-cart-unpriced')).toBeInTheDocument();
         expect(screen.queryByTestId('chat-cart-price')).not.toBeInTheDocument();
         expect(screen.queryByTestId('chat-cart-start')).not.toBeInTheDocument();
     });
@@ -327,9 +381,15 @@ describe('ChatCartOffer', () => {
         };
 
         vi.stubGlobal('fetch', stubFetch(flaky));
-        render(<ChatCartOffer offer={consoleOffer} locale="en" />);
+        render(
+            <ChatCartOffer
+                offer={consoleOffer}
+                locale="en"
+                servicePrices={PRICES}
+            />,
+        );
 
-        await openForm();
+        openForm();
         fillCredentials();
         fireEvent.click(screen.getByTestId('chat-cart-submit'));
 

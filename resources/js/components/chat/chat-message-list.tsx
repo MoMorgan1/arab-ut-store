@@ -361,6 +361,9 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                         message,
                                                     )}
                                                     locale={locale}
+                                                    servicePrices={
+                                                        servicePrices
+                                                    }
                                                     onNavigate={onCardNavigate}
                                                 />
                                             )}
