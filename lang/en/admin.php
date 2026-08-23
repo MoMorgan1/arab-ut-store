@@ -297,6 +297,9 @@ return [
         'searchPlaceholder' => 'Search by name, email, phone, or public ID…',
         'searchLabel' => 'Search customers',
         'searchButton' => 'Search',
+        'filters' => 'Filters',
+        'apply' => 'Apply',
+        'clearAll' => 'Clear all',
         'allStatuses' => 'All statuses',
         'filterStatus' => 'Filter by status',
         'statusActive' => 'Active',
@@ -344,6 +347,8 @@ return [
         'sortDescending' => 'sorted descending',
         'sortBy' => 'Sort by :column',
         'viewDetail' => 'View customer',
+        'activeFilters' => 'Active filters',
+        'clearOneFilter' => 'Clear :name filter',
     ],
     'customerDetail' => [
         'networkError' => 'Network error. Please check your connection and try again.',
@@ -611,6 +616,8 @@ return [
         'filterSource' => 'Filter by source',
         'filterVisibility' => 'Filter by visibility',
         'filters' => 'Filters',
+        'apply' => 'Apply',
+        'clearAll' => 'Clear all',
         'firstPage' => 'First page',
         'headTitle' => 'Products',
         'lastPage' => 'Last page',
@@ -653,6 +660,8 @@ return [
         'visibility' => 'Visibility',
         'visibilityHidden' => 'Hidden',
         'visibilityVisible' => 'Visible',
+        'activeFilters' => 'Active filters',
+        'clearOneFilter' => 'Clear :name filter',
     ],
 
     'productDetail' => [

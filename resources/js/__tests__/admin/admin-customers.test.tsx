@@ -249,24 +249,25 @@ describe('AdminCustomersPage', () => {
         );
     });
 
-    it('resets all filters when reset filters button is clicked', () => {
+    it('clears every applied filter from the active-filter row', () => {
         pageState.props.filters = {
             ...pageState.props.filters,
+            date_from: '2026-08-01',
             search: 'Saud',
             status: 'active',
-            date_from: '2026-08-01',
         };
         render(<AdminCustomersPage />);
 
-        const resetBtn = screen.getByRole('button', { name: 'Reset filters' });
-        fireEvent.click(resetBtn);
+        // "Reset filters" became "Clear all" and moved next to the chips that
+        // show what is currently applied.
+        fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
 
         expect(inertia.get).toHaveBeenCalledWith(
             '/admin/customers',
             expect.not.objectContaining({
+                date_from: expect.anything(),
                 search: expect.anything(),
                 status: expect.anything(),
-                date_from: expect.anything(),
             }),
             expect.any(Object),
         );
@@ -303,5 +304,160 @@ describe('AdminCustomersPage', () => {
         const mobileList = screen.getByRole('list', { name: 'Customers list' });
         expect(within(mobileList).getByText('Saud Al-Otaibi')).toBeVisible();
         expect(within(mobileList).getByText('Fahad Al-Harbi')).toBeVisible();
+    });
+
+    it('renders inline controls (search, filters, columns) on mobile while status select is desktop-only', () => {
+        render(<AdminCustomersPage />);
+
+        expect(
+            screen.getByRole('searchbox', { name: 'Search customers' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Search' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /Filters/i }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Toggle columns' }),
+        ).toBeInTheDocument();
+    });
+
+    it('shows the applied-filter count badge on the Filters button', () => {
+        pageState.props.filters = {
+            ...pageState.props.filters,
+            date_from: '2026-08-01',
+            date_to: '2026-08-10',
+            status: 'active',
+        };
+
+        render(<AdminCustomersPage />);
+
+        const filtersBtn = screen.getByRole('button', { name: /Filters/i });
+        expect(within(filtersBtn).getByText('3')).toBeVisible();
+    });
+
+    it('opens the sheet, changes date range, and pressing Apply issues exactly one visit with expected query', () => {
+        render(<AdminCustomersPage />);
+
+        const filtersBtn = screen.getByRole('button', { name: /Filters/i });
+        fireEvent.click(filtersBtn);
+
+        const sheet = screen.getByRole('dialog', { name: 'Filters' });
+        expect(sheet).toBeVisible();
+
+        const dateFromInput = within(sheet).getByLabelText('Date from');
+        fireEvent.change(dateFromInput, { target: { value: '2026-08-01' } });
+
+        const applyBtn = within(sheet).getByRole('button', { name: 'Apply' });
+        fireEvent.click(applyBtn);
+
+        expect(inertia.get).toHaveBeenCalledTimes(1);
+        expect(inertia.get).toHaveBeenCalledWith(
+            '/admin/customers',
+            expect.objectContaining({ date_from: '2026-08-01' }),
+            expect.any(Object),
+        );
+        expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('pressing Apply in the sheet with no changes does not issue an Inertia visit', () => {
+        render(<AdminCustomersPage />);
+
+        const filtersBtn = screen.getByRole('button', { name: /Filters/i });
+        fireEvent.click(filtersBtn);
+
+        const sheet = screen.getByRole('dialog', { name: 'Filters' });
+        expect(sheet).toBeVisible();
+
+        const applyBtn = within(sheet).getByRole('button', { name: 'Apply' });
+        fireEvent.click(applyBtn);
+
+        expect(inertia.get).not.toHaveBeenCalled();
+        expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('clicking Clear all in the sheet resets to the unfiltered query', () => {
+        pageState.props.filters = {
+            ...pageState.props.filters,
+            date_from: '2026-08-01',
+            status: 'active',
+        };
+
+        render(<AdminCustomersPage />);
+
+        const filtersBtn = screen.getByRole('button', { name: /Filters/i });
+        fireEvent.click(filtersBtn);
+
+        const sheet = screen.getByRole('dialog', { name: 'Filters' });
+        const clearAllBtn = within(sheet).getByRole('button', {
+            name: 'Clear all',
+        });
+        fireEvent.click(clearAllBtn);
+
+        expect(inertia.get).toHaveBeenCalledWith(
+            '/admin/customers',
+            expect.not.objectContaining({
+                date_from: '2026-08-01',
+                status: 'active',
+            }),
+            expect.any(Object),
+        );
+        expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('renders active filter chips and dismissing a chip removes exactly that one filter and keeps the others', () => {
+        pageState.props.filters = {
+            ...pageState.props.filters,
+            date_from: '2026-08-01',
+            search: 'Saud',
+            status: 'active',
+        };
+
+        render(<AdminCustomersPage />);
+
+        expect(screen.getByText('Active filters:')).toBeVisible();
+        expect(screen.getByText('Search: "Saud"')).toBeVisible();
+        expect(screen.getByText('Status: Active')).toBeVisible();
+        expect(screen.getByText('From: 2026-08-01')).toBeVisible();
+
+        const clearStatusBtn = screen.getByRole('button', {
+            name: 'Clear status filter',
+        });
+        fireEvent.click(clearStatusBtn);
+
+        expect(inertia.get).toHaveBeenCalledWith(
+            '/admin/customers',
+            expect.not.objectContaining({ status: 'active' }),
+            expect.any(Object),
+        );
+        expect(inertia.get.mock.calls[0][1]).toEqual(
+            expect.objectContaining({
+                date_from: '2026-08-01',
+                search: 'Saud',
+            }),
+        );
+    });
+
+    it('clicking Clear all from the active chips row resets all filters', () => {
+        pageState.props.filters = {
+            ...pageState.props.filters,
+            search: 'Saud',
+            status: 'active',
+        };
+
+        render(<AdminCustomersPage />);
+
+        const clearAllBtn = screen.getByRole('button', { name: 'Clear all' });
+        fireEvent.click(clearAllBtn);
+
+        expect(inertia.get).toHaveBeenCalledWith(
+            '/admin/customers',
+            expect.not.objectContaining({
+                search: 'Saud',
+                status: 'active',
+            }),
+            expect.any(Object),
+        );
     });
 });
