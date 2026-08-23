@@ -12376,3 +12376,18 @@ html.admin-document {
 .chat-greeting-bubble:hover .chat-greeting-bubble__caret {
     border-color: rgb(212 168 67 / 75%);
 }
+
+/*
+ * The product shelf scrolls sideways inside itself. Hiding the scrollbar keeps
+ * the transcript clean; the cards are snap points so a swipe always lands on a
+ * card rather than between two.
+ */
+.chat-shelf-track {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overscroll-behavior-x: contain;
+}
+
+.chat-shelf-track::-webkit-scrollbar {
+    display: none;
+}

@@ -14,7 +14,7 @@ test('runtime config returns each validated configured value', function () {
         'test_user_ids' => [7, 11],
         'provider' => 'fake',
         'model' => 'gpt-5.6-luna',
-        'prompt_version' => 'support-v4',
+        'prompt_version' => 'support-v6',
         'turn_debounce_ms' => 100,
         'max_context_messages' => 12,
         'max_output_tokens' => 300,
@@ -45,7 +45,7 @@ test('runtime config returns each validated configured value', function () {
         ->and($runtime->testUserIds())->toBe([7, 11])
         ->and($runtime->provider()->value)->toBe('fake')
         ->and($runtime->model())->toBe('gpt-5.6-luna')
-        ->and($runtime->promptVersion())->toBe('support-v4')
+        ->and($runtime->promptVersion())->toBe('support-v6')
         ->and($runtime->turnDebounceMilliseconds())->toBe(100)
         ->and($runtime->maxContextMessages())->toBe(12)
         ->and($runtime->maxOutputTokens())->toBe(300)

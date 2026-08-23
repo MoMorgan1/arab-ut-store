@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { chatServiceCards } from '@/lib/chat-cards';
 import { chatChoices } from '@/lib/chat-choices';
 import { groupChatMessages } from '@/lib/chat-grouping';
+import { chatShelfItems } from '@/lib/chat-shelf';
 import { chatTopicsFor } from '@/lib/chat-topics';
 import type {
     AgentTurnState,
@@ -12,6 +13,7 @@ import type {
 } from '@/types/chat';
 import { ChatChoiceChips } from './chat-choice-chips';
 import { ChatServiceCards } from './chat-service-cards';
+import { ChatShelf } from './chat-shelf';
 import { StreamedText } from './streamed-text';
 import { TypingIndicator } from './typing-indicator';
 
@@ -325,6 +327,15 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                 cards={chatServiceCards(
                                                     message,
                                                 )}
+                                                servicePrices={servicePrices}
+                                                locale={locale}
+                                                onNavigate={onCardNavigate}
+                                            />
+                                        )}
+
+                                        {!isCustomer && !isStreaming && (
+                                            <ChatShelf
+                                                items={chatShelfItems(message)}
                                                 servicePrices={servicePrices}
                                                 locale={locale}
                                                 onNavigate={onCardNavigate}

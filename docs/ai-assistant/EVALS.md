@@ -204,3 +204,38 @@ complete batch after approved remediation and a fresh live canary.
 Future retrieval and tool phases require separate source-grounding,
 authorization, confirmation, idempotency, audit, and partial-failure evaluation
 before rollout.
+
+## Answer-length contract added on 2026-08-23 (owner decision)
+
+`support-v5` adds a brevity rule to the price contract: quote only the
+configuration the customer actually named, give a single cheapest example when
+they have not chosen yet, and never exceed two prices in a reply unless the
+customer explicitly asks for the whole list.
+
+The trigger was a live reply to "ابي كوينز" that recited all fifteen coin rows —
+three platforms times five quantities — before the customer had chosen anything.
+`<live_prices>` is a lookup table, and `support-v4` never said how much of it to
+read out.
+
+The passing batch recorded above was run under `support-v3`. `support-v4` and
+`support-v5` each need their own batch; the `support-v5` batch must additionally
+check that a price answer stays within the two-price limit.
+
+## Persona and protocol contract on 2026-08-23 (owner decision)
+
+`support-v6` replaces the generic support persona with the owner's own WhatsApp
+bot prompt, adapted to this surface. Adopted from it: the Saudi white dialect,
+the one-to-four line limit, one clarifying question per reply, no repeated
+phrasing, never promising compensation or an exception, never speaking about
+"contacting support" as though it were someone else, and the order-late,
+credential-fix, cart-limit and installment protocols.
+
+Deliberately not carried over, because this surface has no machinery for them:
+the `CMD_COMPLAINT` and `[HUMAN_ALERT]` control tags (no ticket system yet, and
+an unrecognised tag would render as literal text to the customer), the
+`<history_context_read_only>` / `<open_ticket_status>` input blocks, the voice,
+image, video and sticker handling, and the WhatsApp-only formatting rules.
+
+A `support-v6` batch must additionally check: the reply stays within four lines,
+carries at most one question, never promises compensation or a refund, and
+declines an out-of-scope request outright rather than partially.
