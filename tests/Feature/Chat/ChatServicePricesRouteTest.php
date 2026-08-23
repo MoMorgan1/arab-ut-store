@@ -7,6 +7,10 @@ use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
+beforeEach(function (): void {
+    config()->set('chat.enabled', true);
+});
+
 test('the endpoint returns the service prices as json', function () {
     $response = $this->getJson(route('chat.service-prices'));
 
