@@ -8,7 +8,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { englishAdminUi } from '@/__tests__/admin/admin-test-fixtures';
-import AdminMobileNavigation from '@/components/admin/admin-mobile-navigation';
+import AdminMobileTabBar from '@/components/admin/admin-mobile-tabbar';
 import AdminSidebar from '@/components/admin/admin-sidebar';
 import AdminLayout from '@/layouts/admin-layout';
 import ChatRootLayout from '@/layouts/chat-root-layout';
@@ -49,6 +49,14 @@ const navigation: AdminNavigationItem[] = [
         label: 'Settings',
         url: '/en/admin/settings',
     },
+];
+
+const adminNavigationFiveTabs: AdminNavigationItem[] = [
+    { key: 'overview', label: 'Overview', url: '/en/admin' },
+    { key: 'orders', label: 'Orders', url: '/en/admin/orders' },
+    { key: 'customers', label: 'Customers', url: '/en/admin/customers' },
+    { key: 'products', label: 'Products', url: '/en/admin/products' },
+    { key: 'settings', label: 'Settings', url: '/en/admin/settings' },
 ];
 
 const adminUi = englishAdminUi;
@@ -134,7 +142,7 @@ describe('Admin shell', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('provides a skip target and the same server navigation in the shell', () => {
+    it('provides a skip target and brand header in the shell without a hamburger button', () => {
         pageState.props = {
             locale: 'en',
             direction: 'ltr',
@@ -162,18 +170,18 @@ describe('Admin shell', () => {
             screen.getAllByRole('link', { name: 'Overview' })[0],
         ).toHaveAttribute('aria-current', 'page');
         expect(
-            screen.getByRole('button', { name: 'Open Admin navigation' }),
-        ).toBeInTheDocument();
+            screen.queryByRole('button', { name: 'Open Admin navigation' }),
+        ).not.toBeInTheDocument();
     });
 
-    it('renders mobile bottom quick navigation tab bar with accessible labels and active indicator', () => {
+    it('renders five tabs for an Admin in the mobile bottom quick navigation tab bar', () => {
         pageState.props = {
             locale: 'en',
             direction: 'ltr',
             adminUi,
             adminIdentity: { name: 'Operations Owner', role: 'admin' },
-            adminNavigation: navigation,
-            permissions: ['dashboard.view'],
+            adminNavigation: adminNavigationFiveTabs,
+            permissions: ['dashboard.view', 'catalog.view'],
             logoutUrl: '/logout',
         };
 
@@ -189,37 +197,62 @@ describe('Admin shell', () => {
         expect(tabbar).toBeInTheDocument();
         expect(tabbar).toHaveClass('md:hidden');
 
+        const links = within(tabbar).getAllByRole('link');
+        expect(links).toHaveLength(5);
+
         const activeTab = within(tabbar).getByRole('link', {
             name: 'Overview',
         });
         expect(activeTab).toHaveAttribute('aria-current', 'page');
 
-        const ordersTab = within(tabbar).getByRole('link', {
-            name: 'Orders',
-        });
-        expect(ordersTab).not.toHaveAttribute('aria-current');
+        expect(
+            within(tabbar).getByRole('link', { name: 'Orders' }),
+        ).toBeVisible();
+        expect(
+            within(tabbar).getByRole('link', { name: 'Customers' }),
+        ).toBeVisible();
+        expect(
+            within(tabbar).getByRole('link', { name: 'Products' }),
+        ).toBeVisible();
+        expect(
+            within(tabbar).getByRole('link', { name: 'Settings' }),
+        ).toBeVisible();
     });
 
-    it('opens a labelled modal mobile sheet with only supplied destinations', () => {
+    it('renders fewer tabs for a Staff user whose navigation lacks entries', () => {
+        const staffNavigation: AdminNavigationItem[] = [
+            { key: 'overview', label: 'Overview', url: '/en/admin' },
+            { key: 'orders', label: 'Orders', url: '/en/admin/orders' },
+            { key: 'settings', label: 'Settings', url: '/en/admin/settings' },
+        ];
+
         render(
-            <AdminMobileNavigation
-                adminIdentity={{ name: 'Operations Owner', role: 'admin' }}
+            <AdminMobileTabBar
                 adminUi={adminUi}
                 current="overview"
-                direction="ltr"
-                logoutUrl="/logout"
-                navigation={navigation}
+                navigation={staffNavigation}
             />,
         );
 
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Open Admin navigation' }),
-        );
-
-        expect(screen.getByRole('dialog')).toBeVisible();
+        const tabbar = screen.getByRole('navigation', {
+            name: `${adminUi.brand} ${adminUi.navigation.quick}`,
+        });
+        const links = within(tabbar).getAllByRole('link');
+        expect(links).toHaveLength(3);
         expect(
-            screen.getByRole('button', { name: 'Close Admin navigation' }),
-        ).toBeInTheDocument();
-        expect(screen.getAllByRole('link')).toHaveLength(3);
+            within(tabbar).queryByRole('link', { name: 'Customers' }),
+        ).toBeNull();
+        expect(
+            within(tabbar).queryByRole('link', { name: 'Products' }),
+        ).toBeNull();
+        expect(
+            within(tabbar).getByRole('link', { name: 'Overview' }),
+        ).toBeVisible();
+        expect(
+            within(tabbar).getByRole('link', { name: 'Orders' }),
+        ).toBeVisible();
+        expect(
+            within(tabbar).getByRole('link', { name: 'Settings' }),
+        ).toBeVisible();
     });
 });

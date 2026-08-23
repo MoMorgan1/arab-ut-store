@@ -784,9 +784,6 @@ test('authenticated Admin overview and orders are operable across required width
                 language: 'en',
                 direction: 'ltr',
                 heading: 'Operations dashboard',
-                open: 'Open Admin navigation',
-                close: 'Close Admin navigation',
-                dialog: 'Arab UT',
                 overview: 'Overview',
                 orders: 'Orders',
                 products: 'Products',
@@ -859,98 +856,14 @@ test('authenticated Admin overview and orders are operable across required width
                 });
 
                 if (width < 768) {
-                    const trigger = page.getByRole('button', {
-                        name: locale.open,
-                    });
-                    await expect(trigger).toBeVisible();
-                    await expectMinimumTouchTarget(trigger);
-                    await expectHitTestable(trigger);
-                    await trigger.focus();
-                    await expect(trigger).toBeFocused();
-                    expect(
-                        await trigger.evaluate(
-                            (element) =>
-                                window.getComputedStyle(element).outlineStyle,
-                        ),
-                    ).not.toBe('none');
-
-                    await trigger.click();
-
-                    const dialog = page.getByRole('dialog', {
-                        name: locale.dialog,
-                    });
-                    const close = dialog.getByRole('button', {
-                        name: locale.close,
-                    });
-                    await expect(dialog).toBeVisible();
-                    await expect(dialog).toHaveAttribute('aria-modal', 'true');
-                    await expect(page.locator('#app')).toHaveAttribute(
-                        'inert',
-                        '',
-                    );
-                    await expect(close).toBeFocused();
-                    await expectMinimumTouchTarget(close);
-                    await expectMinimumTouchTarget(
-                        dialog.getByRole('link', { name: locale.overview }),
-                    );
-                    await expectMinimumTouchTarget(
-                        dialog.getByRole('link', { name: locale.orders }),
-                    );
-                    await expectMinimumTouchTarget(
-                        dialog.getByRole('link', { name: locale.products }),
-                    );
-                    await expectMinimumTouchTarget(
-                        dialog.getByRole('link', { name: locale.settings }),
-                    );
-                    await expectMinimumTouchTarget(
-                        dialog.getByRole('button', {
-                            name: 'Log out',
-                        }),
-                    );
-                    await expect(
-                        dialog.getByRole('link', { name: locale.overview }),
-                    ).toHaveAttribute('aria-current', 'page');
-                    await expect(dialog.getByRole('link')).toHaveCount(8);
-
-                    const sheetBehavior = await dialog.evaluate((element) => {
-                        const styles = window.getComputedStyle(element);
-
-                        return {
-                            paddingBottom: Number.parseFloat(
-                                styles.paddingBottom,
-                            ),
-                            transitionDuration: styles.transitionDuration,
-                        };
-                    });
-                    expect(sheetBehavior.paddingBottom).toBeGreaterThanOrEqual(
-                        safeAreaInsetBottom,
-                    );
-                    expect(sheetBehavior.transitionDuration).toMatch(
-                        /^(0s|0\.0*1ms|1e-0?5s)$/,
-                    );
-
-                    for (let index = 0; index < 6; index += 1) {
-                        await page.keyboard.press('Tab');
-                        expect(
-                            await dialog.evaluate((element) =>
-                                element.contains(document.activeElement),
-                            ),
-                        ).toBe(true);
-                    }
-
-                    await page.keyboard.press('Escape');
-                    await expect(dialog).not.toBeAttached();
-                    await expect(trigger).toBeFocused();
-                    await expect(page.locator('#app')).not.toHaveAttribute(
-                        'inert',
-                        '',
-                    );
-
                     const tabbar = page.getByRole('navigation', {
                         name: 'Arab UT quick navigation',
                     });
                     await expect(tabbar).toBeVisible();
-                    await expect(tabbar.getByRole('link')).toHaveCount(4);
+                    await expect(tabbar.getByRole('link')).toHaveCount(5);
+                    await expect(
+                        tabbar.getByRole('link', { name: locale.overview }),
+                    ).toHaveAttribute('aria-current', 'page');
                     await expectMinimumTouchTarget(
                         tabbar.getByRole('link', { name: locale.overview }),
                     );
@@ -958,16 +871,16 @@ test('authenticated Admin overview and orders are operable across required width
                         tabbar.getByRole('link', { name: locale.orders }),
                     );
                     await expectMinimumTouchTarget(
+                        tabbar.getByRole('link', { name: locale.products }),
+                    );
+                    await expectMinimumTouchTarget(
                         tabbar.getByRole('link', { name: locale.settings }),
                     );
                 } else {
-                    await expect(
-                        page.getByRole('button', { name: locale.open }),
-                    ).toBeHidden();
                     const sidebar = page.locator('.admin-sidebar');
                     await expect(sidebar).toBeVisible();
-                    // Products is a desktop sidebar and navigation-sheet
-                    // destination; the mobile tab bar deliberately stays at four.
+                    // The sidebar lists every destination; the tab bar caps at
+                    // its five primary ones. Bump this when a nav entry lands.
                     await expect(sidebar.getByRole('link')).toHaveCount(8);
                     await expect(
                         sidebar.getByRole('link', { name: locale.overview }),

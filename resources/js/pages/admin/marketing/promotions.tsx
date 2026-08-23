@@ -3,7 +3,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { useCallback, useRef, useState } from 'react';
 
-import AdminMobileNavigation from '@/components/admin/admin-mobile-navigation';
 import AdminMobileTabBar from '@/components/admin/admin-mobile-tabbar';
 import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
 import AdminSidebar from '@/components/admin/admin-sidebar';
@@ -335,14 +334,6 @@ export default function AdminPromotionsPage() {
         <div className="admin-document-layout" dir="ltr">
             <Head title={copy.headTitle} />
             <AdminSidebar
-                adminIdentity={props.adminIdentity}
-                adminUi={props.adminUi}
-                current="marketingPromotions"
-                direction={props.direction}
-                logoutUrl={props.logoutUrl}
-                navigation={props.adminNavigation}
-            />
-            <AdminMobileNavigation
                 adminIdentity={props.adminIdentity}
                 adminUi={props.adminUi}
                 current="marketingPromotions"
