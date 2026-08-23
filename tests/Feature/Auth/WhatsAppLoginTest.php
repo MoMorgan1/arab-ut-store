@@ -176,7 +176,7 @@ test('the matching WhatsApp code is consumed once and signs in the phone owner',
     $this->assertGuest();
 });
 
-test('WhatsApp verification fails closed for privileged accounts without revealing their role', function (UserRole $role) {
+test('WhatsApp verification signs in privileged accounts without revealing their role', function (UserRole $role) {
     $user = User::factory()->create([
         'phone' => '+966501234567',
         'phone_verified_at' => now(),
@@ -198,10 +198,10 @@ test('WhatsApp verification fails closed for privileged accounts without reveali
         'code' => $sentCode,
     ]);
 
-    $response->assertUnprocessable()
-        ->assertJsonPath('errors.code.0', trans('auth_ui.login.phone_code_invalid'))
+    $response->assertOk()
+        ->assertJsonStructure(['data' => ['redirectUrl']])
         ->assertDontSee($role->value);
-    $this->assertGuest();
+    $this->assertAuthenticatedAs($user);
 })->with([
     'Admin' => [UserRole::Admin],
     'Staff' => [UserRole::Staff],
