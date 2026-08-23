@@ -88,6 +88,22 @@ message persistence, the 1.5-second quiet window, turn acquisition, proxy
 delivery, or browser rendering, so it cannot substitute for browser first
 visible content.
 
+## Acceptance contract change on 2026-08-23 (owner decision)
+
+Mohamed judged that refusing every price question made the assistant look
+useless, and directed that it answer with the store's real prices. The rule
+that survives is "never invent a price", not "never state one": `support-v4`
+receives a `<live_prices>` block read from the catalogue moments before it
+answers, and may quote those figures exactly. It still may not calculate,
+convert, discount, or interpolate a figure that is not listed, and it still may
+not state a cart, order, or discount total.
+
+Two fixture contracts changed with it. `ar-price` and `mixed-price` previously
+required a refusal; they now require a current listed price and forbid any
+figure that is not in the table. The 2026-08-23 result below was measured under
+the old contract and remains the record for `support-v3`; `support-v4` needs its
+own batch.
+
 ## 2026-08-23 result (support-v3 with knowledge grounding)
 
 The batch `phase3-knowledge-eval-20260823T074807Z` ran in

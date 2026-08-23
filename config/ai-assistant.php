@@ -6,7 +6,7 @@ return [
     'test_user_ids' => env('AI_ASSISTANT_TEST_USER_IDS', ''),
     'provider' => env('AI_MODEL_PROVIDER', ''),
     'model' => env('AI_MODEL', 'gpt-5.6-luna'),
-    'prompt_version' => 'support-v3',
+    'prompt_version' => 'support-v4',
 
     // Number of approved knowledge topics injected per turn. 0 disables
     // grounding and returns the assistant to prompt-only answers.
