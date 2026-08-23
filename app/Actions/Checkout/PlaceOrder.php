@@ -196,9 +196,7 @@ final readonly class PlaceOrder
 
         if (! $variant instanceof ProductVariant
             || ! $variant->product instanceof Product
-            || ! $variant->product->is_visible
-            || $variant->product->archived_at !== null
-            || ($variant->product->category !== null && ! $variant->product->category->is_visible)
+            || ! $variant->product->isStorefrontVisible()
             || $variant->service_type !== $service
             || $variant->product->service_type !== $service
             || $variant->platform !== $platform) {
@@ -280,7 +278,7 @@ final readonly class PlaceOrder
             return $this->currentManualServicePrices($service, $platform, $configuration);
         }
 
-        $effective = $variant->sale_price_halalah ?? $variant->price_halalah;
+        $effective = $variant->effectivePriceHalalah();
 
         if ($service === ServiceType::Sbc) {
             $completionCount = $configuration['completion_count'] ?? null;
@@ -291,7 +289,7 @@ final readonly class PlaceOrder
 
             try {
                 $pricing = SbcCompletionPricing::fromConfiguration(
-                    is_array($variant->configuration) ? $variant->configuration : [],
+                    $variant->effectivePricingConfiguration(),
                     $effective,
                     requireDeclared: false,
                 );
