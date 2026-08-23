@@ -114,10 +114,11 @@ test('admin navigation URLs include customers between orders and settings', func
             ->where('adminNavigation.0.url', $expectedUrls[0])
             ->where('adminNavigation.1.url', $expectedUrls[1])
             ->where('adminNavigation.2.url', $expectedUrls[2])
-            ->where('adminNavigation.3.url', $expectedUrls[3]));
+            ->where('adminNavigation.3.url', $expectedUrls[3])
+            ->where('adminNavigation.4.url', $expectedUrls[4]));
 })->with([
-    'Canonical family' => ['/admin/customers', ['/admin', '/admin/orders', '/admin/customers', '/admin/settings']],
-    'Localized family' => ['/en/admin/customers', ['/en/admin', '/en/admin/orders', '/en/admin/customers', '/en/admin/settings']],
+    'Canonical family' => ['/admin/customers', ['/admin', '/admin/orders', '/admin/customers', '/admin/marketing/coupons', '/admin/settings']],
+    'Localized family' => ['/en/admin/customers', ['/en/admin', '/en/admin/orders', '/en/admin/customers', '/en/admin/marketing/coupons', '/en/admin/settings']],
 ]);
 
 test('the customers route requires EnsureAdminMfa and can:customers.view middleware', function (): void {

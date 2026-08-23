@@ -465,6 +465,7 @@ function liveOrder(
         status: 'waiting_for_customer',
         placedAt: '2026-08-15T10:00:00+00:00',
         total: { amountMinor: '12999', currency: 'SAR' },
+        discount: { amountMinor: '0', currency: 'SAR' },
         refreshable: true,
         paymentStartUrl,
         items: [

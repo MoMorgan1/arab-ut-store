@@ -65,6 +65,7 @@ return [
         'number' => 'رقم الطلب',
         'placed_at' => 'تاريخ الطلب',
         'total' => 'الإجمالي',
+        'discount' => 'الخصم',
         'status' => 'الحالة',
         'source_live' => 'طلب حالي',
         'source_archive' => 'طلب سابق',
