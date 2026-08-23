@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\CouponsController;
+use App\Http\Controllers\Admin\CreateCouponController;
 use App\Http\Controllers\Admin\CustomerContactController;
 use App\Http\Controllers\Admin\CustomerDetailController;
 use App\Http\Controllers\Admin\CustomersController;
@@ -14,6 +16,8 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TeamGrantController;
 use App\Http\Controllers\Admin\TeamRoleController;
 use App\Http\Controllers\Admin\TeamStatusController;
+use App\Http\Controllers\Admin\ToggleCouponStatusController;
+use App\Http\Controllers\Admin\UpdateCouponController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureAdminMfa;
@@ -152,6 +156,38 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $teamStatus->defaults('locale', $locale);
+                }
+
+                $coupons = Route::get('/marketing/coupons', CouponsController::class)
+                    ->middleware('can:marketing.view')
+                    ->name('marketing.coupons');
+
+                if ($locale !== null) {
+                    $coupons->defaults('locale', $locale);
+                }
+
+                $createCoupon = Route::post('/api/marketing/coupons', CreateCouponController::class)
+                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->name('marketing.coupons.store');
+
+                if ($locale !== null) {
+                    $createCoupon->defaults('locale', $locale);
+                }
+
+                $updateCoupon = Route::put('/api/marketing/coupons/{publicId}', UpdateCouponController::class)
+                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->name('marketing.coupons.update');
+
+                if ($locale !== null) {
+                    $updateCoupon->defaults('locale', $locale);
+                }
+
+                $toggleCoupon = Route::post('/api/marketing/coupons/{publicId}/status', ToggleCouponStatusController::class)
+                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->name('marketing.coupons.status.store');
+
+                if ($locale !== null) {
+                    $toggleCoupon->defaults('locale', $locale);
                 }
             });
         });

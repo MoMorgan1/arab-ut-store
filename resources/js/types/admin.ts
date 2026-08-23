@@ -27,6 +27,7 @@ export type AdminTranslations = {
         orders: string;
         customers: string;
         settings: string;
+        marketing: string;
         open: string;
         close: string;
         quick?: string;
@@ -504,10 +505,86 @@ export type AdminTranslations = {
             grantInactiveAccount: string;
         };
     };
+    coupons: {
+        headTitle: string;
+        title: string;
+        description: string;
+        createButton: string;
+        editButton: string;
+        createTitle: string;
+        editTitle: string;
+        codeLabel: string;
+        codePlaceholder: string;
+        codeHelp: string;
+        descriptionArLabel: string;
+        descriptionEnLabel: string;
+        typeLabel: string;
+        typePercent: string;
+        typeFixed: string;
+        valueLabel: string;
+        valuePercentHelp: string;
+        valueFixedHelp: string;
+        minimumOrderLabel: string;
+        minimumOrderHelp: string;
+        maximumDiscountLabel: string;
+        maximumDiscountHelp: string;
+        usageLimitLabel: string;
+        usageLimitHelp: string;
+        perUserLimitLabel: string;
+        perUserLimitHelp: string;
+        startsAtLabel: string;
+        endsAtLabel: string;
+        isActiveLabel: string;
+        saveButton: string;
+        savingButton: string;
+        cancelButton: string;
+        columns: {
+            code: string;
+            type: string;
+            window: string;
+            usage: string;
+            status: string;
+            actions: string;
+        };
+        typePercentBadge: string;
+        typeFixedBadge: string;
+        unlimited: string;
+        usageOf: string;
+        always: string;
+        from: string;
+        until: string;
+        window: string;
+        active: string;
+        inactive: string;
+        noCoupons: string;
+        toggleTitle: string;
+        activateTitle: string;
+        deactivateTitle: string;
+        activateDescription: string;
+        deactivateDescription: string;
+        confirmToggle: string;
+        messages: {
+            created: string;
+            updated: string;
+            toggled: string;
+            genericError: string;
+            networkError: string;
+            forbiddenError: string;
+            conflictError: string;
+            validationError: string;
+        };
+        passwordModalTitle: string;
+        passwordModalDescription: string;
+        passwordLabel: string;
+        passwordPlaceholder: string;
+        confirmPasswordButton: string;
+        confirmingPassword: string;
+        invalidPassword: string;
+    };
 };
 
 export type AdminNavigationItem = {
-    key: 'overview' | 'orders' | 'customers' | 'settings';
+    key: 'overview' | 'orders' | 'customers' | 'settings' | 'marketing';
     label: string;
     url: string;
 };
@@ -927,5 +1004,46 @@ export type AdminCustomerDetailPageProps = {
     statusUrl: string;
     contactUrl: string;
     confirmPasswordUrl?: string;
+    logoutUrl: string;
+};
+
+export type AdminCouponRow = {
+    id: string;
+    code: string;
+    discountType: 'percent' | 'fixed';
+    value: number;
+    minimumOrderHalalah: number;
+    maximumDiscountHalalah: number | null;
+    usageLimit: number | null;
+    perUserLimit: number | null;
+    usedCount: number;
+    startsAt: string | null;
+    endsAt: string | null;
+    isActive: boolean;
+    createdAt: string;
+};
+
+export type AdminCouponsQueryState = {
+    search?: string | null;
+    sort: 'created_at' | 'code' | 'used_count';
+    direction: 'asc' | 'desc';
+    per_page: 15 | 25 | 50;
+    page: number;
+};
+
+export type AdminCouponsPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    coupons: AdminCouponRow[];
+    pagination: AdminPagination;
+    counts: {
+        total: number;
+        active: number;
+    };
+    filters: AdminCouponsQueryState;
     logoutUrl: string;
 };
