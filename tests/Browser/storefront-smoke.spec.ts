@@ -946,6 +946,7 @@ test('authenticated Admin overview and orders are operable across required width
                         name: 'Arab UT quick navigation',
                     });
                     await expect(tabbar).toBeVisible();
+                    await expect(tabbar.getByRole('link')).toHaveCount(4);
                     await expectMinimumTouchTarget(
                         tabbar.getByRole('link', { name: locale.overview }),
                     );
@@ -953,7 +954,7 @@ test('authenticated Admin overview and orders are operable across required width
                         tabbar.getByRole('link', { name: locale.orders }),
                     );
                     await expectMinimumTouchTarget(
-                        tabbar.getByRole('link', { name: locale.security }),
+                        tabbar.getByRole('link', { name: locale.settings }),
                     );
                 } else {
                     await expect(

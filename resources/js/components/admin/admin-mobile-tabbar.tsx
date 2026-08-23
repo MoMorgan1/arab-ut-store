@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { LayoutDashboard, ShieldCheck, ShoppingBag, Users } from 'lucide-react';
+import { LayoutDashboard, Settings, ShoppingBag, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import type { AdminNavigationProps } from '@/components/admin/admin-sidebar';
@@ -9,7 +9,7 @@ const navigationIcons: Record<AdminNavigationItem['key'], LucideIcon> = {
     overview: LayoutDashboard,
     orders: ShoppingBag,
     customers: Users,
-    security: ShieldCheck,
+    settings: Settings,
 };
 
 export default function AdminMobileTabBar({
