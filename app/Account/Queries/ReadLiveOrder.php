@@ -23,6 +23,7 @@ final class ReadLiveOrder
                 'order_number',
                 'status',
                 'currency',
+                'discount_halalah',
                 'total_halalah',
                 'placed_at',
                 'created_at',
@@ -61,6 +62,10 @@ final class ReadLiveOrder
             'placedAt' => $placedAt instanceof CarbonInterface ? $placedAt->toIso8601String() : '',
             'total' => AccountMoney::fromMinor(
                 (int) $order->getAttribute('total_halalah'),
+                (string) $order->getAttribute('currency'),
+            ),
+            'discount' => AccountMoney::fromMinor(
+                (int) $order->getAttribute('discount_halalah'),
                 (string) $order->getAttribute('currency'),
             ),
             'refreshable' => ! $terminal,

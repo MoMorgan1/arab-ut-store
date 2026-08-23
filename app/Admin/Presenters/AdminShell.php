@@ -54,6 +54,14 @@ final class AdminShell
             ];
         }
 
+        if ($actor->can(AdminPermission::MarketingView->value)) {
+            $navigation[] = [
+                'key' => 'marketing',
+                'label' => (string) trans('admin.navigation.marketing', locale: $locale),
+                'url' => route($prefix.'marketing.coupons', absolute: false),
+            ];
+        }
+
         if ($actor->can(AdminPermission::CatalogView->value)) {
             $navigation[] = [
                 'key' => 'products',

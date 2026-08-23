@@ -106,6 +106,18 @@ export default function AccountLiveOrder() {
                         </span>
                     </div>
                     <div className="account-live-order__total">
+                        {props.order.discount.amountMinor !== '0' ? (
+                            <span className="account-live-order__discount">
+                                {props.accountUi.orders.discount}{' '}
+                                <bdi dir="ltr">
+                                    -
+                                    {formatAccountMoney(
+                                        props.order.discount,
+                                        props.locale,
+                                    )}
+                                </bdi>
+                            </span>
+                        ) : null}
                         <span>{props.accountUi.orders.total}</span>
                         <strong>
                             {formatAccountMoney(

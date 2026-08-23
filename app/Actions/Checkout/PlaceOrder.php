@@ -4,6 +4,7 @@ namespace App\Actions\Checkout;
 
 use App\Actions\Pricing\QuoteCoins;
 use App\Actions\Pricing\ReadManualServicePricing;
+use App\Checkout\AppliedCoupon;
 use App\Checkout\CheckoutResult;
 use App\Checkout\OrderNumber;
 use App\Enums\DeliveryMode;
@@ -14,10 +15,14 @@ use App\Enums\PaymentStatus;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Exceptions\Checkout\CheckoutUnavailable;
+use App\Exceptions\Checkout\CouponRejected;
+use App\Exceptions\Checkout\StaleCartCoupon;
 use App\Exceptions\IdempotencyConflict;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CartItemSecret;
+use App\Models\Coupon;
+use App\Models\CouponRedemption;
 use App\Models\FulfillmentAttachment;
 use App\Models\IdempotencyKey;
 use App\Models\Order;
@@ -41,9 +46,12 @@ final readonly class PlaceOrder
 {
     private const SCOPE = 'checkout';
 
+    private const PAYLINK_MINIMUM_HALALAH = 500;
+
     public function __construct(
         private QuoteCoins $quoteCoins,
         private ReadManualServicePricing $readManualServicePricing,
+        private ApplyCoupon $applyCoupon,
     ) {}
 
     public function execute(User $user, string $locale, string $idempotencyKey): CheckoutResult
@@ -58,10 +66,19 @@ final readonly class PlaceOrder
             throw new CheckoutUnavailable('A verified mobile number is required.');
         }
 
-        return DB::transaction(
-            fn (): CheckoutResult => $this->store($user, $locale, $idempotencyKey),
-            attempts: 3,
-        );
+        try {
+            return DB::transaction(
+                fn (): CheckoutResult => $this->store($user, $locale, $idempotencyKey),
+                attempts: 3,
+            );
+        } catch (StaleCartCoupon $stale) {
+            Cart::query()
+                ->whereKey($stale->cartId)
+                ->where('coupon_id', '>', 0)
+                ->update(['coupon_id' => null]);
+
+            throw new CheckoutUnavailable($stale->failure);
+        }
     }
 
     private function store(User $user, string $locale, string $idempotencyKey): CheckoutResult
@@ -104,7 +121,19 @@ final readonly class PlaceOrder
         $snapshots = $cart->items->map(fn (CartItem $item): array => $this->validateItem($item));
         $subtotal = (int) $snapshots->sum('total_halalah');
 
-        if ($subtotal < 500) {
+        if ($subtotal < self::PAYLINK_MINIMUM_HALALAH) {
+            throw new CheckoutUnavailable('The order total is below the Paylink minimum.');
+        }
+
+        $appliedCoupon = $cart->coupon_id !== null
+            ? $this->redeemableCoupon($cart, $subtotal, $user)
+            : null;
+        $discountHalalah = $appliedCoupon instanceof AppliedCoupon
+            ? $appliedCoupon->discountHalalah
+            : 0;
+        $totalHalalah = $subtotal - $discountHalalah;
+
+        if ($totalHalalah < self::PAYLINK_MINIMUM_HALALAH) {
             throw new CheckoutUnavailable('The order total is below the Paylink minimum.');
         }
 
@@ -115,10 +144,10 @@ final readonly class PlaceOrder
             'locale' => $locale,
             'currency' => 'SAR',
             'subtotal_halalah' => $subtotal,
-            'discount_halalah' => 0,
+            'discount_halalah' => $discountHalalah,
             'wallet_halalah' => 0,
-            'payment_halalah' => $subtotal,
-            'total_halalah' => $subtotal,
+            'payment_halalah' => $totalHalalah,
+            'total_halalah' => $totalHalalah,
             'placed_at' => now(),
         ]);
 
@@ -126,12 +155,16 @@ final readonly class PlaceOrder
             $this->createOrderItem($order, $snapshot);
         }
 
+        if ($appliedCoupon instanceof AppliedCoupon) {
+            $this->recordCouponRedemption($order, $appliedCoupon);
+        }
+
         $payment = $order->payments()->create([
             'provider' => 'paylink',
             'provider_payment_id' => null,
             'status' => PaymentStatus::Pending,
             'currency' => 'SAR',
-            'amount_halalah' => $subtotal,
+            'amount_halalah' => $totalHalalah,
             'captured_halalah' => 0,
             'refunded_halalah' => 0,
             'idempotency_key' => 'paylink:'.hash('sha256', $scope.'|'.$idempotencyKey),
@@ -146,6 +179,52 @@ final readonly class PlaceOrder
         $this->completeClaim($claim, $order, $payment);
 
         return new CheckoutResult($order, $payment, false);
+    }
+
+    /**
+     * Re-validate the cart's attached coupon under a row lock. A coupon that
+     * became invalid since it was applied aborts the checkout and marks the
+     * cart so the coupon is detached after the transaction rolls back.
+     */
+    private function redeemableCoupon(Cart $cart, int $subtotalHalalah, User $user): AppliedCoupon
+    {
+        $coupon = Coupon::query()
+            ->whereKey((int) $cart->coupon_id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $coupon instanceof Coupon) {
+            throw new StaleCartCoupon((int) $cart->id, 'The applied coupon is unavailable.');
+        }
+
+        try {
+            return $this->applyCoupon->evaluate($coupon, $subtotalHalalah, $user);
+        } catch (CouponRejected $exception) {
+            throw new StaleCartCoupon(
+                (int) $cart->id,
+                'The applied coupon is no longer valid.',
+                previous: $exception,
+            );
+        }
+    }
+
+    private function recordCouponRedemption(Order $order, AppliedCoupon $appliedCoupon): void
+    {
+        $order->discounts()->create([
+            'coupon_id' => $appliedCoupon->couponId,
+            'type' => $appliedCoupon->discountType,
+            'label_ar' => 'كوبون الخصم '.$appliedCoupon->code,
+            'label_en' => 'Coupon '.$appliedCoupon->code,
+            'amount_halalah' => $appliedCoupon->discountHalalah,
+            'metadata' => ['code' => $appliedCoupon->code],
+        ]);
+
+        CouponRedemption::create([
+            'public_id' => (string) Str::ulid(),
+            'coupon_id' => $appliedCoupon->couponId,
+            'user_id' => $order->user_id,
+            'order_id' => $order->id,
+        ]);
     }
 
     private function claim(string $key, string $scope, string $requestHash): IdempotencyKey

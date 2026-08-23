@@ -43,6 +43,12 @@ class Cart extends DomainModel
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsTo<Coupon, $this> */
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
+    }
+
     /** @return HasMany<CartItem, $this> */
     public function items(): HasMany
     {

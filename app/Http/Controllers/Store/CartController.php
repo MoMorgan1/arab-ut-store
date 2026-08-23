@@ -3,14 +3,17 @@
 namespace App\Http\Controllers\Store;
 
 use App\Actions\Cart\ResolveCartOwner;
+use App\Actions\Checkout\ApplyCoupon;
 use App\Enums\DeliveryMode;
 use App\Enums\Market;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
+use App\Exceptions\Checkout\CouponRejected;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CartItemSecret;
+use App\Models\Coupon;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
@@ -30,7 +33,7 @@ final class CartController extends Controller
         $localized = $request->route('locale') === 'en';
         $activeCart = Cart::query()
             ->activeForOwner($resolveCartOwner->forRequest($request))
-            ->with(['items.secret', 'items.squadImage', 'items.productVariant.product.media'])
+            ->with(['items.secret', 'items.squadImage', 'items.productVariant.product.media', 'coupon'])
             ->first();
         $safeCartItems = $activeCart?->items
             ->map(fn (CartItem $cartItem): array => $this->safeCartItem($cartItem, $localized))
@@ -46,6 +49,16 @@ final class CartController extends Controller
                     'canCheckout' => $phoneVerified && $safeCartItems !== [],
                     'checkoutUrl' => route(
                         $localized ? 'localized.store.checkout.paylink' : 'store.checkout.paylink',
+                        $localized ? ['locale' => 'en'] : [],
+                        absolute: false,
+                    ),
+                    'couponApplyUrl' => route(
+                        $localized ? 'localized.cart.coupons.store' : 'cart.coupons.store',
+                        $localized ? ['locale' => 'en'] : [],
+                        absolute: false,
+                    ),
+                    'couponRemoveUrl' => route(
+                        $localized ? 'localized.cart.coupons.destroy' : 'cart.coupons.destroy',
                         $localized ? ['locale' => 'en'] : [],
                         absolute: false,
                     ),
@@ -72,8 +85,39 @@ final class CartController extends Controller
                 'count' => count($safeCartItems),
                 'currency' => 'SAR',
                 'items' => $safeCartItems,
+                'coupon' => $this->safeCoupon($activeCart, $user instanceof User ? $user : null),
             ],
         ]);
+    }
+
+    /** @return array{code: string, discountType: string, discountHalalah: int}|null */
+    private function safeCoupon(?Cart $cart, ?User $user): ?array
+    {
+        if (! $cart instanceof Cart) {
+            return null;
+        }
+
+        $coupon = $cart->coupon;
+
+        if (! $coupon instanceof Coupon || ! $coupon->is_active) {
+            return null;
+        }
+
+        try {
+            $applied = app(ApplyCoupon::class)->evaluate(
+                $coupon,
+                (int) $cart->items->sum('total_halalah'),
+                $user,
+            );
+        } catch (CouponRejected) {
+            return null;
+        }
+
+        return [
+            'code' => $applied->code,
+            'discountType' => $applied->discountType,
+            'discountHalalah' => $applied->discountHalalah,
+        ];
     }
 
     /** @return array<string, mixed> */
