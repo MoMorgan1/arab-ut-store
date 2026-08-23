@@ -81,11 +81,6 @@ export default function AccountNavigation({
                                                 {sections.security}
                                             </a>
                                         </li>
-                                        <li>
-                                            <a href={`${item.url}#support`}>
-                                                {sections.support}
-                                            </a>
-                                        </li>
                                     </ul>
                                 ) : null}
                             </li>

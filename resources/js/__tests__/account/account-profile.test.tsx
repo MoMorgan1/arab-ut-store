@@ -104,6 +104,47 @@ it('excludes every secret identity field from remembered Inertia state', () => {
     expect(excluded).toContainEqual(['code']);
 });
 
+it('renders the password reset button for verified emails', () => {
+    render(<AccountProfile />);
+
+    expect(
+        screen.getByRole('button', { name: 'Email me a password link' }),
+    ).toBeVisible();
+});
+
+it('renders the unverified notice and support link when email is unverified', () => {
+    const baseProps = profileProps();
+    page.props = {
+        ...baseProps,
+        profile: {
+            ...baseProps.profile,
+            email: {
+                value: 'unverified@example.test',
+                verified: false,
+                pending: null,
+            },
+        },
+        security: { emailVerified: false },
+        storeShell: {
+            whatsappUrl: 'https://wa.me/966537998099',
+        },
+    };
+
+    render(<AccountProfile />);
+
+    expect(
+        screen.queryByRole('button', { name: 'Email me a password link' }),
+    ).not.toBeInTheDocument();
+    expect(
+        screen.getByText(
+            'Verify your email address first to change your password.',
+        ),
+    ).toBeVisible();
+    expect(
+        screen.getByRole('link', { name: 'Contact support' }),
+    ).toHaveAttribute('href', 'https://wa.me/966537998099');
+});
+
 function profileProps() {
     return {
         locale: 'en',
@@ -129,7 +170,6 @@ function profileProps() {
                     personal: 'Personal',
                     contact: 'Contact & verification',
                     security: 'Security',
-                    support: 'Support',
                 },
                 first_name: 'First name',
                 last_name: 'Last name',
@@ -181,6 +221,13 @@ function profileProps() {
                 recovery_email: 'Use your verified email.',
                 recovery_whatsapp: 'Use WhatsApp recovery.',
                 recovery_action: 'View recovery options',
+                reset_link_description:
+                    'For your security we email a password-change link to your verified address instead of showing the form here.',
+                reset_link_button: 'Email me a password link',
+                reset_link_sent: 'We emailed you a password-change link.',
+                reset_link_needs_email:
+                    'Verify your email address first to change your password.',
+                reset_link_support: 'Contact support',
             },
             support: {
                 title: 'Support',
@@ -214,26 +261,16 @@ function profileProps() {
             displayCurrency: 'SAR',
         },
         security: {
-            passwordMode: 'change',
-            passwordRules: 'minlength:8',
-            recoveryMode: 'email',
-            recoveryUrl: '/en/forgot-password',
+            emailVerified: true,
         },
         securityActions: {
-            changePasswordUrl: '/en/my-account/security/password',
-            setupPasswordUrl: '/en/my-account/security/password',
+            resetLinkUrl: '/en/my-account/security/password-link',
         },
         profileActions: {
             updateUrl: '/en/my-account/profile',
             emailRequestUrl: '/en/my-account/profile/email',
             phoneRequestUrl: '/en/my-account/profile/phone',
             phoneConfirmUrl: '/en/my-account/profile/phone/confirm',
-        },
-        support: {
-            available: true,
-            emailUrl: 'mailto:support@example.test',
-            orderNumber: null,
-            whatsappUrl: 'https://wa.me/966537998099',
         },
         displayCurrencies: ['SAR', 'AED'],
         logoutUrl: '/logout',
