@@ -105,6 +105,8 @@ return [
         'coupon_limit' => 'This coupon has reached its usage limit.',
         'coupon_minimum' => 'Your order must be at least :amount to use this coupon.',
         'coupon_error' => 'The coupon could not be applied. Try again.',
+        'wallet_toggle' => 'Use wallet balance (:balance)',
+        'wallet_deduction' => 'Wallet balance',
     ],
     'order_page' => [
         'title' => 'Order status',

@@ -19,7 +19,7 @@ final readonly class StartPaylinkPayment
     {
         if ($payment->order_id !== $order->id
             || $payment->provider !== 'paylink'
-            || $payment->amount_halalah !== $order->total_halalah
+            || $payment->amount_halalah !== $order->payment_halalah
             || $order->currency !== 'SAR') {
             throw new CheckoutUnavailable('The payment cannot be started.');
         }
@@ -27,10 +27,10 @@ final readonly class StartPaylinkPayment
         $gateway = $this->payments->gateway();
         $invoice = is_string($payment->provider_payment_id) && $payment->provider_payment_id !== ''
             ? $gateway->getInvoice($payment->provider_payment_id)
-            : $gateway->createInvoice($this->request($order));
+            : $gateway->createInvoice($this->request($order, $payment));
 
         if ($invoice->orderNumber !== $order->order_number
-            || $invoice->amountHalalah !== $order->total_halalah
+            || $invoice->amountHalalah !== $payment->amount_halalah
             || $invoice->currency !== 'SAR') {
             throw new CheckoutUnavailable('Paylink returned a mismatched invoice.');
         }
@@ -52,7 +52,7 @@ final readonly class StartPaylinkPayment
         return $invoice;
     }
 
-    private function request(Order $order): PaymentInvoiceRequest
+    private function request(Order $order, Payment $payment): PaymentInvoiceRequest
     {
         $order->loadMissing(['items', 'user']);
         $products = [];
@@ -67,7 +67,7 @@ final readonly class StartPaylinkPayment
 
         return new PaymentInvoiceRequest(
             orderNumber: $order->order_number,
-            amountHalalah: $order->total_halalah,
+            amountHalalah: $payment->amount_halalah,
             callbackUrl: secure_url(($order->locale === 'en' ? '/en' : '').'/payments/paylink/callback'),
             cancelUrl: secure_url(($order->locale === 'en' ? '/en' : '').'/payments/paylink/cancel'),
             clientName: $order->user->name,
