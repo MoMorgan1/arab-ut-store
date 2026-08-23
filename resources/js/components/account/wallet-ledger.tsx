@@ -3,8 +3,11 @@ import {
     ArrowDownLeft,
     ArrowUpRight,
     RefreshCcw,
+    RotateCcw,
     SlidersHorizontal,
+    Sparkles,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 import { formatAccountMoney } from '@/lib/account-money';
 import type { AccountTranslations, AccountWalletEntry } from '@/types/account';
@@ -15,11 +18,13 @@ type WalletLedgerProps = {
     translations: AccountTranslations['wallet'];
 };
 
-const icons = {
+const icons: Record<AccountWalletEntry['type'], LucideIcon> = {
     adjustment: SlidersHorizontal,
     credit: ArrowDownLeft,
     debit: ArrowUpRight,
     refund: RefreshCcw,
+    cashback: Sparkles,
+    cashback_reversal: RotateCcw,
 };
 
 export default function WalletLedger({

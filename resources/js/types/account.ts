@@ -98,6 +98,7 @@ export type AccountTranslations = {
         recent_orders: string;
         view_all?: string;
         loyalty: string;
+        view_loyalty?: string;
         empty_title: string;
         empty_description: string;
         browse_services: string;
@@ -183,6 +184,7 @@ export type AccountTranslations = {
         feature_checkout?: string;
         available_balance: string;
         unavailable_balance: string;
+        lifetime_cashback?: string;
         loyalty_title: string;
         ledger_title: string;
         empty_title: string;
@@ -191,12 +193,40 @@ export type AccountTranslations = {
         debit: string;
         refund: string;
         adjustment: string;
+        cashback?: string;
+        cashback_reversal?: string;
         balance_after: string;
         related_order: string;
         previous: string;
         next: string;
         pagination: string;
         page_status: string;
+    };
+    loyalty?: {
+        title: string;
+        description: string;
+        hero_badge: string;
+        current_tier: string;
+        unranked: string;
+        eligible_spend: string;
+        progress_remaining: string;
+        progress_complete: string;
+        back_to_overview: string;
+        table_title: string;
+        table_tier: string;
+        table_spend: string;
+        table_cashback: string;
+        current_badge: string;
+        how_it_works_title: string;
+        how_it_works_1: string;
+        how_it_works_2: string;
+        how_it_works_3: string;
+        recent_cashback_title: string;
+        empty_cashback_title: string;
+        empty_cashback_desc: string;
+        empty_tiers_title: string;
+        empty_tiers_desc: string;
+        cashback_percent: string;
     };
     profile: {
         title: string;
@@ -389,7 +419,12 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
 };
 
 export type AccountWalletEntryType =
-    'credit' | 'debit' | 'refund' | 'adjustment';
+    | 'credit'
+    | 'debit'
+    | 'refund'
+    | 'adjustment'
+    | 'cashback'
+    | 'cashback_reversal';
 
 export type AccountWalletEntry = {
     id: string;
@@ -409,6 +444,7 @@ export type AccountWalletPageProps = AccountPageShellProps & {
         exists: boolean;
         status?: WalletStatus;
         balance: AccountMoney | null;
+        lifetimeCashback?: AccountMoney;
         entries: AccountWalletEntry[];
         pagination: {
             currentPage: number;
@@ -420,6 +456,36 @@ export type AccountWalletPageProps = AccountPageShellProps & {
         };
     };
     loyalty: AccountLoyalty | null;
+};
+
+export type AccountLoyaltyTier = {
+    key: string;
+    name: string;
+    minimum: AccountMoney;
+    cashbackPercent: number;
+};
+
+export type AccountLoyaltyCashbackEntry = {
+    id: string;
+    sequence: number;
+    type: 'cashback' | 'cashback_reversal';
+    effect: 'credit' | 'debit';
+    amount: AccountMoney;
+    createdAt: string | null;
+    order: { number: string; url: string } | null;
+};
+
+export type AccountLoyaltyPageProps = AccountPageShellProps & {
+    tiers: AccountLoyaltyTier[];
+    currentTier: AccountTier | null;
+    nextTier: AccountTier | null;
+    remaining: AccountMoney | null;
+    progressPercent: number;
+    eligibleSpend: AccountMoney;
+    cashback: {
+        lifetime: AccountMoney;
+        entries: AccountLoyaltyCashbackEntry[];
+    };
 };
 
 export type AccountProfilePageProps = AccountPageShellProps & {
