@@ -14,15 +14,18 @@ describe('account order formatting helpers', () => {
         expect(formatOrderNumber('UT-1234')).toBe('UT-1234');
     });
 
-    it('formats dates appropriately for Arabic and English locales', () => {
-        const isoDate = '2026-08-15T10:00:00.000Z';
-        const arDate = formatOrderDate(isoDate, 'ar');
-        const enDate = formatOrderDate(isoDate, 'en');
+    // Dates render in English on the Gregorian calendar in both interfaces.
+    // An iPhone previously showed "١٠ ربيع الأول" because `ar-SA` carries the
+    // Umm al-Qura calendar as its regional default and Safari honours it, while
+    // Node's ICU falls back to Gregorian — so the old assertion, which only
+    // checked the string was non-empty, passed throughout.
+    it('formats order dates in English on the Gregorian calendar', () => {
+        const formatted = formatOrderDate('2026-08-15T10:00:00.000Z');
 
-        expect(typeof arDate).toBe('string');
-        expect(arDate.length).toBeGreaterThan(0);
-        expect(typeof enDate).toBe('string');
-        expect(enDate.length).toBeGreaterThan(0);
-        expect(enDate).toContain('2026');
+        expect(formatted).toContain('2026');
+        expect(formatted).toContain('Aug');
+        // No Arabic-Indic digits and no Hijri month names.
+        expect(formatted).not.toMatch(/[٠-٩۰-۹]/);
+        expect(formatted).not.toMatch(/ربيع|محرم|رمضان|شوال/);
     });
 });

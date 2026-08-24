@@ -19,6 +19,7 @@ import AdminOrderHistory from '@/components/admin/orders/admin-order-history';
 import AdminOrderItemSecret from '@/components/admin/orders/admin-order-item-secret';
 import AdminOrderRefundControl from '@/components/admin/orders/admin-order-refund-control';
 import AdminOrderTransitionControls from '@/components/admin/orders/admin-order-transition-controls';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type {
     AdminOrderDetail,
     AdminOrderDetailPageProps,
@@ -45,7 +46,7 @@ export default function AdminOrderDetailPage() {
     const isLocalized = pathname.startsWith('/en/admin');
     const ordersListUrl = isLocalized ? '/en/admin/orders' : '/admin/orders';
 
-    const dateFormatter = new Intl.DateTimeFormat(props.locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',

@@ -10,6 +10,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 
 import { formatAccountMoney } from '@/lib/account-money';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type { AccountTranslations, AccountWalletEntry } from '@/types/account';
 
 type WalletLedgerProps = {
@@ -32,7 +33,7 @@ export default function WalletLedger({
     locale,
     translations,
 }: WalletLedgerProps) {
-    const dateFormatter = new Intl.DateTimeFormat(locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
     });

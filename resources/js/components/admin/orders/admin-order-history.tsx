@@ -6,6 +6,7 @@ import {
     getStatusVariant,
     statusIcons,
 } from '@/components/admin/admin-order-status';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type { AdminOrderDetail, AdminTranslations } from '@/types/admin';
 
 export type AdminOrderHistoryProps = {
@@ -17,11 +18,10 @@ export type AdminOrderHistoryProps = {
 export default function AdminOrderHistory({
     adminUi,
     order,
-    locale,
 }: AdminOrderHistoryProps) {
     const copy = adminUi.orderDetail;
     const statuses = adminUi.statuses;
-    const dateFormatter = new Intl.DateTimeFormat(locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',

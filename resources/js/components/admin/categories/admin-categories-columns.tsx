@@ -15,6 +15,7 @@ import React from 'react';
 import AdminBadge from '@/components/admin/admin-badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type { AdminCategoryRow, AdminTranslations } from '@/types/admin';
 
 export type CategorySortKey =
@@ -50,12 +51,11 @@ export function getAdminCategoryColumns({
     canManage,
     currentDirection,
     currentSort,
-    locale,
     onSortChange,
     onToggleVisibility,
 }: CategoryColumnOptions): ColumnDef<AdminCategoryRow>[] {
     const copy = adminUi.categories;
-    const dateFormatter = new Intl.DateTimeFormat(locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',

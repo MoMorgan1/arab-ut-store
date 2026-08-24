@@ -38,6 +38,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type {
     AdminServicePricingData,
     AdminServicePricingSchedule,
@@ -107,7 +108,7 @@ export default function AdminServicePricingSection({
     const [statusSubmitting, setStatusSubmitting] = useState(false);
     const [statusError, setStatusError] = useState<string | null>(null);
 
-    const dateFormatter = new Intl.DateTimeFormat(locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',

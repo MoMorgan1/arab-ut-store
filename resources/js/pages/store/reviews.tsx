@@ -53,7 +53,6 @@ export default function StoreReviews() {
                         {props.reviews.items.map((review) => (
                             <ReviewCard
                                 key={review.id}
-                                locale={props.locale}
                                 review={review}
                                 translations={props.reviewsPage}
                             />

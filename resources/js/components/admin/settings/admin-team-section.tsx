@@ -31,6 +31,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type {
     AdminTeamData,
     AdminTeamMember,
@@ -60,7 +61,6 @@ function getCsrfToken(): string {
 
 export default function AdminTeamSection({
     adminUi,
-    locale,
     team,
     teamUrls,
 }: AdminTeamSectionProps) {
@@ -104,7 +104,7 @@ export default function AdminTeamSection({
     const [statusSubmitting, setStatusSubmitting] = useState(false);
     const [statusError, setStatusError] = useState<string | null>(null);
 
-    const dateFormatter = new Intl.DateTimeFormat(locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeZone: 'UTC',
     });

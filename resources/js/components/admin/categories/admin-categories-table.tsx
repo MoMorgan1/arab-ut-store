@@ -15,6 +15,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type { AdminCategoryRow, AdminTranslations } from '@/types/admin';
 import type { CategorySortKey } from './admin-categories-columns';
 
@@ -45,7 +46,7 @@ export default function AdminCategoriesTable({
 }: AdminCategoriesTableProps) {
     const copy = adminUi.categories;
     const rows = table.getRowModel().rows;
-    const dateFormatter = new Intl.DateTimeFormat(locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',

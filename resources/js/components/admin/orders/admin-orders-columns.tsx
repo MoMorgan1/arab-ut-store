@@ -11,6 +11,7 @@ import {
     statusIcons,
 } from '@/components/admin/admin-order-status';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type { AdminOrderRow, AdminTranslations } from '@/types/admin';
 
 type SortKey = 'placed_at' | 'total' | 'order_number';
@@ -56,7 +57,7 @@ export function getAdminOrderColumns({
 }: ColumnOptions): ColumnDef<AdminOrderRow>[] {
     const copy = adminUi.orders;
     const statuses = adminUi.statuses;
-    const dateFormatter = new Intl.DateTimeFormat(locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',

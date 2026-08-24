@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 
 import { formatAdminMoney } from '@/components/admin/admin-money';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type {
     AdminOverviewPageProps,
     AdminRevenueTrendPoint,
@@ -55,13 +56,13 @@ export default function AdminRevenueChart({
         };
     });
 
-    const shortDateFormatter = new Intl.DateTimeFormat(locale, {
+    const shortDateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         month: 'short',
         day: 'numeric',
         timeZone: 'UTC',
     });
 
-    const fullDateFormatter = new Intl.DateTimeFormat(locale, {
+    const fullDateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeZone: 'UTC',
     });

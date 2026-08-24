@@ -14,6 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type { AdminProductRow, AdminTranslations } from '@/types/admin';
 
 type ProductSortKey = 'name' | 'created_at' | 'updated_at' | 'sort_order';
@@ -41,7 +42,7 @@ export default function AdminProductsTable({
 }: AdminProductsTableProps) {
     const copy = adminUi.products;
     const rows = table.getRowModel().rows;
-    const dateFormatter = new Intl.DateTimeFormat(locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',
