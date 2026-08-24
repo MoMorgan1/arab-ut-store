@@ -101,6 +101,14 @@ final class ImportSallaCustomers
                 continue;
             }
 
+            $normalizedEmail = $data['email'] !== '' ? Str::lower(trim($data['email'])) : null;
+            $normalizedPhone = PhoneNormalizer::normalize($data['mobile']);
+
+            $planKeys = array_values(array_filter([
+                $normalizedEmail === null ? null : 'email:'.$normalizedEmail,
+                $normalizedPhone === null ? null : 'phone:'.$normalizedPhone,
+            ]));
+
             // 1. Check external_refs: already imported?
             $existingRef = ExternalRef::query()
                 ->where('source', 'salla')
@@ -109,13 +117,19 @@ final class ImportSallaCustomers
                 ->first();
 
             if ($existingRef !== null) {
+                // An already-imported row still CLAIMS its identity. Skipping
+                // without claiming is what let a resumed run undo the guard
+                // below: this row's account already exists, so a later
+                // duplicate stopped seeing a claim, found that account through
+                // the lookup, and linked a second person to one login.
+                foreach ($planKeys as $planKey) {
+                    $plannedIdentities[$planKey] = $sallaId;
+                }
+
                 $skippedCount++;
 
                 continue;
             }
-
-            $normalizedEmail = $data['email'] !== '' ? Str::lower(trim($data['email'])) : null;
-            $normalizedPhone = PhoneNormalizer::normalize($data['mobile']);
 
             // Two DIFFERENT Salla customers sharing an email or a mobile are
             // two different people as far as we can tell, and merging them into
@@ -123,11 +137,6 @@ final class ImportSallaCustomers
             // and read the other's order history. This has to run BEFORE the
             // lookups below: in a real run the second row would otherwise find
             // the account the first row just created and link to it silently.
-            $planKeys = array_values(array_filter([
-                $normalizedEmail === null ? null : 'email:'.$normalizedEmail,
-                $normalizedPhone === null ? null : 'phone:'.$normalizedPhone,
-            ]));
-
             $claimedBy = null;
             foreach ($planKeys as $planKey) {
                 if (isset($plannedIdentities[$planKey])) {

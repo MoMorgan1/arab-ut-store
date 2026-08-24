@@ -210,6 +210,47 @@ final class ImportSallaCustomersTest extends TestCase
         @unlink($tempFile);
     }
 
+    public function test_a_resumed_run_still_refuses_to_merge_two_salla_customers(): void
+    {
+        // A crashed run is resumed by re-running the same file. The first row
+        // is then 'already imported' and was skipped WITHOUT claiming its
+        // identity, so the duplicate stopped seeing a claim, found the account
+        // the first run had created, and linked a second person to that login -
+        // who could then take it over by WhatsApp OTP and read the other's
+        // order history. This happened on production: 21 customers merged.
+        $csvContent = implode("\n", [
+            'ID,Full_Name,Mobile,Email,Created_At,Country,City,Gender,Birthday,Loyalty_Points,Order_Count,Total_Spent,Avg_Order_Value,Last_Purchase_Date,Cancelled_Orders,Wallet_Balance,Abandoned_Cart_Count',
+            '501,First Person,+966550000501,shared@example.test,2026-01-26 09:31:35,SA,Riyadh,male,1995-05-12,0,0,0,0,2026-01-26,0,0,0',
+            '502,Second Person,+966550000502,shared@example.test,2026-01-26 09:31:35,SA,Riyadh,male,1995-05-12,0,0,0,0,2026-01-26,0,0,0',
+        ]);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'salla_customers_');
+        file_put_contents($tempFile, $csvContent);
+
+        $action = app(ImportSallaCustomers::class);
+
+        $first = $action->execute($tempFile, dryRun: false);
+        $this->assertSame(1, $first['created']);
+        $this->assertSame(1, $first['conflicts']);
+
+        // The resume: same file, first row already present.
+        $second = $action->execute($tempFile, dryRun: false);
+        $this->assertSame(0, $second['created']);
+        $this->assertSame(0, $second['updated'], 'the duplicate must not be linked to the first row account');
+        $this->assertSame(1, $second['skipped']);
+        $this->assertSame(1, $second['conflicts']);
+
+        // One Salla identity per account, on both runs.
+        $this->assertDatabaseMissing('external_refs', [
+            'source' => 'salla',
+            'entity' => 'customer',
+            'external_id' => '502',
+        ]);
+        $this->assertSame(1, User::query()->where('email', 'shared@example.test')->count());
+
+        @unlink($tempFile);
+    }
+
     public function test_dry_run_writes_nothing_to_database(): void
     {
         $csvContent = implode("\n", [
