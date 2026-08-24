@@ -6,11 +6,13 @@ use App\Checkout\DiscountEngine;
 use App\Checkout\DiscountLine;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
+use App\Exceptions\Checkout\CheckoutUnavailable;
 use App\Marketing\PromotionPricing;
 use App\Models\Cart;
 use App\Models\CartItemSecret;
 use App\Models\Category;
 use App\Models\Coupon;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Promotion;
@@ -484,6 +486,142 @@ test('when a bundle and an nth_item offer both match exactly one applies the lar
     // Bundle saves 8,000 > nth_item saves 5,000. Exactly 8,000 applies (never 8,000 + 5,000 = 13,000).
     expect($result->totalDiscountHalalah)->toBe(8_000)
         ->and($result->payableTotalHalalah)->toBe(12_000);
+});
+
+test('a zero on buy, get or max_applications turns the offer off rather than making it unlimited', function (string $column): void {
+    $category = Category::factory()->create();
+    [$productA] = makeCartPromoProduct(priceHalalah: 10_000, category: $category);
+    [$productB] = makeCartPromoProduct(priceHalalah: 10_000, category: $category);
+
+    Promotion::query()->create([
+        'public_id' => (string) Str::ulid(),
+        'name_ar' => 'عرض صفري',
+        'name_en' => 'Zeroed offer',
+        'scope' => Promotion::SCOPE_ALL,
+        'mechanic' => Promotion::MECHANIC_NTH_ITEM,
+        'buy_quantity' => 1,
+        'get_quantity' => 1,
+        'max_applications' => 1,
+        'discount_type' => 'percent',
+        'value' => 100,
+        'is_active' => true,
+        $column => 0,
+    ]);
+
+    $lines = [
+        new DiscountLine('line-1', $category->id, $productA->id, ServiceType::Sbc, 10_000),
+        new DiscountLine('line-2', $category->id, $productB->id, ServiceType::Sbc, 10_000),
+    ];
+
+    $result = app(DiscountEngine::class)->calculate($lines);
+
+    // A 100%-off offer that is switched off must give away nothing. Coercing the
+    // zero to a default here would comp a whole line.
+    expect($result->totalDiscountHalalah)->toBe(0)
+        ->and($result->payableTotalHalalah)->toBe(20_000);
+})->with(['buy_quantity', 'get_quantity', 'max_applications']);
+
+test('a percent coupon above 100 is clamped instead of comping the whole order', function (): void {
+    [$product] = makeCartPromoProduct(priceHalalah: 10_000);
+
+    // Written past the form request - a seeder, a console command or an import can
+    // do this, and sqlite carries no CHECK constraint to stop it.
+    $coupon = Coupon::query()->create([
+        'public_id' => (string) Str::ulid(),
+        'code' => 'FATFINGER',
+        'discount_type' => 'percent',
+        'value' => 150,
+        'minimum_order_halalah' => 0,
+        'is_active' => true,
+    ]);
+
+    $lines = [new DiscountLine('line-1', null, $product->id, ServiceType::Sbc, 10_000)];
+
+    $result = app(DiscountEngine::class)->calculate($lines, $coupon);
+
+    expect($result->totalDiscountHalalah)->toBe(10_000)
+        ->and($result->payableTotalHalalah)->toBe(0);
+
+    // and the same coupon at a legitimate 15% still charges the other 85%
+    $coupon->forceFill(['value' => 15])->save();
+    $fifteen = app(DiscountEngine::class)->calculate($lines, $coupon->fresh());
+
+    expect($fifteen->totalDiscountHalalah)->toBe(1_500)
+        ->and($fifteen->payableTotalHalalah)->toBe(8_500);
+});
+
+test('a multi-unit line is excluded from cart promotions rather than comped whole', function (): void {
+    $category = Category::factory()->create();
+    [$productA] = makeCartPromoProduct(priceHalalah: 10_000, category: $category);
+    [$productB] = makeCartPromoProduct(priceHalalah: 10_000, category: $category);
+
+    Promotion::query()->create([
+        'public_id' => (string) Str::ulid(),
+        'name_ar' => 'اشتر 1 واحصل على 1 مجانا',
+        'name_en' => 'Buy one get one free',
+        'scope' => Promotion::SCOPE_ALL,
+        'mechanic' => Promotion::MECHANIC_NTH_ITEM,
+        'buy_quantity' => 1,
+        'get_quantity' => 1,
+        'discount_type' => 'percent',
+        'value' => 100,
+        'is_active' => true,
+    ]);
+
+    // Stage 2 counts lines, so a 3-unit line would otherwise be treated as one
+    // item and then discounted in full - comping all three units.
+    $lines = [
+        new DiscountLine('line-1', $category->id, $productA->id, ServiceType::Sbc, 30_000, quantity: 3),
+        new DiscountLine('line-2', $category->id, $productB->id, ServiceType::Sbc, 10_000),
+    ];
+
+    $result = app(DiscountEngine::class)->calculate($lines);
+
+    expect($result->totalDiscountHalalah)->toBe(0)
+        ->and($result->payableTotalHalalah)->toBe(40_000);
+});
+
+test('a promotion ending between preview and pay refuses the order instead of charging the new price', function (): void {
+    $user = makeCartPromoUser();
+    [$product, $variant] = makeCartPromoProduct(priceHalalah: 20_000);
+
+    $promotion = Promotion::query()->create([
+        'public_id' => (string) Str::ulid(),
+        'name_ar' => 'عرض ينتهي',
+        'name_en' => 'Expiring offer',
+        'scope' => Promotion::SCOPE_PRODUCT,
+        'product_id' => $product->id,
+        'mechanic' => Promotion::MECHANIC_ITEM,
+        'discount_type' => 'percent',
+        'value' => 50,
+        'is_active' => true,
+    ]);
+
+    makeCartWithMultipleLines($user, [['variant' => $variant, 'price' => 20_000]]);
+
+    // The cart showed 10,000 while the promotion was live.
+    $previewed = 10_000;
+
+    // The admin switches it off between the page rendering and the customer
+    // pressing pay.
+    $promotion->forceFill(['is_active' => false])->save();
+
+    expect(fn () => app(PlaceOrder::class)->execute($user, 'ar', 'promo-vanished', $previewed))
+        ->toThrow(CheckoutUnavailable::class, (string) trans('store.checkout.price_changed', locale: 'ar'))
+        ->and(Order::query()->count())->toBe(0);
+});
+
+test('checkout still works when no expected total is supplied', function (): void {
+    $user = makeCartPromoUser();
+    [$product, $variant] = makeCartPromoProduct(priceHalalah: 20_000);
+
+    makeCartWithMultipleLines($user, [['variant' => $variant, 'price' => 20_000]]);
+
+    // An older client that sends no expectation is not broken by the new check;
+    // it simply gets the live price.
+    $checkout = app(PlaceOrder::class)->execute($user, 'ar', 'no-expectation');
+
+    expect((int) $checkout->order->total_halalah)->toBe(20_000);
 });
 
 test('the best cart promotion wins even when a weaker one is evaluated after it', function (): void {

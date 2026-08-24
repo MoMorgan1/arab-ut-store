@@ -320,13 +320,38 @@ final class DiscountEngine
             $allocations[$line->id] = 0;
         }
 
-        $buyQty = $promotion->buy_quantity !== null && $promotion->buy_quantity > 0 ? (int) $promotion->buy_quantity : 1;
-        $getQty = $promotion->get_quantity !== null && $promotion->get_quantity > 0 ? (int) $promotion->get_quantity : 1;
+        // A stored 0 is an admin saying "none", so the promotion must not apply.
+        // Coercing it to 1 turned "no free items" into a free item, and coercing
+        // max_applications 0 to null turned "off" into unlimited - the opposite of
+        // the intent in both cases. Null still means "not configured" -> default.
+        if ($promotion->buy_quantity !== null && (int) $promotion->buy_quantity < 1) {
+            return [0, $allocations];
+        }
+
+        if ($promotion->get_quantity !== null && (int) $promotion->get_quantity < 1) {
+            return [0, $allocations];
+        }
+
+        if ($promotion->max_applications !== null && (int) $promotion->max_applications < 1) {
+            return [0, $allocations];
+        }
+
+        $buyQty = $promotion->buy_quantity !== null ? (int) $promotion->buy_quantity : 1;
+        $getQty = $promotion->get_quantity !== null ? (int) $promotion->get_quantity : 1;
         $groupSize = $buyQty + $getQty;
 
         /** @var list<DiscountLine> $qualifyingLines */
         $qualifyingLines = [];
         foreach ($lines as $line) {
+            // Stage 2 reasons in LINES, not units: "the next one" is the next
+            // matching line. A quantity > 1 line would be counted once and then
+            // discounted in full, comping every unit on it, so it is excluded
+            // until this stage learns to expand lines into units. Every current
+            // add-to-cart action writes quantity 1, so nothing is excluded today.
+            if ($line->quantity > 1) {
+                continue;
+            }
+
             if (! $promotion->applies_to_promoted_items && ($lineItemDiscounts[$line->id] ?? 0) > 0) {
                 continue;
             }
@@ -428,7 +453,8 @@ final class DiscountEngine
 
         usort($candidateGroups, fn (array $a, array $b): int => $b['discount'] <=> $a['discount']);
 
-        $maxApps = $promotion->max_applications !== null && $promotion->max_applications > 0
+        // A 0 here already returned above, so null is the only "uncapped" value.
+        $maxApps = $promotion->max_applications !== null
             ? (int) $promotion->max_applications
             : null;
 
@@ -677,7 +703,12 @@ final class DiscountEngine
         }
 
         if ($coupon->discount_type === 'percent') {
-            $discount = intdiv($eligibleBaseHalalah * (int) $coupon->value, 100);
+            // Clamp here rather than trusting a CHECK constraint: sqlite has none,
+            // and a row written by a seeder, a console command or an import never
+            // passes the form request. Without this, value = 150 silently becomes
+            // a 100% comp on every order instead of being refused.
+            $percent = min(100, max(0, (int) $coupon->value));
+            $discount = intdiv($eligibleBaseHalalah * $percent, 100);
 
             if ($coupon->maximum_discount_halalah !== null) {
                 $discount = min($discount, (int) $coupon->maximum_discount_halalah);
@@ -764,9 +795,17 @@ final class DiscountEngine
      */
     private function activeRedemptionsCount(Coupon $coupon, ?int $userId = null): int
     {
+        // lockForUpdate() is load-bearing, not decoration. PlaceOrder issues a
+        // non-locking $cart->load() before it locks the coupon row, and on InnoDB
+        // at REPEATABLE READ that first plain SELECT opens the transaction's read
+        // view. A plain count() here would therefore still see the pre-lock
+        // snapshot: two concurrent checkouts would serialize on the coupon lock,
+        // both count zero redemptions, and both redeem a usage_limit=1 coupon.
+        // A locking read is what actually crosses the snapshot.
         $query = $coupon->redemptions()
             ->join('orders', 'coupon_redemptions.order_id', '=', 'orders.id')
-            ->where('orders.status', '!=', OrderStatus::Cancelled->value);
+            ->where('orders.status', '!=', OrderStatus::Cancelled->value)
+            ->lockForUpdate();
 
         if ($userId !== null) {
             $query->where('coupon_redemptions.user_id', $userId);

@@ -34,6 +34,7 @@ final class PaylinkCheckoutController extends Controller
                 $user,
                 $request->route('locale') === 'en' ? 'en' : 'ar',
                 $request->idempotencyKey(),
+                $request->expectedPayableHalalah(),
             );
 
             $localized = $checkout->order->locale === 'en';

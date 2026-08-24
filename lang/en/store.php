@@ -115,6 +115,8 @@ return [
         'phone_verification_required' => 'Verify your WhatsApp number to proceed to checkout.',
         'cart_changed' => 'Your cart or prices have changed. Please refresh and try again.',
         'payment_unavailable' => 'Payment is temporarily unavailable. Please try again shortly.',
+        'price_changed' => 'The price changed while you were checking out. Please review your cart and try again.',
+        'expected_total' => 'The expected total is invalid.',
         'paylink_minimum_gap' => 'The remaining payment amount is below the Paylink minimum of SAR 5.00. The difference is SAR :gap.',
     ],
     'order_page' => [

@@ -64,8 +64,21 @@ final readonly class PlaceOrder
         private WalletLedgerWriter $walletLedgerWriter,
     ) {}
 
-    public function execute(User $user, string $locale, string $idempotencyKey): CheckoutResult
-    {
+    /**
+     * @param  int|null  $expectedPayableHalalah  the payable total the cart showed
+     *                                            the customer. Discounts are recomputed here from live promotion and coupon
+     *                                            rows, so a promotion ending between preview and pay changes the price. When
+     *                                            this is supplied and no longer matches, the order is refused instead of
+     *                                            charged at the new figure - which matters most on the wallet path, where
+     *                                            the debit happens immediately and there is no invoice for the customer to
+     *                                            check.
+     */
+    public function execute(
+        User $user,
+        string $locale,
+        string $idempotencyKey,
+        ?int $expectedPayableHalalah = null,
+    ): CheckoutResult {
         if (! in_array($locale, ['ar', 'en'], true)) {
             throw new CheckoutUnavailable('The checkout locale is invalid.');
         }
@@ -78,7 +91,7 @@ final readonly class PlaceOrder
 
         try {
             return DB::transaction(
-                fn (): CheckoutResult => $this->store($user, $locale, $idempotencyKey),
+                fn (): CheckoutResult => $this->store($user, $locale, $idempotencyKey, $expectedPayableHalalah),
                 attempts: 3,
             );
         } catch (StaleCartCoupon $stale) {
@@ -91,8 +104,12 @@ final readonly class PlaceOrder
         }
     }
 
-    private function store(User $user, string $locale, string $idempotencyKey): CheckoutResult
-    {
+    private function store(
+        User $user,
+        string $locale,
+        string $idempotencyKey,
+        ?int $expectedPayableHalalah = null,
+    ): CheckoutResult {
         $scope = self::SCOPE.':user:'.$user->id;
         $existing = IdempotencyKey::query()->where('key', $idempotencyKey)->lockForUpdate()->first();
 
@@ -175,6 +192,11 @@ final readonly class PlaceOrder
         }
 
         $paymentHalalah = $totalHalalah - $walletPart;
+
+        // Refuse before the wallet is debited: everything below this line moves money.
+        if ($expectedPayableHalalah !== null && $expectedPayableHalalah !== $paymentHalalah) {
+            throw new CheckoutUnavailable((string) trans('store.checkout.price_changed', locale: $locale));
+        }
 
         if ($paymentHalalah > 0 && $paymentHalalah < self::PAYLINK_MINIMUM_HALALAH) {
             $gapHalalah = self::PAYLINK_MINIMUM_HALALAH - $paymentHalalah;
