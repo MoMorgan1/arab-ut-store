@@ -87,8 +87,17 @@ final readonly class SendStaffReply
 
     private function shouldNotifyCustomer(ChatConversation $conversation, SupportTicket $ticket): bool
     {
-        // Throttle check: 1 hour between emails
-        if ($ticket->last_notified_at !== null && $ticket->last_notified_at->diffInMinutes(now()) < 60) {
+        // At most one email per conversation per hour (design 6.2) — not per
+        // ticket. Resolving and reopening mints a fresh ticket with a null
+        // last_notified_at, so a per-ticket throttle would let a second full
+        // send fire minutes after the first through "Still need help?".
+        $lastNotifiedAt = SupportTicket::query()
+            ->where('conversation_id', $conversation->id)
+            ->whereNotNull('last_notified_at')
+            ->orderByDesc('last_notified_at')
+            ->first(['id', 'last_notified_at'])?->last_notified_at;
+
+        if ($lastNotifiedAt !== null && $lastNotifiedAt->diffInMinutes(now()) < 60) {
             return false;
         }
 

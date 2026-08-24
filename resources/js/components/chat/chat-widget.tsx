@@ -119,6 +119,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         isReadOnly,
         loadHistory,
         openPastConversation,
+        leaveReadOnlyConversation,
         requestTicket,
     } = useChat({ enabled, locale });
 
@@ -715,6 +716,31 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                                 soundEnabled={soundEnabled}
                                 onToggleSound={toggleSound}
                             />
+
+                            {isReadOnly && (
+                                <div
+                                    dir="auto"
+                                    data-testid="chat-read-only-notice"
+                                    className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--chat-line)] bg-[var(--chat-tint)] px-4 py-2.5 text-start"
+                                >
+                                    <span className="text-[12.5px] text-[var(--chat-muted)]">
+                                        {locale === 'en'
+                                            ? 'You are reading an earlier conversation.'
+                                            : 'أنت تطالع محادثة سابقة.'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="chat-press inline-flex min-h-11 items-center rounded-xl px-3 text-[13px] font-semibold text-[var(--chat-hero)] hover:bg-[var(--chat-card)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)]"
+                                        onClick={() => {
+                                            void leaveReadOnlyConversation();
+                                        }}
+                                    >
+                                        {locale === 'en'
+                                            ? 'Start a new conversation'
+                                            : 'ابدأ محادثة جديدة'}
+                                    </button>
+                                </div>
+                            )}
 
                             {conversation?.handoffState &&
                                 conversation.handoffState !== 'none' && (

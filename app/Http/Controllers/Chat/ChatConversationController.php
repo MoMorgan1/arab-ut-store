@@ -15,6 +15,7 @@ use App\Models\AgentTurn;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Support\SubjectPreview;
+use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -51,9 +52,18 @@ class ChatConversationController extends Controller
         $limit = isset($validated['limit']) ? (int) $validated['limit'] : 10;
         $beforeId = $validated['before_id'] ?? null;
 
+        // The activity expression is repeated rather than aliased because the
+        // cursor has to compare against exactly what the ordering uses, and
+        // MariaDB does not allow a select alias inside WHERE.
+        $activity = 'COALESCE(last_message_at, closed_at, updated_at)';
+
         $query = ChatConversation::query()
             ->forOwner($owner)
-            ->orderByLastActivityDesc();
+            ->orderByLastActivityDesc()
+            // Without a tiebreaker two threads sharing a last_message_at
+            // paginate in an unstable order and one of them can be served
+            // twice or not at all.
+            ->orderByDesc('id');
 
         if ($beforeId !== null && $beforeId !== '') {
             $beforeConversation = ChatConversation::query()
@@ -62,7 +72,23 @@ class ChatConversationController extends Controller
                 ->first();
 
             if ($beforeConversation instanceof ChatConversation) {
-                $query->where('id', '<', $beforeConversation->id);
+                // A plain `id < cursor` silently drops every thread whose id is
+                // higher but whose activity is older — a thread that received a
+                // staff reply today sorts first, and each later page then hides
+                // everything created after it. The cursor must step through the
+                // same (activity, id) order the query is sorted by.
+                $beforeActivity = $beforeConversation->last_message_at
+                    ?? $beforeConversation->closed_at
+                    ?? $beforeConversation->updated_at;
+                $beforeKey = $beforeConversation->id;
+
+                $query->where(function (Builder $cursor) use ($activity, $beforeActivity, $beforeKey): void {
+                    $cursor->whereRaw($activity.' < ?', [$beforeActivity])
+                        ->orWhere(function (Builder $tie) use ($activity, $beforeActivity, $beforeKey): void {
+                            $tie->whereRaw($activity.' = ?', [$beforeActivity])
+                                ->where('id', '<', $beforeKey);
+                        });
+                });
             }
         }
 

@@ -2,6 +2,7 @@
 
 use App\Actions\Support\SendStaffReply;
 use App\Enums\Chat\ChatSenderType;
+use App\Enums\Support\SupportTicketStatus;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\SupportTicket;
@@ -116,4 +117,41 @@ it('does NOT send duplicate email notification when throttled (< 1 hour since la
     $action->execute($ticket, $staff, 'Second staff response in quick succession');
 
     Notification::assertNothingSent();
+});
+
+/**
+ * The throttle is per conversation, not per ticket. Resolving mints a fresh
+ * ticket on the customer's next "Still need help?", and a per-ticket stamp
+ * would let a second full email fire minutes after the first.
+ */
+it('does not send a second email within the hour after a ticket is resolved and reopened', function (): void {
+    Notification::fake();
+
+    $customer = User::factory()->create();
+    $staff = User::factory()->create();
+
+    $conversation = ChatConversation::factory()->forUser($customer)->create();
+    customerMessageAgo($conversation, 30);
+
+    $first = SupportTicket::factory()->for($conversation, 'conversation')->for($customer, 'user')->create([
+        'last_notified_at' => null,
+    ]);
+
+    app(SendStaffReply::class)->execute($first, $staff, 'First reply');
+    Notification::assertSentToTimes($customer, SupportReplyNotification::class, 1);
+
+    $first->forceFill([
+        'status' => SupportTicketStatus::Resolved,
+        'resolved_at' => now(),
+    ])->save();
+
+    // The customer reopens; a brand-new ticket carries no notification stamp.
+    $reopened = SupportTicket::factory()->for($conversation, 'conversation')->for($customer, 'user')->create([
+        'last_notified_at' => null,
+    ]);
+
+    customerMessageAgo($conversation, 10);
+    app(SendStaffReply::class)->execute($reopened, $staff, 'Second reply minutes later');
+
+    Notification::assertSentToTimes($customer, SupportReplyNotification::class, 1);
 });

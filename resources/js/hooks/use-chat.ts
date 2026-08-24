@@ -773,6 +773,13 @@ export function useChat(options: UseChatOptions = {}) {
             setIsAssistantTyping(false);
             setIsLoadingOlder(false);
             setIsRestarting(false);
+            // Both of these belong to the conversation being left, not to the
+            // one being adopted. The backoff clock carried a previous thread's
+            // last-message time, so a fresh handoff could start polling at 15s;
+            // the read-only lock, once set by opening a past thread, had no
+            // other way back off and disabled the composer and restart together.
+            lastReceivedMessageAtRef.current = null;
+            setIsReadOnly(conversationSnapshot.status !== 'open');
             handleLoadedConversation(conversationSnapshot, generation);
         },
         [handleLoadedConversation, startConversationGeneration],
@@ -1423,8 +1430,21 @@ export function useChat(options: UseChatOptions = {}) {
         const generation = conversationGenerationRef.current;
         const convPublicId = conversation.publicId;
 
+        // Cleanup clears the shared timer ref, but a poll already awaiting its
+        // fetch holds no timer to clear — it would come back, pass the
+        // generation check (unchanged, since no conversation was adopted) and
+        // schedule a second chain alongside the one the re-run effect started.
+        // Every handoffState transition, visibility restore and reopen inside
+        // one round trip added another chain, and five of them exceed the
+        // 60/min read limit that makes staff replies stop arriving at all.
+        let cancelled = false;
+
         const pollHandoff = async () => {
-            if (!ownsAsyncGeneration(generation) || !isOpenRef.current) {
+            if (
+                cancelled ||
+                !ownsAsyncGeneration(generation) ||
+                !isOpenRef.current
+            ) {
                 return;
             }
 
@@ -1436,6 +1456,15 @@ export function useChat(options: UseChatOptions = {}) {
                 const refreshed = await fetchConversation(convPublicId);
 
                 if (!ownsAsyncGeneration(generation)) {
+                    return;
+                }
+
+                // A turn that is still streaming holds a placeholder bubble
+                // keyed by turn id, not by the public id the poll sees. Merging
+                // now appends the finalized copy, and the completion handler
+                // then renames the placeholder to that same id — one reply,
+                // twice on screen. The completion path merges it anyway.
+                if (streamingTurnIdRef.current !== null) {
                     return;
                 }
 
@@ -1484,7 +1513,11 @@ export function useChat(options: UseChatOptions = {}) {
                 // Ignore transient network errors during polling
             }
 
-            if (!ownsAsyncGeneration(generation) || !isOpenRef.current) {
+            if (
+                cancelled ||
+                !ownsAsyncGeneration(generation) ||
+                !isOpenRef.current
+            ) {
                 return;
             }
 
@@ -1505,6 +1538,10 @@ export function useChat(options: UseChatOptions = {}) {
         );
 
         const handleVisibilityChange = () => {
+            if (cancelled) {
+                return;
+            }
+
             if (typeof document !== 'undefined' && !document.hidden) {
                 if (handoffPollingTimerRef.current !== null) {
                     clearTimeout(handoffPollingTimerRef.current);
@@ -1523,6 +1560,8 @@ export function useChat(options: UseChatOptions = {}) {
         }
 
         return () => {
+            cancelled = true;
+
             if (handoffPollingTimerRef.current !== null) {
                 clearTimeout(handoffPollingTimerRef.current);
                 handoffPollingTimerRef.current = null;
@@ -1573,7 +1612,6 @@ export function useChat(options: UseChatOptions = {}) {
             try {
                 const pastConv = await fetchConversation(publicId);
                 adoptConversation(pastConv);
-                setIsReadOnly(pastConv.status !== 'open');
             } catch {
                 showError(
                     pageLocale === 'en'
@@ -1586,6 +1624,32 @@ export function useChat(options: UseChatOptions = {}) {
         },
         [adoptConversation, pageLocale, showError],
     );
+
+    /**
+     * Leave a past thread opened read-only and return to the live one.
+     *
+     * Design 5.3 asks for a "Start a new conversation" control beside the
+     * read-only view. It is not decoration: opening a past thread disables both
+     * the composer and restart, so without this the customer is stranded on an
+     * old transcript — including while a human is replying to their live ticket
+     * — with only a page reload as a way out.
+     */
+    const leaveReadOnlyConversation = useCallback(async () => {
+        setIsLoading(true);
+
+        try {
+            const live = await fetchOrStartActiveConversation(pageLocale);
+            adoptConversation(live);
+        } catch {
+            showError(
+                pageLocale === 'en'
+                    ? 'Could not reopen your current conversation.'
+                    : 'تعذر فتح محادثتك الحالية.',
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    }, [adoptConversation, pageLocale, showError]);
 
     const requestTicket = useCallback(async () => {
         const conv = conversationRef.current;
@@ -1655,6 +1719,7 @@ export function useChat(options: UseChatOptions = {}) {
         loadOlderMessages,
         loadHistory,
         openPastConversation,
+        leaveReadOnlyConversation,
         requestTicket,
     };
 }

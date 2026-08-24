@@ -13,7 +13,12 @@ final class ListAdminConversations extends FormRequest
     /** @var list<string> */
     private const ALLOWED_KEYS = [
         'status',
+        'ticket_status',
         'locale',
+        // `owner` is deliberately still accepted. Its only legal value was
+        // `customer`, and with guests excluded unconditionally that is a no-op,
+        // so the control is gone from the UI — but a bookmarked URL still
+        // carries it and must degrade to "all customers", not 422.
         'owner',
         'q',
         'per_page',
@@ -39,6 +44,7 @@ final class ListAdminConversations extends FormRequest
     {
         return [
             'status' => ['sometimes', 'nullable', 'string', Rule::in(['open', 'closed'])],
+            'ticket_status' => ['sometimes', 'nullable', 'string', Rule::in(['open', 'resolved', 'closed'])],
             'locale' => ['sometimes', 'nullable', 'string', Rule::in(['ar', 'en'])],
             'owner' => ['sometimes', 'nullable', 'string', Rule::in(['customer'])],
             'q' => ['sometimes', 'nullable', 'string', 'max:64'],
@@ -65,6 +71,7 @@ final class ListAdminConversations extends FormRequest
     /**
      * @return array{
      *     status: 'open'|'closed'|null,
+     *     ticket_status: 'open'|'resolved'|'closed'|null,
      *     locale: 'ar'|'en'|null,
      *     owner: 'customer'|null,
      *     q: ?string,
@@ -79,6 +86,11 @@ final class ListAdminConversations extends FormRequest
         $status = ! empty($validated['status']) ? (string) $validated['status'] : null;
         if ($status !== 'open' && $status !== 'closed') {
             $status = null;
+        }
+
+        $ticketStatus = ! empty($validated['ticket_status']) ? (string) $validated['ticket_status'] : null;
+        if (! in_array($ticketStatus, ['open', 'resolved', 'closed'], true)) {
+            $ticketStatus = null;
         }
 
         $locale = ! empty($validated['locale']) ? (string) $validated['locale'] : null;
@@ -102,6 +114,7 @@ final class ListAdminConversations extends FormRequest
 
         return [
             'status' => $status,
+            'ticket_status' => $ticketStatus,
             'locale' => $locale,
             'owner' => $owner,
             'q' => $q,
