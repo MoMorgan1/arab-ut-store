@@ -30,6 +30,7 @@ final class ImportSallaCustomers
      *         name: string,
      *         email: ?string,
      *         phone: ?string,
+     *         staff_user_id?: int,
      *         email_user_id?: int,
      *         phone_user_id?: int,
      *         reason?: string,
@@ -154,11 +155,18 @@ final class ImportSallaCustomers
                 $plannedIdentities[$planKey] = $sallaId;
             }
 
+            // Look across ALL roles, not just customers. A Salla row whose
+            // email or mobile belongs to a staff or owner account must never
+            // attach a customer identity - and that person's order history -
+            // to it. Filtering the lookup to customers hid those accounts
+            // instead: the row looked new, and the import then died on the
+            // global users.email unique index, which is not role-scoped.
+            // The real export contains one - an owner's address on a
+            // customer record.
             $userByEmail = null;
             if ($normalizedEmail !== null) {
                 /** @var User|null $userByEmail */
                 $userByEmail = User::query()
-                    ->where('role', UserRole::Customer)
                     ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
                     ->first();
             }
@@ -166,13 +174,35 @@ final class ImportSallaCustomers
             $userByPhone = null;
             if ($normalizedPhone !== null) {
                 /** @var User|null $userByPhone */
-                // Customers only: a Salla email or mobile that happens to match
-                // a staff or admin account must never attach a customer identity
-                // (and their order history) to it.
                 $userByPhone = User::query()
-                    ->where('role', UserRole::Customer)
                     ->where('phone', $normalizedPhone)
                     ->first();
+            }
+
+            // A match on a non-customer account is a conflict, never a link:
+            // filing a stranger's orders onto a staff or owner login would
+            // expose them in that account's history.
+            $staffMatch = null;
+            foreach ([$userByEmail, $userByPhone] as $candidate) {
+                if ($candidate instanceof User && $candidate->role !== UserRole::Customer) {
+                    $staffMatch = $candidate;
+
+                    break;
+                }
+            }
+
+            if ($staffMatch !== null) {
+                $conflictCount++;
+                $conflictDetails[] = [
+                    'salla_id' => $sallaId,
+                    'name' => $data['full_name'],
+                    'email' => $normalizedEmail,
+                    'phone' => $normalizedPhone,
+                    'reason' => 'matches_non_customer_account',
+                    'staff_user_id' => $staffMatch->id,
+                ];
+
+                continue;
             }
 
             // 4. Conflict rule: email matches User A and phone matches different User B

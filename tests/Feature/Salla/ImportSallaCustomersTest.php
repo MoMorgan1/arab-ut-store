@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Salla;
 
+use App\Enums\UserRole;
 use App\Imports\Salla\ImportSallaCustomers;
 use App\Models\ImportBatch;
 use App\Models\PhoneVerification;
@@ -139,6 +140,72 @@ final class ImportSallaCustomersTest extends TestCase
             'entity' => 'customer',
             'external_id' => '301',
         ]);
+
+        @unlink($tempFile);
+    }
+
+    public function test_a_row_whose_email_belongs_to_a_staff_account_is_skipped_not_created(): void
+    {
+        // The real export carries an owner's own address on a customer record.
+        // Filtering the lookup to customers hid that account, so the row looked
+        // new and the import died on the users.email unique index - which is
+        // global, not role-scoped - taking the whole run down with it.
+        $admin = User::factory()->create([
+            'email' => 'owner@example.test',
+            'phone' => '+966559999999',
+            'role' => UserRole::Admin,
+        ]);
+
+        $csvContent = implode("\n", [
+            'ID,Full_Name,Mobile,Email,Created_At,Country,City,Gender,Birthday,Loyalty_Points,Order_Count,Total_Spent,Avg_Order_Value,Last_Purchase_Date,Cancelled_Orders,Wallet_Balance,Abandoned_Cart_Count',
+            '401,Salla Person,+201060848264,owner@example.test,2026-01-26 09:31:35,EG,Cairo,male,1995-05-12,0,0,0,0,2026-01-26,0,0,0',
+        ]);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'salla_customers_');
+        file_put_contents($tempFile, $csvContent);
+
+        $report = app(ImportSallaCustomers::class)->execute($tempFile, dryRun: false);
+
+        $this->assertSame(1, $report['conflicts']);
+        $this->assertSame(0, $report['created']);
+        $this->assertSame(0, $report['updated']);
+        $this->assertSame($admin->id, $report['conflict_details'][0]['staff_user_id']);
+
+        // Never linked: a stranger's orders must not land in an admin's
+        // history, and the admin account must not be renamed to theirs.
+        $this->assertDatabaseMissing('external_refs', [
+            'source' => 'salla',
+            'entity' => 'customer',
+            'external_id' => '401',
+        ]);
+        $this->assertSame('owner@example.test', $admin->refresh()->email);
+        $this->assertSame('+966559999999', $admin->phone);
+        $this->assertSame(UserRole::Admin, $admin->role);
+
+        @unlink($tempFile);
+    }
+
+    public function test_a_row_whose_mobile_belongs_to_a_staff_account_is_skipped_not_created(): void
+    {
+        $staff = User::factory()->create([
+            'email' => 'staff@example.test',
+            'phone' => '+966558888888',
+            'role' => UserRole::Staff,
+        ]);
+
+        $csvContent = implode("\n", [
+            'ID,Full_Name,Mobile,Email,Created_At,Country,City,Gender,Birthday,Loyalty_Points,Order_Count,Total_Spent,Avg_Order_Value,Last_Purchase_Date,Cancelled_Orders,Wallet_Balance,Abandoned_Cart_Count',
+            '402,Salla Person,+966558888888,someone@example.test,2026-01-26 09:31:35,SA,Riyadh,male,1995-05-12,0,0,0,0,2026-01-26,0,0,0',
+        ]);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'salla_customers_');
+        file_put_contents($tempFile, $csvContent);
+
+        $report = app(ImportSallaCustomers::class)->execute($tempFile, dryRun: false);
+
+        $this->assertSame(1, $report['conflicts']);
+        $this->assertSame(0, $report['created']);
+        $this->assertSame($staff->id, $report['conflict_details'][0]['staff_user_id']);
 
         @unlink($tempFile);
     }
