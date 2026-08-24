@@ -25,7 +25,7 @@ final class SallaStatusMapper
         'بانتظار المراجعة' => OrderStatus::Received,
         'انتظار المراجعة' => OrderStatus::Received,
         'قيد المراجعة' => OrderStatus::Received,
-        'قيد التنفيذ' => OrderStatus::Received,
+        'قيد التنفيذ' => OrderStatus::InProgress,
         'قيد الانتظار' => OrderStatus::Received,
         'جاري التجهيز' => OrderStatus::Received,
         'received' => OrderStatus::Received,
@@ -101,6 +101,18 @@ final class SallaStatusMapper
             if (str_contains($normalized, 'مراجعة') || str_contains($normalized, 'انتظار') || str_contains($normalized, 'pending')) {
                 return [
                     'status' => OrderStatus::Received,
+                    'isUnrecognised' => false,
+                    'originalStatus' => $orderStatus,
+                ];
+            }
+
+            // Rule: قيد التنفيذ… → InProgress. The export suffixes this with a
+            // step ("جاري سحب الكوينز", "تم ارسال بيانات الحساب للمحترف"), so it
+            // needs a contains-match, and it must run before the Completed rule
+            // below or the suffix wins. These are live orders, not cancelled ones.
+            if (str_contains($normalized, 'قيد التنفيذ')) {
+                return [
+                    'status' => OrderStatus::InProgress,
                     'isUnrecognised' => false,
                     'originalStatus' => $orderStatus,
                 ];

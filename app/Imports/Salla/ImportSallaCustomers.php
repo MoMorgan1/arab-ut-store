@@ -70,6 +70,14 @@ final class ImportSallaCustomers
         $totalProcessed = 0;
         $createdCount = 0;
         $updatedCount = 0;
+
+        // A dry run writes nothing, so the lookups below cannot see rows this
+        // same run would have created. The export contains customers who share
+        // an email or a mobile with each other, so without this the preview
+        // over-reports creations and under-reports matches - which defeats the
+        // point of previewing. Keys are the normalised email and phone.
+        /** @var array<string, true> $plannedIdentities */
+        $plannedIdentities = [];
         $skippedCount = 0;
         $conflictCount = 0;
         /** @var list<array{salla_id: string, name: string, email: ?string, phone: ?string, email_user_id: int, phone_user_id: int}> $conflictDetails */
@@ -138,6 +146,27 @@ final class ImportSallaCustomers
             }
 
             $matchedUser = $userByEmail ?? $userByPhone;
+
+            if ($dryRun && $matchedUser === null) {
+                $planKeys = array_values(array_filter([
+                    $normalizedEmail === null ? null : 'email:'.$normalizedEmail,
+                    $normalizedPhone === null ? null : 'phone:'.$normalizedPhone,
+                ]));
+
+                foreach ($planKeys as $planKey) {
+                    if (isset($plannedIdentities[$planKey])) {
+                        // An earlier row in this same file already claims this
+                        // identity, so the real run would match, not create.
+                        $updatedCount++;
+
+                        continue 2;
+                    }
+                }
+
+                foreach ($planKeys as $planKey) {
+                    $plannedIdentities[$planKey] = true;
+                }
+            }
 
             if ($matchedUser !== null) {
                 // Existing user matched: link without overwriting name, email or phone

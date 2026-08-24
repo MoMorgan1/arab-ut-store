@@ -92,9 +92,12 @@ final class ImportSallaOrdersTest extends TestCase
         $report1 = $action->execute($tempFile, dryRun: false);
 
         $this->assertSame(3, $report1['total_rows']);
+        // Owner rule: cancelled orders are not imported at all, so of the two
+        // orders in this file only the completed one comes across.
         $this->assertSame(2, $report1['total_orders']);
-        $this->assertSame(2, $report1['created']);
-        $this->assertSame(0, $report1['skipped']);
+        $this->assertSame(1, $report1['created']);
+        $this->assertSame(1, $report1['skipped']);
+        $this->assertSame(1, $report1['skipped_not_completed']);
         $this->assertSame(0, $report1['unmatched_customer']);
 
         // Check order 1001
@@ -121,12 +124,9 @@ final class ImportSallaOrdersTest extends TestCase
         $this->assertSame('UNKNOWN-SKU', $item2->sku);
         $this->assertSame('منتج غير موجود بالمتجر', $item2->name_ar);
 
-        // Check order 1002 (cancelled, SAR, exact 39.2 -> 3920 halalah)
-        $order2 = Order::query()->where('order_number', '1002')->first();
-        $this->assertNotNull($order2);
-        $this->assertSame(OrderStatus::Cancelled, $order2->status);
-        $this->assertSame('SAR', $order2->currency);
-        $this->assertSame(3920, $order2->total_halalah);
+        // Order 1002 is cancelled in the export, so it must not exist here at
+        // all - importing it as cancelled would put a failed sale in the history.
+        $this->assertNull(Order::query()->where('order_number', '1002')->first());
 
         // External refs created
         $this->assertDatabaseHas('external_refs', [
@@ -135,11 +135,12 @@ final class ImportSallaOrdersTest extends TestCase
             'external_id' => '1001',
             'internal_id' => $order1->id,
         ]);
-        $this->assertDatabaseHas('external_refs', [
+        // A skipped order gets no external ref either, so a later corrected
+        // export could still bring it in if the owner wanted it.
+        $this->assertDatabaseMissing('external_refs', [
             'source' => 'salla',
             'entity' => 'order',
             'external_id' => '1002',
-            'internal_id' => $order2->id,
         ]);
 
         // Re-run must create nothing new (idempotent)
