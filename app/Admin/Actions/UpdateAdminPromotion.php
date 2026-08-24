@@ -85,8 +85,14 @@ final class UpdateAdminPromotion
             ]);
 
             if ($mechanic === Promotion::MECHANIC_BUNDLE) {
-                $promotion->components()->delete();
-                if (! empty($data['components']) && is_array($data['components'])) {
+                // Only rewrite components when the payload actually carries
+                // them. Deleting first meant a partial update - fixing a typo in
+                // the name, with no `components` key - emptied the bundle, and
+                // an empty bundle applies no discount: the offer silently stops
+                // working on the storefront while the admin page still shows it.
+                if (array_key_exists('components', $data) && is_array($data['components'])) {
+                    $promotion->components()->delete();
+
                     foreach ($data['components'] as $componentData) {
                         $rawProductId = $componentData['product_id'] ?? $componentData['product'] ?? null;
                         $resolvedProductId = $this->resolveProductId($rawProductId);

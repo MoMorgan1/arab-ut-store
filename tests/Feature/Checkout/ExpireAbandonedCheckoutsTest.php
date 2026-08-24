@@ -215,7 +215,7 @@ test('re-running the job does not credit the wallet twice', function (): void {
     app(ExpireAbandonedCheckouts::class)->execute();
     app(ExpireAbandonedCheckouts::class)->execute();
 
-    expect(WalletEntry::query()->where('reference', "order-wallet-expired:{$order->id}")->count())->toBe(1);
+    expect(WalletEntry::query()->where('reference', "order-wallet-released:{$order->id}")->count())->toBe(1);
 });
 
 test('cancelling an expired checkout cancels its items too', function (): void {

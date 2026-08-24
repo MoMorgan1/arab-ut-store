@@ -2,6 +2,7 @@
 
 namespace App\Admin\Actions;
 
+use App\Actions\Checkout\ReleaseOrderWalletFunds;
 use App\Admin\Audit\StaffAuditEvent;
 use App\Admin\Support\OrderStatusTransitionRules;
 use App\Enums\AdminPermission;
@@ -25,6 +26,7 @@ final class TransitionAdminOrder
         private readonly OrderStatusTransitionRules $rules,
         private readonly RecordStaffAudit $recordStaffAudit,
         private readonly AccrueOrderCashback $accrueOrderCashback,
+        private readonly ReleaseOrderWalletFunds $releaseOrderWalletFunds,
     ) {}
 
     public function execute(
@@ -86,6 +88,13 @@ final class TransitionAdminOrder
                 $order->completed_at = now();
             } elseif ($targetStatus === OrderStatus::Cancelled) {
                 $order->cancelled_at = now();
+
+                // The wallet is debited at placement, and a fully wallet-paid
+                // order reaches Received without any Paylink payment - so
+                // cancelling here would destroy the whole amount, and
+                // RefundPaylinkOrder cannot recover it (it refuses cancelled
+                // orders and needs a captured gateway payment).
+                $this->releaseOrderWalletFunds->execute($order, 'admin_cancelled');
             }
 
             $order->save();

@@ -5,10 +5,7 @@ namespace App\Actions\Checkout;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
-use App\Enums\WalletEntryType;
-use App\Loyalty\Support\WalletLedgerWriter;
 use App\Models\Order;
-use App\Models\WalletEntry;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -37,7 +34,7 @@ final class ExpireAbandonedCheckouts
     public const GRACE_HOURS = 24;
 
     public function __construct(
-        private readonly WalletLedgerWriter $walletLedgerWriter,
+        private readonly ReleaseOrderWalletFunds $releaseOrderWalletFunds,
     ) {}
 
     /** @return int the number of orders cancelled */
@@ -110,7 +107,7 @@ final class ExpireAbandonedCheckouts
             // part-wallet order being cancelled here has real customer money
             // against it. Give it back in the same transaction as the
             // cancellation, or this job quietly destroys balances.
-            $this->creditWalletBack($locked);
+            $this->releaseOrderWalletFunds->execute($locked, 'checkout_expired');
 
             $locked->forceFill([
                 'status' => OrderStatus::Cancelled,
@@ -124,42 +121,5 @@ final class ExpireAbandonedCheckouts
 
             return 1;
         });
-    }
-
-    private function creditWalletBack(Order $order): void
-    {
-        $walletHalalah = (int) $order->wallet_halalah;
-
-        if ($walletHalalah <= 0) {
-            return;
-        }
-
-        $reference = "order-wallet-expired:{$order->id}";
-
-        if ($this->walletLedgerWriter->lockedEntryByReference($reference) instanceof WalletEntry) {
-            return;
-        }
-
-        $account = $this->walletLedgerWriter->lockAccountFor((int) $order->user_id);
-
-        // Re-check after taking the account lock, the way RefundPaylinkOrder
-        // does: two runs racing on the same order must not credit twice.
-        if ($this->walletLedgerWriter->lockedEntryByReference($reference) instanceof WalletEntry) {
-            return;
-        }
-
-        $this->walletLedgerWriter->append($account, [
-            'type' => WalletEntryType::Refund,
-            'amount_halalah' => $walletHalalah,
-            'balance_delta_halalah' => $walletHalalah,
-            'order_id' => $order->id,
-            'refund_id' => null,
-            'created_by_user_id' => null,
-            'reference' => $reference,
-            'metadata' => [
-                'order_number' => $order->order_number,
-                'reason' => 'checkout_expired',
-            ],
-        ]);
     }
 }

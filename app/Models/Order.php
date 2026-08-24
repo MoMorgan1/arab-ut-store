@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $locale
  * @property string $order_number
  * @property string $channel
+ * @property ?array<string, mixed> $import_metadata
  * @property OrderStatus $status
  */
 class Order extends DomainModel
@@ -27,6 +28,7 @@ class Order extends DomainModel
         return [
             'status' => OrderStatus::class,
             'channel' => 'string',
+            'import_metadata' => 'array',
             'subtotal_halalah' => 'integer',
             'discount_halalah' => 'integer',
             'wallet_halalah' => 'integer',

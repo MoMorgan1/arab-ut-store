@@ -451,7 +451,17 @@ final class DiscountEngine
             return [0, $allocations];
         }
 
-        usort($candidateGroups, fn (array $a, array $b): int => $b['discount'] <=> $a['discount']);
+        // When max_applications caps how many groups apply, WHICH groups win has
+        // to follow discount_target. Always taking the largest discounts made
+        // "cheapest" comp the dearest qualifying lines: on a 10/9/8/7/6/5k cart
+        // with buy-1-get-1 at 50% and a cap of 2, it gave away the 9k and 7k
+        // lines (8,000) instead of the 5k and 6k ones (5,500) - more generous
+        // than the admin configured, on every cart bigger than one group.
+        $preferLargest = $promotion->discount_target === Promotion::TARGET_MOST_EXPENSIVE;
+
+        usort($candidateGroups, fn (array $a, array $b): int => $preferLargest
+            ? $b['discount'] <=> $a['discount']
+            : $a['discount'] <=> $b['discount']);
 
         // A 0 here already returned above, so null is the only "uncapped" value.
         $maxApps = $promotion->max_applications !== null

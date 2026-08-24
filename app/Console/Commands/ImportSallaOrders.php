@@ -49,6 +49,17 @@ final class ImportSallaOrders extends Command
             'Unrecognised Statuses: '.$report['unrecognised_statuses'],
         ]);
 
+        if ($report['unconverted_currencies'] !== []) {
+            // These orders keep their own currency, so they will not count
+            // toward lifetime spend until a rate exists for them.
+            $this->components->warn('No exchange rate for these currencies - those orders were left unconverted:');
+            $lines = [];
+            foreach ($report['unconverted_currencies'] as $code => $count) {
+                $lines[] = $code.': '.$count.' order(s)';
+            }
+            $this->components->bulletList($lines);
+        }
+
         if (! empty($report['unrecognised_status_list'])) {
             $this->components->warn('The following status values were unrecognised and mapped to Cancelled:');
             $this->components->bulletList($report['unrecognised_status_list']);
