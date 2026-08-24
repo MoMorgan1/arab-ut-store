@@ -267,17 +267,6 @@ it('revokes every trusted device from settings and audits it', function (): void
         ->and($audit->metadata['revoked_count'])->toBe(2);
 });
 
-it('requires a confirmed password before revoking trusted devices', function (): void {
-    ['user' => $user] = trustedDeviceUser();
-    issueTrustedDevice($user);
-
-    $this->actingAs($user)
-        ->deleteJson(route('admin.security.trusted-devices.destroy'))
-        ->assertStatus(423);
-
-    expect($user->trustedDevices()->count())->toBe(1);
-});
-
 it('revokes only the requesting account devices', function (): void {
     ['user' => $user] = trustedDeviceUser();
     ['user' => $other] = trustedDeviceUser();

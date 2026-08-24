@@ -40,21 +40,6 @@ vi.mock('@inertiajs/react', () => ({
     }),
 }));
 
-vi.mock('@/components/admin/admin-password-confirm-dialog', () => ({
-    default: ({
-        onConfirmed,
-        open,
-    }: {
-        onConfirmed: () => void;
-        open: boolean;
-    }) =>
-        open ? (
-            <button onClick={onConfirmed} type="button">
-                confirmed-password-overlay
-            </button>
-        ) : null,
-}));
-
 function defaultDetailProps(): AdminCouponDetailPageProps {
     return {
         locale: 'en',
@@ -113,14 +98,41 @@ function defaultDetailProps(): AdminCouponDetailPageProps {
             releasedRedemptionsCount: 2,
         },
         rules: [
-            { key: 'discount', label: 'Discount', value: '20% (Cap: 100.00 SAR)' },
-            { key: 'minimum_order', label: 'Minimum order', value: '50.00 SAR', description: 'Checked against eligible items only.' },
-            { key: 'eligibility', label: 'Eligibility', value: 'First order only • Excludes promoted items' },
-            { key: 'usage_limit', label: 'Usage limit', value: '25 / 100 (2 released by cancellation)' },
+            {
+                key: 'discount',
+                label: 'Discount',
+                value: '20% (Cap: 100.00 SAR)',
+            },
+            {
+                key: 'minimum_order',
+                label: 'Minimum order',
+                value: '50.00 SAR',
+                description: 'Checked against eligible items only.',
+            },
+            {
+                key: 'eligibility',
+                label: 'Eligibility',
+                value: 'First order only • Excludes promoted items',
+            },
+            {
+                key: 'usage_limit',
+                label: 'Usage limit',
+                value: '25 / 100 (2 released by cancellation)',
+            },
         ],
         chart: [
-            { date: '2026-08-21', redemptions: 10, revenueHalalah: 200000, discountHalalah: 40000 },
-            { date: '2026-08-22', redemptions: 15, revenueHalalah: 300000, discountHalalah: 60000 },
+            {
+                date: '2026-08-21',
+                redemptions: 10,
+                revenueHalalah: 200000,
+                discountHalalah: 40000,
+            },
+            {
+                date: '2026-08-22',
+                redemptions: 15,
+                revenueHalalah: 300000,
+                discountHalalah: 60000,
+            },
         ],
         recentRedemptions: [
             {
@@ -144,8 +156,10 @@ function defaultDetailProps(): AdminCouponDetailPageProps {
         products: [{ id: 1, publicId: '01PROD1', name: '100K Coins' }],
         serviceTypes: [{ value: 'coins', label: 'Coins Delivery' }],
         updateUrl: '/admin/api/marketing/coupons/01KCOUPON0000000000000001',
-        statusUrl: '/admin/api/marketing/coupons/01KCOUPON0000000000000001/status',
-        duplicateUrl: '/admin/api/marketing/coupons/01KCOUPON0000000000000001/duplicate',
+        statusUrl:
+            '/admin/api/marketing/coupons/01KCOUPON0000000000000001/status',
+        duplicateUrl:
+            '/admin/api/marketing/coupons/01KCOUPON0000000000000001/duplicate',
         listUrl: '/admin/marketing/coupons',
         logoutUrl: '/logout',
     };
@@ -174,29 +188,48 @@ describe('AdminCouponDetailPage', () => {
     it('renders the coupon detail with KPIs, released notice, rules, and redemptions', () => {
         render(<AdminCouponDetailPage />);
 
-        expect(screen.getByRole('heading', { level: 1, name: 'SUMMER20' })).toBeVisible();
+        expect(
+            screen.getByRole('heading', { level: 1, name: 'SUMMER20' }),
+        ).toBeVisible();
         expect(screen.getByText('Summer 20% discount')).toBeVisible();
         expect(screen.getByText('25 / 100')).toBeVisible();
         expect(screen.getByText('20')).toBeVisible(); // unique customers
-        expect(screen.getByText('5,000.00 SAR')).toBeVisible(); // revenue attributed
-        expect(screen.getByText('1,000.00 SAR')).toBeVisible(); // total discount given
-        expect(screen.getByText(/released by order cancellation/i)).toBeVisible();
+        // Intl renders SAR before the amount and separates them with a
+        // non-breaking space, so match on the digits and tolerate the spacing
+        // rather than hard-coding it - JS \\s already matches U+00A0.
+        expect(
+            screen.getByText((text) => /SAR\s*5,000\.00/.test(text)),
+        ).toBeVisible(); // revenue attributed
+        expect(
+            screen.getByText((text) => /SAR\s*1,000\.00/.test(text)),
+        ).toBeVisible(); // total discount given
+        expect(
+            screen.getByText(/released by order cancellation/i),
+        ).toBeVisible();
 
         // Rules
         expect(screen.getByText('20% (Cap: 100.00 SAR)')).toBeVisible();
-        expect(screen.getByText('First order only • Excludes promoted items')).toBeVisible();
+        expect(
+            screen.getByText('First order only • Excludes promoted items'),
+        ).toBeVisible();
 
         // Recent Redemptions Table
         expect(screen.getByText('ORD-1001')).toBeVisible();
         expect(screen.getByText('Ahmed Al-Harbi')).toBeVisible();
-        expect(screen.getByText('200.00 SAR')).toBeVisible();
+        expect(
+            screen.getByText((text) => /SAR\s*200\.00/.test(text)),
+        ).toBeVisible();
     });
 
     it('handles duplicate action from header with custom code', async () => {
         const fetchMock = vi.fn().mockResolvedValue(
             new Response(
                 JSON.stringify({
-                    data: { code: 'SUMMER20-SPECIAL', id: '01KCOUPONNEW', isActive: false },
+                    data: {
+                        code: 'SUMMER20-SPECIAL',
+                        id: '01KCOUPONNEW',
+                        isActive: false,
+                    },
                 }),
                 { status: 201 },
             ),
@@ -211,17 +244,17 @@ describe('AdminCouponDetailPage', () => {
             name: englishAdminUi.coupons.duplicateTitle,
         });
 
-        fireEvent.change(within(dialog).getByLabelText(englishAdminUi.coupons.duplicateCodeLabel), {
-            target: { value: 'summer20-special' },
-        });
-
-        fireEvent.click(within(dialog).getByRole('button', { name: 'Duplicate coupon' }));
+        fireEvent.change(
+            within(dialog).getByLabelText(
+                englishAdminUi.coupons.duplicateCodeLabel,
+            ),
+            {
+                target: { value: 'summer20-special' },
+            },
+        );
 
         fireEvent.click(
-            await screen.findByRole('button', {
-                hidden: true,
-                name: 'confirmed-password-overlay',
-            }),
+            within(dialog).getByRole('button', { name: 'Duplicate coupon' }),
         );
 
         await waitFor(() => {
@@ -234,14 +267,20 @@ describe('AdminCouponDetailPage', () => {
             );
         });
 
-        expect(inertia.visit).toHaveBeenCalledWith('/admin/marketing/coupons/01KCOUPONNEW');
+        expect(inertia.visit).toHaveBeenCalledWith(
+            '/admin/marketing/coupons/01KCOUPONNEW',
+        );
     });
 
     it('handles pause/resume toggle from header', async () => {
         const fetchMock = vi.fn().mockResolvedValue(
             new Response(
                 JSON.stringify({
-                    data: { code: 'SUMMER20', id: '01KCOUPON0000000000000001', isActive: false },
+                    data: {
+                        code: 'SUMMER20',
+                        id: '01KCOUPON0000000000000001',
+                        isActive: false,
+                    },
                 }),
                 { status: 200 },
             ),
@@ -256,13 +295,8 @@ describe('AdminCouponDetailPage', () => {
             name: englishAdminUi.coupons.deactivateTitle,
         });
 
-        fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm' }));
-
         fireEvent.click(
-            await screen.findByRole('button', {
-                hidden: true,
-                name: 'confirmed-password-overlay',
-            }),
+            within(dialog).getByRole('button', { name: 'Confirm' }),
         );
 
         await waitFor(() => {

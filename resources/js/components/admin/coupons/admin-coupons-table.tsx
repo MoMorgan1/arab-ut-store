@@ -26,7 +26,7 @@ export type AdminCouponsTableProps = {
     onResetFilters: () => void;
     onToggle: (coupon: AdminCouponRow, targetActive: boolean) => void;
     permissions: string[];
-    showUrlTemplate?: string;
+    showUrlTemplate: string;
     table: TanStackTable<AdminCouponRow>;
 };
 
@@ -58,7 +58,7 @@ export default function AdminCouponsTable({
                             aria-hidden="true"
                             className="size-4 animate-spin motion-reduce:hidden"
                         />
-                        <span>{adminUi.common.loading ?? 'Loading…'}</span>
+                        <span>{adminUi.coupons.loading}</span>
                     </div>
                 </div>
             ) : null}
@@ -78,7 +78,8 @@ export default function AdminCouponsTable({
                                         {header.isPlaceholder
                                             ? null
                                             : flexRender(
-                                                  header.column.columnDef.header,
+                                                  header.column.columnDef
+                                                      .header,
                                                   header.getContext(),
                                               )}
                                     </TableHead>
@@ -104,11 +105,15 @@ export default function AdminCouponsTable({
                             <TableRow>
                                 <TableCell
                                     className="h-32 text-center"
-                                    colSpan={table.getVisibleLeafColumns().length}
+                                    colSpan={
+                                        table.getVisibleLeafColumns().length
+                                    }
                                 >
                                     <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                                         <p className="text-sm">
-                                            {isFiltered ? copy.noCouponsMatching : copy.noCoupons}
+                                            {isFiltered
+                                                ? copy.noCouponsMatching
+                                                : copy.noCoupons}
                                         </p>
                                         {isFiltered ? (
                                             <Button
@@ -151,7 +156,9 @@ export default function AdminCouponsTable({
                 ) : (
                     <div className="rounded-xl border border-border bg-card p-6 text-center text-muted-foreground">
                         <p className="text-sm">
-                            {isFiltered ? copy.noCouponsMatching : copy.noCoupons}
+                            {isFiltered
+                                ? copy.noCouponsMatching
+                                : copy.noCoupons}
                         </p>
                         {isFiltered ? (
                             <Button

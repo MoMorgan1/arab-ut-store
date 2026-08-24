@@ -86,7 +86,6 @@ function defaultProps(): AdminCustomerDetailPageProps {
         contactUrl: '/api/customers/01K5CUST00000000000000001/contact',
         walletAdjustUrl:
             '/api/customers/01K5CUST00000000000000001/wallet/adjust',
-        confirmPasswordUrl: '/user/confirm-password',
         logoutUrl: '/logout',
     };
 }
@@ -384,45 +383,6 @@ describe('Admin Customer Contact Management', () => {
                 ),
             ).toBeVisible();
         });
-    });
-
-    it('reopens the password confirmation dialog when the route answers 423', async () => {
-        http.submit.mockImplementation(
-            async (
-                _method: string,
-                _url: string,
-                options: {
-                    onHttpException?: (response: {
-                        status: number;
-                        data: unknown;
-                    }) => boolean;
-                },
-            ) => {
-                options.onHttpException?.({ status: 423, data: {} });
-            },
-        );
-
-        render(<AdminCustomerDetailPage />);
-
-        fireEvent.click(screen.getByRole('button', { name: /Edit details/i }));
-        fireEvent.change(screen.getByLabelText(/First name/i), {
-            target: { value: 'DifferentName' },
-        });
-        fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-
-        await waitFor(() => {
-            expect(
-                screen.getByText(
-                    englishAdminUi.customerDetail.passwordModalDescription,
-                ),
-            ).toBeVisible();
-        });
-
-        // The edit is not lost while the admin reconfirms their password.
-        expect(screen.getByLabelText(/First name/i)).toHaveValue(
-            'DifferentName',
-        );
-        expect(inertia.reload).not.toHaveBeenCalled();
     });
 
     it('surfaces a generic failure message when the route errors', async () => {

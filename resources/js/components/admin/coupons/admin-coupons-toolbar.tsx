@@ -1,13 +1,7 @@
 'use no memo'; // TanStack Table exposes a mutable table object.
 
 import type { Table } from '@tanstack/react-table';
-import {
-    Columns3,
-    Plus,
-    Search,
-    SlidersHorizontal,
-    X,
-} from 'lucide-react';
+import { Columns3, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 
@@ -102,10 +96,22 @@ export default function AdminCouponsToolbar({
     }> = [
         { key: 'all', label: copy.statusAll, count: counts.total },
         { key: 'active', label: copy.statusActive, count: counts.active },
-        { key: 'scheduled', label: copy.statusScheduled, count: counts.scheduled ?? 0 },
+        {
+            key: 'scheduled',
+            label: copy.statusScheduled,
+            count: counts.scheduled ?? 0,
+        },
         { key: 'paused', label: copy.statusPaused, count: counts.paused ?? 0 },
-        { key: 'expired', label: copy.statusExpired, count: counts.expired ?? 0 },
-        { key: 'exhausted', label: copy.statusExhausted, count: counts.exhausted ?? 0 },
+        {
+            key: 'expired',
+            label: copy.statusExpired,
+            count: counts.expired ?? 0,
+        },
+        {
+            key: 'exhausted',
+            label: copy.statusExhausted,
+            count: counts.exhausted ?? 0,
+        },
     ];
 
     const currentStatus = filters.status ?? 'all';
@@ -143,7 +149,7 @@ export default function AdminCouponsToolbar({
         filters.scope,
         filters.discount_type,
         filters.status && filters.status !== 'all' ? filters.status : null,
-    ].filter((val) => val !== null && val !== undefined && val !== '').length;
+    ].filter((val) => val !== null && val !== undefined).length;
 
     const activeChips: Array<{
         key: string;
@@ -172,7 +178,9 @@ export default function AdminCouponsToolbar({
     }
 
     if (filters.scope) {
-        const option = filterOptions.scopes.find((o) => o.value === filters.scope);
+        const option = filterOptions.scopes.find(
+            (o) => o.value === filters.scope,
+        );
         activeChips.push({
             key: 'scope',
             label: `${copy.filterScope}: ${option?.label ?? filters.scope}`,
@@ -182,7 +190,9 @@ export default function AdminCouponsToolbar({
     }
 
     if (filters.discount_type) {
-        const option = filterOptions.discountTypes.find((o) => o.value === filters.discount_type);
+        const option = filterOptions.discountTypes.find(
+            (o) => o.value === filters.discount_type,
+        );
         activeChips.push({
             key: 'discount_type',
             label: `${copy.filterDiscountType}: ${option?.label ?? filters.discount_type}`,
@@ -203,7 +213,7 @@ export default function AdminCouponsToolbar({
                             key={tab.key}
                             className={`inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none ${
                                 isSelected
-                                    ? 'bg-primary/15 text-primary border border-primary/30'
+                                    ? 'border border-primary/30 bg-primary/15 text-primary'
                                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                             }`}
                             disabled={isNavigating}
@@ -248,7 +258,9 @@ export default function AdminCouponsToolbar({
                                 className="min-h-11 ps-9 pe-12 text-sm md:text-xs"
                                 disabled={isNavigating}
                                 maxLength={100}
-                                onChange={(event) => setSearch(event.target.value)}
+                                onChange={(event) =>
+                                    setSearch(event.target.value)
+                                }
                                 placeholder={copy.searchPlaceholder}
                                 type="search"
                                 value={search}
@@ -281,7 +293,9 @@ export default function AdminCouponsToolbar({
                             label={copy.filterScope}
                             onChange={(scope) =>
                                 onFilterChange({
-                                    scope: (scope as AdminCouponsQueryState['scope']) || null,
+                                    scope:
+                                        (scope as AdminCouponsQueryState['scope']) ||
+                                        null,
                                     page: 1,
                                 })
                             }
@@ -295,7 +309,8 @@ export default function AdminCouponsToolbar({
                             onChange={(discount_type) =>
                                 onFilterChange({
                                     discount_type:
-                                        (discount_type as AdminCouponsQueryState['discount_type']) || null,
+                                        (discount_type as AdminCouponsQueryState['discount_type']) ||
+                                        null,
                                     page: 1,
                                 })
                             }
@@ -314,7 +329,10 @@ export default function AdminCouponsToolbar({
                         type="button"
                         variant="outline"
                     >
-                        <SlidersHorizontal aria-hidden="true" className="size-4" />
+                        <SlidersHorizontal
+                            aria-hidden="true"
+                            className="size-4"
+                        />
                         <span>{copy.filters}</span>
                         {activeFilterCount > 0 ? (
                             <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
@@ -331,12 +349,20 @@ export default function AdminCouponsToolbar({
                                 disabled={isNavigating}
                                 variant="outline"
                             >
-                                <Columns3 aria-hidden="true" className="size-4" />
+                                <Columns3
+                                    aria-hidden="true"
+                                    className="size-4"
+                                />
                                 <span>{copy.columnsToggle}</span>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 motion-reduce:animate-none">
-                            <DropdownMenuLabel>{copy.columnsToggle}</DropdownMenuLabel>
+                        <DropdownMenuContent
+                            align="end"
+                            className="w-48 motion-reduce:animate-none"
+                        >
+                            <DropdownMenuLabel>
+                                {copy.columnsToggle}
+                            </DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             {table
                                 .getAllLeafColumns()
@@ -347,7 +373,9 @@ export default function AdminCouponsToolbar({
                                         className="min-h-11 text-sm md:text-xs"
                                         key={column.id}
                                         onCheckedChange={(visible) =>
-                                            column.toggleVisibility(Boolean(visible))
+                                            column.toggleVisibility(
+                                                Boolean(visible),
+                                            )
                                         }
                                     >
                                         {columnLabels[column.id] ?? column.id}
@@ -393,7 +421,9 @@ export default function AdminCouponsToolbar({
                                 onChange={(status) =>
                                     setDraftFilters((prev) => ({
                                         ...prev,
-                                        status: (status as AdminCouponsQueryState['status']) || null,
+                                        status:
+                                            (status as AdminCouponsQueryState['status']) ||
+                                            null,
                                     }))
                                 }
                                 options={filterOptions.statuses}
@@ -411,7 +441,9 @@ export default function AdminCouponsToolbar({
                                 onChange={(scope) =>
                                     setDraftFilters((prev) => ({
                                         ...prev,
-                                        scope: (scope as AdminCouponsQueryState['scope']) || null,
+                                        scope:
+                                            (scope as AdminCouponsQueryState['scope']) ||
+                                            null,
                                     }))
                                 }
                                 options={filterOptions.scopes}
@@ -430,7 +462,8 @@ export default function AdminCouponsToolbar({
                                     setDraftFilters((prev) => ({
                                         ...prev,
                                         discount_type:
-                                            (discount_type as AdminCouponsQueryState['discount_type']) || null,
+                                            (discount_type as AdminCouponsQueryState['discount_type']) ||
+                                            null,
                                     }))
                                 }
                                 options={filterOptions.discountTypes}
@@ -476,7 +509,10 @@ export default function AdminCouponsToolbar({
                         >
                             <span>{chip.label}</span>
                             <button
-                                aria-label={copy.clearOneFilter.replace(':name', chip.name)}
+                                aria-label={copy.clearOneFilter.replace(
+                                    ':name',
+                                    chip.name,
+                                )}
                                 className="-my-2 -me-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
                                 disabled={isNavigating}
                                 onClick={chip.onClear}

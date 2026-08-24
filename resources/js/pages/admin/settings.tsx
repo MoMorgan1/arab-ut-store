@@ -11,7 +11,6 @@ import type { AdminSettingsPageProps } from '@/types/admin';
 export default function AdminSettingsPage({
     adminIdentity,
     adminUi,
-    confirmPasswordUrl,
     direction,
     locale,
     logoutUrl,
@@ -139,7 +138,6 @@ export default function AdminSettingsPage({
                 {team ? (
                     <AdminTeamSection
                         adminUi={adminUi}
-                        confirmPasswordUrl={confirmPasswordUrl}
                         direction={direction}
                         locale={locale}
                         team={team}
@@ -150,7 +148,6 @@ export default function AdminSettingsPage({
                 {servicePricing ? (
                     <AdminServicePricingSection
                         adminUi={adminUi}
-                        confirmPasswordUrl={confirmPasswordUrl}
                         direction={direction}
                         locale={locale}
                         servicePricing={servicePricing}

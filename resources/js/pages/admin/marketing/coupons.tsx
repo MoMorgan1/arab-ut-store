@@ -1,16 +1,12 @@
 'use no memo'; // TanStack Table's mutable instances are not React Compiler compatible.
 
 import { Head, router, usePage } from '@inertiajs/react';
-import {
-    getCoreRowModel,
-    useReactTable,
-} from '@tanstack/react-table';
+import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type { VisibilityState } from '@tanstack/react-table';
 import { Copy } from 'lucide-react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import AdminMobileTabBar from '@/components/admin/admin-mobile-tabbar';
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
 import AdminSidebar from '@/components/admin/admin-sidebar';
 import AdminCouponDrawer from '@/components/admin/coupons/admin-coupon-drawer';
 import { getAdminCouponColumns } from '@/components/admin/coupons/admin-coupons-columns';
@@ -33,25 +29,35 @@ import type {
     AdminCouponRow,
     AdminCouponsPageProps,
     AdminCouponsQueryState,
+    AdminTranslations,
 } from '@/types/admin';
 
 export default function AdminCouponsPage() {
     const { props, url } = usePage<AdminCouponsPageProps>();
     const copy = props.adminUi.coupons;
     const isLocalized = url.startsWith('/en/admin');
-    const pathname = isLocalized ? '/en/admin/marketing/coupons' : '/admin/marketing/coupons';
+    const pathname = isLocalized
+        ? '/en/admin/marketing/coupons'
+        : '/admin/marketing/coupons';
 
     // State for drawer
-    const [drawerMode, setDrawerMode] = useState<'create' | 'edit' | null>(null);
-    const [editingCoupon, setEditingCoupon] = useState<AdminCouponRow | null>(null);
+    const [drawerMode, setDrawerMode] = useState<'create' | 'edit' | null>(
+        null,
+    );
+    const [editingCoupon, setEditingCoupon] = useState<AdminCouponRow | null>(
+        null,
+    );
 
     // State for toggle status dialog
-    const [toggleCoupon, setToggleCoupon] = useState<AdminCouponRow | null>(null);
+    const [toggleCoupon, setToggleCoupon] = useState<AdminCouponRow | null>(
+        null,
+    );
     const [toggleTargetActive, setToggleTargetActive] = useState(false);
     const [toggling, setToggling] = useState(false);
 
     // State for duplicate dialog
-    const [duplicateCoupon, setDuplicateCoupon] = useState<AdminCouponRow | null>(null);
+    const [duplicateCoupon, setDuplicateCoupon] =
+        useState<AdminCouponRow | null>(null);
     const [duplicateCode, setDuplicateCode] = useState('');
     const [duplicating, setDuplicating] = useState(false);
 
@@ -61,12 +67,10 @@ export default function AdminCouponsPage() {
         text: string;
     } | null>(null);
 
-    // Password confirmation seam
-    const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-    const pendingAction = useRef<(() => void) | null>(null);
-
     // Column visibility
-    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+        {},
+    );
 
     const currentSort: CouponSortKey =
         (props.filters.sort as CouponSortKey) || 'created_at';
@@ -99,7 +103,10 @@ export default function AdminCouponsPage() {
         [pathname, props.filters],
     );
 
-    const handleSortChange = (sortKey: CouponSortKey, direction: 'asc' | 'desc') => {
+    const handleSortChange = (
+        sortKey: CouponSortKey,
+        direction: 'asc' | 'desc',
+    ) => {
         visitCoupons({ sort: sortKey, direction, page: 1 });
     };
 
@@ -123,57 +130,59 @@ export default function AdminCouponsPage() {
         setDrawerMode('edit');
     };
 
-    const openToggleDialog = (coupon: AdminCouponRow, targetActive: boolean) => {
+    const openToggleDialog = (
+        coupon: AdminCouponRow,
+        targetActive: boolean,
+    ) => {
         setToggleCoupon(coupon);
         setToggleTargetActive(targetActive);
     };
 
-    const confirmToggle = () => {
-        if (!toggleCoupon) return;
+    const confirmToggle = async () => {
+        if (!toggleCoupon) {
+            return;
+        }
+
         const coupon = toggleCoupon;
         const targetActive = toggleTargetActive;
         setToggleCoupon(null);
 
-        pendingAction.current = async () => {
-            setToggling(true);
-            setActionMessage(null);
-            const targetUrl = props.statusUrlTemplate.replace('__ID__', coupon.id);
+        setToggling(true);
+        setActionMessage(null);
+        const targetUrl = props.statusUrlTemplate.replace('__ID__', coupon.id);
 
-            try {
-                const res = await fetch(targetUrl, {
-                    method: 'POST',
-                    headers: {
-                        Accept: 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-XSRF-TOKEN': getCsrfToken(),
-                    },
-                    body: JSON.stringify({ is_active: targetActive }),
-                    credentials: 'same-origin',
-                });
+        try {
+            const res = await fetch(targetUrl, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': getCsrfToken(),
+                },
+                body: JSON.stringify({ is_active: targetActive }),
+                credentials: 'same-origin',
+            });
 
-                if (!res.ok) {
-                    setActionMessage({
-                        type: 'error',
-                        text: copy.messages.genericError,
-                    });
-                } else {
-                    setActionMessage({
-                        type: 'success',
-                        text: copy.messages.toggled,
-                    });
-                    router.reload();
-                }
-            } catch {
+            if (!res.ok) {
                 setActionMessage({
                     type: 'error',
-                    text: copy.messages.networkError,
+                    text: copy.messages.genericError,
                 });
-            } finally {
-                setToggling(false);
+            } else {
+                setActionMessage({
+                    type: 'success',
+                    text: copy.messages.toggled,
+                });
+                router.reload();
             }
-        };
-
-        setPasswordModalOpen(true);
+        } catch {
+            setActionMessage({
+                type: 'error',
+                text: copy.messages.networkError,
+            });
+        } finally {
+            setToggling(false);
+        }
     };
 
     const openDuplicateDialog = (coupon: AdminCouponRow) => {
@@ -184,53 +193,57 @@ export default function AdminCouponsPage() {
 
     const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
-    const confirmDuplicate = () => {
-        if (!duplicateCoupon) return;
+    const confirmDuplicate = async () => {
+        if (!duplicateCoupon) {
+            return;
+        }
+
         const coupon = duplicateCoupon;
         setDuplicateDialogOpen(false);
 
-        pendingAction.current = async () => {
-            setDuplicating(true);
-            setActionMessage(null);
-            const targetUrl = props.duplicateUrlTemplate.replace('__ID__', coupon.id);
+        setDuplicating(true);
+        setActionMessage(null);
+        const targetUrl = props.duplicateUrlTemplate.replace(
+            '__ID__',
+            coupon.id,
+        );
 
-            try {
-                const res = await fetch(targetUrl, {
-                    method: 'POST',
-                    headers: {
-                        Accept: 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-XSRF-TOKEN': getCsrfToken(),
-                    },
-                    body: JSON.stringify({
-                        code: duplicateCode.trim() ? duplicateCode.toUpperCase().trim() : null,
-                    }),
-                    credentials: 'same-origin',
-                });
+        try {
+            const res = await fetch(targetUrl, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': getCsrfToken(),
+                },
+                body: JSON.stringify({
+                    code: duplicateCode.trim()
+                        ? duplicateCode.toUpperCase().trim()
+                        : null,
+                }),
+                credentials: 'same-origin',
+            });
 
-                if (!res.ok) {
-                    setActionMessage({
-                        type: 'error',
-                        text: copy.messages.genericError,
-                    });
-                } else {
-                    setActionMessage({
-                        type: 'success',
-                        text: copy.messages.duplicated,
-                    });
-                    router.reload();
-                }
-            } catch {
+            if (!res.ok) {
                 setActionMessage({
                     type: 'error',
-                    text: copy.messages.networkError,
+                    text: copy.messages.genericError,
                 });
-            } finally {
-                setDuplicating(false);
+            } else {
+                setActionMessage({
+                    type: 'success',
+                    text: copy.messages.duplicated,
+                });
+                router.reload();
             }
-        };
-
-        setPasswordModalOpen(true);
+        } catch {
+            setActionMessage({
+                type: 'error',
+                text: copy.messages.networkError,
+            });
+        } finally {
+            setDuplicating(false);
+        }
     };
 
     // Columns configuration
@@ -249,7 +262,14 @@ export default function AdminCouponsPage() {
                 showUrlTemplate: props.showUrlTemplate,
             }),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [props.adminUi, currentSort, currentDirection, props.locale, props.permissions, props.showUrlTemplate],
+        [
+            props.adminUi,
+            currentSort,
+            currentDirection,
+            props.locale,
+            props.permissions,
+            props.showUrlTemplate,
+        ],
     );
 
     const table = useReactTable({
@@ -294,7 +314,9 @@ export default function AdminCouponsPage() {
                                     : 'default'
                             }
                         >
-                            <AlertDescription>{actionMessage.text}</AlertDescription>
+                            <AlertDescription>
+                                {actionMessage.text}
+                            </AlertDescription>
                         </Alert>
                     ) : null}
 
@@ -344,6 +366,10 @@ export default function AdminCouponsPage() {
 
             {/* Create / Edit Drawer */}
             <AdminCouponDrawer
+                // Keyed so a different coupon (or switching create/edit) mounts a
+                // fresh drawer with its own initial state, instead of an effect
+                // writing state on every render pass.
+                key={`${drawerMode ?? 'closed'}-${editingCoupon?.id ?? 'new'}`}
                 adminUi={props.adminUi}
                 categories={props.categories}
                 createUrl={props.createUrl}
@@ -392,7 +418,9 @@ export default function AdminCouponsPage() {
                             </Button>
                             <Button
                                 className={`min-h-11 ${
-                                    toggleTargetActive ? '' : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                                    toggleTargetActive
+                                        ? ''
+                                        : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
                                 }`}
                                 disabled={toggling}
                                 onClick={confirmToggle}
@@ -408,23 +436,34 @@ export default function AdminCouponsPage() {
             {/* Duplicate Dialog */}
             {duplicateCoupon ? (
                 <Dialog
-                    onOpenChange={(open) => !open && setDuplicateDialogOpen(false)}
+                    onOpenChange={(open) =>
+                        !open && setDuplicateDialogOpen(false)
+                    }
                     open={duplicateDialogOpen}
                 >
                     <DialogContent dir="ltr">
                         <DialogHeader>
                             <DialogTitle>{copy.duplicateTitle}</DialogTitle>
                             <DialogDescription>
-                                {copy.duplicateDescription.replace(':code', duplicateCoupon.code)}
+                                {copy.duplicateDescription.replace(
+                                    ':code',
+                                    duplicateCoupon.code,
+                                )}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="flex flex-col gap-1.5 py-2">
-                            <Label htmlFor="list-dup-code">{copy.duplicateCodeLabel}</Label>
+                            <Label htmlFor="list-dup-code">
+                                {copy.duplicateCodeLabel}
+                            </Label>
                             <Input
                                 className="min-h-11 font-mono uppercase"
                                 id="list-dup-code"
                                 maxLength={24}
-                                onChange={(e) => setDuplicateCode(e.target.value.toUpperCase())}
+                                onChange={(e) =>
+                                    setDuplicateCode(
+                                        e.target.value.toUpperCase(),
+                                    )
+                                }
                                 placeholder={copy.duplicateCodePlaceholder}
                                 value={duplicateCode}
                             />
@@ -446,34 +485,16 @@ export default function AdminCouponsPage() {
                                 type="button"
                             >
                                 <Copy aria-hidden="true" className="size-4" />
-                                <span>{duplicating ? copy.duplicating : copy.confirmDuplicate}</span>
+                                <span>
+                                    {duplicating
+                                        ? copy.duplicating
+                                        : copy.confirmDuplicate}
+                                </span>
                             </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
             ) : null}
-
-            {/* Password Confirmation Seam */}
-            <AdminPasswordConfirmDialog
-                confirmButtonText={copy.confirmPasswordButton}
-                confirmingButtonText={copy.confirmingPassword}
-                description={copy.passwordModalDescription}
-                onConfirmed={() => {
-                    setPasswordModalOpen(false);
-                    pendingAction.current?.();
-                    pendingAction.current = null;
-                }}
-                onOpenChange={(open) => {
-                    setPasswordModalOpen(open);
-                    if (!open) {
-                        pendingAction.current = null;
-                    }
-                }}
-                open={passwordModalOpen}
-                passwordLabel={copy.passwordLabel}
-                passwordPlaceholder={copy.passwordPlaceholder}
-                title={copy.passwordModalTitle}
-            />
         </div>
     );
 }
@@ -488,6 +509,7 @@ function CouponsPagination({
     pagination: AdminCouponsPageProps['pagination'];
 }) {
     const copy = adminUi.orders;
+
     if (pagination.lastPage <= 1) {
         return null;
     }
@@ -495,7 +517,8 @@ function CouponsPagination({
     return (
         <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
             <span className="tabular-nums">
-                {copy.page} {pagination.currentPage} {copy.of} {pagination.lastPage}
+                {copy.page} {pagination.currentPage} {copy.of}{' '}
+                {pagination.lastPage}
             </span>
             <div className="flex gap-2">
                 <Button
@@ -525,5 +548,6 @@ function CouponsPagination({
 
 function getCsrfToken(): string {
     const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+
     return match ? decodeURIComponent(match[1]) : '';
 }

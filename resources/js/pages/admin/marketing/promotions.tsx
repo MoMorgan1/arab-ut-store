@@ -1,10 +1,13 @@
 'use no memo'; // TanStack Table's mutable instances are not React Compiler compatible.
 
 import { Head, router, usePage } from '@inertiajs/react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import AdminMobileTabBar from '@/components/admin/admin-mobile-tabbar';
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
+import {
+    formatHalalahToSar,
+    parseSarToHalalah,
+} from '@/components/admin/admin-money';
 import AdminSidebar from '@/components/admin/admin-sidebar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -82,7 +85,10 @@ function promotionToForm(promotion: AdminPromotionRow): PromotionFormData {
             promotion.scope === 'category' ? (promotion.categoryId ?? '') : '',
         service_type: promotion.serviceType ?? '',
         discount_type: promotion.discountType,
-        value: String(promotion.value),
+        value:
+            promotion.discountType === 'fixed'
+                ? formatHalalahToSar(promotion.value)
+                : String(promotion.value),
         starts_at: promotion.startsAt ? promotion.startsAt.slice(0, 10) : '',
         ends_at: promotion.endsAt ? promotion.endsAt.slice(0, 10) : '',
         is_active: promotion.isActive,
@@ -115,9 +121,6 @@ export default function AdminPromotionsPage() {
         type: 'success' | 'error';
         text: string;
     } | null>(null);
-
-    const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-    const pendingAction = useRef<(() => void) | null>(null);
 
     const visitPromotions = useCallback(
         (filters: AdminPromotionsQueryState) => {
@@ -205,7 +208,10 @@ export default function AdminPromotionsPage() {
                     ? formData.service_type || null
                     : null,
             discount_type: formData.discount_type,
-            value: Number(formData.value),
+            value:
+                formData.discount_type === 'fixed'
+                    ? parseSarToHalalah(formData.value)
+                    : Number(formData.value),
             starts_at: formData.starts_at || null,
             ends_at: formData.ends_at || null,
             is_active: formData.is_active,
@@ -238,7 +244,7 @@ export default function AdminPromotionsPage() {
                     type: 'error',
                     text: copy.messages.validationError,
                 });
-            } else if (res.status === 423 || res.status === 403) {
+            } else if (res.status === 403) {
                 setSaveMessage({
                     type: 'error',
                     text: copy.messages.forbiddenError,
@@ -267,11 +273,6 @@ export default function AdminPromotionsPage() {
         }
     }
 
-    function requestSave() {
-        pendingAction.current = submitForm;
-        setPasswordModalOpen(true);
-    }
-
     function requestToggle(
         promotion: AdminPromotionRow,
         targetActive: boolean,
@@ -286,48 +287,43 @@ export default function AdminPromotionsPage() {
             return;
         }
 
-        const execute = async () => {
-            setToggling(true);
-            setToggleMessage(null);
+        setToggling(true);
+        setToggleMessage(null);
 
-            try {
-                const res = await fetch(
-                    `/admin/api/marketing/promotions/${togglePromotion.id}/status`,
-                    {
-                        body: JSON.stringify({ is_active: toggleTargetActive }),
-                        credentials: 'same-origin',
-                        headers: {
-                            Accept: 'application/json',
-                            'Content-Type': 'application/json',
-                            'X-XSRF-TOKEN': getCsrfToken(),
-                        },
-                        method: 'POST',
+        try {
+            const res = await fetch(
+                `/admin/api/marketing/promotions/${togglePromotion.id}/status`,
+                {
+                    body: JSON.stringify({ is_active: toggleTargetActive }),
+                    credentials: 'same-origin',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-XSRF-TOKEN': getCsrfToken(),
                     },
-                );
+                    method: 'POST',
+                },
+            );
 
-                if (!res.ok) {
-                    setToggleMessage({
-                        type: 'error',
-                        text: copy.messages.genericError,
-                    });
-                } else {
-                    setTogglePromotion(null);
-                    router.reload({
-                        only: ['promotions', 'pagination', 'counts'],
-                    });
-                }
-            } catch {
+            if (!res.ok) {
                 setToggleMessage({
                     type: 'error',
-                    text: copy.messages.networkError,
+                    text: copy.messages.genericError,
                 });
-            } finally {
-                setToggling(false);
+            } else {
+                setTogglePromotion(null);
+                router.reload({
+                    only: ['promotions', 'pagination', 'counts'],
+                });
             }
-        };
-
-        pendingAction.current = execute;
-        setPasswordModalOpen(true);
+        } catch {
+            setToggleMessage({
+                type: 'error',
+                text: copy.messages.networkError,
+            });
+        } finally {
+            setToggling(false);
+        }
     }
 
     return (
@@ -442,7 +438,7 @@ export default function AdminPromotionsPage() {
                         </Button>
                         <Button
                             disabled={saving}
-                            onClick={requestSave}
+                            onClick={submitForm}
                             type="button"
                         >
                             {saving ? copy.savingButton : copy.saveButton}
@@ -498,29 +494,6 @@ export default function AdminPromotionsPage() {
                     </DialogContent>
                 </Dialog>
             ) : null}
-
-            <AdminPasswordConfirmDialog
-                open={passwordModalOpen}
-                onOpenChange={(open) => {
-                    setPasswordModalOpen(open);
-
-                    if (!open) {
-                        pendingAction.current = null;
-                    }
-                }}
-                onConfirmed={() => {
-                    setPasswordModalOpen(false);
-                    pendingAction.current?.();
-                    pendingAction.current = null;
-                }}
-                title={copy.passwordModalTitle}
-                description={copy.passwordModalDescription}
-                passwordLabel={copy.passwordLabel}
-                passwordPlaceholder={copy.passwordPlaceholder}
-                confirmButtonText={copy.confirmPasswordButton}
-                confirmingButtonText={copy.confirmingPassword}
-                cancelButtonText={props.adminUi.common.cancel}
-            />
         </div>
     );
 }
@@ -609,7 +582,9 @@ function PromotionsTable({
                                           )
                                         : copy.typeFixedBadge.replace(
                                               ':value',
-                                              String(promotion.value / 100),
+                                              formatHalalahToSar(
+                                                  promotion.value,
+                                              ),
                                           )}
                                 </Badge>
                             </td>
@@ -792,11 +767,11 @@ function PromotionForm({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">{copy.scopeAll}</SelectItem>
-                        <SelectItem value="category">
-                            {copy.scopeCategory}
-                        </SelectItem>
                         <SelectItem value="service">
                             {copy.scopeService}
+                        </SelectItem>
+                        <SelectItem value="category">
+                            {copy.scopeCategory}
                         </SelectItem>
                     </SelectContent>
                 </Select>
@@ -890,8 +865,10 @@ function PromotionForm({
                 <Label htmlFor="promotion-value">{copy.valueLabel}</Label>
                 <Input
                     id="promotion-value"
-                    inputMode="numeric"
-                    min="1"
+                    inputMode="decimal"
+                    min="0.01"
+                    placeholder={data.discount_type === 'fixed' ? '0.00' : '10'}
+                    step={data.discount_type === 'fixed' ? '0.01' : '1'}
                     type="number"
                     value={data.value}
                     onChange={(e) => onChange('value', e.target.value)}

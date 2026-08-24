@@ -3,7 +3,6 @@ import { AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 
 import { formatAdminMoney } from '@/components/admin/admin-money';
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,7 +29,6 @@ export type AdminOrderRefundControlProps = {
     adminUi: AdminTranslations;
     locale: 'ar' | 'en';
     direction: 'ltr' | 'rtl';
-    confirmPasswordUrl?: string;
     variant?: 'card' | 'bar';
 };
 
@@ -58,7 +56,6 @@ export default function AdminOrderRefundControl({
     adminUi,
     locale,
     direction,
-    confirmPasswordUrl,
     variant = 'card',
 }: AdminOrderRefundControlProps) {
     const copy = adminUi.orderDetail.refund;
@@ -70,7 +67,6 @@ export default function AdminOrderRefundControl({
     const [pendingPayload, setPendingPayload] = useState<RefundPayload | null>(
         null,
     );
-    const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [feedback, setFeedback] = useState<{
         type: 'success' | 'error';
         message: string;
@@ -106,7 +102,6 @@ export default function AdminOrderRefundControl({
                     onSuccess: () => {
                         handled = true;
                         setShowDialog(false);
-                        setShowPasswordModal(false);
                         setFeedback({
                             message: copy.successMessage,
                             type: 'success',
@@ -126,13 +121,6 @@ export default function AdminOrderRefundControl({
                     },
                     onHttpException: (response) => {
                         handled = true;
-
-                        if (response.status === 423) {
-                            setShowDialog(false);
-                            setShowPasswordModal(true);
-
-                            return false;
-                        }
 
                         if (response.status === 409) {
                             setDialogError(copy.unavailable);
@@ -419,24 +407,6 @@ export default function AdminOrderRefundControl({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            <AdminPasswordConfirmDialog
-                cancelButtonText={copy.cancelButton}
-                confirmButtonText={copy.confirmPasswordButton}
-                confirmingButtonText={copy.confirmingPassword}
-                confirmPasswordUrl={confirmPasswordUrl}
-                description={copy.passwordModalDescription}
-                genericErrorText={copy.genericError}
-                inputId={`refund-password-confirm-${order.id}`}
-                invalidPasswordText={copy.invalidPassword}
-                networkErrorText={copy.networkError}
-                onConfirmed={() => executeRefund(pendingPayload ?? undefined)}
-                onOpenChange={setShowPasswordModal}
-                open={showPasswordModal}
-                passwordLabel={copy.passwordLabel}
-                passwordPlaceholder={copy.passwordPlaceholder}
-                title={copy.passwordModalTitle}
-            />
         </div>
     );
 }

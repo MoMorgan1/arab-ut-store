@@ -628,6 +628,7 @@ export type AdminTranslations = {
         };
     };
     coupons: {
+        loading: string;
         headTitle: string;
         title: string;
         description: string;
@@ -1506,7 +1507,6 @@ export type AdminSettingsPageProps = {
     teamUrls: AdminTeamUrls | null;
     servicePricing: AdminServicePricingData | null;
     servicePricingUrls: AdminServicePricingUrls | null;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -1682,7 +1682,6 @@ export type AdminOrderDetailPageProps = {
         currency: string;
     };
     refundUrl: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -1810,7 +1809,6 @@ export type AdminCustomerDetailPageProps = {
     statusUrl: string;
     contactUrl: string;
     walletAdjustUrl: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -1842,7 +1840,6 @@ export type AdminLoyaltyPageProps = {
     tiers: AdminLoyaltyTier[];
     kpis: AdminLoyaltyKpis;
     updateTierUrlTemplate: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -1929,7 +1926,6 @@ export type AdminCouponsPageProps = {
     statusUrlTemplate: string;
     duplicateUrlTemplate: string;
     showUrlTemplate: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -1995,7 +1991,6 @@ export type AdminCouponDetailPageProps = {
     statusUrl: string;
     duplicateUrl: string;
     listUrl: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -2194,7 +2189,6 @@ export type AdminProductDetailPageProps = {
     updateUrl: string;
     visibilityUrl: string;
     variantPriceUrlTemplate: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -2349,7 +2343,6 @@ export type AdminCategoriesPageProps = {
     };
     productsUrl?: string;
     visibilityUrlTemplate: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 

@@ -15,13 +15,12 @@ import {
     Users,
     XCircle,
 } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import AdminBadge from '@/components/admin/admin-badge';
 import type { AdminBadgeVariant } from '@/components/admin/admin-badge';
 import AdminMobileTabBar from '@/components/admin/admin-mobile-tabbar';
 import { formatAdminMoney } from '@/components/admin/admin-money';
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
 import AdminSidebar from '@/components/admin/admin-sidebar';
 import AdminCouponDrawer from '@/components/admin/coupons/admin-coupon-drawer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -44,7 +43,10 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import type { AdminCouponDetailPageProps, AdminTranslations } from '@/types/admin';
+import type {
+    AdminCouponDetailPageProps,
+    AdminTranslations,
+} from '@/types/admin';
 
 function resolveStatusBadge(
     status: string,
@@ -52,7 +54,11 @@ function resolveStatusBadge(
 ): { label: string; variant: AdminBadgeVariant; icon: typeof CheckCircle2 } {
     switch (status) {
         case 'active':
-            return { label: copy.active, variant: 'success', icon: CheckCircle2 };
+            return {
+                label: copy.active,
+                variant: 'success',
+                icon: CheckCircle2,
+            };
         case 'scheduled':
             return { label: copy.scheduled, variant: 'warning', icon: Clock };
         case 'paused':
@@ -62,7 +68,11 @@ function resolveStatusBadge(
         case 'exhausted':
             return { label: copy.exhausted, variant: 'danger', icon: XCircle };
         default:
-            return { label: copy.active, variant: 'neutral', icon: CheckCircle2 };
+            return {
+                label: copy.active,
+                variant: 'neutral',
+                icon: CheckCircle2,
+            };
     }
 }
 
@@ -71,7 +81,9 @@ export default function AdminCouponDetailPage() {
     const copy = props.adminUi.coupons;
     const isLocalized = url.startsWith('/en/admin');
     const orderBasePath = isLocalized ? '/en/admin/orders' : '/admin/orders';
-    const customerBasePath = isLocalized ? '/en/admin/customers' : '/admin/customers';
+    const customerBasePath = isLocalized
+        ? '/en/admin/customers'
+        : '/admin/customers';
 
     const canManage = props.permissions.includes('marketing.manage');
     const [editDrawerOpen, setEditDrawerOpen] = useState(false);
@@ -87,20 +99,23 @@ export default function AdminCouponDetailPage() {
         text: string;
     } | null>(null);
 
-    const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-    const pendingAction = useRef<(() => void) | null>(null);
-
     const coupon = props.coupon;
     const kpis = props.kpis;
     const badge = resolveStatusBadge(coupon.status, copy);
 
     const usagePercent =
         kpis.usageLimit !== null && kpis.usageLimit > 0
-            ? Math.min(100, Math.round((kpis.usedCount / kpis.usageLimit) * 100))
+            ? Math.min(
+                  100,
+                  Math.round((kpis.usedCount / kpis.usageLimit) * 100),
+              )
             : 0;
 
     const maxDailyRedemptions = useMemo(() => {
-        if (!props.chart || props.chart.length === 0) return 1;
+        if (!props.chart || props.chart.length === 0) {
+            return 1;
+        }
+
         return Math.max(1, ...props.chart.map((p) => p.redemptions));
     }, [props.chart]);
 
@@ -109,35 +124,43 @@ export default function AdminCouponDetailPage() {
         setToggleDialogOpen(true);
     };
 
-    const confirmToggle = () => {
+    const confirmToggle = async () => {
         setToggleDialogOpen(false);
-        pendingAction.current = async () => {
-            setToggling(true);
-            setActionMessage(null);
-            try {
-                const res = await fetch(props.statusUrl, {
-                    method: 'POST',
-                    headers: {
-                        Accept: 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-XSRF-TOKEN': getCsrfToken(),
-                    },
-                    body: JSON.stringify({ is_active: !coupon.isActive }),
-                    credentials: 'same-origin',
+        setToggling(true);
+        setActionMessage(null);
+
+        try {
+            const res = await fetch(props.statusUrl, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': getCsrfToken(),
+                },
+                body: JSON.stringify({ is_active: !coupon.isActive }),
+                credentials: 'same-origin',
+            });
+
+            if (!res.ok) {
+                setActionMessage({
+                    type: 'error',
+                    text: copy.messages.genericError,
                 });
-                if (!res.ok) {
-                    setActionMessage({ type: 'error', text: copy.messages.genericError });
-                } else {
-                    setActionMessage({ type: 'success', text: copy.messages.toggled });
-                    router.reload();
-                }
-            } catch {
-                setActionMessage({ type: 'error', text: copy.messages.networkError });
-            } finally {
-                setToggling(false);
+            } else {
+                setActionMessage({
+                    type: 'success',
+                    text: copy.messages.toggled,
+                });
+                router.reload();
             }
-        };
-        setPasswordModalOpen(true);
+        } catch {
+            setActionMessage({
+                type: 'error',
+                text: copy.messages.networkError,
+            });
+        } finally {
+            setToggling(false);
+        }
     };
 
     const requestDuplicate = () => {
@@ -145,41 +168,51 @@ export default function AdminCouponDetailPage() {
         setDuplicateDialogOpen(true);
     };
 
-    const confirmDuplicate = () => {
+    const confirmDuplicate = async () => {
         setDuplicateDialogOpen(false);
-        pendingAction.current = async () => {
-            setDuplicating(true);
-            setActionMessage(null);
-            try {
-                const res = await fetch(props.duplicateUrl, {
-                    method: 'POST',
-                    headers: {
-                        Accept: 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-XSRF-TOKEN': getCsrfToken(),
-                    },
-                    body: JSON.stringify({
-                        code: duplicateCode.trim() ? duplicateCode.toUpperCase().trim() : null,
-                    }),
-                    credentials: 'same-origin',
+        setDuplicating(true);
+        setActionMessage(null);
+
+        try {
+            const res = await fetch(props.duplicateUrl, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': getCsrfToken(),
+                },
+                body: JSON.stringify({
+                    code: duplicateCode.trim()
+                        ? duplicateCode.toUpperCase().trim()
+                        : null,
+                }),
+                credentials: 'same-origin',
+            });
+
+            if (!res.ok) {
+                setActionMessage({
+                    type: 'error',
+                    text: copy.messages.genericError,
                 });
-                if (!res.ok) {
-                    setActionMessage({ type: 'error', text: copy.messages.genericError });
-                } else {
-                    const json = (await res.json()) as { data: { id: string } };
-                    setActionMessage({ type: 'success', text: copy.messages.duplicated });
-                    const newDetailUrl = isLocalized
-                        ? `/en/admin/marketing/coupons/${json.data.id}`
-                        : `/admin/marketing/coupons/${json.data.id}`;
-                    router.visit(newDetailUrl);
-                }
-            } catch {
-                setActionMessage({ type: 'error', text: copy.messages.networkError });
-            } finally {
-                setDuplicating(false);
+            } else {
+                const json = (await res.json()) as { data: { id: string } };
+                setActionMessage({
+                    type: 'success',
+                    text: copy.messages.duplicated,
+                });
+                const newDetailUrl = isLocalized
+                    ? `/en/admin/marketing/coupons/${json.data.id}`
+                    : `/admin/marketing/coupons/${json.data.id}`;
+                router.visit(newDetailUrl);
             }
-        };
-        setPasswordModalOpen(true);
+        } catch {
+            setActionMessage({
+                type: 'error',
+                text: copy.messages.networkError,
+            });
+        } finally {
+            setDuplicating(false);
+        }
     };
 
     return (
@@ -203,7 +236,10 @@ export default function AdminCouponDetailPage() {
                                 className="inline-flex min-h-11 items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
                                 href={props.listUrl}
                             >
-                                <ArrowLeft aria-hidden="true" className="size-4" />
+                                <ArrowLeft
+                                    aria-hidden="true"
+                                    className="size-4"
+                                />
                                 <span>{copy.backToCoupons}</span>
                             </Link>
                         </div>
@@ -214,13 +250,18 @@ export default function AdminCouponDetailPage() {
                                     <h1 className="font-mono text-2xl font-bold tracking-tight text-foreground md:text-3xl">
                                         {coupon.code}
                                     </h1>
-                                    <AdminBadge icon={badge.icon} variant={badge.variant}>
+                                    <AdminBadge
+                                        icon={badge.icon}
+                                        variant={badge.variant}
+                                    >
                                         {badge.label}
                                     </AdminBadge>
                                 </div>
-                                {(coupon.descriptionEn || coupon.descriptionAr) ? (
+                                {coupon.descriptionEn ||
+                                coupon.descriptionAr ? (
                                     <p className="text-sm text-muted-foreground">
-                                        {coupon.descriptionEn || coupon.descriptionAr}
+                                        {coupon.descriptionEn ||
+                                            coupon.descriptionAr}
                                     </p>
                                 ) : null}
                             </div>
@@ -234,15 +275,18 @@ export default function AdminCouponDetailPage() {
                                         type="button"
                                         variant="outline"
                                     >
-                                        <Copy aria-hidden="true" className="size-4" />
+                                        <Copy
+                                            aria-hidden="true"
+                                            className="size-4"
+                                        />
                                         <span>{copy.duplicateButton}</span>
                                     </Button>
 
                                     <Button
                                         className={`min-h-11 gap-1.5 text-xs ${
                                             coupon.isActive
-                                                ? 'text-status-warning border-status-warning/40 hover:bg-status-warning/10'
-                                                : 'text-status-success border-status-success/40 hover:bg-status-success/10'
+                                                ? 'border-status-warning/40 text-status-warning hover:bg-status-warning/10'
+                                                : 'border-status-success/40 text-status-success hover:bg-status-success/10'
                                         }`}
                                         onClick={requestToggle}
                                         type="button"
@@ -250,12 +294,18 @@ export default function AdminCouponDetailPage() {
                                     >
                                         {coupon.isActive ? (
                                             <>
-                                                <Pause aria-hidden="true" className="size-4" />
+                                                <Pause
+                                                    aria-hidden="true"
+                                                    className="size-4"
+                                                />
                                                 <span>{copy.pauseButton}</span>
                                             </>
                                         ) : (
                                             <>
-                                                <Play aria-hidden="true" className="size-4" />
+                                                <Play
+                                                    aria-hidden="true"
+                                                    className="size-4"
+                                                />
                                                 <span>{copy.resumeButton}</span>
                                             </>
                                         )}
@@ -266,7 +316,10 @@ export default function AdminCouponDetailPage() {
                                         onClick={() => setEditDrawerOpen(true)}
                                         type="button"
                                     >
-                                        <Edit aria-hidden="true" className="size-4" />
+                                        <Edit
+                                            aria-hidden="true"
+                                            className="size-4"
+                                        />
                                         <span>{copy.editButton}</span>
                                     </Button>
                                 </div>
@@ -275,8 +328,16 @@ export default function AdminCouponDetailPage() {
                     </header>
 
                     {actionMessage ? (
-                        <Alert variant={actionMessage.type === 'error' ? 'destructive' : 'default'}>
-                            <AlertDescription>{actionMessage.text}</AlertDescription>
+                        <Alert
+                            variant={
+                                actionMessage.type === 'error'
+                                    ? 'destructive'
+                                    : 'default'
+                            }
+                        >
+                            <AlertDescription>
+                                {actionMessage.text}
+                            </AlertDescription>
                         </Alert>
                     ) : null}
 
@@ -286,8 +347,13 @@ export default function AdminCouponDetailPage() {
                             {/* KPI 1: Redemptions */}
                             <div className="flex flex-col justify-between gap-1.5 rounded-xl border border-border bg-card p-4">
                                 <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
-                                    <ShoppingBag aria-hidden="true" className="size-4 shrink-0 text-primary" />
-                                    <span className="truncate">{copy.kpiRedemptions}</span>
+                                    <ShoppingBag
+                                        aria-hidden="true"
+                                        className="size-4 shrink-0 text-primary"
+                                    />
+                                    <span className="truncate">
+                                        {copy.kpiRedemptions}
+                                    </span>
                                 </dt>
                                 <dd className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl lg:text-3xl">
                                     {kpis.usageLimit !== null
@@ -304,7 +370,9 @@ export default function AdminCouponDetailPage() {
                                                       ? 'bg-status-warning'
                                                       : 'bg-primary'
                                             }`}
-                                            style={{ width: `${usagePercent}%` }}
+                                            style={{
+                                                width: `${usagePercent}%`,
+                                            }}
                                         />
                                     </div>
                                 ) : (
@@ -317,8 +385,13 @@ export default function AdminCouponDetailPage() {
                             {/* KPI 2: Unique Customers */}
                             <div className="flex flex-col justify-between gap-1.5 rounded-xl border border-border bg-card p-4">
                                 <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
-                                    <Users aria-hidden="true" className="size-4 shrink-0 text-primary" />
-                                    <span className="truncate">{copy.kpiUniqueCustomers}</span>
+                                    <Users
+                                        aria-hidden="true"
+                                        className="size-4 shrink-0 text-primary"
+                                    />
+                                    <span className="truncate">
+                                        {copy.kpiUniqueCustomers}
+                                    </span>
                                 </dt>
                                 <dd className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl lg:text-3xl">
                                     {kpis.uniqueCustomers}
@@ -331,11 +404,19 @@ export default function AdminCouponDetailPage() {
                             {/* KPI 3: Revenue Attributed */}
                             <div className="flex flex-col justify-between gap-1.5 rounded-xl border border-border bg-card p-4">
                                 <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
-                                    <CircleDollarSign aria-hidden="true" className="size-4 shrink-0 text-primary" />
-                                    <span className="truncate">{copy.kpiRevenueAttributed}</span>
+                                    <CircleDollarSign
+                                        aria-hidden="true"
+                                        className="size-4 shrink-0 text-primary"
+                                    />
+                                    <span className="truncate">
+                                        {copy.kpiRevenueAttributed}
+                                    </span>
                                 </dt>
                                 <dd className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl lg:text-3xl">
-                                    {formatAdminMoney(kpis.revenueAttributed, props.locale)}
+                                    {formatAdminMoney(
+                                        kpis.revenueAttributed,
+                                        props.locale,
+                                    )}
                                 </dd>
                                 <span className="text-[11px] text-muted-foreground">
                                     {copy.kpiPaidOrdersNote}
@@ -345,11 +426,19 @@ export default function AdminCouponDetailPage() {
                             {/* KPI 4: Total Discount Given */}
                             <div className="flex flex-col justify-between gap-1.5 rounded-xl border border-border bg-card p-4">
                                 <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
-                                    <CircleDollarSign aria-hidden="true" className="size-4 shrink-0 text-primary" />
-                                    <span className="truncate">{copy.kpiTotalDiscount}</span>
+                                    <CircleDollarSign
+                                        aria-hidden="true"
+                                        className="size-4 shrink-0 text-primary"
+                                    />
+                                    <span className="truncate">
+                                        {copy.kpiTotalDiscount}
+                                    </span>
                                 </dt>
                                 <dd className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl lg:text-3xl">
-                                    {formatAdminMoney(kpis.totalDiscountGiven, props.locale)}
+                                    {formatAdminMoney(
+                                        kpis.totalDiscountGiven,
+                                        props.locale,
+                                    )}
                                 </dd>
                                 <span className="text-[11px] text-muted-foreground">
                                     {copy.kpiPaidOrdersNote}
@@ -361,7 +450,10 @@ export default function AdminCouponDetailPage() {
                     {/* Released Redemptions Notice */}
                     {kpis.releasedRedemptionsCount > 0 ? (
                         <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/10 p-4 text-xs leading-relaxed text-foreground">
-                            <Info aria-hidden="true" className="size-4 shrink-0 text-primary mt-0.5" />
+                            <Info
+                                aria-hidden="true"
+                                className="mt-0.5 size-4 shrink-0 text-primary"
+                            />
                             <div className="flex flex-col gap-0.5">
                                 <p className="font-semibold text-primary">
                                     {copy.releasedNotice.replace(
@@ -395,21 +487,28 @@ export default function AdminCouponDetailPage() {
                                             const barHeightPercent = Math.max(
                                                 12,
                                                 Math.round(
-                                                    (point.redemptions / maxDailyRedemptions) * 100,
+                                                    (point.redemptions /
+                                                        maxDailyRedemptions) *
+                                                        100,
                                                 ),
                                             );
+
                                             return (
                                                 <div
-                                                    className="group relative flex flex-1 min-w-[28px] flex-col items-center gap-1"
+                                                    className="group relative flex min-w-[28px] flex-1 flex-col items-center gap-1"
                                                     key={point.date}
                                                 >
                                                     {/* Tooltip */}
-                                                    <div className="pointer-events-none absolute -top-10 z-10 hidden whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-[11px] font-medium text-popover-foreground shadow-md group-hover:block">
-                                                        {point.date}: {point.redemptions} {copy.kpiRedemptions}
+                                                    <div className="pointer-events-none absolute -top-10 z-10 hidden rounded-md border border-border bg-popover px-2 py-1 text-[11px] font-medium whitespace-nowrap text-popover-foreground shadow-md group-hover:block">
+                                                        {point.date}:{' '}
+                                                        {point.redemptions}{' '}
+                                                        {copy.kpiRedemptions}
                                                     </div>
                                                     <div
                                                         className="w-full rounded-t-sm bg-primary/80 transition-all hover:bg-primary"
-                                                        style={{ height: `${barHeightPercent}%` }}
+                                                        style={{
+                                                            height: `${barHeightPercent}%`,
+                                                        }}
                                                     />
                                                     <span className="text-[10px] text-muted-foreground tabular-nums">
                                                         {point.date.slice(5)}
@@ -455,7 +554,10 @@ export default function AdminCouponDetailPage() {
                     </div>
 
                     {/* Recent Redemptions Table */}
-                    <section aria-label={copy.recentRedemptionsTitle} className="space-y-3">
+                    <section
+                        aria-label={copy.recentRedemptionsTitle}
+                        className="space-y-3"
+                    >
                         <h2 className="text-base font-bold tracking-tight text-foreground">
                             {copy.recentRedemptionsTitle}
                         </h2>
@@ -464,63 +566,97 @@ export default function AdminCouponDetailPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>{copy.orderColumn}</TableHead>
-                                        <TableHead>{copy.customerColumn}</TableHead>
-                                        <TableHead>{copy.totalColumn}</TableHead>
-                                        <TableHead>{copy.discountColumn}</TableHead>
-                                        <TableHead>{copy.statusColumn}</TableHead>
+                                        <TableHead>
+                                            {copy.orderColumn}
+                                        </TableHead>
+                                        <TableHead>
+                                            {copy.customerColumn}
+                                        </TableHead>
+                                        <TableHead>
+                                            {copy.totalColumn}
+                                        </TableHead>
+                                        <TableHead>
+                                            {copy.discountColumn}
+                                        </TableHead>
+                                        <TableHead>
+                                            {copy.statusColumn}
+                                        </TableHead>
                                         <TableHead>{copy.dateColumn}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {props.recentRedemptions && props.recentRedemptions.length > 0 ? (
-                                        props.recentRedemptions.map((redemption) => (
-                                            <TableRow key={redemption.id}>
-                                                <TableCell>
-                                                    <Link
-                                                        className="font-mono text-xs font-semibold text-foreground underline decoration-border underline-offset-4 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
-                                                        href={`${orderBasePath}/${redemption.orderId}`}
-                                                    >
-                                                        {redemption.orderNumber}
-                                                    </Link>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex flex-col">
+                                    {props.recentRedemptions &&
+                                    props.recentRedemptions.length > 0 ? (
+                                        props.recentRedemptions.map(
+                                            (redemption) => (
+                                                <TableRow key={redemption.id}>
+                                                    <TableCell>
                                                         <Link
-                                                            className="text-xs font-medium text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-                                                            href={`${customerBasePath}/${redemption.customer.id}`}
+                                                            className="font-mono text-xs font-semibold text-foreground underline decoration-border underline-offset-4 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
+                                                            href={`${orderBasePath}/${redemption.orderId}`}
                                                         >
-                                                            {redemption.customer.name}
+                                                            {
+                                                                redemption.orderNumber
+                                                            }
                                                         </Link>
-                                                        <span className="text-[11px] text-muted-foreground">
-                                                            {redemption.customer.email}
-                                                        </span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-xs font-semibold tabular-nums text-foreground">
-                                                    {formatAdminMoney(redemption.orderTotal, props.locale)}
-                                                </TableCell>
-                                                <TableCell className="text-xs font-semibold tabular-nums text-status-success">
-                                                    {formatAdminMoney(redemption.discount, props.locale)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <AdminBadge
-                                                        variant={
-                                                            redemption.isPaid
-                                                                ? 'success'
-                                                                : redemption.orderStatus === 'cancelled'
-                                                                  ? 'danger'
-                                                                  : 'neutral'
-                                                        }
-                                                    >
-                                                        {redemption.orderStatus}
-                                                    </AdminBadge>
-                                                </TableCell>
-                                                <TableCell className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">
-                                                    {redemption.redeemedAt.slice(0, 16).replace('T', ' ')}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-col">
+                                                            <Link
+                                                                className="text-xs font-medium text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                                                                href={`${customerBasePath}/${redemption.customer.id}`}
+                                                            >
+                                                                {
+                                                                    redemption
+                                                                        .customer
+                                                                        .name
+                                                                }
+                                                            </Link>
+                                                            <span className="text-[11px] text-muted-foreground">
+                                                                {
+                                                                    redemption
+                                                                        .customer
+                                                                        .email
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-xs font-semibold text-foreground tabular-nums">
+                                                        {formatAdminMoney(
+                                                            redemption.orderTotal,
+                                                            props.locale,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-xs font-semibold text-status-success tabular-nums">
+                                                        {formatAdminMoney(
+                                                            redemption.discount,
+                                                            props.locale,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <AdminBadge
+                                                            variant={
+                                                                redemption.isPaid
+                                                                    ? 'success'
+                                                                    : redemption.orderStatus ===
+                                                                        'cancelled'
+                                                                      ? 'danger'
+                                                                      : 'neutral'
+                                                            }
+                                                        >
+                                                            {
+                                                                redemption.orderStatus
+                                                            }
+                                                        </AdminBadge>
+                                                    </TableCell>
+                                                    <TableCell className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+                                                        {redemption.redeemedAt
+                                                            .slice(0, 16)
+                                                            .replace('T', ' ')}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ),
+                                        )
                                     ) : (
                                         <TableRow>
                                             <TableCell
@@ -558,21 +694,31 @@ export default function AdminCouponDetailPage() {
             />
 
             {/* Duplicate Dialog */}
-            <Dialog onOpenChange={setDuplicateDialogOpen} open={duplicateDialogOpen}>
+            <Dialog
+                onOpenChange={setDuplicateDialogOpen}
+                open={duplicateDialogOpen}
+            >
                 <DialogContent dir="ltr">
                     <DialogHeader>
                         <DialogTitle>{copy.duplicateTitle}</DialogTitle>
                         <DialogDescription>
-                            {copy.duplicateDescription.replace(':code', coupon.code)}
+                            {copy.duplicateDescription.replace(
+                                ':code',
+                                coupon.code,
+                            )}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="flex flex-col gap-1.5 py-2">
-                        <Label htmlFor="dup-code">{copy.duplicateCodeLabel}</Label>
+                        <Label htmlFor="dup-code">
+                            {copy.duplicateCodeLabel}
+                        </Label>
                         <Input
                             className="min-h-11 font-mono uppercase"
                             id="dup-code"
                             maxLength={24}
-                            onChange={(e) => setDuplicateCode(e.target.value.toUpperCase())}
+                            onChange={(e) =>
+                                setDuplicateCode(e.target.value.toUpperCase())
+                            }
                             placeholder={copy.duplicateCodePlaceholder}
                             value={duplicateCode}
                         />
@@ -594,7 +740,11 @@ export default function AdminCouponDetailPage() {
                             type="button"
                         >
                             <Copy aria-hidden="true" className="size-4" />
-                            <span>{duplicating ? copy.duplicating : copy.confirmDuplicate}</span>
+                            <span>
+                                {duplicating
+                                    ? copy.duplicating
+                                    : copy.confirmDuplicate}
+                            </span>
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -605,12 +755,20 @@ export default function AdminCouponDetailPage() {
                 <DialogContent dir="ltr">
                     <DialogHeader>
                         <DialogTitle>
-                            {coupon.isActive ? copy.deactivateTitle : copy.activateTitle}
+                            {coupon.isActive
+                                ? copy.deactivateTitle
+                                : copy.activateTitle}
                         </DialogTitle>
                         <DialogDescription>
                             {coupon.isActive
-                                ? copy.deactivateDescription.replace(':code', coupon.code)
-                                : copy.activateDescription.replace(':code', coupon.code)}
+                                ? copy.deactivateDescription.replace(
+                                      ':code',
+                                      coupon.code,
+                                  )
+                                : copy.activateDescription.replace(
+                                      ':code',
+                                      coupon.code,
+                                  )}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="flex flex-row items-center justify-end gap-2 pt-2">
@@ -625,7 +783,9 @@ export default function AdminCouponDetailPage() {
                         </Button>
                         <Button
                             className={`min-h-11 ${
-                                coupon.isActive ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''
+                                coupon.isActive
+                                    ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                                    : ''
                             }`}
                             disabled={toggling}
                             onClick={confirmToggle}
@@ -636,33 +796,12 @@ export default function AdminCouponDetailPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            {/* Password confirmation dialog */}
-            <AdminPasswordConfirmDialog
-                confirmButtonText={copy.confirmPasswordButton}
-                confirmingButtonText={copy.confirmingPassword}
-                description={copy.passwordModalDescription}
-                onConfirmed={() => {
-                    setPasswordModalOpen(false);
-                    pendingAction.current?.();
-                    pendingAction.current = null;
-                }}
-                onOpenChange={(open) => {
-                    setPasswordModalOpen(open);
-                    if (!open) {
-                        pendingAction.current = null;
-                    }
-                }}
-                open={passwordModalOpen}
-                passwordLabel={copy.passwordLabel}
-                passwordPlaceholder={copy.passwordPlaceholder}
-                title={copy.passwordModalTitle}
-            />
         </div>
     );
 }
 
 function getCsrfToken(): string {
     const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+
     return match ? decodeURIComponent(match[1]) : '';
 }

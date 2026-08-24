@@ -1,6 +1,6 @@
 'use no memo'; // TanStack Table exposes mutable row objects.
 
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import type { Row } from '@tanstack/react-table';
 import {
     CheckCircle2,
@@ -26,11 +26,12 @@ export type AdminCouponsMobileCardProps = {
     onToggle: (coupon: AdminCouponRow, targetActive: boolean) => void;
     permissions: string[];
     row: Row<AdminCouponRow>;
-    showUrlTemplate?: string;
+    showUrlTemplate: string;
 };
 
 function formatMoneySar(halalah: number, locale: 'ar' | 'en'): string {
     const riyals = halalah / 100;
+
     return (
         new Intl.NumberFormat(locale, {
             minimumFractionDigits: 2,
@@ -45,7 +46,11 @@ function resolveStatusBadge(
 ): { label: string; variant: AdminBadgeVariant; icon: typeof CheckCircle2 } {
     switch (status) {
         case 'active':
-            return { label: copy.active, variant: 'success', icon: CheckCircle2 };
+            return {
+                label: copy.active,
+                variant: 'success',
+                icon: CheckCircle2,
+            };
         case 'scheduled':
             return { label: copy.scheduled, variant: 'warning', icon: Clock };
         case 'paused':
@@ -55,7 +60,11 @@ function resolveStatusBadge(
         case 'exhausted':
             return { label: copy.exhausted, variant: 'danger', icon: XCircle };
         default:
-            return { label: copy.active, variant: 'neutral', icon: CheckCircle2 };
+            return {
+                label: copy.active,
+                variant: 'neutral',
+                icon: CheckCircle2,
+            };
     }
 }
 
@@ -72,13 +81,7 @@ export default function AdminCouponsMobileCard({
     const copy = adminUi.coupons;
     const coupon = row.original;
     const canManage = permissions.includes('marketing.manage');
-    const { url } = usePage();
-    const isLocalized = url.startsWith('/en/admin');
-    const detailUrl = showUrlTemplate
-        ? showUrlTemplate.replace('__ID__', coupon.id)
-        : (isLocalized
-            ? `/en/admin/marketing/coupons/${coupon.id}`
-            : `/admin/marketing/coupons/${coupon.id}`);
+    const detailUrl = showUrlTemplate.replace('__ID__', coupon.id);
 
     const badge = resolveStatusBadge(coupon.status, copy);
     const isPercent = coupon.discountType === 'percent';
@@ -93,15 +96,23 @@ export default function AdminCouponsMobileCard({
 
     const hasLimit = coupon.usageLimit !== null && coupon.usageLimit > 0;
     const usagePercent = hasLimit
-        ? Math.min(100, Math.round((coupon.usedCount / (coupon.usageLimit as number)) * 100))
+        ? Math.min(
+              100,
+              Math.round(
+                  (coupon.usedCount / (coupon.usageLimit as number)) * 100,
+              ),
+          )
         : 0;
 
     const starts = coupon.startsAt ? coupon.startsAt.slice(0, 10) : null;
     const ends = coupon.endsAt ? coupon.endsAt.slice(0, 10) : null;
 
     let windowText = copy.always;
+
     if (starts && ends) {
-        windowText = copy.window.replace(':from', starts).replace(':until', ends);
+        windowText = copy.window
+            .replace(':from', starts)
+            .replace(':until', ends);
     } else if (starts) {
         windowText = copy.from.replace(':date', starts);
     } else if (ends) {
@@ -109,13 +120,16 @@ export default function AdminCouponsMobileCard({
     }
 
     let scopeText = copy.scopeOrder;
+
     if (coupon.scope === 'category') {
         scopeText = copy.scopeCategory;
+
         if (coupon.targets && coupon.targets.length > 0) {
             scopeText += `: ${coupon.targets.map((t) => t.name).join(', ')}`;
         }
     } else if (coupon.scope === 'product') {
         scopeText = copy.scopeProduct;
+
         if (coupon.targets && coupon.targets.length > 0) {
             scopeText += `: ${coupon.targets.map((t) => t.name).join(', ')}`;
         }
@@ -138,7 +152,9 @@ export default function AdminCouponsMobileCard({
                         {coupon.code}
                     </Link>
                     {description ? (
-                        <p className="text-xs text-muted-foreground">{description}</p>
+                        <p className="text-xs text-muted-foreground">
+                            {description}
+                        </p>
                     ) : null}
                 </div>
                 <AdminBadge icon={badge.icon} variant={badge.variant}>
@@ -150,31 +166,50 @@ export default function AdminCouponsMobileCard({
             <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted/25 p-3 text-xs">
                 {/* Discount & Cap */}
                 <div className="flex flex-col gap-0.5">
-                    <span className="text-muted-foreground">{copy.columns.discount}</span>
-                    <span className="font-semibold tabular-nums text-foreground">
+                    <span className="text-muted-foreground">
+                        {copy.columns.discount}
+                    </span>
+                    <span className="font-semibold text-foreground tabular-nums">
                         {discountValue}
                     </span>
                     {isPercent && coupon.maximumDiscountHalalah ? (
                         <span className="text-[11px] text-muted-foreground">
-                            {copy.capAmount.replace(':amount', formatMoneySar(coupon.maximumDiscountHalalah, locale))}
+                            {copy.capAmount.replace(
+                                ':amount',
+                                formatMoneySar(
+                                    coupon.maximumDiscountHalalah,
+                                    locale,
+                                ),
+                            )}
                         </span>
                     ) : null}
                     {coupon.minimumOrderHalalah > 0 ? (
                         <span className="text-[11px] text-muted-foreground">
-                            {copy.minAmount.replace(':amount', formatMoneySar(coupon.minimumOrderHalalah, locale))}
+                            {copy.minAmount.replace(
+                                ':amount',
+                                formatMoneySar(
+                                    coupon.minimumOrderHalalah,
+                                    locale,
+                                ),
+                            )}
                         </span>
                     ) : null}
                 </div>
 
                 {/* Usage Progress */}
                 <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground">{copy.columns.usage}</span>
-                    <span className="font-semibold tabular-nums text-foreground">
+                    <span className="text-muted-foreground">
+                        {copy.columns.usage}
+                    </span>
+                    <span className="font-semibold text-foreground tabular-nums">
                         {hasLimit
                             ? copy.progressText
                                   .replace(':used', String(coupon.usedCount))
                                   .replace(':limit', String(coupon.usageLimit))
-                            : copy.progressUnlimited.replace(':used', String(coupon.usedCount))}
+                            : copy.progressUnlimited.replace(
+                                  ':used',
+                                  String(coupon.usedCount),
+                              )}
                     </span>
                     {hasLimit ? (
                         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -194,16 +229,25 @@ export default function AdminCouponsMobileCard({
 
                 {/* Scope */}
                 <div className="flex flex-col gap-0.5">
-                    <span className="text-muted-foreground">{copy.columns.scope}</span>
-                    <span className="truncate font-medium text-foreground" title={scopeText}>
+                    <span className="text-muted-foreground">
+                        {copy.columns.scope}
+                    </span>
+                    <span
+                        className="truncate font-medium text-foreground"
+                        title={scopeText}
+                    >
                         {scopeText}
                     </span>
                 </div>
 
                 {/* Window */}
                 <div className="flex flex-col gap-0.5">
-                    <span className="text-muted-foreground">{copy.columns.window}</span>
-                    <span className="font-medium text-foreground">{windowText}</span>
+                    <span className="text-muted-foreground">
+                        {copy.columns.window}
+                    </span>
+                    <span className="font-medium text-foreground">
+                        {windowText}
+                    </span>
                 </div>
             </div>
 
@@ -231,9 +275,15 @@ export default function AdminCouponsMobileCard({
                         </Button>
 
                         <Button
-                            aria-label={coupon.isActive ? copy.pauseButton : copy.resumeButton}
+                            aria-label={
+                                coupon.isActive
+                                    ? copy.pauseButton
+                                    : copy.resumeButton
+                            }
                             className={`min-h-11 min-w-11 ${
-                                coupon.isActive ? 'text-status-warning' : 'text-status-success'
+                                coupon.isActive
+                                    ? 'text-status-warning'
+                                    : 'text-status-success'
                             }`}
                             onClick={() => onToggle(coupon, !coupon.isActive)}
                             size="icon"

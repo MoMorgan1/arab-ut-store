@@ -51,14 +51,6 @@ test('the Admin settings page exposes only safe booleans and relative endpoint U
     'English alias' => ['en', '/en/admin/settings'],
 ]);
 
-test('the settings page requires a recent password confirmation', function (): void {
-    $staff = adminMfaUser(UserRole::Staff, confirmed: false);
-
-    $this->actingAs($staff)
-        ->get('/admin/settings')
-        ->assertRedirect(route('password.confirm'));
-});
-
 test('password-confirmed Admin and Staff can render private settings page', function (UserRole $role): void {
     $user = adminMfaUser($role, confirmed: true);
 

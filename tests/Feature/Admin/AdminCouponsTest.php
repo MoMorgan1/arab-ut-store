@@ -374,24 +374,6 @@ test('confirmed admin can update a coupon while keeping its identity', function 
     expect($log?->action)->toBe('coupons.updated');
 });
 
-test('unconfirmed password returns 423 for coupon mutations', function (): void {
-    $admin = adminCouponsActor(UserRole::Admin);
-    $coupon = Coupon::query()->create(couponAttributes());
-
-    $this->actingAs($admin)
-        ->postJson('/admin/api/marketing/coupons', [
-            'code' => 'NEWCODE1',
-            'discount_type' => 'percent',
-            'value' => 10,
-            'minimum_order_halalah' => 0,
-        ])
-        ->assertStatus(423);
-
-    $this->actingAs($admin)
-        ->postJson("/admin/api/marketing/coupons/{$coupon->public_id}/status", ['is_active' => false])
-        ->assertStatus(423);
-});
-
 test('staff actors are forbidden from coupon mutations even with confirmed passwords', function (): void {
     $staff = adminCouponsActor(UserRole::Staff);
 

@@ -1,6 +1,6 @@
 'use no memo'; // TanStack Table exposes mutable row and table objects.
 
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
     ArrowDown,
@@ -19,14 +19,7 @@ import {
 import AdminBadge from '@/components/admin/admin-badge';
 import type { AdminBadgeVariant } from '@/components/admin/admin-badge';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import type { AdminCouponRow, AdminCouponsQueryState, AdminTranslations } from '@/types/admin';
+import type { AdminCouponRow, AdminTranslations } from '@/types/admin';
 
 export type CouponSortKey = 'created_at' | 'code' | 'used_count' | 'value';
 
@@ -40,15 +33,18 @@ export type CouponColumnOptions = {
     onToggle: (coupon: AdminCouponRow, targetActive: boolean) => void;
     onDuplicate: (coupon: AdminCouponRow) => void;
     permissions: string[];
-    showUrlTemplate?: string;
+    showUrlTemplate: string;
 };
 
 function formatMoneySar(halalah: number, locale: 'ar' | 'en'): string {
     const riyals = halalah / 100;
-    return new Intl.NumberFormat(locale, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(riyals) + ' SAR';
+
+    return (
+        new Intl.NumberFormat(locale, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(riyals) + ' SAR'
+    );
 }
 
 function resolveStatusBadge(
@@ -57,7 +53,11 @@ function resolveStatusBadge(
 ): { label: string; variant: AdminBadgeVariant; icon: typeof CheckCircle2 } {
     switch (status) {
         case 'active':
-            return { label: copy.active, variant: 'success', icon: CheckCircle2 };
+            return {
+                label: copy.active,
+                variant: 'success',
+                icon: CheckCircle2,
+            };
         case 'scheduled':
             return { label: copy.scheduled, variant: 'warning', icon: Clock };
         case 'paused':
@@ -67,7 +67,11 @@ function resolveStatusBadge(
         case 'exhausted':
             return { label: copy.exhausted, variant: 'danger', icon: XCircle };
         default:
-            return { label: copy.active, variant: 'neutral', icon: CheckCircle2 };
+            return {
+                label: copy.active,
+                variant: 'neutral',
+                icon: CheckCircle2,
+            };
     }
 }
 
@@ -113,12 +117,21 @@ export function getAdminCouponColumns({
                 <span>{label}</span>
                 {isSorted ? (
                     currentDirection === 'asc' ? (
-                        <ArrowUp aria-hidden="true" className="size-3.5 text-primary" />
+                        <ArrowUp
+                            aria-hidden="true"
+                            className="size-3.5 text-primary"
+                        />
                     ) : (
-                        <ArrowDown aria-hidden="true" className="size-3.5 text-primary" />
+                        <ArrowDown
+                            aria-hidden="true"
+                            className="size-3.5 text-primary"
+                        />
                     )
                 ) : (
-                    <ArrowUpDown aria-hidden="true" className="size-3.5 opacity-50" />
+                    <ArrowUpDown
+                        aria-hidden="true"
+                        className="size-3.5 opacity-50"
+                    />
                 )}
             </button>
         );
@@ -130,17 +143,12 @@ export function getAdminCouponColumns({
             accessorKey: 'code',
             cell: ({ row }) => {
                 const coupon = row.original;
-                const { url } = usePage();
-                const isLocalized = url.startsWith('/en/admin');
-                const detailUrl = showUrlTemplate
-                    ? showUrlTemplate.replace('__ID__', coupon.id)
-                    : (isLocalized
-                        ? `/en/admin/marketing/coupons/${coupon.id}`
-                        : `/admin/marketing/coupons/${coupon.id}`);
+                const detailUrl = showUrlTemplate.replace('__ID__', coupon.id);
 
-                const description = locale === 'ar'
-                    ? (coupon.descriptionAr || coupon.descriptionEn)
-                    : (coupon.descriptionEn || coupon.descriptionAr);
+                const description =
+                    locale === 'ar'
+                        ? coupon.descriptionAr || coupon.descriptionEn
+                        : coupon.descriptionEn || coupon.descriptionAr;
 
                 return (
                     <div className="flex max-w-[200px] flex-col gap-0.5">
@@ -151,7 +159,10 @@ export function getAdminCouponColumns({
                             {coupon.code}
                         </Link>
                         {description ? (
-                            <span className="truncate text-xs text-muted-foreground" title={description}>
+                            <span
+                                className="truncate text-xs text-muted-foreground"
+                                title={description}
+                            >
                                 {description}
                             </span>
                         ) : null}
@@ -173,16 +184,35 @@ export function getAdminCouponColumns({
                     : formatMoneySar(coupon.value, locale);
 
                 const subItems: string[] = [];
-                if (isPercent && coupon.maximumDiscountHalalah !== null && coupon.maximumDiscountHalalah > 0) {
-                    subItems.push(copy.capAmount.replace(':amount', formatMoneySar(coupon.maximumDiscountHalalah, locale)));
+
+                if (
+                    isPercent &&
+                    coupon.maximumDiscountHalalah !== null &&
+                    coupon.maximumDiscountHalalah > 0
+                ) {
+                    subItems.push(
+                        copy.capAmount.replace(
+                            ':amount',
+                            formatMoneySar(
+                                coupon.maximumDiscountHalalah,
+                                locale,
+                            ),
+                        ),
+                    );
                 }
+
                 if (coupon.minimumOrderHalalah > 0) {
-                    subItems.push(copy.minAmount.replace(':amount', formatMoneySar(coupon.minimumOrderHalalah, locale)));
+                    subItems.push(
+                        copy.minAmount.replace(
+                            ':amount',
+                            formatMoneySar(coupon.minimumOrderHalalah, locale),
+                        ),
+                    );
                 }
 
                 return (
                     <div className="flex flex-col gap-0.5">
-                        <span className="text-sm font-semibold tabular-nums text-foreground">
+                        <span className="text-sm font-semibold text-foreground tabular-nums">
                             {mainText}
                         </span>
                         {subItems.length > 0 ? (
@@ -207,16 +237,23 @@ export function getAdminCouponColumns({
 
                 if (coupon.scope === 'category') {
                     scopeLabel = copy.scopeCategory;
+
                     if (coupon.targets && coupon.targets.length > 0) {
-                        detailText = coupon.targets.map((t) => t.name).join(', ');
+                        detailText = coupon.targets
+                            .map((t) => t.name)
+                            .join(', ');
                     }
                 } else if (coupon.scope === 'product') {
                     scopeLabel = copy.scopeProduct;
+
                     if (coupon.targets && coupon.targets.length > 0) {
-                        detailText = coupon.targets.map((t) => t.name).join(', ');
+                        detailText = coupon.targets
+                            .map((t) => t.name)
+                            .join(', ');
                     }
                 } else if (coupon.scope === 'service') {
                     scopeLabel = copy.scopeService;
+
                     if (coupon.serviceType) {
                         detailText = coupon.serviceType;
                     }
@@ -228,7 +265,10 @@ export function getAdminCouponColumns({
                             {scopeLabel}
                         </span>
                         {detailText ? (
-                            <span className="truncate text-xs text-muted-foreground" title={detailText}>
+                            <span
+                                className="truncate text-xs text-muted-foreground"
+                                title={detailText}
+                            >
                                 {detailText}
                             </span>
                         ) : null}
@@ -249,9 +289,11 @@ export function getAdminCouponColumns({
                 if (coupon.firstOrderOnly) {
                     badges.push(copy.firstOrderOnlyLabel);
                 }
+
                 if (coupon.excludesPromotedItems) {
                     badges.push(copy.excludesPromotedLabel);
                 }
+
                 if (badges.length === 0) {
                     badges.push(copy.allCustomers);
                 }
@@ -274,19 +316,36 @@ export function getAdminCouponColumns({
             accessorKey: 'usedCount',
             cell: ({ row }) => {
                 const coupon = row.original;
-                const hasLimit = coupon.usageLimit !== null && coupon.usageLimit > 0;
+                const hasLimit =
+                    coupon.usageLimit !== null && coupon.usageLimit > 0;
                 const percent = hasLimit
-                    ? Math.min(100, Math.round((coupon.usedCount / (coupon.usageLimit as number)) * 100))
+                    ? Math.min(
+                          100,
+                          Math.round(
+                              (coupon.usedCount /
+                                  (coupon.usageLimit as number)) *
+                                  100,
+                          ),
+                      )
                     : 0;
 
                 return (
-                    <div className="flex min-w-[100px] max-w-[140px] flex-col gap-1.5">
-                        <span className="text-xs font-medium tabular-nums text-foreground">
+                    <div className="flex max-w-[140px] min-w-[100px] flex-col gap-1.5">
+                        <span className="text-xs font-medium text-foreground tabular-nums">
                             {hasLimit
                                 ? copy.progressText
-                                      .replace(':used', String(coupon.usedCount))
-                                      .replace(':limit', String(coupon.usageLimit))
-                                : copy.progressUnlimited.replace(':used', String(coupon.usedCount))}
+                                      .replace(
+                                          ':used',
+                                          String(coupon.usedCount),
+                                      )
+                                      .replace(
+                                          ':limit',
+                                          String(coupon.usageLimit),
+                                      )
+                                : copy.progressUnlimited.replace(
+                                      ':used',
+                                      String(coupon.usedCount),
+                                  )}
                         </span>
                         {hasLimit ? (
                             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -314,12 +373,17 @@ export function getAdminCouponColumns({
             accessorKey: 'startsAt',
             cell: ({ row }) => {
                 const coupon = row.original;
-                const starts = coupon.startsAt ? coupon.startsAt.slice(0, 10) : null;
+                const starts = coupon.startsAt
+                    ? coupon.startsAt.slice(0, 10)
+                    : null;
                 const ends = coupon.endsAt ? coupon.endsAt.slice(0, 10) : null;
 
                 let windowText = copy.always;
+
                 if (starts && ends) {
-                    windowText = copy.window.replace(':from', starts).replace(':until', ends);
+                    windowText = copy.window
+                        .replace(':from', starts)
+                        .replace(':until', ends);
                 } else if (starts) {
                     windowText = copy.from.replace(':date', starts);
                 } else if (ends) {
@@ -360,13 +424,7 @@ export function getAdminCouponColumns({
             header: copy.columns.actions,
             cell: ({ row }) => {
                 const coupon = row.original;
-                const { url } = usePage();
-                const isLocalized = url.startsWith('/en/admin');
-                const detailUrl = showUrlTemplate
-                    ? showUrlTemplate.replace('__ID__', coupon.id)
-                    : (isLocalized
-                        ? `/en/admin/marketing/coupons/${coupon.id}`
-                        : `/admin/marketing/coupons/${coupon.id}`);
+                const detailUrl = showUrlTemplate.replace('__ID__', coupon.id);
 
                 return (
                     <div className="flex items-center gap-1">
@@ -390,24 +448,45 @@ export function getAdminCouponColumns({
                                     type="button"
                                     variant="ghost"
                                 >
-                                    <Edit aria-hidden="true" className="size-4" />
+                                    <Edit
+                                        aria-hidden="true"
+                                        className="size-4"
+                                    />
                                 </Button>
 
                                 <Button
-                                    aria-label={coupon.isActive ? copy.pauseButton : copy.resumeButton}
+                                    aria-label={
+                                        coupon.isActive
+                                            ? copy.pauseButton
+                                            : copy.resumeButton
+                                    }
                                     className={`min-h-11 min-w-11 p-2 ${
-                                        coupon.isActive ? 'text-status-warning hover:bg-status-warning/10' : 'text-status-success hover:bg-status-success/10'
+                                        coupon.isActive
+                                            ? 'text-status-warning hover:bg-status-warning/10'
+                                            : 'text-status-success hover:bg-status-success/10'
                                     }`}
-                                    onClick={() => onToggle(coupon, !coupon.isActive)}
+                                    onClick={() =>
+                                        onToggle(coupon, !coupon.isActive)
+                                    }
                                     size="icon"
-                                    title={coupon.isActive ? copy.pauseButton : copy.resumeButton}
+                                    title={
+                                        coupon.isActive
+                                            ? copy.pauseButton
+                                            : copy.resumeButton
+                                    }
                                     type="button"
                                     variant="ghost"
                                 >
                                     {coupon.isActive ? (
-                                        <Pause aria-hidden="true" className="size-4" />
+                                        <Pause
+                                            aria-hidden="true"
+                                            className="size-4"
+                                        />
                                     ) : (
-                                        <Play aria-hidden="true" className="size-4" />
+                                        <Play
+                                            aria-hidden="true"
+                                            className="size-4"
+                                        />
                                     )}
                                 </Button>
 
@@ -420,7 +499,10 @@ export function getAdminCouponColumns({
                                     type="button"
                                     variant="ghost"
                                 >
-                                    <Copy aria-hidden="true" className="size-4" />
+                                    <Copy
+                                        aria-hidden="true"
+                                        className="size-4"
+                                    />
                                 </Button>
                             </>
                         ) : null}

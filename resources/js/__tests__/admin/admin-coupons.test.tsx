@@ -40,21 +40,6 @@ vi.mock('@inertiajs/react', () => ({
     }),
 }));
 
-vi.mock('@/components/admin/admin-password-confirm-dialog', () => ({
-    default: ({
-        onConfirmed,
-        open,
-    }: {
-        onConfirmed: () => void;
-        open: boolean;
-    }) =>
-        open ? (
-            <button onClick={onConfirmed} type="button">
-                confirmed-password-overlay
-            </button>
-        ) : null,
-}));
-
 function sampleCouponRow(overrides: Partial<AdminCouponRow>): AdminCouponRow {
     return {
         id: '01KCOUPON0000000000000001',
@@ -134,7 +119,14 @@ function defaultProps(): AdminCouponsPageProps {
             from: 1,
             to: 2,
         },
-        counts: { total: 2, active: 1, paused: 1, scheduled: 0, expired: 0, exhausted: 0 },
+        counts: {
+            total: 2,
+            active: 1,
+            paused: 1,
+            scheduled: 0,
+            expired: 0,
+            exhausted: 0,
+        },
         filters: {
             search: null,
             status: null,
@@ -210,7 +202,7 @@ describe('AdminCouponsPage', () => {
         expect(screen.getAllByText('Paused')[0]).toBeVisible();
     });
 
-    it('opens an empty create drawer and submits the payload after password confirmation', async () => {
+    it('opens an empty create drawer and submits the payload directly', async () => {
         const fetchMock = vi.fn().mockResolvedValue(
             new Response(
                 JSON.stringify({
@@ -236,13 +228,6 @@ describe('AdminCouponsPage', () => {
             target: { value: '20' },
         });
         fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
-
-        fireEvent.click(
-            await screen.findByRole('button', {
-                hidden: true,
-                name: 'confirmed-password-overlay',
-            }),
-        );
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith(
@@ -287,16 +272,9 @@ describe('AdminCouponsPage', () => {
             within(dialog).getByLabelText(
                 englishAdminUi.coupons.maximumDiscountLabel,
             ),
-        ).toHaveValue(10_000);
+        ).toHaveValue(100);
 
         fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
-
-        fireEvent.click(
-            await screen.findByRole('button', {
-                hidden: true,
-                name: 'confirmed-password-overlay',
-            }),
-        );
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith(
@@ -306,11 +284,15 @@ describe('AdminCouponsPage', () => {
         });
     });
 
-    it('duplicates a coupon through duplicate dialog and password confirmation', async () => {
+    it('duplicates a coupon through duplicate dialog', async () => {
         const fetchMock = vi.fn().mockResolvedValue(
             new Response(
                 JSON.stringify({
-                    data: { code: 'WELCOME10-COPY', id: '01KCOUPONCOPY', isActive: false },
+                    data: {
+                        code: 'WELCOME10-COPY',
+                        id: '01KCOUPONCOPY',
+                        isActive: false,
+                    },
                 }),
                 { status: 201 },
             ),
@@ -319,19 +301,16 @@ describe('AdminCouponsPage', () => {
 
         render(<AdminCouponsPage />);
 
-        fireEvent.click(screen.getAllByRole('button', { name: 'Duplicate' })[0]);
+        fireEvent.click(
+            screen.getAllByRole('button', { name: 'Duplicate' })[0],
+        );
 
         const dialog = await screen.findByRole('dialog', {
             name: englishAdminUi.coupons.duplicateTitle,
         });
 
-        fireEvent.click(within(dialog).getByRole('button', { name: 'Duplicate coupon' }));
-
         fireEvent.click(
-            await screen.findByRole('button', {
-                hidden: true,
-                name: 'confirmed-password-overlay',
-            }),
+            within(dialog).getByRole('button', { name: 'Duplicate coupon' }),
         );
 
         await waitFor(() => {
@@ -342,7 +321,7 @@ describe('AdminCouponsPage', () => {
         });
     });
 
-    it('toggles a coupon to inactive through the confirmation and password flow', async () => {
+    it('toggles a coupon to inactive through the confirmation flow', async () => {
         const fetchMock = vi.fn().mockResolvedValue(
             new Response(
                 JSON.stringify({
@@ -355,9 +334,7 @@ describe('AdminCouponsPage', () => {
 
         render(<AdminCouponsPage />);
 
-        fireEvent.click(
-            screen.getAllByRole('button', { name: 'Pause' })[0],
-        );
+        fireEvent.click(screen.getAllByRole('button', { name: 'Pause' })[0]);
 
         const confirmDialog = await screen.findByRole('dialog', {
             name: englishAdminUi.coupons.deactivateTitle,
@@ -367,13 +344,6 @@ describe('AdminCouponsPage', () => {
 
         fireEvent.click(
             within(confirmDialog).getByRole('button', { name: 'Confirm' }),
-        );
-
-        fireEvent.click(
-            await screen.findByRole('button', {
-                hidden: true,
-                name: 'confirmed-password-overlay',
-            }),
         );
 
         await waitFor(() => {

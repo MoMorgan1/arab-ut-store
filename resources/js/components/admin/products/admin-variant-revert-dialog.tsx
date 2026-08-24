@@ -4,7 +4,6 @@ import { useHttp } from '@inertiajs/react';
 import { AlertCircle } from 'lucide-react';
 import React, { useState } from 'react';
 
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +20,6 @@ import type { AdminProductVariant, AdminTranslations } from '@/types/admin';
 
 export type AdminVariantRevertDialogProps = {
     adminUi: AdminTranslations;
-    confirmPasswordUrl?: string;
     onConflict: (
         variantId: string,
         current: { effectivePriceHalalah: number; priceVersion: number },
@@ -57,7 +55,6 @@ type RevertResponse = {
 
 export default function AdminVariantRevertDialog({
     adminUi,
-    confirmPasswordUrl,
     onConflict,
     onOpenChange,
     onSuccess,
@@ -67,7 +64,6 @@ export default function AdminVariantRevertDialog({
 }: AdminVariantRevertDialogProps) {
     const copy = adminUi.productDetail;
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false);
 
     const http = useHttp<RevertPayload, RevertResponse>('post', priceUrl, {
         completion_pricing: null,
@@ -99,12 +95,6 @@ export default function AdminVariantRevertDialog({
                 },
                 onHttpException: (response) => {
                     handled = true;
-
-                    if (response.status === 423) {
-                        setPasswordConfirmOpen(true);
-
-                        return false;
-                    }
 
                     if (response.status === 409) {
                         const body =
@@ -189,11 +179,6 @@ export default function AdminVariantRevertDialog({
         }
     };
 
-    const handlePasswordConfirmed = () => {
-        setPasswordConfirmOpen(false);
-        void executeRevert();
-    };
-
     return (
         <>
             <Dialog onOpenChange={onOpenChange} open={open}>
@@ -249,21 +234,6 @@ export default function AdminVariantRevertDialog({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            <AdminPasswordConfirmDialog
-                cancelButtonText={adminUi.common.cancel}
-                confirmButtonText={copy.confirmPasswordButton}
-                confirmPasswordUrl={confirmPasswordUrl}
-                confirmingButtonText={copy.confirmingPassword}
-                description={copy.passwordModalDescription}
-                invalidPasswordText={copy.invalidPassword}
-                onConfirmed={handlePasswordConfirmed}
-                onOpenChange={setPasswordConfirmOpen}
-                open={passwordConfirmOpen}
-                passwordLabel={copy.passwordLabel}
-                passwordPlaceholder={copy.passwordPlaceholder}
-                title={copy.passwordModalTitle}
-            />
         </>
     );
 }

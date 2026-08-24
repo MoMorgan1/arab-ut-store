@@ -76,7 +76,6 @@ final readonly class AdminCategoriesPage
             ],
             'productsUrl' => route($prefix.'products', absolute: false),
             'visibilityUrlTemplate' => route($prefix.'categories.visibility.store', ['publicId' => '__ID__'], absolute: false),
-            'confirmPasswordUrl' => route('password.confirm', absolute: false),
         ];
     }
 }

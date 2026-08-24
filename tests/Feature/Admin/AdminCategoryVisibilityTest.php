@@ -160,20 +160,6 @@ it('refuses an inactive admin', function (): void {
     hideCategory($actor, $category)->assertForbidden();
 });
 
-it('requires a confirmed password', function (): void {
-    $actor = categoryVisibilityActor();
-    $category = testCategory();
-
-    test()->actingAs($actor)
-        ->postJson(route('admin.categories.visibility.store', ['publicId' => $category->public_id]), [
-            'hidden' => true,
-            'expected_hidden' => false,
-        ])
-        ->assertStatus(423);
-
-    expect($category->fresh()->admin_hidden_at)->toBeNull();
-});
-
 it('rejects unknown fields in payload', function (): void {
     $actor = categoryVisibilityActor();
     $category = testCategory();

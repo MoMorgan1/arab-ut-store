@@ -4,8 +4,10 @@ import { useHttp } from '@inertiajs/react';
 import { AlertCircle, AlertTriangle } from 'lucide-react';
 import React, { useState } from 'react';
 
-import { formatAdminMoney } from '@/components/admin/admin-money';
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
+import {
+    formatHalalahToSar,
+    parseSarToHalalah,
+} from '@/components/admin/admin-money';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,7 +31,6 @@ import type {
 
 export type AdminVariantPriceDialogProps = {
     adminUi: AdminTranslations;
-    confirmPasswordUrl?: string;
     locale: 'ar' | 'en';
     onConflict: (
         variantId: string,
@@ -99,8 +100,6 @@ export function getVariantCompletionPricing(
 
 export default function AdminVariantPriceDialog({
     adminUi,
-    confirmPasswordUrl,
-    locale,
     onConflict,
     onOpenChange,
     onSuccess,
@@ -121,8 +120,9 @@ export default function AdminVariantPriceDialog({
               ? variant.salePrice.amountMinor
               : variant.price.amountMinor;
 
-    const [singlePriceHalalah, setSinglePriceHalalah] =
-        useState(initialHalalah);
+    const [singlePriceSar, setSinglePriceSar] = useState(() =>
+        formatHalalahToSar(initialHalalah),
+    );
     // Seeded at mount rather than reseeded in an effect: the page keys this
     // dialog by variant and price version, so a new variant or a reprice
     // remounts it with fresh values instead of cascading a render.
@@ -131,13 +131,12 @@ export default function AdminVariantPriceDialog({
             ? declaredPricing.tiers.map((tier) => ({
                   completions: tier.completions,
                   multiplierBps: tier.multiplierBps,
-                  totalMinor: String(tier.totalMinor),
+                  totalMinor: formatHalalahToSar(tier.totalMinor),
               }))
             : [],
     );
     const [generalError, setGeneralError] = useState<string | null>(null);
     const [tierTableError, setTierTableError] = useState<string | null>(null);
-    const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false);
 
     const http = useHttp<PricePayload, PriceResponse>('post', priceUrl, {
         completion_pricing: declaredPricing,
@@ -172,7 +171,7 @@ export default function AdminVariantPriceDialog({
             const parsedTiers: SbcCompletionPricingTier[] = [];
 
             for (let i = 0; i < tiersState.length; i++) {
-                const parsedVal = parseInt(tiersState[i].totalMinor, 10);
+                const parsedVal = parseSarToHalalah(tiersState[i].totalMinor);
 
                 if (Number.isNaN(parsedVal) || parsedVal <= 0) {
                     setTierTableError(copy.positivePriceRequired);
@@ -195,7 +194,7 @@ export default function AdminVariantPriceDialog({
                 version: 1,
             };
         } else {
-            const parsed = parseInt(singlePriceHalalah, 10);
+            const parsed = parseSarToHalalah(singlePriceSar);
 
             if (Number.isNaN(parsed) || parsed <= 0) {
                 setGeneralError(copy.positivePriceRequired);
@@ -234,12 +233,6 @@ export default function AdminVariantPriceDialog({
                 },
                 onHttpException: (response) => {
                     handled = true;
-
-                    if (response.status === 423) {
-                        setPasswordConfirmOpen(true);
-
-                        return false;
-                    }
 
                     if (response.status === 409) {
                         const body =
@@ -361,11 +354,6 @@ export default function AdminVariantPriceDialog({
         }
     };
 
-    const handlePasswordConfirmed = () => {
-        setPasswordConfirmOpen(false);
-        void executePriceOverride();
-    };
-
     return (
         <>
             <Dialog onOpenChange={onOpenChange} open={open}>
@@ -420,66 +408,47 @@ export default function AdminVariantPriceDialog({
                             ) : null}
 
                             <div className="flex flex-col divide-y divide-border/60 rounded-lg border border-border bg-card p-3 shadow-xs">
-                                {tiersState.map((tier, idx) => {
-                                    const parsedHalalah =
-                                        parseInt(tier.totalMinor, 10) || 0;
-                                    const formattedEquivalent =
-                                        formatAdminMoney(
-                                            {
-                                                amountMinor:
-                                                    String(parsedHalalah),
-                                                currency: 'SAR',
-                                            },
-                                            locale,
-                                        );
+                                {tiersState.map((tier, idx) => (
+                                    <div
+                                        className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                                        key={tier.completions}
+                                    >
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="text-xs font-semibold text-foreground">
+                                                {copy.tierCountLabel.replace(
+                                                    ':count',
+                                                    String(tier.completions),
+                                                )}
+                                            </span>
+                                            <span className="text-[11px] text-muted-foreground tabular-nums">
+                                                {tier.multiplierBps / 100}%
+                                            </span>
+                                        </div>
 
-                                    return (
-                                        <div
-                                            className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
-                                            key={tier.completions}
-                                        >
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className="text-xs font-semibold text-foreground">
-                                                    {copy.tierCountLabel.replace(
-                                                        ':count',
-                                                        String(
-                                                            tier.completions,
-                                                        ),
-                                                    )}
-                                                </span>
-                                                <span className="text-[11px] text-muted-foreground tabular-nums">
-                                                    {tier.multiplierBps / 100}%
-                                                </span>
-                                            </div>
-
-                                            <div className="flex flex-1 flex-col gap-1 sm:max-w-[260px]">
-                                                <div className="flex items-center gap-2">
-                                                    <Input
-                                                        aria-label={`${copy.tierTotalHalalah} ${tier.completions}`}
-                                                        className="min-h-11 min-w-11 text-xs tabular-nums"
-                                                        disabled={
-                                                            http.processing
-                                                        }
-                                                        id={`tier-total-${tier.completions}`}
-                                                        inputMode="numeric"
-                                                        min={1}
-                                                        onChange={(e) =>
-                                                            handleTierChange(
-                                                                idx,
-                                                                e.target.value,
-                                                            )
-                                                        }
-                                                        type="number"
-                                                        value={tier.totalMinor}
-                                                    />
-                                                </div>
-                                                <span className="text-[11px] text-muted-foreground tabular-nums">
-                                                    ≈ {formattedEquivalent}
-                                                </span>
+                                        <div className="flex flex-1 flex-col gap-1 sm:max-w-[260px]">
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    aria-label={`${copy.tierTotalHalalah} ${tier.completions}`}
+                                                    className="min-h-11 min-w-11 text-xs tabular-nums"
+                                                    disabled={http.processing}
+                                                    id={`tier-total-${tier.completions}`}
+                                                    inputMode="decimal"
+                                                    min="0.01"
+                                                    onChange={(e) =>
+                                                        handleTierChange(
+                                                            idx,
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    placeholder="0.00"
+                                                    step="0.01"
+                                                    type="number"
+                                                    value={tier.totalMinor}
+                                                />
                                             </div>
                                         </div>
-                                    );
-                                })}
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     ) : (
@@ -503,37 +472,17 @@ export default function AdminVariantPriceDialog({
                                     className="min-h-11 min-w-11 text-sm tabular-nums md:text-xs"
                                     disabled={http.processing}
                                     id="variant-price-halalah"
-                                    inputMode="numeric"
-                                    min={1}
+                                    inputMode="decimal"
+                                    min="0.01"
                                     onChange={(e) =>
-                                        setSinglePriceHalalah(e.target.value)
+                                        setSinglePriceSar(e.target.value)
                                     }
+                                    placeholder="0.00"
                                     required
+                                    step="0.01"
                                     type="number"
-                                    value={singlePriceHalalah}
+                                    value={singlePriceSar}
                                 />
-                                <p
-                                    className="text-[11px] text-muted-foreground tabular-nums"
-                                    id="variant-price-halalah-help"
-                                >
-                                    {copy.priceHalalahHelp
-                                        .replace(
-                                            ':halalah',
-                                            singlePriceHalalah || '0',
-                                        )
-                                        .replace(
-                                            ':sar',
-                                            formatAdminMoney(
-                                                {
-                                                    amountMinor:
-                                                        singlePriceHalalah ||
-                                                        '0',
-                                                    currency: 'SAR',
-                                                },
-                                                locale,
-                                            ),
-                                        )}
-                                </p>
                             </div>
                         </div>
                     )}
@@ -567,21 +516,6 @@ export default function AdminVariantPriceDialog({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            <AdminPasswordConfirmDialog
-                cancelButtonText={adminUi.common.cancel}
-                confirmButtonText={copy.confirmPasswordButton}
-                confirmPasswordUrl={confirmPasswordUrl}
-                confirmingButtonText={copy.confirmingPassword}
-                description={copy.passwordModalDescription}
-                invalidPasswordText={copy.invalidPassword}
-                onConfirmed={handlePasswordConfirmed}
-                onOpenChange={setPasswordConfirmOpen}
-                open={passwordConfirmOpen}
-                passwordLabel={copy.passwordLabel}
-                passwordPlaceholder={copy.passwordPlaceholder}
-                title={copy.passwordModalTitle}
-            />
         </>
     );
 }

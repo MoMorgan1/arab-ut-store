@@ -66,6 +66,9 @@ vi.mock('@/layouts/my-account-layout', () => ({
 }));
 
 beforeEach(() => {
+    // jsdom does not implement scrollIntoView; the email prompt scrolls the
+    // field into view, exactly as the chat tests already stub it.
+    Element.prototype.scrollIntoView = vi.fn();
     excluded.length = 0;
     phoneRequestShouldFail = true;
     formStore.clear();

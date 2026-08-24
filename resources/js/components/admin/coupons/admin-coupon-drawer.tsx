@@ -1,10 +1,13 @@
 'use no memo';
 
 import { router } from '@inertiajs/react';
-import { Info, Lock } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Info } from 'lucide-react';
+import { useState } from 'react';
 
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
+import {
+    formatHalalahToSar,
+    parseSarToHalalah,
+} from '@/components/admin/admin-money';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -25,10 +28,7 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import type {
-    AdminCouponRow,
-    AdminTranslations,
-} from '@/types/admin';
+import type { AdminCouponRow, AdminTranslations } from '@/types/admin';
 
 export type CouponFormData = {
     code: string;
@@ -57,7 +57,7 @@ export const emptyCouponForm: CouponFormData = {
     description_en: '',
     discount_type: 'percent',
     value: '',
-    minimum_order_halalah: '0',
+    minimum_order_halalah: '0.00',
     maximum_discount_halalah: '',
     usage_limit: '',
     per_user_limit: '',
@@ -78,12 +78,19 @@ export function couponToFormData(coupon: AdminCouponRow): CouponFormData {
         description_ar: coupon.descriptionAr || '',
         description_en: coupon.descriptionEn || '',
         discount_type: coupon.discountType,
-        value: String(coupon.value),
-        minimum_order_halalah: String(coupon.minimumOrderHalalah),
+        value:
+            coupon.discountType === 'fixed'
+                ? formatHalalahToSar(coupon.value)
+                : String(coupon.value),
+        minimum_order_halalah: formatHalalahToSar(coupon.minimumOrderHalalah),
         maximum_discount_halalah:
-            coupon.maximumDiscountHalalah !== null ? String(coupon.maximumDiscountHalalah) : '',
-        usage_limit: coupon.usageLimit !== null ? String(coupon.usageLimit) : '',
-        per_user_limit: coupon.perUserLimit !== null ? String(coupon.perUserLimit) : '',
+            coupon.maximumDiscountHalalah !== null
+                ? formatHalalahToSar(coupon.maximumDiscountHalalah)
+                : '',
+        usage_limit:
+            coupon.usageLimit !== null ? String(coupon.usageLimit) : '',
+        per_user_limit:
+            coupon.perUserLimit !== null ? String(coupon.perUserLimit) : '',
         scope: coupon.scope,
         service_type: coupon.serviceType || 'coins',
         category_ids: coupon.categoryIds ? [...coupon.categoryIds] : [],
@@ -122,24 +129,17 @@ export default function AdminCouponDrawer({
     updateUrlTemplate,
 }: AdminCouponDrawerProps) {
     const copy = adminUi.coupons;
-    const [formData, setFormData] = useState<CouponFormData>(emptyCouponForm);
+    const [formData, setFormData] = useState<CouponFormData>(() =>
+        mode === 'edit' && editingCoupon
+            ? couponToFormData(editingCoupon)
+            : emptyCouponForm,
+    );
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [saving, setSaving] = useState(false);
-    const [saveMessage, setSaveMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(
-        null,
-    );
-    const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-    const pendingAction = useRef<(() => void) | null>(null);
-
-    useEffect(() => {
-        if (mode === 'edit' && editingCoupon) {
-            setFormData(couponToFormData(editingCoupon));
-        } else if (mode === 'create') {
-            setFormData(emptyCouponForm);
-        }
-        setFormErrors({});
-        setSaveMessage(null);
-    }, [mode, editingCoupon]);
+    const [saveMessage, setSaveMessage] = useState<{
+        type: 'error' | 'success';
+        text: string;
+    } | null>(null);
 
     const handleFieldChange = (
         field: keyof CouponFormData,
@@ -149,6 +149,7 @@ export default function AdminCouponDrawer({
         setFormErrors((prev) => {
             const next = { ...prev };
             delete next[field];
+
             return next;
         });
     };
@@ -159,6 +160,7 @@ export default function AdminCouponDrawer({
             const next = exists
                 ? prev.category_ids.filter((cId) => cId !== id)
                 : [...prev.category_ids, id];
+
             return { ...prev, category_ids: next };
         });
     };
@@ -169,6 +171,7 @@ export default function AdminCouponDrawer({
             const next = exists
                 ? prev.product_ids.filter((pId) => pId !== id)
                 : [...prev.product_ids, id];
+
             return { ...prev, product_ids: next };
         });
     };
@@ -186,21 +189,38 @@ export default function AdminCouponDrawer({
 
         const payload: Record<string, unknown> = {
             code: formData.code.toUpperCase().trim(),
-            description_ar: formData.description_ar ? formData.description_ar.trim() : null,
-            description_en: formData.description_en ? formData.description_en.trim() : null,
+            description_ar: formData.description_ar
+                ? formData.description_ar.trim()
+                : null,
+            description_en: formData.description_en
+                ? formData.description_en.trim()
+                : null,
             discount_type: formData.discount_type,
-            value: Number(formData.value),
-            minimum_order_halalah: Number(formData.minimum_order_halalah || '0'),
+            value:
+                formData.discount_type === 'fixed'
+                    ? parseSarToHalalah(formData.value)
+                    : Number(formData.value),
+            minimum_order_halalah: parseSarToHalalah(
+                formData.minimum_order_halalah || '0',
+            ),
             maximum_discount_halalah:
-                formData.discount_type === 'percent' && formData.maximum_discount_halalah
-                    ? Number(formData.maximum_discount_halalah)
+                formData.discount_type === 'percent' &&
+                formData.maximum_discount_halalah
+                    ? parseSarToHalalah(formData.maximum_discount_halalah)
                     : null,
-            usage_limit: formData.usage_limit ? Number(formData.usage_limit) : null,
-            per_user_limit: formData.per_user_limit ? Number(formData.per_user_limit) : null,
+            usage_limit: formData.usage_limit
+                ? Number(formData.usage_limit)
+                : null,
+            per_user_limit: formData.per_user_limit
+                ? Number(formData.per_user_limit)
+                : null,
             scope: formData.scope,
-            service_type: formData.scope === 'service' ? formData.service_type : null,
-            category_ids: formData.scope === 'category' ? formData.category_ids : [],
-            product_ids: formData.scope === 'product' ? formData.product_ids : [],
+            service_type:
+                formData.scope === 'service' ? formData.service_type : null,
+            category_ids:
+                formData.scope === 'category' ? formData.category_ids : [],
+            product_ids:
+                formData.scope === 'product' ? formData.product_ids : [],
             first_order_only: formData.first_order_only,
             excludes_promoted_items: formData.excludes_promoted_items,
             is_active: formData.is_active,
@@ -221,23 +241,39 @@ export default function AdminCouponDrawer({
             });
 
             if (res.status === 422) {
-                const json = (await res.json()) as { errors: Record<string, string[]> };
+                const json = (await res.json()) as {
+                    errors: Record<string, string[]>;
+                };
                 const mapped: Record<string, string> = {};
+
                 for (const [k, v] of Object.entries(json.errors)) {
                     mapped[k] = v[0] ?? '';
                 }
+
                 setFormErrors(mapped);
-                setSaveMessage({ type: 'error', text: copy.messages.validationError });
-            } else if (res.status === 423 || res.status === 403) {
-                setSaveMessage({ type: 'error', text: copy.messages.forbiddenError });
+                setSaveMessage({
+                    type: 'error',
+                    text: copy.messages.validationError,
+                });
+            } else if (res.status === 403) {
+                setSaveMessage({
+                    type: 'error',
+                    text: copy.messages.forbiddenError,
+                });
             } else if (!res.ok) {
-                setSaveMessage({ type: 'error', text: copy.messages.genericError });
+                setSaveMessage({
+                    type: 'error',
+                    text: copy.messages.genericError,
+                });
             } else {
                 setSaveMessage({
                     type: 'success',
-                    text: isEdit ? copy.messages.updated : copy.messages.created,
+                    text: isEdit
+                        ? copy.messages.updated
+                        : copy.messages.created,
                 });
                 onClose();
+
                 if (onSaved) {
                     onSaved();
                 } else {
@@ -251,23 +287,23 @@ export default function AdminCouponDrawer({
         }
     };
 
-    const requestSave = () => {
-        pendingAction.current = submitForm;
-        setPasswordModalOpen(true);
-    };
-
     const isOpen = mode !== null;
 
     return (
         <>
-            <Sheet onOpenChange={(open) => !open && !saving && onClose()} open={isOpen}>
+            <Sheet
+                onOpenChange={(open) => !open && !saving && onClose()}
+                open={isOpen}
+            >
                 <SheetContent
-                    className="flex max-h-screen w-full flex-col overflow-y-auto sm:max-w-xl motion-reduce:animate-none motion-reduce:transition-none"
+                    className="flex max-h-screen w-full flex-col overflow-y-auto motion-reduce:animate-none motion-reduce:transition-none sm:max-w-xl"
                     side="right"
                 >
                     <SheetHeader className="border-b border-border pb-4">
                         <SheetTitle className="text-lg font-bold text-foreground">
-                            {mode === 'edit' ? copy.editTitle : copy.createTitle}
+                            {mode === 'edit'
+                                ? copy.editTitle
+                                : copy.createTitle}
                         </SheetTitle>
                         <SheetDescription className="text-xs text-muted-foreground">
                             {copy.description}
@@ -277,9 +313,15 @@ export default function AdminCouponDrawer({
                     <div className="flex flex-1 flex-col gap-6 py-4">
                         {saveMessage ? (
                             <Alert
-                                variant={saveMessage.type === 'error' ? 'destructive' : 'default'}
+                                variant={
+                                    saveMessage.type === 'error'
+                                        ? 'destructive'
+                                        : 'default'
+                                }
                             >
-                                <AlertDescription>{saveMessage.text}</AlertDescription>
+                                <AlertDescription>
+                                    {saveMessage.text}
+                                </AlertDescription>
                             </Alert>
                         ) : null}
 
@@ -291,36 +333,54 @@ export default function AdminCouponDrawer({
 
                             {/* Code */}
                             <div className="flex flex-col gap-1.5">
-                                <Label htmlFor="coupon-code">{copy.codeLabel}</Label>
+                                <Label htmlFor="coupon-code">
+                                    {copy.codeLabel}
+                                </Label>
                                 <Input
                                     aria-describedby="coupon-code-hint"
                                     className="min-h-11 font-mono uppercase"
                                     id="coupon-code"
                                     maxLength={24}
                                     onChange={(e) =>
-                                        handleFieldChange('code', e.target.value.toUpperCase())
+                                        handleFieldChange(
+                                            'code',
+                                            e.target.value.toUpperCase(),
+                                        )
                                     }
                                     placeholder={copy.codePlaceholder}
                                     value={formData.code}
                                 />
-                                <p className="text-xs text-muted-foreground" id="coupon-code-hint">
-                                    {copy.codeHelp} • <span className="text-primary font-medium">{copy.codeUppercaseHint}</span>
+                                <p
+                                    className="text-xs text-muted-foreground"
+                                    id="coupon-code-hint"
+                                >
+                                    {copy.codeHelp} •{' '}
+                                    <span className="font-medium text-primary">
+                                        {copy.codeUppercaseHint}
+                                    </span>
                                 </p>
                                 {formErrors.code ? (
-                                    <p className="text-xs text-destructive">{formErrors.code}</p>
+                                    <p className="text-xs text-destructive">
+                                        {formErrors.code}
+                                    </p>
                                 ) : null}
                             </div>
 
                             {/* Descriptions */}
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 <div className="flex flex-col gap-1.5">
-                                    <Label htmlFor="coupon-desc-ar">{copy.descriptionArLabel}</Label>
+                                    <Label htmlFor="coupon-desc-ar">
+                                        {copy.descriptionArLabel}
+                                    </Label>
                                     <Input
                                         className="min-h-11"
                                         dir="rtl"
                                         id="coupon-desc-ar"
                                         onChange={(e) =>
-                                            handleFieldChange('description_ar', e.target.value)
+                                            handleFieldChange(
+                                                'description_ar',
+                                                e.target.value,
+                                            )
                                         }
                                         value={formData.description_ar}
                                     />
@@ -331,13 +391,18 @@ export default function AdminCouponDrawer({
                                     ) : null}
                                 </div>
                                 <div className="flex flex-col gap-1.5">
-                                    <Label htmlFor="coupon-desc-en">{copy.descriptionEnLabel}</Label>
+                                    <Label htmlFor="coupon-desc-en">
+                                        {copy.descriptionEnLabel}
+                                    </Label>
                                     <Input
                                         className="min-h-11"
                                         dir="ltr"
                                         id="coupon-desc-en"
                                         onChange={(e) =>
-                                            handleFieldChange('description_en', e.target.value)
+                                            handleFieldChange(
+                                                'description_en',
+                                                e.target.value,
+                                            )
                                         }
                                         value={formData.description_en}
                                     />
@@ -362,10 +427,15 @@ export default function AdminCouponDrawer({
                                 <div className="grid grid-cols-2 gap-2">
                                     <button
                                         type="button"
-                                        onClick={() => handleFieldChange('discount_type', 'percent')}
+                                        onClick={() =>
+                                            handleFieldChange(
+                                                'discount_type',
+                                                'percent',
+                                            )
+                                        }
                                         className={`inline-flex min-h-11 items-center justify-center rounded-md border text-sm font-medium transition-colors ${
                                             formData.discount_type === 'percent'
-                                                ? 'border-primary bg-primary/20 text-primary font-semibold'
+                                                ? 'border-primary bg-primary/20 font-semibold text-primary'
                                                 : 'border-border bg-background text-muted-foreground hover:bg-muted'
                                         }`}
                                     >
@@ -373,10 +443,15 @@ export default function AdminCouponDrawer({
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => handleFieldChange('discount_type', 'fixed')}
+                                        onClick={() =>
+                                            handleFieldChange(
+                                                'discount_type',
+                                                'fixed',
+                                            )
+                                        }
                                         className={`inline-flex min-h-11 items-center justify-center rounded-md border text-sm font-medium transition-colors ${
                                             formData.discount_type === 'fixed'
-                                                ? 'border-primary bg-primary/20 text-primary font-semibold'
+                                                ? 'border-primary bg-primary/20 font-semibold text-primary'
                                                 : 'border-border bg-background text-muted-foreground hover:bg-muted'
                                         }`}
                                     >
@@ -387,13 +462,30 @@ export default function AdminCouponDrawer({
 
                             {/* Value */}
                             <div className="flex flex-col gap-1.5">
-                                <Label htmlFor="coupon-val">{copy.valueLabel}</Label>
+                                <Label htmlFor="coupon-val">
+                                    {copy.valueLabel}
+                                </Label>
                                 <Input
                                     className="min-h-11"
                                     id="coupon-val"
-                                    inputMode="numeric"
-                                    min="1"
-                                    onChange={(e) => handleFieldChange('value', e.target.value)}
+                                    inputMode="decimal"
+                                    min="0.01"
+                                    onChange={(e) =>
+                                        handleFieldChange(
+                                            'value',
+                                            e.target.value,
+                                        )
+                                    }
+                                    placeholder={
+                                        formData.discount_type === 'fixed'
+                                            ? '0.00'
+                                            : '10'
+                                    }
+                                    step={
+                                        formData.discount_type === 'fixed'
+                                            ? '0.01'
+                                            : '1'
+                                    }
                                     type="number"
                                     value={formData.value}
                                 />
@@ -403,7 +495,9 @@ export default function AdminCouponDrawer({
                                         : copy.valueFixedHelp}
                                 </p>
                                 {formErrors.value ? (
-                                    <p className="text-xs text-destructive">{formErrors.value}</p>
+                                    <p className="text-xs text-destructive">
+                                        {formErrors.value}
+                                    </p>
                                 ) : null}
                             </div>
 
@@ -417,7 +511,7 @@ export default function AdminCouponDrawer({
                                         <Input
                                             className="min-h-11"
                                             id="coupon-max-disc"
-                                            inputMode="numeric"
+                                            inputMode="decimal"
                                             min="0"
                                             onChange={(e) =>
                                                 handleFieldChange(
@@ -425,15 +519,21 @@ export default function AdminCouponDrawer({
                                                     e.target.value,
                                                 )
                                             }
+                                            placeholder="0.00"
+                                            step="0.01"
                                             type="number"
-                                            value={formData.maximum_discount_halalah}
+                                            value={
+                                                formData.maximum_discount_halalah
+                                            }
                                         />
                                         <p className="text-xs text-muted-foreground">
                                             {copy.maximumDiscountHelp}
                                         </p>
                                         {formErrors.maximum_discount_halalah ? (
                                             <p className="text-xs text-destructive">
-                                                {formErrors.maximum_discount_halalah}
+                                                {
+                                                    formErrors.maximum_discount_halalah
+                                                }
                                             </p>
                                         ) : null}
                                     </div>
@@ -446,7 +546,7 @@ export default function AdminCouponDrawer({
                                     <Input
                                         className="min-h-11"
                                         id="coupon-min-order"
-                                        inputMode="numeric"
+                                        inputMode="decimal"
                                         min="0"
                                         onChange={(e) =>
                                             handleFieldChange(
@@ -454,12 +554,19 @@ export default function AdminCouponDrawer({
                                                 e.target.value,
                                             )
                                         }
+                                        placeholder="0.00"
+                                        step="0.01"
                                         type="number"
                                         value={formData.minimum_order_halalah}
                                     />
                                     <div className="flex items-start gap-1.5 pt-0.5 text-xs text-muted-foreground">
-                                        <Info aria-hidden="true" className="size-3.5 shrink-0 text-primary" />
-                                        <span>{copy.minimumOrderEligibleHelp}</span>
+                                        <Info
+                                            aria-hidden="true"
+                                            className="size-3.5 shrink-0 text-primary"
+                                        />
+                                        <span>
+                                            {copy.minimumOrderEligibleHelp}
+                                        </span>
                                     </div>
                                     {formErrors.minimum_order_halalah ? (
                                         <p className="text-xs text-destructive">
@@ -477,32 +584,54 @@ export default function AdminCouponDrawer({
                             </h2>
 
                             <div className="flex flex-col gap-1.5">
-                                <Label htmlFor="coupon-scope">{copy.scopeLabel}</Label>
+                                <Label htmlFor="coupon-scope">
+                                    {copy.scopeLabel}
+                                </Label>
                                 <Select
                                     onValueChange={(val) =>
-                                        handleFieldChange('scope', val as CouponFormData['scope'])
+                                        handleFieldChange(
+                                            'scope',
+                                            val as CouponFormData['scope'],
+                                        )
                                     }
                                     value={formData.scope}
                                 >
-                                    <SelectTrigger className="min-h-11" id="coupon-scope">
+                                    <SelectTrigger
+                                        className="min-h-11"
+                                        id="coupon-scope"
+                                    >
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem className="min-h-11" value="order">
+                                        <SelectItem
+                                            className="min-h-11"
+                                            value="order"
+                                        >
                                             {copy.scopeOrder}
                                         </SelectItem>
-                                        <SelectItem className="min-h-11" value="category">
+                                        <SelectItem
+                                            className="min-h-11"
+                                            value="service"
+                                        >
+                                            {copy.scopeService}
+                                        </SelectItem>
+                                        <SelectItem
+                                            className="min-h-11"
+                                            value="category"
+                                        >
                                             {copy.scopeCategory}
                                         </SelectItem>
-                                        <SelectItem className="min-h-11" value="product">
+                                        <SelectItem
+                                            className="min-h-11"
+                                            value="product"
+                                        >
                                             {copy.scopeProduct}
-                                        </SelectItem>
-                                        <SelectItem className="min-h-11" value="service">
-                                            {copy.scopeService}
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <p className="text-xs text-muted-foreground">{copy.scopeHelp}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {copy.scopeHelp}
+                                </p>
                             </div>
 
                             {/* Category Picker */}
@@ -513,7 +642,11 @@ export default function AdminCouponDrawer({
                                     </span>
                                     <div className="flex max-h-48 flex-col gap-2 overflow-y-auto">
                                         {categories.map((cat) => {
-                                            const isChecked = formData.category_ids.includes(cat.id);
+                                            const isChecked =
+                                                formData.category_ids.includes(
+                                                    cat.id,
+                                                );
+
                                             return (
                                                 <label
                                                     key={cat.id}
@@ -522,7 +655,11 @@ export default function AdminCouponDrawer({
                                                     <Checkbox
                                                         checked={isChecked}
                                                         className="size-5"
-                                                        onCheckedChange={() => toggleCategoryId(cat.id)}
+                                                        onCheckedChange={() =>
+                                                            toggleCategoryId(
+                                                                cat.id,
+                                                            )
+                                                        }
                                                     />
                                                     <span className="text-sm text-foreground">
                                                         {cat.name}
@@ -547,7 +684,11 @@ export default function AdminCouponDrawer({
                                     </span>
                                     <div className="flex max-h-48 flex-col gap-2 overflow-y-auto">
                                         {products.map((prod) => {
-                                            const isChecked = formData.product_ids.includes(prod.id);
+                                            const isChecked =
+                                                formData.product_ids.includes(
+                                                    prod.id,
+                                                );
+
                                             return (
                                                 <label
                                                     key={prod.id}
@@ -556,7 +697,11 @@ export default function AdminCouponDrawer({
                                                     <Checkbox
                                                         checked={isChecked}
                                                         className="size-5"
-                                                        onCheckedChange={() => toggleProductId(prod.id)}
+                                                        onCheckedChange={() =>
+                                                            toggleProductId(
+                                                                prod.id,
+                                                            )
+                                                        }
                                                     />
                                                     <span className="text-sm text-foreground">
                                                         {prod.name}
@@ -581,12 +726,22 @@ export default function AdminCouponDrawer({
                                     </Label>
                                     <Select
                                         onValueChange={(val) =>
-                                            handleFieldChange('service_type', val)
+                                            handleFieldChange(
+                                                'service_type',
+                                                val,
+                                            )
                                         }
                                         value={formData.service_type}
                                     >
-                                        <SelectTrigger className="min-h-11" id="coupon-service-type">
-                                            <SelectValue placeholder={copy.serviceTypePlaceholder} />
+                                        <SelectTrigger
+                                            className="min-h-11"
+                                            id="coupon-service-type"
+                                        >
+                                            <SelectValue
+                                                placeholder={
+                                                    copy.serviceTypePlaceholder
+                                                }
+                                            />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {serviceTypes.map((st) => (
@@ -622,7 +777,10 @@ export default function AdminCouponDrawer({
                                     className="mt-0.5 size-5"
                                     id="coupon-first-order"
                                     onCheckedChange={(c) =>
-                                        handleFieldChange('first_order_only', c === true)
+                                        handleFieldChange(
+                                            'first_order_only',
+                                            c === true,
+                                        )
                                     }
                                 />
                                 <div className="flex flex-col gap-0.5">
@@ -642,7 +800,10 @@ export default function AdminCouponDrawer({
                                     className="mt-0.5 size-5"
                                     id="coupon-exclude-promos"
                                     onCheckedChange={(c) =>
-                                        handleFieldChange('excludes_promoted_items', c === true)
+                                        handleFieldChange(
+                                            'excludes_promoted_items',
+                                            c === true,
+                                        )
                                     }
                                 />
                                 <div className="flex flex-col gap-0.5">
@@ -662,7 +823,10 @@ export default function AdminCouponDrawer({
                                     className="mt-0.5 size-5"
                                     id="coupon-active-status"
                                     onCheckedChange={(c) =>
-                                        handleFieldChange('is_active', c === true)
+                                        handleFieldChange(
+                                            'is_active',
+                                            c === true,
+                                        )
                                     }
                                 />
                                 <div className="flex flex-col gap-0.5">
@@ -694,7 +858,10 @@ export default function AdminCouponDrawer({
                                         inputMode="numeric"
                                         min="1"
                                         onChange={(e) =>
-                                            handleFieldChange('usage_limit', e.target.value)
+                                            handleFieldChange(
+                                                'usage_limit',
+                                                e.target.value,
+                                            )
                                         }
                                         type="number"
                                         value={formData.usage_limit}
@@ -719,7 +886,10 @@ export default function AdminCouponDrawer({
                                         inputMode="numeric"
                                         min="1"
                                         onChange={(e) =>
-                                            handleFieldChange('per_user_limit', e.target.value)
+                                            handleFieldChange(
+                                                'per_user_limit',
+                                                e.target.value,
+                                            )
                                         }
                                         type="number"
                                         value={formData.per_user_limit}
@@ -737,19 +907,29 @@ export default function AdminCouponDrawer({
 
                             {/* Mandatory Release copy */}
                             <div className="flex items-start gap-2 rounded-md bg-muted/40 p-2.5 text-xs text-muted-foreground">
-                                <Info aria-hidden="true" className="size-4 shrink-0 text-primary" />
-                                <span>{copy.cancelledReleasesRedemptionHelp}</span>
+                                <Info
+                                    aria-hidden="true"
+                                    className="size-4 shrink-0 text-primary"
+                                />
+                                <span>
+                                    {copy.cancelledReleasesRedemptionHelp}
+                                </span>
                             </div>
 
                             {/* Dates */}
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 <div className="flex flex-col gap-1.5">
-                                    <Label htmlFor="coupon-starts">{copy.startsAtLabel}</Label>
+                                    <Label htmlFor="coupon-starts">
+                                        {copy.startsAtLabel}
+                                    </Label>
                                     <Input
                                         className="min-h-11"
                                         id="coupon-starts"
                                         onChange={(e) =>
-                                            handleFieldChange('starts_at', e.target.value)
+                                            handleFieldChange(
+                                                'starts_at',
+                                                e.target.value,
+                                            )
                                         }
                                         type="date"
                                         value={formData.starts_at}
@@ -762,12 +942,17 @@ export default function AdminCouponDrawer({
                                 </div>
 
                                 <div className="flex flex-col gap-1.5">
-                                    <Label htmlFor="coupon-ends">{copy.endsAtLabel}</Label>
+                                    <Label htmlFor="coupon-ends">
+                                        {copy.endsAtLabel}
+                                    </Label>
                                     <Input
                                         className="min-h-11"
                                         id="coupon-ends"
                                         onChange={(e) =>
-                                            handleFieldChange('ends_at', e.target.value)
+                                            handleFieldChange(
+                                                'ends_at',
+                                                e.target.value,
+                                            )
                                         }
                                         type="date"
                                         value={formData.ends_at}
@@ -793,43 +978,24 @@ export default function AdminCouponDrawer({
                             {copy.cancelButton}
                         </Button>
                         <Button
-                            className="min-h-11 gap-1.5"
+                            className="min-h-11"
                             disabled={saving}
-                            onClick={requestSave}
+                            onClick={submitForm}
                             type="button"
                         >
-                            <Lock aria-hidden="true" className="size-3.5" />
-                            <span>{saving ? copy.savingButton : copy.saveButton}</span>
+                            <span>
+                                {saving ? copy.savingButton : copy.saveButton}
+                            </span>
                         </Button>
                     </SheetFooter>
                 </SheetContent>
             </Sheet>
-
-            <AdminPasswordConfirmDialog
-                confirmButtonText={copy.confirmPasswordButton}
-                confirmingButtonText={copy.confirmingPassword}
-                description={copy.passwordModalDescription}
-                onConfirmed={() => {
-                    setPasswordModalOpen(false);
-                    pendingAction.current?.();
-                    pendingAction.current = null;
-                }}
-                onOpenChange={(open) => {
-                    setPasswordModalOpen(open);
-                    if (!open) {
-                        pendingAction.current = null;
-                    }
-                }}
-                open={passwordModalOpen}
-                passwordLabel={copy.passwordLabel}
-                passwordPlaceholder={copy.passwordPlaceholder}
-                title={copy.passwordModalTitle}
-            />
         </>
     );
 }
 
 function getCsrfToken(): string {
     const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+
     return match ? decodeURIComponent(match[1]) : '';
 }

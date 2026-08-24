@@ -21,6 +21,7 @@ export const englishAdminUi: AdminTranslations = {
         retry: 'Try again',
     },
     coupons: {
+        loading: 'Loading coupons…',
         headTitle: 'Coupons',
         title: 'Coupons',
         description:
@@ -41,10 +42,11 @@ export const englishAdminUi: AdminTranslations = {
         typeFixed: 'Fixed amount (SAR)',
         valueLabel: 'Value',
         valuePercentHelp: 'Percentage off (1–100).',
-        valueFixedHelp: 'Fixed discount in halalah (min 100).',
-        minimumOrderLabel: 'Minimum order (halalah)',
+        valueFixedHelp: 'Fixed discount in SAR.',
+        minimumOrderLabel: 'Minimum order',
         minimumOrderHelp: 'Leave 0 for no minimum.',
-        minimumOrderEligibleHelp: 'Checked against eligible items only, not the whole cart.',
+        minimumOrderEligibleHelp:
+            'Checked against eligible items only, not the whole cart.',
         maximumDiscountLabel: 'Max discount (halalah, percent coupons only)',
         maximumDiscountHelp: 'Leave blank for no cap.',
         usageLimitLabel: 'Total usage limit',
@@ -57,11 +59,14 @@ export const englishAdminUi: AdminTranslations = {
         endsAtLabel: 'Ends at',
         isActiveLabel: 'Active',
         isPausedLabel: 'Paused (inactive)',
-        isPausedHelp: 'When paused, customers cannot apply or redeem this coupon.',
+        isPausedHelp:
+            'When paused, customers cannot apply or redeem this coupon.',
         firstOrderOnlyLabel: 'First order only',
-        firstOrderOnlyHelp: 'Only customers with no prior paid orders can use this code.',
+        firstOrderOnlyHelp:
+            'Only customers with no prior paid orders can use this code.',
         excludesPromotedLabel: 'Exclude promoted items',
-        excludesPromotedHelp: 'Cannot be combined with items that already have a promotional discount.',
+        excludesPromotedHelp:
+            'Cannot be combined with items that already have a promotional discount.',
         scopeLabel: 'What it applies to',
         scopeHelp: 'Choose which items or services this coupon discounts.',
         scopeOrder: 'Entire order',
@@ -124,7 +129,8 @@ export const englishAdminUi: AdminTranslations = {
         confirmToggle: 'Confirm',
         duplicateButton: 'Duplicate',
         duplicateTitle: 'Duplicate coupon',
-        duplicateDescription: 'Create a copy of coupon :code? It will be created in paused status with a new code.',
+        duplicateDescription:
+            'Create a copy of coupon :code? It will be created in paused status with a new code.',
         duplicateCodeLabel: 'New coupon code (optional)',
         duplicateCodePlaceholder: 'Leave blank to generate automatically',
         confirmDuplicate: 'Duplicate coupon',
@@ -142,7 +148,8 @@ export const englishAdminUi: AdminTranslations = {
         kpiRevenueAttributed: 'Revenue attributed',
         kpiTotalDiscount: 'Total discount given',
         kpiPaidOrdersNote: 'Paid orders only',
-        releasedNotice: ':count redemption was released by order cancellation.|:count redemptions were released by order cancellations.',
+        releasedNotice:
+            ':count redemption was released by order cancellation.|:count redemptions were released by order cancellations.',
         chartTitle: 'Redemptions per day',
         noChartData: 'No redemptions recorded for paid orders yet.',
         noRecentRedemptions: 'No redemptions found for this coupon.',
@@ -234,7 +241,7 @@ export const englishAdminUi: AdminTranslations = {
         typeFixed: 'Fixed amount (SAR)',
         valueLabel: 'Value',
         valuePercentHelp: 'Percentage off (1–90).',
-        valueFixedHelp: 'Fixed discount in halalah (min 100).',
+        valueFixedHelp: 'Fixed discount in SAR.',
         startsAtLabel: 'Starts at',
         endsAtLabel: 'Ends at',
         isActiveLabel: 'Active',
@@ -851,7 +858,7 @@ export const englishAdminUi: AdminTranslations = {
         credit: 'Credit (+)',
         debit: 'Debit (-)',
         amountSarLabel: 'Amount (SAR)',
-        amountHalalahHelp: ':halalah Halalah (maximum 1,000.00 SAR)',
+        amountHalalahHelp: 'Maximum 1,000.00 SAR per adjustment',
         adjustmentReasonLabel: 'Reason',
         adjustmentReasonPlaceholder:
             'Enter internal reason for this wallet adjustment (5–200 characters)…',
@@ -900,7 +907,7 @@ export const englishAdminUi: AdminTranslations = {
             tableRank: 'Rank',
             tableStep: 'Promotion step',
             tablePrice: 'Price (SAR)',
-            tableHalalah: 'Halalah',
+            tableHalalah: 'SAR',
             ranks: {
                 '1': 'Rank 1',
                 '2': 'Rank 2',
@@ -1351,7 +1358,7 @@ export const englishAdminUi: AdminTranslations = {
             'Set a manual price override for this automation variant. This price will take precedence over automation snapshots.',
         repriceWarning:
             'Saving this override re-prices the variant immediately and creates a new price version. Customers holding an older quote or cart will be asked to re-add the item.',
-        priceHalalahLabel: 'Price (Halalah)',
+        priceHalalahLabel: 'Price (SAR)',
         priceHalalahHelp: ':halalah halalah = :sar',
         saveOverrideButton: 'Save price override',
         savingOverrideButton: 'Saving override…',
@@ -1360,7 +1367,7 @@ export const englishAdminUi: AdminTranslations = {
             'Configure the price for each completion tier. The first tier total must equal the base variant price.',
         tierCompletions: 'Completions',
         tierDiscount: 'Multiplier',
-        tierTotalHalalah: 'Total (Halalah)',
+        tierTotalHalalah: 'Total (SAR)',
         tierEquivalentSar: 'Equivalent',
         tierCountLabel: ':count completion(s)',
         singlePriceTitle: 'Variant Price',
@@ -2283,7 +2290,6 @@ export const sampleAdminLoyaltyPageProps: AdminLoyaltyPageProps = {
     tiers: sampleAdminLoyaltyTiers,
     kpis: sampleAdminLoyaltyKpis,
     updateTierUrlTemplate: '/admin/api/marketing/loyalty/tiers/__ID__',
-    confirmPasswordUrl: '/user/confirm-password',
     logoutUrl: '/logout',
 };
 
@@ -2408,6 +2414,5 @@ export const sampleAdminCategoriesPageProps: AdminCategoriesPageProps = {
     filterOptions: sampleAdminCategoryFilterOptions,
     productsUrl: '/admin/products',
     visibilityUrlTemplate: '/admin/api/categories/__ID__/visibility',
-    confirmPasswordUrl: '/user/confirm-password',
     logoutUrl: '/logout',
 };

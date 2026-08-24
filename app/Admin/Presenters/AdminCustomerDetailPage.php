@@ -54,7 +54,6 @@ final readonly class AdminCustomerDetailPage
             'statusUrl' => route($prefix.'customers.status.store', ['publicId' => (string) $detail['user']->public_id], absolute: false),
             'contactUrl' => route($prefix.'customers.contact.store', ['publicId' => (string) $detail['user']->public_id], absolute: false),
             'walletAdjustUrl' => route($prefix.'customers.wallet.adjust', ['publicId' => (string) $detail['user']->public_id], absolute: false),
-            'confirmPasswordUrl' => route('password.confirm', absolute: false),
         ];
     }
 }

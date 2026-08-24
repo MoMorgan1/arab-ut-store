@@ -42,24 +42,6 @@ vi.mock('@inertiajs/react', () => ({
     }),
 }));
 
-// The shared password dialog has dedicated coverage through the admin order
-// detail flows; here we stub the seam so these tests focus on the promotion
-// page's own orchestration of pending actions after confirmation.
-vi.mock('@/components/admin/admin-password-confirm-dialog', () => ({
-    default: ({
-        onConfirmed,
-        open,
-    }: {
-        onConfirmed: () => void;
-        open: boolean;
-    }) =>
-        open ? (
-            <button onClick={onConfirmed} type="button">
-                confirmed-password-overlay
-            </button>
-        ) : null,
-}));
-
 function samplePromotionRow(
     overrides: Partial<AdminPromotionRow>,
 ): AdminPromotionRow {
@@ -188,14 +170,14 @@ describe('AdminPromotionsPage', () => {
         expect(screen.getByText('Until 2026-12-31')).toBeVisible();
         expect(screen.getByText('Everything')).toBeVisible();
         expect(screen.getByText('Fixed off')).toBeVisible();
-        expect(screen.getByText('15 SAR')).toBeVisible();
+        expect(screen.getByText('15.00 SAR')).toBeVisible();
         expect(screen.getByText('From 2026-08-01')).toBeVisible();
         expect(screen.getByText('rivals')).toBeVisible();
         expect(screen.getByText('Active')).toBeVisible();
         expect(screen.getByText('Inactive')).toBeVisible();
     });
 
-    it('opens an empty create dialog and submits an all-scope payload after password confirmation', async () => {
+    it('opens an empty create dialog and submits an all-scope payload directly', async () => {
         const fetchMock = vi.fn().mockResolvedValue(
             new Response(
                 JSON.stringify({
@@ -226,13 +208,6 @@ describe('AdminPromotionsPage', () => {
             target: { value: '25' },
         });
         fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
-
-        fireEvent.click(
-            await screen.findByRole('button', {
-                hidden: true,
-                name: 'confirmed-password-overlay',
-            }),
-        );
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith(
@@ -278,16 +253,9 @@ describe('AdminPromotionsPage', () => {
         expect(within(dialog).getByLabelText(/^English name$/)).toHaveValue(
             'Fixed off',
         );
-        expect(within(dialog).getByLabelText(/^Value$/)).toHaveValue(1500);
+        expect(within(dialog).getByLabelText(/^Value$/)).toHaveValue(15);
 
         fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
-
-        fireEvent.click(
-            await screen.findByRole('button', {
-                hidden: true,
-                name: 'confirmed-password-overlay',
-            }),
-        );
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith(
@@ -332,13 +300,6 @@ describe('AdminPromotionsPage', () => {
 
         fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
 
-        fireEvent.click(
-            await screen.findByRole('button', {
-                hidden: true,
-                name: 'confirmed-password-overlay',
-            }),
-        );
-
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith(
                 '/admin/api/marketing/promotions/01KPROMO000000000000000001',
@@ -347,7 +308,7 @@ describe('AdminPromotionsPage', () => {
         });
     });
 
-    it('toggles a promotion to inactive through the confirmation and password flow', async () => {
+    it('toggles a promotion to inactive through the confirmation flow', async () => {
         const fetchMock = vi.fn().mockResolvedValue(
             new Response(
                 JSON.stringify({
@@ -372,13 +333,6 @@ describe('AdminPromotionsPage', () => {
 
         fireEvent.click(
             within(confirmDialog).getByRole('button', { name: 'Confirm' }),
-        );
-
-        fireEvent.click(
-            await screen.findByRole('button', {
-                hidden: true,
-                name: 'confirmed-password-overlay',
-            }),
         );
 
         await waitFor(() => {

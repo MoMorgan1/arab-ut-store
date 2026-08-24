@@ -83,7 +83,6 @@ function defaultProps(): AdminCustomerDetailPageProps {
         contactUrl: '/api/customers/01K5CUST00000000000000001/contact',
         walletAdjustUrl:
             '/api/customers/01K5CUST00000000000000001/wallet/adjust',
-        confirmPasswordUrl: '/user/confirm-password',
         logoutUrl: '/logout',
     };
 }

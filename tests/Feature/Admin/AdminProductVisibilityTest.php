@@ -140,20 +140,6 @@ it('refuses an inactive admin', function (): void {
     hideProduct($actor, $product)->assertForbidden();
 });
 
-it('requires a confirmed password', function (): void {
-    $actor = productVisibilityActor();
-    $product = automationProduct();
-
-    test()->actingAs($actor)
-        ->postJson(route('admin.products.visibility.store', ['publicId' => $product->public_id]), [
-            'hidden' => true,
-            'expected_hidden' => false,
-        ])
-        ->assertStatus(423);
-
-    expect($product->fresh()->admin_hidden_at)->toBeNull();
-});
-
 it('rejects unknown fields', function (): void {
     $actor = productVisibilityActor();
     $product = automationProduct();

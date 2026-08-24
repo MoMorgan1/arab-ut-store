@@ -93,7 +93,6 @@ final readonly class AdminCouponDetailPage
             'statusUrl' => route($prefix.'marketing.coupons.status.store', ['publicId' => $coupon['id']], absolute: false),
             'duplicateUrl' => route($prefix.'marketing.coupons.duplicate', ['publicId' => $coupon['id']], absolute: false),
             'listUrl' => route($prefix.'marketing.coupons', absolute: false),
-            'confirmPasswordUrl' => route('password.confirm', absolute: false),
         ];
     }
 

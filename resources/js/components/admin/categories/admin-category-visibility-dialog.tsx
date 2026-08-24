@@ -4,7 +4,6 @@ import { useHttp } from '@inertiajs/react';
 import { AlertCircle } from 'lucide-react';
 import React, { useState } from 'react';
 
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,7 +21,6 @@ import type { AdminCategoryRow, AdminTranslations } from '@/types/admin';
 export type AdminCategoryVisibilityDialogProps = {
     adminUi: AdminTranslations;
     category: AdminCategoryRow | null;
-    confirmPasswordUrl?: string;
     onConflict: (currentHidden: boolean) => void;
     onOpenChange: (open: boolean) => void;
     onSuccess: (result: { adminHidden: boolean; category: string }) => void;
@@ -45,7 +43,6 @@ type VisibilityResponse = {
 export default function AdminCategoryVisibilityDialog({
     adminUi,
     category,
-    confirmPasswordUrl,
     onConflict,
     onOpenChange,
     onSuccess,
@@ -57,7 +54,6 @@ export default function AdminCategoryVisibilityDialog({
     const targetHidden = !isCurrentlyHidden;
 
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false);
 
     const visibilityUrl = category
         ? visibilityUrlTemplate.replace('__ID__', category.id)
@@ -118,12 +114,6 @@ export default function AdminCategoryVisibilityDialog({
                 },
                 onHttpException: (response) => {
                     handled = true;
-
-                    if (response.status === 423) {
-                        setPasswordConfirmOpen(true);
-
-                        return false;
-                    }
 
                     if (response.status === 409) {
                         const body =
@@ -191,11 +181,6 @@ export default function AdminCategoryVisibilityDialog({
         }
     };
 
-    const handlePasswordConfirmed = () => {
-        setPasswordConfirmOpen(false);
-        void executeVisibilityChange();
-    };
-
     return (
         <>
             <Dialog onOpenChange={onOpenChange} open={open}>
@@ -248,19 +233,6 @@ export default function AdminCategoryVisibilityDialog({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            <AdminPasswordConfirmDialog
-                cancelButtonText={adminUi.common.cancel}
-                confirmPasswordUrl={confirmPasswordUrl}
-                description={adminUi.categories.passwordModalDescription}
-                invalidPasswordText={adminUi.categories.invalidPassword}
-                onConfirmed={handlePasswordConfirmed}
-                onOpenChange={setPasswordConfirmOpen}
-                open={passwordConfirmOpen}
-                passwordLabel={adminUi.categories.passwordLabel}
-                passwordPlaceholder={adminUi.categories.passwordPlaceholder}
-                title={adminUi.categories.passwordModalTitle}
-            />
         </>
     );
 }
