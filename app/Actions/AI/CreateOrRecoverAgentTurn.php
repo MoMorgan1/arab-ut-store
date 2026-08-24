@@ -46,6 +46,21 @@ final readonly class CreateOrRecoverAgentTurn
         $active = $this->lockActiveTurn($conversation);
 
         if ($active instanceof AgentTurn) {
+            // Design 3.3 lets a turn that is *already streaming* finish, because
+            // StreamAgentTurn has no clean cancellation point and killing it
+            // would leave a partial bubble. That reasoning does not extend to a
+            // Waiting turn: it has produced nothing, so handing it back after a
+            // human took over starts a brand-new assistant reply into a thread a
+            // person owns, with no partial bubble to protect. The stale-turn
+            // sweep marks an abandoned Waiting turn Failed rather than running
+            // it, so refusing here ends it rather than stranding it.
+            if (
+                $conversation->handoff_state->isLive()
+                && $active->status === AgentTurnStatus::Waiting
+            ) {
+                return AgentTurnClaim::idle();
+            }
+
             return $this->existingClaim($conversation, $active);
         }
 

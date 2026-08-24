@@ -1439,9 +1439,18 @@ export function useChat(options: UseChatOptions = {}) {
         // 60/min read limit that makes staff replies stop arriving at all.
         let cancelled = false;
 
+        // `cancelled` only separates one effect run from the next. It cannot
+        // stop a second chain starting *inside* the same run: the visibility
+        // handler clears the timer ref and calls pollHandoff directly, and a
+        // poll already awaiting its fetch holds no timer to clear, so both come
+        // back and both reschedule. Flicking the tab during a fetch added a
+        // chain each time. This flag is what actually makes it single-flight.
+        let inFlight = false;
+
         const pollHandoff = async () => {
             if (
                 cancelled ||
+                inFlight ||
                 !ownsAsyncGeneration(generation) ||
                 !isOpenRef.current
             ) {
@@ -1451,6 +1460,8 @@ export function useChat(options: UseChatOptions = {}) {
             if (typeof document !== 'undefined' && document.hidden) {
                 return;
             }
+
+            inFlight = true;
 
             try {
                 const refreshed = await fetchConversation(convPublicId);
@@ -1464,28 +1475,32 @@ export function useChat(options: UseChatOptions = {}) {
                 // now appends the finalized copy, and the completion handler
                 // then renames the placeholder to that same id — one reply,
                 // twice on screen. The completion path merges it anyway.
-                if (streamingTurnIdRef.current !== null) {
-                    return;
-                }
+                // Skip only the merge, never the reschedule: returning here
+                // killed the chain outright, so a staff reply arriving during a
+                // stream sat undelivered until something else happened to
+                // restart polling.
+                if (streamingTurnIdRef.current === null) {
+                    updateMessages((prev) => {
+                        const existingIds = new Set(
+                            prev.map((m) => m.publicId),
+                        );
+                        const newMsgs = refreshed.messages.filter(
+                            (m) => m.publicId && !existingIds.has(m.publicId),
+                        );
 
-                updateMessages((prev) => {
-                    const existingIds = new Set(prev.map((m) => m.publicId));
-                    const newMsgs = refreshed.messages.filter(
-                        (m) => m.publicId && !existingIds.has(m.publicId),
-                    );
+                        if (newMsgs.length > 0) {
+                            lastReceivedMessageAtRef.current = Date.now();
 
-                    if (newMsgs.length > 0) {
-                        lastReceivedMessageAtRef.current = Date.now();
+                            if (!isOpenRef.current) {
+                                setUnreadCount((c) => c + newMsgs.length);
+                            }
 
-                        if (!isOpenRef.current) {
-                            setUnreadCount((c) => c + newMsgs.length);
+                            return [...prev, ...newMsgs];
                         }
 
-                        return [...prev, ...newMsgs];
-                    }
-
-                    return prev;
-                });
+                        return prev;
+                    });
+                }
 
                 if (
                     refreshed.handoffState !==
@@ -1511,6 +1526,8 @@ export function useChat(options: UseChatOptions = {}) {
                 }
             } catch {
                 // Ignore transient network errors during polling
+            } finally {
+                inFlight = false;
             }
 
             if (

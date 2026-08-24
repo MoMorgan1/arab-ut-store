@@ -34,6 +34,10 @@ final readonly class AddInternalNote
                 'message_type' => ChatMessageType::InternalNote,
                 'content' => $content,
                 'reply_to_message_id' => null,
+                // Snapshotted because staff_user_id is nullOnDelete: once a
+                // staff account is removed the relation is gone, and this is
+                // then the only record of who answered the customer.
+                'metadata' => ['staffName' => $staff->name],
             ]);
 
             return $message;

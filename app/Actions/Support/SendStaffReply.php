@@ -43,6 +43,10 @@ final readonly class SendStaffReply
                 'content' => $content,
                 'client_message_id' => $clientMessageId,
                 'reply_to_message_id' => null,
+                // Snapshotted because staff_user_id is nullOnDelete: once a
+                // staff account is removed the relation is gone, and this is
+                // then the only record of who answered the customer.
+                'metadata' => ['staffName' => $staff->name],
             ]);
 
             // last_staff_message_at is what the inbox unread dot and the unread

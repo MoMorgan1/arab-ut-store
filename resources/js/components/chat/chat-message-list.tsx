@@ -498,39 +498,47 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                     </div>
                 )}
 
-                {/* Assistant retryable turn affordance */}
-                {retryableTurn?.retryable === true && (
-                    <div dir="ltr" className="my-1 flex w-full justify-start">
+                {/* Assistant retryable turn affordance.
+                    Hidden once a human owns the thread: the server refuses the
+                    retry anyway, but leaving a dead button under the "the team
+                    is replying" banner invites the customer to press it. */}
+                {retryableTurn?.retryable === true &&
+                    handoffState !== 'requested' &&
+                    handoffState !== 'active' && (
                         <div
-                            dir="auto"
-                            className="chat-drop-in flex items-center gap-1.5 rounded-xl border border-[var(--chat-line)] bg-[var(--chat-card)] px-3 py-2 text-xs text-[var(--chat-danger)] shadow-sm"
+                            dir="ltr"
+                            className="my-1 flex w-full justify-start"
                         >
-                            <AlertCircle
-                                aria-hidden="true"
-                                className="h-3.5 w-3.5"
-                            />
-                            <span>
-                                {isEn
-                                    ? 'Assistant could not complete response'
-                                    : 'تعذر على المساعد إكمال الرد'}
-                            </span>
-                            {onRetryAgentTurn && (
-                                <button
-                                    type="button"
-                                    onClick={onRetryAgentTurn}
-                                    disabled={disabled}
-                                    className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 underline hover:text-[var(--chat-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    <RefreshCw
-                                        aria-hidden="true"
-                                        className="h-3 w-3"
-                                    />
-                                    {isEn ? 'Retry' : 'إعادة المحاولة'}
-                                </button>
-                            )}
+                            <div
+                                dir="auto"
+                                className="chat-drop-in flex items-center gap-1.5 rounded-xl border border-[var(--chat-line)] bg-[var(--chat-card)] px-3 py-2 text-xs text-[var(--chat-danger)] shadow-sm"
+                            >
+                                <AlertCircle
+                                    aria-hidden="true"
+                                    className="h-3.5 w-3.5"
+                                />
+                                <span>
+                                    {isEn
+                                        ? 'Assistant could not complete response'
+                                        : 'تعذر على المساعد إكمال الرد'}
+                                </span>
+                                {onRetryAgentTurn && (
+                                    <button
+                                        type="button"
+                                        onClick={onRetryAgentTurn}
+                                        disabled={disabled}
+                                        className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 underline hover:text-[var(--chat-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <RefreshCw
+                                            aria-hidden="true"
+                                            className="h-3 w-3"
+                                        />
+                                        {isEn ? 'Retry' : 'إعادة المحاولة'}
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
                 {/* Suggestion Chips (shown when no customer message exists yet) */}
                 {!hasCustomerMessages && (
