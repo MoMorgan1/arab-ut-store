@@ -10,11 +10,14 @@ import {
     PowerOff,
     Tag,
 } from 'lucide-react';
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 
 import AdminBadge from '@/components/admin/admin-badge';
-import { formatAdminMoney } from '@/components/admin/admin-money';
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
+import {
+    formatAdminMoney,
+    formatHalalahToSar,
+    parseSarToHalalah,
+} from '@/components/admin/admin-money';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -44,7 +47,6 @@ import type {
 
 export type AdminServicePricingSectionProps = {
     adminUi: AdminTranslations;
-    confirmPasswordUrl?: string;
     direction: 'rtl' | 'ltr';
     locale: 'ar' | 'en';
     servicePricing: AdminServicePricingData;
@@ -76,7 +78,6 @@ function getCsrfToken(): string {
 
 export default function AdminServicePricingSection({
     adminUi,
-    confirmPasswordUrl,
     locale,
     servicePricing,
     servicePricingUrls,
@@ -106,10 +107,6 @@ export default function AdminServicePricingSection({
     const [statusSubmitting, setStatusSubmitting] = useState(false);
     const [statusError, setStatusError] = useState<string | null>(null);
 
-    // Password confirm dialog state
-    const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false);
-    const pendingAction = useRef<(() => Promise<void>) | null>(null);
-
     const dateFormatter = new Intl.DateTimeFormat(locale, {
         dateStyle: 'medium',
         timeStyle: 'short',
@@ -127,13 +124,20 @@ export default function AdminServicePricingSection({
             >;
             const ranksState: Record<string, string> = {};
             FUT_RANKS.forEach((rank) => {
-                ranksState[String(rank)] = String(
-                    rawRanks[String(rank)] ?? rawRanks[rank] ?? '',
-                );
+                const val = rawRanks[String(rank)] ?? rawRanks[rank];
+                ranksState[String(rank)] =
+                    val !== undefined ? formatHalalahToSar(val) : '';
             });
             setFutRanks(ranksState);
             setFutUrgent(
-                String(schedule.configuration.urgent_surcharge_halalah ?? ''),
+                typeof schedule.configuration.urgent_surcharge_halalah ===
+                    'number' ||
+                    typeof schedule.configuration.urgent_surcharge_halalah ===
+                        'string'
+                    ? formatHalalahToSar(
+                          schedule.configuration.urgent_surcharge_halalah,
+                      )
+                    : '',
             );
         } else if (schedule.serviceType === 'rivals') {
             const rawSteps = (schedule.configuration.steps ?? {}) as Record<
@@ -142,7 +146,9 @@ export default function AdminServicePricingSection({
             >;
             const stepsState: Record<string, string> = {};
             RIVALS_STEPS.forEach((step) => {
-                stepsState[step] = String(rawSteps[step] ?? '');
+                const val = rawSteps[step];
+                stepsState[step] =
+                    val !== undefined ? formatHalalahToSar(val) : '';
             });
             setRivalsSteps(stepsState);
         }
@@ -179,20 +185,20 @@ export default function AdminServicePricingSection({
             const parsedRanks: Record<string, number> = {};
 
             for (const rank of FUT_RANKS) {
-                const val = parseInt(futRanks[String(rank)] || '0', 10);
-                parsedRanks[String(rank)] = val;
+                parsedRanks[String(rank)] = parseSarToHalalah(
+                    futRanks[String(rank)] || '0',
+                );
             }
 
             configuration = {
                 ranks: parsedRanks,
-                urgent_surcharge_halalah: parseInt(futUrgent || '0', 10),
+                urgent_surcharge_halalah: parseSarToHalalah(futUrgent || '0'),
             };
         } else if (editingSchedule.serviceType === 'rivals') {
             const parsedSteps: Record<string, number> = {};
 
             for (const step of RIVALS_STEPS) {
-                const val = parseInt(rivalsSteps[step] || '0', 10);
-                parsedSteps[step] = val;
+                parsedSteps[step] = parseSarToHalalah(rivalsSteps[step] || '0');
             }
 
             configuration = {
@@ -215,14 +221,6 @@ export default function AdminServicePricingSection({
                 },
                 method: 'POST',
             });
-
-            if (response.status === 423) {
-                setEditDialogOpen(false);
-                pendingAction.current = executePriceUpdate;
-                setPasswordConfirmOpen(true);
-
-                return;
-            }
 
             if (response.status === 409) {
                 setEditDialogOpen(false);
@@ -321,14 +319,6 @@ export default function AdminServicePricingSection({
                 },
                 method: 'POST',
             });
-
-            if (response.status === 423) {
-                setStatusDialogOpen(false);
-                pendingAction.current = executeStatusChange;
-                setPasswordConfirmOpen(true);
-
-                return;
-            }
 
             if (response.status === 409) {
                 setStatusDialogOpen(false);
@@ -766,7 +756,7 @@ export default function AdminServicePricingSection({
                                                                 `Rank ${rank}`}{' '}
                                                             (
                                                             {
-                                                                pricingCopy.tableHalalah
+                                                                pricingCopy.tablePrice
                                                             }
                                                             )
                                                         </Label>
@@ -774,8 +764,12 @@ export default function AdminServicePricingSection({
                                                             {formatAdminMoney(
                                                                 {
                                                                     amountMinor:
-                                                                        currentVal ||
-                                                                        '0',
+                                                                        String(
+                                                                            parseSarToHalalah(
+                                                                                currentVal ||
+                                                                                    '0',
+                                                                            ),
+                                                                        ),
                                                                     currency:
                                                                         'SAR',
                                                                 },
@@ -795,8 +789,8 @@ export default function AdminServicePricingSection({
                                                             editSubmitting
                                                         }
                                                         id={`input-fut-rank-${rank}`}
-                                                        inputMode="numeric"
-                                                        min={1}
+                                                        inputMode="decimal"
+                                                        placeholder="0.00"
                                                         onChange={(e) =>
                                                             setFutRanks(
                                                                 (prev) => ({
@@ -810,7 +804,7 @@ export default function AdminServicePricingSection({
                                                             )
                                                         }
                                                         required
-                                                        step={1}
+                                                        step="0.01"
                                                         type="number"
                                                         value={currentVal}
                                                     />
@@ -835,13 +829,17 @@ export default function AdminServicePricingSection({
                                                 htmlFor="input-fut-urgent"
                                             >
                                                 {pricingCopy.urgentSurcharge} (
-                                                {pricingCopy.tableHalalah})
+                                                {pricingCopy.tablePrice})
                                             </Label>
                                             <span className="text-xs text-muted-foreground tabular-nums">
                                                 {formatAdminMoney(
                                                     {
-                                                        amountMinor:
-                                                            futUrgent || '0',
+                                                        amountMinor: String(
+                                                            parseSarToHalalah(
+                                                                futUrgent ||
+                                                                    '0',
+                                                            ),
+                                                        ),
                                                         currency: 'SAR',
                                                     },
                                                     locale,
@@ -864,13 +862,13 @@ export default function AdminServicePricingSection({
                                             className="min-h-11 touch-manipulation text-xs tabular-nums"
                                             disabled={editSubmitting}
                                             id="input-fut-urgent"
-                                            inputMode="numeric"
-                                            min={1}
+                                            inputMode="decimal"
+                                            placeholder="0.00"
                                             onChange={(e) =>
                                                 setFutUrgent(e.target.value)
                                             }
                                             required
-                                            step={1}
+                                            step="0.01"
                                             type="number"
                                             value={futUrgent}
                                         />
@@ -916,17 +914,19 @@ export default function AdminServicePricingSection({
                                                             step
                                                         ] ?? step}{' '}
                                                         (
-                                                        {
-                                                            pricingCopy.tableHalalah
-                                                        }
+                                                        {pricingCopy.tablePrice}
                                                         )
                                                     </Label>
                                                     <span className="text-xs text-muted-foreground tabular-nums">
                                                         {formatAdminMoney(
                                                             {
                                                                 amountMinor:
-                                                                    currentVal ||
-                                                                    '0',
+                                                                    String(
+                                                                        parseSarToHalalah(
+                                                                            currentVal ||
+                                                                                '0',
+                                                                        ),
+                                                                    ),
                                                                 currency: 'SAR',
                                                             },
                                                             locale,
@@ -943,8 +943,8 @@ export default function AdminServicePricingSection({
                                                     className="min-h-11 touch-manipulation text-xs tabular-nums"
                                                     disabled={editSubmitting}
                                                     id={`input-rivals-step-${step}`}
-                                                    inputMode="numeric"
-                                                    min={1}
+                                                    inputMode="decimal"
+                                                    placeholder="0.00"
                                                     onChange={(e) =>
                                                         setRivalsSteps(
                                                             (prev) => ({
@@ -955,7 +955,7 @@ export default function AdminServicePricingSection({
                                                         )
                                                     }
                                                     required
-                                                    step={1}
+                                                    step="0.01"
                                                     type="number"
                                                     value={currentVal}
                                                 />
@@ -1106,22 +1106,6 @@ export default function AdminServicePricingSection({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            {/* Replay password confirmation dialog */}
-            <AdminPasswordConfirmDialog
-                confirmPasswordUrl={confirmPasswordUrl}
-                description="For security, please enter your password to confirm this pricing schedule change."
-                onConfirmed={() => {
-                    if (pendingAction.current) {
-                        const action = pendingAction.current;
-                        pendingAction.current = null;
-                        void action();
-                    }
-                }}
-                onOpenChange={setPasswordConfirmOpen}
-                open={passwordConfirmOpen}
-                title="Confirm your password"
-            />
         </section>
     );
 }

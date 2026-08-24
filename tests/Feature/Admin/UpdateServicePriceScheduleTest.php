@@ -410,34 +410,6 @@ test('unknown service type is a validation error, not a 500', function (): void 
         ->assertJsonValidationErrors(['service_type']);
 });
 
-test('service pricing mutations require password confirmation', function (): void {
-    $admin = createPricingTestAdmin(UserRole::Admin);
-
-    $this->actingAs($admin)
-        ->postJson('/admin/api/settings/service-pricing/fut_champions', [
-            'expected_version' => 1,
-            'configuration' => [
-                'ranks' => [
-                    1 => 22000,
-                    2 => 19000,
-                    3 => 17000,
-                    4 => 15000,
-                    5 => 13000,
-                    6 => 10000,
-                ],
-                'urgent_surcharge_halalah' => 4000,
-            ],
-        ])
-        ->assertStatus(423);
-
-    $this->actingAs($admin)
-        ->postJson('/admin/api/settings/service-pricing/fut_champions/status', [
-            'action' => 'deactivate',
-            'expected_active' => true,
-        ])
-        ->assertStatus(423);
-});
-
 function createPricingTestAdmin(UserRole $role): User
 {
     $secret = app(TwoFactorAuthenticationProvider::class)->generateSecretKey();

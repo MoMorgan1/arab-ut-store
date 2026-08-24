@@ -628,6 +628,7 @@ export type AdminTranslations = {
         };
     };
     coupons: {
+        loading: string;
         headTitle: string;
         title: string;
         description: string;
@@ -638,6 +639,7 @@ export type AdminTranslations = {
         codeLabel: string;
         codePlaceholder: string;
         codeHelp: string;
+        codeUppercaseHint: string;
         descriptionArLabel: string;
         descriptionEnLabel: string;
         typeLabel: string;
@@ -648,21 +650,55 @@ export type AdminTranslations = {
         valueFixedHelp: string;
         minimumOrderLabel: string;
         minimumOrderHelp: string;
+        minimumOrderEligibleHelp: string;
         maximumDiscountLabel: string;
         maximumDiscountHelp: string;
         usageLimitLabel: string;
         usageLimitHelp: string;
         perUserLimitLabel: string;
         perUserLimitHelp: string;
+        cancelledReleasesRedemptionHelp: string;
         startsAtLabel: string;
         endsAtLabel: string;
         isActiveLabel: string;
+        isPausedLabel: string;
+        isPausedHelp: string;
+        firstOrderOnlyLabel: string;
+        firstOrderOnlyHelp: string;
+        excludesPromotedLabel: string;
+        excludesPromotedHelp: string;
+        scopeLabel: string;
+        scopeHelp: string;
+        scopeOrder: string;
+        scopeCategory: string;
+        scopeProduct: string;
+        scopeService: string;
+        targetCategoriesLabel: string;
+        targetCategoriesPlaceholder: string;
+        targetProductsLabel: string;
+        targetProductsPlaceholder: string;
+        serviceTypeLabel: string;
+        serviceTypePlaceholder: string;
+        sectionBasics: string;
+        sectionDiscount: string;
+        sectionAppliesTo: string;
+        sectionEligibility: string;
+        sectionLimits: string;
+        statusAll: string;
+        statusActive: string;
+        statusScheduled: string;
+        statusPaused: string;
+        statusExpired: string;
+        statusExhausted: string;
         saveButton: string;
         savingButton: string;
         cancelButton: string;
         columns: {
             code: string;
+            discount: string;
             type: string;
+            scope: string;
+            eligibility: string;
             window: string;
             usage: string;
             status: string;
@@ -678,16 +714,78 @@ export type AdminTranslations = {
         window: string;
         active: string;
         inactive: string;
+        paused: string;
+        scheduled: string;
+        expired: string;
+        exhausted: string;
         noCoupons: string;
+        noCouponsMatching: string;
         toggleTitle: string;
         activateTitle: string;
         deactivateTitle: string;
         activateDescription: string;
         deactivateDescription: string;
         confirmToggle: string;
+        duplicateButton: string;
+        duplicateTitle: string;
+        duplicateDescription: string;
+        duplicateCodeLabel: string;
+        duplicateCodePlaceholder: string;
+        confirmDuplicate: string;
+        duplicating: string;
+        pauseButton: string;
+        resumeButton: string;
+        viewDetails: string;
+        backToCoupons: string;
+        detailTitle: string;
+        performanceTitle: string;
+        rulesTitle: string;
+        recentRedemptionsTitle: string;
+        kpiRedemptions: string;
+        kpiUniqueCustomers: string;
+        kpiRevenueAttributed: string;
+        kpiTotalDiscount: string;
+        kpiPaidOrdersNote: string;
+        releasedNotice: string;
+        chartTitle: string;
+        noChartData: string;
+        noRecentRedemptions: string;
+        orderColumn: string;
+        customerColumn: string;
+        totalColumn: string;
+        discountColumn: string;
+        statusColumn: string;
+        dateColumn: string;
+        viewOrder: string;
+        viewCustomer: string;
+        filters: string;
+        filterScope: string;
+        allScopes: string;
+        filterDiscountType: string;
+        allDiscountTypes: string;
+        filterStatus: string;
+        allStatuses: string;
+        searchPlaceholder: string;
+        searchLabel: string;
+        clearSearch: string;
+        clearAll: string;
+        apply: string;
+        resetFilters: string;
+        activeFilters: string;
+        clearOneFilter: string;
+        columnsToggle: string;
+        unlimitedPerUser: string;
+        capAmount: string;
+        minAmount: string;
+        noCap: string;
+        noMin: string;
+        allCustomers: string;
+        progressText: string;
+        progressUnlimited: string;
         messages: {
             created: string;
             updated: string;
+            duplicated: string;
             toggled: string;
             genericError: string;
             networkError: string;
@@ -1409,7 +1507,6 @@ export type AdminSettingsPageProps = {
     teamUrls: AdminTeamUrls | null;
     servicePricing: AdminServicePricingData | null;
     servicePricingUrls: AdminServicePricingUrls | null;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -1585,7 +1682,6 @@ export type AdminOrderDetailPageProps = {
         currency: string;
     };
     refundUrl: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -1713,7 +1809,6 @@ export type AdminCustomerDetailPageProps = {
     statusUrl: string;
     contactUrl: string;
     walletAdjustUrl: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -1745,13 +1840,21 @@ export type AdminLoyaltyPageProps = {
     tiers: AdminLoyaltyTier[];
     kpis: AdminLoyaltyKpis;
     updateTierUrlTemplate: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
+};
+
+export type AdminCouponTargetSummary = {
+    id: string;
+    targetType: string;
+    targetId: number;
+    name: string;
 };
 
 export type AdminCouponRow = {
     id: string;
     code: string;
+    descriptionAr: string | null;
+    descriptionEn: string | null;
     discountType: 'percent' | 'fixed';
     value: number;
     minimumOrderHalalah: number;
@@ -1759,18 +1862,36 @@ export type AdminCouponRow = {
     usageLimit: number | null;
     perUserLimit: number | null;
     usedCount: number;
+    scope: 'order' | 'category' | 'product' | 'service';
+    serviceType: string | null;
+    firstOrderOnly: boolean;
+    excludesPromotedItems: boolean;
     startsAt: string | null;
     endsAt: string | null;
     isActive: boolean;
+    status: 'active' | 'scheduled' | 'paused' | 'expired' | 'exhausted';
+    targets: AdminCouponTargetSummary[];
+    categoryIds: number[];
+    productIds: number[];
     createdAt: string;
 };
 
 export type AdminCouponsQueryState = {
     search?: string | null;
-    sort: 'created_at' | 'code' | 'used_count';
-    direction: 'asc' | 'desc';
-    per_page: 15 | 25 | 50;
-    page: number;
+    status?:
+        | 'all'
+        | 'active'
+        | 'scheduled'
+        | 'paused'
+        | 'expired'
+        | 'exhausted'
+        | null;
+    scope?: 'order' | 'category' | 'product' | 'service' | null;
+    discount_type?: 'percent' | 'fixed' | null;
+    sort?: 'created_at' | 'code' | 'used_count' | 'value';
+    direction?: 'asc' | 'desc';
+    per_page?: 15 | 25 | 50 | 100;
+    page?: number;
 };
 
 export type AdminCouponsPageProps = {
@@ -1785,8 +1906,91 @@ export type AdminCouponsPageProps = {
     counts: {
         total: number;
         active: number;
+        scheduled?: number;
+        paused?: number;
+        expired?: number;
+        exhausted?: number;
     };
     filters: AdminCouponsQueryState;
+    filterOptions: {
+        statuses: AdminFilterOption[];
+        scopes: AdminFilterOption[];
+        discountTypes: AdminFilterOption[];
+        perPageOptions: number[];
+    };
+    categories: Array<{ id: number; publicId: string; name: string }>;
+    products: Array<{ id: number; publicId: string; name: string }>;
+    serviceTypes: Array<{ value: string; label: string }>;
+    createUrl: string;
+    updateUrlTemplate: string;
+    statusUrlTemplate: string;
+    duplicateUrlTemplate: string;
+    showUrlTemplate: string;
+    logoutUrl: string;
+};
+
+export type AdminCouponDetail = AdminCouponRow;
+
+export type AdminCouponKpis = {
+    usedCount: number;
+    usageLimit: number | null;
+    uniqueCustomers: number;
+    revenueAttributed: AdminMoney<'SAR'>;
+    totalDiscountGiven: AdminMoney<'SAR'>;
+    totalRedemptions: number;
+    releasedRedemptionsCount: number;
+};
+
+export type AdminCouponRuleItem = {
+    key: string;
+    label: string;
+    value: string;
+    description?: string;
+};
+
+export type AdminCouponChartPoint = {
+    date: string;
+    redemptions: number;
+    revenueHalalah: number;
+    discountHalalah: number;
+};
+
+export type AdminCouponRecentRedemption = {
+    id: string;
+    orderId: string;
+    orderNumber: string;
+    orderStatus: string;
+    isPaid: boolean;
+    paidAt: string | null;
+    orderTotal: AdminMoney<'SAR'>;
+    discount: AdminMoney<'SAR'>;
+    customer: {
+        id: string;
+        name: string;
+        email: string;
+    };
+    redeemedAt: string;
+};
+
+export type AdminCouponDetailPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    coupon: AdminCouponDetail;
+    kpis: AdminCouponKpis;
+    rules: AdminCouponRuleItem[];
+    chart: AdminCouponChartPoint[];
+    recentRedemptions: AdminCouponRecentRedemption[];
+    categories: Array<{ id: number; publicId: string; name: string }>;
+    products: Array<{ id: number; publicId: string; name: string }>;
+    serviceTypes: Array<{ value: string; label: string }>;
+    updateUrl: string;
+    statusUrl: string;
+    duplicateUrl: string;
+    listUrl: string;
     logoutUrl: string;
 };
 
@@ -1985,7 +2189,6 @@ export type AdminProductDetailPageProps = {
     updateUrl: string;
     visibilityUrl: string;
     variantPriceUrlTemplate: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -2140,7 +2343,6 @@ export type AdminCategoriesPageProps = {
     };
     productsUrl?: string;
     visibilityUrlTemplate: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 

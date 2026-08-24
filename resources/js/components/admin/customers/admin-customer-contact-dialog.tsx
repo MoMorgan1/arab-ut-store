@@ -3,7 +3,6 @@
 import { useHttp } from '@inertiajs/react';
 import React, { useState } from 'react';
 
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -21,7 +20,6 @@ import type { AdminCustomerDetail, AdminTranslations } from '@/types/admin';
 
 export type AdminCustomerContactDialogProps = {
     adminUi: AdminTranslations;
-    confirmPasswordUrl?: string;
     contactUrl: string;
     customer: AdminCustomerDetail;
     onConflict: () => void;
@@ -69,7 +67,6 @@ type FieldErrors = {
 
 export default function AdminCustomerContactDialog({
     adminUi,
-    confirmPasswordUrl,
     contactUrl,
     customer,
     onConflict,
@@ -83,7 +80,6 @@ export default function AdminCustomerContactDialog({
     const [email, setEmail] = useState(customer.email);
     const [phone, setPhone] = useState(customer.phone ?? '');
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-    const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false);
 
     // Seed the form from the customer each time the dialog opens. Deliberately
     // keyed on the open transition alone: a partial reload landing while the
@@ -178,12 +174,6 @@ export default function AdminCustomerContactDialog({
                 },
                 onHttpException: (response) => {
                     handled = true;
-
-                    if (response.status === 423) {
-                        setPasswordConfirmOpen(true);
-
-                        return false;
-                    }
 
                     if (response.status === 409) {
                         onOpenChange(false);
@@ -486,22 +476,6 @@ export default function AdminCustomerContactDialog({
                     </form>
                 </DialogContent>
             </Dialog>
-
-            <AdminPasswordConfirmDialog
-                confirmButtonText={copy.confirmPasswordButton}
-                confirmPasswordUrl={confirmPasswordUrl}
-                confirmingButtonText={copy.confirmingPassword}
-                description={copy.passwordModalDescription}
-                invalidPasswordText={copy.invalidPassword}
-                onConfirmed={() => {
-                    void executeContactUpdate();
-                }}
-                onOpenChange={setPasswordConfirmOpen}
-                open={passwordConfirmOpen}
-                passwordLabel={copy.passwordLabel}
-                passwordPlaceholder={copy.passwordPlaceholder}
-                title={copy.passwordModalTitle}
-            />
         </>
     );
 }

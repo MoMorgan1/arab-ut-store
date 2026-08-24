@@ -1,11 +1,19 @@
 <?php
 
+use App\Enums\OrderStatus;
 use App\Enums\UserRole;
 use App\Http\Middleware\EnsureAdminMfa;
+use App\Models\Category;
 use App\Models\Coupon;
+use App\Models\CouponRedemption;
+use App\Models\CouponTarget;
+use App\Models\Order;
+use App\Models\OrderDiscount;
+use App\Models\Product;
 use App\Models\StaffAuditLog;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 use Laravel\Fortify\Fortify;
@@ -62,6 +70,236 @@ test('the coupons route requires EnsureAdminMfa and can:marketing.view middlewar
     expect($route)->not->toBeNull()
         ->and($route?->gatherMiddleware())->toContain(EnsureAdminMfa::class)
         ->and($route?->gatherMiddleware())->toContain('can:marketing.view');
+});
+
+test('derived status is correct for scheduled, expired, exhausted, paused and active coupons', function (): void {
+    $admin = adminCouponsActor(UserRole::Admin);
+
+    // 1. Paused: is_active = false
+    $paused = Coupon::query()->create(couponAttributes([
+        'code' => 'PAUSED1',
+        'is_active' => false,
+    ]));
+
+    // 2. Expired: ends_at in past
+    $expired = Coupon::query()->create(couponAttributes([
+        'code' => 'EXPIRED1',
+        'is_active' => true,
+        'ends_at' => Carbon::parse('2026-08-20 00:00:00', 'UTC'),
+    ]));
+
+    // 3. Scheduled: starts_at in future
+    $scheduled = Coupon::query()->create(couponAttributes([
+        'code' => 'FUTURE1',
+        'is_active' => true,
+        'starts_at' => Carbon::parse('2026-08-30 00:00:00', 'UTC'),
+    ]));
+
+    // 4. Exhausted: usage_limit reached by uncancelled orders
+    $exhausted = Coupon::query()->create(couponAttributes([
+        'code' => 'EXHAUST1',
+        'is_active' => true,
+        'usage_limit' => 1,
+    ]));
+    $user = User::factory()->create();
+    $order = Order::factory()->create([
+        'user_id' => $user->id,
+        'status' => OrderStatus::InProgress,
+        'paid_at' => now(),
+    ]);
+    CouponRedemption::create([
+        'coupon_id' => $exhausted->id,
+        'user_id' => $user->id,
+        'order_id' => $order->id,
+        'redeemed_at' => now(),
+    ]);
+
+    // 5. Active
+    $active = Coupon::query()->create(couponAttributes([
+        'code' => 'ACTIVE1',
+        'is_active' => true,
+    ]));
+
+    $this->actingAs($admin)
+        ->get('/admin/marketing/coupons')
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('counts.total', 5)
+            ->where('counts.paused', 1)
+            ->where('counts.expired', 1)
+            ->where('counts.scheduled', 1)
+            ->where('counts.exhausted', 1)
+            ->where('counts.active', 1));
+});
+
+test('a coupon whose only redemption was cancelled is not exhausted', function (): void {
+    $admin = adminCouponsActor(UserRole::Admin);
+
+    $coupon = Coupon::query()->create(couponAttributes([
+        'code' => 'RELEASED1',
+        'is_active' => true,
+        'usage_limit' => 1,
+    ]));
+
+    $user = User::factory()->create();
+    $order = Order::factory()->create([
+        'user_id' => $user->id,
+        'status' => OrderStatus::Cancelled,
+        'paid_at' => null,
+    ]);
+
+    CouponRedemption::create([
+        'coupon_id' => $coupon->id,
+        'user_id' => $user->id,
+        'order_id' => $order->id,
+        'redeemed_at' => now(),
+    ]);
+
+    $this->actingAs($admin)
+        ->get('/admin/marketing/coupons')
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('counts.exhausted', 0)
+            ->where('counts.active', 1)
+            ->where('coupons.0.status', 'active')
+            ->where('coupons.0.usedCount', 0));
+});
+
+test('the detail page returns the right totals for paid orders and excludes unpaid ones from revenue attributed', function (): void {
+    $admin = adminCouponsActor(UserRole::Admin);
+
+    $coupon = Coupon::query()->create(couponAttributes([
+        'code' => 'ANALYTICS1',
+        'is_active' => true,
+        'discount_type' => 'percent',
+        'value' => 20,
+        'usage_limit' => 100,
+    ]));
+
+    $user1 = User::factory()->create(['first_name' => 'Paid', 'last_name' => 'User', 'email' => 'paid@example.com']);
+    $user2 = User::factory()->create(['first_name' => 'Unpaid', 'last_name' => 'User', 'email' => 'unpaid@example.com']);
+
+    // Paid order
+    $paidOrder = Order::factory()->create([
+        'user_id' => $user1->id,
+        'status' => OrderStatus::Completed,
+        'paid_at' => Carbon::parse('2026-08-22 10:00:00', 'UTC'),
+        'total_halalah' => 15000,
+    ]);
+    CouponRedemption::create([
+        'coupon_id' => $coupon->id,
+        'user_id' => $user1->id,
+        'order_id' => $paidOrder->id,
+        'redeemed_at' => Carbon::parse('2026-08-22 10:00:00', 'UTC'),
+    ]);
+    OrderDiscount::create([
+        'order_id' => $paidOrder->id,
+        'coupon_id' => $coupon->id,
+        'type' => 'percent',
+        'label_ar' => 'كوبون الخصم',
+        'label_en' => 'Coupon',
+        'amount_halalah' => 3000,
+    ]);
+
+    // Unpaid order (pending payment, paid_at is null)
+    $unpaidOrder = Order::factory()->create([
+        'user_id' => $user2->id,
+        'status' => OrderStatus::PendingPayment,
+        'paid_at' => null,
+        'total_halalah' => 20000,
+    ]);
+    CouponRedemption::create([
+        'coupon_id' => $coupon->id,
+        'user_id' => $user2->id,
+        'order_id' => $unpaidOrder->id,
+        'redeemed_at' => Carbon::parse('2026-08-23 09:00:00', 'UTC'),
+    ]);
+    OrderDiscount::create([
+        'order_id' => $unpaidOrder->id,
+        'coupon_id' => $coupon->id,
+        'type' => 'percent',
+        'label_ar' => 'كوبون الخصم',
+        'label_en' => 'Coupon',
+        'amount_halalah' => 4000,
+    ]);
+
+    $this->actingAs($admin)
+        ->get("/admin/marketing/coupons/{$coupon->public_id}")
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('admin/marketing/coupons/show', false)
+            ->where('coupon.code', 'ANALYTICS1')
+            ->where('kpis.usedCount', 2) // Both active redemptions count towards limit
+            ->where('kpis.uniqueCustomers', 1) // Only paid orders count for unique customers
+            ->where('kpis.revenueAttributed.amountMinor', '15000') // Paid only: excludes 20000 unpaid
+            ->where('kpis.totalDiscountGiven.amountMinor', '3000') // Paid only: excludes 4000 unpaid
+            ->has('recentRedemptions', 2)
+            ->has('rules')
+            ->has('chart', 1)); // 1 day of paid orders
+});
+
+test('duplicate copies fields and targets, creates paused, writes audit record, and is refused without marketing.manage', function (): void {
+    $admin = adminCouponsActor(UserRole::Admin);
+    $staff = adminCouponsActor(UserRole::Staff);
+
+    $category = Category::factory()->create();
+    $product = Product::factory()->create();
+
+    $source = Coupon::query()->create(couponAttributes([
+        'code' => 'ORIGINAL20',
+        'is_active' => true,
+        'discount_type' => 'percent',
+        'value' => 20,
+        'minimum_order_halalah' => 5000,
+        'maximum_discount_halalah' => 10000,
+        'scope' => 'category',
+        'first_order_only' => true,
+        'excludes_promoted_items' => true,
+    ]));
+
+    CouponTarget::create([
+        'coupon_id' => $source->id,
+        'target_type' => CouponTarget::TYPE_CATEGORY,
+        'target_id' => $category->id,
+    ]);
+    CouponTarget::create([
+        'coupon_id' => $source->id,
+        'target_type' => CouponTarget::TYPE_PRODUCT,
+        'target_id' => $product->id,
+    ]);
+
+    // Staff is forbidden
+    $this->actingAs($staff)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->postJson("/admin/api/marketing/coupons/{$source->public_id}/duplicate")
+        ->assertForbidden();
+
+    // Admin succeeds
+    $response = $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->postJson("/admin/api/marketing/coupons/{$source->public_id}/duplicate", [
+            'code' => 'CLONED20',
+        ]);
+
+    $response->assertCreated()
+        ->assertJson(['data' => ['code' => 'CLONED20', 'isActive' => false]]);
+
+    $duplicate = Coupon::query()->where('code', 'CLONED20')->with('targets')->first();
+
+    expect($duplicate)->not->toBeNull()
+        ->and($duplicate?->is_active)->toBeFalse() // Always created paused
+        ->and($duplicate?->value)->toBe(20)
+        ->and($duplicate?->minimum_order_halalah)->toBe(5000)
+        ->and($duplicate?->maximum_discount_halalah)->toBe(10000)
+        ->and($duplicate?->first_order_only)->toBeTrue()
+        ->and($duplicate?->excludes_promoted_items)->toBeTrue()
+        ->and($duplicate?->targets)->toHaveCount(2);
+
+    $log = StaffAuditLog::query()->latest('id')->first();
+    expect($log?->action)->toBe('coupons.created')
+        ->and($log?->metadata['duplicated'])->toBeTrue()
+        ->and($log?->metadata['code'])->toBe('CLONED20')
+        ->and($log?->metadata['source_coupon_public_id'])->toBe($source->public_id);
 });
 
 test('confirmed admin can create a percent coupon with an audit log entry', function (): void {
@@ -136,24 +374,6 @@ test('confirmed admin can update a coupon while keeping its identity', function 
     expect($log?->action)->toBe('coupons.updated');
 });
 
-test('unconfirmed password returns 423 for coupon mutations', function (): void {
-    $admin = adminCouponsActor(UserRole::Admin);
-    $coupon = Coupon::query()->create(couponAttributes());
-
-    $this->actingAs($admin)
-        ->postJson('/admin/api/marketing/coupons', [
-            'code' => 'NEWCODE1',
-            'discount_type' => 'percent',
-            'value' => 10,
-            'minimum_order_halalah' => 0,
-        ])
-        ->assertStatus(423);
-
-    $this->actingAs($admin)
-        ->postJson("/admin/api/marketing/coupons/{$coupon->public_id}/status", ['is_active' => false])
-        ->assertStatus(423);
-});
-
 test('staff actors are forbidden from coupon mutations even with confirmed passwords', function (): void {
     $staff = adminCouponsActor(UserRole::Staff);
 
@@ -194,9 +414,6 @@ test('confirmed admin can toggle coupon status with an audit log entry', functio
 });
 
 test('coupon create requests validate every rule boundary', function (array $payload, string $field): void {
-    // Seed case-insensitively: codes are canonicalised to uppercase, so
-    // 'duplicate' must collide with a stored 'DUPLICATE' as a validation
-    // error rather than reaching the database unique index.
     if (mb_strtoupper($payload['code']) === 'DUPLICATE') {
         Coupon::query()->create(couponAttributes(['code' => 'DUPLICATE']));
     }

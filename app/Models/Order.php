@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $currency
  * @property string $locale
  * @property string $order_number
+ * @property string $channel
  * @property OrderStatus $status
  */
 class Order extends DomainModel
@@ -25,6 +26,7 @@ class Order extends DomainModel
     {
         return [
             'status' => OrderStatus::class,
+            'channel' => 'string',
             'subtotal_halalah' => 'integer',
             'discount_halalah' => 'integer',
             'wallet_halalah' => 'integer',

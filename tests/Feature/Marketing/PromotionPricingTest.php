@@ -141,3 +141,18 @@ test('zero and negative base prices never resolve a promotion', function (): voi
 
     expect($resolver->resolve(null, ServiceType::Sbc, 0))->toBeNull();
 });
+
+test('cart-level promotions with nth_item and bundle mechanics are ignored by PromotionPricing', function (): void {
+    Promotion::query()->create(resolverPromotionAttributes([
+        'mechanic' => Promotion::MECHANIC_NTH_ITEM,
+        'value' => 50,
+    ]));
+    Promotion::query()->create(resolverPromotionAttributes([
+        'mechanic' => Promotion::MECHANIC_BUNDLE,
+        'value' => 50,
+    ]));
+
+    $resolver = new PromotionPricing;
+
+    expect($resolver->resolve(null, ServiceType::Sbc, 10_000))->toBeNull();
+});

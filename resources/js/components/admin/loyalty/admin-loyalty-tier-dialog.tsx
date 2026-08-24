@@ -3,7 +3,10 @@
 import { useHttp } from '@inertiajs/react';
 import React, { useState } from 'react';
 
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
+import {
+    formatHalalahToSar,
+    parseSarToHalalah,
+} from '@/components/admin/admin-money';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -22,7 +25,6 @@ import type { AdminLoyaltyTier, AdminTranslations } from '@/types/admin';
 
 export type AdminLoyaltyTierDialogProps = {
     adminUi: AdminTranslations;
-    confirmPasswordUrl?: string;
     onOpenChange: (open: boolean) => void;
     onSuccess: (updatedTier: AdminLoyaltyTier) => void;
     open: boolean;
@@ -53,7 +55,6 @@ type FieldErrors = {
 
 export default function AdminLoyaltyTierDialog({
     adminUi,
-    confirmPasswordUrl,
     onOpenChange,
     onSuccess,
     open,
@@ -67,15 +68,14 @@ export default function AdminLoyaltyTierDialog({
     const [nameEn, setNameEn] = useState(tier?.nameEn ?? '');
     const [thresholdSar, setThresholdSar] = useState(
         tier
-            ? (Number(tier.minimumLifetimeSpend.amountMinor) / 100).toString()
-            : '0',
+            ? formatHalalahToSar(tier.minimumLifetimeSpend.amountMinor)
+            : '0.00',
     );
     const [cashbackPercent, setCashbackPercent] = useState(
         tier ? (tier.cashbackBasisPoints / 100).toString() : '0',
     );
     const [isActive, setIsActive] = useState(tier?.isActive ?? true);
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-    const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false);
 
     const [prevOpen, setPrevOpen] = useState(open);
     const [prevTierId, setPrevTierId] = useState(tier?.id);
@@ -88,9 +88,7 @@ export default function AdminLoyaltyTierDialog({
             setNameAr(tier.nameAr);
             setNameEn(tier.nameEn);
             setThresholdSar(
-                (
-                    Number(tier.minimumLifetimeSpend.amountMinor) / 100
-                ).toString(),
+                formatHalalahToSar(tier.minimumLifetimeSpend.amountMinor),
             );
             setCashbackPercent((tier.cashbackBasisPoints / 100).toString());
             setIsActive(tier.isActive);
@@ -173,7 +171,7 @@ export default function AdminLoyaltyTierDialog({
 
         setFieldErrors({});
 
-        const spendHalalah = isRankOne ? 0 : Math.round(parsedSpendSar * 100);
+        const spendHalalah = isRankOne ? 0 : parseSarToHalalah(thresholdSar);
         const basisPoints = Math.round(parsedCashbackRate * 100);
 
         const payload: UpdateTierPayload = {
@@ -208,12 +206,6 @@ export default function AdminLoyaltyTierDialog({
                 },
                 onHttpException: (response) => {
                     handled = true;
-
-                    if (response.status === 423) {
-                        setPasswordConfirmOpen(true);
-
-                        return false;
-                    }
 
                     if (response.status === 422) {
                         const resErrors =
@@ -553,22 +545,6 @@ export default function AdminLoyaltyTierDialog({
                     </form>
                 </DialogContent>
             </Dialog>
-
-            <AdminPasswordConfirmDialog
-                confirmButtonText={copy.confirmPasswordButton}
-                confirmPasswordUrl={confirmPasswordUrl}
-                confirmingButtonText={copy.confirmingPassword}
-                description={copy.passwordModalDescription}
-                invalidPasswordText={copy.invalidPassword}
-                onConfirmed={() => {
-                    void executeTierUpdate();
-                }}
-                onOpenChange={setPasswordConfirmOpen}
-                open={passwordConfirmOpen}
-                passwordLabel={copy.passwordLabel}
-                passwordPlaceholder={copy.passwordPlaceholder}
-                title={copy.passwordModalTitle}
-            />
         </>
     );
 }

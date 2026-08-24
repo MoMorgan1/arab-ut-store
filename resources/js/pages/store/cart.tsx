@@ -306,6 +306,7 @@ function CheckoutPanel({
             const result = await startPaylinkCheckout(
                 checkout.checkoutUrl,
                 idempotencyKey.current,
+                payableHalalah,
             );
 
             if (result.paymentUrl === null) {

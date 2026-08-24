@@ -56,7 +56,6 @@ final readonly class AdminProductDetailPage
             // A template because the page posts per variant; the id is
             // substituted client-side rather than building one URL per row.
             'variantPriceUrlTemplate' => route($prefix.'variants.price.store', ['publicId' => '__ID__'], absolute: false),
-            'confirmPasswordUrl' => route('password.confirm', absolute: false),
         ];
     }
 }

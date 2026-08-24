@@ -171,18 +171,6 @@ it('refuses a staff user and an inactive admin', function (): void {
     expect($variant->fresh()->admin_price_halalah)->toBeNull();
 });
 
-it('requires a confirmed password', function (): void {
-    $actor = priceOverrideActor();
-    $variant = overridableVariant();
-
-    test()->actingAs($actor)
-        ->postJson(route('admin.variants.price.store', ['publicId' => $variant->public_id]), [
-            'price_halalah' => 900,
-            'expected_price_version' => 4,
-        ])
-        ->assertStatus(423);
-});
-
 it('rejects unknown fields', function (): void {
     $actor = priceOverrideActor();
     $variant = overridableVariant();

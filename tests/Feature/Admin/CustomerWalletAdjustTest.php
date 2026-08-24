@@ -45,18 +45,6 @@ test('staff users are forbidden from adjusting customer wallet', function (): vo
         ->assertForbidden();
 });
 
-test('unconfirmed admin receives 423 for wallet adjustment', function (): void {
-    $admin = createWalletTestAdmin(UserRole::Admin);
-    $customer = createWalletTestCustomer(5000);
-
-    $this->actingAs($admin)
-        ->postJson("/admin/api/customers/{$customer->public_id}/wallet/adjust", [
-            'amount_halalah' => 2000,
-            'reason' => 'Goodwill compensation for delay',
-        ])
-        ->assertStatus(423);
-});
-
 test('confirmed admin can credit customer wallet and write staff audit log', function (): void {
     $admin = createWalletTestAdmin(UserRole::Admin);
     $customer = User::factory()->create(['role' => UserRole::Customer]);

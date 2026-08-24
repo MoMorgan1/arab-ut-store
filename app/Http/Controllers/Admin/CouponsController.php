@@ -22,9 +22,12 @@ final class CouponsController extends Controller
         Gate::forUser($actor)->authorize(AdminPermission::MarketingView->value);
         $locale = $request->route('locale') === 'en' ? 'en' : 'ar';
 
-        /** @var array{search?: ?string, sort?: string, direction?: string, per_page?: int, page?: int} $filters */
+        /** @var array{search?: ?string, status?: ?string, scope?: ?string, discount_type?: ?string, sort?: string, direction?: string, per_page?: int, page?: int} $filters */
         $filters = array_filter([
             'search' => $request->query('search'),
+            'status' => $request->query('status'),
+            'scope' => $request->query('scope'),
+            'discount_type' => $request->query('discount_type'),
             'sort' => $request->query('sort', 'created_at'),
             'direction' => $request->query('direction', 'desc'),
             'per_page' => (int) $request->query('per_page', '15'),

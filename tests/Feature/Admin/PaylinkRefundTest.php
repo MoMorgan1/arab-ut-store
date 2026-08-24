@@ -111,7 +111,7 @@ test('unauthenticated users and non-admin actors are forbidden from refund endpo
     expect(StaffAuditLog::query()->count())->toBe(0);
 });
 
-test('unconfirmed MFA redirects to security setup and missing recent password returns 423', function (): void {
+test('unconfirmed MFA redirects to security setup', function (): void {
     ['admin' => $admin, 'order' => $order] = createRefundablePaylinkOrderFixture();
     $url = "/admin/api/orders/{$order->public_id}/refund";
     $payload = ['amountHalalah' => 2500, 'reason' => 'Customer request.'];
@@ -121,10 +121,8 @@ test('unconfirmed MFA redirects to security setup and missing recent password re
     $this->actingAs($unconfirmedAdmin)->postJson($url, $payload)
         ->assertRedirect('/admin/settings');
 
-    $this->actingAs($admin)
-        ->postJson($url, $payload)
-        ->assertStatus(423);
-
+    // The password re-prompt is gone from the admin by owner decision; the MFA
+    // gate above is what still stands between a session and a refund.
     expect(StaffAuditLog::query()->count())->toBe(0);
 });
 

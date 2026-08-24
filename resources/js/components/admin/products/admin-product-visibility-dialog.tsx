@@ -4,7 +4,6 @@ import { useHttp } from '@inertiajs/react';
 import { AlertCircle } from 'lucide-react';
 import React, { useState } from 'react';
 
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +20,6 @@ import type { AdminProductDetail, AdminTranslations } from '@/types/admin';
 
 export type AdminProductVisibilityDialogProps = {
     adminUi: AdminTranslations;
-    confirmPasswordUrl?: string;
     onConflict: (currentHidden: boolean) => void;
     onOpenChange: (open: boolean) => void;
     onSuccess: (result: { adminHidden: boolean }) => void;
@@ -44,7 +42,6 @@ type VisibilityResponse = {
 
 export default function AdminProductVisibilityDialog({
     adminUi,
-    confirmPasswordUrl,
     onConflict,
     onOpenChange,
     onSuccess,
@@ -57,7 +54,6 @@ export default function AdminProductVisibilityDialog({
     const targetHidden = !isCurrentlyHidden;
 
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false);
 
     const http = useHttp<VisibilityPayload, VisibilityResponse>(
         'post',
@@ -102,12 +98,6 @@ export default function AdminProductVisibilityDialog({
                 },
                 onHttpException: (response) => {
                     handled = true;
-
-                    if (response.status === 423) {
-                        setPasswordConfirmOpen(true);
-
-                        return false;
-                    }
 
                     if (response.status === 409) {
                         const body =
@@ -171,11 +161,6 @@ export default function AdminProductVisibilityDialog({
         }
     };
 
-    const handlePasswordConfirmed = () => {
-        setPasswordConfirmOpen(false);
-        void executeVisibilityChange();
-    };
-
     return (
         <>
             <Dialog onOpenChange={onOpenChange} open={open}>
@@ -230,21 +215,6 @@ export default function AdminProductVisibilityDialog({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            <AdminPasswordConfirmDialog
-                cancelButtonText={adminUi.common.cancel}
-                confirmButtonText={copy.confirmPasswordButton}
-                confirmPasswordUrl={confirmPasswordUrl}
-                confirmingButtonText={copy.confirmingPassword}
-                description={copy.passwordModalDescription}
-                invalidPasswordText={copy.invalidPassword}
-                onConfirmed={handlePasswordConfirmed}
-                onOpenChange={setPasswordConfirmOpen}
-                open={passwordConfirmOpen}
-                passwordLabel={copy.passwordLabel}
-                passwordPlaceholder={copy.passwordPlaceholder}
-                title={copy.passwordModalTitle}
-            />
         </>
     );
 }

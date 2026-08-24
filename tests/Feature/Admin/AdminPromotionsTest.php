@@ -151,19 +151,6 @@ test('confirmed admin can update a promotion while switching its scope cleanly',
     expect($log?->action)->toBe('promotions.updated');
 });
 
-test('unconfirmed password returns 423 for promotion mutations', function (): void {
-    $admin = adminPromotionsActor(UserRole::Admin);
-    $promotion = Promotion::query()->create(promotionAttributes());
-
-    $this->actingAs($admin)
-        ->postJson('/admin/api/marketing/promotions', promotionPayload())
-        ->assertStatus(423);
-
-    $this->actingAs($admin)
-        ->postJson("/admin/api/marketing/promotions/{$promotion->public_id}/status", ['is_active' => false])
-        ->assertStatus(423);
-});
-
 test('staff actors are forbidden from promotion mutations even with confirmed passwords', function (): void {
     $staff = adminPromotionsActor(UserRole::Staff);
 

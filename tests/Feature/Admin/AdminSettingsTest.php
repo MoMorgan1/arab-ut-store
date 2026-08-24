@@ -71,7 +71,6 @@ test('Unconfirmed Staff actor can reach settings page without EnsureAdminMfa blo
     $staff = createSettingsUser(UserRole::Staff, confirmed: false);
 
     $response = $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->get('/admin/settings');
 
     $response->assertOk()
@@ -81,24 +80,19 @@ test('Unconfirmed Staff actor can reach settings page without EnsureAdminMfa blo
             ->where('team', null));
 });
 
-test('settings page requires active account and valid password confirmation', function (): void {
+test('settings page requires active account', function (): void {
     $inactiveAdmin = createSettingsUser(UserRole::Admin, confirmed: true);
     $inactiveAdmin->forceFill(['is_active' => false])->save();
 
     $this->actingAs($inactiveAdmin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->get('/admin/settings')
         ->assertForbidden();
 
     $activeAdmin = createSettingsUser(UserRole::Admin, confirmed: true);
 
-    // The previous request confirmed a password in this session; clear it so
-    // the confirmation boundary is actually exercised.
-    $this->flushSession();
-
     $this->actingAs($activeAdmin)
         ->get('/admin/settings')
-        ->assertRedirect(route('password.confirm'));
+        ->assertOk();
 });
 
 function createSettingsUser(UserRole $role, bool $confirmed, string $locale = 'en'): User

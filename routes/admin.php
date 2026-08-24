@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\CategoriesController;
 use App\Http\Controllers\Admin\CategoryVisibilityController;
 use App\Http\Controllers\Admin\ConversationDetailController;
 use App\Http\Controllers\Admin\ConversationsController;
+use App\Http\Controllers\Admin\CouponDetailController;
 use App\Http\Controllers\Admin\CouponsController;
 use App\Http\Controllers\Admin\CreateCouponController;
 use App\Http\Controllers\Admin\CreatePromotionController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Admin\CustomerDetailController;
 use App\Http\Controllers\Admin\CustomersController;
 use App\Http\Controllers\Admin\CustomerStatusController;
 use App\Http\Controllers\Admin\CustomerWalletAdjustController;
+use App\Http\Controllers\Admin\DuplicateCouponController;
 use App\Http\Controllers\Admin\LoyaltyController;
 use App\Http\Controllers\Admin\LoyaltyTierController;
 use App\Http\Controllers\Admin\MoreController;
@@ -58,7 +60,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
         ->name($name)
         ->middleware($adminMiddleware)
         ->group(function () use ($locale, $name): void {
-            Route::middleware([EnsureAdminPassword::class, 'password.confirm'])
+            Route::middleware([EnsureAdminPassword::class])
                 ->group(function () use ($locale, $name): void {
                     $settings = Route::get('/settings', SettingsController::class)
                         ->name('settings');
@@ -121,7 +123,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $refund = Route::post('/api/orders/{order:public_id}/refund', PaylinkRefundController::class)
-                    ->middleware(['password.confirm', 'can:orders.refund', 'throttle:staff-payments'])
+                    ->middleware(['can:orders.refund', 'throttle:staff-payments'])
                     ->name('orders.paylink-refund');
 
                 if ($locale !== null) {
@@ -145,7 +147,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $customerStatus = Route::post('/api/customers/{publicId}/status', CustomerStatusController::class)
-                    ->middleware(['password.confirm', 'can:customers.update_status'])
+                    ->middleware('can:customers.update_status')
                     ->name('customers.status.store');
 
                 if ($locale !== null) {
@@ -153,7 +155,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $customerContact = Route::post('/api/customers/{publicId}/contact', CustomerContactController::class)
-                    ->middleware(['password.confirm', 'can:customers.update_contact', 'throttle:staff-identity'])
+                    ->middleware(['can:customers.update_contact', 'throttle:staff-identity'])
                     ->name('customers.contact.store');
 
                 if ($locale !== null) {
@@ -161,7 +163,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $customerWalletAdjust = Route::post('/api/customers/{publicId}/wallet/adjust', CustomerWalletAdjustController::class)
-                    ->middleware(['password.confirm', 'can:wallet.adjust'])
+                    ->middleware('can:wallet.adjust')
                     ->name('customers.wallet.adjust');
 
                 if ($locale !== null) {
@@ -177,7 +179,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $loyaltyTierUpdate = Route::put('/api/marketing/loyalty/tiers/{publicId}', LoyaltyTierController::class)
-                    ->middleware(['password.confirm', 'can:loyalty.manage'])
+                    ->middleware('can:loyalty.manage')
                     ->name('marketing.loyalty.tiers.update');
 
                 if ($locale !== null) {
@@ -185,7 +187,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $teamGrant = Route::post('/api/team/grants', TeamGrantController::class)
-                    ->middleware(['password.confirm', 'can:staff.manage', 'throttle:staff-identity'])
+                    ->middleware(['can:staff.manage', 'throttle:staff-identity'])
                     ->name('team.grants.store');
 
                 if ($locale !== null) {
@@ -225,7 +227,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $product = Route::post('/api/products/{publicId}', ProductController::class)
-                    ->middleware(['password.confirm', 'can:catalog.manage'])
+                    ->middleware('can:catalog.manage')
                     ->name('products.update');
 
                 if ($locale !== null) {
@@ -233,7 +235,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $productVisibility = Route::post('/api/products/{publicId}/visibility', ProductVisibilityController::class)
-                    ->middleware(['password.confirm', 'can:catalog.manage'])
+                    ->middleware('can:catalog.manage')
                     ->name('products.visibility.store');
 
                 if ($locale !== null) {
@@ -241,7 +243,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $variantPrice = Route::post('/api/variants/{publicId}/price', VariantPriceController::class)
-                    ->middleware(['password.confirm', 'can:catalog.manage', 'throttle:staff-payments'])
+                    ->middleware(['can:catalog.manage', 'throttle:staff-payments'])
                     ->name('variants.price.store');
 
                 if ($locale !== null) {
@@ -257,7 +259,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $categoryVisibility = Route::post('/api/categories/{publicId}/visibility', CategoryVisibilityController::class)
-                    ->middleware(['password.confirm', 'can:catalog.manage'])
+                    ->middleware('can:catalog.manage')
                     ->name('categories.visibility.store');
 
                 if ($locale !== null) {
@@ -265,7 +267,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $teamRole = Route::post('/api/team/{publicId}/role', TeamRoleController::class)
-                    ->middleware(['password.confirm', 'can:staff.manage'])
+                    ->middleware('can:staff.manage')
                     ->name('team.role.store');
 
                 if ($locale !== null) {
@@ -273,7 +275,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $teamStatus = Route::post('/api/team/{publicId}/status', TeamStatusController::class)
-                    ->middleware(['password.confirm', 'can:staff.manage'])
+                    ->middleware('can:staff.manage')
                     ->name('team.status.store');
 
                 if ($locale !== null) {
@@ -288,8 +290,16 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $coupons->defaults('locale', $locale);
                 }
 
+                $couponDetail = Route::get('/marketing/coupons/{publicId}', CouponDetailController::class)
+                    ->middleware('can:marketing.view')
+                    ->name('marketing.coupons.show');
+
+                if ($locale !== null) {
+                    $couponDetail->defaults('locale', $locale);
+                }
+
                 $createCoupon = Route::post('/api/marketing/coupons', CreateCouponController::class)
-                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->middleware('can:marketing.manage')
                     ->name('marketing.coupons.store');
 
                 if ($locale !== null) {
@@ -297,7 +307,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $updateCoupon = Route::put('/api/marketing/coupons/{publicId}', UpdateCouponController::class)
-                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->middleware('can:marketing.manage')
                     ->name('marketing.coupons.update');
 
                 if ($locale !== null) {
@@ -305,11 +315,19 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $toggleCoupon = Route::post('/api/marketing/coupons/{publicId}/status', ToggleCouponStatusController::class)
-                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->middleware('can:marketing.manage')
                     ->name('marketing.coupons.status.store');
 
                 if ($locale !== null) {
                     $toggleCoupon->defaults('locale', $locale);
+                }
+
+                $duplicateCoupon = Route::post('/api/marketing/coupons/{publicId}/duplicate', DuplicateCouponController::class)
+                    ->middleware('can:marketing.manage')
+                    ->name('marketing.coupons.duplicate');
+
+                if ($locale !== null) {
+                    $duplicateCoupon->defaults('locale', $locale);
                 }
 
                 $promotions = Route::get('/marketing/promotions', PromotionsController::class)
@@ -321,7 +339,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $createPromotion = Route::post('/api/marketing/promotions', CreatePromotionController::class)
-                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->middleware('can:marketing.manage')
                     ->name('marketing.promotions.store');
 
                 if ($locale !== null) {
@@ -329,7 +347,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $updatePromotion = Route::put('/api/marketing/promotions/{publicId}', UpdatePromotionController::class)
-                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->middleware('can:marketing.manage')
                     ->name('marketing.promotions.update');
 
                 if ($locale !== null) {
@@ -337,7 +355,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $togglePromotion = Route::post('/api/marketing/promotions/{publicId}/status', TogglePromotionStatusController::class)
-                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->middleware('can:marketing.manage')
                     ->name('marketing.promotions.status.store');
 
                 if ($locale !== null) {
@@ -345,7 +363,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $servicePricing = Route::post('/api/settings/service-pricing/{serviceType}', ServicePricingController::class)
-                    ->middleware(['password.confirm', 'can:settings.manage', 'throttle:staff-identity'])
+                    ->middleware(['can:settings.manage', 'throttle:staff-identity'])
                     ->name('settings.service-pricing.store');
 
                 if ($locale !== null) {
@@ -353,7 +371,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $servicePricingStatus = Route::post('/api/settings/service-pricing/{serviceType}/status', ServicePricingStatusController::class)
-                    ->middleware(['password.confirm', 'can:settings.manage', 'throttle:staff-identity'])
+                    ->middleware(['can:settings.manage', 'throttle:staff-identity'])
                     ->name('settings.service-pricing.status.store');
 
                 if ($locale !== null) {
@@ -361,7 +379,7 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                 }
 
                 $trustedDevices = Route::delete('/api/security/trusted-devices', TrustedDeviceController::class)
-                    ->middleware(['password.confirm', 'throttle:two-factor-management'])
+                    ->middleware('throttle:two-factor-management')
                     ->name('security.trusted-devices.destroy');
 
                 if ($locale !== null) {

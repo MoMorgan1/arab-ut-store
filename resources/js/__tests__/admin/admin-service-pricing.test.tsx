@@ -42,7 +42,6 @@ function createSectionProps(
 ): AdminServicePricingSectionProps {
     return {
         adminUi: englishAdminUi,
-        confirmPasswordUrl: '/confirm-password',
         direction: 'ltr',
         locale: 'en',
         servicePricing: sampleAdminServicePricingData,
@@ -145,9 +144,9 @@ describe('AdminServicePricingSection', () => {
             await screen.findByText('Edit FUT Champions prices'),
         ).toBeInTheDocument();
 
-        // Change rank 1 price to 25000
+        // Change rank 1 price to 250.00 SAR (25000 halalah)
         const rank1Input = screen.getByLabelText(/Rank 1/i);
-        fireEvent.change(rank1Input, { target: { value: '25000' } });
+        fireEvent.change(rank1Input, { target: { value: '250.00' } });
 
         const saveButton = screen.getByRole('button', {
             name: 'Save price schedule',

@@ -16,6 +16,7 @@ class OrderFactory extends Factory
             'user_id' => User::factory(),
             'order_number' => 'AUT-'.fake()->unique()->regexify('[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6}'),
             'status' => OrderStatus::PendingPayment,
+            'channel' => 'store',
             'locale' => 'ar',
             'currency' => 'SAR',
             'subtotal_halalah' => 10_000,

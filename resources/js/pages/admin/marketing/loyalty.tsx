@@ -46,7 +46,6 @@ function formatSarAmount(amountMinor: string): string {
 
 export default function AdminLoyaltyPage({
     adminUi,
-    confirmPasswordUrl,
     direction,
     kpis,
     permissions,
@@ -340,7 +339,6 @@ export default function AdminLoyaltyPage({
 
             <AdminLoyaltyTierDialog
                 adminUi={adminUi}
-                confirmPasswordUrl={confirmPasswordUrl}
                 onOpenChange={setDialogOpen}
                 onSuccess={handleTierUpdated}
                 open={dialogOpen}

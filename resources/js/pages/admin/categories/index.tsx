@@ -303,7 +303,6 @@ export default function AdminCategoriesIndex(props: AdminCategoriesPageProps) {
             <AdminCategoryVisibilityDialog
                 adminUi={props.adminUi}
                 category={selectedCategory}
-                confirmPasswordUrl={props.confirmPasswordUrl}
                 onConflict={handleVisibilityConflict}
                 onOpenChange={setDialogOpen}
                 onSuccess={handleVisibilitySuccess}

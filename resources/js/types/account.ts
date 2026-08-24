@@ -278,6 +278,10 @@ export type AccountTranslations = {
         phone_attribute?: string;
         email_taken?: string;
         email_attribute?: string;
+        add_email_prompt_title?: string;
+        add_email_prompt_desc?: string;
+        add_email_prompt_action?: string;
+        add_email_prompt_dismiss?: string;
     };
     security: {
         title: string;
@@ -497,7 +501,11 @@ export type AccountProfilePageProps = AccountPageShellProps & {
     profile: {
         firstName: string;
         lastName: string;
-        email: { value: string; verified: boolean; pending: string | null };
+        email: {
+            value: string | null;
+            verified: boolean;
+            pending: string | null;
+        };
         phone: {
             value: string | null;
             verified: boolean;

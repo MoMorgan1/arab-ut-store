@@ -149,18 +149,6 @@ test('unknown extra payload fields are rejected with validation error', function
         ->assertJsonValidationErrors(['unexpected_fields']);
 });
 
-test('status update requires password confirmation', function (): void {
-    $admin = createStatusTestActor(UserRole::Admin);
-    $staff = createStatusTestActor(UserRole::Staff);
-
-    $this->actingAs($admin)
-        ->postJson("/admin/api/team/{$staff->public_id}/status", [
-            'action' => 'deactivate',
-            'expected_active' => true,
-        ])
-        ->assertStatus(423);
-});
-
 function createStatusTestActor(UserRole $role): User
 {
     $secret = app(TwoFactorAuthenticationProvider::class)->generateSecretKey();

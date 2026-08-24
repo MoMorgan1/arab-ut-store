@@ -3,7 +3,6 @@
 import { useHttp } from '@inertiajs/react';
 import React, { useState } from 'react';
 
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -22,7 +21,6 @@ import type { AdminCustomerDetail, AdminTranslations } from '@/types/admin';
 export type AdminCustomerStatusDialogProps = {
     action: 'suspend' | 'reactivate';
     adminUi: AdminTranslations;
-    confirmPasswordUrl?: string;
     customer: AdminCustomerDetail;
     onConflict: (currentActive: boolean) => void;
     onOpenChange: (open: boolean) => void;
@@ -57,7 +55,6 @@ const REASON_CODES = [
 export default function AdminCustomerStatusDialog({
     action,
     adminUi,
-    confirmPasswordUrl,
     customer,
     onConflict,
     onOpenChange,
@@ -69,7 +66,6 @@ export default function AdminCustomerStatusDialog({
     const [reasonCode, setReasonCode] = useState<string>('');
     const [caseReference, setCaseReference] = useState<string>('');
     const [fieldError, setFieldError] = useState<string | null>(null);
-    const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false);
 
     const http = useHttp<StatusPayload, StatusResponse>('post', statusUrl, {
         action,
@@ -127,12 +123,6 @@ export default function AdminCustomerStatusDialog({
                 },
                 onHttpException: (response) => {
                     handled = true;
-
-                    if (response.status === 423) {
-                        setPasswordConfirmOpen(true);
-
-                        return false;
-                    }
 
                     if (response.status === 409) {
                         const body =
@@ -309,22 +299,6 @@ export default function AdminCustomerStatusDialog({
                     </form>
                 </DialogContent>
             </Dialog>
-
-            <AdminPasswordConfirmDialog
-                confirmButtonText={copy.confirmPasswordButton}
-                confirmPasswordUrl={confirmPasswordUrl}
-                confirmingButtonText={copy.confirmingPassword}
-                description={copy.passwordModalDescription}
-                invalidPasswordText={copy.invalidPassword}
-                onConfirmed={() => {
-                    void executeStatusUpdate();
-                }}
-                onOpenChange={setPasswordConfirmOpen}
-                open={passwordConfirmOpen}
-                passwordLabel={copy.passwordLabel}
-                passwordPlaceholder={copy.passwordPlaceholder}
-                title={copy.passwordModalTitle}
-            />
         </>
     );
 }
