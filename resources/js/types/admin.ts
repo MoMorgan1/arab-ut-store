@@ -809,6 +809,25 @@ export type AdminTranslations = {
         editButton: string;
         createTitle: string;
         editTitle: string;
+        mechanicLabel: string;
+        mechanics: {
+            percent: {
+                title: string;
+                description: string;
+            };
+            fixed: {
+                title: string;
+                description: string;
+            };
+            nth_item: {
+                title: string;
+                description: string;
+            };
+            bundle: {
+                title: string;
+                description: string;
+            };
+        };
         nameArLabel: string;
         nameArPlaceholder: string;
         nameEnLabel: string;
@@ -833,6 +852,38 @@ export type AdminTranslations = {
         valueLabel: string;
         valuePercentHelp: string;
         valueFixedHelp: string;
+        buyQuantityLabel: string;
+        buyQuantityHelp: string;
+        getQuantityLabel: string;
+        getQuantityHelp: string;
+        qualifyingScopeLabel: string;
+        qualifyingScopes: {
+            same_product: string;
+            same_category: string;
+            same_service: string;
+            any: string;
+        };
+        maxApplicationsLabel: string;
+        maxApplicationsPlaceholder: string;
+        maxApplicationsHelp: string;
+        discountTargetLabel: string;
+        discountTargetCheapest: string;
+        discountTargetMostExpensive: string;
+        discountTargetHelp: string;
+        bundlePriceLabel: string;
+        bundlePricePlaceholder: string;
+        bundlePriceHelp: string;
+        componentsLabel: string;
+        addComponentButton: string;
+        removeComponentButton: string;
+        selectProductPlaceholder: string;
+        quantityLabel: string;
+        componentsMinError: string;
+        totalPartsPrice: string;
+        bundleSaving: string;
+        bundleSavingHelp: string;
+        appliesToPromotedLabel: string;
+        appliesToPromotedHelp: string;
         startsAtLabel: string;
         endsAtLabel: string;
         isActiveLabel: string;
@@ -841,6 +892,8 @@ export type AdminTranslations = {
         cancelButton: string;
         columns: {
             name: string;
+            mechanic: string;
+            terms: string;
             scope: string;
             discount: string;
             window: string;
@@ -852,12 +905,33 @@ export type AdminTranslations = {
         scopeServiceBadge: string;
         typePercentBadge: string;
         typeFixedBadge: string;
+        chips: {
+            percent: string;
+            fixed: string;
+            nth_item: string;
+            bundle: string;
+        };
+        terms: {
+            percent: string;
+            fixed: string;
+            nthItem: string;
+            nthItemUnlimited: string;
+            bundleSummary: string;
+        };
+        statusTabs: {
+            all: string;
+            active: string;
+            scheduled: string;
+            paused: string;
+            ended: string;
+        };
         always: string;
         from: string;
         until: string;
         window: string;
         active: string;
         inactive: string;
+        endsIn: string;
         noPromotions: string;
         toggleTitle: string;
         activateTitle: string;
@@ -2016,18 +2090,35 @@ export type AdminCouponDetailPageProps = {
     logoutUrl: string;
 };
 
+export type AdminPromotionComponentRow = {
+    id: string;
+    productId: string;
+    productName: string;
+    quantity: number;
+};
+
 export type AdminPromotionRow = {
     id: string;
     nameAr: string;
     nameEn: string;
     badgeAr: string | null;
     badgeEn: string | null;
+    mechanic: 'item' | 'nth_item' | 'bundle';
     scope: 'all' | 'category' | 'service';
     categoryName: string | null;
     categoryId: string | null;
     serviceType: string | null;
     discountType: 'percent' | 'fixed';
     value: number;
+    buyQuantity: number | null;
+    getQuantity: number | null;
+    maxApplications: number | null;
+    discountTarget: 'cheapest' | 'most_expensive' | null;
+    qualifyingScope:
+        'same_product' | 'same_category' | 'same_service' | 'any' | null;
+    bundlePriceHalalah: number | null;
+    appliesToPromotedItems: boolean;
+    components: AdminPromotionComponentRow[];
     startsAt: string | null;
     endsAt: string | null;
     isActive: boolean;
@@ -2036,10 +2127,17 @@ export type AdminPromotionRow = {
 
 export type AdminPromotionsQueryState = {
     search?: string | null;
+    status?: 'all' | 'active' | 'scheduled' | 'paused' | 'ended' | null;
     sort: 'created_at' | 'name' | 'value';
     direction: 'asc' | 'desc';
     per_page: 15 | 25 | 50;
     page: number;
+};
+
+export type AdminPromotionProductOption = {
+    id: string;
+    name: string;
+    priceHalalah: number;
 };
 
 export type AdminPromotionsPageProps = {
@@ -2054,8 +2152,15 @@ export type AdminPromotionsPageProps = {
     counts: {
         total: number;
         active: number;
+        scheduled?: number;
+        paused?: number;
+        ended?: number;
     };
     categories: Array<{ id: string; name: string }>;
+    products: AdminPromotionProductOption[];
+    createUrl: string;
+    updateUrlTemplate: string;
+    statusUrlTemplate: string;
     filters: AdminPromotionsQueryState;
     logoutUrl: string;
 };

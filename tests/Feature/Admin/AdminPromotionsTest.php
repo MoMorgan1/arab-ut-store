@@ -3,6 +3,7 @@
 use App\Enums\UserRole;
 use App\Http\Middleware\EnsureAdminMfa;
 use App\Models\Category;
+use App\Models\Product;
 use App\Models\Promotion;
 use App\Models\StaffAuditLog;
 use App\Models\User;
@@ -210,6 +211,173 @@ test('promotion create requests validate every rule boundary', function (array $
     'unknown service type' => [promotionPayload(['scope' => 'service', 'service_type' => 'trading']), 'service_type'],
     'unknown discount type' => [promotionPayload(['discount_type' => 'bogo']), 'discount_type'],
 ]);
+
+test('editing a promotion does not silently strip its limits into an unlimited offer', function (): void {
+    $admin = adminPromotionsActor(UserRole::Admin);
+
+    $promotion = Promotion::query()->create([
+        'public_id' => (string) Str::ulid(),
+        'name_ar' => 'عرض محدود',
+        'name_en' => 'Limited offer',
+        'scope' => Promotion::SCOPE_ALL,
+        'mechanic' => Promotion::MECHANIC_NTH_ITEM,
+        'buy_quantity' => 3,
+        'get_quantity' => 1,
+        'max_applications' => 1,
+        'discount_target' => Promotion::TARGET_MOST_EXPENSIVE,
+        'qualifying_scope' => Promotion::QUALIFYING_SCOPE_SAME_CATEGORY,
+        'discount_type' => 'percent',
+        'value' => 50,
+        'is_active' => true,
+    ]);
+
+    // A partial update - fixing a typo in the name - must not reset the terms.
+    // The engine reads a null buy/get as 1 and a null max_applications as
+    // uncapped, so losing them turns "buy 3 get 1, max 1" into
+    // "buy 1 get 1, unlimited": every second item free, across the whole cart.
+    $this->actingAs($admin)
+        ->putJson("/admin/api/marketing/promotions/{$promotion->public_id}", [
+            'name_ar' => 'عرض محدود',
+            'name_en' => 'Limited offer (fixed)',
+            'scope' => Promotion::SCOPE_ALL,
+            'discount_type' => 'percent',
+            'value' => 50,
+        ])
+        ->assertOk();
+
+    $fresh = $promotion->fresh();
+
+    expect($fresh->name_en)->toBe('Limited offer (fixed)')
+        ->and($fresh->buy_quantity)->toBe(3)
+        ->and($fresh->get_quantity)->toBe(1)
+        ->and($fresh->max_applications)->toBe(1)
+        ->and($fresh->discount_target)->toBe(Promotion::TARGET_MOST_EXPENSIVE)
+        ->and($fresh->qualifying_scope)->toBe(Promotion::QUALIFYING_SCOPE_SAME_CATEGORY);
+});
+
+test('confirmed admin can create an nth_item promotion', function (): void {
+    $admin = adminPromotionsActor(UserRole::Admin);
+
+    $response = $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->postJson('/admin/api/marketing/promotions', [
+            'name_ar' => 'عرض اشتر واحصل',
+            'name_en' => 'BOGO deal',
+            'mechanic' => 'nth_item',
+            'scope' => 'all',
+            'discount_type' => 'percent',
+            'value' => 50,
+            'buy_quantity' => 2,
+            'get_quantity' => 1,
+            'max_applications' => 3,
+            'discount_target' => 'cheapest',
+            'qualifying_scope' => 'same_product',
+            'applies_to_promoted_items' => true,
+            'is_active' => true,
+        ]);
+
+    $response->assertCreated()
+        ->assertJson(['data' => ['nameEn' => 'BOGO deal']]);
+
+    $promotion = Promotion::query()->latest('id')->first();
+
+    expect($promotion?->mechanic)->toBe('nth_item')
+        ->and($promotion?->buy_quantity)->toBe(2)
+        ->and($promotion?->get_quantity)->toBe(1)
+        ->and($promotion?->max_applications)->toBe(3)
+        ->and($promotion?->discount_target)->toBe('cheapest')
+        ->and($promotion?->qualifying_scope)->toBe('same_product')
+        ->and($promotion?->applies_to_promoted_items)->toBeTrue();
+});
+
+test('confirmed admin can create a bundle promotion with components', function (): void {
+    $admin = adminPromotionsActor(UserRole::Admin);
+    $product1 = Product::factory()->create();
+    $product2 = Product::factory()->create();
+
+    $response = $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->postJson('/admin/api/marketing/promotions', [
+            'name_ar' => 'باقة التوفير',
+            'name_en' => 'Savings Bundle',
+            'mechanic' => 'bundle',
+            'scope' => 'all',
+            'bundle_price_halalah' => 7500,
+            'components' => [
+                ['product_id' => $product1->public_id, 'quantity' => 2],
+                ['product_id' => $product2->public_id, 'quantity' => 1],
+            ],
+            'is_active' => true,
+        ]);
+
+    $response->assertCreated()
+        ->assertJson(['data' => ['nameEn' => 'Savings Bundle']]);
+
+    $promotion = Promotion::query()->latest('id')->first();
+
+    expect($promotion?->mechanic)->toBe('bundle')
+        ->and($promotion?->bundle_price_halalah)->toBe(7500)
+        ->and($promotion?->components)->toHaveCount(2);
+
+    $comps = $promotion?->components()->orderBy('id')->get();
+    expect($comps?->first()?->product_id)->toBe($product1->id)
+        ->and($comps?->first()?->quantity)->toBe(2)
+        ->and($comps?->last()?->product_id)->toBe($product2->id)
+        ->and($comps?->last()?->quantity)->toBe(1);
+});
+
+test('nth_item and bundle requests validate boundary constraints', function (): void {
+    $admin = adminPromotionsActor(UserRole::Admin);
+    $product1 = Product::factory()->create();
+
+    // 0 buy quantity rejected
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->postJson('/admin/api/marketing/promotions', [
+            'name_ar' => 'عرض',
+            'name_en' => 'Deal',
+            'mechanic' => 'nth_item',
+            'scope' => 'all',
+            'discount_type' => 'percent',
+            'value' => 50,
+            'buy_quantity' => 0,
+            'get_quantity' => 1,
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('buy_quantity');
+
+    // Bundle with < 2 components rejected
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->postJson('/admin/api/marketing/promotions', [
+            'name_ar' => 'باقة',
+            'name_en' => 'Bundle',
+            'mechanic' => 'bundle',
+            'scope' => 'all',
+            'bundle_price_halalah' => 5000,
+            'components' => [
+                ['product_id' => $product1->public_id, 'quantity' => 1],
+            ],
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('components');
+
+    // Bundle missing price rejected
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->postJson('/admin/api/marketing/promotions', [
+            'name_ar' => 'باقة',
+            'name_en' => 'Bundle',
+            'mechanic' => 'bundle',
+            'scope' => 'all',
+            'components' => [
+                ['product_id' => $product1->public_id, 'quantity' => 1],
+                ['product_id' => $product1->public_id, 'quantity' => 2],
+            ],
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('bundle_price_halalah');
+});
 
 test('category scope rejects an unknown category public id', function (): void {
     $admin = adminPromotionsActor(UserRole::Admin);

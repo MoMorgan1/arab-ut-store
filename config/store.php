@@ -10,7 +10,7 @@ return [
         'legacy_history_enabled' => env('LEGACY_HISTORY_ENABLED', false),
         'loyalty_enabled' => env('STORE_LOYALTY_ENABLED', false),
     ],
-    'display_currencies' => ['SAR', 'AED', 'KWD', 'BHD', 'OMR', 'QAR', 'USD', 'EUR', 'GBP'],
+    'display_currencies' => ['SAR', 'AED', 'KWD', 'BHD', 'OMR', 'QAR', 'USD', 'EUR', 'GBP', 'EGP'],
     'display_exchange_rates' => [
         'provider_url' => 'https://open.er-api.com/v6/latest/SAR',
         'source' => 'exchange-rate-api-open-access',

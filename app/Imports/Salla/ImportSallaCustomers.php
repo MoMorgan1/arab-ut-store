@@ -30,8 +30,10 @@ final class ImportSallaCustomers
      *         name: string,
      *         email: ?string,
      *         phone: ?string,
-     *         email_user_id: int,
-     *         phone_user_id: int
+     *         email_user_id?: int,
+     *         phone_user_id?: int,
+     *         reason?: string,
+     *         claimed_by?: string
      *     }>,
      *     batch_id: ?string
      * }
@@ -70,6 +72,14 @@ final class ImportSallaCustomers
         $totalProcessed = 0;
         $createdCount = 0;
         $updatedCount = 0;
+
+        // A dry run writes nothing, so the lookups below cannot see rows this
+        // same run would have created. The export contains customers who share
+        // an email or a mobile with each other, so without this the preview
+        // over-reports creations and under-reports matches - which defeats the
+        // point of previewing. Keys are the normalised email and phone.
+        /** @var array<string, string> $plannedIdentities keyed identity => the salla id that claimed it */
+        $plannedIdentities = [];
         $skippedCount = 0;
         $conflictCount = 0;
         /** @var list<array{salla_id: string, name: string, email: ?string, phone: ?string, email_user_id: int, phone_user_id: int}> $conflictDetails */
@@ -106,10 +116,49 @@ final class ImportSallaCustomers
             $normalizedEmail = $data['email'] !== '' ? Str::lower(trim($data['email'])) : null;
             $normalizedPhone = PhoneNormalizer::normalize($data['mobile']);
 
+            // Two DIFFERENT Salla customers sharing an email or a mobile are
+            // two different people as far as we can tell, and merging them into
+            // one login would let either take the account over by WhatsApp OTP
+            // and read the other's order history. This has to run BEFORE the
+            // lookups below: in a real run the second row would otherwise find
+            // the account the first row just created and link to it silently.
+            $planKeys = array_values(array_filter([
+                $normalizedEmail === null ? null : 'email:'.$normalizedEmail,
+                $normalizedPhone === null ? null : 'phone:'.$normalizedPhone,
+            ]));
+
+            $claimedBy = null;
+            foreach ($planKeys as $planKey) {
+                if (isset($plannedIdentities[$planKey])) {
+                    $claimedBy = $plannedIdentities[$planKey];
+
+                    break;
+                }
+            }
+
+            if ($claimedBy !== null) {
+                $conflictCount++;
+                $conflictDetails[] = [
+                    'salla_id' => $sallaId,
+                    'name' => $data['full_name'],
+                    'email' => $normalizedEmail,
+                    'phone' => $normalizedPhone,
+                    'reason' => 'duplicate_identity_within_file',
+                    'claimed_by' => $claimedBy,
+                ];
+
+                continue;
+            }
+
+            foreach ($planKeys as $planKey) {
+                $plannedIdentities[$planKey] = $sallaId;
+            }
+
             $userByEmail = null;
             if ($normalizedEmail !== null) {
                 /** @var User|null $userByEmail */
                 $userByEmail = User::query()
+                    ->where('role', UserRole::Customer)
                     ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
                     ->first();
             }
@@ -117,7 +166,11 @@ final class ImportSallaCustomers
             $userByPhone = null;
             if ($normalizedPhone !== null) {
                 /** @var User|null $userByPhone */
+                // Customers only: a Salla email or mobile that happens to match
+                // a staff or admin account must never attach a customer identity
+                // (and their order history) to it.
                 $userByPhone = User::query()
+                    ->where('role', UserRole::Customer)
                     ->where('phone', $normalizedPhone)
                     ->first();
             }
@@ -139,6 +192,11 @@ final class ImportSallaCustomers
 
             $matchedUser = $userByEmail ?? $userByPhone;
 
+            // Applies to the real run too, not just the preview. The export
+            // contains different Salla customers sharing a mobile or an email;
+            // without this the second row links to the account the first row
+            // created, merging two real people into one login - and their
+            // orders follow the phone, so each would see the other's history.
             if ($matchedUser !== null) {
                 // Existing user matched: link without overwriting name, email or phone
                 if (! $dryRun) {

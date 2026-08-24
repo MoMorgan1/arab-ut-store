@@ -6,6 +6,7 @@ use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
+use App\Enums\UserRole;
 use App\Models\ExternalRef;
 use App\Models\ImportBatch;
 use App\Models\Order;
@@ -20,6 +21,10 @@ use RuntimeException;
 
 final class ImportSallaOrders
 {
+    public function __construct(
+        private readonly CurrencyConverter $currencyConverter,
+    ) {}
+
     /**
      * @return array{
      *     dry_run: bool,
@@ -30,6 +35,9 @@ final class ImportSallaOrders
      *     created: int,
      *     skipped: int,
      *     unmatched_customer: int,
+     *     skipped_not_completed: int,
+     *     skipped_zero_total: int,
+     *     unconverted_currencies: array<string, int>,
      *     unrecognised_statuses: int,
      *     unrecognised_status_list: list<string>,
      *     batch_id: ?string
@@ -71,6 +79,10 @@ final class ImportSallaOrders
         $createdCount = 0;
         $skippedCount = 0;
         $unmatchedCustomerCount = 0;
+        $skippedNotCompletedCount = 0;
+        $skippedZeroTotalCount = 0;
+        /** @var array<string, int> $unconvertedCurrencies */
+        $unconvertedCurrencies = [];
         $unrecognisedStatusCount = 0;
         /** @var list<string> $unrecognisedStatusList */
         $unrecognisedStatusList = [];
@@ -87,6 +99,9 @@ final class ImportSallaOrders
             &$createdCount,
             &$skippedCount,
             &$unmatchedCustomerCount,
+            &$skippedNotCompletedCount,
+            &$skippedZeroTotalCount,
+            &$unconvertedCurrencies,
             &$unrecognisedStatusCount,
             &$unrecognisedStatusList,
             $dryRun
@@ -107,8 +122,19 @@ final class ImportSallaOrders
             } elseif ($result['status'] === 'skipped_unmatched_customer') {
                 $skippedCount++;
                 $unmatchedCustomerCount++;
+            } elseif ($result['status'] === 'skipped_not_completed') {
+                $skippedCount++;
+                $skippedNotCompletedCount++;
+            } elseif ($result['status'] === 'skipped_zero_total') {
+                $skippedCount++;
+                $skippedZeroTotalCount++;
             } elseif ($result['status'] === 'skipped_duplicate') {
                 $skippedCount++;
+            }
+
+            if ($result['unconverted_currency'] !== null) {
+                $unconvertedCurrencies[$result['unconverted_currency']] =
+                    ($unconvertedCurrencies[$result['unconverted_currency']] ?? 0) + 1;
             }
 
             if ($result['unrecognised_status'] !== null) {
@@ -156,6 +182,9 @@ final class ImportSallaOrders
             'created' => $createdCount,
             'skipped' => $skippedCount,
             'unmatched_customer' => $unmatchedCustomerCount,
+            'skipped_not_completed' => $skippedNotCompletedCount,
+            'skipped_zero_total' => $skippedZeroTotalCount,
+            'unconverted_currencies' => $unconvertedCurrencies,
             'unrecognised_statuses' => $unrecognisedStatusCount,
             'unrecognised_status_list' => $unrecognisedStatusList,
             'batch_id' => null,
@@ -182,7 +211,7 @@ final class ImportSallaOrders
 
     /**
      * @param  list<array<string, string>>  $rows
-     * @return array{status: 'created'|'skipped_duplicate'|'skipped_unmatched_customer', unrecognised_status: ?string}
+     * @return array{status: 'created'|'skipped_duplicate'|'skipped_unmatched_customer'|'skipped_not_completed'|'skipped_zero_total', unrecognised_status: ?string, unconverted_currency: ?string}
      */
     private function processOrder(string $orderNumber, array $rows, bool $dryRun): array
     {
@@ -197,6 +226,7 @@ final class ImportSallaOrders
             return [
                 'status' => 'skipped_duplicate',
                 'unrecognised_status' => null,
+                'unconverted_currency' => null,
             ];
         }
 
@@ -207,9 +237,19 @@ final class ImportSallaOrders
         $customer = null;
 
         if ($normalizedMobile !== null) {
+            // Customers only, and only ones the customer pass actually linked.
+            // That pass refuses to identify a Salla customer whose email and
+            // mobile point at two different people; matching on the bare phone
+            // here would override that refusal and file a stranger's orders
+            // against whoever holds the number.
             /** @var User|null $customer */
             $customer = User::query()
+                ->where('role', UserRole::Customer)
                 ->where('phone', $normalizedMobile)
+                ->whereIn('id', ExternalRef::query()
+                    ->where('source', 'salla')
+                    ->where('entity', 'customer')
+                    ->select('internal_id'))
                 ->first();
         }
 
@@ -217,23 +257,65 @@ final class ImportSallaOrders
             return [
                 'status' => 'skipped_unmatched_customer',
                 'unrecognised_status' => null,
+                'unconverted_currency' => null,
             ];
         }
 
-        // 3. Status mapping
+        // 3. Status mapping.
+        //
+        // Owner decision: only orders that actually completed are imported, and
+        // they all land as Completed. Cancelled, failed, refunded and still-in-
+        // progress orders are skipped rather than rewritten, because marking them
+        // finished would count refunds and failures as real sales - and imported
+        // spend feeds lifetime totals, so it would inflate loyalty tiers too.
         $statusMapping = SallaStatusMapper::map($firstRow['status'], $firstRow['payment_status']);
-        $orderStatus = $statusMapping['status'];
         $unrecognisedStatus = $statusMapping['isUnrecognised'] ? $statusMapping['originalStatus'] : null;
 
+        $wasPaid = mb_strtolower(trim((string) $firstRow['payment_status'])) === 'paid';
+        $isFailure = in_array(
+            $statusMapping['status'],
+            [OrderStatus::Cancelled, OrderStatus::Refunded],
+            true,
+        );
+
+        // Cancelled, failed and refunded orders never come across. Everything
+        // else does if the customer either got it or paid for it: a large slice
+        // of the export sits in "awaiting review" simply because that is where
+        // the old workflow left it, and most of those were paid - skipping them
+        // would erase real revenue from the history and from lifetime spend.
+        if ($isFailure || (! $wasPaid && $statusMapping['status'] !== OrderStatus::Completed)) {
+            return [
+                'status' => 'skipped_not_completed',
+                'unrecognised_status' => $unrecognisedStatus,
+                'unconverted_currency' => null,
+            ];
+        }
+
+        $orderStatus = OrderStatus::Completed;
+
+        // Zero-value orders are test rows and the coin-buying flow the owner ran
+        // when he was purchasing coins FROM customers - money moving the other
+        // way, not a sale. Neither belongs in the sales history.
+        if (MoneyParser::parse($firstRow['cart_total']) === 0) {
+            return [
+                'status' => 'skipped_zero_total',
+                'unrecognised_status' => null,
+                'unconverted_currency' => null,
+            ];
+        }
+
         // 4. Currency
-        $currency = trim($firstRow['currency']);
-        $currency = $currency !== '' ? strtoupper($currency) : 'SAR';
+        $originalCurrency = trim($firstRow['currency']);
+        $originalCurrency = $originalCurrency !== '' ? strtoupper($originalCurrency) : 'SAR';
+
+        // What currency the order is STORED in is decided with the totals
+        // below, because it depends on which figures are usable.
 
         // 5. Build items and calculate totals
         $orderDate = $firstRow['order_date'] !== '' ? $this->parseTimestamp($firstRow['order_date']) : now();
-        $isPaid = strtolower(trim($firstRow['payment_status'])) === 'paid'
-            || str_contains($firstRow['payment_status'], 'تم الدفع')
-            || $orderStatus === OrderStatus::Completed;
+        // Only completed orders reach this point, so they are all treated as paid
+        // and completed; the guard above already rejected everything else.
+        $isPaid = true;
 
         $itemsData = [];
         $totalItemsSubtotal = 0;
@@ -300,9 +382,59 @@ final class ImportSallaOrders
             $totalItemsAmount += $lineTotalHalalah;
         }
 
-        // Cart total on order level
+        // Cart total on order level.
+        //
+        // Salla exports ITEM prices in SAR even for an order charged in
+        // another currency - only this order-level cart total carries the
+        // foreign amount. Checked against the export: a KWD order reading
+        // 8.37 here lists its product at 102, and 102 SAR is 8.35 KWD.
+        // Everything derived from items is therefore already SAR and must be
+        // left alone; converting it would multiply those figures by the rate
+        // a second time.
         $cartTotalHalalah = MoneyParser::parse($firstRow['cart_total']);
-        $orderTotalHalalah = $cartTotalHalalah > 0 ? $cartTotalHalalah : $totalItemsAmount;
+        $cartTotalInSar = $this->currencyConverter->toSar($cartTotalHalalah, $originalCurrency);
+
+        if ($originalCurrency === 'SAR') {
+            $currency = 'SAR';
+            $orderTotalHalalah = $cartTotalHalalah;
+            $conversionMetadata = null;
+        } elseif ($totalItemsAmount > 0) {
+            // The item prices are natively SAR, so their sum IS the SAR total.
+            // Preferred over converting the cart total because the cart total's
+            // currency is NOT reliable: a small number of foreign orders carry
+            // a SAR cart total (KWD 3 of 1474, USD 1 of 167, EUR 1 of 33), and
+            // putting those through the rate inflated them twelvefold - order
+            // 116377952 became 1,245.42 SAR for a 102 SAR purchase. Summing the
+            // items needs no rate, so it cannot make that mistake.
+            $currency = 'SAR';
+            $orderTotalHalalah = $totalItemsAmount;
+            $conversionMetadata = [
+                'source' => 'salla',
+                'basis' => 'item_prices',
+                'original_currency' => $originalCurrency,
+                'original_total_minor' => $cartTotalHalalah,
+                'rate_foreign_per_sar' => null,
+                'rate_fetched_at' => null,
+            ];
+        } elseif ($cartTotalInSar['converted']) {
+            // Nothing priced on the lines, so the cart total is all there is.
+            $currency = 'SAR';
+            $orderTotalHalalah = $cartTotalInSar['halalah'];
+            $conversionMetadata = [
+                'source' => 'salla',
+                'basis' => 'exchange_rate',
+                'original_currency' => $originalCurrency,
+                'original_total_minor' => $cartTotalHalalah,
+                'rate_foreign_per_sar' => $cartTotalInSar['rate'],
+                'rate_fetched_at' => $cartTotalInSar['fetchedAt'],
+            ];
+        } else {
+            // Nothing usable: keep what the export said rather than guess.
+            $currency = $originalCurrency;
+            $orderTotalHalalah = $cartTotalHalalah;
+            $conversionMetadata = null;
+        }
+
         $orderSubtotalHalalah = $totalItemsSubtotal > 0 ? $totalItemsSubtotal : $orderTotalHalalah;
         $orderDiscountHalalah = $totalItemsDiscount;
         $orderPaymentHalalah = $orderTotalHalalah;
@@ -313,12 +445,12 @@ final class ImportSallaOrders
                 $customer,
                 $orderStatus,
                 $currency,
+                $conversionMetadata,
                 $orderSubtotalHalalah,
                 $orderDiscountHalalah,
                 $orderPaymentHalalah,
                 $orderTotalHalalah,
                 $orderDate,
-                $isPaid,
                 $itemsData,
             ): void {
                 $order = new Order([
@@ -333,16 +465,24 @@ final class ImportSallaOrders
                     'payment_halalah' => $orderPaymentHalalah,
                     'total_halalah' => $orderTotalHalalah,
                     'placed_at' => $orderDate,
-                    'paid_at' => $isPaid ? $orderDate : null,
-                    'completed_at' => $orderStatus === OrderStatus::Completed ? $orderDate : null,
-                    'cancelled_at' => $orderStatus === OrderStatus::Cancelled ? $orderDate : null,
+                    'paid_at' => $orderDate,
+                    'completed_at' => $orderDate,
+                    'cancelled_at' => null,
                 ]);
                 $order->channel = 'salla_import';
+
+                // Converting is lossy and one-way, so keep what it was: without
+                // this nobody could audit a total, re-run the conversion at a
+                // better rate, or answer a customer asking why their order
+                // reads 102.20 SAR when they paid 8.37 KWD.
+                $order->import_metadata = $conversionMetadata;
                 $order->created_at = $orderDate;
                 $order->updated_at = $orderDate;
                 $order->save();
 
                 foreach ($itemsData as $item) {
+                    // Item money is left exactly as exported: Salla already
+                    // quotes it in SAR. See the cart-total block above.
                     $orderItem = new OrderItem($item);
                     $orderItem->order_id = max(0, (int) $order->id);
                     $orderItem->created_at = $orderDate;
@@ -362,6 +502,7 @@ final class ImportSallaOrders
         return [
             'status' => 'created',
             'unrecognised_status' => $unrecognisedStatus,
+            'unconverted_currency' => $currency === 'SAR' ? null : $originalCurrency,
         ];
     }
 

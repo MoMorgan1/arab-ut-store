@@ -45,7 +45,7 @@ test('the storefront shares the configured display currency list', function () {
 
 test('the default storefront currency list includes the Gulf currencies', function () {
     expect(config('store.display_currencies'))->toBe([
-        'SAR', 'AED', 'KWD', 'BHD', 'OMR', 'QAR', 'USD', 'EUR', 'GBP',
+        'SAR', 'AED', 'KWD', 'BHD', 'OMR', 'QAR', 'USD', 'EUR', 'GBP', 'EGP',
     ]);
 });
 

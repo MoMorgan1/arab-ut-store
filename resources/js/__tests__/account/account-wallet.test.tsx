@@ -26,15 +26,13 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-it('renders exact balance, lifetime cashback, typed text semantics, order context, and bounded pagination', () => {
+it('renders exact balance, typed text semantics, order context, and bounded pagination', () => {
     render(<AccountWallet />);
 
     expect(
         screen.getByRole('heading', { level: 2, name: 'Wallet' }),
     ).toBeVisible();
     expect(screen.getByText(/90,071,992,547,409\.91/)).toBeVisible();
-    expect(screen.getByText('Cashback earned')).toBeVisible();
-    expect(screen.getByText(/^SAR\s50\.00$/)).toBeVisible();
 
     const ledger = screen.getByRole('region', { name: 'Wallet activity' });
     expect(within(ledger).getByText('Refund')).toBeVisible();
@@ -65,14 +63,13 @@ it('renders balance as 0.00 and empty state when customer has no wallet account 
         wallet: {
             exists: false,
             balance: null,
-            lifetimeCashback: { amountMinor: '0', currency: 'SAR' },
             entries: [],
             pagination: pagination(0),
         },
     };
     const { rerender } = render(<AccountWallet />);
 
-    expect(screen.getAllByText(/^SAR\s0\.00$/)).toHaveLength(2);
+    expect(screen.getAllByText(/^SAR\s0\.00$/)).toHaveLength(1);
     expect(screen.getByText('No wallet activity yet')).toBeVisible();
     expect(
         screen.getByText(
@@ -85,14 +82,13 @@ it('renders balance as 0.00 and empty state when customer has no wallet account 
         wallet: {
             exists: true,
             balance: { amountMinor: '0', currency: 'SAR' },
-            lifetimeCashback: { amountMinor: '0', currency: 'SAR' },
             entries: [],
             pagination: pagination(0),
         },
     };
     rerender(<AccountWallet />);
 
-    expect(screen.getAllByText(/^SAR\s0\.00$/)).toHaveLength(2);
+    expect(screen.getAllByText(/^SAR\s0\.00$/)).toHaveLength(1);
     expect(screen.getByText('No wallet activity yet')).toBeVisible();
 });
 
@@ -106,7 +102,6 @@ function walletProps() {
                 description: 'Your balance and verified wallet activity.',
                 available_balance: 'Available balance',
                 unavailable_balance: 'Wallet is not active yet',
-                lifetime_cashback: 'Cashback earned',
                 loyalty_title: 'Loyalty programme',
                 ledger_title: 'Wallet activity',
                 empty_title: 'No wallet activity yet',
@@ -134,10 +129,6 @@ function walletProps() {
             exists: true,
             balance: {
                 amountMinor: '9007199254740991',
-                currency: 'SAR',
-            },
-            lifetimeCashback: {
-                amountMinor: '5000',
                 currency: 'SAR',
             },
             entries: [

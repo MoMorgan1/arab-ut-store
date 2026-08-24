@@ -16,7 +16,10 @@ use Illuminate\Support\Str;
 
 final readonly class ReconcilePaylinkPayment
 {
-    public function __construct(private PaymentManager $payments) {}
+    public function __construct(
+        private PaymentManager $payments,
+        private ReleaseOrderWalletFunds $releaseOrderWalletFunds,
+    ) {}
 
     public function execute(Payment $payment): Payment
     {
@@ -92,6 +95,11 @@ final readonly class ReconcilePaylinkPayment
                 ])->save();
 
                 if ($order->status === OrderStatus::PendingPayment) {
+                    // The wallet was debited at placement, so a cancelled
+                    // invoice must give that money back or it is destroyed -
+                    // no other path credits a cancelled order.
+                    $this->releaseOrderWalletFunds->execute($order, 'paylink_cancelled');
+
                     $order->forceFill(['status' => OrderStatus::Cancelled, 'cancelled_at' => now()])->save();
                     $order->items()->update(['status' => OrderItemStatus::Cancelled->value]);
                     $order->statusHistory()->create([

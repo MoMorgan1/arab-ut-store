@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\ExpireAbandonedCheckouts;
 use App\Console\Commands\MaintainChatConversations;
 use App\Console\Commands\PublishOrderPaidEvents;
 use App\Console\Commands\PurgeGuestCartClaims;
@@ -18,3 +19,4 @@ Schedule::command(PurgeGuestCartClaims::class)->hourly()->withoutOverlapping();
 Schedule::command(PublishOrderPaidEvents::class)->everyMinute()->withoutOverlapping();
 Schedule::command(MaintainChatConversations::class)->hourly()->withoutOverlapping();
 Schedule::command(RecoverStaleAgentTurns::class)->everyMinute()->withoutOverlapping();
+Schedule::command(ExpireAbandonedCheckouts::class)->hourly()->withoutOverlapping();

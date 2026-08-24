@@ -324,7 +324,6 @@ function loyaltyProps(): AccountLoyaltyPageProps {
                 description: 'Wallet activity',
                 available_balance: 'Available balance',
                 unavailable_balance: 'Wallet is not active yet',
-                lifetime_cashback: 'Cashback earned',
                 loyalty_title: 'Loyalty programme',
                 ledger_title: 'Wallet activity',
                 empty_title: 'No wallet activity yet',
@@ -365,6 +364,7 @@ function loyaltyProps(): AccountLoyaltyPageProps {
                 how_it_works_2:
                     'Added to your wallet once the order is completed',
                 how_it_works_3: 'Reversed if the order is refunded',
+                lifetime_cashback: 'Cashback earned',
                 recent_cashback_title: 'Recent Cashback',
                 empty_cashback_title: 'No cashback activity yet',
                 empty_cashback_desc:

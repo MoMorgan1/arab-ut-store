@@ -33,6 +33,7 @@ test('the refresh command atomically stores every configured foreign display rat
                 'USD' => '0.266666666',
                 'EUR' => '0.228123455',
                 'GBP' => '0.196',
+                'EGP' => '13.563708',
             ]),
             200,
             ['Content-Type' => 'application/json'],
@@ -46,6 +47,7 @@ test('the refresh command atomically stores every configured foreign display rat
     )->all())->toBe([
         'AED' => '0.97920000',
         'BHD' => '0.10050000',
+        'EGP' => '13.56370800',
         'EUR' => '0.22812346',
         'GBP' => '0.19600000',
         'KWD' => '0.08170000',
