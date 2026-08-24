@@ -133,7 +133,7 @@ return [
             'pending_payment' => 'بانتظار الدفع',
             'received' => 'تم استلام الدفع',
             'in_progress' => 'قيد التنفيذ',
-            'waiting_for_customer' => 'بانتظار ردك',
+            'waiting_for_customer' => 'متوقف — يحتاج إجراء منك',
             'completed' => 'مكتمل',
             'cancelled' => 'ملغي',
             'refunded' => 'تم الاسترجاع',

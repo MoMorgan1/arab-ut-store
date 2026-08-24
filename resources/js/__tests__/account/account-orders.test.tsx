@@ -633,7 +633,7 @@ function shellProps() {
                 pending_payment: 'Awaiting payment',
                 received: 'Payment received',
                 in_progress: 'In progress',
-                waiting_for_customer: 'Waiting for you',
+                waiting_for_customer: 'Paused — action needed',
                 completed: 'Completed',
                 cancelled: 'Cancelled',
                 refunded: 'Refunded',

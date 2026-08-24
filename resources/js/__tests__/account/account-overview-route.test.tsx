@@ -71,10 +71,10 @@ const mockPage = vi.hoisted(() => ({
                 pending_payment: 'بانتظار الدفع',
                 received: 'تم استلام الدفع',
                 in_progress: 'قيد التنفيذ',
-                waiting_for_customer: 'بانتظارك',
+                waiting_for_customer: 'متوقف — يحتاج إجراء منك',
                 completed: 'مكتمل',
                 cancelled: 'ملغي',
-                refunded: 'مسترد',
+                refunded: 'تم الاسترجاع',
                 failed: 'يحتاج مراجعة',
             },
             actions: {
