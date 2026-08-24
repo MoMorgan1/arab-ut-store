@@ -3,10 +3,14 @@
 declare(strict_types=1);
 
 use App\Actions\AI\BuildAgentModelRequest;
+use App\Enums\Platform;
+use App\Enums\ServiceType;
 use App\Models\AgentTurn;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\ExchangeRate;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\ValueObjects\Chat\ChatOwner;
 use Illuminate\Support\Facades\Cache;
 
@@ -67,9 +71,54 @@ it('uses the store default when that is the currency the viewer is browsing in',
         ->and($instructions)->toContain('SAR');
 });
 
+it('prices SBC challenges in the viewer currency too', function (): void {
+    // sbcLines() reads the catalogue directly instead of taking the prepared
+    // converter, and it passed store.default_display_currency. So even after the
+    // controller started handing down the viewer's currency, an SBC question
+    // still answered in SAR. Ask about the challenges specifically: a question
+    // that only matches `rivals` never renders an sbc line, so the earlier tests
+    // could not have caught this.
+    seedOmanRate();
+
+    // The test catalogue ships no SBC products, so an sbc line only exists if
+    // this test creates one.
+    $product = Product::factory()->create([
+        'service_type' => ServiceType::Sbc,
+        'slug' => 'currency-probe',
+        'name_ar' => 'تحدي الاختبار',
+        'name_en' => 'Probe Challenge',
+        'is_visible' => true,
+        'archived_at' => null,
+    ]);
+    ProductVariant::factory()->for($product)->create([
+        'service_type' => ServiceType::Sbc,
+        'platform' => Platform::PlayStation,
+        'price_halalah' => 9_000,
+        'sale_price_halalah' => null,
+        'is_active' => true,
+    ]);
+
+    $conversation = ChatConversation::factory()->create(['locale' => 'ar']);
+    $owner = ChatOwner::guest((string) $conversation->guest_key);
+    $message = ChatMessage::factory()->customer()->agentEligible()
+        ->for($conversation, 'conversation')->create(['content' => 'كم سعر تحديات SBC؟']);
+    $turn = AgentTurn::factory()->waiting()->for($conversation, 'conversation')->create([
+        'first_customer_message_id' => $message->id,
+        'last_customer_message_id' => $message->id,
+    ]);
+
+    $instructions = app(BuildAgentModelRequest::class)
+        ->execute($turn, $owner, 'OMR')
+        ->instructions;
+
+    expect($instructions)->toContain('sbc | ')
+        ->and($instructions)->not->toContain('SAR');
+});
+
 // Deliberately not covered here: what the block does when the viewer's currency
 // has no fresh exchange rate. ConvertDisplayMoney::prepare() throws and
-// BuildLivePriceContext::render() returns '' — but a block still rendered in a
-// probe of that case, so something else supplies lines and the real behaviour is
-// not yet understood. That path is unchanged by this fix; it needs its own
-// investigation rather than an assertion written from a guess.
+// BuildLivePriceContext::render() returns '', so the expected answer is "no
+// block at all" — but a probe of that case still produced one, which means the
+// test database has a rate for every display currency and the probe never
+// exercised the path it claimed to. Left uncovered rather than asserted from a
+// guess; the path is untouched by this fix.
