@@ -13044,8 +13044,15 @@ html.admin-document {
         overflow-x: auto;
         overflow-y: hidden;
         overscroll-behavior-inline: contain;
-        scrollbar-width: none;
         scroll-snap-type: inline proximity;
+        /*
+         * Hidden on touch, where a swipe is the obvious gesture and a bar is
+         * just clutter. Restored below for mouse users, who have no swipe: a
+         * wheel scrolls vertically over this row, so without a visible bar the
+         * cards past the fold are unreachable except by Shift+wheel or by
+         * tabbing. That is not discoverable, and it is how this shipped.
+         */
+        scrollbar-width: none;
         /*
          * `overflow-y: hidden` clips anything drawn outside the row's box, and
          * the cards' focus ring is drawn at `outline-offset-2`. Without this
@@ -13060,6 +13067,37 @@ html.admin-document {
 
     .chat-service-card-row::-webkit-scrollbar {
         display: none;
+    }
+
+    /*
+     * `any-pointer: fine` is true when a mouse or trackpad is present, which is
+     * the case that needs the bar — rather than a width breakpoint, which would
+     * guess wrong on a touch laptop and on a phone in landscape.
+     */
+    @media (any-pointer: fine) {
+        .chat-service-card-row {
+            scrollbar-width: thin;
+            scrollbar-color: var(--chat-line-strong) transparent;
+            padding-block-end: 0.5rem;
+        }
+
+        .chat-service-card-row::-webkit-scrollbar {
+            display: block;
+            height: 6px;
+        }
+
+        .chat-service-card-row::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-service-card-row::-webkit-scrollbar-thumb {
+            border-radius: 999px;
+            background: var(--chat-line-strong);
+        }
+
+        .chat-service-card-row::-webkit-scrollbar-thumb:hover {
+            background: var(--chat-accent-ink);
+        }
     }
 
     .chat-service-card-row > * {
