@@ -49,19 +49,6 @@ test('staff actors are forbidden from updating customer status', function (): vo
         ->assertForbidden();
 });
 
-test('admin actor without password confirmation receives 423', function (): void {
-    $admin = createStatusTestAdmin(UserRole::Admin);
-    $customer = createStatusTestCustomer(true);
-
-    $this->actingAs($admin)
-        ->postJson("/admin/api/customers/{$customer->public_id}/status", [
-            'action' => 'suspend',
-            'reason_code' => 'abuse',
-            'expected_active' => true,
-        ])
-        ->assertStatus(423);
-});
-
 test('confirmed admin can suspend customer, destroying sessions and writing audit log', function (): void {
     $admin = createStatusTestAdmin(UserRole::Admin);
     $customer = createStatusTestCustomer(true);

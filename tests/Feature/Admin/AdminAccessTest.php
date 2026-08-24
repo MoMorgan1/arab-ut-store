@@ -139,7 +139,6 @@ test('Admin settings routes retain the complete localized admission middleware',
             PrivateNoStore::class,
             'inertia.encrypt',
             EnsureAdminPassword::class,
-            'password.confirm',
         );
 })->with([
     'Canonical' => ['admin.settings'],

@@ -61,7 +61,6 @@ test('confirmed Admin can open loyalty page and view tiers and KPIs', function (
             ->has('kpis.customersPerTier')
             ->has('kpis.cashbackCreditedLast30Days')
             ->has('updateTierUrlTemplate')
-            ->has('confirmPasswordUrl')
         );
 })->with([
     'default prefix' => ['/admin'],
@@ -77,24 +76,7 @@ test('loyalty routes have required middlewares', function (): void {
     $updateRoute = Route::getRoutes()->getByName('admin.marketing.loyalty.tiers.update');
     expect($updateRoute)->not->toBeNull()
         ->and($updateRoute?->gatherMiddleware())->toContain(EnsureAdminMfa::class)
-        ->and($updateRoute?->gatherMiddleware())->toContain('password.confirm')
         ->and($updateRoute?->gatherMiddleware())->toContain('can:loyalty.manage');
-});
-
-test('updating loyalty tier without password confirmation returns 423', function (): void {
-    $admin = createLoyaltyAdminActor(UserRole::Admin);
-    $tiers = seedLoyaltyTiersFixture();
-    $tier = $tiers['silver'];
-
-    $this->actingAs($admin)
-        ->putJson("/admin/api/marketing/loyalty/tiers/{$tier->public_id}", [
-            'name_ar' => 'فضي معدل',
-            'name_en' => 'Silver Updated',
-            'minimum_lifetime_spend_halalah' => 60000,
-            'cashback_basis_points' => 350,
-            'is_active' => true,
-        ])
-        ->assertStatus(423);
 });
 
 test('updating loyalty tier enforces validation rules and invariant constraints', function (
@@ -107,7 +89,6 @@ test('updating loyalty tier enforces validation rules and invariant constraints'
     $tier = $tiers[$tierKey];
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->putJson("/admin/api/marketing/loyalty/tiers/{$tier->public_id}", $payload)
         ->assertStatus(422)
         ->assertJsonValidationErrors($expectedErrorField);
@@ -209,7 +190,6 @@ test('confirmed Admin can update loyalty tier and record staff audit log', funct
     $tier = $tiers['silver'];
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->putJson("/admin/api/marketing/loyalty/tiers/{$tier->public_id}", [
             'name_ar' => 'المستوى الفضي المطور',
             'name_en' => 'Silver Pro Tier',

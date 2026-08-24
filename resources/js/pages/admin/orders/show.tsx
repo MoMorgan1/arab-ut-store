@@ -332,7 +332,6 @@ export default function AdminOrderDetailPage() {
                         props.refund.eligible ? (
                             <AdminOrderRefundControl
                                 adminUi={props.adminUi}
-                                confirmPasswordUrl={props.confirmPasswordUrl}
                                 direction={props.direction}
                                 locale={props.locale}
                                 order={order}

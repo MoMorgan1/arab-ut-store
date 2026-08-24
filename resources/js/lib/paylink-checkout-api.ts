@@ -127,6 +127,7 @@ function safeSuccess(payload: unknown): PaylinkCheckoutSuccess | null {
 export async function startPaylinkCheckout(
     path: string,
     idempotencyKey: string,
+    expectedPayableHalalah?: number,
 ): Promise<PaylinkCheckoutSuccess> {
     const url = sameOriginUrl(path);
 
@@ -138,7 +139,7 @@ export async function startPaylinkCheckout(
         throw new PaylinkCheckoutError('unsafe_endpoint', 0, false);
     }
 
-    return submitPaylinkCheckout(url, idempotencyKey);
+    return submitPaylinkCheckout(url, idempotencyKey, expectedPayableHalalah);
 }
 
 export async function resumePaylinkCheckout(
@@ -156,6 +157,7 @@ export async function resumePaylinkCheckout(
 async function submitPaylinkCheckout(
     url: URL,
     idempotencyKey: string | null,
+    expectedPayableHalalah?: number,
 ): Promise<PaylinkCheckoutSuccess> {
     const token = csrfToken();
 
@@ -173,6 +175,18 @@ async function submitPaylinkCheckout(
 
     if (idempotencyKey !== null) {
         headers['Idempotency-Key'] = idempotencyKey;
+    }
+
+    // The total the customer was actually shown. The server recomputes discounts
+    // from live promotion and coupon rows, so if a promotion ends between this
+    // page rendering and the customer pressing pay, the order is refused rather
+    // than silently charged at the new price.
+    if (
+        typeof expectedPayableHalalah === 'number' &&
+        Number.isInteger(expectedPayableHalalah) &&
+        expectedPayableHalalah >= 0
+    ) {
+        headers['X-Expected-Total-Halalah'] = String(expectedPayableHalalah);
     }
 
     try {

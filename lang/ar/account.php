@@ -218,6 +218,10 @@ return [
         'phone_attribute' => 'رقم الهاتف',
         'email_taken' => 'هذا البريد مرتبط بحساب آخر.',
         'email_attribute' => 'البريد الإلكتروني',
+        'add_email_prompt_title' => 'أضف بريدك الإلكتروني',
+        'add_email_prompt_desc' => 'تحتاج إلى بريد إلكتروني لاستلام الإيصالات وتسجيل الدخول بالبريد.',
+        'add_email_prompt_action' => 'إضافة بريد إلكتروني',
+        'add_email_prompt_dismiss' => 'إغلاق الإشعار',
     ],
     'security' => [
         'title' => 'الأمان',

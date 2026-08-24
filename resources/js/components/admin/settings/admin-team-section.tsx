@@ -10,10 +10,9 @@ import {
     UserX,
     Users,
 } from 'lucide-react';
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 
 import AdminBadge from '@/components/admin/admin-badge';
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -41,7 +40,6 @@ import type {
 
 export type AdminTeamSectionProps = {
     adminUi: AdminTranslations;
-    confirmPasswordUrl?: string;
     direction: 'rtl' | 'ltr';
     locale: 'ar' | 'en';
     team: AdminTeamData;
@@ -62,7 +60,6 @@ function getCsrfToken(): string {
 
 export default function AdminTeamSection({
     adminUi,
-    confirmPasswordUrl,
     locale,
     team,
     teamUrls,
@@ -106,10 +103,6 @@ export default function AdminTeamSection({
     >('deactivate');
     const [statusSubmitting, setStatusSubmitting] = useState(false);
     const [statusError, setStatusError] = useState<string | null>(null);
-
-    // Password confirm dialog state
-    const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false);
-    const pendingAction = useRef<(() => Promise<void>) | null>(null);
 
     const dateFormatter = new Intl.DateTimeFormat(locale, {
         dateStyle: 'medium',
@@ -157,14 +150,6 @@ export default function AdminTeamSection({
                 },
                 method: 'POST',
             });
-
-            if (response.status === 423) {
-                setGrantDialogOpen(false);
-                pendingAction.current = executeGrant;
-                setPasswordConfirmOpen(true);
-
-                return;
-            }
 
             if (response.status === 403) {
                 setGrantError(copy.messages.forbiddenError);
@@ -243,14 +228,6 @@ export default function AdminTeamSection({
                 method: 'POST',
             });
 
-            if (response.status === 423) {
-                setRoleDialogOpen(false);
-                pendingAction.current = executeRoleChange;
-                setPasswordConfirmOpen(true);
-
-                return;
-            }
-
             if (response.status === 409) {
                 setRoleDialogOpen(false);
                 setAlertState({
@@ -317,14 +294,6 @@ export default function AdminTeamSection({
                 },
                 method: 'POST',
             });
-
-            if (response.status === 423) {
-                setStatusDialogOpen(false);
-                pendingAction.current = executeStatusChange;
-                setPasswordConfirmOpen(true);
-
-                return;
-            }
 
             if (response.status === 409) {
                 setStatusDialogOpen(false);
@@ -1084,21 +1053,6 @@ export default function AdminTeamSection({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            <AdminPasswordConfirmDialog
-                confirmPasswordUrl={confirmPasswordUrl}
-                description="For security, please enter your password to confirm this team change."
-                onConfirmed={() => {
-                    if (pendingAction.current) {
-                        const action = pendingAction.current;
-                        pendingAction.current = null;
-                        void action();
-                    }
-                }}
-                onOpenChange={setPasswordConfirmOpen}
-                open={passwordConfirmOpen}
-                title="Confirm your password"
-            />
         </section>
     );
 }

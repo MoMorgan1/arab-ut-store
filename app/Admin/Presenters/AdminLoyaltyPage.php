@@ -72,7 +72,6 @@ final readonly class AdminLoyaltyPage
                 ],
             ],
             'updateTierUrlTemplate' => $updateTierUrlTemplate,
-            'confirmPasswordUrl' => route('password.confirm', absolute: false),
         ];
     }
 

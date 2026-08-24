@@ -14,7 +14,7 @@ final class ConfirmEmailChange
 {
     public function execute(User $user, UserIdentityChange $change, string $token, string $locale): void
     {
-        $oldEmail = DB::transaction(function () use ($change, $token, $user): string {
+        $oldEmail = DB::transaction(function () use ($change, $token, $user): ?string {
             $lockedChange = UserIdentityChange::query()->whereKey($change->id)->lockForUpdate()->first();
             $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->first();
             $expiresAt = $lockedChange?->getAttribute('expires_at');
@@ -50,7 +50,9 @@ final class ConfirmEmailChange
             return $oldEmail;
         }, attempts: 3);
 
-        Notification::route('mail', $oldEmail)
-            ->notify(new EmailChangedNotification($locale));
+        if ($oldEmail !== null && $oldEmail !== '') {
+            Notification::route('mail', $oldEmail)
+                ->notify(new EmailChangedNotification($locale));
+        }
     }
 }

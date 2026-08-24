@@ -33,15 +33,37 @@ export type AdminTranslations = {
         orders: string;
         customers: string;
         conversations: string;
+        catalog?: string;
         products: string;
+        categories?: string;
         marketingLoyalty?: string;
         settings: string;
         marketing: string;
         marketingCoupons: string;
         marketingPromotions: string;
+        more?: string;
         open: string;
         close: string;
         quick?: string;
+    };
+    more?: {
+        headTitle: string;
+        title: string;
+        description: string;
+        groups: {
+            catalog: string;
+            marketing: string;
+            system: string;
+        };
+        tiles: {
+            conversations: { title: string; description: string };
+            categories: { title: string; description: string };
+            coupons: { title: string; description: string };
+            promotions: { title: string; description: string };
+            loyalty: { title: string; description: string };
+            settings: { title: string; description: string };
+        };
+        noTiles: string;
     };
     overview: {
         headTitle: string;
@@ -606,6 +628,7 @@ export type AdminTranslations = {
         };
     };
     coupons: {
+        loading: string;
         headTitle: string;
         title: string;
         description: string;
@@ -616,6 +639,7 @@ export type AdminTranslations = {
         codeLabel: string;
         codePlaceholder: string;
         codeHelp: string;
+        codeUppercaseHint: string;
         descriptionArLabel: string;
         descriptionEnLabel: string;
         typeLabel: string;
@@ -626,21 +650,55 @@ export type AdminTranslations = {
         valueFixedHelp: string;
         minimumOrderLabel: string;
         minimumOrderHelp: string;
+        minimumOrderEligibleHelp: string;
         maximumDiscountLabel: string;
         maximumDiscountHelp: string;
         usageLimitLabel: string;
         usageLimitHelp: string;
         perUserLimitLabel: string;
         perUserLimitHelp: string;
+        cancelledReleasesRedemptionHelp: string;
         startsAtLabel: string;
         endsAtLabel: string;
         isActiveLabel: string;
+        isPausedLabel: string;
+        isPausedHelp: string;
+        firstOrderOnlyLabel: string;
+        firstOrderOnlyHelp: string;
+        excludesPromotedLabel: string;
+        excludesPromotedHelp: string;
+        scopeLabel: string;
+        scopeHelp: string;
+        scopeOrder: string;
+        scopeCategory: string;
+        scopeProduct: string;
+        scopeService: string;
+        targetCategoriesLabel: string;
+        targetCategoriesPlaceholder: string;
+        targetProductsLabel: string;
+        targetProductsPlaceholder: string;
+        serviceTypeLabel: string;
+        serviceTypePlaceholder: string;
+        sectionBasics: string;
+        sectionDiscount: string;
+        sectionAppliesTo: string;
+        sectionEligibility: string;
+        sectionLimits: string;
+        statusAll: string;
+        statusActive: string;
+        statusScheduled: string;
+        statusPaused: string;
+        statusExpired: string;
+        statusExhausted: string;
         saveButton: string;
         savingButton: string;
         cancelButton: string;
         columns: {
             code: string;
+            discount: string;
             type: string;
+            scope: string;
+            eligibility: string;
             window: string;
             usage: string;
             status: string;
@@ -656,16 +714,78 @@ export type AdminTranslations = {
         window: string;
         active: string;
         inactive: string;
+        paused: string;
+        scheduled: string;
+        expired: string;
+        exhausted: string;
         noCoupons: string;
+        noCouponsMatching: string;
         toggleTitle: string;
         activateTitle: string;
         deactivateTitle: string;
         activateDescription: string;
         deactivateDescription: string;
         confirmToggle: string;
+        duplicateButton: string;
+        duplicateTitle: string;
+        duplicateDescription: string;
+        duplicateCodeLabel: string;
+        duplicateCodePlaceholder: string;
+        confirmDuplicate: string;
+        duplicating: string;
+        pauseButton: string;
+        resumeButton: string;
+        viewDetails: string;
+        backToCoupons: string;
+        detailTitle: string;
+        performanceTitle: string;
+        rulesTitle: string;
+        recentRedemptionsTitle: string;
+        kpiRedemptions: string;
+        kpiUniqueCustomers: string;
+        kpiRevenueAttributed: string;
+        kpiTotalDiscount: string;
+        kpiPaidOrdersNote: string;
+        releasedNotice: string;
+        chartTitle: string;
+        noChartData: string;
+        noRecentRedemptions: string;
+        orderColumn: string;
+        customerColumn: string;
+        totalColumn: string;
+        discountColumn: string;
+        statusColumn: string;
+        dateColumn: string;
+        viewOrder: string;
+        viewCustomer: string;
+        filters: string;
+        filterScope: string;
+        allScopes: string;
+        filterDiscountType: string;
+        allDiscountTypes: string;
+        filterStatus: string;
+        allStatuses: string;
+        searchPlaceholder: string;
+        searchLabel: string;
+        clearSearch: string;
+        clearAll: string;
+        apply: string;
+        resetFilters: string;
+        activeFilters: string;
+        clearOneFilter: string;
+        columnsToggle: string;
+        unlimitedPerUser: string;
+        capAmount: string;
+        minAmount: string;
+        noCap: string;
+        noMin: string;
+        allCustomers: string;
+        progressText: string;
+        progressUnlimited: string;
         messages: {
             created: string;
             updated: string;
+            duplicated: string;
             toggled: string;
             genericError: string;
             networkError: string;
@@ -832,6 +952,8 @@ export type AdminTranslations = {
         visibility: string;
         visibilityHidden: string;
         visibilityVisible: string;
+        categories?: string;
+        manageCategories?: string;
     };
     productDetail: {
         action: string;
@@ -1148,10 +1270,105 @@ export type AdminTranslations = {
             strictlyIncreasing: string;
         };
     };
+    categories: {
+        invalidPassword: string;
+        passwordLabel: string;
+        passwordModalDescription: string;
+        passwordModalTitle: string;
+        passwordPlaceholder: string;
+        actions: string;
+        activeFilters: string;
+        allSources: string;
+        allVisibilities: string;
+        apply: string;
+        authorityAutomation: string;
+        authorityManual: string;
+        automationHiddenBadge: string;
+        automationVisibleBadge: string;
+        backToProducts: string;
+        cancelButton: string;
+        clearAll: string;
+        clearOneFilter: string;
+        clearSearch: string;
+        columns: string;
+        confirmHideButton: string;
+        confirmRestoreButton: string;
+        createdAt: string;
+        description: string;
+        errorTitle: string;
+        filterSource: string;
+        filterVisibility: string;
+        filters: string;
+        firstPage: string;
+        headTitle: string;
+        hiddenAt: string;
+        hideDialogDescription: string;
+        hideDialogTitle: string;
+        hideFromStore: string;
+        hidingFromStore: string;
+        lastPage: string;
+        loadFailed: string;
+        loading: string;
+        name: string;
+        next: string;
+        noCategories: string;
+        noCategoriesMatching: string;
+        of: string;
+        page: string;
+        perPage: string;
+        previous: string;
+        products: string;
+        productsCount: string;
+        resetFilters: string;
+        restoreDialogDescription: string;
+        restoreDialogTitle: string;
+        restoreToStore: string;
+        restoringToStore: string;
+        results: string;
+        searchButton: string;
+        searchLabel: string;
+        searchPlaceholder: string;
+        selectAll: string;
+        selectRow: string;
+        selectedRows: string;
+        showing: string;
+        slug: string;
+        sortAscending: string;
+        sortBy: string;
+        sortDescending: string;
+        sortOrder: string;
+        source: string;
+        sourceAutomation: string;
+        sourceManual: string;
+        stateAdminHidden: string;
+        stateAutomationHidden: string;
+        stateVisible: string;
+        status: string;
+        tableLabel: string;
+        title: string;
+        to: string;
+        toggleColumns: string;
+        updatedAt: string;
+        viewProducts: string;
+        visibilityAdminHidden: string;
+        visibilityAutomationHidden: string;
+        visibilityConflictError: string;
+        visibilityHiddenMessage: string;
+        visibilityRestoredMessage: string;
+        visibilityUpdateFailed: string;
+        visibilityVisible: string;
+        visibleProducts: string;
+        visibleProductsCount: string;
+    };
 };
 
 export type AdminNavigationChild = {
-    key: 'marketingCoupons' | 'marketingPromotions';
+    key:
+        | 'products'
+        | 'categories'
+        | 'marketingCoupons'
+        | 'marketingPromotions'
+        | 'marketingLoyalty';
     label: string;
     url: string;
 };
@@ -1162,10 +1379,12 @@ export type AdminNavigationItem = {
         | 'orders'
         | 'customers'
         | 'conversations'
-        | 'marketing'
+        | 'catalog'
         | 'products'
+        | 'marketing'
         | 'marketingLoyalty'
-        | 'settings';
+        | 'settings'
+        | 'more';
     label: string;
     url: string;
     children?: AdminNavigationChild[];
@@ -1310,7 +1529,6 @@ export type AdminSettingsPageProps = {
     teamUrls: AdminTeamUrls | null;
     servicePricing: AdminServicePricingData | null;
     servicePricingUrls: AdminServicePricingUrls | null;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -1486,7 +1704,6 @@ export type AdminOrderDetailPageProps = {
         currency: string;
     };
     refundUrl: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -1614,7 +1831,6 @@ export type AdminCustomerDetailPageProps = {
     statusUrl: string;
     contactUrl: string;
     walletAdjustUrl: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -1646,13 +1862,21 @@ export type AdminLoyaltyPageProps = {
     tiers: AdminLoyaltyTier[];
     kpis: AdminLoyaltyKpis;
     updateTierUrlTemplate: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
+};
+
+export type AdminCouponTargetSummary = {
+    id: string;
+    targetType: string;
+    targetId: number;
+    name: string;
 };
 
 export type AdminCouponRow = {
     id: string;
     code: string;
+    descriptionAr: string | null;
+    descriptionEn: string | null;
     discountType: 'percent' | 'fixed';
     value: number;
     minimumOrderHalalah: number;
@@ -1660,18 +1884,36 @@ export type AdminCouponRow = {
     usageLimit: number | null;
     perUserLimit: number | null;
     usedCount: number;
+    scope: 'order' | 'category' | 'product' | 'service';
+    serviceType: string | null;
+    firstOrderOnly: boolean;
+    excludesPromotedItems: boolean;
     startsAt: string | null;
     endsAt: string | null;
     isActive: boolean;
+    status: 'active' | 'scheduled' | 'paused' | 'expired' | 'exhausted';
+    targets: AdminCouponTargetSummary[];
+    categoryIds: number[];
+    productIds: number[];
     createdAt: string;
 };
 
 export type AdminCouponsQueryState = {
     search?: string | null;
-    sort: 'created_at' | 'code' | 'used_count';
-    direction: 'asc' | 'desc';
-    per_page: 15 | 25 | 50;
-    page: number;
+    status?:
+        | 'all'
+        | 'active'
+        | 'scheduled'
+        | 'paused'
+        | 'expired'
+        | 'exhausted'
+        | null;
+    scope?: 'order' | 'category' | 'product' | 'service' | null;
+    discount_type?: 'percent' | 'fixed' | null;
+    sort?: 'created_at' | 'code' | 'used_count' | 'value';
+    direction?: 'asc' | 'desc';
+    per_page?: 15 | 25 | 50 | 100;
+    page?: number;
 };
 
 export type AdminCouponsPageProps = {
@@ -1686,8 +1928,91 @@ export type AdminCouponsPageProps = {
     counts: {
         total: number;
         active: number;
+        scheduled?: number;
+        paused?: number;
+        expired?: number;
+        exhausted?: number;
     };
     filters: AdminCouponsQueryState;
+    filterOptions: {
+        statuses: AdminFilterOption[];
+        scopes: AdminFilterOption[];
+        discountTypes: AdminFilterOption[];
+        perPageOptions: number[];
+    };
+    categories: Array<{ id: number; publicId: string; name: string }>;
+    products: Array<{ id: number; publicId: string; name: string }>;
+    serviceTypes: Array<{ value: string; label: string }>;
+    createUrl: string;
+    updateUrlTemplate: string;
+    statusUrlTemplate: string;
+    duplicateUrlTemplate: string;
+    showUrlTemplate: string;
+    logoutUrl: string;
+};
+
+export type AdminCouponDetail = AdminCouponRow;
+
+export type AdminCouponKpis = {
+    usedCount: number;
+    usageLimit: number | null;
+    uniqueCustomers: number;
+    revenueAttributed: AdminMoney<'SAR'>;
+    totalDiscountGiven: AdminMoney<'SAR'>;
+    totalRedemptions: number;
+    releasedRedemptionsCount: number;
+};
+
+export type AdminCouponRuleItem = {
+    key: string;
+    label: string;
+    value: string;
+    description?: string;
+};
+
+export type AdminCouponChartPoint = {
+    date: string;
+    redemptions: number;
+    revenueHalalah: number;
+    discountHalalah: number;
+};
+
+export type AdminCouponRecentRedemption = {
+    id: string;
+    orderId: string;
+    orderNumber: string;
+    orderStatus: string;
+    isPaid: boolean;
+    paidAt: string | null;
+    orderTotal: AdminMoney<'SAR'>;
+    discount: AdminMoney<'SAR'>;
+    customer: {
+        id: string;
+        name: string;
+        email: string;
+    };
+    redeemedAt: string;
+};
+
+export type AdminCouponDetailPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    coupon: AdminCouponDetail;
+    kpis: AdminCouponKpis;
+    rules: AdminCouponRuleItem[];
+    chart: AdminCouponChartPoint[];
+    recentRedemptions: AdminCouponRecentRedemption[];
+    categories: Array<{ id: number; publicId: string; name: string }>;
+    products: Array<{ id: number; publicId: string; name: string }>;
+    serviceTypes: Array<{ value: string; label: string }>;
+    updateUrl: string;
+    statusUrl: string;
+    duplicateUrl: string;
+    listUrl: string;
     logoutUrl: string;
 };
 
@@ -1783,6 +2108,7 @@ export type AdminProductsPageProps = {
         archived: AdminFilterOption[];
         perPageOptions: number[];
     };
+    categoriesUrl?: string;
     logoutUrl: string;
 };
 
@@ -1885,7 +2211,6 @@ export type AdminProductDetailPageProps = {
     updateUrl: string;
     visibilityUrl: string;
     variantPriceUrlTemplate: string;
-    confirmPasswordUrl?: string;
     logoutUrl: string;
 };
 
@@ -1993,5 +2318,85 @@ export type AdminConversationDetailPageProps = {
     canReply: boolean;
     messages: AdminChatMessage[];
     turns: AdminAgentTurn[];
+    logoutUrl: string;
+};
+
+export type AdminCategoryRow = {
+    id: string;
+    slug: string;
+    name: string;
+    nameAr: string;
+    nameEn: string;
+    descriptionAr: string | null;
+    descriptionEn: string | null;
+    source: { name: string; key: string } | null;
+    isAutomation: boolean;
+    isVisible: boolean;
+    adminHidden: boolean;
+    adminHiddenAt: string | null;
+    sortOrder: number;
+    productsCount: number;
+    visibleProductsCount: number;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type AdminCategoriesQueryState = {
+    search?: string | null;
+    visibility?: 'visible' | 'admin_hidden' | 'automation_hidden' | null;
+    source?: string | null;
+    sort?: 'sort_order' | 'name' | 'created_at' | 'updated_at';
+    direction?: 'asc' | 'desc';
+    per_page?: 15 | 25 | 50 | 100;
+    page?: number;
+};
+
+export type AdminMoreTile = {
+    key:
+        | 'conversations'
+        | 'categories'
+        | 'coupons'
+        | 'promotions'
+        | 'loyalty'
+        | 'settings';
+    label: string;
+    description: string;
+    url: string;
+};
+
+export type AdminMoreGroup = {
+    key: 'catalog' | 'marketing' | 'system';
+    label: string;
+    tiles: AdminMoreTile[];
+};
+
+export type AdminCategoriesPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    categories: AdminCategoryRow[];
+    pagination: AdminPagination;
+    filters: AdminCategoriesQueryState;
+    filterOptions: {
+        visibilities: AdminFilterOption[];
+        sources: AdminFilterOption[];
+        perPageOptions: number[];
+    };
+    productsUrl?: string;
+    visibilityUrlTemplate: string;
+    logoutUrl: string;
+};
+
+export type AdminMorePageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    groups: AdminMoreGroup[];
     logoutUrl: string;
 };

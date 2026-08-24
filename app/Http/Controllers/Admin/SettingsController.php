@@ -63,7 +63,6 @@ final class SettingsController extends Controller
             'teamUrls' => $teamUrls,
             'servicePricing' => $servicePricing,
             'servicePricingUrls' => $servicePricingUrls,
-            'confirmPasswordUrl' => route('password.confirm', absolute: false),
         ]);
     }
 }

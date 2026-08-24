@@ -95,7 +95,6 @@ function defaultProps(): AdminLoyaltyPageProps {
         tiers: [...sampleAdminLoyaltyTiers],
         kpis: { ...sampleAdminLoyaltyKpis },
         updateTierUrlTemplate: '/admin/api/marketing/loyalty/tiers/__ID__',
-        confirmPasswordUrl: '/user/confirm-password',
         logoutUrl: '/logout',
     };
 }

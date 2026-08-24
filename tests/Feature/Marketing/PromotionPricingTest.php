@@ -3,6 +3,7 @@
 use App\Enums\ServiceType;
 use App\Marketing\PromotionPricing;
 use App\Models\Category;
+use App\Models\Product;
 use App\Models\Promotion;
 use Illuminate\Support\Carbon;
 
@@ -67,6 +68,20 @@ test('a service-scoped promotion only applies to that service type', function ()
         ->and($resolver->resolve(null, ServiceType::Rivals, 20_000))->toBeNull();
 });
 
+test('a product-scoped promotion only applies to that product', function (): void {
+    $product = Product::factory()->create();
+    $other = Product::factory()->create();
+    Promotion::query()->create(resolverPromotionAttributes([
+        'scope' => Promotion::SCOPE_PRODUCT,
+        'product_id' => $product->id,
+    ]));
+    $resolver = new PromotionPricing;
+
+    expect($resolver->resolve(null, ServiceType::Sbc, 10_000, $product->id))->not->toBeNull()
+        ->and($resolver->resolve(null, ServiceType::Sbc, 10_000, $other->id))->toBeNull()
+        ->and($resolver->resolve(null, ServiceType::Sbc, 10_000, null))->toBeNull();
+});
+
 test('the largest discount wins across overlapping promotions', function (): void {
     $percent = Promotion::query()->create(resolverPromotionAttributes(['value' => 10]))->refresh();
     $fixed = Promotion::query()->create(resolverPromotionAttributes([
@@ -125,4 +140,19 @@ test('zero and negative base prices never resolve a promotion', function (): voi
     $resolver = new PromotionPricing;
 
     expect($resolver->resolve(null, ServiceType::Sbc, 0))->toBeNull();
+});
+
+test('cart-level promotions with nth_item and bundle mechanics are ignored by PromotionPricing', function (): void {
+    Promotion::query()->create(resolverPromotionAttributes([
+        'mechanic' => Promotion::MECHANIC_NTH_ITEM,
+        'value' => 50,
+    ]));
+    Promotion::query()->create(resolverPromotionAttributes([
+        'mechanic' => Promotion::MECHANIC_BUNDLE,
+        'value' => 50,
+    ]));
+
+    $resolver = new PromotionPricing;
+
+    expect($resolver->resolve(null, ServiceType::Sbc, 10_000))->toBeNull();
 });

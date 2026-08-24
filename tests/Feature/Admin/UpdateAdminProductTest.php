@@ -79,24 +79,6 @@ test('staff actors and inactive admin actors are forbidden from updating product
         ->assertForbidden();
 });
 
-test('unconfirmed password requires password confirmation', function (): void {
-    $admin = createProductTestAdmin(UserRole::Admin);
-    $product = createTestProduct();
-
-    // No confirmed password session -> 423
-    $this->actingAs($admin)
-        ->postJson("/admin/api/products/{$product->public_id}", [
-            'name_ar' => 'اسم جديد',
-            'name_en' => 'New Name',
-            'description_ar' => null,
-            'description_en' => null,
-            'is_visible' => true,
-            'sort_order' => 1,
-            'expected' => currentProductExpected($product),
-        ])
-        ->assertStatus(423);
-});
-
 test('confirmed Admin can update manual product editable fields and records staff audit log', function (): void {
     $admin = createProductTestAdmin(UserRole::Admin);
     $product = createTestProduct();

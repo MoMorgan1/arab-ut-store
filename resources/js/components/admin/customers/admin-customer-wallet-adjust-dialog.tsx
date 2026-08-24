@@ -4,7 +4,7 @@ import { useHttp } from '@inertiajs/react';
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import React, { useState } from 'react';
 
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
+import { parseSarToHalalah } from '@/components/admin/admin-money';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -27,7 +27,6 @@ import type {
 
 export type AdminCustomerWalletAdjustDialogProps = {
     adminUi: AdminTranslations;
-    confirmPasswordUrl?: string;
     customer: AdminCustomerDetail;
     onOpenChange: (open: boolean) => void;
     onSuccess: (result: {
@@ -59,7 +58,6 @@ type FieldErrors = {
 
 export default function AdminCustomerWalletAdjustDialog({
     adminUi,
-    confirmPasswordUrl,
     customer,
     onOpenChange,
     onSuccess,
@@ -72,7 +70,6 @@ export default function AdminCustomerWalletAdjustDialog({
     const [amountSar, setAmountSar] = useState('');
     const [reason, setReason] = useState('');
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-    const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false);
 
     const [prevOpen, setPrevOpen] = useState(open);
 
@@ -116,7 +113,7 @@ export default function AdminCustomerWalletAdjustDialog({
             errors.reason = 'Reason must be between 5 and 200 characters.';
         }
 
-        const halalah = Math.round(parsedAmount * 100);
+        const halalah = parseSarToHalalah(amountSar);
         const signedHalalah = direction === 'credit' ? halalah : -halalah;
 
         const currentBalanceHalalah = parseInt(
@@ -160,12 +157,6 @@ export default function AdminCustomerWalletAdjustDialog({
                 },
                 onHttpException: (response) => {
                     handled = true;
-
-                    if (response.status === 423) {
-                        setPasswordConfirmOpen(true);
-
-                        return false;
-                    }
 
                     if (response.status === 422) {
                         const resErrors =
@@ -331,8 +322,8 @@ export default function AdminCustomerWalletAdjustDialog({
                                         ':halalah',
                                         isNaN(parseFloat(amountSar))
                                             ? '0'
-                                            : Math.round(
-                                                  parseFloat(amountSar) * 100,
+                                            : parseSarToHalalah(
+                                                  amountSar,
                                               ).toString(),
                                     )}
                                 </p>
@@ -421,22 +412,6 @@ export default function AdminCustomerWalletAdjustDialog({
                     </form>
                 </DialogContent>
             </Dialog>
-
-            <AdminPasswordConfirmDialog
-                confirmButtonText={copy.confirmPasswordButton}
-                confirmPasswordUrl={confirmPasswordUrl}
-                confirmingButtonText={copy.confirmingPassword}
-                description={copy.walletPasswordModalDescription}
-                invalidPasswordText={copy.invalidPassword}
-                onConfirmed={() => {
-                    void executeAdjustment();
-                }}
-                onOpenChange={setPasswordConfirmOpen}
-                open={passwordConfirmOpen}
-                passwordLabel={copy.passwordLabel}
-                passwordPlaceholder={copy.passwordPlaceholder}
-                title={copy.walletPasswordModalTitle}
-            />
         </>
     );
 }

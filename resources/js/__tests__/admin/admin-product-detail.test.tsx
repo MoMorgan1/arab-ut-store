@@ -84,7 +84,6 @@ function defaultProps(): AdminProductDetailPageProps {
             },
         ],
         adminUi: englishAdminUi,
-        confirmPasswordUrl: '/admin/confirm-password',
         direction: 'ltr',
         locale: 'en',
         logoutUrl: '/logout',
@@ -325,14 +324,14 @@ describe('AdminProductDetailPage', () => {
 
         // Check tier inputs
         const tier1Input = within(dialog).getByLabelText(
-            /Total \(Halalah\) 5/i,
+            /Total \(SAR\) 5/i,
         ) as HTMLInputElement;
         const tier2Input = within(dialog).getByLabelText(
-            /Total \(Halalah\) 10/i,
+            /Total \(SAR\) 10/i,
         ) as HTMLInputElement;
 
-        expect(tier1Input.value).toBe('5000');
-        expect(tier2Input.value).toBe('9500');
+        expect(tier1Input.value).toBe('50.00');
+        expect(tier2Input.value).toBe('95.00');
     });
 
     it('saving posts integer halalah and the expected version', () => {
@@ -347,13 +346,11 @@ describe('AdminProductDetailPage', () => {
         fireEvent.click(overrideBtn);
 
         const dialog = screen.getByRole('dialog');
-        const tier1Input =
-            within(dialog).getByLabelText(/Total \(Halalah\) 5/i);
-        const tier2Input =
-            within(dialog).getByLabelText(/Total \(Halalah\) 10/i);
+        const tier1Input = within(dialog).getByLabelText(/Total \(SAR\) 5/i);
+        const tier2Input = within(dialog).getByLabelText(/Total \(SAR\) 10/i);
 
-        fireEvent.change(tier1Input, { target: { value: '6000' } });
-        fireEvent.change(tier2Input, { target: { value: '11000' } });
+        fireEvent.change(tier1Input, { target: { value: '60.00' } });
+        fireEvent.change(tier2Input, { target: { value: '110.00' } });
 
         const saveButton = within(dialog).getByRole('button', {
             name: 'Save price override',
@@ -482,9 +479,7 @@ describe('AdminProductDetailPage', () => {
         fireEvent.click(overrideBtn);
 
         const dialog = screen.getByRole('dialog');
-        expect(
-            within(dialog).getByLabelText(/Price \(Halalah\)/i),
-        ).toBeVisible();
+        expect(within(dialog).getByLabelText(/Price \(SAR\)/i)).toBeVisible();
         expect(
             within(dialog).queryByText('SBC Completion Pricing Tiers'),
         ).not.toBeInTheDocument();

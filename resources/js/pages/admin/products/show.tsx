@@ -1039,7 +1039,6 @@ export default function AdminProductDetailPage() {
             {product.isEditable ? (
                 <AdminProductEditDialog
                     adminUi={props.adminUi}
-                    confirmPasswordUrl={props.confirmPasswordUrl}
                     onConflict={handleConflict}
                     onOpenChange={setEditDialogOpen}
                     onSuccess={handleUpdateSuccess}
@@ -1053,7 +1052,6 @@ export default function AdminProductDetailPage() {
             {canManageCatalog ? (
                 <AdminProductVisibilityDialog
                     adminUi={props.adminUi}
-                    confirmPasswordUrl={props.confirmPasswordUrl}
                     onConflict={handleVisibilityConflict}
                     onOpenChange={setVisibilityDialogOpen}
                     onSuccess={handleVisibilitySuccess}
@@ -1068,7 +1066,6 @@ export default function AdminProductDetailPage() {
                 <AdminVariantPriceDialog
                     adminUi={props.adminUi}
                     key={`${selectedVariant.id}-${selectedVariant.priceVersion}`}
-                    confirmPasswordUrl={props.confirmPasswordUrl}
                     locale={props.locale}
                     onConflict={handleVariantPriceConflict}
                     onOpenChange={setPriceDialogOpen}
@@ -1083,7 +1080,6 @@ export default function AdminProductDetailPage() {
             {selectedVariant && canManageCatalog ? (
                 <AdminVariantRevertDialog
                     adminUi={props.adminUi}
-                    confirmPasswordUrl={props.confirmPasswordUrl}
                     onConflict={handleVariantPriceConflict}
                     onOpenChange={setRevertDialogOpen}
                     onSuccess={handleVariantPriceSuccess}

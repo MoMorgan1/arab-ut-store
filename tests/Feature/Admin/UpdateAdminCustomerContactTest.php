@@ -68,21 +68,6 @@ test('staff actors and inactive admin actors are forbidden from updating custome
         ->assertForbidden();
 });
 
-test('admin actor without password confirmation receives 423', function (): void {
-    $admin = createContactTestAdmin(UserRole::Admin);
-    $customer = createContactTestCustomer();
-
-    $this->actingAs($admin)
-        ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
-            'first_name' => 'NewFirst',
-            'last_name' => 'NewLast',
-            'email' => 'new.email@example.test',
-            'phone' => '+966500000002',
-            'expected' => currentContactOf($customer),
-        ])
-        ->assertStatus(423);
-});
-
 test('confirmed admin can update name, email, and phone successfully', function (): void {
     $admin = createContactTestAdmin(UserRole::Admin);
     $customer = createContactTestCustomer();

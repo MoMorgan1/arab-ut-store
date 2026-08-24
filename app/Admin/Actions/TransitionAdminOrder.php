@@ -61,6 +61,12 @@ final class TransitionAdminOrder
                 ->lockForUpdate()
                 ->get();
 
+            if ($order->channel === 'salla_import') {
+                throw ValidationException::withMessages([
+                    'target_status' => ['Imported orders are read-only and cannot transition.'],
+                ]);
+            }
+
             if ($order->status !== $expectedStatus) {
                 throw new AdminOrderStatusConflict((string) $order->public_id, $order->status->value);
             }

@@ -279,20 +279,6 @@ test('the admin refund endpoint is authenticated, admin restricted, mfa gated, p
     Http::assertNothingSent();
 });
 
-test('the admin refund endpoint requires a recent password confirmation', function () {
-    ['admin' => $admin, 'order' => $order] = refundablePaylinkOrder();
-    Http::fake();
-
-    $this->actingAs($admin)
-        ->postJson('/admin/api/orders/'.$order->public_id.'/refund', [
-            'amountHalalah' => 1250,
-            'reason' => 'Customer request.',
-        ])
-        ->assertStatus(423);
-
-    Http::assertNothingSent();
-});
-
 test('the admin refund endpoint completes one provider verified refund', function () {
     ['admin' => $admin, 'order' => $order] = refundablePaylinkOrder();
     Http::fake([

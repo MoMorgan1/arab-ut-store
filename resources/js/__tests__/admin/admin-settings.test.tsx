@@ -99,7 +99,6 @@ function createDefaultProps(
         teamUrls: sampleAdminTeamUrls,
         servicePricing: sampleAdminServicePricingData,
         servicePricingUrls: sampleAdminServicePricingUrls,
-        confirmPasswordUrl: '/confirm-password',
         logoutUrl: '/logout',
         ...overrides,
     };

@@ -928,7 +928,6 @@ export default function AdminCustomerDetailPage() {
             <AdminCustomerStatusDialog
                 action={statusAction}
                 adminUi={props.adminUi}
-                confirmPasswordUrl={props.confirmPasswordUrl}
                 customer={customer}
                 onConflict={handleStatusConflict}
                 onOpenChange={setStatusDialogOpen}
@@ -939,7 +938,6 @@ export default function AdminCustomerDetailPage() {
 
             <AdminCustomerContactDialog
                 adminUi={props.adminUi}
-                confirmPasswordUrl={props.confirmPasswordUrl}
                 contactUrl={props.contactUrl}
                 customer={customer}
                 onConflict={handleContactConflict}
@@ -951,7 +949,6 @@ export default function AdminCustomerDetailPage() {
             {props.walletAdjustUrl ? (
                 <AdminCustomerWalletAdjustDialog
                     adminUi={props.adminUi}
-                    confirmPasswordUrl={props.confirmPasswordUrl}
                     customer={customer}
                     onOpenChange={setWalletAdjustDialogOpen}
                     onSuccess={handleWalletAdjustSuccess}

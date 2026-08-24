@@ -281,8 +281,8 @@ test('the Admin shell exposes only safe identity exact permissions and implement
         ->and($shell['permissions'])->toBe($expectedPermissions)
         ->and(array_column($shell['adminNavigation'], 'key'))->toBe(
             $role === UserRole::Admin
-                ? ['overview', 'orders', 'customers', 'conversations', 'marketing', 'products', 'marketingLoyalty', 'settings']
-                : ['overview', 'orders', 'settings'],
+                ? ['overview', 'orders', 'customers', 'conversations', 'catalog', 'marketing', 'settings', 'more']
+                : ['overview', 'orders', 'settings', 'more'],
         )
         ->and(array_column($shell['adminNavigation'], 'url'))->toBe($expectedUrls)
         ->and($shell['logoutUrl'])->toBe('/logout');
@@ -329,7 +329,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
             'marketing.view',
             'marketing.manage',
         ],
-        ['/admin', '/admin/orders', '/admin/customers', '/admin/conversations', '/admin/marketing/coupons', '/admin/products', '/admin/marketing/loyalty', '/admin/settings'],
+        ['/admin', '/admin/orders', '/admin/customers', '/admin/conversations', '/admin/products', '/admin/marketing/coupons', '/admin/settings', '/admin/more'],
     ],
     'English Staff' => [
         UserRole::Staff,
@@ -341,7 +341,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
             'orders.cancel',
             'order_credentials.view',
         ],
-        ['/admin', '/admin/orders', '/admin/settings'],
+        ['/admin', '/admin/orders', '/admin/settings', '/admin/more'],
     ],
 ]);
 

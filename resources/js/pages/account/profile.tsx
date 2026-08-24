@@ -52,8 +52,11 @@ export default function AccountProfile() {
     const [requestedPhone, setRequestedPhone] = useState(
         props.profile.phone.pending ?? '',
     );
+    const [emailPromptDismissed, setEmailPromptDismissed] = useState(false);
     const [isResending, setIsResending] = useState(false);
     const countdown = useResendCountdown(60);
+
+    const hasEmail = Boolean(props.profile.email.value);
 
     const details = useForm({
         first_name: props.profile.firstName,
@@ -204,6 +207,77 @@ export default function AccountProfile() {
                     </a>
                 </nav>
 
+                {!hasEmail && !emailPromptDismissed ? (
+                    <div
+                        aria-label={
+                            props.accountUi.profile.add_email_prompt_title ??
+                            'Add your email'
+                        }
+                        className="account-profile-prompt rounded-xl border border-amber-500/30 bg-amber-500/10 p-5 text-amber-100"
+                        data-testid="add-email-prompt"
+                        role="region"
+                    >
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-3">
+                                <Mail
+                                    aria-hidden="true"
+                                    className="mt-0.5 size-5 shrink-0 text-amber-400"
+                                />
+                                <div>
+                                    <h3 className="m-0 text-base font-semibold text-white">
+                                        {props.accountUi.profile
+                                            .add_email_prompt_title ??
+                                            (props.locale === 'en'
+                                                ? 'Add your email address'
+                                                : 'أضف بريدك الإلكتروني')}
+                                    </h3>
+                                    <p className="mt-1 text-sm text-neutral-300">
+                                        {props.accountUi.profile
+                                            .add_email_prompt_desc ??
+                                            (props.locale === 'en'
+                                                ? 'You need an email address to receive receipts and sign in with email.'
+                                                : 'تحتاج إلى بريد إلكتروني لاستلام الإيصالات وتسجيل الدخول بالبريد.')}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                aria-label={
+                                    props.accountUi.profile
+                                        .add_email_prompt_dismiss ??
+                                    'Dismiss prompt'
+                                }
+                                className="cursor-pointer p-1 text-xl leading-none text-neutral-400 hover:text-white"
+                                data-testid="dismiss-email-prompt"
+                                onClick={() => setEmailPromptDismissed(true)}
+                                type="button"
+                            >
+                                &times;
+                            </button>
+                        </div>
+                        <div className="mt-3 flex">
+                            <button
+                                className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-amber-400"
+                                data-testid="trigger-add-email"
+                                onClick={() => {
+                                    setEditingContact('email');
+                                    document
+                                        .getElementById('contact')
+                                        ?.scrollIntoView({
+                                            behavior: 'smooth',
+                                        });
+                                }}
+                                type="button"
+                            >
+                                {props.accountUi.profile
+                                    .add_email_prompt_action ??
+                                    (props.locale === 'en'
+                                        ? 'Add email'
+                                        : 'إضافة بريد إلكتروني')}
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
+
                 <section
                     className="account-profile-section"
                     id="personal"
@@ -280,7 +354,7 @@ export default function AccountProfile() {
                                 )
                             }
                             pending={props.profile.email.pending}
-                            value={props.profile.email.value}
+                            value={props.profile.email.value ?? '—'}
                             verification={
                                 props.profile.email.verified
                                     ? props.accountUi.verification.verified

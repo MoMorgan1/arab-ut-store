@@ -3,7 +3,6 @@
 import { useHttp } from '@inertiajs/react';
 import React, { useState } from 'react';
 
-import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -22,7 +21,6 @@ import type { AdminProductDetail, AdminTranslations } from '@/types/admin';
 
 export type AdminProductEditDialogProps = {
     adminUi: AdminTranslations;
-    confirmPasswordUrl?: string;
     onConflict: () => void;
     onOpenChange: (open: boolean) => void;
     onSuccess: (result: {
@@ -78,7 +76,6 @@ type FieldErrors = {
 
 export default function AdminProductEditDialog({
     adminUi,
-    confirmPasswordUrl,
     onConflict,
     onOpenChange,
     onSuccess,
@@ -98,7 +95,6 @@ export default function AdminProductEditDialog({
     const [isVisible, setIsVisible] = useState(product.isVisible);
     const [sortOrder, setSortOrder] = useState(String(product.sortOrder));
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-    const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false);
 
     // Reseed the form when the dialog opens.
     const [prevOpen, setPrevOpen] = useState(open);
@@ -209,12 +205,6 @@ export default function AdminProductEditDialog({
                 onHttpException: (response) => {
                     handled = true;
 
-                    if (response.status === 423) {
-                        setPasswordConfirmOpen(true);
-
-                        return false;
-                    }
-
                     if (response.status === 409) {
                         onOpenChange(false);
                         onConflict();
@@ -284,11 +274,6 @@ export default function AdminProductEditDialog({
                 setFieldErrors({ general: copy.updateFailed });
             }
         }
-    };
-
-    const handlePasswordConfirmed = () => {
-        setPasswordConfirmOpen(false);
-        executeProductUpdate();
     };
 
     return (
@@ -548,21 +533,6 @@ export default function AdminProductEditDialog({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            <AdminPasswordConfirmDialog
-                cancelButtonText={adminUi.common.cancel}
-                confirmButtonText={copy.confirmPasswordButton}
-                confirmPasswordUrl={confirmPasswordUrl}
-                confirmingButtonText={copy.confirmingPassword}
-                description={copy.passwordModalDescription}
-                invalidPasswordText={copy.invalidPassword}
-                onConfirmed={handlePasswordConfirmed}
-                onOpenChange={setPasswordConfirmOpen}
-                open={passwordConfirmOpen}
-                passwordLabel={copy.passwordLabel}
-                passwordPlaceholder={copy.passwordPlaceholder}
-                title={copy.passwordModalTitle}
-            />
         </>
     );
 }

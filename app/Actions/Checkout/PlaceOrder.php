@@ -6,6 +6,8 @@ use App\Actions\Pricing\QuoteCoins;
 use App\Actions\Pricing\ReadManualServicePricing;
 use App\Checkout\AppliedCoupon;
 use App\Checkout\CheckoutResult;
+use App\Checkout\DiscountEngine;
+use App\Checkout\DiscountResult;
 use App\Checkout\OrderNumber;
 use App\Enums\DeliveryMode;
 use App\Enums\OrderItemStatus;
@@ -57,13 +59,26 @@ final readonly class PlaceOrder
     public function __construct(
         private QuoteCoins $quoteCoins,
         private ReadManualServicePricing $readManualServicePricing,
-        private ApplyCoupon $applyCoupon,
         private PromotionPricing $promotionPricing,
+        private DiscountEngine $discountEngine,
         private WalletLedgerWriter $walletLedgerWriter,
     ) {}
 
-    public function execute(User $user, string $locale, string $idempotencyKey): CheckoutResult
-    {
+    /**
+     * @param  int|null  $expectedPayableHalalah  the payable total the cart showed
+     *                                            the customer. Discounts are recomputed here from live promotion and coupon
+     *                                            rows, so a promotion ending between preview and pay changes the price. When
+     *                                            this is supplied and no longer matches, the order is refused instead of
+     *                                            charged at the new figure - which matters most on the wallet path, where
+     *                                            the debit happens immediately and there is no invoice for the customer to
+     *                                            check.
+     */
+    public function execute(
+        User $user,
+        string $locale,
+        string $idempotencyKey,
+        ?int $expectedPayableHalalah = null,
+    ): CheckoutResult {
         if (! in_array($locale, ['ar', 'en'], true)) {
             throw new CheckoutUnavailable('The checkout locale is invalid.');
         }
@@ -76,7 +91,7 @@ final readonly class PlaceOrder
 
         try {
             return DB::transaction(
-                fn (): CheckoutResult => $this->store($user, $locale, $idempotencyKey),
+                fn (): CheckoutResult => $this->store($user, $locale, $idempotencyKey, $expectedPayableHalalah),
                 attempts: 3,
             );
         } catch (StaleCartCoupon $stale) {
@@ -89,8 +104,12 @@ final readonly class PlaceOrder
         }
     }
 
-    private function store(User $user, string $locale, string $idempotencyKey): CheckoutResult
-    {
+    private function store(
+        User $user,
+        string $locale,
+        string $idempotencyKey,
+        ?int $expectedPayableHalalah = null,
+    ): CheckoutResult {
         $scope = self::SCOPE.':user:'.$user->id;
         $existing = IdempotencyKey::query()->where('key', $idempotencyKey)->lockForUpdate()->first();
 
@@ -127,23 +146,41 @@ final readonly class PlaceOrder
             CheckoutFingerprint::generate($cart, $locale, (string) config('app.key')),
         );
         $snapshots = $cart->items->map(fn (CartItem $item): array => $this->validateItem($item));
-        $subtotal = (int) $snapshots->sum(fn (array $snapshot): int => $this->promotedLineTotal($snapshot));
+
+        $coupon = null;
+        if ($cart->coupon_id !== null) {
+            $coupon = Coupon::query()
+                ->whereKey((int) $cart->coupon_id)
+                ->with('targets')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $coupon instanceof Coupon) {
+                throw new StaleCartCoupon((int) $cart->id, 'The applied coupon is unavailable.');
+            }
+        }
+
+        try {
+            $discountResult = $this->discountEngine->calculateForSnapshots($snapshots, $coupon, $user);
+        } catch (CouponRejected $exception) {
+            throw new StaleCartCoupon(
+                (int) $cart->id,
+                'The applied coupon is no longer valid.',
+                previous: $exception,
+            );
+        }
+
+        $subtotal = $discountResult->promotedSubtotalHalalah;
 
         if ($subtotal < self::PAYLINK_MINIMUM_HALALAH) {
             throw new CheckoutUnavailable('The order total is below the Paylink minimum.');
         }
 
-        $appliedCoupon = $cart->coupon_id !== null
-            ? $this->redeemableCoupon($cart, $subtotal, $user)
-            : null;
+        $appliedCoupon = $discountResult->appliedCoupon;
         $discountHalalah = $appliedCoupon instanceof AppliedCoupon
             ? $appliedCoupon->discountHalalah
             : 0;
-        $totalHalalah = $subtotal - $discountHalalah;
-
-        if ($totalHalalah < self::PAYLINK_MINIMUM_HALALAH) {
-            throw new CheckoutUnavailable('The order total is below the Paylink minimum.');
-        }
+        $totalHalalah = $discountResult->payableTotalHalalah;
 
         $walletAccount = null;
         $walletPart = 0;
@@ -155,6 +192,20 @@ final readonly class PlaceOrder
         }
 
         $paymentHalalah = $totalHalalah - $walletPart;
+
+        // Refuse before the wallet is debited: everything below this line moves money.
+        if ($expectedPayableHalalah !== null && $expectedPayableHalalah !== $paymentHalalah) {
+            throw new CheckoutUnavailable((string) trans('store.checkout.price_changed', locale: $locale));
+        }
+
+        if ($paymentHalalah > 0 && $paymentHalalah < self::PAYLINK_MINIMUM_HALALAH) {
+            $gapHalalah = self::PAYLINK_MINIMUM_HALALAH - $paymentHalalah;
+            // Integer-only: halalah never becomes a float, and the currency word
+            // lives in the translated string so Arabic does not carry "SAR".
+            $formattedGap = intdiv($gapHalalah, 100).'.'.str_pad((string) ($gapHalalah % 100), 2, '0', STR_PAD_LEFT);
+            throw new CheckoutUnavailable((string) trans('store.checkout.paylink_minimum_gap', ['gap' => $formattedGap], locale: $locale));
+        }
+
         $fullyPaidByWallet = $paymentHalalah === 0;
 
         $order = Order::create([
@@ -172,11 +223,13 @@ final readonly class PlaceOrder
             'paid_at' => $fullyPaidByWallet ? now() : null,
         ]);
 
-        foreach ($snapshots as $snapshot) {
+        foreach ($snapshots as $index => $snapshot) {
             $this->createOrderItem(
                 $order,
                 $snapshot,
                 $fullyPaidByWallet ? OrderItemStatus::Received : OrderItemStatus::PendingPayment,
+                $discountResult,
+                $index,
             );
         }
 
@@ -266,33 +319,6 @@ final readonly class PlaceOrder
         return new CheckoutResult($order, $payment, false);
     }
 
-    /**
-     * Re-validate the cart's attached coupon under a row lock. A coupon that
-     * became invalid since it was applied aborts the checkout and marks the
-     * cart so the coupon is detached after the transaction rolls back.
-     */
-    private function redeemableCoupon(Cart $cart, int $subtotalHalalah, User $user): AppliedCoupon
-    {
-        $coupon = Coupon::query()
-            ->whereKey((int) $cart->coupon_id)
-            ->lockForUpdate()
-            ->first();
-
-        if (! $coupon instanceof Coupon) {
-            throw new StaleCartCoupon((int) $cart->id, 'The applied coupon is unavailable.');
-        }
-
-        try {
-            return $this->applyCoupon->evaluate($coupon, $subtotalHalalah, $user);
-        } catch (CouponRejected $exception) {
-            throw new StaleCartCoupon(
-                (int) $cart->id,
-                'The applied coupon is no longer valid.',
-                previous: $exception,
-            );
-        }
-    }
-
     private function recordCouponRedemption(Order $order, AppliedCoupon $appliedCoupon): void
     {
         $order->discounts()->create([
@@ -301,7 +327,10 @@ final readonly class PlaceOrder
             'label_ar' => 'كوبون الخصم '.$appliedCoupon->code,
             'label_en' => 'Coupon '.$appliedCoupon->code,
             'amount_halalah' => $appliedCoupon->discountHalalah,
-            'metadata' => ['code' => $appliedCoupon->code],
+            'metadata' => array_filter([
+                'code' => $appliedCoupon->code,
+                'allocations' => $appliedCoupon->allocations !== [] ? $appliedCoupon->allocations : null,
+            ]),
         ]);
 
         CouponRedemption::create([
@@ -409,21 +438,12 @@ final readonly class PlaceOrder
                 $category?->id,
                 $service,
                 $item->total_halalah,
+                $variant->product->id,
             ),
             'configuration' => $this->safeConfiguration($configuration, $service),
             'secret' => $secret,
             'attachment' => $attachment,
         ];
-    }
-
-    /** @param array<string, mixed> $snapshot */
-    private function promotedLineTotal(array $snapshot): int
-    {
-        $promotion = $snapshot['promotion'];
-
-        return $promotion instanceof PromotionPrice
-            ? $promotion->discountedHalalah
-            : (int) $snapshot['total_halalah'];
     }
 
     /** @param array<string, mixed> $configuration
@@ -674,16 +694,20 @@ final readonly class PlaceOrder
         Order $order,
         array $snapshot,
         OrderItemStatus $status = OrderItemStatus::PendingPayment,
+        ?DiscountResult $discountResult = null,
+        int|string|null $lineId = null,
     ): void {
         /** @var ProductVariant $variant */
         $variant = $snapshot['variant'];
         /** @var Product $product */
         $product = $variant->product;
         /** @var PromotionPrice|null $promotion */
-        $promotion = $snapshot['promotion'];
-        $promotionDiscountHalalah = $promotion instanceof PromotionPrice
-            ? $promotion->discountHalalah
-            : 0;
+        $promotion = $lineId !== null && $discountResult instanceof DiscountResult
+            ? $discountResult->linePromotion($lineId)
+            : ($snapshot['promotion'] instanceof PromotionPrice ? $snapshot['promotion'] : null);
+        $promotionDiscountHalalah = $lineId !== null && $discountResult instanceof DiscountResult
+            ? ($discountResult->linePromotionDiscounts[$lineId] ?? 0)
+            : ($promotion instanceof PromotionPrice ? $promotion->discountHalalah : 0);
         $orderItem = $order->items()->create([
             'product_variant_id' => $variant->id,
             'sku' => $variant->sku,
