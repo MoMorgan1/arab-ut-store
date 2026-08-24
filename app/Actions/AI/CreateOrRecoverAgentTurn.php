@@ -54,6 +54,15 @@ final readonly class CreateOrRecoverAgentTurn
 
     private function claimPendingRange(ChatConversation $conversation): AgentTurnClaim
     {
+        // A human owns this conversation. The write-time gate in CreateChatMessage is
+        // a fast path only: agent_eligible_at is stamped at insert and is immutable,
+        // so a message written moments before takeover stays eligible forever, and the
+        // widget re-starts turns on backlog resume when a conversation loads. Without
+        // this re-check نواف answers on top of the human, mid-ticket.
+        if ($conversation->handoff_state->isLive()) {
+            return AgentTurnClaim::idle();
+        }
+
         $cursor = (int) (AgentTurn::query()
             ->where('conversation_id', $conversation->id)
             ->max('last_customer_message_id') ?? 0);

@@ -3,12 +3,15 @@
 namespace App\Actions\Chat;
 
 use App\Actions\AI\ResolveAssistantMode;
+use App\Actions\Support\OpenSupportTicket;
 use App\Enums\AI\AssistantMode;
 use App\Enums\Chat\ChatConversationStatus;
 use App\Enums\Chat\ChatMessageType;
 use App\Enums\Chat\ChatSenderType;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
+use App\Models\User;
+use App\Support\HandoffPhrases;
 use App\ValueObjects\Chat\ChatOwner;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +19,10 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 final readonly class CreateChatMessage
 {
-    public function __construct(private ResolveAssistantMode $resolveAssistantMode) {}
+    public function __construct(
+        private ResolveAssistantMode $resolveAssistantMode,
+        private OpenSupportTicket $openSupportTicket,
+    ) {}
 
     /**
      * @return array{message: ChatMessage, demoReply: ?ChatMessage}
@@ -47,20 +53,33 @@ final readonly class CreateChatMessage
                 }
 
                 $assistantMode = $this->resolveAssistantMode->for($owner);
+                $isLiveHandoff = $lockedConversation->handoff_state->isLive();
+                $isHandoffMatch = HandoffPhrases::matches($content) && $owner->userId() !== null && ! $isLiveHandoff;
+
                 $customerMessage = $lockedConversation->messages()->create([
                     'client_message_id' => $clientMessageId,
                     'sender_type' => ChatSenderType::Customer,
                     'message_type' => ChatMessageType::Text,
                     'content' => $content,
-                    'agent_eligible_at' => $assistantMode === AssistantMode::Agent ? now() : null,
+                    'agent_eligible_at' => $assistantMode === AssistantMode::Agent
+                        && ! $isLiveHandoff
+                        && ! $isHandoffMatch
+                            ? now()
+                            : null,
                     'agent_prompt_blocked_at' => null,
                 ]);
+
+                if ($isHandoffMatch) {
+                    $customer = $lockedConversation->user ?? User::query()->findOrFail((int) $owner->userId());
+                    $this->openSupportTicket->execute($lockedConversation, $customer, openedVia: 'customer_phrase');
+                    $lockedConversation->refresh();
+                }
 
                 $lockedConversation->update(['last_message_at' => now()]);
 
                 $demoReply = null;
 
-                if ($assistantMode === AssistantMode::Demo) {
+                if ($assistantMode === AssistantMode::Demo && ! $lockedConversation->handoff_state->isLive() && ! $isHandoffMatch) {
                     $demoReplyContent = $lockedConversation->locale === 'en'
                         ? 'Got your message 👍 This is the chat foundation demo. Smart replies and tools will be connected in later phases.'
                         : 'وصلتني رسالتك 👍 هذي نسخة تجريبية من الشات. قريبًا بنربط الردود الذكية والطلبات.';

@@ -11,7 +11,7 @@ enum ChatHandoffState: string
     case Resolved = 'resolved';
 
     /**
-     * States in which a human owns the conversation and Luna must stay silent.
+     * States in which a human owns the conversation and نواف must stay silent.
      *
      * @return list<self>
      */

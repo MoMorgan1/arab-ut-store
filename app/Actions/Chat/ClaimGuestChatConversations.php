@@ -32,6 +32,24 @@ final readonly class ClaimGuestChatConversations
                 ->where('user_id', $user->id)->whereNull('guest_key')->open()->lockForUpdate()->first();
             $openGuestConversations = $guestConversations
                 ->filter(fn (ChatConversation $conversation): bool => $conversation->status === ChatConversationStatus::Open);
+
+            // A conversation a human is actively handling outranks any guest thread. Closing
+            // it would leave a live ticket pointing at a closed conversation nobody can post to.
+            if ($userConversation instanceof ChatConversation && $userConversation->handoff_state->isLive()) {
+                $openGuestConversations->each(fn (ChatConversation $conversation) => $this->closeChatConversation->execute(
+                    $conversation,
+                    ChatConversationCloseReason::SupersededByLoginClaim,
+                ));
+
+                ChatConversation::query()->whereIn('id', $guestConversations->pluck('id'))->update([
+                    'user_id' => $user->id,
+                    'guest_key' => null,
+                    'updated_at' => now(),
+                ]);
+
+                return;
+            }
+
             $winner = is_string($activePublicId)
                 ? $openGuestConversations->firstWhere('public_id', $activePublicId)
                 : null;

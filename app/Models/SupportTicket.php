@@ -22,7 +22,9 @@ class SupportTicket extends DomainModel
     protected static function booted(): void
     {
         static::creating(function (SupportTicket $ticket): void {
-            if ($ticket->ticket_number === null || $ticket->ticket_number === '') {
+            // blank() rather than a null/'' comparison: the attribute is typed as
+            // string, so PHPStan proves the === null half can never hold.
+            if (blank($ticket->ticket_number)) {
                 $ticket->ticket_number = TicketNumber::generate();
             }
         });

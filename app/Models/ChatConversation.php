@@ -29,7 +29,9 @@ class ChatConversation extends DomainModel
     protected static function booted(): void
     {
         static::creating(function (ChatConversation $conversation): void {
-            if ($conversation->short_id === null || $conversation->short_id === '') {
+            // blank() rather than a null/'' comparison: the attribute is typed as
+            // string, so PHPStan proves the === null half can never hold.
+            if (blank($conversation->short_id)) {
                 $conversation->short_id = ChatNumber::generate();
             }
         });
