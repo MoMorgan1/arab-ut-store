@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\PromotionsController;
 use App\Http\Controllers\Admin\ServicePricingController;
 use App\Http\Controllers\Admin\ServicePricingStatusController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\SupportUnreadCountController;
 use App\Http\Controllers\Admin\TeamGrantController;
 use App\Http\Controllers\Admin\TeamRoleController;
 use App\Http\Controllers\Admin\TeamStatusController;
@@ -197,6 +198,14 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $conversationDetail->defaults('locale', $locale);
+                }
+
+                $supportUnreadCount = Route::get('/support/unread-count', SupportUnreadCountController::class)
+                    ->middleware('can:chat.view')
+                    ->name('support.unread-count');
+
+                if ($locale !== null) {
+                    $supportUnreadCount->defaults('locale', $locale);
                 }
 
                 $products = Route::get('/products', ProductsController::class)

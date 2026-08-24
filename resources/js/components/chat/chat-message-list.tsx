@@ -9,6 +9,7 @@ import { chatShelfItems } from '@/lib/chat-shelf';
 import { chatTopicsFor } from '@/lib/chat-topics';
 import type {
     AgentTurnState,
+    ChatHandoffState,
     ChatMessage,
     ChatServicePrices,
 } from '@/types/chat';
@@ -23,6 +24,7 @@ type ChatMessageListProps = {
     disabled?: boolean;
     messages: ChatMessage[];
     servicePrices?: ChatServicePrices;
+    handoffState?: ChatHandoffState;
     isLoading: boolean;
     isAssistantTyping: boolean;
     hasMore: boolean;
@@ -41,6 +43,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     disabled = false,
     messages,
     servicePrices = {},
+    handoffState,
     isLoading,
     isAssistantTyping,
     hasMore,
@@ -217,9 +220,26 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                     </div>
                 )}
 
+                {/* Handoff paused banner pill */}
+                {(handoffState === 'requested' ||
+                    handoffState === 'active') && (
+                    <div className="my-2 flex justify-center">
+                        <div
+                            dir="auto"
+                            data-testid="chat-handoff-paused-pill"
+                            className="chat-drop-in max-w-[90%] rounded-full border border-[#d4a843]/30 bg-[#f3ead6] px-4 py-1.5 text-center text-[11.5px] font-medium text-[#8a7243] shadow-xs"
+                        >
+                            {isEn
+                                ? 'Nawaf is paused — the team is following your chat'
+                                : 'نواف متوقف مؤقتًا — الفريق يتابع محادثتك'}
+                        </div>
+                    </div>
+                )}
+
                 {/* Grouped message clusters */}
                 {clusters.map((cluster) => {
                     const isCustomer = cluster.senderType === 'customer';
+                    const isStaff = cluster.senderType === 'staff';
                     const isSystem = cluster.senderType === 'system';
 
                     if (isSystem) {
@@ -263,6 +283,32 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                         dir="auto"
                                         className="chat-bubble-enter group relative max-w-[85%] text-start"
                                     >
+                                        {/* Staff Author Header (above first message in staff cluster) */}
+                                        {isStaff && idx === 0 && (
+                                            <div className="mb-1 flex items-center gap-1.5 px-1 text-xs font-semibold text-[#8a7243]">
+                                                <span
+                                                    aria-hidden="true"
+                                                    className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#d4a843] text-[10px] font-bold text-white shadow-xs"
+                                                >
+                                                    {(
+                                                        message.staffName?.trim() ||
+                                                        (isEn ? 'Arab' : 'عرب')
+                                                    )
+                                                        .charAt(0)
+                                                        .toUpperCase()}
+                                                </span>
+                                                <span className="truncate">
+                                                    {message.staffName?.trim()
+                                                        ? isEn
+                                                            ? `${message.staffName.trim()} · Arab Ultimate Team`
+                                                            : `${message.staffName.trim()} · فريق عرب التيميت`
+                                                        : isEn
+                                                          ? 'Arab Ultimate Team'
+                                                          : 'فريق عرب التيميت'}
+                                                </span>
+                                            </div>
+                                        )}
+
                                         <div
                                             data-stream-status={
                                                 isStreaming
@@ -272,7 +318,9 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                             className={`rounded-2xl px-3.5 py-3 text-sm leading-relaxed ${
                                                 isCustomer
                                                     ? 'rounded-br-[4px] bg-[var(--chat-hero)] text-[#fbf8f2]'
-                                                    : 'rounded-bl-[4px] border border-[var(--chat-line)] bg-[var(--chat-card)] text-[var(--chat-ink)] shadow-[0_2px_8px_rgb(13_11_8/0.05)]'
+                                                    : isStaff
+                                                      ? 'chat-staff-bubble rounded-bl-[4px] border-[1.5px] border-[#d4a843] bg-white text-[var(--chat-ink)] shadow-[0_2px_8px_rgba(212,168,67,0.15)]'
+                                                      : 'rounded-bl-[4px] border border-[var(--chat-line)] bg-[var(--chat-card)] text-[var(--chat-ink)] shadow-[0_2px_8px_rgb(13_11_8/0.05)]'
                                             } ${isSending ? 'chat-sending opacity-70' : ''}`}
                                         >
                                             {isStreaming && (

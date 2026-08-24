@@ -23,6 +23,10 @@ Route::middleware([EnsureChatEnabled::class, NoStore::class])->group(function ()
         ->middleware([SetChatLocale::class, 'throttle:chat-conversations'])
         ->name('chat.conversations.restart');
 
+    Route::get('/chat/conversations', [ChatConversationController::class, 'index'])
+        ->middleware([SetChatLocale::class, 'throttle:chat-read'])
+        ->name('chat.conversations.index');
+
     Route::get('/chat/conversations/{conversation}', [ChatConversationController::class, 'show'])
         ->middleware([SetChatLocale::class, 'throttle:chat-read'])
         ->name('chat.conversations.show');

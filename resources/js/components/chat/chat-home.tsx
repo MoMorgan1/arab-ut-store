@@ -14,6 +14,8 @@ import type React from 'react';
 import { chatTopicsFor } from '@/lib/chat-topics';
 import type { ChatTopicId } from '@/lib/chat-topics';
 
+import type { ChatConversationSummary } from '@/types/chat';
+
 export type ChatHomeLastMessage = {
     preview: string;
     createdAt: string;
@@ -23,12 +25,14 @@ export type ChatHomeProps = {
     locale?: string;
     hasConversation: boolean;
     lastMessage: ChatHomeLastMessage | null;
+    conversations?: ChatConversationSummary[];
     disabled?: boolean;
     isMobileDialog?: boolean;
     closeButtonRef?: React.Ref<HTMLButtonElement>;
     onStart: () => void;
     onContinue: () => void;
     onSelectTopic: (label: string) => void;
+    onSelectConversation?: (publicId: string) => void;
     onClose: () => void;
 };
 
@@ -75,12 +79,14 @@ export const ChatHome: React.FC<ChatHomeProps> = ({
     locale = 'ar',
     hasConversation,
     lastMessage,
+    conversations = [],
     disabled = false,
     isMobileDialog = false,
     closeButtonRef,
     onStart,
     onContinue,
     onSelectTopic,
+    onSelectConversation,
     onClose,
 }) => {
     const isEn = locale === 'en';
@@ -256,6 +262,61 @@ export const ChatHome: React.FC<ChatHomeProps> = ({
                         })}
                     </div>
                 </div>
+
+                {conversations.length > 0 && (
+                    <div className="flex flex-col gap-2 px-1 pt-2">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold tracking-wide text-[var(--chat-faint)]">
+                                {isEn
+                                    ? 'Previous conversations'
+                                    : 'محادثاتك السابقة'}
+                            </span>
+                            <div className="h-px flex-1 bg-[var(--chat-line)]" />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            {conversations.slice(0, 10).map((c) => (
+                                <button
+                                    key={c.publicId}
+                                    type="button"
+                                    onClick={() =>
+                                        onSelectConversation?.(c.publicId)
+                                    }
+                                    disabled={disabled}
+                                    className={`chat-stagger-in ${CARD_BASE} flex items-center justify-between gap-2.5 rounded-[14px] p-3.5`}
+                                    style={{ ['--i' as string]: cardIndex++ }}
+                                >
+                                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                        <div className="flex items-center gap-2">
+                                            <span
+                                                dir="auto"
+                                                className="truncate text-[13.5px] font-semibold text-[var(--chat-ink)]"
+                                            >
+                                                {c.subject}
+                                            </span>
+                                            {c.ticketNumber && (
+                                                <span className="shrink-0 rounded-sm border border-[#d4a843]/40 bg-[#f3ead6] px-1.5 py-0.5 text-[10.5px] font-bold text-[#8a7243]">
+                                                    {c.ticketNumber}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {c.lastMessageAt && (
+                                            <span className="text-[11.5px] text-[var(--chat-faint)]">
+                                                {relativeTime(
+                                                    c.lastMessageAt,
+                                                    isEn,
+                                                )}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <Chevron
+                                        aria-hidden="true"
+                                        className="h-4 w-4 shrink-0 text-[var(--chat-faint)]"
+                                    />
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

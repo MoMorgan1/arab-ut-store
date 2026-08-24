@@ -8,6 +8,11 @@ use App\Support\TicketNumber;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property-read ChatConversation|null $conversation
+ * @property-read User|null $user
+ * @property-read User|null $assignedAdmin
+ */
 class SupportTicket extends DomainModel
 {
     /** @var array<string, string> */

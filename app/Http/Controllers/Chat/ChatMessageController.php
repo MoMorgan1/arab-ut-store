@@ -73,6 +73,7 @@ class ChatMessageController extends Controller
                 'demoReply' => $result['demoReply'] !== null
                     ? $this->chatPresenter->message($result['demoReply'], $conversation->public_id)
                     : null,
+                'handoffState' => $conversation->fresh()->handoff_state->value,
             ],
         ], 201)->header('Cache-Control', 'no-store, private');
     }

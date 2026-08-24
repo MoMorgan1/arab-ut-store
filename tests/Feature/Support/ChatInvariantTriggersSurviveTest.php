@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\ChatConversation;
-use App\ValueObjects\Chat\ChatOwner;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 

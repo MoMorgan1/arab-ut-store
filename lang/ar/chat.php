@@ -26,6 +26,16 @@ return [
 
     'support' => [
         'defaultSubject' => 'طلب دعم فني',
+        'requested_title' => 'طلبك وصل للفريق',
+        'active_title' => ':name من الفريق يرد عليك',
+        'active_title_unassigned' => 'الفريق يرد عليك',
+        'resolved_title' => 'تم حل التذكرة',
+        'reopen_button' => 'تحتاج مساعدة أكثر؟',
+        'paused_pill' => 'نواف متوقف مؤقتًا — الفريق يتابع محادثتك',
+        'team_name' => 'فريق عرب التيميت',
+        'history_heading' => 'محادثاتك السابقة',
+        'read_only_badge' => 'هذه المحادثة للقراءة فقط',
+        'start_new' => 'ابدأ محادثة جديدة',
     ],
 
     'cards' => [

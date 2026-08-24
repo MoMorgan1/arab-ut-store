@@ -14,9 +14,26 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property-read SupportTicket|null $liveTicket
+ */
 class ChatConversation extends DomainModel
 {
-    /** @var array<string, string> */
+    /**
+     * The column has a database default, but Eloquent does not hydrate database
+     * defaults onto a newly created instance — so a conversation created in this
+     * request had a null handoff_state until it was reloaded. Every
+     * `handoff_state->isLive()` and `handoff_state->value` on a fresh
+     * conversation threw on null, including the claim-time guard that keeps the
+     * assistant silent. Declaring the default here makes the attribute present
+     * from construction on every path.
+     *
+     * @var array<string, string>
+     */
+    protected $attributes = [
+        'handoff_state' => 'none',
+    ];
+
     protected $casts = [
         'status' => ChatConversationStatus::class,
         'last_message_at' => 'datetime',

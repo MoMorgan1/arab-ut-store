@@ -18,6 +18,7 @@ import type {
     AdminNavigationItem,
     AdminTranslations,
 } from '@/types/admin';
+import { AdminUnreadBadge } from './admin-unread-badge';
 
 const navigationIcons: Record<AdminNavigationItem['key'], LucideIcon> = {
     overview: LayoutDashboard,
@@ -81,6 +82,9 @@ export function AdminNavigationList({
                                 <span className="min-w-0 [overflow-wrap:anywhere]">
                                     {item.label}
                                 </span>
+                                {item.key === 'conversations' && (
+                                    <AdminUnreadBadge />
+                                )}
                             </Link>
                             {children.length > 0 ? (
                                 <ul

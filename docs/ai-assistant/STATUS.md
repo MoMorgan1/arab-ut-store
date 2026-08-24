@@ -2,8 +2,7 @@
 
 **Lifecycle:** Phase 1 accepted; Phase 2 accepted by Mohamed on 2026-08-23
 after the `support-v3` batch passed every mandatory threshold; Phase 3
-knowledge grounding and service cards are deployed; the read-only support inbox
-is live and human handoff is in design
+knowledge grounding, service cards, and human support handoff & ticketing are implemented
 **Verified:** 2026-08-24
 
 ## Release snapshot
@@ -22,15 +21,12 @@ is live and human handoff is in design
 | Phase 1 owner acceptance                                   | Mohamed accepted the deployed Phase 1 release on 2026-08-21 after completing the real-account and physical iPhone/Safari checks. This closes the remaining device/owner gate without changing the scope of the automated Chromium evidence.                                                                                                               |
 | Phase 2 runtime release                                    | [Tests 32578736891](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32578736891) and [deploy 32578995534](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32578995534) passed for `e13ee8bde25263a262788177d0ce78fb4f46f37f`. The active release, seven chat routes, and minute stale-turn recovery schedule were verified in production. |
 | Public Luna evaluation                                     | The 2026-08-22 batch failed mandatory mixed-language, safety-critical-case, and first-visible-content thresholds; see [the sanitized evidence](evidence/2026-08-22-phase-2-luna-public-eval.md). The 2026-08-23 batch `phase3-knowledge-eval-20260823T074807Z` passed every mandatory threshold and is the accepted evidence. See [EVALS.md](EVALS.md).                                                                                       |
-| Current production mode                                    | **Luna is active in production.** Phase 2 was accepted by Mohamed on 2026-08-23 after the `support-v3` batch passed every mandatory threshold. The accepted configuration is `support-v3` with knowledge grounding at `knowledge_max_topics: 3` and server-derived service cards. The kill switch and rate limits are unchanged: clearing the AI enable flag returns new messages to the accepted Phase 1 demo behavior. |
+| Current production mode                                    | **Nawaf is active in production.** Phase 2 was accepted by Mohamed on 2026-08-23 after the `support-v3` batch passed every mandatory threshold. The accepted configuration is `support-v3` with knowledge grounding at `knowledge_max_topics: 3` and server-derived service cards. The kill switch and rate limits are unchanged: clearing the AI enable flag returns new messages to the accepted Phase 1 demo behavior. |
 
-The deployed application contains the Phase 2 runtime, direct Luna adapter,
+The application contains the Phase 2 runtime, direct Nawaf adapter,
 streaming routes, durable turn/run schema, recovery, and cost accounting, plus
-the Phase 3 knowledge grounding, server-derived service cards and in-chat cart
-offer. All of it is active in production. A read-only operator inbox is live at
-`/admin/conversations` behind an admin-only `chat.view`. Model tool calling,
-live commerce/account access for the model, human handoff, and ticketing remain
-unimplemented.
+the Phase 3 knowledge grounding, server-derived service cards, in-chat cart
+offer, and the integrated Human Support Handoff & Ticketing workflow.
 
 ## Phase status
 
@@ -39,9 +35,9 @@ unimplemented.
 | Phase 0 stabilization                 | Implemented.                                                                                                                                                                                                                                                                         |
 | Phase 1 deterministic chat foundation | Implemented.                                                                                                                                                                                                                                                                         |
 | Phase 1 Completion                    | **Accepted by Mohamed on 2026-08-21.** Implementation, deployment, scheduler evidence, real-account testing, and physical iPhone/Safari testing are complete.                                                                                                                        |
-| Phase 2 AI runtime/Luna               | **Accepted by Mohamed on 2026-08-23** after the `support-v3` batch passed every mandatory threshold. The 2026-08-22 failure and the remediation that resolved it are recorded below and in [EVALS.md](EVALS.md).                                                                     |
-| Phase 3 knowledge grounding           | Implemented 2026-08-23: a curated bilingual corpus, lexical topic selection, `support-v3` grounding, server-derived service cards, live card prices resolved at render time, and a server-derived add-to-cart offer. The model still has no tool calling.                          |
-| Read-only support inbox               | Implemented 2026-08-23: list, filter, look up by public id, and read a transcript with its agent-turn runtime, behind an admin-only `chat.view`. Guest keys never leave the server. Reply, assignment, tickets and realtime are not implemented.                                    |
+| Phase 2 AI runtime/Nawaf              | **Accepted by Mohamed on 2026-08-23** after the `support-v3` batch passed every mandatory threshold. The 2026-08-22 failure and the remediation that resolved it are recorded below and in [EVALS.md](EVALS.md).                                                                     |
+| Phase 3 knowledge grounding           | Implemented 2026-08-23: a curated bilingual corpus, lexical topic selection, `support-v3` grounding, server-derived service cards, live card prices resolved at render time, and a server-derived add-to-cart offer.                                                                |
+| Human support handoff & ticketing     | Implemented 2026-08-24: staff replies, durable ticketing, pinned banners, staff initial bubbles, conversation history on home view, 48-hour guest retention, unread badge & chime, and away-customer email notification.                                                             |
 
 ## Scheduler evidence
 

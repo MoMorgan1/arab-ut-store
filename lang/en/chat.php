@@ -26,6 +26,16 @@ return [
 
     'support' => [
         'defaultSubject' => 'Customer support request',
+        'requested_title' => 'Your request reached the team',
+        'active_title' => ':name from the team is replying',
+        'active_title_unassigned' => 'The team is replying',
+        'resolved_title' => 'Ticket resolved',
+        'reopen_button' => 'Still need help?',
+        'paused_pill' => 'Nawaf is paused — the team is following your chat',
+        'team_name' => 'Arab Ultimate Team',
+        'history_heading' => 'Previous conversations',
+        'read_only_badge' => 'This conversation is read-only',
+        'start_new' => 'Start a new conversation',
     ],
 
     'cards' => [

@@ -23,6 +23,7 @@ final readonly class AgentTurnPresenter
      *     retryable: bool,
      *     hasPendingMessages: bool,
      *     errorCode: string|null,
+     *     handoffState: string,
      *     message: array<string, mixed>|null
      * }
      */
@@ -42,6 +43,7 @@ final readonly class AgentTurnPresenter
                 $turn->last_customer_message_id,
             ),
             'errorCode' => $turn->terminal_error_code?->value,
+            'handoffState' => $turn->conversation->handoff_state->value,
             'message' => $turn->assistantMessage === null
                 ? null
                 : $this->chatPresenter->message(

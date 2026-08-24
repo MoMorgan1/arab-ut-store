@@ -1,42 +1,21 @@
 # Admin and support inbox
 
-**Lifecycle:** Read-only inbox implemented; handoff planned
-**Verified:** 2026-08-23
+**Lifecycle:** Human support handoff, ticketing, and unread notifications implemented
+**Verified:** 2026-08-24
 
-A read-only inbox is implemented: `ConversationsController` lists conversations
-with status, locale, owner and public-id filters, and
-`ConversationDetailController` shows one transcript alongside its agent turns.
-Both sit behind `chat.view`, which is admin-only — support transcripts are not
-general staff reading — inside the existing MFA group, registered under both the
-bare and `/en` admin prefixes. `guest_key` is never sent to the client: it
-identifies an anonymous person and has no place in a UI payload.
+The support inbox is fully implemented with human support handoff and ticketing:
+- `ConversationsController` lists conversations with status, locale, owner, ticket filters, and pagination.
+- `ConversationDetailController` shows full transcripts with message sender distinction (customer, assistant, staff, internal notes), ticket details, and agent turn runtime metrics.
+- `SupportUnreadCountController` (`GET /admin/support/unread-count`) feeds live unread badges and audio chimes to staff across the admin sidebar on a 30s polling cycle.
+- `SendStaffReply` allows authorized staff to send replies directly to customer threads, setting conversation handoff state to `active` and notifying away customers (>= 5 min inactive) via synchronous email with 1-hour throttling.
+- `ResolveSupportTicket` cleanly resolves tickets, updates conversation state to `resolved`, and appends the system message indicating Nawaf has resumed.
+- All endpoints sit behind `can:chat.view` in the admin MFA group under both bare and `/en` prefixes.
+- `guest_key` and customer/admin IDs are never leaked to client payloads.
 
-No assignment system, realtime transport, operator reply path, or
-assistant-to-human handoff workflow is implemented. Those remain gated on the
-decisions below.
+## Security & Access Invariants
 
-## Goals
-
-- Let a customer request human help without losing conversation context.
-- Let an authorized operator understand ownership, locale, history, assistant
-  state, and the reason for handoff before responding.
-- Make assignment, response ownership, resolution, and customer-visible status
-  explicit.
-- Preserve the existing customer authorization boundary and keep order
-  credentials and production secrets out of chat transcripts.
-
-## Operator needs
-
-- A prioritized queue with clear waiting and ownership states.
-- Search and filters that do not expose conversations beyond operator scope.
-- Transcript context, internal notes separated from customer messages, and an
-  auditable record of operator actions.
-- Failure and escalation paths for abandoned, duplicated, or unavailable
-  handoffs.
-
-## Open questions and entry criteria
-
-Discovery must decide roles and permissions, service expectations, working
-hours, routing, notification channels, retention, privacy, and customer status
-copy. Implementation starts only after Mohamed approves those decisions and the
-authorization, audit, and operational plan. No realtime stack is selected.
+- Protected by `can:chat.view` permission.
+- Internal notes (`message_type: 'internal_note'`) are visible only to admin operators and are filtered out of all customer-facing endpoints.
+- Strict database locking order: `conversation -> ticket -> turn -> run`.
+- Guest conversations are excluded from the operator inbox and purged after 48 hours of inactivity.
+- Away-customer emails contain no message transcripts or sensitive data.
