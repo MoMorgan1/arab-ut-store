@@ -1,8 +1,8 @@
 import { Link } from '@inertiajs/react';
 import {
+    Ellipsis,
     LayoutGrid,
     Package,
-    Settings,
     ShoppingBag,
     Users,
 } from 'lucide-react';
@@ -16,7 +16,7 @@ const PRIMARY_TAB_KEYS = [
     'orders',
     'customers',
     'products',
-    'settings',
+    'more',
 ] as const;
 
 type PrimaryTabKey = (typeof PRIMARY_TAB_KEYS)[number];
@@ -26,7 +26,7 @@ const navigationIcons: Record<PrimaryTabKey, LucideIcon> = {
     orders: ShoppingBag,
     customers: Users,
     products: Package,
-    settings: Settings,
+    more: Ellipsis,
 };
 
 export default function AdminMobileTabBar({
@@ -41,11 +41,23 @@ export default function AdminMobileTabBar({
     // destination order and filtering. `navigation` is permission-gated, so a
     // Staff user legitimately resolves fewer tabs here.
     const primaryTabs = PRIMARY_TAB_KEYS.flatMap((key) => {
-        const item = navigation.find(
+        const directItem = navigation.find(
             (entry): entry is AdminNavigationItem => entry.key === key,
         );
 
-        return item === undefined ? [] : [{ ...item, key }];
+        if (directItem !== undefined) {
+            return [{ ...directItem, key }];
+        }
+
+        for (const entry of navigation) {
+            const child = entry.children?.find((c) => c.key === key);
+
+            if (child !== undefined) {
+                return [{ ...child, key }];
+            }
+        }
+
+        return [];
     });
 
     return (

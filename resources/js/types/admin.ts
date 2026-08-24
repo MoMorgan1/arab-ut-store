@@ -33,15 +33,37 @@ export type AdminTranslations = {
         orders: string;
         customers: string;
         conversations: string;
+        catalog?: string;
         products: string;
+        categories?: string;
         marketingLoyalty?: string;
         settings: string;
         marketing: string;
         marketingCoupons: string;
         marketingPromotions: string;
+        more?: string;
         open: string;
         close: string;
         quick?: string;
+    };
+    more?: {
+        headTitle: string;
+        title: string;
+        description: string;
+        groups: {
+            catalog: string;
+            marketing: string;
+            system: string;
+        };
+        tiles: {
+            conversations: { title: string; description: string };
+            categories: { title: string; description: string };
+            coupons: { title: string; description: string };
+            promotions: { title: string; description: string };
+            loyalty: { title: string; description: string };
+            settings: { title: string; description: string };
+        };
+        noTiles: string;
     };
     overview: {
         headTitle: string;
@@ -832,6 +854,8 @@ export type AdminTranslations = {
         visibility: string;
         visibilityHidden: string;
         visibilityVisible: string;
+        categories?: string;
+        manageCategories?: string;
     };
     productDetail: {
         action: string;
@@ -1126,10 +1150,105 @@ export type AdminTranslations = {
             strictlyIncreasing: string;
         };
     };
+    categories: {
+        invalidPassword: string;
+        passwordLabel: string;
+        passwordModalDescription: string;
+        passwordModalTitle: string;
+        passwordPlaceholder: string;
+        actions: string;
+        activeFilters: string;
+        allSources: string;
+        allVisibilities: string;
+        apply: string;
+        authorityAutomation: string;
+        authorityManual: string;
+        automationHiddenBadge: string;
+        automationVisibleBadge: string;
+        backToProducts: string;
+        cancelButton: string;
+        clearAll: string;
+        clearOneFilter: string;
+        clearSearch: string;
+        columns: string;
+        confirmHideButton: string;
+        confirmRestoreButton: string;
+        createdAt: string;
+        description: string;
+        errorTitle: string;
+        filterSource: string;
+        filterVisibility: string;
+        filters: string;
+        firstPage: string;
+        headTitle: string;
+        hiddenAt: string;
+        hideDialogDescription: string;
+        hideDialogTitle: string;
+        hideFromStore: string;
+        hidingFromStore: string;
+        lastPage: string;
+        loadFailed: string;
+        loading: string;
+        name: string;
+        next: string;
+        noCategories: string;
+        noCategoriesMatching: string;
+        of: string;
+        page: string;
+        perPage: string;
+        previous: string;
+        products: string;
+        productsCount: string;
+        resetFilters: string;
+        restoreDialogDescription: string;
+        restoreDialogTitle: string;
+        restoreToStore: string;
+        restoringToStore: string;
+        results: string;
+        searchButton: string;
+        searchLabel: string;
+        searchPlaceholder: string;
+        selectAll: string;
+        selectRow: string;
+        selectedRows: string;
+        showing: string;
+        slug: string;
+        sortAscending: string;
+        sortBy: string;
+        sortDescending: string;
+        sortOrder: string;
+        source: string;
+        sourceAutomation: string;
+        sourceManual: string;
+        stateAdminHidden: string;
+        stateAutomationHidden: string;
+        stateVisible: string;
+        status: string;
+        tableLabel: string;
+        title: string;
+        to: string;
+        toggleColumns: string;
+        updatedAt: string;
+        viewProducts: string;
+        visibilityAdminHidden: string;
+        visibilityAutomationHidden: string;
+        visibilityConflictError: string;
+        visibilityHiddenMessage: string;
+        visibilityRestoredMessage: string;
+        visibilityUpdateFailed: string;
+        visibilityVisible: string;
+        visibleProducts: string;
+        visibleProductsCount: string;
+    };
 };
 
 export type AdminNavigationChild = {
-    key: 'marketingCoupons' | 'marketingPromotions';
+    key:
+        | 'products'
+        | 'categories'
+        | 'marketingCoupons'
+        | 'marketingPromotions'
+        | 'marketingLoyalty';
     label: string;
     url: string;
 };
@@ -1140,10 +1259,12 @@ export type AdminNavigationItem = {
         | 'orders'
         | 'customers'
         | 'conversations'
-        | 'marketing'
+        | 'catalog'
         | 'products'
+        | 'marketing'
         | 'marketingLoyalty'
-        | 'settings';
+        | 'settings'
+        | 'more';
     label: string;
     url: string;
     children?: AdminNavigationChild[];
@@ -1761,6 +1882,7 @@ export type AdminProductsPageProps = {
         archived: AdminFilterOption[];
         perPageOptions: number[];
     };
+    categoriesUrl?: string;
     logoutUrl: string;
 };
 
@@ -1949,5 +2071,86 @@ export type AdminConversationDetailPageProps = {
     conversation: AdminConversationDetail;
     messages: AdminChatMessage[];
     turns: AdminAgentTurn[];
+    logoutUrl: string;
+};
+
+export type AdminCategoryRow = {
+    id: string;
+    slug: string;
+    name: string;
+    nameAr: string;
+    nameEn: string;
+    descriptionAr: string | null;
+    descriptionEn: string | null;
+    source: { name: string; key: string } | null;
+    isAutomation: boolean;
+    isVisible: boolean;
+    adminHidden: boolean;
+    adminHiddenAt: string | null;
+    sortOrder: number;
+    productsCount: number;
+    visibleProductsCount: number;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type AdminCategoriesQueryState = {
+    search?: string | null;
+    visibility?: 'visible' | 'admin_hidden' | 'automation_hidden' | null;
+    source?: string | null;
+    sort?: 'sort_order' | 'name' | 'created_at' | 'updated_at';
+    direction?: 'asc' | 'desc';
+    per_page?: 15 | 25 | 50 | 100;
+    page?: number;
+};
+
+export type AdminMoreTile = {
+    key:
+        | 'conversations'
+        | 'categories'
+        | 'coupons'
+        | 'promotions'
+        | 'loyalty'
+        | 'settings';
+    label: string;
+    description: string;
+    url: string;
+};
+
+export type AdminMoreGroup = {
+    key: 'catalog' | 'marketing' | 'system';
+    label: string;
+    tiles: AdminMoreTile[];
+};
+
+export type AdminCategoriesPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    categories: AdminCategoryRow[];
+    pagination: AdminPagination;
+    filters: AdminCategoriesQueryState;
+    filterOptions: {
+        visibilities: AdminFilterOption[];
+        sources: AdminFilterOption[];
+        perPageOptions: number[];
+    };
+    productsUrl?: string;
+    visibilityUrlTemplate: string;
+    confirmPasswordUrl?: string;
+    logoutUrl: string;
+};
+
+export type AdminMorePageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    groups: AdminMoreGroup[];
     logoutUrl: string;
 };

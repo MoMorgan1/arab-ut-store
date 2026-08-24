@@ -194,7 +194,10 @@ test('confirmed admin can toggle coupon status with an audit log entry', functio
 });
 
 test('coupon create requests validate every rule boundary', function (array $payload, string $field): void {
-    if ($payload['code'] === 'DUPLICATE') {
+    // Seed case-insensitively: codes are canonicalised to uppercase, so
+    // 'duplicate' must collide with a stored 'DUPLICATE' as a validation
+    // error rather than reaching the database unique index.
+    if (mb_strtoupper($payload['code']) === 'DUPLICATE') {
         Coupon::query()->create(couponAttributes(['code' => 'DUPLICATE']));
     }
 
@@ -207,7 +210,7 @@ test('coupon create requests validate every rule boundary', function (array $pay
         ->assertJsonValidationErrors($field);
 })->with([
     'code too short' => [couponPayload(['code' => 'AB']), 'code'],
-    'code lowercase' => [couponPayload(['code' => 'lower']), 'code'],
+    'case-variant duplicate' => [couponPayload(['code' => 'duplicate']), 'code'],
     'code invalid characters' => [couponPayload(['code' => 'BAD CODE!']), 'code'],
     'duplicate code' => [couponPayload(['code' => 'DUPLICATE']), 'code'],
     'percent above 100' => [couponPayload(['discount_type' => 'percent', 'value' => 101]), 'value'],

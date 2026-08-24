@@ -16,12 +16,15 @@ use Illuminate\Support\Carbon;
  * @property string|null $badge_en
  * @property string $scope
  * @property int|null $category_id
+ * @property int|null $product_id
  * @property string|null $service_type
  * @property string $discount_type
  * @property int $value
  * @property Carbon|null $starts_at
  * @property Carbon|null $ends_at
  * @property bool $is_active
+ * @property-read Category|null $category
+ * @property-read Product|null $product
  */
 class Promotion extends DomainModel
 {
@@ -31,11 +34,14 @@ class Promotion extends DomainModel
 
     public const SCOPE_SERVICE = 'service';
 
+    public const SCOPE_PRODUCT = 'product';
+
     /** @return array<string, string> */
     protected function casts(): array
     {
         return [
             'category_id' => 'integer',
+            'product_id' => 'integer',
             'value' => 'integer',
             'is_active' => 'boolean',
             'starts_at' => 'immutable_datetime',
@@ -57,6 +63,12 @@ class Promotion extends DomainModel
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /** @return BelongsTo<Product, $this> */
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
     }
 
     /** @return HasMany<OrderItem, $this> */

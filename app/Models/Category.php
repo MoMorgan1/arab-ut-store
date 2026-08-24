@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Carbon;
 
-/** @property ?Carbon $admin_hidden_at */
+/** @property ?CarbonImmutable $admin_hidden_at */
 class Category extends DomainModel
 {
     /** @return array<string, string> */
@@ -30,6 +30,12 @@ class Category extends DomainModel
     public static function applyStorefrontVisible(Builder $query): void
     {
         $query->where('is_visible', true)->whereNull('admin_hidden_at');
+    }
+
+    /** @param Builder<Category> $query */
+    public function scopeStorefrontVisible(Builder $query): void
+    {
+        self::applyStorefrontVisible($query);
     }
 
     /** The loaded-model form of applyStorefrontVisible(). */

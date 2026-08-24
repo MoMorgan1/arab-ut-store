@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\CategoriesController;
+use App\Http\Controllers\Admin\CategoryVisibilityController;
 use App\Http\Controllers\Admin\ConversationDetailController;
 use App\Http\Controllers\Admin\ConversationsController;
 use App\Http\Controllers\Admin\CouponsController;
@@ -12,6 +14,7 @@ use App\Http\Controllers\Admin\CustomerStatusController;
 use App\Http\Controllers\Admin\CustomerWalletAdjustController;
 use App\Http\Controllers\Admin\LoyaltyController;
 use App\Http\Controllers\Admin\LoyaltyTierController;
+use App\Http\Controllers\Admin\MoreController;
 use App\Http\Controllers\Admin\OrderDetailController;
 use App\Http\Controllers\Admin\OrderItemSecretRevealController;
 use App\Http\Controllers\Admin\OrdersController;
@@ -78,6 +81,12 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $route->defaults('locale', $locale);
+                }
+
+                $more = Route::get('/more', MoreController::class)->name('more');
+
+                if ($locale !== null) {
+                    $more->defaults('locale', $locale);
                 }
 
                 $orders = Route::get('/orders', OrdersController::class)
@@ -237,6 +246,22 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $variantPrice->defaults('locale', $locale);
+                }
+
+                $categories = Route::get('/categories', CategoriesController::class)
+                    ->middleware('can:catalog.view')
+                    ->name('categories');
+
+                if ($locale !== null) {
+                    $categories->defaults('locale', $locale);
+                }
+
+                $categoryVisibility = Route::post('/api/categories/{publicId}/visibility', CategoryVisibilityController::class)
+                    ->middleware(['password.confirm', 'can:catalog.manage'])
+                    ->name('categories.visibility.store');
+
+                if ($locale !== null) {
+                    $categoryVisibility->defaults('locale', $locale);
                 }
 
                 $teamRole = Route::post('/api/team/{publicId}/role', TeamRoleController::class)

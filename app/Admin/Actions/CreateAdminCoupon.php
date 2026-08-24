@@ -5,6 +5,7 @@ namespace App\Admin\Actions;
 use App\Admin\Audit\StaffAuditEvent;
 use App\Enums\AdminPermission;
 use App\Models\Coupon;
+use App\Models\CouponTarget;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Carbon;
@@ -29,7 +30,7 @@ final class CreateAdminCoupon
         return DB::transaction(function () use ($actor, $data): Coupon {
             $coupon = Coupon::create([
                 'public_id' => (string) Str::ulid(),
-                'code' => mb_strtoupper((string) $data['code']),
+                'code' => mb_strtoupper(trim((string) $data['code'])),
                 'description_ar' => $data['description_ar'] ?? null,
                 'description_en' => $data['description_en'] ?? null,
                 'discount_type' => $data['discount_type'],
@@ -40,6 +41,12 @@ final class CreateAdminCoupon
                     : null,
                 'usage_limit' => isset($data['usage_limit']) ? (int) $data['usage_limit'] : null,
                 'per_user_limit' => isset($data['per_user_limit']) ? (int) $data['per_user_limit'] : null,
+                'scope' => (string) ($data['scope'] ?? Coupon::SCOPE_ORDER),
+                'service_type' => isset($data['service_type']) && is_string($data['service_type'])
+                    ? $data['service_type']
+                    : null,
+                'first_order_only' => (bool) ($data['first_order_only'] ?? false),
+                'excludes_promoted_items' => (bool) ($data['excludes_promoted_items'] ?? false),
                 'starts_at' => isset($data['starts_at'])
                     ? Carbon::parse($data['starts_at'])->utc()
                     : null,
@@ -48,6 +55,8 @@ final class CreateAdminCoupon
                     : null,
                 'is_active' => (bool) ($data['is_active'] ?? true),
             ]);
+
+            $this->syncTargets($coupon, $data);
 
             $this->recordStaffAudit->execute(
                 $actor,
@@ -65,5 +74,40 @@ final class CreateAdminCoupon
 
             return $coupon;
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function syncTargets(Coupon $coupon, array $data): void
+    {
+        if (isset($data['targets']) && is_array($data['targets'])) {
+            foreach ($data['targets'] as $target) {
+                if (is_array($target) && isset($target['target_type'], $target['target_id'])) {
+                    $coupon->targets()->create([
+                        'target_type' => (string) $target['target_type'],
+                        'target_id' => (int) $target['target_id'],
+                    ]);
+                }
+            }
+        }
+
+        if (isset($data['category_ids']) && is_array($data['category_ids'])) {
+            foreach ($data['category_ids'] as $categoryId) {
+                $coupon->targets()->create([
+                    'target_type' => CouponTarget::TYPE_CATEGORY,
+                    'target_id' => (int) $categoryId,
+                ]);
+            }
+        }
+
+        if (isset($data['product_ids']) && is_array($data['product_ids'])) {
+            foreach ($data['product_ids'] as $productId) {
+                $coupon->targets()->create([
+                    'target_type' => CouponTarget::TYPE_PRODUCT,
+                    'target_id' => (int) $productId,
+                ]);
+            }
+        }
     }
 }

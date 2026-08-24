@@ -197,6 +197,7 @@ export default function AdminProductsPage() {
 
             <AdminProductsToolbar
                 adminUi={props.adminUi}
+                categoriesUrl={props.categoriesUrl}
                 filterOptions={props.filterOptions}
                 filters={props.filters}
                 isNavigating={isNavigating}

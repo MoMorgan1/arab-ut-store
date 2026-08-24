@@ -787,7 +787,7 @@ test('authenticated Admin overview and orders are operable across required width
                 overview: 'Overview',
                 orders: 'Orders',
                 products: 'Products',
-                settings: 'Settings',
+                more: 'More',
                 range7: 'Last 7 days',
                 range30: 'Last 30 days',
             },
@@ -874,14 +874,14 @@ test('authenticated Admin overview and orders are operable across required width
                         tabbar.getByRole('link', { name: locale.products }),
                     );
                     await expectMinimumTouchTarget(
-                        tabbar.getByRole('link', { name: locale.settings }),
+                        tabbar.getByRole('link', { name: locale.more }),
                     );
                 } else {
                     const sidebar = page.locator('.admin-sidebar');
                     await expect(sidebar).toBeVisible();
-                    // The sidebar lists every destination; the tab bar caps at
-                    // its five primary ones. Bump this when a nav entry lands.
-                    await expect(sidebar.getByRole('link')).toHaveCount(8);
+                    // The sidebar lists every destination (including inline group children);
+                    // the tab bar caps at its five primary ones.
+                    await expect(sidebar.getByRole('link')).toHaveCount(10);
                     await expect(
                         sidebar.getByRole('link', { name: locale.overview }),
                     ).toHaveAttribute('aria-current', 'page');
@@ -1167,6 +1167,66 @@ test('reaching the dashboard by a client-side visit still applies the admin pale
                 .trim(),
         );
         expect(primary.toLowerCase()).toBe('#d4a843');
+    } finally {
+        mutateLocalBrowserUser(email, 'delete');
+    }
+});
+
+test('authenticated Admin more page renders permission-filtered tiles, meets minimum touch targets, and navigates', async ({
+    page,
+}) => {
+    test.setTimeout(180_000);
+    const expectCleanRuntime = observeRuntime(page);
+    const syntheticId = randomUUID();
+    const email = `${syntheticId}@example.test`;
+    const password = `ArabUT-${syntheticId}-Aa1!`;
+
+    try {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto('/register');
+        await page.locator('#first_name').fill('Admin');
+        await page.locator('#last_name').fill('More Acceptance Owner');
+        await page.locator('#email').fill(email);
+        await page.locator('#password').fill(password);
+        await page.locator('#password_confirmation').fill(password);
+        await Promise.all([
+            page.waitForURL((url) => url.pathname === '/my-account'),
+            page.locator('[data-test="register-user-button"]').click(),
+        ]);
+
+        mutateLocalBrowserUser(email, 'promote');
+
+        const response = await page.goto('/admin/more');
+        expect(response?.ok()).toBe(true);
+
+        await expect(
+            page.getByRole('heading', { level: 1, name: 'More' }),
+        ).toBeVisible();
+
+        const tiles = page.locator(
+            'article a[href^="/admin"], article a[href^="/en/admin"]',
+        );
+        await expect(tiles).toHaveCount(6);
+
+        for (let i = 0; i < 6; i++) {
+            await expectMinimumTouchTarget(tiles.nth(i));
+        }
+
+        const conversationsTile = page.getByRole('link', {
+            name: /Conversations/i,
+        });
+        await expect(conversationsTile).toBeVisible();
+        await expectMinimumTouchTarget(conversationsTile);
+
+        await Promise.all([
+            page.waitForURL((url) => url.pathname === '/admin/conversations'),
+            conversationsTile.click(),
+        ]);
+
+        await expect(
+            page.getByRole('heading', { level: 1, name: 'Conversations' }),
+        ).toBeVisible();
+        expectCleanRuntime();
     } finally {
         mutateLocalBrowserUser(email, 'delete');
     }

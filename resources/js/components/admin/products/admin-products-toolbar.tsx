@@ -1,7 +1,14 @@
 'use no memo'; // TanStack Table exposes a mutable table object.
 
+import { Link } from '@inertiajs/react';
 import type { Table } from '@tanstack/react-table';
-import { Columns3, Search, SlidersHorizontal, X } from 'lucide-react';
+import {
+    Columns3,
+    FolderTree,
+    Search,
+    SlidersHorizontal,
+    X,
+} from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 
@@ -40,6 +47,7 @@ import type {
 
 export type AdminProductsToolbarProps = {
     adminUi: AdminTranslations;
+    categoriesUrl?: string;
     filterOptions: {
         services: AdminFilterOption[];
         authorities: AdminFilterOption[];
@@ -56,6 +64,7 @@ export type AdminProductsToolbarProps = {
 
 export default function AdminProductsToolbar({
     adminUi,
+    categoriesUrl,
     filterOptions,
     filters,
     isNavigating,
@@ -297,6 +306,25 @@ export default function AdminProductsToolbar({
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 md:flex md:items-center">
+                    {categoriesUrl ? (
+                        <Link
+                            aria-label={
+                                copy.manageCategories ??
+                                copy.categories ??
+                                'Categories'
+                            }
+                            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring md:text-xs"
+                            href={categoriesUrl}
+                        >
+                            <FolderTree aria-hidden="true" className="size-4" />
+                            <span>
+                                {copy.manageCategories ??
+                                    copy.categories ??
+                                    'Categories'}
+                            </span>
+                        </Link>
+                    ) : null}
+
                     <Button
                         aria-label={copy.filters}
                         className="min-h-11 w-full gap-2 text-sm md:w-auto md:text-xs"
