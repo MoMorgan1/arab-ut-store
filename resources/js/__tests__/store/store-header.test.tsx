@@ -106,6 +106,7 @@ function renderHeader(currentUrl = '/en') {
                 'USD',
                 'EUR',
                 'GBP',
+                'EGP',
             ]}
             displayCurrency="USD"
             locale="en"
@@ -243,6 +244,7 @@ describe('StoreHeader', () => {
             'USD',
             'EUR',
             'GBP',
+            'EGP',
         ]);
 
         const attribution = within(
