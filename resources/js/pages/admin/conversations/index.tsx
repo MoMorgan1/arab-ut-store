@@ -167,14 +167,14 @@ export default function AdminConversationsIndexPage() {
         });
     }
 
-    if (props.filters.owner) {
-        const option = props.filterOptions.owners.find(
-            (o) => o.value === props.filters.owner,
+    if (props.filters.ticket_status) {
+        const option = props.filterOptions.ticketStatuses.find(
+            (o) => o.value === props.filters.ticket_status,
         );
         activeChips.push({
-            key: 'owner',
-            label: `${copy.owner}: ${option?.label ?? props.filters.owner}`,
-            onClear: () => applyQuery({ owner: null }),
+            key: 'ticket_status',
+            label: `${copy.ticket}: ${option?.label ?? props.filters.ticket_status}`,
+            onClear: () => applyQuery({ ticket_status: null }),
         });
     }
 
@@ -292,16 +292,18 @@ export default function AdminConversationsIndexPage() {
                     />
 
                     <FilterSelect
-                        allLabel={copy.allOwners}
+                        allLabel={copy.allTicketStatuses}
                         disabled={isNavigating}
-                        label={copy.filterOwner}
-                        onChange={(owner) =>
+                        label={copy.filterTicketStatus}
+                        onChange={(ticketStatus) =>
                             applyQuery({
-                                owner: (owner as 'guest' | 'customer') || null,
+                                ticket_status:
+                                    (ticketStatus as
+                                        'open' | 'resolved' | 'closed') || null,
                             })
                         }
-                        options={props.filterOptions.owners}
-                        value={props.filters.owner ?? null}
+                        options={props.filterOptions.ticketStatuses}
+                        value={props.filters.ticket_status ?? null}
                     />
 
                     {isFiltered ? (
@@ -404,7 +406,16 @@ export default function AdminConversationsIndexPage() {
                                                 className="text-sm font-semibold text-foreground tabular-nums underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary focus-visible:outline-2 focus-visible:outline-ring"
                                                 href={`${basePath}/${row.publicId}`}
                                             >
-                                                <bdi>{row.publicId}</bdi>
+                                                {row.hasUnread ? (
+                                                    <span
+                                                        aria-label={
+                                                            copy.unreadDot
+                                                        }
+                                                        className="me-1.5 inline-block size-2 rounded-full bg-primary align-middle"
+                                                        title={copy.unreadDot}
+                                                    />
+                                                ) : null}
+                                                <bdi>{row.shortId}</bdi>
                                             </Link>
                                         </TableCell>
                                         <TableCell>
@@ -777,7 +788,14 @@ function ConversationMobileCard({
                         className="text-xs font-semibold text-foreground tabular-nums underline decoration-border underline-offset-4"
                         href={`${basePath}/${row.publicId}`}
                     >
-                        <bdi>{row.publicId}</bdi>
+                        {row.hasUnread ? (
+                            <span
+                                aria-label={copy.unreadDot}
+                                className="me-1.5 inline-block size-2 rounded-full bg-primary align-middle"
+                                title={copy.unreadDot}
+                            />
+                        ) : null}
+                        <bdi>{row.shortId}</bdi>
                     </Link>
                     <span className="text-xs text-muted-foreground">
                         {row.ownerType === 'customer' ? (
