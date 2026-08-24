@@ -1,4 +1,5 @@
 import { useBouncingHorizontalRail } from '@/hooks/use-bouncing-horizontal-rail';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type {
     ReviewCollection,
     ReviewItem,
@@ -52,7 +53,6 @@ export function ReviewsSection({
                         {reviews.items.map((review) => (
                             <ReviewCard
                                 key={review.id}
-                                locale={locale}
                                 review={review}
                                 translations={translations}
                             />
@@ -69,11 +69,9 @@ export function ReviewsSection({
 }
 
 export function ReviewCard({
-    locale,
     review,
     translations,
 }: {
-    locale: 'ar' | 'en';
     review: ReviewItem;
     translations: ReviewTranslations;
 }) {
@@ -81,7 +79,7 @@ export function ReviewCard({
         rating: String(review.rating),
     });
     const published = review.publishedAt
-        ? new Intl.DateTimeFormat(locale === 'ar' ? 'ar-SA' : 'en-GB', {
+        ? new Intl.DateTimeFormat(DATE_LOCALE, {
               dateStyle: 'medium',
               timeZone: 'UTC',
           }).format(new Date(review.publishedAt))

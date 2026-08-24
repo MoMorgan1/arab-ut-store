@@ -13024,6 +13024,59 @@ html.admin-document {
     }
 
     /* Interactive cards and pills. */
+    /*
+     * The assistant's service cards scroll sideways rather than stacking, so a
+     * reply carrying the whole menu costs one screen instead of four.
+     *
+     * `overscroll-behavior-inline: contain` is the load-bearing line: without it
+     * a swipe that reaches the end of the row continues into the page behind the
+     * sheet, and on iOS that is the back-navigation gesture — the customer
+     * swipes the cards and leaves the store. Same reason the primary nav sets it.
+     *
+     * Logical properties throughout: the widget runs dir="rtl" in Arabic and
+     * this row must scroll from the right there without a manual reverse.
+     */
+    .chat-service-card-row {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 0.5rem;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-inline: contain;
+        scrollbar-width: none;
+        scroll-snap-type: inline proximity;
+        /*
+         * `overflow-y: hidden` clips anything drawn outside the row's box, and
+         * the cards' focus ring is drawn at `outline-offset-2`. Without this
+         * gutter the keyboard focus ring on the first and last card is sliced
+         * off — the same fix the shelf uses.
+         */
+        margin-inline: -0.25rem;
+        padding-inline: 0.25rem;
+        padding-block: 0.25rem;
+        scroll-padding-inline: 0.25rem;
+    }
+
+    .chat-service-card-row::-webkit-scrollbar {
+        display: none;
+    }
+
+    .chat-service-card-row > * {
+        scroll-snap-align: start;
+        flex: 0 0 auto;
+        /*
+         * Just under four fifths, so the next card peeks and the row reads as
+         * scrollable rather than clipped. A lone card has nothing to scroll to,
+         * so it takes the full width instead of sitting oddly short.
+         */
+        inline-size: 78%;
+    }
+
+    .chat-service-card-row > :only-child {
+        inline-size: 100%;
+    }
+
     .chat-lift {
         transition:
             transform var(--chat-dur-base) var(--chat-ease-out),

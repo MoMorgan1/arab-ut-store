@@ -11,6 +11,7 @@ import {
 
 import MyAccountLayout from '@/layouts/my-account-layout';
 import { formatAccountMoney } from '@/lib/account-money';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import { cn } from '@/lib/utils';
 import type { AccountLoyaltyPageProps } from '@/types/account';
 
@@ -26,7 +27,7 @@ export default function AccountLoyalty() {
     const props = inertia.props;
     const isAr = props.locale === 'ar';
     const BackArrow = isAr ? ArrowRight : ArrowLeft;
-    const dateFormatter = new Intl.DateTimeFormat(props.locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
     });

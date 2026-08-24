@@ -37,7 +37,7 @@ export default function AccountOrderCard({
     const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
     const status = translations.statuses[order.status];
     const action = order.action?.type ?? 'view_order';
-    const date = formatOrderDate(order.placedAt, locale);
+    const date = formatOrderDate(order.placedAt);
     const displayNumber = formatOrderNumber(order.number);
 
     const StatusIcon =

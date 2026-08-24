@@ -14,6 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type { AdminCustomerRow, AdminTranslations } from '@/types/admin';
 
 type CustomerSortKey =
@@ -42,7 +43,7 @@ export default function AdminCustomersTable({
 }: AdminCustomersTableProps) {
     const copy = adminUi.customers;
     const rows = table.getRowModel().rows;
-    const dateFormatter = new Intl.DateTimeFormat(locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',

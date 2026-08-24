@@ -7,6 +7,7 @@ import { chatChoices } from '@/lib/chat-choices';
 import { groupChatMessages } from '@/lib/chat-grouping';
 import { chatShelfItems } from '@/lib/chat-shelf';
 import { chatTopicsFor } from '@/lib/chat-topics';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type {
     AgentTurnState,
     ChatHandoffState,
@@ -474,9 +475,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                                     {new Date(
                                                         message.createdAt,
                                                     ).toLocaleTimeString(
-                                                        isEn
-                                                            ? 'en-US'
-                                                            : 'ar-SA',
+                                                        DATE_LOCALE,
                                                         {
                                                             hour: '2-digit',
                                                             minute: '2-digit',

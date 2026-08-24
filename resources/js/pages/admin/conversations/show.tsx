@@ -24,6 +24,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type {
     AdminChatMessage,
     AdminConversationDetailPageProps,
@@ -58,13 +59,13 @@ export default function AdminConversationDetailPage() {
         ? '/en/admin/conversations'
         : '/admin/conversations';
 
-    const dateFormatter = new Intl.DateTimeFormat(props.locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',
     });
 
-    const timeFormatter = new Intl.DateTimeFormat(props.locale, {
+    const timeFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',

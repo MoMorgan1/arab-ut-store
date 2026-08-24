@@ -14,6 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type { AdminOrderRow, AdminTranslations } from '@/types/admin';
 
 type SortKey = 'placed_at' | 'total' | 'order_number';
@@ -41,7 +42,7 @@ export default function AdminOrdersTable({
 }: AdminOrdersTableProps) {
     const copy = adminUi.orders;
     const rows = table.getRowModel().rows;
-    const dateFormatter = new Intl.DateTimeFormat(locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',

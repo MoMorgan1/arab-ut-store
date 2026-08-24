@@ -40,6 +40,7 @@ import {
     buildConversationsQuery,
     hasActiveConversationFilters,
 } from '@/lib/admin-conversations-query';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type {
     AdminConversationRow,
     AdminConversationsPageProps,
@@ -60,7 +61,7 @@ export default function AdminConversationsIndexPage() {
     const [queryFailed, setQueryFailed] = useState(false);
     const [search, setSearch] = useState(props.filters.q ?? '');
 
-    const dateFormatter = new Intl.DateTimeFormat(props.locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',

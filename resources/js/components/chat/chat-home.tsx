@@ -14,6 +14,7 @@ import type React from 'react';
 import { chatTopicsFor } from '@/lib/chat-topics';
 import type { ChatTopicId } from '@/lib/chat-topics';
 
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type { ChatConversationSummary } from '@/types/chat';
 
 export type ChatHomeLastMessage = {
@@ -69,7 +70,7 @@ function relativeTime(iso: string, isEn: boolean): string {
         return isEn ? `${hours} h ago` : `قبل ${hours} س`;
     }
 
-    return new Date(iso).toLocaleDateString(isEn ? 'en-US' : 'ar-SA', {
+    return new Date(iso).toLocaleDateString(DATE_LOCALE, {
         month: 'short',
         day: 'numeric',
     });

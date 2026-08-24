@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 
 import MyAccountLayout from '@/layouts/my-account-layout';
 import { formatAccountMoney } from '@/lib/account-money';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import { formatInteger } from '@/lib/money';
 import { loadOrderCredentials } from '@/lib/order-fulfillment-api';
 import type { OrderCredentials } from '@/lib/order-fulfillment-api';
@@ -35,10 +36,10 @@ export default function AccountLiveOrder() {
     const ordersUrl =
         props.accountNavigation.find((item) => item.key === 'orders')?.url ??
         props.storeShell.accountUrl;
-    const placedAt = new Intl.DateTimeFormat(
-        props.locale === 'ar' ? 'ar-SA' : 'en-GB',
-        { dateStyle: 'long', timeStyle: 'short' },
-    ).format(new Date(props.order.placedAt));
+    const placedAt = new Intl.DateTimeFormat(DATE_LOCALE, {
+        dateStyle: 'long',
+        timeStyle: 'short',
+    }).format(new Date(props.order.placedAt));
 
     function refreshStatus() {
         if (refreshing) {

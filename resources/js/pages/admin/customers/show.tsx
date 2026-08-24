@@ -25,6 +25,7 @@ import AdminCustomerStatusDialog from '@/components/admin/customers/admin-custom
 import AdminCustomerWalletAdjustDialog from '@/components/admin/customers/admin-customer-wallet-adjust-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type {
     AdminCustomerDetail,
     AdminCustomerDetailPageProps,
@@ -68,7 +69,7 @@ export default function AdminCustomerDetailPage() {
         : '/admin/customers';
     const ordersBasePath = isLocalized ? '/en/admin/orders' : '/admin/orders';
 
-    const dateFormatter = new Intl.DateTimeFormat(props.locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',

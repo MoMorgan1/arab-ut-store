@@ -13,6 +13,7 @@ import {
 import AdminBadge from '@/components/admin/admin-badge';
 import { formatAdminMoney } from '@/components/admin/admin-money';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type { AdminCustomerRow, AdminTranslations } from '@/types/admin';
 
 type CustomerSortKey =
@@ -58,7 +59,7 @@ export function getAdminCustomerColumns({
     onSortChange,
 }: CustomerColumnOptions): ColumnDef<AdminCustomerRow>[] {
     const copy = adminUi.customers;
-    const dateFormatter = new Intl.DateTimeFormat(locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',

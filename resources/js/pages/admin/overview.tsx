@@ -6,6 +6,7 @@ import AdminAttentionStrip from '@/components/admin/admin-attention-strip';
 import AdminKpiStrip from '@/components/admin/admin-kpi-strip';
 import AdminRecentOrders from '@/components/admin/admin-recent-orders';
 import AdminRevenueChart from '@/components/admin/admin-revenue-chart';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import { cn } from '@/lib/utils';
 import type { AdminOverviewPageProps } from '@/types/admin';
 
@@ -13,7 +14,7 @@ export default function AdminOverviewPage() {
     const { props } = usePage<AdminOverviewPageProps>();
     const [loadingDays, setLoadingDays] = useState<1 | 7 | 30 | null>(null);
     const copy = props.adminUi.overview;
-    const dateFormatter = new Intl.DateTimeFormat(props.locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',

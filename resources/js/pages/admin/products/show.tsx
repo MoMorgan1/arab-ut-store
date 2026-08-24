@@ -29,6 +29,7 @@ import AdminVariantPriceDialog from '@/components/admin/products/admin-variant-p
 import AdminVariantRevertDialog from '@/components/admin/products/admin-variant-revert-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { DATE_LOCALE } from '@/lib/date-locale';
 import type {
     AdminProductDetail,
     AdminProductDetailPageProps,
@@ -68,7 +69,7 @@ export default function AdminProductDetailPage() {
         ? '/en/admin/products'
         : '/admin/products';
 
-    const dateFormatter = new Intl.DateTimeFormat(props.locale, {
+    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
         timeStyle: 'short',
         timeZone: 'UTC',

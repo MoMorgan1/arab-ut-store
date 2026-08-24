@@ -21,7 +21,16 @@ export type BoldToken = {
     end?: number;
 };
 
-export type InlineToken = TextToken | BoldToken | MoneyToken;
+export type LinkToken = {
+    type: 'link';
+    href: string;
+    value: string;
+    raw: string;
+    start?: number;
+    end?: number;
+};
+
+export type InlineToken = TextToken | BoldToken | MoneyToken | LinkToken;
 
 export type ParagraphBlock = {
     type: 'paragraph';
@@ -92,6 +101,34 @@ function createMoneyRegex(): RegExp {
     return new RegExp(MONEY_REGEX_SOURCE, 'gu');
 }
 
+/**
+ * Hosts whose URLs become clickable.
+ *
+ * The assistant writes this text, so anything matching a URL pattern would
+ * otherwise become a live link authored by a language model — a phishing
+ * vector the moment a prompt injection or a hallucinated domain gets through.
+ * Only the store's own hosts are linkified; every other URL stays plain text,
+ * still readable and still copyable, but not one tap away.
+ */
+const LINKABLE_HOSTS = ['store.arab-ut.com', 'track.arab-ut.com'];
+
+// Trailing punctuation is excluded so "… on https://store.arab-ut.com." does
+// not carry the full stop into the href.
+const URL_REGEX = /https?:\/\/[^\s<>"'()]+[^\s<>"'().,،؛:!?]/gu;
+
+export function isLinkableUrl(url: string): boolean {
+    try {
+        const parsed = new URL(url);
+
+        return (
+            (parsed.protocol === 'https:' || parsed.protocol === 'http:') &&
+            LINKABLE_HOSTS.includes(parsed.hostname.toLowerCase())
+        );
+    } catch {
+        return false;
+    }
+}
+
 const BOLD_REGEX = /\*\*(.+?)\*\*/g;
 
 function mergeAdjacentTextTokens(tokens: InlineToken[]): InlineToken[] {
@@ -151,6 +188,25 @@ export function parseInlineTokens(
         return { start, end, value };
     }
 
+    function findNextLink(fromIndex: number) {
+        URL_REGEX.lastIndex = fromIndex;
+        let m = URL_REGEX.exec(text);
+
+        while (m !== null) {
+            if (isLinkableUrl(m[0])) {
+                return {
+                    start: m.index,
+                    end: m.index + m[0].length,
+                    value: m[0],
+                };
+            }
+
+            m = URL_REGEX.exec(text);
+        }
+
+        return null;
+    }
+
     function findNextBold(fromIndex: number) {
         BOLD_REGEX.lastIndex = fromIndex;
         const m = BOLD_REGEX.exec(text);
@@ -170,8 +226,9 @@ export function parseInlineTokens(
     while (currentIndex < text.length) {
         const nextBold = findNextBold(currentIndex);
         const nextMoney = findNextMoney(currentIndex);
+        const nextLink = findNextLink(currentIndex);
 
-        if (!nextBold && !nextMoney) {
+        if (!nextBold && !nextMoney && !nextLink) {
             tokens.push({
                 type: 'text',
                 value: text.slice(currentIndex),
@@ -181,11 +238,38 @@ export function parseInlineTokens(
             break;
         }
 
+        // A URL can contain digits that the money matcher would otherwise claim
+        // mid-href, so the link wins any tie on position.
+        const linkFirst =
+            nextLink !== null &&
+            (nextBold === null || nextLink.start <= nextBold.start) &&
+            (nextMoney === null || nextLink.start <= nextMoney.start);
+
         const boldFirst =
+            !linkFirst &&
             nextBold !== null &&
             (nextMoney === null || nextBold.start <= nextMoney.start);
 
-        if (boldFirst && nextBold) {
+        if (linkFirst && nextLink) {
+            if (nextLink.start > currentIndex) {
+                tokens.push({
+                    type: 'text',
+                    value: text.slice(currentIndex, nextLink.start),
+                    start: baseOffset + currentIndex,
+                    end: baseOffset + nextLink.start,
+                });
+            }
+
+            tokens.push({
+                type: 'link',
+                href: nextLink.value,
+                value: nextLink.value,
+                raw: nextLink.value,
+                start: baseOffset + nextLink.start,
+                end: baseOffset + nextLink.end,
+            });
+            currentIndex = nextLink.end;
+        } else if (boldFirst && nextBold) {
             if (nextBold.start > currentIndex) {
                 const leading = text.slice(currentIndex, nextBold.start);
                 tokens.push(

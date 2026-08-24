@@ -174,7 +174,7 @@ function validAgentTurnRow(int $conversationId, int $messageId): array
         'last_customer_message_id' => $messageId,
         'assistant_message_id' => null,
         'debounce_until' => now(),
-        'prompt_version' => 'support-v7',
+        'prompt_version' => 'support-v8',
         'attempt_count' => 0,
         'started_at' => null,
         'completed_at' => null,

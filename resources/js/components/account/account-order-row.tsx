@@ -31,7 +31,7 @@ export default function AccountOrderRow({
 
     const action = order.action?.type ?? 'view_order';
     const actionText = translations.actions[action];
-    const date = formatOrderDate(order.placedAt, locale);
+    const date = formatOrderDate(order.placedAt);
     const displayNumber = formatOrderNumber(order.number);
     const statusLabel = translations.statuses[order.status];
 
