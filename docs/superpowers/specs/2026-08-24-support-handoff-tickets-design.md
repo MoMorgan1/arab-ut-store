@@ -79,7 +79,7 @@ deliberately rather than rediscover them.
 
 | Column | Type | Notes |
 | --- | --- | --- |
-| `short_id` | `string(10)` unique, nullable until backfilled | `CHT-XXXXXX`. Backfilled for every existing row inside the migration, then made non-nullable in the same migration. |
+| `short_id` | `string(10)` unique | `CHT-XXXXXX`. Backfilled for every existing row inside the migration, then promoted to NOT NULL **on MariaDB only** — SQLite emulates a column change by rebuilding the table, which drops the triggers that are the one-open-conversation-per-owner invariant there. On SQLite the column stays nullable at the database level and the model creating hook guarantees a value. |
 | `handoff_state` | enum string, default `none` | `none`, `offered`, `requested`, `active`, `resolved`. |
 | `last_staff_message_at` | `timestamp` nullable | Drives the customer-away email decision and the inbox unread dot. |
 
@@ -333,7 +333,12 @@ No lock spans provider I/O, unchanged from Phase 2.
 - The ULID column becomes `short_id` (`CHT-4F9A2C`), monospaced, copyable.
 - New: ticket badge (`TKT-…`) when a live ticket exists, and an unread dot when
   `last_message_at > last_staff_message_at` on a conversation with a live ticket.
-- Filters gain `ticketStatus`; the `owner` filter is removed.
+- Filters gain `ticketStatus`. The `owner` filter is removed from the UI: with
+  guests excluded unconditionally, its only legal value (`customer`) is a no-op,
+  so Lane A left `filterOptions.owners` shipping a one-entry dropdown that offers
+  a choice which does not exist. Remove that option list and the `owner` prop the
+  page reads, but keep the request tolerating `?owner=...` and normalising it to
+  null, so a stale bookmark degrades instead of returning 422.
 - Search (`q`) matches `short_id`, `ticket_number`, or the full `public_id`,
   case-insensitively. It does not search message content — that needs a
   full-text index and is out of scope.

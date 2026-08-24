@@ -48,6 +48,11 @@ final readonly class BuildSbcSuggestions
             $catalog = $this->catalog->category(
                 ServiceType::Sbc,
                 $locale,
+                // Deliberately the store default and NOT the viewer's currency:
+                // present() below returns only id/title/url/image, so the price this
+                // read computes is discarded. Reviewers have flagged this as a
+                // currency leak twice; it is not one. The shelf's prices come from
+                // BuildServicePriceLabels, which converts properly.
                 (string) config('store.default_display_currency'),
                 'all',
                 'recommended',
