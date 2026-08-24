@@ -1,15 +1,24 @@
 'use no memo'; // TanStack Table's mutable instances are not React Compiler compatible.
 
 import { Head, router, usePage } from '@inertiajs/react';
-import { useCallback, useRef, useState } from 'react';
+import {
+    getCoreRowModel,
+    useReactTable,
+} from '@tanstack/react-table';
+import type { VisibilityState } from '@tanstack/react-table';
+import { Copy } from 'lucide-react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import AdminMobileTabBar from '@/components/admin/admin-mobile-tabbar';
 import AdminPasswordConfirmDialog from '@/components/admin/admin-password-confirm-dialog';
 import AdminSidebar from '@/components/admin/admin-sidebar';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import AdminCouponDrawer from '@/components/admin/coupons/admin-coupon-drawer';
+import { getAdminCouponColumns } from '@/components/admin/coupons/admin-coupons-columns';
+import type { CouponSortKey } from '@/components/admin/coupons/admin-coupons-columns';
+import AdminCouponsTable from '@/components/admin/coupons/admin-coupons-table';
+import AdminCouponsToolbar from '@/components/admin/coupons/admin-coupons-toolbar';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -20,295 +29,142 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import type {
     AdminCouponRow,
     AdminCouponsPageProps,
     AdminCouponsQueryState,
 } from '@/types/admin';
 
-type CouponFormData = {
-    code: string;
-    description_ar: string;
-    description_en: string;
-    discount_type: 'percent' | 'fixed';
-    value: string;
-    minimum_order_halalah: string;
-    maximum_discount_halalah: string;
-    usage_limit: string;
-    per_user_limit: string;
-    starts_at: string;
-    ends_at: string;
-    is_active: boolean;
-};
-
-const emptyForm: CouponFormData = {
-    code: '',
-    description_ar: '',
-    description_en: '',
-    discount_type: 'percent',
-    value: '',
-    minimum_order_halalah: '0',
-    maximum_discount_halalah: '',
-    usage_limit: '',
-    per_user_limit: '',
-    starts_at: '',
-    ends_at: '',
-    is_active: true,
-};
-
-function couponToForm(coupon: AdminCouponRow): CouponFormData {
-    return {
-        code: coupon.code,
-        description_ar: '',
-        description_en: '',
-        discount_type: coupon.discountType,
-        value: String(coupon.value),
-        minimum_order_halalah: String(coupon.minimumOrderHalalah),
-        maximum_discount_halalah:
-            coupon.maximumDiscountHalalah !== null
-                ? String(coupon.maximumDiscountHalalah)
-                : '',
-        usage_limit:
-            coupon.usageLimit !== null ? String(coupon.usageLimit) : '',
-        per_user_limit:
-            coupon.perUserLimit !== null ? String(coupon.perUserLimit) : '',
-        starts_at: coupon.startsAt ? coupon.startsAt.slice(0, 10) : '',
-        ends_at: coupon.endsAt ? coupon.endsAt.slice(0, 10) : '',
-        is_active: coupon.isActive,
-    };
-}
-
 export default function AdminCouponsPage() {
     const { props, url } = usePage<AdminCouponsPageProps>();
     const copy = props.adminUi.coupons;
-    const pathname = new URL(url, window.location.origin).pathname;
+    const isLocalized = url.startsWith('/en/admin');
+    const pathname = isLocalized ? '/en/admin/marketing/coupons' : '/admin/marketing/coupons';
 
-    const [dialogMode, setDialogMode] = useState<'create' | 'edit' | null>(
-        null,
-    );
-    const [editingCoupon, setEditingCoupon] = useState<AdminCouponRow | null>(
-        null,
-    );
-    const [formData, setFormData] = useState<CouponFormData>(emptyForm);
-    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-    const [saving, setSaving] = useState(false);
-    const [saveMessage, setSaveMessage] = useState<{
-        type: 'success' | 'error';
-        text: string;
-    } | null>(null);
+    // State for drawer
+    const [drawerMode, setDrawerMode] = useState<'create' | 'edit' | null>(null);
+    const [editingCoupon, setEditingCoupon] = useState<AdminCouponRow | null>(null);
 
-    const [toggleCoupon, setToggleCoupon] = useState<AdminCouponRow | null>(
-        null,
-    );
+    // State for toggle status dialog
+    const [toggleCoupon, setToggleCoupon] = useState<AdminCouponRow | null>(null);
     const [toggleTargetActive, setToggleTargetActive] = useState(false);
     const [toggling, setToggling] = useState(false);
-    const [toggleMessage, setToggleMessage] = useState<{
+
+    // State for duplicate dialog
+    const [duplicateCoupon, setDuplicateCoupon] = useState<AdminCouponRow | null>(null);
+    const [duplicateCode, setDuplicateCode] = useState('');
+    const [duplicating, setDuplicating] = useState(false);
+
+    // Notifications
+    const [actionMessage, setActionMessage] = useState<{
         type: 'success' | 'error';
         text: string;
     } | null>(null);
 
+    // Password confirmation seam
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
     const pendingAction = useRef<(() => void) | null>(null);
 
-    const visitCoupons = useCallback(
-        (filters: AdminCouponsQueryState) => {
-            router.get(
-                pathname,
-                Object.fromEntries(
-                    Object.entries(filters).filter(
-                        ([, v]) => v !== null && v !== undefined,
-                    ),
-                ),
-                {
-                    preserveScroll: true,
-                    preserveState: true,
-                    replace: true,
-                },
-            );
-        },
-        [pathname],
+    // Column visibility
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+
+    const currentSort: CouponSortKey =
+        (props.filters.sort as CouponSortKey) || 'created_at';
+    const currentDirection = props.filters.direction || 'desc';
+
+    const isFiltered = Boolean(
+        props.filters.search ||
+        (props.filters.status && props.filters.status !== 'all') ||
+        props.filters.scope ||
+        props.filters.discount_type,
     );
 
-    function openCreate() {
-        setFormData(emptyForm);
-        setFormErrors({});
-        setSaveMessage(null);
-        setEditingCoupon(null);
-        setDialogMode('create');
-    }
+    const visitCoupons = useCallback(
+        (newFilters: Partial<AdminCouponsQueryState>) => {
+            const merged = { ...props.filters, ...newFilters };
+            const cleanParams: Record<string, string | number> = {};
 
-    function openEdit(coupon: AdminCouponRow) {
-        setFormData(couponToForm(coupon));
-        setFormErrors({});
-        setSaveMessage(null);
-        setEditingCoupon(coupon);
-        setDialogMode('edit');
-    }
-
-    function closeDialog() {
-        if (saving) {
-            return;
-        }
-
-        setDialogMode(null);
-    }
-
-    function handleFieldChange(
-        field: keyof CouponFormData,
-        value: string | boolean,
-    ) {
-        setFormData((prev) => ({ ...prev, [field]: value }));
-        setFormErrors((prev) => {
-            const next = { ...prev };
-            delete next[field];
-
-            return next;
-        });
-    }
-
-    async function submitForm() {
-        setSaving(true);
-        setSaveMessage(null);
-        setFormErrors({});
-
-        const isEdit = dialogMode === 'edit' && editingCoupon !== null;
-        const url = isEdit
-            ? `/admin/api/marketing/coupons/${editingCoupon.id}`
-            : '/admin/api/marketing/coupons';
-        const method = isEdit ? 'PUT' : 'POST';
-
-        const payload: Record<string, unknown> = {
-            code: formData.code.toUpperCase(),
-            description_ar: formData.description_ar || null,
-            description_en: formData.description_en || null,
-            discount_type: formData.discount_type,
-            value: Number(formData.value),
-            minimum_order_halalah: Number(
-                formData.minimum_order_halalah || '0',
-            ),
-            maximum_discount_halalah: formData.maximum_discount_halalah
-                ? Number(formData.maximum_discount_halalah)
-                : null,
-            usage_limit: formData.usage_limit
-                ? Number(formData.usage_limit)
-                : null,
-            per_user_limit: formData.per_user_limit
-                ? Number(formData.per_user_limit)
-                : null,
-            starts_at: formData.starts_at || null,
-            ends_at: formData.ends_at || null,
-            is_active: formData.is_active,
-        };
-
-        try {
-            const res = await fetch(url, {
-                body: JSON.stringify(payload),
-                credentials: 'same-origin',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-XSRF-TOKEN': getCsrfToken(),
-                },
-                method,
-            });
-
-            if (res.status === 422) {
-                const json = (await res.json()) as {
-                    errors: Record<string, string[]>;
-                };
-                const mapped: Record<string, string> = {};
-
-                for (const [k, v] of Object.entries(json.errors)) {
-                    mapped[k] = v[0] ?? '';
+            for (const [k, v] of Object.entries(merged)) {
+                if (v !== null && v !== undefined && v !== '') {
+                    cleanParams[k] = v;
                 }
-
-                setFormErrors(mapped);
-                setSaveMessage({
-                    type: 'error',
-                    text: copy.messages.validationError,
-                });
-            } else if (res.status === 423 || res.status === 403) {
-                setSaveMessage({
-                    type: 'error',
-                    text: copy.messages.forbiddenError,
-                });
-            } else if (!res.ok) {
-                setSaveMessage({
-                    type: 'error',
-                    text: copy.messages.genericError,
-                });
-            } else {
-                setSaveMessage({
-                    type: 'success',
-                    text: isEdit
-                        ? copy.messages.updated
-                        : copy.messages.created,
-                });
-                setDialogMode(null);
-                router.reload({ only: ['coupons', 'pagination', 'counts'] });
             }
-        } catch {
-            setSaveMessage({ type: 'error', text: copy.messages.networkError });
-        } finally {
-            setSaving(false);
-        }
-    }
 
-    function requestSave() {
-        pendingAction.current = submitForm;
-        setPasswordModalOpen(true);
-    }
+            router.get(pathname, cleanParams, {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            });
+        },
+        [pathname, props.filters],
+    );
 
-    function requestToggle(coupon: AdminCouponRow, targetActive: boolean) {
+    const handleSortChange = (sortKey: CouponSortKey, direction: 'asc' | 'desc') => {
+        visitCoupons({ sort: sortKey, direction, page: 1 });
+    };
+
+    const handleResetFilters = () => {
+        visitCoupons({
+            search: null,
+            status: null,
+            scope: null,
+            discount_type: null,
+            page: 1,
+        });
+    };
+
+    const openCreateDrawer = () => {
+        setEditingCoupon(null);
+        setDrawerMode('create');
+    };
+
+    const openEditDrawer = (coupon: AdminCouponRow) => {
+        setEditingCoupon(coupon);
+        setDrawerMode('edit');
+    };
+
+    const openToggleDialog = (coupon: AdminCouponRow, targetActive: boolean) => {
         setToggleCoupon(coupon);
         setToggleTargetActive(targetActive);
-        setToggleMessage(null);
-    }
+    };
 
-    async function confirmToggle() {
-        if (!toggleCoupon) {
-            return;
-        }
+    const confirmToggle = () => {
+        if (!toggleCoupon) return;
+        const coupon = toggleCoupon;
+        const targetActive = toggleTargetActive;
+        setToggleCoupon(null);
 
-        const execute = async () => {
+        pendingAction.current = async () => {
             setToggling(true);
-            setToggleMessage(null);
+            setActionMessage(null);
+            const targetUrl = props.statusUrlTemplate.replace('__ID__', coupon.id);
 
             try {
-                const res = await fetch(
-                    `/admin/api/marketing/coupons/${toggleCoupon.id}/status`,
-                    {
-                        body: JSON.stringify({ is_active: toggleTargetActive }),
-                        credentials: 'same-origin',
-                        headers: {
-                            Accept: 'application/json',
-                            'Content-Type': 'application/json',
-                            'X-XSRF-TOKEN': getCsrfToken(),
-                        },
-                        method: 'POST',
+                const res = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-XSRF-TOKEN': getCsrfToken(),
                     },
-                );
+                    body: JSON.stringify({ is_active: targetActive }),
+                    credentials: 'same-origin',
+                });
 
                 if (!res.ok) {
-                    setToggleMessage({
+                    setActionMessage({
                         type: 'error',
                         text: copy.messages.genericError,
                     });
                 } else {
-                    setToggleCoupon(null);
-                    router.reload({
-                        only: ['coupons', 'pagination', 'counts'],
+                    setActionMessage({
+                        type: 'success',
+                        text: copy.messages.toggled,
                     });
+                    router.reload();
                 }
             } catch {
-                setToggleMessage({
+                setActionMessage({
                     type: 'error',
                     text: copy.messages.networkError,
                 });
@@ -317,9 +173,94 @@ export default function AdminCouponsPage() {
             }
         };
 
-        pendingAction.current = execute;
         setPasswordModalOpen(true);
-    }
+    };
+
+    const openDuplicateDialog = (coupon: AdminCouponRow) => {
+        setDuplicateCoupon(coupon);
+        setDuplicateCode('');
+        setDuplicateDialogOpen(true);
+    };
+
+    const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+
+    const confirmDuplicate = () => {
+        if (!duplicateCoupon) return;
+        const coupon = duplicateCoupon;
+        setDuplicateDialogOpen(false);
+
+        pendingAction.current = async () => {
+            setDuplicating(true);
+            setActionMessage(null);
+            const targetUrl = props.duplicateUrlTemplate.replace('__ID__', coupon.id);
+
+            try {
+                const res = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-XSRF-TOKEN': getCsrfToken(),
+                    },
+                    body: JSON.stringify({
+                        code: duplicateCode.trim() ? duplicateCode.toUpperCase().trim() : null,
+                    }),
+                    credentials: 'same-origin',
+                });
+
+                if (!res.ok) {
+                    setActionMessage({
+                        type: 'error',
+                        text: copy.messages.genericError,
+                    });
+                } else {
+                    setActionMessage({
+                        type: 'success',
+                        text: copy.messages.duplicated,
+                    });
+                    router.reload();
+                }
+            } catch {
+                setActionMessage({
+                    type: 'error',
+                    text: copy.messages.networkError,
+                });
+            } finally {
+                setDuplicating(false);
+            }
+        };
+
+        setPasswordModalOpen(true);
+    };
+
+    // Columns configuration
+    const columns = useMemo(
+        () =>
+            getAdminCouponColumns({
+                adminUi: props.adminUi,
+                currentSort,
+                currentDirection,
+                locale: props.locale,
+                onSortChange: handleSortChange,
+                onEdit: openEditDrawer,
+                onToggle: openToggleDialog,
+                onDuplicate: openDuplicateDialog,
+                permissions: props.permissions,
+                showUrlTemplate: props.showUrlTemplate,
+            }),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [props.adminUi, currentSort, currentDirection, props.locale, props.permissions, props.showUrlTemplate],
+    );
+
+    const table = useReactTable({
+        data: props.coupons,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+        onColumnVisibilityChange: setColumnVisibility,
+        state: {
+            columnVisibility,
+        },
+    });
 
     return (
         <div className="admin-document-layout" dir="ltr">
@@ -332,120 +273,93 @@ export default function AdminCouponsPage() {
                 logoutUrl={props.logoutUrl}
                 navigation={props.adminNavigation}
             />
+
             <main className="admin-main">
                 <article className="space-y-6" dir={props.direction}>
-                    <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="flex flex-col gap-1">
-                            <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
-                                {copy.title}
-                            </h1>
-                            <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
-                                {copy.description}
-                            </p>
-                        </div>
-                        {props.permissions.includes('marketing.manage') ? (
-                            <Button
-                                className="shrink-0"
-                                onClick={openCreate}
-                                type="button"
-                            >
-                                {copy.createButton}
-                            </Button>
-                        ) : null}
+                    {/* Header */}
+                    <header className="flex flex-col gap-1 border-b border-border pb-5">
+                        <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
+                            {copy.title}
+                        </h1>
+                        <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
+                            {copy.description}
+                        </p>
                     </header>
 
-                    {saveMessage ? (
+                    {actionMessage ? (
                         <Alert
                             variant={
-                                saveMessage.type === 'error'
+                                actionMessage.type === 'error'
                                     ? 'destructive'
                                     : 'default'
                             }
                         >
-                            <AlertTitle>{saveMessage.text}</AlertTitle>
+                            <AlertDescription>{actionMessage.text}</AlertDescription>
                         </Alert>
                     ) : null}
 
-                    <CouponsTable
-                        copy={copy}
-                        coupons={props.coupons}
-                        onEdit={openEdit}
-                        onToggle={requestToggle}
+                    {/* Toolbar with tabs, search, filters & create button */}
+                    <AdminCouponsToolbar
+                        adminUi={props.adminUi}
+                        counts={props.counts}
+                        filterOptions={props.filterOptions}
+                        filters={props.filters}
+                        isNavigating={false}
+                        onCreateClick={openCreateDrawer}
+                        onFilterChange={visitCoupons}
+                        onResetFilters={handleResetFilters}
                         permissions={props.permissions}
+                        table={table}
                     />
 
+                    {/* Table (Desktop) / Mobile Cards (Mobile) */}
+                    <AdminCouponsTable
+                        adminUi={props.adminUi}
+                        isFiltered={isFiltered}
+                        isNavigating={false}
+                        locale={props.locale}
+                        onDuplicate={openDuplicateDialog}
+                        onEdit={openEditDrawer}
+                        onResetFilters={handleResetFilters}
+                        onToggle={openToggleDialog}
+                        permissions={props.permissions}
+                        showUrlTemplate={props.showUrlTemplate}
+                        table={table}
+                    />
+
+                    {/* Pagination */}
                     <CouponsPagination
-                        copy={props.adminUi.orders}
-                        onPageChange={(page) =>
-                            visitCoupons({ ...props.filters, page })
-                        }
+                        adminUi={props.adminUi}
+                        onPageChange={(page) => visitCoupons({ page })}
                         pagination={props.pagination}
                     />
                 </article>
             </main>
+
             <AdminMobileTabBar
                 adminUi={props.adminUi}
                 current="marketingCoupons"
                 navigation={props.adminNavigation}
             />
 
-            {/* Create / Edit Dialog */}
-            <Dialog
-                open={dialogMode !== null}
-                onOpenChange={(open) => !open && closeDialog()}
-            >
-                <DialogContent className="max-w-lg" dir="ltr">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {dialogMode === 'edit'
-                                ? copy.editTitle
-                                : copy.createTitle}
-                        </DialogTitle>
-                    </DialogHeader>
-                    <CouponForm
-                        copy={copy}
-                        data={formData}
-                        errors={formErrors}
-                        onChange={handleFieldChange}
-                    />
-                    {saveMessage ? (
-                        <Alert
-                            variant={
-                                saveMessage.type === 'error'
-                                    ? 'destructive'
-                                    : 'default'
-                            }
-                        >
-                            <AlertDescription>
-                                {saveMessage.text}
-                            </AlertDescription>
-                        </Alert>
-                    ) : null}
-                    <DialogFooter>
-                        <Button
-                            disabled={saving}
-                            onClick={closeDialog}
-                            type="button"
-                            variant="outline"
-                        >
-                            {copy.cancelButton}
-                        </Button>
-                        <Button
-                            disabled={saving}
-                            onClick={requestSave}
-                            type="button"
-                        >
-                            {saving ? copy.savingButton : copy.saveButton}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Create / Edit Drawer */}
+            <AdminCouponDrawer
+                adminUi={props.adminUi}
+                categories={props.categories}
+                createUrl={props.createUrl}
+                editingCoupon={editingCoupon}
+                mode={drawerMode}
+                onClose={() => setDrawerMode(null)}
+                products={props.products}
+                serviceTypes={props.serviceTypes}
+                updateUrlTemplate={props.updateUrlTemplate}
+            />
 
-            {/* Toggle Confirmation Dialog */}
+            {/* Toggle Pause / Resume Confirmation Dialog */}
             {toggleCoupon ? (
                 <Dialog
-                    open={toggleCoupon !== null}
                     onOpenChange={(open) => !open && setToggleCoupon(null)}
+                    open={toggleCoupon !== null}
                 >
                     <DialogContent dir="ltr">
                         <DialogHeader>
@@ -466,15 +380,9 @@ export default function AdminCouponsPage() {
                                       )}
                             </DialogDescription>
                         </DialogHeader>
-                        {toggleMessage ? (
-                            <Alert variant="destructive">
-                                <AlertDescription>
-                                    {toggleMessage.text}
-                                </AlertDescription>
-                            </Alert>
-                        ) : null}
-                        <DialogFooter>
+                        <DialogFooter className="flex flex-row items-center justify-end gap-2 pt-2">
                             <Button
+                                className="min-h-11"
                                 disabled={toggling}
                                 onClick={() => setToggleCoupon(null)}
                                 type="button"
@@ -483,6 +391,9 @@ export default function AdminCouponsPage() {
                                 {copy.cancelButton}
                             </Button>
                             <Button
+                                className={`min-h-11 ${
+                                    toggleTargetActive ? '' : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                                }`}
                                 disabled={toggling}
                                 onClick={confirmToggle}
                                 type="button"
@@ -494,427 +405,101 @@ export default function AdminCouponsPage() {
                 </Dialog>
             ) : null}
 
-            <AdminPasswordConfirmDialog
-                open={passwordModalOpen}
-                onOpenChange={(open) => {
-                    setPasswordModalOpen(open);
+            {/* Duplicate Dialog */}
+            {duplicateCoupon ? (
+                <Dialog
+                    onOpenChange={(open) => !open && setDuplicateDialogOpen(false)}
+                    open={duplicateDialogOpen}
+                >
+                    <DialogContent dir="ltr">
+                        <DialogHeader>
+                            <DialogTitle>{copy.duplicateTitle}</DialogTitle>
+                            <DialogDescription>
+                                {copy.duplicateDescription.replace(':code', duplicateCoupon.code)}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex flex-col gap-1.5 py-2">
+                            <Label htmlFor="list-dup-code">{copy.duplicateCodeLabel}</Label>
+                            <Input
+                                className="min-h-11 font-mono uppercase"
+                                id="list-dup-code"
+                                maxLength={24}
+                                onChange={(e) => setDuplicateCode(e.target.value.toUpperCase())}
+                                placeholder={copy.duplicateCodePlaceholder}
+                                value={duplicateCode}
+                            />
+                        </div>
+                        <DialogFooter className="flex flex-row items-center justify-end gap-2 pt-2">
+                            <Button
+                                className="min-h-11"
+                                disabled={duplicating}
+                                onClick={() => setDuplicateDialogOpen(false)}
+                                type="button"
+                                variant="outline"
+                            >
+                                {copy.cancelButton}
+                            </Button>
+                            <Button
+                                className="min-h-11 gap-1.5"
+                                disabled={duplicating}
+                                onClick={confirmDuplicate}
+                                type="button"
+                            >
+                                <Copy aria-hidden="true" className="size-4" />
+                                <span>{duplicating ? copy.duplicating : copy.confirmDuplicate}</span>
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            ) : null}
 
-                    if (!open) {
-                        pendingAction.current = null;
-                    }
-                }}
+            {/* Password Confirmation Seam */}
+            <AdminPasswordConfirmDialog
+                confirmButtonText={copy.confirmPasswordButton}
+                confirmingButtonText={copy.confirmingPassword}
+                description={copy.passwordModalDescription}
                 onConfirmed={() => {
                     setPasswordModalOpen(false);
                     pendingAction.current?.();
                     pendingAction.current = null;
                 }}
-                title={copy.passwordModalTitle}
-                description={copy.passwordModalDescription}
+                onOpenChange={(open) => {
+                    setPasswordModalOpen(open);
+                    if (!open) {
+                        pendingAction.current = null;
+                    }
+                }}
+                open={passwordModalOpen}
                 passwordLabel={copy.passwordLabel}
                 passwordPlaceholder={copy.passwordPlaceholder}
-                confirmButtonText={copy.confirmPasswordButton}
-                confirmingButtonText={copy.confirmingPassword}
-                cancelButtonText={props.adminUi.common.cancel}
+                title={copy.passwordModalTitle}
             />
         </div>
     );
 }
 
-function CouponsTable({
-    copy,
-    coupons,
-    onEdit,
-    onToggle,
-    permissions,
-}: {
-    copy: AdminCouponsPageProps['adminUi']['coupons'];
-    coupons: AdminCouponRow[];
-    onEdit: (coupon: AdminCouponRow) => void;
-    onToggle: (coupon: AdminCouponRow, targetActive: boolean) => void;
-    permissions: string[];
-}) {
-    const canManage = permissions.includes('marketing.manage');
-
-    if (coupons.length === 0) {
-        return (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-                {copy.noCoupons}
-            </p>
-        );
-    }
-
-    return (
-        <div className="overflow-x-auto rounded-md border">
-            <table className="w-full text-sm">
-                <thead className="bg-muted/50">
-                    <tr>
-                        {Object.values(copy.columns).map((label) => (
-                            <th
-                                className="px-4 py-3 text-start text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-                                key={label}
-                            >
-                                {label}
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                    {coupons.map((coupon) => (
-                        <tr className="hover:bg-muted/30" key={coupon.id}>
-                            <td className="px-4 py-3 font-mono font-semibold">
-                                {coupon.code}
-                            </td>
-                            <td className="px-4 py-3">
-                                <Badge variant="outline">
-                                    {coupon.discountType === 'percent'
-                                        ? copy.typePercentBadge.replace(
-                                              ':value',
-                                              String(coupon.value),
-                                          )
-                                        : copy.typeFixedBadge.replace(
-                                              ':value',
-                                              String(coupon.value / 100),
-                                          )}
-                                </Badge>
-                            </td>
-                            <td className="px-4 py-3 text-muted-foreground">
-                                {coupon.startsAt === null &&
-                                coupon.endsAt === null
-                                    ? copy.always
-                                    : coupon.endsAt === null
-                                      ? copy.from.replace(
-                                            ':date',
-                                            coupon.startsAt?.slice(0, 10) ?? '',
-                                        )
-                                      : coupon.startsAt === null
-                                        ? copy.until.replace(
-                                              ':date',
-                                              coupon.endsAt.slice(0, 10),
-                                          )
-                                        : copy.window
-                                              .replace(
-                                                  ':from',
-                                                  coupon.startsAt.slice(0, 10),
-                                              )
-                                              .replace(
-                                                  ':until',
-                                                  coupon.endsAt.slice(0, 10),
-                                              )}
-                            </td>
-                            <td className="px-4 py-3 text-muted-foreground">
-                                {coupon.usageLimit === null
-                                    ? `${coupon.usedCount} / ${copy.unlimited}`
-                                    : copy.usageOf
-                                          .replace(
-                                              ':used',
-                                              String(coupon.usedCount),
-                                          )
-                                          .replace(
-                                              ':limit',
-                                              String(coupon.usageLimit),
-                                          )}
-                            </td>
-                            <td className="px-4 py-3">
-                                <Badge
-                                    variant={
-                                        coupon.isActive
-                                            ? 'default'
-                                            : 'secondary'
-                                    }
-                                >
-                                    {coupon.isActive
-                                        ? copy.active
-                                        : copy.inactive}
-                                </Badge>
-                            </td>
-                            <td className="px-4 py-3">
-                                <div className="flex items-center gap-2">
-                                    {canManage ? (
-                                        <>
-                                            <Button
-                                                className="h-8 text-xs"
-                                                onClick={() => onEdit(coupon)}
-                                                size="sm"
-                                                type="button"
-                                                variant="outline"
-                                            >
-                                                {copy.editButton}
-                                            </Button>
-                                            <Button
-                                                className="h-8 text-xs"
-                                                onClick={() =>
-                                                    onToggle(
-                                                        coupon,
-                                                        !coupon.isActive,
-                                                    )
-                                                }
-                                                size="sm"
-                                                type="button"
-                                                variant={
-                                                    coupon.isActive
-                                                        ? 'destructive'
-                                                        : 'outline'
-                                                }
-                                            >
-                                                {coupon.isActive
-                                                    ? copy.deactivateTitle
-                                                    : copy.activateTitle}
-                                            </Button>
-                                        </>
-                                    ) : null}
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
-}
-
-function CouponForm({
-    copy,
-    data,
-    errors,
-    onChange,
-}: {
-    copy: AdminCouponsPageProps['adminUi']['coupons'];
-    data: CouponFormData;
-    errors: Record<string, string>;
-    onChange: (field: keyof CouponFormData, value: string | boolean) => void;
-}) {
-    return (
-        <div
-            className="flex flex-col gap-4 overflow-y-auto py-2"
-            style={{ maxHeight: '60vh' }}
-        >
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="coupon-code">{copy.codeLabel}</Label>
-                <Input
-                    id="coupon-code"
-                    placeholder={copy.codePlaceholder}
-                    value={data.code}
-                    onChange={(e) =>
-                        onChange('code', e.target.value.toUpperCase())
-                    }
-                    className="font-mono uppercase"
-                    aria-describedby="coupon-code-help"
-                />
-                <p
-                    className="text-xs text-muted-foreground"
-                    id="coupon-code-help"
-                >
-                    {copy.codeHelp}
-                </p>
-                {errors.code ? (
-                    <p className="text-xs text-destructive">{errors.code}</p>
-                ) : null}
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="coupon-type">{copy.typeLabel}</Label>
-                <Select
-                    value={data.discount_type}
-                    onValueChange={(v) => onChange('discount_type', v)}
-                >
-                    <SelectTrigger id="coupon-type">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="percent">
-                            {copy.typePercent}
-                        </SelectItem>
-                        <SelectItem value="fixed">{copy.typeFixed}</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="coupon-value">{copy.valueLabel}</Label>
-                <Input
-                    id="coupon-value"
-                    inputMode="numeric"
-                    min="1"
-                    type="number"
-                    value={data.value}
-                    onChange={(e) => onChange('value', e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                    {data.discount_type === 'percent'
-                        ? copy.valuePercentHelp
-                        : copy.valueFixedHelp}
-                </p>
-                {errors.value ? (
-                    <p className="text-xs text-destructive">{errors.value}</p>
-                ) : null}
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="coupon-min-order">
-                    {copy.minimumOrderLabel}
-                </Label>
-                <Input
-                    id="coupon-min-order"
-                    inputMode="numeric"
-                    min="0"
-                    type="number"
-                    value={data.minimum_order_halalah}
-                    onChange={(e) =>
-                        onChange('minimum_order_halalah', e.target.value)
-                    }
-                />
-                <p className="text-xs text-muted-foreground">
-                    {copy.minimumOrderHelp}
-                </p>
-            </div>
-
-            {data.discount_type === 'percent' ? (
-                <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="coupon-max-discount">
-                        {copy.maximumDiscountLabel}
-                    </Label>
-                    <Input
-                        id="coupon-max-discount"
-                        inputMode="numeric"
-                        min="0"
-                        type="number"
-                        value={data.maximum_discount_halalah}
-                        onChange={(e) =>
-                            onChange('maximum_discount_halalah', e.target.value)
-                        }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                        {copy.maximumDiscountHelp}
-                    </p>
-                </div>
-            ) : null}
-
-            <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="coupon-usage-limit">
-                        {copy.usageLimitLabel}
-                    </Label>
-                    <Input
-                        id="coupon-usage-limit"
-                        inputMode="numeric"
-                        min="1"
-                        type="number"
-                        value={data.usage_limit}
-                        onChange={(e) =>
-                            onChange('usage_limit', e.target.value)
-                        }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                        {copy.usageLimitHelp}
-                    </p>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="coupon-per-user-limit">
-                        {copy.perUserLimitLabel}
-                    </Label>
-                    <Input
-                        id="coupon-per-user-limit"
-                        inputMode="numeric"
-                        min="1"
-                        type="number"
-                        value={data.per_user_limit}
-                        onChange={(e) =>
-                            onChange('per_user_limit', e.target.value)
-                        }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                        {copy.perUserLimitHelp}
-                    </p>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="coupon-starts-at">
-                        {copy.startsAtLabel}
-                    </Label>
-                    <Input
-                        id="coupon-starts-at"
-                        type="date"
-                        value={data.starts_at}
-                        onChange={(e) => onChange('starts_at', e.target.value)}
-                    />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="coupon-ends-at">{copy.endsAtLabel}</Label>
-                    <Input
-                        id="coupon-ends-at"
-                        type="date"
-                        value={data.ends_at}
-                        onChange={(e) => onChange('ends_at', e.target.value)}
-                    />
-                    {errors.ends_at ? (
-                        <p className="text-xs text-destructive">
-                            {errors.ends_at}
-                        </p>
-                    ) : null}
-                </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-                <Checkbox
-                    id="coupon-is-active"
-                    checked={data.is_active}
-                    onCheckedChange={(checked) =>
-                        onChange('is_active', checked === true)
-                    }
-                />
-                <Label htmlFor="coupon-is-active">{copy.isActiveLabel}</Label>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="coupon-description-ar">
-                    {copy.descriptionArLabel}
-                </Label>
-                <Input
-                    id="coupon-description-ar"
-                    dir="rtl"
-                    value={data.description_ar}
-                    onChange={(e) => onChange('description_ar', e.target.value)}
-                />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="coupon-description-en">
-                    {copy.descriptionEnLabel}
-                </Label>
-                <Input
-                    id="coupon-description-en"
-                    dir="ltr"
-                    value={data.description_en}
-                    onChange={(e) => onChange('description_en', e.target.value)}
-                />
-            </div>
-        </div>
-    );
-}
-
 function CouponsPagination({
-    copy,
+    adminUi,
     onPageChange,
     pagination,
 }: {
-    copy: AdminCouponsPageProps['adminUi']['orders'];
+    adminUi: AdminTranslations;
     onPageChange: (page: number) => void;
     pagination: AdminCouponsPageProps['pagination'];
 }) {
+    const copy = adminUi.orders;
     if (pagination.lastPage <= 1) {
         return null;
     }
 
     return (
         <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
-            <span>
-                {copy.page} {pagination.currentPage} {copy.of}{' '}
-                {pagination.lastPage}
+            <span className="tabular-nums">
+                {copy.page} {pagination.currentPage} {copy.of} {pagination.lastPage}
             </span>
             <div className="flex gap-2">
                 <Button
+                    className="min-h-11"
                     disabled={pagination.currentPage <= 1}
                     onClick={() => onPageChange(pagination.currentPage - 1)}
                     size="sm"
@@ -924,6 +509,7 @@ function CouponsPagination({
                     {copy.previous}
                 </Button>
                 <Button
+                    className="min-h-11"
                     disabled={pagination.currentPage >= pagination.lastPage}
                     onClick={() => onPageChange(pagination.currentPage + 1)}
                     size="sm"
@@ -939,6 +525,5 @@ function CouponsPagination({
 
 function getCsrfToken(): string {
     const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-
     return match ? decodeURIComponent(match[1]) : '';
 }

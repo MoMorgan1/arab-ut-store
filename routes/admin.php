@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\CategoriesController;
 use App\Http\Controllers\Admin\CategoryVisibilityController;
 use App\Http\Controllers\Admin\ConversationDetailController;
 use App\Http\Controllers\Admin\ConversationsController;
+use App\Http\Controllers\Admin\CouponDetailController;
 use App\Http\Controllers\Admin\CouponsController;
 use App\Http\Controllers\Admin\CreateCouponController;
 use App\Http\Controllers\Admin\CreatePromotionController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Admin\CustomerDetailController;
 use App\Http\Controllers\Admin\CustomersController;
 use App\Http\Controllers\Admin\CustomerStatusController;
 use App\Http\Controllers\Admin\CustomerWalletAdjustController;
+use App\Http\Controllers\Admin\DuplicateCouponController;
 use App\Http\Controllers\Admin\LoyaltyController;
 use App\Http\Controllers\Admin\LoyaltyTierController;
 use App\Http\Controllers\Admin\MoreController;
@@ -288,6 +290,14 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $coupons->defaults('locale', $locale);
                 }
 
+                $couponDetail = Route::get('/marketing/coupons/{publicId}', CouponDetailController::class)
+                    ->middleware('can:marketing.view')
+                    ->name('marketing.coupons.show');
+
+                if ($locale !== null) {
+                    $couponDetail->defaults('locale', $locale);
+                }
+
                 $createCoupon = Route::post('/api/marketing/coupons', CreateCouponController::class)
                     ->middleware(['password.confirm', 'can:marketing.manage'])
                     ->name('marketing.coupons.store');
@@ -310,6 +320,14 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $toggleCoupon->defaults('locale', $locale);
+                }
+
+                $duplicateCoupon = Route::post('/api/marketing/coupons/{publicId}/duplicate', DuplicateCouponController::class)
+                    ->middleware(['password.confirm', 'can:marketing.manage'])
+                    ->name('marketing.coupons.duplicate');
+
+                if ($locale !== null) {
+                    $duplicateCoupon->defaults('locale', $locale);
                 }
 
                 $promotions = Route::get('/marketing/promotions', PromotionsController::class)
