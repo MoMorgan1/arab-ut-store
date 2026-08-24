@@ -294,4 +294,39 @@ describe('service cards in the message list', () => {
         expect(screen.queryByText(/يبدأ من/)).toBeNull();
         expect(screen.queryByText(/From/)).toBeNull();
     });
+
+    /**
+     * The cards were a vertical stack, so a reply carrying the whole menu cost
+     * four screens on a phone. They scroll sideways now. The row must keep its
+     * own overflow: a swipe that escapes into the page behind the sheet is the
+     * iOS back gesture, and the customer leaves the store mid-conversation.
+     */
+    it('lays the cards out in one horizontally scrolling row', () => {
+        renderList([
+            assistantMessage({
+                cards: { version: 'cards.v1', items: [card, sbcCard] },
+            }),
+        ]);
+
+        const row = screen.getByTestId('chat-service-card-row');
+
+        expect(row.className).toContain('chat-service-card-row');
+        expect(row.className).not.toContain('flex-col');
+        expect(screen.getAllByTestId('chat-service-card')).toHaveLength(2);
+        // Both cards are children of the one scrolling row, not separate stacks.
+        screen.getAllByTestId('chat-service-card').forEach((cardEl) => {
+            expect(cardEl.parentElement).toBe(row);
+        });
+    });
+
+    it('still renders a single card inside the row', () => {
+        renderList([
+            assistantMessage({ cards: { version: 'cards.v1', items: [card] } }),
+        ]);
+
+        const row = screen.getByTestId('chat-service-card-row');
+
+        expect(screen.getAllByTestId('chat-service-card')).toHaveLength(1);
+        expect(row.children).toHaveLength(1);
+    });
 });

@@ -54,6 +54,28 @@ function renderInlineTokens(
             );
         }
 
+        if (token.type === 'link') {
+            // dir="ltr" for the same reason money carries it: a URL inside an
+            // RTL paragraph otherwise reorders around its punctuation and the
+            // customer reads a host that is not what was written.
+            //
+            // The href is already restricted to the store's own hosts by the
+            // parser, and rel guards the tab it opens — the text is written by
+            // a language model, so neither is optional.
+            return (
+                <a
+                    key={idx}
+                    href={token.href}
+                    dir="ltr"
+                    data-testid="chat-link"
+                    rel="noopener noreferrer nofollow"
+                    className="font-semibold break-all text-[var(--chat-accent-ink)] underline underline-offset-2"
+                >
+                    {token.value}
+                </a>
+            );
+        }
+
         if (token.type === 'money') {
             const start = token.start ?? 0;
             const end = token.end ?? start + token.raw.length;

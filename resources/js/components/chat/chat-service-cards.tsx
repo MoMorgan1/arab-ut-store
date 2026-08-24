@@ -34,7 +34,10 @@ export function ChatServiceCards({
     const Arrow = isEn ? ArrowRight : ArrowLeft;
 
     return (
-        <div className="mt-2 flex flex-col gap-2">
+        <div
+            className="chat-service-card-row mt-2"
+            data-testid="chat-service-card-row"
+        >
             {cards.map((card, index) => {
                 const price = servicePrices[card.id];
                 let priceLabel: string | null = null;
