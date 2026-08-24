@@ -16,7 +16,7 @@ final readonly class RequestEmailChange
     {
         $email = Str::lower(trim($candidate));
 
-        if ($email === Str::lower($user->email) || User::query()
+        if (($user->email !== null && $email === Str::lower($user->email)) || User::query()
             ->whereRaw('LOWER(email) = ?', [$email])
             ->whereKeyNot($user->id)
             ->exists()) {

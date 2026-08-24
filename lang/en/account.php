@@ -218,6 +218,10 @@ return [
         'phone_attribute' => 'phone number',
         'email_taken' => 'This email address is linked to another account.',
         'email_attribute' => 'email address',
+        'add_email_prompt_title' => 'Add your email address',
+        'add_email_prompt_desc' => 'You need an email address to receive receipts and sign in with email.',
+        'add_email_prompt_action' => 'Add email',
+        'add_email_prompt_dismiss' => 'Dismiss prompt',
     ],
     'security' => [
         'title' => 'Security',

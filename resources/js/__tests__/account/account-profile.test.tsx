@@ -239,6 +239,37 @@ it('renders masked phone and resend control after successful request and allows 
     ).not.toBeInTheDocument();
 });
 
+it('renders the add email prompt when user has no email and supports dismissal and triggering email edit', () => {
+    const baseProps = profileProps();
+    page.props = {
+        ...baseProps,
+        profile: {
+            ...baseProps.profile,
+            email: {
+                value: null,
+                verified: false,
+                pending: null,
+            },
+        },
+    };
+
+    render(<AccountProfile />);
+
+    const prompt = screen.getByTestId('add-email-prompt');
+    expect(prompt).toBeVisible();
+    expect(screen.getByText('Add your email address')).toBeVisible();
+
+    // Trigger edit via prompt CTA
+    const triggerBtn = screen.getByTestId('trigger-add-email');
+    fireEvent.click(triggerBtn);
+    expect(screen.getByLabelText('New email address')).toBeVisible();
+
+    // Dismiss prompt
+    const dismissBtn = screen.getByTestId('dismiss-email-prompt');
+    fireEvent.click(dismissBtn);
+    expect(screen.queryByTestId('add-email-prompt')).not.toBeInTheDocument();
+});
+
 function profileProps() {
     return {
         locale: 'en',

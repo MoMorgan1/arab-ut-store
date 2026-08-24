@@ -47,13 +47,13 @@ final class SecurityController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User, 401);
 
-        if ($user->email_verified_at === null) {
+        if ($user->email === null || $user->email_verified_at === null) {
             throw ValidationException::withMessages([
                 'email' => trans('account.security.reset_link_needs_email'),
             ]);
         }
 
-        Password::broker()->sendResetLink(['email' => $user->email]);
+        Password::broker()->sendResetLink(['email' => (string) $user->email]);
 
         Inertia::flash('toast', [
             'type' => 'success',

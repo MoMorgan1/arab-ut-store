@@ -75,9 +75,19 @@ final class EligibleOrderSpend
     /**
      * Whether a single order is fully paid under the shared rule: wallet usage
      * plus settled gateway payments must cover the order total.
+     *
+     * Imported Salla orders deliberately DO count toward lifetime spend above:
+     * a customer who spent thousands before the migration keeps the tier they
+     * earned, and their rate on future orders reflects it. They must never
+     * settle, though - settlement is what triggers accrual, and paying cashback
+     * on history the store already fulfilled elsewhere would mint real money.
      */
     public function fullySettled(Order $order): bool
     {
+        if ($order->channel === 'salla_import') {
+            return false;
+        }
+
         $settledPayment = (int) $order->payments()
             ->whereIn('status', $this->settledStatusValues())
             ->sum('captured_halalah');

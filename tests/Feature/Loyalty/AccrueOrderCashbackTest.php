@@ -129,3 +129,16 @@ test('a second call returns the existing entry and leaves the balance untouched'
         ->and(WalletEntry::query()->where('reference', "cashback:{$order->id}")->count())->toBe(1)
         ->and(WalletAccount::query()->sole()->balance_halalah)->toBe(200);
 });
+
+test('imported orders with channel salla_import accrue no cashback', function (): void {
+    $user = User::factory()->create();
+    $order = loyaltyPaidOrder($user, [
+        'channel' => 'salla_import',
+        'total_halalah' => 50_000,
+        'payment_halalah' => 50_000,
+    ]);
+
+    expect(app(AccrueOrderCashback::class)->execute($order))->toBeNull()
+        ->and(WalletEntry::query()->count())->toBe(0)
+        ->and(WalletAccount::query()->count())->toBe(0);
+});

@@ -40,7 +40,7 @@ final readonly class AccrueOrderCashback
             return null;
         }
 
-        if ($order->currency !== 'SAR' || $order->completed_at === null) {
+        if ($order->channel === 'salla_import' || $order->currency !== 'SAR' || $order->completed_at === null) {
             return null;
         }
 
