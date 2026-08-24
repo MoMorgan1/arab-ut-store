@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\ChatNumber;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -150,7 +151,7 @@ function createAgentRuntimeLegacyChatTables(): void
 
 function seedAgentRuntimeLegacyConversation(): int
 {
-    return DB::table('chat_conversations')->insertGetId([
+    $attributes = [
         'public_id' => (string) Str::ulid(),
         'user_id' => null,
         'guest_key' => str_repeat('c', 64),
@@ -159,7 +160,18 @@ function seedAgentRuntimeLegacyConversation(): int
         'last_message_at' => now(),
         'created_at' => now(),
         'updated_at' => now(),
-    ]);
+    ];
+
+    // These fixtures run against two schemas: the live one, where the
+    // support-handoff migration has promoted short_id to NOT NULL on MariaDB,
+    // and a rebuilt legacy schema that predates the column entirely. A raw
+    // insert bypasses the model hook that would generate the value, so it is
+    // supplied here — but only where the column exists.
+    if (Schema::hasColumn('chat_conversations', 'short_id')) {
+        $attributes['short_id'] = ChatNumber::generate();
+    }
+
+    return DB::table('chat_conversations')->insertGetId($attributes);
 }
 
 function seedAgentRuntimeLegacyMessage(
