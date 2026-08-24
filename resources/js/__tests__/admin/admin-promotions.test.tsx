@@ -51,12 +51,21 @@ function samplePromotionRow(
         nameEn: 'Summer deal',
         badgeAr: 'خصم 20%',
         badgeEn: '20% off',
+        mechanic: 'item',
         scope: 'all',
         categoryName: null,
         categoryId: null,
         serviceType: null,
         discountType: 'percent',
         value: 20,
+        buyQuantity: null,
+        getQuantity: null,
+        maxApplications: null,
+        discountTarget: null,
+        qualifyingScope: null,
+        bundlePriceHalalah: null,
+        appliesToPromotedItems: false,
+        components: [],
         startsAt: null,
         endsAt: '2026-12-31T00:00:00Z',
         isActive: true,
@@ -80,6 +89,28 @@ const samplePromotions: AdminPromotionRow[] = [
         startsAt: '2026-08-01T00:00:00Z',
         endsAt: null,
         isActive: false,
+    }),
+    samplePromotionRow({
+        id: '01KPROMO000000000000000003',
+        nameAr: 'باقة توفير',
+        nameEn: 'Bundle deal',
+        mechanic: 'bundle',
+        bundlePriceHalalah: 8000,
+        components: [
+            {
+                id: 'c1',
+                productId: '01KPROD000000000000000001',
+                productName: 'Product Alpha',
+                quantity: 2,
+            },
+            {
+                id: 'c2',
+                productId: '01KPROD000000000000000002',
+                productName: 'Product Beta',
+                quantity: 1,
+            },
+        ],
+        isActive: true,
     }),
 ];
 
@@ -123,12 +154,33 @@ function defaultProps(): AdminPromotionsPageProps {
             currentPage: 1,
             lastPage: 1,
             perPage: 15,
-            total: 2,
+            total: 3,
             from: 1,
-            to: 2,
+            to: 3,
         },
-        counts: { total: 2, active: 1 },
+        counts: {
+            total: 3,
+            active: 2,
+            scheduled: 0,
+            paused: 1,
+            ended: 0,
+        },
         categories: [{ id: '01KCATEGORY0000000000000001', name: 'Icons' }],
+        products: [
+            {
+                id: '01KPROD000000000000000001',
+                name: 'Product Alpha',
+                priceHalalah: 5000,
+            },
+            {
+                id: '01KPROD000000000000000002',
+                name: 'Product Beta',
+                priceHalalah: 3000,
+            },
+        ],
+        createUrl: '/admin/api/marketing/promotions',
+        updateUrlTemplate: '/admin/api/marketing/promotions/__ID__',
+        statusUrlTemplate: '/admin/api/marketing/promotions/__ID__/status',
         filters: {
             search: null,
             sort: 'created_at',
@@ -167,14 +219,19 @@ describe('AdminPromotionsPage', () => {
         expect(screen.getByText('Summer deal')).toBeVisible();
         expect(screen.getByText('عرض الصيف')).toBeVisible();
         expect(screen.getByText('20%')).toBeVisible();
-        expect(screen.getByText('Until 2026-12-31')).toBeVisible();
-        expect(screen.getByText('Everything')).toBeVisible();
+        // More than one promotion in the fixture ends on this date, and the page
+        // renders a desktop row and a mobile card for each, so assert presence
+        // rather than uniqueness.
+        expect(screen.getAllByText('Until 2026-12-31').length).toBeGreaterThan(
+            0,
+        );
+        expect(screen.getAllByText('Everything').length).toBeGreaterThan(0);
         expect(screen.getByText('Fixed off')).toBeVisible();
         expect(screen.getByText('15.00 SAR')).toBeVisible();
         expect(screen.getByText('From 2026-08-01')).toBeVisible();
         expect(screen.getByText('rivals')).toBeVisible();
-        expect(screen.getByText('Active')).toBeVisible();
-        expect(screen.getByText('Inactive')).toBeVisible();
+        expect(screen.getAllByText('Active').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Inactive').length).toBeGreaterThan(0);
     });
 
     it('opens an empty create dialog and submits an all-scope payload directly', async () => {
@@ -204,7 +261,7 @@ describe('AdminPromotionsPage', () => {
         fireEvent.change(within(dialog).getByLabelText(/^Arabic name$/), {
             target: { value: 'عرض جديد' },
         });
-        fireEvent.change(within(dialog).getByLabelText(/^Value$/), {
+        fireEvent.change(within(dialog).getByLabelText(/Value/), {
             target: { value: '25' },
         });
         fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
@@ -253,7 +310,7 @@ describe('AdminPromotionsPage', () => {
         expect(within(dialog).getByLabelText(/^English name$/)).toHaveValue(
             'Fixed off',
         );
-        expect(within(dialog).getByLabelText(/^Value$/)).toHaveValue(15);
+        expect(within(dialog).getByLabelText(/Value/)).toHaveValue(15);
 
         fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
 
@@ -274,38 +331,66 @@ describe('AdminPromotionsPage', () => {
         expect(body.category).toBeNull();
     });
 
-    it('prefills the edit dialog from the selected row and sends a PUT with scoped fields', async () => {
+    it('creates a bundle promotion with components and computes savings dynamically', async () => {
         const fetchMock = vi.fn().mockResolvedValue(
             new Response(
                 JSON.stringify({
-                    data: { id: 'x', isActive: true, nameEn: 'Summer deal' },
+                    data: {
+                        id: 'bundle-1',
+                        isActive: true,
+                        nameEn: 'Pro Bundle',
+                    },
                 }),
-                { status: 200 },
+                { status: 201 },
             ),
         );
         vi.stubGlobal('fetch', fetchMock);
 
         render(<AdminPromotionsPage />);
 
-        fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Create promotion' }),
+        );
 
         const dialog = await screen.findByRole('dialog', {
-            name: englishAdminUi.promotions.editTitle,
+            name: englishAdminUi.promotions.createTitle,
         });
 
-        expect(within(dialog).getByLabelText(/^English name$/)).toHaveValue(
-            'Summer deal',
+        // Click the Bundle mechanic card
+        fireEvent.click(
+            within(dialog).getByText(
+                englishAdminUi.promotions.mechanics.bundle.title,
+            ),
         );
-        expect(within(dialog).getByLabelText(/^Value$/)).toHaveValue(20);
+
+        expect(
+            within(dialog).getByText(englishAdminUi.promotions.componentsLabel),
+        ).toBeVisible();
+
+        fireEvent.change(within(dialog).getByLabelText(/^English name$/), {
+            target: { value: 'Pro Bundle' },
+        });
+        fireEvent.change(within(dialog).getByLabelText(/^Arabic name$/), {
+            target: { value: 'باقة المحترفين' },
+        });
+        fireEvent.change(within(dialog).getByLabelText(/Bundle price/), {
+            target: { value: '70.00' },
+        });
 
         fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith(
-                '/admin/api/marketing/promotions/01KPROMO000000000000000001',
-                expect.objectContaining({ method: 'PUT' }),
+                '/admin/api/marketing/promotions',
+                expect.objectContaining({ method: 'POST' }),
             );
         });
+
+        const [, init] = fetchMock.mock.calls[0];
+        const body = JSON.parse(init.body);
+
+        expect(body.mechanic).toBe('bundle');
+        expect(body.bundle_price_halalah).toBe(7000);
     });
 
     it('toggles a promotion to inactive through the confirmation flow', async () => {

@@ -17,6 +17,7 @@ final readonly class AdminPromotionsPage
     /**
      * @param  array{
      *     search?: ?string,
+     *     status?: ?string,
      *     sort?: string,
      *     direction?: string,
      *     per_page?: int,
@@ -28,6 +29,11 @@ final readonly class AdminPromotionsPage
     {
         $data = $this->promotionsQuery->paginate($filters);
 
+        $currentRouteName = (string) request()->route()?->getName();
+        $prefix = str_starts_with($currentRouteName, 'localized.admin.')
+            ? 'localized.admin.'
+            : 'admin.';
+
         return [
             'locale' => $locale,
             'direction' => $locale === 'en' ? 'ltr' : 'rtl',
@@ -38,8 +44,15 @@ final readonly class AdminPromotionsPage
             'counts' => [
                 'total' => $data['totalCount'],
                 'active' => $data['activeCount'],
+                'scheduled' => $data['scheduledCount'],
+                'paused' => $data['pausedCount'],
+                'ended' => $data['endedCount'],
             ],
             'categories' => $this->categories(),
+            'products' => $this->products(),
+            'createUrl' => route($prefix.'marketing.promotions.store', absolute: false),
+            'updateUrlTemplate' => route($prefix.'marketing.promotions.update', ['publicId' => '__ID__'], absolute: false),
+            'statusUrlTemplate' => route($prefix.'marketing.promotions.status.store', ['publicId' => '__ID__'], absolute: false),
             'filters' => $filters,
         ];
     }
@@ -56,6 +69,35 @@ final readonly class AdminPromotionsPage
             fn (stdClass $row): array => [
                 'id' => (string) $row->public_id,
                 'name' => (string) $row->name_en,
+            ],
+            $rows->all(),
+        ));
+    }
+
+    /** @return list<array{id: string, name: string, priceHalalah: int}> */
+    private function products(): array
+    {
+        $effectivePriceSubquery = DB::table('product_variants')
+            ->selectRaw('MIN(COALESCE(admin_price_halalah, sale_price_halalah, price_halalah))')
+            ->whereColumn('product_id', 'products.id')
+            ->where('is_active', true)
+            ->whereRaw('COALESCE(admin_price_halalah, sale_price_halalah, price_halalah) > 0');
+
+        $rows = DB::table('products')
+            ->select(['public_id', 'name_en'])
+            ->selectSub($effectivePriceSubquery, 'price_halalah')
+            ->where('is_visible', true)
+            ->whereNull('archived_at')
+            ->whereNull('admin_hidden_at')
+            ->orderBy('name_en')
+            ->orderBy('id')
+            ->get();
+
+        return array_values(array_map(
+            fn (stdClass $row): array => [
+                'id' => (string) $row->public_id,
+                'name' => (string) $row->name_en,
+                'priceHalalah' => (int) ($row->price_halalah ?? 0),
             ],
             $rows->all(),
         ));

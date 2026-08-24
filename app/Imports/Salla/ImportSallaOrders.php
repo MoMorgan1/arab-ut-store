@@ -30,6 +30,8 @@ final class ImportSallaOrders
      *     created: int,
      *     skipped: int,
      *     unmatched_customer: int,
+     *     skipped_not_completed: int,
+     *     skipped_zero_total: int,
      *     unrecognised_statuses: int,
      *     unrecognised_status_list: list<string>,
      *     batch_id: ?string
@@ -71,6 +73,8 @@ final class ImportSallaOrders
         $createdCount = 0;
         $skippedCount = 0;
         $unmatchedCustomerCount = 0;
+        $skippedNotCompletedCount = 0;
+        $skippedZeroTotalCount = 0;
         $unrecognisedStatusCount = 0;
         /** @var list<string> $unrecognisedStatusList */
         $unrecognisedStatusList = [];
@@ -87,6 +91,8 @@ final class ImportSallaOrders
             &$createdCount,
             &$skippedCount,
             &$unmatchedCustomerCount,
+            &$skippedNotCompletedCount,
+            &$skippedZeroTotalCount,
             &$unrecognisedStatusCount,
             &$unrecognisedStatusList,
             $dryRun
@@ -107,6 +113,12 @@ final class ImportSallaOrders
             } elseif ($result['status'] === 'skipped_unmatched_customer') {
                 $skippedCount++;
                 $unmatchedCustomerCount++;
+            } elseif ($result['status'] === 'skipped_not_completed') {
+                $skippedCount++;
+                $skippedNotCompletedCount++;
+            } elseif ($result['status'] === 'skipped_zero_total') {
+                $skippedCount++;
+                $skippedZeroTotalCount++;
             } elseif ($result['status'] === 'skipped_duplicate') {
                 $skippedCount++;
             }
@@ -156,6 +168,8 @@ final class ImportSallaOrders
             'created' => $createdCount,
             'skipped' => $skippedCount,
             'unmatched_customer' => $unmatchedCustomerCount,
+            'skipped_not_completed' => $skippedNotCompletedCount,
+            'skipped_zero_total' => $skippedZeroTotalCount,
             'unrecognised_statuses' => $unrecognisedStatusCount,
             'unrecognised_status_list' => $unrecognisedStatusList,
             'batch_id' => null,
@@ -182,7 +196,7 @@ final class ImportSallaOrders
 
     /**
      * @param  list<array<string, string>>  $rows
-     * @return array{status: 'created'|'skipped_duplicate'|'skipped_unmatched_customer', unrecognised_status: ?string}
+     * @return array{status: 'created'|'skipped_duplicate'|'skipped_unmatched_customer'|'skipped_not_completed'|'skipped_zero_total', unrecognised_status: ?string}
      */
     private function processOrder(string $orderNumber, array $rows, bool $dryRun): array
     {
@@ -220,10 +234,46 @@ final class ImportSallaOrders
             ];
         }
 
-        // 3. Status mapping
+        // 3. Status mapping.
+        //
+        // Owner decision: only orders that actually completed are imported, and
+        // they all land as Completed. Cancelled, failed, refunded and still-in-
+        // progress orders are skipped rather than rewritten, because marking them
+        // finished would count refunds and failures as real sales - and imported
+        // spend feeds lifetime totals, so it would inflate loyalty tiers too.
         $statusMapping = SallaStatusMapper::map($firstRow['status'], $firstRow['payment_status']);
-        $orderStatus = $statusMapping['status'];
         $unrecognisedStatus = $statusMapping['isUnrecognised'] ? $statusMapping['originalStatus'] : null;
+
+        $wasPaid = mb_strtolower(trim((string) $firstRow['payment_status'])) === 'paid';
+        $isFailure = in_array(
+            $statusMapping['status'],
+            [OrderStatus::Cancelled, OrderStatus::Refunded],
+            true,
+        );
+
+        // Cancelled, failed and refunded orders never come across. Everything
+        // else does if the customer either got it or paid for it: a large slice
+        // of the export sits in "awaiting review" simply because that is where
+        // the old workflow left it, and most of those were paid - skipping them
+        // would erase real revenue from the history and from lifetime spend.
+        if ($isFailure || (! $wasPaid && $statusMapping['status'] !== OrderStatus::Completed)) {
+            return [
+                'status' => 'skipped_not_completed',
+                'unrecognised_status' => $unrecognisedStatus,
+            ];
+        }
+
+        $orderStatus = OrderStatus::Completed;
+
+        // Zero-value orders are test rows and the coin-buying flow the owner ran
+        // when he was purchasing coins FROM customers - money moving the other
+        // way, not a sale. Neither belongs in the sales history.
+        if (MoneyParser::parse($firstRow['cart_total']) === 0) {
+            return [
+                'status' => 'skipped_zero_total',
+                'unrecognised_status' => null,
+            ];
+        }
 
         // 4. Currency
         $currency = trim($firstRow['currency']);
@@ -231,9 +281,9 @@ final class ImportSallaOrders
 
         // 5. Build items and calculate totals
         $orderDate = $firstRow['order_date'] !== '' ? $this->parseTimestamp($firstRow['order_date']) : now();
-        $isPaid = strtolower(trim($firstRow['payment_status'])) === 'paid'
-            || str_contains($firstRow['payment_status'], 'تم الدفع')
-            || $orderStatus === OrderStatus::Completed;
+        // Only completed orders reach this point, so they are all treated as paid
+        // and completed; the guard above already rejected everything else.
+        $isPaid = true;
 
         $itemsData = [];
         $totalItemsSubtotal = 0;
@@ -318,7 +368,6 @@ final class ImportSallaOrders
                 $orderPaymentHalalah,
                 $orderTotalHalalah,
                 $orderDate,
-                $isPaid,
                 $itemsData,
             ): void {
                 $order = new Order([
@@ -333,9 +382,9 @@ final class ImportSallaOrders
                     'payment_halalah' => $orderPaymentHalalah,
                     'total_halalah' => $orderTotalHalalah,
                     'placed_at' => $orderDate,
-                    'paid_at' => $isPaid ? $orderDate : null,
-                    'completed_at' => $orderStatus === OrderStatus::Completed ? $orderDate : null,
-                    'cancelled_at' => $orderStatus === OrderStatus::Cancelled ? $orderDate : null,
+                    'paid_at' => $orderDate,
+                    'completed_at' => $orderDate,
+                    'cancelled_at' => null,
                 ]);
                 $order->channel = 'salla_import';
                 $order->created_at = $orderDate;

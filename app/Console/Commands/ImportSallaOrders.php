@@ -44,6 +44,8 @@ final class ImportSallaOrders extends Command
             'Created Orders: '.$report['created'],
             'Skipped: '.$report['skipped'],
             'Unmatched Customers: '.$report['unmatched_customer'],
+            'Skipped - not completed: '.$report['skipped_not_completed'],
+            'Skipped - zero value: '.$report['skipped_zero_total'],
             'Unrecognised Statuses: '.$report['unrecognised_statuses'],
         ]);
 
