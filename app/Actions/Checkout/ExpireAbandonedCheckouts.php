@@ -2,9 +2,13 @@
 
 namespace App\Actions\Checkout;
 
+use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Enums\WalletEntryType;
+use App\Loyalty\Support\WalletLedgerWriter;
 use App\Models\Order;
+use App\Models\WalletEntry;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -31,6 +35,10 @@ final class ExpireAbandonedCheckouts
      * holding a coupon reservation a little longer.
      */
     public const GRACE_HOURS = 24;
+
+    public function __construct(
+        private readonly WalletLedgerWriter $walletLedgerWriter,
+    ) {}
 
     /** @return int the number of orders cancelled */
     public function execute(): int
@@ -67,9 +75,7 @@ final class ExpireAbandonedCheckouts
                 return 0;
             }
 
-            // Never cancel an order whose money actually arrived. A payment that
-            // settled while the reconciler was behind would otherwise be thrown
-            // away here, which is the one outcome worse than a stuck coupon.
+            // Never cancel an order whose money actually arrived.
             $settled = $locked->payments()
                 ->whereIn('status', [
                     PaymentStatus::Paid->value,
@@ -83,12 +89,77 @@ final class ExpireAbandonedCheckouts
                 return 0;
             }
 
+            // A local payment row only reports what WE recorded. If an invoice
+            // was raised at the gateway the customer may have paid it while a
+            // webhook was lost, and reconciliation only ever runs from a
+            // controller - nothing scheduled re-checks it. Cancelling such an
+            // order would charge the customer and deliver nothing, and a later
+            // reconcile cannot rescue it, because it only transitions orders
+            // that are still PendingPayment. Leave these alone rather than
+            // guess: a stuck coupon hold is far cheaper than a stranded payment.
+            $hasGatewayInvoice = $locked->payments()
+                ->whereNotNull('provider_payment_id')
+                ->exists();
+
+            if ($hasGatewayInvoice) {
+                return 0;
+            }
+
+            // PlaceOrder debits the wallet at placement whenever any balance is
+            // applied - not only when it covers the whole order - so a
+            // part-wallet order being cancelled here has real customer money
+            // against it. Give it back in the same transaction as the
+            // cancellation, or this job quietly destroys balances.
+            $this->creditWalletBack($locked);
+
             $locked->forceFill([
                 'status' => OrderStatus::Cancelled,
                 'cancelled_at' => now(),
             ])->save();
 
+            // Items follow the order, as both the reconciler and the admin
+            // transition do; otherwise they sit at pending_payment underneath a
+            // cancelled order.
+            $locked->items()->update(['status' => OrderItemStatus::Cancelled->value]);
+
             return 1;
         });
+    }
+
+    private function creditWalletBack(Order $order): void
+    {
+        $walletHalalah = (int) $order->wallet_halalah;
+
+        if ($walletHalalah <= 0) {
+            return;
+        }
+
+        $reference = "order-wallet-expired:{$order->id}";
+
+        if ($this->walletLedgerWriter->lockedEntryByReference($reference) instanceof WalletEntry) {
+            return;
+        }
+
+        $account = $this->walletLedgerWriter->lockAccountFor((int) $order->user_id);
+
+        // Re-check after taking the account lock, the way RefundPaylinkOrder
+        // does: two runs racing on the same order must not credit twice.
+        if ($this->walletLedgerWriter->lockedEntryByReference($reference) instanceof WalletEntry) {
+            return;
+        }
+
+        $this->walletLedgerWriter->append($account, [
+            'type' => WalletEntryType::Refund,
+            'amount_halalah' => $walletHalalah,
+            'balance_delta_halalah' => $walletHalalah,
+            'order_id' => $order->id,
+            'refund_id' => null,
+            'created_by_user_id' => null,
+            'reference' => $reference,
+            'metadata' => [
+                'order_number' => $order->order_number,
+                'reason' => 'checkout_expired',
+            ],
+        ]);
     }
 }

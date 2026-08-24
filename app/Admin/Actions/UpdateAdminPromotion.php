@@ -50,22 +50,37 @@ final class UpdateAdminPromotion
                 'category_id' => $this->categoryId($data),
                 'service_type' => isset($data['service_type']) && is_string($data['service_type'])
                     ? $data['service_type']
-                    : null,
+                    : $promotion->service_type,
                 'discount_type' => $discountType,
                 'value' => $value,
-                'buy_quantity' => isset($data['buy_quantity']) && $data['buy_quantity'] !== '' ? (int) $data['buy_quantity'] : null,
-                'get_quantity' => isset($data['get_quantity']) && $data['get_quantity'] !== '' ? (int) $data['get_quantity'] : null,
-                'max_applications' => isset($data['max_applications']) && $data['max_applications'] !== '' ? (int) $data['max_applications'] : null,
+
+                // Every field below keeps its stored value when the key is
+                // absent. Resetting them to null on a partial update was a real
+                // hazard: the engine reads a null buy/get as 1 and a null
+                // max_applications as UNCAPPED, so editing a promotion's name
+                // would have silently turned "buy 3 get 1, max 1" into
+                // "buy 1 get 1, unlimited" - every second item free, whole cart.
+                'buy_quantity' => isset($data['buy_quantity']) && $data['buy_quantity'] !== ''
+                    ? (int) $data['buy_quantity']
+                    : $promotion->buy_quantity,
+                'get_quantity' => isset($data['get_quantity']) && $data['get_quantity'] !== ''
+                    ? (int) $data['get_quantity']
+                    : $promotion->get_quantity,
+                'max_applications' => isset($data['max_applications']) && $data['max_applications'] !== ''
+                    ? (int) $data['max_applications']
+                    : $promotion->max_applications,
                 'discount_target' => isset($data['discount_target']) && is_string($data['discount_target'])
                     ? $data['discount_target']
-                    : Promotion::TARGET_CHEAPEST,
+                    : ($promotion->discount_target ?? Promotion::TARGET_CHEAPEST),
                 'qualifying_scope' => isset($data['qualifying_scope']) && is_string($data['qualifying_scope'])
                     ? $data['qualifying_scope']
-                    : null,
-                'bundle_price_halalah' => isset($data['bundle_price_halalah']) && $data['bundle_price_halalah'] !== '' ? (int) $data['bundle_price_halalah'] : null,
-                'applies_to_promoted_items' => (bool) ($data['applies_to_promoted_items'] ?? false),
-                'starts_at' => isset($data['starts_at']) ? Carbon::parse((string) $data['starts_at'])->utc() : null,
-                'ends_at' => isset($data['ends_at']) ? Carbon::parse((string) $data['ends_at'])->utc() : null,
+                    : $promotion->qualifying_scope,
+                'bundle_price_halalah' => isset($data['bundle_price_halalah']) && $data['bundle_price_halalah'] !== ''
+                    ? (int) $data['bundle_price_halalah']
+                    : $promotion->bundle_price_halalah,
+                'applies_to_promoted_items' => (bool) ($data['applies_to_promoted_items'] ?? $promotion->applies_to_promoted_items),
+                'starts_at' => isset($data['starts_at']) ? Carbon::parse((string) $data['starts_at'])->utc() : $promotion->starts_at,
+                'ends_at' => isset($data['ends_at']) ? Carbon::parse((string) $data['ends_at'])->utc() : $promotion->ends_at,
                 'is_active' => (bool) ($data['is_active'] ?? $promotion->is_active),
             ]);
 

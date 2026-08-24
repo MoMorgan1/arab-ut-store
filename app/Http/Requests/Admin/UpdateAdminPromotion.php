@@ -46,8 +46,11 @@ final class UpdateAdminPromotion extends FormRequest
             ],
             'discount_type' => ['nullable', 'string', Rule::in(['percent', 'fixed'])],
             'value' => ['nullable', 'integer'],
-            'buy_quantity' => ['nullable', 'integer', 'min:1'],
-            'get_quantity' => ['nullable', 'integer', 'min:1'],
+            // Required for nth_item: the engine reads a missing buy/get as 1,
+            // so an omitted pair silently becomes "buy 1 get 1" rather than
+            // the terms the admin meant to set.
+            'buy_quantity' => ['nullable', 'integer', 'min:1', 'required_if:mechanic,'.Promotion::MECHANIC_NTH_ITEM],
+            'get_quantity' => ['nullable', 'integer', 'min:1', 'required_if:mechanic,'.Promotion::MECHANIC_NTH_ITEM],
             'max_applications' => ['nullable', 'integer', 'min:1'],
             'discount_target' => ['nullable', 'string', Rule::in([Promotion::TARGET_CHEAPEST, Promotion::TARGET_MOST_EXPENSIVE])],
             'qualifying_scope' => ['nullable', 'string', Rule::in([

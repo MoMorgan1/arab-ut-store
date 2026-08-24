@@ -212,6 +212,49 @@ test('promotion create requests validate every rule boundary', function (array $
     'unknown discount type' => [promotionPayload(['discount_type' => 'bogo']), 'discount_type'],
 ]);
 
+test('editing a promotion does not silently strip its limits into an unlimited offer', function (): void {
+    $admin = adminPromotionsActor(UserRole::Admin);
+
+    $promotion = Promotion::query()->create([
+        'public_id' => (string) Str::ulid(),
+        'name_ar' => 'عرض محدود',
+        'name_en' => 'Limited offer',
+        'scope' => Promotion::SCOPE_ALL,
+        'mechanic' => Promotion::MECHANIC_NTH_ITEM,
+        'buy_quantity' => 3,
+        'get_quantity' => 1,
+        'max_applications' => 1,
+        'discount_target' => Promotion::TARGET_MOST_EXPENSIVE,
+        'qualifying_scope' => Promotion::QUALIFYING_SCOPE_SAME_CATEGORY,
+        'discount_type' => 'percent',
+        'value' => 50,
+        'is_active' => true,
+    ]);
+
+    // A partial update - fixing a typo in the name - must not reset the terms.
+    // The engine reads a null buy/get as 1 and a null max_applications as
+    // uncapped, so losing them turns "buy 3 get 1, max 1" into
+    // "buy 1 get 1, unlimited": every second item free, across the whole cart.
+    $this->actingAs($admin)
+        ->putJson("/admin/api/marketing/promotions/{$promotion->public_id}", [
+            'name_ar' => 'عرض محدود',
+            'name_en' => 'Limited offer (fixed)',
+            'scope' => Promotion::SCOPE_ALL,
+            'discount_type' => 'percent',
+            'value' => 50,
+        ])
+        ->assertOk();
+
+    $fresh = $promotion->fresh();
+
+    expect($fresh->name_en)->toBe('Limited offer (fixed)')
+        ->and($fresh->buy_quantity)->toBe(3)
+        ->and($fresh->get_quantity)->toBe(1)
+        ->and($fresh->max_applications)->toBe(1)
+        ->and($fresh->discount_target)->toBe(Promotion::TARGET_MOST_EXPENSIVE)
+        ->and($fresh->qualifying_scope)->toBe(Promotion::QUALIFYING_SCOPE_SAME_CATEGORY);
+});
+
 test('confirmed admin can create an nth_item promotion', function (): void {
     $admin = adminPromotionsActor(UserRole::Admin);
 

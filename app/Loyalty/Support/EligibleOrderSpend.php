@@ -36,7 +36,7 @@ final class EligibleOrderSpend
     public function lifetime(int $userId, ?int $excludingOrderId = null): int
     {
         $query = Order::query()
-            ->select(['id', 'total_halalah', 'wallet_halalah'])
+            ->select(['id', 'total_halalah', 'wallet_halalah', 'channel'])
             ->where('user_id', $userId)
             ->where('currency', 'SAR')
             ->whereNotNull('completed_at');
@@ -62,7 +62,14 @@ final class EligibleOrderSpend
             $wallet = (int) $order->getAttribute('wallet_halalah');
             $settledPayment = (int) ($order->getAttribute('settled_payment_halalah') ?? 0);
 
-            if ($wallet + $settledPayment < $total) {
+            // Imported Salla orders carry no payment rows and no wallet usage -
+            // the money was taken on the old platform - so the coverage check
+            // below would score every one of them zero and reset long-standing
+            // customers to the bottom tier. The importer only writes orders that
+            // were completed or paid, so they are settled by construction.
+            $isImported = $order->getAttribute('channel') === 'salla_import';
+
+            if (! $isImported && $wallet + $settledPayment < $total) {
                 return 0;
             }
 
@@ -76,7 +83,8 @@ final class EligibleOrderSpend
      * Whether a single order is fully paid under the shared rule: wallet usage
      * plus settled gateway payments must cover the order total.
      *
-     * Imported Salla orders deliberately DO count toward lifetime spend above:
+     * Imported Salla orders DO count toward lifetime spend above - the check
+     * there special-cases them, because they carry no payments to satisfy it:
      * a customer who spent thousands before the migration keeps the tier they
      * earned, and their rate on future orders reflects it. They must never
      * settle, though - settlement is what triggers accrual, and paying cashback

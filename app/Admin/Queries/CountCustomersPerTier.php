@@ -78,7 +78,8 @@ final class CountCustomersPerTier
             ->selectRaw('
                 SUM(
                     CASE
-                        WHEN (orders.wallet_halalah + COALESCE(payments_sum.captured_halalah, 0)) >= orders.total_halalah
+                        WHEN orders.channel = \'salla_import\'
+                            OR (orders.wallet_halalah + COALESCE(payments_sum.captured_halalah, 0)) >= orders.total_halalah
                         THEN CASE
                             WHEN orders.total_halalah > COALESCE(refunds_sum.completed_refund_halalah, 0)
                             THEN orders.total_halalah - COALESCE(refunds_sum.completed_refund_halalah, 0)

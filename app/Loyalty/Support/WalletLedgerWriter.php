@@ -20,6 +20,12 @@ final class WalletLedgerWriter
      * sequence allocation and balance updates. Creates a zero-balance account
      * when none exists yet; a race on creation is resolved by the unique
      * user_id index plus the caller's transaction retry.
+     *
+     * Impure by nature: taking the row lock changes what subsequent reads in the
+     * same transaction can see, which is exactly why callers re-check for a
+     * racing entry after calling this.
+     *
+     * @phpstan-impure
      */
     public function lockAccountFor(int $userId): WalletAccount
     {
