@@ -1139,6 +1139,15 @@ export type AdminTranslations = {
         of: string;
         owner: string;
         ownerCustomer: string;
+        allTicketStatuses: string;
+        filterTicketStatus: string;
+        ticketOpen: string;
+        ticketResolved: string;
+        ticketClosed: string;
+        ticket: string;
+        chat: string;
+        unreadDot: string;
+        guestNotice: string;
         ownerGuest: string;
         page: string;
         perPage: string;
@@ -1191,6 +1200,19 @@ export type AdminTranslations = {
         title: string;
         tokens: string;
         transcriptSection: string;
+        replySection: string;
+        replyToCustomer: string;
+        internalNoteLabel: string;
+        replyPlaceholder: string;
+        notePlaceholder: string;
+        sendReply: string;
+        saveNote: string;
+        resolveTicket: string;
+        takeOver: string;
+        staffSender: string;
+        replyTakesOverNotice: string;
+        noteNotice: string;
+        ticketSection: string;
         turnCreatedAt: string;
         turnId: string;
         turnStatus: string;
@@ -2192,8 +2214,14 @@ export type AdminProductDetailPageProps = {
     logoutUrl: string;
 };
 
+export type AdminSupportTicketStatus = 'open' | 'resolved' | 'closed';
+
 export type AdminConversationRow = {
     publicId: string;
+    shortId: string;
+    ticketNumber: string | null;
+    ticketStatus: AdminSupportTicketStatus | null;
+    hasUnread: boolean;
     status: 'open' | 'closed' | 'archived';
     locale: string;
     ownerType: 'guest' | 'customer';
@@ -2208,6 +2236,7 @@ export type AdminConversationsQueryState = {
     status?: 'open' | 'closed' | null;
     locale?: 'ar' | 'en' | null;
     owner?: 'guest' | 'customer' | null;
+    ticket_status?: AdminSupportTicketStatus | null;
     per_page: 15 | 25 | 50 | 100;
     page: number;
 };
@@ -2225,7 +2254,7 @@ export type AdminConversationsPageProps = {
     filterOptions: {
         statuses: AdminFilterOption[];
         locales: AdminFilterOption[];
-        owners: AdminFilterOption[];
+        ticketStatuses: AdminFilterOption[];
         perPageOptions: number[];
     };
     logoutUrl: string;
@@ -2233,10 +2262,21 @@ export type AdminConversationsPageProps = {
 
 export type AdminChatMessage = {
     publicId: string;
-    senderType: 'customer' | 'assistant' | 'system';
-    messageType: 'text' | 'system';
+    senderType: 'customer' | 'assistant' | 'system' | 'staff';
+    messageType: 'text' | 'system' | 'internal_note';
     content: string;
+    staffName: string | null;
     createdAt: string;
+};
+
+export type AdminSupportTicket = {
+    publicId: string;
+    ticketNumber: string;
+    status: AdminSupportTicketStatus;
+    subject: string | null;
+    assignedAdminName: string | null;
+    assignedToMe: boolean;
+    openedAt: string | null;
 };
 
 export type AdminAgentTurn = {
@@ -2253,6 +2293,8 @@ export type AdminAgentTurn = {
 
 export type AdminConversationDetail = {
     publicId: string;
+    shortId: string;
+    handoffState: 'none' | 'offered' | 'requested' | 'active' | 'resolved';
     status: 'open' | 'closed' | 'archived';
     locale: string;
     ownerType: 'guest' | 'customer';
@@ -2272,6 +2314,8 @@ export type AdminConversationDetailPageProps = {
     adminNavigation: AdminNavigationItem[];
     permissions: string[];
     conversation: AdminConversationDetail;
+    ticket: AdminSupportTicket | null;
+    canReply: boolean;
     messages: AdminChatMessage[];
     turns: AdminAgentTurn[];
     logoutUrl: string;

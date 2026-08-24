@@ -34,12 +34,12 @@ test('default maintenance cutoffs close inactive conversations and purge expired
     ]);
     $retainedGuest = ChatConversation::factory()->forGuest($retainedGuestKey)->closed(
         ChatConversationCloseReason::Inactive,
-        now()->subDays(29),
-    )->create(['last_message_at' => now()->subDays(29)]);
+        now()->subHours(47),
+    )->create(['last_message_at' => now()->subHours(47)]);
     $expiredGuest = ChatConversation::factory()->forGuest($expiredGuestKey)->closed(
         ChatConversationCloseReason::Inactive,
-        now()->subDays(30),
-    )->create(['last_message_at' => now()->subDays(30)]);
+        now()->subHours(48),
+    )->create(['last_message_at' => now()->subHours(48)]);
 
     $user = User::factory()->create();
     $retainedUser = ChatConversation::factory()->forUser($user)->closed(
@@ -112,11 +112,11 @@ test('retention follows last activity with closed_at then updated_at as legacy n
     $expiredGuest = ChatConversation::factory()->forGuest(hash('sha256', 'activity-expired-guest'))->closed(
         ChatConversationCloseReason::Inactive,
         now()->subDay(),
-    )->create(['last_message_at' => now()->subDays(30)]);
+    )->create(['last_message_at' => now()->subHours(48)]);
     $retainedGuest = ChatConversation::factory()->forGuest(hash('sha256', 'activity-retained-guest'))->closed(
         ChatConversationCloseReason::Inactive,
         now()->subDays(40),
-    )->create(['last_message_at' => now()->subDays(30)->addSecond()]);
+    )->create(['last_message_at' => now()->subHours(48)->addSecond()]);
 
     $expiredUser = ChatConversation::factory()->forUser(User::factory()->create())->closed(
         ChatConversationCloseReason::Inactive,
@@ -129,11 +129,11 @@ test('retention follows last activity with closed_at then updated_at as legacy n
 
     $closedAtFallback = ChatConversation::factory()->forGuest(hash('sha256', 'closed-at-fallback'))->closed(
         ChatConversationCloseReason::Inactive,
-        now()->subDays(30),
+        now()->subHours(48),
     )->create(['last_message_at' => null]);
     DB::table('chat_conversations')->where('id', $closedAtFallback->id)->update([
         'last_message_at' => null,
-        'closed_at' => now()->subDays(30),
+        'closed_at' => now()->subHours(48),
         'updated_at' => now(),
     ]);
 
@@ -208,8 +208,8 @@ test('maintenance does not close or purge a conversation with a waiting or runni
     // Expired guest conversation that would normally be deleted, but has running turn
     $expiredGuestWithRunningTurn = ChatConversation::factory()->forGuest(hash('sha256', 'expired-guest-active-turn'))->closed(
         ChatConversationCloseReason::Inactive,
-        now()->subDays(30),
-    )->create(['last_message_at' => now()->subDays(30)]);
+        now()->subHours(48),
+    )->create(['last_message_at' => now()->subHours(48)]);
     AgentTurn::factory()->running()->for($expiredGuestWithRunningTurn, 'conversation')->create();
 
     $this->artisan('chat:maintain-conversations')
@@ -232,8 +232,8 @@ test('maintenance closes and purges conversation after agent turn becomes termin
 
     $expiredGuestWithFailedTurn = ChatConversation::factory()->forGuest(hash('sha256', 'expired-guest-terminal-turn'))->closed(
         ChatConversationCloseReason::Inactive,
-        now()->subDays(30),
-    )->create(['last_message_at' => now()->subDays(30)]);
+        now()->subHours(48),
+    )->create(['last_message_at' => now()->subHours(48)]);
     AgentTurn::factory()->failed(AgentErrorCode::ProviderTimeout)->for($expiredGuestWithFailedTurn, 'conversation')->create();
 
     $this->artisan('chat:maintain-conversations')

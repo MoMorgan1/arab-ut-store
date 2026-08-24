@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Support\ChatNumber;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -279,7 +280,7 @@ function seedLegacyConversation(?int $userId, ?string $guestKey, DateTimeInterfa
 /** @return array<string, mixed> */
 function legacyConversationAttributes(?int $userId, ?string $guestKey, DateTimeInterface $lastMessageAt, string $status = 'open'): array
 {
-    return [
+    $attributes = [
         'public_id' => (string) str()->ulid(),
         'user_id' => $userId,
         'guest_key' => $guestKey,
@@ -289,6 +290,17 @@ function legacyConversationAttributes(?int $userId, ?string $guestKey, DateTimeI
         'created_at' => now(),
         'updated_at' => now(),
     ];
+
+    // These fixtures run against two schemas: the live one, where the
+    // support-handoff migration has promoted short_id to NOT NULL on MariaDB,
+    // and a rebuilt legacy schema that predates the column entirely. A raw
+    // insert bypasses the model hook that would generate the value, so it is
+    // supplied here — but only where the column exists.
+    if (Schema::hasColumn('chat_conversations', 'short_id')) {
+        $attributes['short_id'] = ChatNumber::generate();
+    }
+
+    return $attributes;
 }
 
 function seedLegacyMessage(int $conversationId, string $content, ?int $replyToMessageId = null): int

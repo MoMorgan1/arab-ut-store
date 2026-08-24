@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use App\Enums\AI\AgentTurnStatus;
 use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatConversationStatus;
+use App\Enums\Chat\ChatHandoffState;
+use App\Enums\Support\SupportTicketStatus;
 use App\Models\ChatConversation;
 use DateTimeInterface;
 use Illuminate\Console\Command;
@@ -36,6 +38,12 @@ final class MaintainChatConversations extends Command
         ChatConversation::query()
             ->open()
             ->where('last_message_at', '<=', $cutoff)
+            ->whereDoesntHave('tickets', fn (Builder $tickets): Builder => $tickets
+                ->where('status', SupportTicketStatus::Open))
+            ->where(fn (Builder $q): Builder => $q->whereNotIn('handoff_state', [
+                ChatHandoffState::Requested->value,
+                ChatHandoffState::Active->value,
+            ]))
             ->whereDoesntHave('agentTurns', fn (Builder $turns): Builder => $turns
                 ->whereIn('status', [AgentTurnStatus::Waiting, AgentTurnStatus::Running]))
             ->chunkById(200, function ($conversations) use ($cutoff, &$closedCount): void {
@@ -56,6 +64,12 @@ final class MaintainChatConversations extends Command
                 ->whereKey($conversation->id)
                 ->open()
                 ->where('last_message_at', '<=', $cutoff)
+                ->whereDoesntHave('tickets', fn (Builder $tickets): Builder => $tickets
+                    ->where('status', SupportTicketStatus::Open))
+                ->where(fn (Builder $q): Builder => $q->whereNotIn('handoff_state', [
+                    ChatHandoffState::Requested->value,
+                    ChatHandoffState::Active->value,
+                ]))
                 ->lockForUpdate()
                 ->first();
 
@@ -83,15 +97,20 @@ final class MaintainChatConversations extends Command
     {
         $deletedCount = 0;
 
+        // Guests: hours, and an *open* thread is purged too.
         $this->purgeExpiredConversationsForOwner(
             fn (Builder $query): Builder => $query->whereNull('user_id'),
-            now()->subDays((int) config('chat.guest_retention_days')),
-            $deletedCount,
+            now()->subHours((int) config('chat.guest_retention_hours')),
+            requireClosed: false,
+            deletedCount: $deletedCount,
         );
+
+        // Authenticated: unchanged — closed only, 180 days.
         $this->purgeExpiredConversationsForOwner(
             fn (Builder $query): Builder => $query->whereNotNull('user_id'),
             now()->subDays((int) config('chat.user_retention_days')),
-            $deletedCount,
+            requireClosed: true,
+            deletedCount: $deletedCount,
         );
 
         return $deletedCount;
@@ -100,23 +119,39 @@ final class MaintainChatConversations extends Command
     /**
      * @param  callable(Builder<ChatConversation>): Builder<ChatConversation>  $ownerConstraint
      */
-    private function purgeExpiredConversationsForOwner(callable $ownerConstraint, DateTimeInterface $cutoff, int &$deletedCount): void
-    {
-        $ownerConstraint(
-            ChatConversation::query()
-                ->where('status', 'closed')
-                ->whereLastActivityAtOrBefore($cutoff)
-                ->whereDoesntHave('agentTurns', fn (Builder $turns): Builder => $turns
-                    ->whereIn('status', [AgentTurnStatus::Waiting, AgentTurnStatus::Running])),
-        )->chunkById(200, function ($conversations) use ($ownerConstraint, $cutoff, &$deletedCount): void {
+    private function purgeExpiredConversationsForOwner(
+        callable $ownerConstraint,
+        DateTimeInterface $cutoff,
+        bool $requireClosed,
+        int &$deletedCount,
+    ): void {
+        $baseQuery = ChatConversation::query()
+            ->when($requireClosed, fn (Builder $query): Builder => $query->where('status', ChatConversationStatus::Closed))
+            ->whereLastActivityAtOrBefore($cutoff)
+            ->whereDoesntHave('tickets', fn (Builder $tickets): Builder => $tickets
+                ->where('status', SupportTicketStatus::Open))
+            ->where(fn (Builder $q): Builder => $q->whereNotIn('handoff_state', [
+                ChatHandoffState::Requested->value,
+                ChatHandoffState::Active->value,
+            ]))
+            ->whereDoesntHave('agentTurns', fn (Builder $turns): Builder => $turns
+                ->whereIn('status', [AgentTurnStatus::Waiting, AgentTurnStatus::Running]));
+
+        $ownerConstraint($baseQuery)->chunkById(200, function ($conversations) use ($ownerConstraint, $cutoff, $requireClosed, &$deletedCount): void {
             foreach ($conversations as $conversation) {
-                $deletedCount += DB::transaction(function () use ($conversation, $cutoff, $ownerConstraint): int {
-                    $lockedConversation = $ownerConstraint(
-                        ChatConversation::query()
-                            ->whereKey($conversation->id)
-                            ->where('status', ChatConversationStatus::Closed)
-                            ->whereLastActivityAtOrBefore($cutoff),
-                    )->lockForUpdate()->first();
+                $deletedCount += DB::transaction(function () use ($conversation, $cutoff, $ownerConstraint, $requireClosed): int {
+                    $lockedQuery = ChatConversation::query()
+                        ->whereKey($conversation->id)
+                        ->when($requireClosed, fn (Builder $query): Builder => $query->where('status', ChatConversationStatus::Closed))
+                        ->whereLastActivityAtOrBefore($cutoff)
+                        ->whereDoesntHave('tickets', fn (Builder $tickets): Builder => $tickets
+                            ->where('status', SupportTicketStatus::Open))
+                        ->where(fn (Builder $q): Builder => $q->whereNotIn('handoff_state', [
+                            ChatHandoffState::Requested->value,
+                            ChatHandoffState::Active->value,
+                        ]));
+
+                    $lockedConversation = $ownerConstraint($lockedQuery)->lockForUpdate()->first();
 
                     if (! $lockedConversation instanceof ChatConversation) {
                         return 0;

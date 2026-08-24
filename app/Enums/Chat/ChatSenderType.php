@@ -7,4 +7,5 @@ enum ChatSenderType: string
     case Customer = 'customer';
     case Assistant = 'assistant';
     case System = 'system';
+    case Staff = 'staff';
 }

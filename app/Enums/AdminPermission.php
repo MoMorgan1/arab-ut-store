@@ -27,6 +27,7 @@ enum AdminPermission: string
     case SettingsView = 'settings.view';
     case SettingsManage = 'settings.manage';
     case ChatView = 'chat.view';
+    case ChatReply = 'chat.reply';
     case MarketingView = 'marketing.view';
     case MarketingManage = 'marketing.manage';
 }

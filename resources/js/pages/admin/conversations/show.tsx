@@ -1,15 +1,18 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     Bot,
     CheckCircle2,
     Cpu,
+    EyeOff,
     Globe,
     MessageSquare,
+    Send,
     User as UserIcon,
     XCircle,
     Zap,
 } from 'lucide-react';
+import { useState } from 'react';
 
 import AdminBadge from '@/components/admin/admin-badge';
 import type { AdminBadgeVariant } from '@/components/admin/admin-badge';
@@ -24,6 +27,7 @@ import {
 import type {
     AdminChatMessage,
     AdminConversationDetailPageProps,
+    AdminSupportTicket,
 } from '@/types/admin';
 
 function getTurnStatusVariant(status: string): AdminBadgeVariant {
@@ -297,6 +301,15 @@ export default function AdminConversationDetailPage() {
                 </div>
             </section>
 
+            {props.canReply && !isGuest ? (
+                <StaffReplyPanel
+                    basePath={conversationsListUrl}
+                    conversationPublicId={conversation.publicId}
+                    copy={copy}
+                    ticket={props.ticket}
+                />
+            ) : null}
+
             {/* Agent Runtime Turns Section */}
             <section
                 aria-labelledby="conversation-turns-heading"
@@ -458,6 +471,47 @@ function TranscriptMessageItem({
     const isAssistant = message.senderType === 'assistant';
     const isSystem = message.senderType === 'system';
     const isCustomer = message.senderType === 'customer';
+    const isStaff = message.senderType === 'staff';
+    const isNote = message.messageType === 'internal_note';
+
+    // A note has to be unmistakable at a glance: it is the one thing on this
+    // page that was written to the customer's thread but is never shown to
+    // them, and mistaking it for a reply is how a private remark gets sent.
+    if (isNote) {
+        return (
+            <div
+                className="rounded-lg border border-dashed border-muted-foreground/50 bg-muted/40 px-4 py-3"
+                dir="auto"
+            >
+                <div className="flex items-center gap-1.5">
+                    <EyeOff
+                        aria-hidden="true"
+                        className="size-3.5 text-muted-foreground"
+                    />
+                    <span className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
+                        {copy.internalNoteLabel}
+                    </span>
+                    {message.staffName ? (
+                        <span className="text-[11px] text-muted-foreground">
+                            · <bdi>{message.staffName}</bdi>
+                        </span>
+                    ) : null}
+                    {message.createdAt ? (
+                        <span className="text-[10px] text-muted-foreground/70 tabular-nums">
+                            <bdi>
+                                {timeFormatter.format(
+                                    new Date(message.createdAt),
+                                )}
+                            </bdi>
+                        </span>
+                    ) : null}
+                </div>
+                <p className="mt-1 text-xs leading-relaxed break-words whitespace-pre-wrap text-foreground">
+                    {message.content}
+                </p>
+            </div>
+        );
+    }
 
     if (isSystem) {
         return (
@@ -482,11 +536,25 @@ function TranscriptMessageItem({
     return (
         <div
             className={`flex flex-col gap-1.5 ${
-                isAssistant ? 'items-start' : 'items-end'
+                isAssistant || isCustomer ? 'items-start' : 'items-end'
             }`}
+            dir="auto"
         >
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                {isAssistant ? (
+                {isStaff ? (
+                    <>
+                        <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                            {(message.staffName?.trim() ?? '').charAt(0) || '#'}
+                        </span>
+                        <span className="font-semibold text-primary">
+                            <bdi>
+                                {message.staffName?.trim()
+                                    ? message.staffName.trim()
+                                    : copy.staffSender}
+                            </bdi>
+                        </span>
+                    </>
+                ) : isAssistant ? (
                     <>
                         <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary/10 text-primary">
                             <Bot aria-hidden="true" className="size-3" />
@@ -518,9 +586,11 @@ function TranscriptMessageItem({
 
             <div
                 className={`max-w-2xl rounded-lg px-4 py-3 text-xs leading-relaxed shadow-2xs ${
-                    isAssistant
-                        ? 'border border-primary/20 bg-primary/5 text-foreground'
-                        : 'border border-border bg-card text-card-foreground'
+                    isStaff
+                        ? 'border-[1.5px] border-primary bg-primary/10 text-foreground'
+                        : isAssistant
+                          ? 'border border-primary/20 bg-primary/5 text-foreground'
+                          : 'border border-border bg-card text-card-foreground'
                 }`}
             >
                 <p className="break-words whitespace-pre-wrap">
@@ -528,5 +598,172 @@ function TranscriptMessageItem({
                 </p>
             </div>
         </div>
+    );
+}
+
+/**
+ * Reply, note, take over and resolve.
+ *
+ * Replying takes the thread over implicitly — the server does it in the same
+ * transaction — so the panel says so in plain words rather than offering a
+ * separate "take over first" step nobody would remember to press.
+ */
+function StaffReplyPanel({
+    basePath,
+    conversationPublicId,
+    copy,
+    ticket,
+}: {
+    basePath: string;
+    conversationPublicId: string;
+    copy: AdminConversationDetailPageProps['adminUi']['conversationDetail'];
+    ticket: AdminSupportTicket | null;
+}) {
+    const [mode, setMode] = useState<'reply' | 'note'>('reply');
+    const [content, setContent] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const maxLength = 4000;
+    const trimmed = content.trim();
+    const canSubmit = trimmed !== '' && !isSubmitting;
+    const isResolved = ticket !== null && ticket.status !== 'open';
+
+    const conversationPath = `${basePath}/${conversationPublicId}`;
+
+    const submit = () => {
+        if (!canSubmit) {
+            return;
+        }
+
+        setIsSubmitting(true);
+        router.post(
+            `${conversationPath}/${mode === 'reply' ? 'reply' : 'note'}`,
+            { content: trimmed },
+            {
+                preserveScroll: true,
+                onFinish: () => setIsSubmitting(false),
+                onSuccess: () => setContent(''),
+            },
+        );
+    };
+
+    return (
+        <section
+            aria-labelledby="conversation-reply-heading"
+            className="rounded-lg border border-border bg-card p-5 text-card-foreground shadow-xs"
+        >
+            <h2 className="sr-only" id="conversation-reply-heading">
+                {copy.replySection}
+            </h2>
+
+            <div className="flex flex-wrap items-center gap-2">
+                <button
+                    aria-pressed={mode === 'reply'}
+                    className={`inline-flex min-h-11 items-center rounded-md px-3 text-xs font-bold ${
+                        mode === 'reply'
+                            ? 'border border-primary bg-primary/10 text-primary'
+                            : 'border border-border text-muted-foreground'
+                    }`}
+                    onClick={() => setMode('reply')}
+                    type="button"
+                >
+                    {copy.replyToCustomer}
+                </button>
+                <button
+                    aria-pressed={mode === 'note'}
+                    className={`inline-flex min-h-11 items-center rounded-md px-3 text-xs font-bold ${
+                        mode === 'note'
+                            ? 'border border-primary bg-primary/10 text-primary'
+                            : 'border border-border text-muted-foreground'
+                    }`}
+                    onClick={() => setMode('note')}
+                    type="button"
+                >
+                    {copy.internalNoteLabel}
+                </button>
+                <span className="ms-auto text-xs text-muted-foreground tabular-nums">
+                    <bdi>
+                        {content.length} / {maxLength}
+                    </bdi>
+                </span>
+            </div>
+
+            <textarea
+                aria-label={
+                    mode === 'reply'
+                        ? copy.replyToCustomer
+                        : copy.internalNoteLabel
+                }
+                className="mt-3 min-h-24 w-full rounded-lg border border-border bg-background px-4 py-3 text-xs leading-relaxed text-foreground"
+                dir="auto"
+                maxLength={maxLength}
+                onChange={(event) => setContent(event.target.value)}
+                placeholder={
+                    mode === 'reply'
+                        ? copy.replyPlaceholder
+                        : copy.notePlaceholder
+                }
+                value={content}
+            />
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                    className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-50"
+                    disabled={!canSubmit}
+                    onClick={submit}
+                    type="button"
+                >
+                    <Send aria-hidden="true" className="size-4" />
+                    {mode === 'reply' ? copy.sendReply : copy.saveNote}
+                </button>
+
+                {ticket !== null && !isResolved ? (
+                    <button
+                        className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold text-foreground disabled:opacity-50"
+                        disabled={isSubmitting}
+                        onClick={() => {
+                            setIsSubmitting(true);
+                            router.patch(
+                                `${basePath.replace('/conversations', '/tickets')}/${ticket.publicId}`,
+                                { status: 'resolved' },
+                                {
+                                    preserveScroll: true,
+                                    onFinish: () => setIsSubmitting(false),
+                                },
+                            );
+                        }}
+                        type="button"
+                    >
+                        <CheckCircle2 aria-hidden="true" className="size-4" />
+                        {copy.resolveTicket}
+                    </button>
+                ) : null}
+
+                {ticket === null || !ticket.assignedToMe ? (
+                    <button
+                        className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold text-foreground disabled:opacity-50"
+                        disabled={isSubmitting}
+                        onClick={() => {
+                            setIsSubmitting(true);
+                            router.post(
+                                `${conversationPath}/take-over`,
+                                {},
+                                {
+                                    preserveScroll: true,
+                                    onFinish: () => setIsSubmitting(false),
+                                },
+                            );
+                        }}
+                        type="button"
+                    >
+                        {copy.takeOver}
+                    </button>
+                ) : null}
+            </div>
+
+            <p className="mt-3 text-xs text-muted-foreground">
+                {mode === 'reply' ? copy.replyTakesOverNotice : copy.noteNotice}
+            </p>
+        </section>
     );
 }

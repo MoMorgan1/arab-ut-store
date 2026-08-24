@@ -3,7 +3,9 @@ import {
     ChatApiError,
     fetchAgentTurn,
     fetchConversation,
+    fetchConversationHistory,
     fetchOrStartActiveConversation,
+    requestSupportTicket,
     restartConversation,
     retryAgentTurn,
     sendChatMessage,
@@ -14,6 +16,7 @@ import type {
     AgentTurnState,
     AppStreamEvent,
     ChatConversation,
+    ChatConversationSummary,
     ChatMessage,
 } from '@/types/chat';
 
@@ -135,6 +138,10 @@ export function useChat(options: UseChatOptions = {}) {
     const [errorAnnouncementId, setErrorAnnouncementId] = useState(0);
     const [statusAnnouncement, setStatusAnnouncement] =
         useState<StatusAnnouncement | null>(null);
+    const [historyConversations, setHistoryConversations] = useState<
+        ChatConversationSummary[]
+    >([]);
+    const [isReadOnly, setIsReadOnly] = useState(false);
 
     const isOpenRef = useRef(isOpen);
     const conversationRef = useRef<ChatConversation | null>(conversation);
@@ -154,6 +161,13 @@ export function useChat(options: UseChatOptions = {}) {
     const streamingTurnIdRef = useRef<string | null>(null);
     const quietTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const handoffPollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+        null,
+    );
+    // Null until the first message arrives: Date.now() in a useRef initialiser
+    // is a render-time impurity the React compiler rejects, and it would also
+    // start the polling backoff clock at mount rather than at the last message.
+    const lastReceivedMessageAtRef = useRef<number | null>(null);
     const pollingTurnIdRef = useRef<string | null>(null);
     const nextStartScheduledForTurnRef = useRef<string | null>(null);
     const streamAbortControllerRef = useRef<AbortController | null>(null);
@@ -211,6 +225,11 @@ export function useChat(options: UseChatOptions = {}) {
         if (pollingTimerRef.current !== null) {
             clearTimeout(pollingTimerRef.current);
             pollingTimerRef.current = null;
+        }
+
+        if (handoffPollingTimerRef.current !== null) {
+            clearTimeout(handoffPollingTimerRef.current);
+            handoffPollingTimerRef.current = null;
         }
 
         if (streamAbortControllerRef.current !== null) {
@@ -754,6 +773,13 @@ export function useChat(options: UseChatOptions = {}) {
             setIsAssistantTyping(false);
             setIsLoadingOlder(false);
             setIsRestarting(false);
+            // Both of these belong to the conversation being left, not to the
+            // one being adopted. The backoff clock carried a previous thread's
+            // last-message time, so a fresh handoff could start polling at 15s;
+            // the read-only lock, once set by opening a past thread, had no
+            // other way back off and disabled the composer and restart together.
+            lastReceivedMessageAtRef.current = null;
+            setIsReadOnly(conversationSnapshot.status !== 'open');
             handleLoadedConversation(conversationSnapshot, generation);
         },
         [handleLoadedConversation, startConversationGeneration],
@@ -982,6 +1008,19 @@ export function useChat(options: UseChatOptions = {}) {
                 }
 
                 if (
+                    result.handoffState !== undefined &&
+                    conversationRef.current
+                ) {
+                    const updated: ChatConversation = {
+                        ...conversationRef.current,
+                        handoffState: result.handoffState,
+                    };
+                    conversationRef.current = updated;
+                    setConversation(updated);
+                    lastReceivedMessageAtRef.current = Date.now();
+                }
+
+                if (
                     queueRef.current.length === 0 &&
                     currentConv.assistantMode === 'agent'
                 ) {
@@ -1002,7 +1041,9 @@ export function useChat(options: UseChatOptions = {}) {
 
                 if (
                     err instanceof ChatApiError &&
-                    err.code === 'conversation_closed'
+                    (err.code === 'conversation_closed' ||
+                        err.code === 'conversation_not_found' ||
+                        err.status === 404)
                 ) {
                     try {
                         const recoveredConversation =
@@ -1352,6 +1393,318 @@ export function useChat(options: UseChatOptions = {}) {
         showError,
     ]);
 
+    // 5s while the conversation is moving, 15s after two quiet minutes
+    // (design 5.4). A thread that has not seen a message yet counts as moving.
+    const nextPollDelay = useCallback((): number => {
+        const lastAt = lastReceivedMessageAtRef.current;
+
+        if (lastAt === null) {
+            return 5_000;
+        }
+
+        return Date.now() - lastAt >= 120_000 ? 15_000 : 5_000;
+    }, []);
+
+    // Handoff polling lifecycle
+    useEffect(() => {
+        if (!isOpen || !conversation) {
+            if (handoffPollingTimerRef.current !== null) {
+                clearTimeout(handoffPollingTimerRef.current);
+                handoffPollingTimerRef.current = null;
+            }
+
+            return;
+        }
+
+        const handoffState = conversation.handoffState;
+
+        if (handoffState !== 'requested' && handoffState !== 'active') {
+            if (handoffPollingTimerRef.current !== null) {
+                clearTimeout(handoffPollingTimerRef.current);
+                handoffPollingTimerRef.current = null;
+            }
+
+            return;
+        }
+
+        const generation = conversationGenerationRef.current;
+        const convPublicId = conversation.publicId;
+
+        // Cleanup clears the shared timer ref, but a poll already awaiting its
+        // fetch holds no timer to clear — it would come back, pass the
+        // generation check (unchanged, since no conversation was adopted) and
+        // schedule a second chain alongside the one the re-run effect started.
+        // Every handoffState transition, visibility restore and reopen inside
+        // one round trip added another chain, and five of them exceed the
+        // 60/min read limit that makes staff replies stop arriving at all.
+        let cancelled = false;
+
+        // `cancelled` only separates one effect run from the next. It cannot
+        // stop a second chain starting *inside* the same run: the visibility
+        // handler clears the timer ref and calls pollHandoff directly, and a
+        // poll already awaiting its fetch holds no timer to clear, so both come
+        // back and both reschedule. Flicking the tab during a fetch added a
+        // chain each time. This flag is what actually makes it single-flight.
+        let inFlight = false;
+
+        const pollHandoff = async () => {
+            if (
+                cancelled ||
+                inFlight ||
+                !ownsAsyncGeneration(generation) ||
+                !isOpenRef.current
+            ) {
+                return;
+            }
+
+            if (typeof document !== 'undefined' && document.hidden) {
+                return;
+            }
+
+            inFlight = true;
+
+            try {
+                const refreshed = await fetchConversation(convPublicId);
+
+                if (!ownsAsyncGeneration(generation)) {
+                    return;
+                }
+
+                // A turn that is still streaming holds a placeholder bubble
+                // keyed by turn id, not by the public id the poll sees. Merging
+                // now appends the finalized copy, and the completion handler
+                // then renames the placeholder to that same id — one reply,
+                // twice on screen. The completion path merges it anyway.
+                // Skip only the merge, never the reschedule: returning here
+                // killed the chain outright, so a staff reply arriving during a
+                // stream sat undelivered until something else happened to
+                // restart polling.
+                if (streamingTurnIdRef.current === null) {
+                    updateMessages((prev) => {
+                        const existingIds = new Set(
+                            prev.map((m) => m.publicId),
+                        );
+                        const newMsgs = refreshed.messages.filter(
+                            (m) => m.publicId && !existingIds.has(m.publicId),
+                        );
+
+                        if (newMsgs.length > 0) {
+                            lastReceivedMessageAtRef.current = Date.now();
+
+                            if (!isOpenRef.current) {
+                                setUnreadCount((c) => c + newMsgs.length);
+                            }
+
+                            return [...prev, ...newMsgs];
+                        }
+
+                        return prev;
+                    });
+                }
+
+                if (
+                    refreshed.handoffState !==
+                        conversationRef.current?.handoffState ||
+                    refreshed.status !== conversationRef.current?.status
+                ) {
+                    const updated: ChatConversation = {
+                        ...(conversationRef.current || refreshed),
+                        handoffState: refreshed.handoffState,
+                        ticket: refreshed.ticket,
+                        status: refreshed.status,
+                        lastMessageAt: refreshed.lastMessageAt,
+                    };
+                    conversationRef.current = updated;
+                    setConversation(updated);
+
+                    if (
+                        refreshed.handoffState !== 'requested' &&
+                        refreshed.handoffState !== 'active'
+                    ) {
+                        return;
+                    }
+                }
+            } catch {
+                // Ignore transient network errors during polling
+            } finally {
+                inFlight = false;
+            }
+
+            if (
+                cancelled ||
+                !ownsAsyncGeneration(generation) ||
+                !isOpenRef.current
+            ) {
+                return;
+            }
+
+            handoffPollingTimerRef.current = setTimeout(
+                pollHandoff,
+                nextPollDelay(),
+            );
+        };
+
+        // The backoff is measured from the last message, or from when polling
+        // started if none has arrived yet — otherwise a silent thread would
+        // never reach the two-minute mark and would poll at 5s forever.
+        lastReceivedMessageAtRef.current ??= Date.now();
+
+        handoffPollingTimerRef.current = setTimeout(
+            pollHandoff,
+            nextPollDelay(),
+        );
+
+        const handleVisibilityChange = () => {
+            if (cancelled) {
+                return;
+            }
+
+            if (typeof document !== 'undefined' && !document.hidden) {
+                if (handoffPollingTimerRef.current !== null) {
+                    clearTimeout(handoffPollingTimerRef.current);
+                    handoffPollingTimerRef.current = null;
+                }
+
+                void pollHandoff();
+            }
+        };
+
+        if (typeof document !== 'undefined') {
+            document.addEventListener(
+                'visibilitychange',
+                handleVisibilityChange,
+            );
+        }
+
+        return () => {
+            cancelled = true;
+
+            if (handoffPollingTimerRef.current !== null) {
+                clearTimeout(handoffPollingTimerRef.current);
+                handoffPollingTimerRef.current = null;
+            }
+
+            if (typeof document !== 'undefined') {
+                document.removeEventListener(
+                    'visibilitychange',
+                    handleVisibilityChange,
+                );
+            }
+        };
+    }, [
+        conversation?.handoffState,
+        conversation?.publicId,
+        isOpen,
+        nextPollDelay,
+        ownsAsyncGeneration,
+        updateMessages,
+    ]);
+
+    /**
+     * Deliberately not fired from an effect in this hook.
+     *
+     * `useChat` mounts with the page, so a self-triggering effect issued a
+     * `GET /chat/conversations` on every single page load — for guests, who
+     * always get an empty list, and for anyone who never opens the widget. It
+     * spends the chat-read throttle on a panel nobody asked for. The widget
+     * calls this when the customer actually reaches the home view instead.
+     */
+    const loadHistory = useCallback(async () => {
+        if (!isChatEnabled) {
+            return;
+        }
+
+        try {
+            const res = await fetchConversationHistory(10);
+            setHistoryConversations(res.conversations);
+        } catch {
+            setHistoryConversations([]);
+        }
+    }, [isChatEnabled]);
+
+    const openPastConversation = useCallback(
+        async (publicId: string) => {
+            setIsLoading(true);
+
+            try {
+                const pastConv = await fetchConversation(publicId);
+                adoptConversation(pastConv);
+            } catch {
+                showError(
+                    pageLocale === 'en'
+                        ? 'Failed to load conversation.'
+                        : 'تعذر تحميل المحادثة.',
+                );
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [adoptConversation, pageLocale, showError],
+    );
+
+    /**
+     * Leave a past thread opened read-only and return to the live one.
+     *
+     * Design 5.3 asks for a "Start a new conversation" control beside the
+     * read-only view. It is not decoration: opening a past thread disables both
+     * the composer and restart, so without this the customer is stranded on an
+     * old transcript — including while a human is replying to their live ticket
+     * — with only a page reload as a way out.
+     */
+    const leaveReadOnlyConversation = useCallback(async () => {
+        setIsLoading(true);
+
+        try {
+            const live = await fetchOrStartActiveConversation(pageLocale);
+            adoptConversation(live);
+        } catch {
+            showError(
+                pageLocale === 'en'
+                    ? 'Could not reopen your current conversation.'
+                    : 'تعذر فتح محادثتك الحالية.',
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    }, [adoptConversation, pageLocale, showError]);
+
+    const requestTicket = useCallback(async () => {
+        const conv = conversationRef.current;
+
+        if (!conv) {
+            return;
+        }
+
+        try {
+            const result = await requestSupportTicket(conv.publicId);
+            const updated: ChatConversation = {
+                ...conv,
+                handoffState: result.handoffState,
+                ticket: result.ticket,
+            };
+            conversationRef.current = updated;
+            setConversation(updated);
+            lastReceivedMessageAtRef.current = Date.now();
+        } catch (err) {
+            if (
+                err instanceof ChatApiError &&
+                err.code === 'handoff_requires_login'
+            ) {
+                showError(
+                    pageLocale === 'en'
+                        ? 'Please log in to contact support.'
+                        : 'يرجى تسجيل الدخول للتواصل مع الدعم.',
+                );
+            } else {
+                showError(
+                    pageLocale === 'en'
+                        ? 'Failed to open support ticket.'
+                        : 'تعذر فتح تذكرة الدعم.',
+                );
+            }
+        }
+    }, [pageLocale, showError]);
+
     return {
         isChatEnabled,
         isOpen,
@@ -1361,6 +1714,8 @@ export function useChat(options: UseChatOptions = {}) {
         toggleOpen,
         conversation,
         messages,
+        historyConversations,
+        isReadOnly,
         isLoading,
         isAssistantTyping,
         isStreaming,
@@ -1379,5 +1734,9 @@ export function useChat(options: UseChatOptions = {}) {
         sendMessage,
         retryMessage,
         loadOlderMessages,
+        loadHistory,
+        openPastConversation,
+        leaveReadOnlyConversation,
+        requestTicket,
     };
 }

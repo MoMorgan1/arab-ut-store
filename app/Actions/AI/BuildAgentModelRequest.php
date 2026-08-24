@@ -28,7 +28,7 @@ final readonly class BuildAgentModelRequest
         private BuildLivePriceContext $livePrices,
     ) {}
 
-    public function execute(AgentTurn $turn, ChatOwner $owner): AgentModelRequest
+    public function execute(AgentTurn $turn, ChatOwner $owner, string $displayCurrency): AgentModelRequest
     {
         $conversation = ChatConversation::query()
             ->forOwner($owner)
@@ -44,7 +44,7 @@ final readonly class BuildAgentModelRequest
         $messages = $this->modelMessages($prior, $current);
         $instructions = File::get(resource_path("ai-assistant/prompts/{$turn->prompt_version}.md"));
         [$knowledge, $topicIds] = $this->knowledgeBlock($current, $conversation->locale);
-        $knowledge .= $this->livePriceBlock($topicIds, $conversation->locale);
+        $knowledge .= $this->livePriceBlock($topicIds, $conversation->locale, $displayCurrency);
 
         return new AgentModelRequest(
             model: $this->config->model(),
@@ -107,7 +107,7 @@ final readonly class BuildAgentModelRequest
      *
      * @param  list<string>  $topicIds
      */
-    private function livePriceBlock(array $topicIds, string $locale): string
+    private function livePriceBlock(array $topicIds, string $locale, string $displayCurrency): string
     {
         $priced = ['coins-service', 'coins-speeds', 'pricing-policy', 'sbc', 'rivals', 'fut-champions'];
 
@@ -115,10 +115,12 @@ final readonly class BuildAgentModelRequest
             return '';
         }
 
-        return $this->livePrices->execute(
-            (string) config('store.default_display_currency'),
-            $locale,
-        );
+        // The viewer's currency, not the store default. The service cards
+        // rendered under the reply are priced from the same session value, so
+        // reading the default here made the assistant quote SAR directly above
+        // a card showing OMR — two different prices for one service, in one
+        // message.
+        return $this->livePrices->execute($displayCurrency, $locale);
     }
 
     /** @return array{int, int} */

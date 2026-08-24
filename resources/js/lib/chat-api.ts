@@ -6,6 +6,9 @@ import type {
     AgentTurnState,
     AppStreamEvent,
     ChatConversation,
+    ChatConversationHistoryResponse,
+    ChatConversationTicket,
+    ChatHandoffState,
     ChatMessage,
 } from '@/types/chat';
 
@@ -267,11 +270,70 @@ export async function fetchConversation(
     return payload.data;
 }
 
+export async function fetchConversationHistory(
+    limit = 10,
+    beforeId?: string,
+): Promise<ChatConversationHistoryResponse> {
+    const url = new URL('/chat/conversations', window.location.origin);
+    url.searchParams.set('limit', String(limit));
+
+    if (beforeId !== undefined && beforeId !== '') {
+        url.searchParams.set('before_id', beforeId);
+    }
+
+    let response: Response;
+
+    try {
+        response = await fetch(url.pathname + url.search, {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: {
+                Accept: 'application/json',
+            },
+        });
+    } catch {
+        throw new ChatApiError('network_error', 0, 'Network request failed.');
+    }
+
+    const payload = await parseJsonPayload(response);
+
+    if (payload === INVALID_JSON) {
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid history response.',
+        );
+    }
+
+    if (!response.ok) {
+        throw new ChatApiError(
+            extractErrorCode(payload),
+            response.status,
+            'Failed to fetch conversation history.',
+        );
+    }
+
+    if (!hasDataPayload(payload)) {
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid history response.',
+        );
+    }
+
+    return payload.data as ChatConversationHistoryResponse;
+}
+
 export async function sendChatMessage(
     conversationPublicId: string,
     content: string,
     clientMessageId: string,
-): Promise<{ message: ChatMessage; demoReply: ChatMessage | null }> {
+): Promise<{
+    message: ChatMessage;
+    demoReply: ChatMessage | null;
+    handoffState?: ChatHandoffState;
+}> {
     const token = csrfToken();
     const headers: Record<string, string> = {
         Accept: 'application/json',
@@ -331,6 +393,68 @@ export async function sendChatMessage(
     return payload.data as {
         message: ChatMessage;
         demoReply: ChatMessage | null;
+        handoffState?: ChatHandoffState;
+    };
+}
+
+export async function requestSupportTicket(
+    conversationPublicId: string,
+): Promise<{ ticket: ChatConversationTicket; handoffState: ChatHandoffState }> {
+    const token = csrfToken();
+    const headers: Record<string, string> = {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+    };
+
+    if (token !== null) {
+        headers['X-CSRF-TOKEN'] = token;
+    }
+
+    let response: Response;
+
+    try {
+        response = await fetch(
+            `/chat/conversations/${encodeURIComponent(conversationPublicId)}/ticket`,
+            {
+                method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers,
+            },
+        );
+    } catch {
+        throw new ChatApiError('network_error', 0, 'Network request failed.');
+    }
+
+    const payload = await parseJsonPayload(response);
+
+    if (payload === INVALID_JSON) {
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid ticket response.',
+        );
+    }
+
+    if (!response.ok) {
+        throw new ChatApiError(
+            extractErrorCode(payload),
+            response.status,
+            'Failed to open support ticket.',
+        );
+    }
+
+    if (!hasDataPayload(payload)) {
+        throw new ChatApiError(
+            'invalid_response',
+            response.status,
+            'Chat returned an invalid ticket response.',
+        );
+    }
+
+    return payload.data as {
+        ticket: ChatConversationTicket;
+        handoffState: ChatHandoffState;
     };
 }
 

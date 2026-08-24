@@ -2,6 +2,9 @@
 
 return [
     'conversation_closed' => 'المحادثة مقفلة. ابدأ محادثة جديدة للمتابعة.',
+    'conversation_not_found' => 'المحادثة المطلوبة غير موجودة.',
+    'handoff_requires_login' => 'يرجى تسجيل الدخول للتواصل مع الدعم.',
+    'assistant_resumed' => 'نواف رجع لمساعدتك — تقدر ترسل في أي وقت.',
     'validation_error' => 'بيانات الشات المرسلة غير صالحة.',
     'rate_limited' => 'طلبات الشات كثيرة الآن. حاول مرة ثانية بعد قليل.',
     'unavailable' => 'الشات غير متاح مؤقتًا. حاول مرة ثانية.',
@@ -20,6 +23,20 @@ return [
     'provider_malformed' => 'تلقى المساعد ردًا بصيغة غير متوقعة. يرجى المحاولة مرة أخرى.',
     'provider_terminal_failure' => 'تعذر على المساعد معالجة هذا الطلب. يرجى المحاولة لاحقًا.',
     'cancelled' => 'تم إلغاء الطلب.',
+
+    'support' => [
+        'defaultSubject' => 'طلب دعم فني',
+        'requested_title' => 'طلبك وصل للفريق',
+        'active_title' => ':name من الفريق يرد عليك',
+        'active_title_unassigned' => 'الفريق يرد عليك',
+        'resolved_title' => 'تم حل التذكرة',
+        'reopen_button' => 'تحتاج مساعدة أكثر؟',
+        'paused_pill' => 'نواف متوقف مؤقتًا — الفريق يتابع محادثتك',
+        'team_name' => 'فريق عرب التيميت',
+        'history_heading' => 'محادثاتك السابقة',
+        'read_only_badge' => 'هذه المحادثة للقراءة فقط',
+        'start_new' => 'ابدأ محادثة جديدة',
+    ],
 
     'cards' => [
         'cta' => 'اطلب الآن',

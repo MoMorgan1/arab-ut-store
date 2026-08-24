@@ -11,6 +11,7 @@ import {
 } from '@/lib/chat-sound';
 import type { ChatServicePrices, ChatSurface } from '@/types/chat';
 import { ChatComposer } from './chat-composer';
+import { ChatHandoffBanner } from './chat-handoff-banner';
 import { ChatHeader } from './chat-header';
 import { ChatHome } from './chat-home';
 import { ChatLauncher } from './chat-launcher';
@@ -24,6 +25,7 @@ export type ChatWidgetProps = {
     surface?: ChatSurface;
     /** Which view the widget shows when opened. Defaults to the Home screen. */
     initialView?: ChatWidgetView;
+    isAuthenticated?: boolean;
 };
 
 const CLOSE_TRANSITION_MS = 180;
@@ -87,6 +89,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
     locale = 'ar',
     surface = 'store',
     initialView = 'home',
+    isAuthenticated = false,
 }) => {
     const {
         isChatEnabled,
@@ -112,6 +115,12 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         retryableTurn,
         retryAgentTurn,
         loadOlderMessages,
+        historyConversations,
+        isReadOnly,
+        loadHistory,
+        openPastConversation,
+        leaveReadOnlyConversation,
+        requestTicket,
     } = useChat({ enabled, locale });
 
     const launcherRef = useRef<HTMLButtonElement>(null);
@@ -145,6 +154,24 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         setExitingView(view);
         setView(next);
     };
+
+    // Previous conversations are fetched the first time the customer actually
+    // reaches the home view, not on page load — see loadHistory in use-chat.
+    const historyRequestedRef = useRef(false);
+
+    useEffect(() => {
+        if (
+            !isAuthenticated ||
+            !isOpen ||
+            view !== 'home' ||
+            historyRequestedRef.current
+        ) {
+            return;
+        }
+
+        historyRequestedRef.current = true;
+        void loadHistory();
+    }, [isAuthenticated, isOpen, view, loadHistory]);
 
     // Unmount the exiting view after the slide completes.
     useEffect(() => {
@@ -645,6 +672,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                                 locale={locale}
                                 hasConversation={hasCustomerMessages}
                                 lastMessage={homeLastMessage}
+                                conversations={historyConversations}
                                 disabled={isLoading || isRestarting}
                                 isMobileDialog={isMobileDialog}
                                 closeButtonRef={
@@ -655,6 +683,10 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                                 onContinue={() => switchView('chat')}
                                 onSelectTopic={(label) => {
                                     sendMessage(label);
+                                    switchView('chat');
+                                }}
+                                onSelectConversation={(publicId) => {
+                                    void openPastConversation(publicId);
                                     switchView('chat');
                                 }}
                             />
@@ -672,7 +704,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                             aria-hidden={view !== 'chat'}
                         >
                             <ChatHeader
-                                canRestart={canRestart}
+                                canRestart={canRestart && !isReadOnly}
                                 closeButtonRef={
                                     view === 'chat' ? closeButtonRef : undefined
                                 }
@@ -684,6 +716,42 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                                 soundEnabled={soundEnabled}
                                 onToggleSound={toggleSound}
                             />
+
+                            {isReadOnly && (
+                                <div
+                                    dir="auto"
+                                    data-testid="chat-read-only-notice"
+                                    className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--chat-line)] bg-[var(--chat-tint)] px-4 py-2.5 text-start"
+                                >
+                                    <span className="text-[12.5px] text-[var(--chat-muted)]">
+                                        {locale === 'en'
+                                            ? 'You are reading an earlier conversation.'
+                                            : 'أنت تطالع محادثة سابقة.'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="chat-press inline-flex min-h-11 items-center rounded-xl px-3 text-[13px] font-semibold text-[var(--chat-hero)] hover:bg-[var(--chat-card)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)]"
+                                        onClick={() => {
+                                            void leaveReadOnlyConversation();
+                                        }}
+                                    >
+                                        {locale === 'en'
+                                            ? 'Start a new conversation'
+                                            : 'ابدأ محادثة جديدة'}
+                                    </button>
+                                </div>
+                            )}
+
+                            {conversation?.handoffState &&
+                                conversation.handoffState !== 'none' && (
+                                    <ChatHandoffBanner
+                                        handoffState={conversation.handoffState}
+                                        ticket={conversation.ticket}
+                                        locale={locale}
+                                        disabled={isLoading || isRestarting}
+                                        onRequestNewTicket={requestTicket}
+                                    />
+                                )}
 
                             {error !== null && (
                                 <div
@@ -708,6 +776,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                                 disabled={isRestarting}
                                 messages={messages}
                                 servicePrices={servicePrices}
+                                handoffState={conversation?.handoffState}
                                 isLoading={isLoading}
                                 isAssistantTyping={isAssistantTyping}
                                 hasMore={hasMore}
@@ -727,7 +796,9 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                             />
 
                             <ChatComposer
-                                disabled={isLoading || isRestarting}
+                                disabled={
+                                    isLoading || isRestarting || isReadOnly
+                                }
                                 locale={locale}
                                 onSend={sendMessage}
                                 showDisclaimer={showDisclaimer}

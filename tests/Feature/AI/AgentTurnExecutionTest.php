@@ -35,7 +35,7 @@ test('a completed stream persists one bounded final message and terminal run', f
         ]),
     ));
 
-    $events = iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner));
+    $events = iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner, 'SAR'));
 
     $fresh = $turn->fresh();
     $message = ChatMessage::query()->findOrFail($fresh->assistant_message_id);
@@ -71,7 +71,7 @@ test('a terminal provider failure fails the turn and run with emitted failure ev
         ]),
     ));
 
-    $events = iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner));
+    $events = iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner, 'SAR'));
 
     $fresh = $turn->fresh();
     $run = AgentRun::query()->where('agent_turn_id', $turn->id)->firstOrFail();
@@ -101,7 +101,7 @@ test('an incomplete provider stream fails with provider_incomplete', function ()
     };
     app()->instance(AgentModelResolver::class, new ScriptedAgentModelResolver($incompleteModel));
 
-    $events = iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner));
+    $events = iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner, 'SAR'));
 
     $fresh = $turn->fresh();
     $run = AgentRun::query()->where('agent_turn_id', $turn->id)->firstOrFail();
@@ -135,7 +135,7 @@ test('run records usage latency and pricing version without sensitive payloads o
         ),
     ));
 
-    iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner));
+    iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner, 'SAR'));
 
     $run = AgentRun::query()->where('agent_turn_id', $turn->id)->sole();
     expect($run->input_tokens)->toBe(100)

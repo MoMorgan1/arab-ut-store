@@ -27,7 +27,7 @@ test('one bounded automatic 429 retry leaves attempt three for an explicit retry
         ]),
     ));
 
-    iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner));
+    iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner, 'SAR'));
 
     expect($turn->fresh()->status)->toBe(AgentTurnStatus::Failed)
         ->and($turn->fresh()->attempt_count)->toBe(2)

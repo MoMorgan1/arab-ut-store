@@ -78,7 +78,7 @@ final readonly class BuildLivePriceContext
             $this->coinsLines($format),
             $this->rivalsLines($format),
             $this->championsLines($format),
-            $this->sbcLines($locale),
+            $this->sbcLines($locale, $displayCurrency),
         );
 
         if ($lines === []) {
@@ -206,13 +206,17 @@ Each line reads: service | what the price depends on | price. A service's price 
      *
      * @return list<string>
      */
-    private function sbcLines(string $locale): array
+    private function sbcLines(string $locale, string $displayCurrency): array
     {
         try {
             $catalog = $this->catalog->category(
                 ServiceType::Sbc,
                 $locale,
-                (string) config('store.default_display_currency'),
+                // The viewer's currency. The other three line builders take the
+                // prepared converter; this one reads the catalogue directly, and
+                // passing the store default here quoted SBC challenges in SAR to
+                // a customer browsing in any other currency.
+                $displayCurrency,
                 'all',
                 'recommended',
                 '',

@@ -1,7 +1,31 @@
 # Decision record
 
 **Lifecycle:** Implemented record
-**Verified:** 2026-08-23
+**Verified:** 2026-08-24
+
+## 2026-08-24 — Support Handoff, Ticketing, Notifications, and Retention
+
+The human support handoff system connects storefront customers with authorized operators through an integrated ticketing workflow:
+
+1. **Synchronous Customer Email Notifications:**
+   - When staff replies to a ticket where the customer has been inactive for >= 5 minutes, an email notification (`SupportReplyNotification`) is dispatched.
+   - The notification is a plain `Notification` (not queued, `ShouldQueue` is omitted) to avoid queue worker dependency risks.
+   - Dispatched via `DB::afterCommit` inside a `try/catch` with `report()` so email transport hiccups never roll back staff replies.
+   - Throttled to at most 1 email per hour per ticket (`last_notified_at` recorded inside the database transaction).
+   - Emails contain a direct link to the chat thread and strictly omit conversation transcripts and sensitive customer/admin data.
+2. **48-Hour Guest Retention Policy:**
+   - Anonymous guest conversations are excluded from the operator support inbox to protect operator focus.
+   - Scheduled hourly maintenance purges idle guest conversations older than 48 hours.
+3. **5s / 15s Polling Lifecycle:**
+   - Active only when the chat widget is open and `handoff_state` is `requested` or `active`.
+   - Starts at 5s polling interval; backs off to 15s after 2 minutes without new activity.
+   - Pauses on backgrounded browser tabs (`document.hidden`) and resumes immediately upon tab focus.
+   - Stops when ticket is resolved or chat is closed.
+4. **Client-Side Web Audio Chime for Admin Unread:**
+   - Admin sidebar polls `GET /admin/support/unread-count` every 30s.
+   - Plays a pleasant two-tone audio chime (synthesized via Web Audio API) **only when unread count increases** from previous value. Zero external sound assets or bandwidth required.
+5. **Non-Negotiable Copy Rule:**
+   - Banners and system copy are prohibited from making response time promises ("soon", "shortly", "within", "قريبًا", "خلال"). "The team will reply here" / "طلبك وصل للفريق" is the maximum guarantee.
 
 ## 2026-08-23 — In-chat add to cart takes EA details, outside the transcript
 

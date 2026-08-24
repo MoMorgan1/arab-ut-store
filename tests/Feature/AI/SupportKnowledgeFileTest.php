@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * The knowledge file is customer-facing copy that Luna quotes verbatim, so its
+ * The knowledge file is customer-facing copy that نواف quotes verbatim, so its
  * integrity is a test concern: a malformed entry, a leaked phone number, or a
  * link to the retired storefront would reach customers as a confident answer.
  */

@@ -13,7 +13,12 @@ final class ListAdminConversations extends FormRequest
     /** @var list<string> */
     private const ALLOWED_KEYS = [
         'status',
+        'ticket_status',
         'locale',
+        // `owner` is deliberately still accepted. Its only legal value was
+        // `customer`, and with guests excluded unconditionally that is a no-op,
+        // so the control is gone from the UI — but a bookmarked URL still
+        // carries it and must degrade to "all customers", not 422.
         'owner',
         'q',
         'per_page',
@@ -27,13 +32,21 @@ final class ListAdminConversations extends FormRequest
         return $user instanceof User && $user->can(AdminPermission::ChatView->value);
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('owner') && $this->input('owner') !== 'customer') {
+            $this->merge(['owner' => null]);
+        }
+    }
+
     /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
             'status' => ['sometimes', 'nullable', 'string', Rule::in(['open', 'closed'])],
+            'ticket_status' => ['sometimes', 'nullable', 'string', Rule::in(['open', 'resolved', 'closed'])],
             'locale' => ['sometimes', 'nullable', 'string', Rule::in(['ar', 'en'])],
-            'owner' => ['sometimes', 'nullable', 'string', Rule::in(['guest', 'customer'])],
+            'owner' => ['sometimes', 'nullable', 'string', Rule::in(['customer'])],
             'q' => ['sometimes', 'nullable', 'string', 'max:64'],
             'per_page' => ['sometimes', 'integer', Rule::in([15, 25, 50, 100])],
             'page' => ['sometimes', 'integer', 'min:1'],
@@ -58,8 +71,9 @@ final class ListAdminConversations extends FormRequest
     /**
      * @return array{
      *     status: 'open'|'closed'|null,
+     *     ticket_status: 'open'|'resolved'|'closed'|null,
      *     locale: 'ar'|'en'|null,
-     *     owner: 'guest'|'customer'|null,
+     *     owner: 'customer'|null,
      *     q: ?string,
      *     per_page: 15|25|50|100,
      *     page: int
@@ -74,15 +88,17 @@ final class ListAdminConversations extends FormRequest
             $status = null;
         }
 
+        $ticketStatus = ! empty($validated['ticket_status']) ? (string) $validated['ticket_status'] : null;
+        if (! in_array($ticketStatus, ['open', 'resolved', 'closed'], true)) {
+            $ticketStatus = null;
+        }
+
         $locale = ! empty($validated['locale']) ? (string) $validated['locale'] : null;
         if ($locale !== 'ar' && $locale !== 'en') {
             $locale = null;
         }
 
-        $owner = ! empty($validated['owner']) ? (string) $validated['owner'] : null;
-        if ($owner !== 'guest' && $owner !== 'customer') {
-            $owner = null;
-        }
+        $owner = ! empty($validated['owner']) && (string) $validated['owner'] === 'customer' ? 'customer' : null;
 
         $q = isset($validated['q']) ? trim((string) $validated['q']) : null;
         if ($q === '') {
@@ -98,6 +114,7 @@ final class ListAdminConversations extends FormRequest
 
         return [
             'status' => $status,
+            'ticket_status' => $ticketStatus,
             'locale' => $locale,
             'owner' => $owner,
             'q' => $q,

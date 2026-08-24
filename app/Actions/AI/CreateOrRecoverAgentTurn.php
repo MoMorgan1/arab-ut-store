@@ -46,6 +46,21 @@ final readonly class CreateOrRecoverAgentTurn
         $active = $this->lockActiveTurn($conversation);
 
         if ($active instanceof AgentTurn) {
+            // Design 3.3 lets a turn that is *already streaming* finish, because
+            // StreamAgentTurn has no clean cancellation point and killing it
+            // would leave a partial bubble. That reasoning does not extend to a
+            // Waiting turn: it has produced nothing, so handing it back after a
+            // human took over starts a brand-new assistant reply into a thread a
+            // person owns, with no partial bubble to protect. The stale-turn
+            // sweep marks an abandoned Waiting turn Failed rather than running
+            // it, so refusing here ends it rather than stranding it.
+            if (
+                $conversation->handoff_state->isLive()
+                && $active->status === AgentTurnStatus::Waiting
+            ) {
+                return AgentTurnClaim::idle();
+            }
+
             return $this->existingClaim($conversation, $active);
         }
 
@@ -54,6 +69,15 @@ final readonly class CreateOrRecoverAgentTurn
 
     private function claimPendingRange(ChatConversation $conversation): AgentTurnClaim
     {
+        // A human owns this conversation. The write-time gate in CreateChatMessage is
+        // a fast path only: agent_eligible_at is stamped at insert and is immutable,
+        // so a message written moments before takeover stays eligible forever, and the
+        // widget re-starts turns on backlog resume when a conversation loads. Without
+        // this re-check نواف answers on top of the human, mid-ticket.
+        if ($conversation->handoff_state->isLive()) {
+            return AgentTurnClaim::idle();
+        }
+
         $cursor = (int) (AgentTurn::query()
             ->where('conversation_id', $conversation->id)
             ->max('last_customer_message_id') ?? 0);

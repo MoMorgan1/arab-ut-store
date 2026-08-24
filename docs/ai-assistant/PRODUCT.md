@@ -1,61 +1,36 @@
 # Product contract
 
-**Lifecycle:** Phase 1 live and accepted; Phase 2 runtime deployed but inactive
-and not accepted
-**Verified:** 2026-08-22
+**Lifecycle:** Phases 1-3 and Support Handoff & Ticketing live and accepted
+**Verified:** 2026-08-24
 
 ## Purpose and users
 
-The assistant is the website assistant and support entry point for Arab UT
-customers. It currently serves guests and authenticated storefront customers.
-Support agents and administrators are later users, after their workflows are
-designed and approved.
+The assistant, named **نواف** (Nawaf) in Arabic and English, is the website assistant and support entry point for **عرب التيميت** (Arab Ultimate) customers. It serves guests and authenticated storefront customers. When a customer needs human support, seamless handoff connects them to authorized store staff through an integrated ticketing system.
 
-## Implemented v1
+## Implemented and accepted
 
-- A persistent chat shell is mounted across Inertia storefront navigation.
-- A conversation and its bounded history remain tied to the current guest or
-  authenticated owner.
-- Guests keep continuity through a session token and their conversations are
-  claimed after successful login.
-- Customer messages are stored and can receive an immediate bilingual canned
-  demo reply when the demo flag is enabled.
-- The launcher, full-screen mobile sheet, anchored desktop panel, retry state,
-  older-history loading, and Arabic/English presentation are present.
+- A persistent chat shell mounted across Inertia storefront navigation.
+- Conversation continuity tied to the current guest or authenticated owner, with guest conversation claiming after login.
+- Home view with quick topics, start/continue CTA, and a "Previous conversations" list for authenticated customers (up to 10 rows with ticket badges and relative timestamps).
+- **Phase 2 AI Runtime:** Owner-scoped durable agent turns and runs, prompt guard, bilingual streaming, cost accounting, and direct OpenAI Responses adapter for Nawaf (`gpt-5.6-luna`).
+- **Phase 3 Knowledge Grounding:** Curated bilingual knowledge corpus, lexical topic selection, grounding with exact-fact quoting, server-derived service cards with live rendered prices, and server-derived add-to-cart offers.
+- **Human Support Handoff & Ticketing:**
+  - Pinned ticket banner with three distinct states: `requested` (gold band + clock chip + ticket number), `active` (names responder, e.g. "Mohamed from the team is replying" + gold avatar), and `resolved` (green check + "Still need help?" button reopening ticket on same thread).
+  - Centered paused pill in thread: "نواف متوقف مؤقتًا — الفريق يتابع محادثتك" / "Nawaf is paused — the team is following your chat".
+  - Staff message bubbles with white background, solid `#d4a843` gold border, soft gold shadow, and staff initial avatar row.
+  - Handoff polling lifecycle (5s start, 15s backoff after 2 min, pause on background tab, stop on resolved).
+  - Transparent 404 conversation recovery without surfacing raw errors.
+  - Admin inbox support with live 30s unread badge polling and sound chime on new tickets.
+  - Synchronous away-customer email notification (`SupportReplyNotification`, 5-min inactivity check, 1-hr throttle) linking directly to chat without exposing transcripts.
+  - 48-hour guest retention window.
 
-The current production reply is deterministic demo behavior. It is not a model
-response and it does not make a claim about answer quality or availability.
+## Non-Negotiable Copy Rule
 
-## Implemented but inactive
-
-Phase 2 added owner-scoped durable agent turns/runs, a prompt guard, bilingual
-streaming/recovery UX, usage/cost accounting, a fake CI provider, and a direct
-OpenAI Responses adapter for `gpt-5.6-luna`. Mohamed approved direct public
-rollout, but the mandatory public evaluation failed mixed-language and
-first-visible-content gates. AI is disabled while remediation is reviewed, so
-these capabilities are not part of the currently accepted customer experience.
+No banner, notification, or system string may promise a response time. Words such as "soon", "shortly", "within", "قريبًا", and "خلال" are prohibited. "The team will reply here" / "طلبك وصل للفريق" is the ceiling.
 
 ## Excluded from the current product
 
-- Autonomous order changes, cancellations, refunds, or fulfillment actions.
-- Payment initiation, capture, credential access, or other financial actions.
-- Currently live model-generated answers or AI accuracy guarantees.
-- Tool calling, retrieval, realtime support, or an admin inbox.
-
-## Success criteria
-
-The foundation succeeds when conversation continuity is owner-safe, Arabic and
-English directionality is clear, the browser-verified release path is reliable,
-and Mohamed completes manual owner acceptance on the deployed experience.
-
-## Later product work
-
-**Section lifecycle:** Planned
-
-The immediate next product gate is approval, remediation, and complete
-re-evaluation of the existing AI turn runtime. Human support/administration,
-retrieval, and approved tools require separate discovery, design, security
-review, and owner approval.
-
-See [STATUS.md](STATUS.md), [AGENT-RUNTIME.md](AGENT-RUNTIME.md), and
-[EVALS.md](EVALS.md).
+- Autonomous order changes, cancellations, refunds, or fulfillment actions by AI.
+- Payment initiation, capture, credential access, or other financial actions by AI.
+- Model tool calling. Service cards and add-to-cart offers are derived server-side.
+- Realtime WebSockets transport.

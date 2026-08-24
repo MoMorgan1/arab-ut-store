@@ -23,11 +23,11 @@ test('maintenance does not delete an expired guest candidate claimed during its 
     }
 
     Carbon::setTestNow('2026-08-20 12:00:00');
-    config()->set('chat.guest_retention_days', 30);
+    config()->set('chat.guest_retention_hours', 48);
     $guestKey = hash('sha256', 'maintenance-claimed-guest-race');
     $conversation = ChatConversation::factory()->forGuest($guestKey)->closed(
         ChatConversationCloseReason::Inactive,
-        now()->subDays(30),
+        now()->subHours(48),
     )->create();
     $message = ChatMessage::factory()->create(['conversation_id' => $conversation->id]);
     $barrierDirectory = storage_path('framework/testing/chat-maintenance-'.bin2hex(random_bytes(8)));

@@ -9,6 +9,7 @@ import { chatShelfItems } from '@/lib/chat-shelf';
 import { chatTopicsFor } from '@/lib/chat-topics';
 import type {
     AgentTurnState,
+    ChatHandoffState,
     ChatMessage,
     ChatServicePrices,
 } from '@/types/chat';
@@ -23,6 +24,7 @@ type ChatMessageListProps = {
     disabled?: boolean;
     messages: ChatMessage[];
     servicePrices?: ChatServicePrices;
+    handoffState?: ChatHandoffState;
     isLoading: boolean;
     isAssistantTyping: boolean;
     hasMore: boolean;
@@ -41,6 +43,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     disabled = false,
     messages,
     servicePrices = {},
+    handoffState,
     isLoading,
     isAssistantTyping,
     hasMore,
@@ -217,9 +220,26 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                     </div>
                 )}
 
+                {/* Handoff paused banner pill */}
+                {(handoffState === 'requested' ||
+                    handoffState === 'active') && (
+                    <div className="my-2 flex justify-center">
+                        <div
+                            dir="auto"
+                            data-testid="chat-handoff-paused-pill"
+                            className="chat-drop-in max-w-[90%] rounded-full border border-[#d4a843]/30 bg-[#f3ead6] px-4 py-1.5 text-center text-[11.5px] font-medium text-[#8a7243] shadow-xs"
+                        >
+                            {isEn
+                                ? 'Nawaf is paused — the team is following your chat'
+                                : 'نواف متوقف مؤقتًا — الفريق يتابع محادثتك'}
+                        </div>
+                    </div>
+                )}
+
                 {/* Grouped message clusters */}
                 {clusters.map((cluster) => {
                     const isCustomer = cluster.senderType === 'customer';
+                    const isStaff = cluster.senderType === 'staff';
                     const isSystem = cluster.senderType === 'system';
 
                     if (isSystem) {
@@ -263,6 +283,32 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                         dir="auto"
                                         className="chat-bubble-enter group relative max-w-[85%] text-start"
                                     >
+                                        {/* Staff Author Header (above first message in staff cluster) */}
+                                        {isStaff && idx === 0 && (
+                                            <div className="mb-1 flex items-center gap-1.5 px-1 text-xs font-semibold text-[#8a7243]">
+                                                <span
+                                                    aria-hidden="true"
+                                                    className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#d4a843] text-[10px] font-bold text-white shadow-xs"
+                                                >
+                                                    {(
+                                                        message.staffName?.trim() ||
+                                                        (isEn ? 'Arab' : 'عرب')
+                                                    )
+                                                        .charAt(0)
+                                                        .toUpperCase()}
+                                                </span>
+                                                <span className="truncate">
+                                                    {message.staffName?.trim()
+                                                        ? isEn
+                                                            ? `${message.staffName.trim()} · Arab Ultimate Team`
+                                                            : `${message.staffName.trim()} · فريق عرب التيميت`
+                                                        : isEn
+                                                          ? 'Arab Ultimate Team'
+                                                          : 'فريق عرب التيميت'}
+                                                </span>
+                                            </div>
+                                        )}
+
                                         <div
                                             data-stream-status={
                                                 isStreaming
@@ -272,7 +318,9 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                                             className={`rounded-2xl px-3.5 py-3 text-sm leading-relaxed ${
                                                 isCustomer
                                                     ? 'rounded-br-[4px] bg-[var(--chat-hero)] text-[#fbf8f2]'
-                                                    : 'rounded-bl-[4px] border border-[var(--chat-line)] bg-[var(--chat-card)] text-[var(--chat-ink)] shadow-[0_2px_8px_rgb(13_11_8/0.05)]'
+                                                    : isStaff
+                                                      ? 'chat-staff-bubble rounded-bl-[4px] border-[1.5px] border-[#d4a843] bg-white text-[var(--chat-ink)] shadow-[0_2px_8px_rgba(212,168,67,0.15)]'
+                                                      : 'rounded-bl-[4px] border border-[var(--chat-line)] bg-[var(--chat-card)] text-[var(--chat-ink)] shadow-[0_2px_8px_rgb(13_11_8/0.05)]'
                                             } ${isSending ? 'chat-sending opacity-70' : ''}`}
                                         >
                                             {isStreaming && (
@@ -450,39 +498,47 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                     </div>
                 )}
 
-                {/* Assistant retryable turn affordance */}
-                {retryableTurn?.retryable === true && (
-                    <div dir="ltr" className="my-1 flex w-full justify-start">
+                {/* Assistant retryable turn affordance.
+                    Hidden once a human owns the thread: the server refuses the
+                    retry anyway, but leaving a dead button under the "the team
+                    is replying" banner invites the customer to press it. */}
+                {retryableTurn?.retryable === true &&
+                    handoffState !== 'requested' &&
+                    handoffState !== 'active' && (
                         <div
-                            dir="auto"
-                            className="chat-drop-in flex items-center gap-1.5 rounded-xl border border-[var(--chat-line)] bg-[var(--chat-card)] px-3 py-2 text-xs text-[var(--chat-danger)] shadow-sm"
+                            dir="ltr"
+                            className="my-1 flex w-full justify-start"
                         >
-                            <AlertCircle
-                                aria-hidden="true"
-                                className="h-3.5 w-3.5"
-                            />
-                            <span>
-                                {isEn
-                                    ? 'Assistant could not complete response'
-                                    : 'تعذر على المساعد إكمال الرد'}
-                            </span>
-                            {onRetryAgentTurn && (
-                                <button
-                                    type="button"
-                                    onClick={onRetryAgentTurn}
-                                    disabled={disabled}
-                                    className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 underline hover:text-[var(--chat-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    <RefreshCw
-                                        aria-hidden="true"
-                                        className="h-3 w-3"
-                                    />
-                                    {isEn ? 'Retry' : 'إعادة المحاولة'}
-                                </button>
-                            )}
+                            <div
+                                dir="auto"
+                                className="chat-drop-in flex items-center gap-1.5 rounded-xl border border-[var(--chat-line)] bg-[var(--chat-card)] px-3 py-2 text-xs text-[var(--chat-danger)] shadow-sm"
+                            >
+                                <AlertCircle
+                                    aria-hidden="true"
+                                    className="h-3.5 w-3.5"
+                                />
+                                <span>
+                                    {isEn
+                                        ? 'Assistant could not complete response'
+                                        : 'تعذر على المساعد إكمال الرد'}
+                                </span>
+                                {onRetryAgentTurn && (
+                                    <button
+                                        type="button"
+                                        onClick={onRetryAgentTurn}
+                                        disabled={disabled}
+                                        className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 underline hover:text-[var(--chat-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <RefreshCw
+                                            aria-hidden="true"
+                                            className="h-3 w-3"
+                                        />
+                                        {isEn ? 'Retry' : 'إعادة المحاولة'}
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
                 {/* Suggestion Chips (shown when no customer message exists yet) */}
                 {!hasCustomerMessages && (

@@ -2,6 +2,9 @@
 
 return [
     'conversation_closed' => 'This conversation is closed. Start a new conversation to continue.',
+    'conversation_not_found' => 'The requested conversation was not found.',
+    'handoff_requires_login' => 'Please log in to contact support.',
+    'assistant_resumed' => 'Nawaf is back to help — reply here any time.',
     'validation_error' => 'The submitted chat data is invalid.',
     'rate_limited' => 'Too many chat requests. Please try again shortly.',
     'unavailable' => 'Chat is temporarily unavailable. Please try again.',
@@ -20,6 +23,20 @@ return [
     'provider_malformed' => 'The assistant received an unexpected response format. Please try again.',
     'provider_terminal_failure' => 'The assistant is unable to process this request. Please try again later.',
     'cancelled' => 'The request was cancelled.',
+
+    'support' => [
+        'defaultSubject' => 'Customer support request',
+        'requested_title' => 'Your request reached the team',
+        'active_title' => ':name from the team is replying',
+        'active_title_unassigned' => 'The team is replying',
+        'resolved_title' => 'Ticket resolved',
+        'reopen_button' => 'Still need help?',
+        'paused_pill' => 'Nawaf is paused — the team is following your chat',
+        'team_name' => 'Arab Ultimate Team',
+        'history_heading' => 'Previous conversations',
+        'read_only_badge' => 'This conversation is read-only',
+        'start_new' => 'Start a new conversation',
+    ],
 
     'cards' => [
         'cta' => 'Order now',

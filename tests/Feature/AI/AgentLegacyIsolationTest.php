@@ -88,7 +88,7 @@ test('next prompt uses only completed agent context and the current claimed cust
     ]);
     ChatMessage::factory()->customer()->agentEligible()->create(['content' => 'other-conversation']);
 
-    $request = app(BuildAgentModelRequest::class)->execute($turn, $owner);
+    $request = app(BuildAgentModelRequest::class)->execute($turn, $owner, 'SAR');
 
     expect(array_column($request->messages, 'content'))->toBe([
         'completed-customer',

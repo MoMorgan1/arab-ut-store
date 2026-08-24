@@ -10,6 +10,10 @@ export default function ChatRootLayout({ children }: { children: ReactNode }) {
     const { props } = page;
     const locale = (props.locale as string) || 'ar';
     const chatConfig = props.chat;
+    // Chat history is owner-scoped and guests always receive an empty list, so
+    // the widget only asks for it when someone is actually logged in.
+    const isAuthenticated =
+        (props.auth as { user?: unknown } | undefined)?.user != null;
     const surface = page.component.startsWith('account/') ? 'account' : 'store';
 
     // This layout wraps every page, so it is the one place that sees every
@@ -31,6 +35,7 @@ export default function ChatRootLayout({ children }: { children: ReactNode }) {
             {children}
             <ChatWidget
                 enabled={chatConfig?.enabled}
+                isAuthenticated={isAuthenticated}
                 locale={locale}
                 surface={surface}
             />

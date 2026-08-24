@@ -4,24 +4,55 @@ namespace App\Models;
 
 use App\Enums\Chat\ChatConversationCloseReason;
 use App\Enums\Chat\ChatConversationStatus;
+use App\Enums\Chat\ChatHandoffState;
+use App\Enums\Support\SupportTicketStatus;
+use App\Support\ChatNumber;
 use App\ValueObjects\Chat\ChatOwner;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property-read SupportTicket|null $liveTicket
+ */
 class ChatConversation extends DomainModel
 {
-    /** @var array<string, string> */
+    /**
+     * The column has a database default, but Eloquent does not hydrate database
+     * defaults onto a newly created instance — so a conversation created in this
+     * request had a null handoff_state until it was reloaded. Every
+     * `handoff_state->isLive()` and `handoff_state->value` on a fresh
+     * conversation threw on null, including the claim-time guard that keeps the
+     * assistant silent. Declaring the default here makes the attribute present
+     * from construction on every path.
+     *
+     * @var array<string, string>
+     */
+    protected $attributes = [
+        'handoff_state' => 'none',
+    ];
+
     protected $casts = [
         'status' => ChatConversationStatus::class,
         'last_message_at' => 'datetime',
         'closed_at' => 'datetime',
         'close_reason' => ChatConversationCloseReason::class,
+        'handoff_state' => ChatHandoffState::class,
+        'last_staff_message_at' => 'datetime',
     ];
 
     protected static function booted(): void
     {
+        static::creating(function (ChatConversation $conversation): void {
+            // blank() rather than a null/'' comparison: the attribute is typed as
+            // string, so PHPStan proves the === null half can never hold.
+            if (blank($conversation->short_id)) {
+                $conversation->short_id = ChatNumber::generate();
+            }
+        });
+
         static::saving(function (ChatConversation $conversation): void {
             $hasUser = $conversation->user_id !== null;
             $hasGuest = $conversation->guest_key !== null;
@@ -55,6 +86,15 @@ class ChatConversation extends DomainModel
     public function scopeOpen(Builder $query): void
     {
         $query->where('status', ChatConversationStatus::Open);
+    }
+
+    /** @param Builder<ChatConversation> $query */
+    public function scopeWithLiveHandoff(Builder $query): void
+    {
+        $query->whereIn('handoff_state', array_map(
+            static fn (ChatHandoffState $state): string => $state->value,
+            ChatHandoffState::liveStates(),
+        ));
     }
 
     /** @param Builder<ChatConversation> $query */
@@ -104,5 +144,18 @@ class ChatConversation extends DomainModel
     public function agentTurns(): HasMany
     {
         return $this->hasMany(AgentTurn::class, 'conversation_id')->orderBy('id', 'asc');
+    }
+
+    /** @return HasMany<SupportTicket, $this> */
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(SupportTicket::class, 'conversation_id');
+    }
+
+    /** @return HasOne<SupportTicket, $this> */
+    public function liveTicket(): HasOne
+    {
+        return $this->hasOne(SupportTicket::class, 'conversation_id')
+            ->where('status', SupportTicketStatus::Open);
     }
 }

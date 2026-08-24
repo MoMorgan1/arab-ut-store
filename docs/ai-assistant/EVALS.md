@@ -1,9 +1,9 @@
 # Evaluation
 
-**Lifecycle:** Phase 1 accepted; the 2026-08-22 batch failed, the 2026-08-23
-batch on `support-v3` passed every mandatory threshold and awaits owner
-acceptance
-**Verified:** 2026-08-22
+**Lifecycle:** Phase 1 accepted; the 2026-08-22 batch failed and the 2026-08-23
+batch on `support-v3` passed every mandatory threshold and was accepted by
+Mohamed on 2026-08-23
+**Verified:** 2026-08-24
 
 The repository has deterministic chat/runtime tests, fake-provider browser
 coverage, and a versioned 16-case Luna fixture. CI never receives an OpenAI key

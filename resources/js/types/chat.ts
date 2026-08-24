@@ -1,6 +1,9 @@
-export type ChatSenderType = 'customer' | 'assistant' | 'system';
+export type ChatSenderType = 'customer' | 'assistant' | 'system' | 'staff';
 
-export type ChatMessageType = 'text' | 'system';
+export type ChatMessageType = 'text' | 'system' | 'internal_note';
+
+export type ChatHandoffState =
+    'none' | 'offered' | 'requested' | 'active' | 'resolved';
 
 export type ChatConversationStatus = 'open' | 'closed' | 'archived';
 
@@ -8,6 +11,29 @@ export type ChatSurface = 'store' | 'account';
 
 export type AgentTurnStatus =
     'waiting' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export type ChatConversationTicket = {
+    number: string;
+    status: 'open' | 'resolved' | 'closed' | string;
+    responderName?: string | null;
+    subject?: string | null;
+    publicId?: string;
+};
+
+export type ChatConversationSummary = {
+    publicId: string;
+    subject: string;
+    lastMessageAt: string | null;
+    status: ChatConversationStatus;
+    ticketNumber?: string | null;
+};
+
+/** Payload of `GET /chat/conversations` — the widget's history list. */
+export type ChatConversationHistoryResponse = {
+    conversations: ChatConversationSummary[];
+    hasMore: boolean;
+    oldestCursor: string | null;
+};
 
 export type ChatMessage = {
     publicId: string;
@@ -17,6 +43,7 @@ export type ChatMessage = {
     messageType: ChatMessageType;
     content: string;
     metadata?: Record<string, unknown> | null;
+    staffName?: string | null;
     createdAt: string;
     clientStatus?: 'sending' | 'sent' | 'error';
     tempId?: string;
@@ -30,6 +57,7 @@ export type AgentTurnState = {
     retryable: boolean;
     hasPendingMessages: boolean;
     errorCode: string | null;
+    handoffState?: ChatHandoffState;
     message: ChatMessage | null;
 };
 
@@ -52,6 +80,8 @@ export type ChatConversation = {
     subject?: string | null;
     lastMessageAt?: string | null;
     assistantMode?: 'agent' | 'demo' | 'none';
+    handoffState?: ChatHandoffState;
+    ticket?: ChatConversationTicket | null;
     messages: ChatMessage[];
     latestTurn?: AgentTurnState | null;
     latestTurnState?: AgentTurnState | null;

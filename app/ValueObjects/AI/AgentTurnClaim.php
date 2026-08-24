@@ -44,4 +44,9 @@ final readonly class AgentTurnClaim
     {
         return new self(null, 0, false, false);
     }
+
+    public function isIdle(): bool
+    {
+        return $this->turn === null && $this->retryAfterMilliseconds === 0 && ! $this->shouldStart;
+    }
 }

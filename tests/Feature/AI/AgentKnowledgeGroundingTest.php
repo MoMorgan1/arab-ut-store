@@ -19,7 +19,7 @@ function knowledgeGroundedInstructions(string $question, string $locale = 'ar'):
         'last_customer_message_id' => $message->id,
     ]);
 
-    return app(BuildAgentModelRequest::class)->execute($turn, $owner)->instructions;
+    return app(BuildAgentModelRequest::class)->execute($turn, $owner, 'SAR')->instructions;
 }
 
 test('the topics a question is about are injected with their ids', function () {

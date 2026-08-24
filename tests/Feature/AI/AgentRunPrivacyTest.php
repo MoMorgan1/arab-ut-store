@@ -53,7 +53,7 @@ test('database rows, logs, and streamed events do not contain secrets, safety id
         'first_customer_message_id' => $message->id,
         'last_customer_message_id' => $message->id,
     ]);
-    $events = iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner));
+    $events = iterator_to_array(app(StreamAgentTurn::class)->execute($turn, $owner, 'SAR'));
 
     // Check database rows
     $runs = AgentRun::all();

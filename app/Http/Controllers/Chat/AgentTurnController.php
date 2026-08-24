@@ -63,7 +63,7 @@ class AgentTurnController extends Controller
         $claim = $this->createOrRecoverAgentTurn->execute($conversation, $owner);
 
         if ($claim->shouldStart && $claim->turn instanceof AgentTurn) {
-            return $this->streamResponse($claim->turn, $owner);
+            return $this->streamResponse($claim->turn, $owner, $this->displayCurrency($request));
         }
 
         if ($claim->retryAfterMilliseconds > 0) {
@@ -154,19 +154,35 @@ class AgentTurnController extends Controller
             return $this->turnNotRetryableResponse();
         }
 
-        return $this->streamResponse($retriedTurn, $owner);
+        return $this->streamResponse($retriedTurn, $owner, $this->displayCurrency($request));
     }
 
-    private function streamResponse(AgentTurn $turn, ChatOwner $owner): StreamedResponse
+    /**
+     * The viewer's display currency, resolved before the stream opens.
+     *
+     * The assistant's service cards are priced from this same session value, so
+     * the prompt's price table has to use it too. Reading the store default
+     * instead produced a reply quoting SAR directly above a card showing OMR.
+     */
+    private function displayCurrency(Request $request): string
     {
-        return response()->stream(function () use ($turn, $owner): void {
+        $currency = $request->session()->get('display_currency');
+
+        return is_string($currency) && $currency !== ''
+            ? $currency
+            : (string) config('store.default_display_currency');
+    }
+
+    private function streamResponse(AgentTurn $turn, ChatOwner $owner, string $displayCurrency): StreamedResponse
+    {
+        return response()->stream(function () use ($turn, $owner, $displayCurrency): void {
             ignore_user_abort(true);
 
             try {
                 echo $this->sseEventEncoder->heartbeat();
                 $this->flush();
 
-                foreach ($this->streamAgentTurn->execute($turn, $owner) as $event) {
+                foreach ($this->streamAgentTurn->execute($turn, $owner, $displayCurrency) as $event) {
                     echo $this->sseEventEncoder->event(
                         $event->type,
                         $this->safeStreamData($event),

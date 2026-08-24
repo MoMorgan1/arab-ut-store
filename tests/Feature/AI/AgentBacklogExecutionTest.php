@@ -41,7 +41,7 @@ test('backlog of 25 messages drains in chunks of default 24 across two turns the
 
     $first = app(CreateOrRecoverAgentTurn::class)->execute($conversation, $owner);
     expect($first->turn)->not->toBeNull();
-    iterator_to_array(app(StreamAgentTurn::class)->execute($first->turn, $owner));
+    iterator_to_array(app(StreamAgentTurn::class)->execute($first->turn, $owner, 'SAR'));
     $firstHasPending = app(PendingAgentMessages::class)->existsAfter(
         $conversation,
         (int) $first->turn->last_customer_message_id,
@@ -49,7 +49,7 @@ test('backlog of 25 messages drains in chunks of default 24 across two turns the
 
     $second = app(CreateOrRecoverAgentTurn::class)->execute($conversation, $owner);
     expect($second->turn)->not->toBeNull();
-    iterator_to_array(app(StreamAgentTurn::class)->execute($second->turn, $owner));
+    iterator_to_array(app(StreamAgentTurn::class)->execute($second->turn, $owner, 'SAR'));
     $secondHasPending = app(PendingAgentMessages::class)->existsAfter(
         $conversation,
         (int) $second->turn->last_customer_message_id,
@@ -94,15 +94,15 @@ test('backlog chunking honors custom configured max context messages limit of 10
 
     $first = app(CreateOrRecoverAgentTurn::class)->execute($conversation, $owner);
     expect($first->turn)->not->toBeNull();
-    iterator_to_array(app(StreamAgentTurn::class)->execute($first->turn, $owner));
+    iterator_to_array(app(StreamAgentTurn::class)->execute($first->turn, $owner, 'SAR'));
 
     $second = app(CreateOrRecoverAgentTurn::class)->execute($conversation, $owner);
     expect($second->turn)->not->toBeNull();
-    iterator_to_array(app(StreamAgentTurn::class)->execute($second->turn, $owner));
+    iterator_to_array(app(StreamAgentTurn::class)->execute($second->turn, $owner, 'SAR'));
 
     $third = app(CreateOrRecoverAgentTurn::class)->execute($conversation, $owner);
     expect($third->turn)->not->toBeNull();
-    iterator_to_array(app(StreamAgentTurn::class)->execute($third->turn, $owner));
+    iterator_to_array(app(StreamAgentTurn::class)->execute($third->turn, $owner, 'SAR'));
 
     $fourth = app(CreateOrRecoverAgentTurn::class)->execute($conversation, $owner);
 
