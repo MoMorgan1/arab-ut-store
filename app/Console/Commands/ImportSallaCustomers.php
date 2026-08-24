@@ -53,12 +53,15 @@ final class ImportSallaCustomers extends Command
                 $c['name'],
                 $c['email'] ?? 'N/A',
                 $c['phone'] ?? 'N/A',
-                // Two kinds of conflict reach here: an email and a mobile
-                // pointing at two different existing accounts, and two rows of
-                // this same file claiming one identity.
-                isset($c['email_user_id'], $c['phone_user_id'])
-                    ? "Email User #{$c['email_user_id']} vs Phone User #{$c['phone_user_id']}"
-                    : 'Duplicate identity in file, already claimed by Salla #'.($c['claimed_by'] ?? '?'),
+                // Three kinds of conflict reach here: an email and a mobile
+                // pointing at two different existing accounts, two rows of this
+                // same file claiming one identity, and a row whose identity
+                // belongs to a staff or owner account.
+                match (true) {
+                    isset($c['staff_user_id']) => 'Belongs to non-customer account #'.$c['staff_user_id'].', not imported',
+                    isset($c['email_user_id'], $c['phone_user_id']) => "Email User #{$c['email_user_id']} vs Phone User #{$c['phone_user_id']}",
+                    default => 'Duplicate identity in file, already claimed by Salla #'.($c['claimed_by'] ?? '?'),
+                },
             ], $report['conflict_details']);
 
             $this->table(['Salla ID', 'Name', 'Email', 'Phone', 'Conflict Reason'], $rows);
