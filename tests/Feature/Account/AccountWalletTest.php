@@ -22,7 +22,6 @@ test('the bilingual wallet destinations render an explicit no-wallet state', fun
             ->where('locale', $locale)
             ->where('wallet.exists', false)
             ->where('wallet.balance', null)
-            ->where('wallet.lifetimeCashback', ['amountMinor' => '0', 'currency' => 'SAR'])
             ->where('wallet.entries', [])
             ->where('wallet.pagination.total', 0)
             ->where('accountNavigation', fn ($items): bool => collect($items)->pluck('key')->all() === [
@@ -82,10 +81,6 @@ test('the wallet ledger is owner scoped ordered by newest sequence and exact for
                 'amountMinor' => '9007199254740991',
                 'currency' => 'SAR',
             ])
-            ->where('wallet.lifetimeCashback', [
-                'amountMinor' => '0',
-                'currency' => 'SAR',
-            ])
             ->where('wallet.pagination.currentPage', 1)
             ->where('wallet.pagination.lastPage', 2)
             ->where('wallet.pagination.perPage', 10)
@@ -117,11 +112,10 @@ test('a zero wallet remains distinct from an account without a wallet', function
         ->assertInertia(fn ($page) => $page
             ->where('wallet.exists', true)
             ->where('wallet.balance', ['amountMinor' => '0', 'currency' => 'SAR'])
-            ->where('wallet.lifetimeCashback', ['amountMinor' => '0', 'currency' => 'SAR'])
             ->where('wallet.entries', []));
 });
 
-test('wallet calculates lifetime cashback as sum of cashback minus reversals', function (): void {
+test('cashback and its reversal land in the single wallet balance and stay visible in the ledger', function (): void {
     $user = User::factory()->create();
     $account = WalletAccount::factory()->for($user)->create(['balance_halalah' => 3_500]);
 
@@ -145,7 +139,6 @@ test('wallet calculates lifetime cashback as sum of cashback minus reversals', f
         ->assertInertia(fn ($page) => $page
             ->where('wallet.exists', true)
             ->where('wallet.balance', ['amountMinor' => '3500', 'currency' => 'SAR'])
-            ->where('wallet.lifetimeCashback', ['amountMinor' => '3500', 'currency' => 'SAR'])
             ->has('wallet.entries', 2)
             ->where('wallet.entries.0.type', 'cashback_reversal')
             ->where('wallet.entries.0.effect', 'debit')

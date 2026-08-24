@@ -187,7 +187,6 @@ export type AccountTranslations = {
         feature_checkout?: string;
         available_balance: string;
         unavailable_balance: string;
-        lifetime_cashback?: string;
         loyalty_title: string;
         ledger_title: string;
         empty_title: string;
@@ -224,6 +223,7 @@ export type AccountTranslations = {
         how_it_works_1: string;
         how_it_works_2: string;
         how_it_works_3: string;
+        lifetime_cashback?: string;
         recent_cashback_title: string;
         empty_cashback_title: string;
         empty_cashback_desc: string;
@@ -453,7 +453,6 @@ export type AccountWalletPageProps = AccountPageShellProps & {
         exists: boolean;
         status?: WalletStatus;
         balance: AccountMoney | null;
-        lifetimeCashback?: AccountMoney;
         entries: AccountWalletEntry[];
         pagination: {
             currentPage: number;

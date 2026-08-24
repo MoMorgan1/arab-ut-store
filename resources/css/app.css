@@ -11125,18 +11125,6 @@ html.admin-document {
     box-shadow: 0 1rem 2.75rem rgb(0 0 0 / 20%);
 }
 
-.account-wallet-cashback {
-    border-color: rgb(212 168 67 / 24%);
-    background:
-        radial-gradient(
-            circle at 90% 10%,
-            rgb(212 168 67 / 12%),
-            transparent 34%
-        ),
-        linear-gradient(135deg, rgb(212 168 67 / 6%), transparent 58%),
-        var(--arabut-navy-raised);
-}
-
 .account-loyalty-page {
     display: grid;
     min-width: 0;

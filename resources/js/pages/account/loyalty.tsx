@@ -199,7 +199,7 @@ export default function AccountLoyalty() {
                                 </div>
                                 <div className="account-loyalty-hero__stat">
                                     <span>
-                                        {props.accountUi.wallet
+                                        {props.accountUi.loyalty
                                             ?.lifetime_cashback ??
                                             (isAr
                                                 ? 'كاش باك مكتسب'

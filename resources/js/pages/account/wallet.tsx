@@ -1,5 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowLeft, ArrowRight, Sparkles, WalletCards } from 'lucide-react';
+import { ArrowLeft, ArrowRight, WalletCards } from 'lucide-react';
 
 import WalletLedger from '@/components/account/wallet-ledger';
 import MyAccountLayout from '@/layouts/my-account-layout';
@@ -12,11 +12,6 @@ export default function AccountWallet() {
     const Arrow = props.locale === 'ar' ? ArrowLeft : ArrowRight;
 
     const balanceMoney = props.wallet.balance ?? {
-        amountMinor: '0',
-        currency: 'SAR',
-    };
-
-    const lifetimeCashbackMoney = props.wallet.lifetimeCashback ?? {
         amountMinor: '0',
         currency: 'SAR',
     };
@@ -42,28 +37,6 @@ export default function AccountWallet() {
                                 <bdi>
                                     {formatAccountMoney(
                                         balanceMoney,
-                                        props.locale,
-                                    )}
-                                </bdi>
-                            </h3>
-                        </div>
-                    </section>
-
-                    <section className="account-wallet-balance account-wallet-cashback">
-                        <span aria-hidden="true">
-                            <Sparkles />
-                        </span>
-                        <div>
-                            <p>
-                                {props.accountUi.wallet.lifetime_cashback ??
-                                    (props.locale === 'en'
-                                        ? 'Cashback earned'
-                                        : 'كاش باك مكتسب')}
-                            </p>
-                            <h3>
-                                <bdi>
-                                    {formatAccountMoney(
-                                        lifetimeCashbackMoney,
                                         props.locale,
                                     )}
                                 </bdi>

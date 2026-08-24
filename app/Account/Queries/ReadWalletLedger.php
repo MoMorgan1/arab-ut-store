@@ -26,7 +26,6 @@ final class ReadWalletLedger
             return ['wallet' => [
                 'exists' => false,
                 'balance' => null,
-                'lifetimeCashback' => AccountMoney::fromMinor(0, 'SAR'),
                 'entries' => [],
                 'pagination' => $this->emptyPagination(),
             ]];
@@ -68,12 +67,9 @@ final class ReadWalletLedger
             ->where('type', WalletEntryType::CashbackReversal->value)
             ->sum('amount_halalah');
 
-        $lifetimeCashbackHalalah = max(0, $cashbackHalalah - $reversalHalalah);
-
         return ['wallet' => [
             'exists' => true,
             'balance' => AccountMoney::fromMinor($balance, 'SAR'),
-            'lifetimeCashback' => AccountMoney::fromMinor($lifetimeCashbackHalalah, 'SAR'),
             'entries' => $paginator->getCollection()
                 ->map(fn (WalletEntry $entry): array => $this->present($entry, $locale))
                 ->values()
