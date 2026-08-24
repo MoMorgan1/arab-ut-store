@@ -3,6 +3,7 @@
 namespace App\Checkout;
 
 use App\Marketing\PromotionPrice;
+use App\Models\Promotion;
 
 final readonly class DiscountResult
 {
@@ -22,6 +23,8 @@ final readonly class DiscountResult
         public array $lineNetHalalah,
         public array $lineCouponDiscounts,
         public ?AppliedCoupon $appliedCoupon,
+        public ?Promotion $appliedCartPromotion = null,
+        public int $cartPromotionDiscountHalalah = 0,
     ) {}
 
     public function linePromotion(int|string $lineId): ?PromotionPrice

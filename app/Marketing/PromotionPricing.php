@@ -80,6 +80,7 @@ final class PromotionPricing
     {
         return $this->activePromotions ??= Promotion::query()
             ->active()
+            ->where(fn ($query) => $query->where('mechanic', Promotion::MECHANIC_ITEM)->orWhereNull('mechanic'))
             ->orderByDesc('value')
             ->orderBy('id')
             ->get();
@@ -91,6 +92,10 @@ final class PromotionPricing
         ServiceType $serviceType,
         ?int $productId,
     ): bool {
+        if ($promotion->mechanic !== null && $promotion->mechanic !== Promotion::MECHANIC_ITEM) {
+            return false;
+        }
+
         return match ($promotion->scope) {
             Promotion::SCOPE_ALL => true,
             Promotion::SCOPE_CATEGORY => $categoryId !== null && $promotion->category_id === $categoryId,

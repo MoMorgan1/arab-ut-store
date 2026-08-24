@@ -7,6 +7,7 @@ use App\Actions\Pricing\ReadManualServicePricing;
 use App\Checkout\AppliedCoupon;
 use App\Checkout\CheckoutResult;
 use App\Checkout\DiscountEngine;
+use App\Checkout\DiscountResult;
 use App\Checkout\OrderNumber;
 use App\Enums\DeliveryMode;
 use App\Enums\OrderItemStatus;
@@ -200,11 +201,13 @@ final readonly class PlaceOrder
             'paid_at' => $fullyPaidByWallet ? now() : null,
         ]);
 
-        foreach ($snapshots as $snapshot) {
+        foreach ($snapshots as $index => $snapshot) {
             $this->createOrderItem(
                 $order,
                 $snapshot,
                 $fullyPaidByWallet ? OrderItemStatus::Received : OrderItemStatus::PendingPayment,
+                $discountResult,
+                $index,
             );
         }
 
@@ -669,16 +672,20 @@ final readonly class PlaceOrder
         Order $order,
         array $snapshot,
         OrderItemStatus $status = OrderItemStatus::PendingPayment,
+        ?DiscountResult $discountResult = null,
+        int|string|null $lineId = null,
     ): void {
         /** @var ProductVariant $variant */
         $variant = $snapshot['variant'];
         /** @var Product $product */
         $product = $variant->product;
         /** @var PromotionPrice|null $promotion */
-        $promotion = $snapshot['promotion'];
-        $promotionDiscountHalalah = $promotion instanceof PromotionPrice
-            ? $promotion->discountHalalah
-            : 0;
+        $promotion = $lineId !== null && $discountResult instanceof DiscountResult
+            ? $discountResult->linePromotion($lineId)
+            : ($snapshot['promotion'] instanceof PromotionPrice ? $snapshot['promotion'] : null);
+        $promotionDiscountHalalah = $lineId !== null && $discountResult instanceof DiscountResult
+            ? ($discountResult->linePromotionDiscounts[$lineId] ?? 0)
+            : ($promotion instanceof PromotionPrice ? $promotion->discountHalalah : 0);
         $orderItem = $order->items()->create([
             'product_variant_id' => $variant->id,
             'sku' => $variant->sku,
