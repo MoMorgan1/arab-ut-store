@@ -6,23 +6,27 @@ use App\Actions\Support\AddInternalNote;
 use App\Admin\Actions\RecordStaffAudit;
 use App\Admin\Audit\StaffAuditEvent;
 use App\Enums\AdminPermission;
+use App\Http\Controllers\Admin\Concerns\RespondsToAdminChatAction;
 use App\Http\Controllers\Controller;
 use App\Models\ChatConversation;
 use App\Models\SupportTicket;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 final class ConversationNoteController extends Controller
 {
+    use RespondsToAdminChatAction;
+
     public function __construct(
         private readonly AddInternalNote $addInternalNote,
         private readonly RecordStaffAudit $recordStaffAudit,
     ) {}
 
-    public function __invoke(Request $request, string $publicId): JsonResponse
+    public function __invoke(Request $request, string $publicId): JsonResponse|RedirectResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
@@ -76,16 +80,14 @@ final class ConversationNoteController extends Controller
             ),
         );
 
-        return response()->json([
-            'data' => [
-                'message' => [
-                    'publicId' => (string) $message->public_id,
-                    'senderType' => $message->sender_type->value,
-                    'messageType' => $message->message_type->value,
-                    'content' => (string) $message->content,
-                    'createdAt' => $message->created_at?->utc()->toIso8601String(),
-                ],
+        return $this->respondToChatAction($request, [
+            'message' => [
+                'publicId' => (string) $message->public_id,
+                'senderType' => $message->sender_type->value,
+                'messageType' => $message->message_type->value,
+                'content' => (string) $message->content,
+                'createdAt' => $message->created_at?->utc()->toIso8601String(),
             ],
-        ], 201)->header('Cache-Control', 'no-store, private');
+        ], 201);
     }
 }

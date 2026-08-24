@@ -12,7 +12,7 @@ import {
     XCircle,
     Zap,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import AdminBadge from '@/components/admin/admin-badge';
 import type { AdminBadgeVariant } from '@/components/admin/admin-badge';
@@ -72,6 +72,69 @@ export default function AdminConversationDetailPage() {
     });
 
     const isGuest = conversation.ownerType === 'guest';
+
+    // Keep the open thread live.
+    //
+    // Without this the operator is staring at a snapshot: a customer can reply
+    // and nothing moves until the page is reloaded by hand, which is exactly
+    // the friction that stops this being usable for a day's work. Only polls
+    // while a handoff is live — an ordinary archived conversation is not going
+    // to change — and pauses whenever the tab is hidden, so an admin who leaves
+    // a tab open overnight is not making requests all night.
+    const isLiveThread =
+        conversation.handoffState === 'requested' ||
+        conversation.handoffState === 'active';
+
+    useEffect(() => {
+        if (!isLiveThread) {
+            return;
+        }
+
+        let timer: ReturnType<typeof setTimeout> | null = null;
+        let stopped = false;
+
+        const tick = () => {
+            if (stopped) {
+                return;
+            }
+
+            if (typeof document !== 'undefined' && document.hidden) {
+                timer = setTimeout(tick, 10000);
+
+                return;
+            }
+
+            router.reload({
+                // reload() preserves component state and scroll by default,
+                // so the composer keeps whatever is half-typed in it.
+                only: ['messages', 'conversation', 'ticket'],
+                onFinish: () => {
+                    if (!stopped) {
+                        timer = setTimeout(tick, 10000);
+                    }
+                },
+            });
+        };
+
+        timer = setTimeout(tick, 10000);
+
+        return () => {
+            stopped = true;
+
+            if (timer !== null) {
+                clearTimeout(timer);
+            }
+        };
+    }, [isLiveThread]);
+
+    // Newest message in view on load and after every reply, the way a chat
+    // behaves. A transcript that opens at the top makes the operator scroll
+    // before they can read the thing they came to answer.
+    const transcriptEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        transcriptEndRef.current?.scrollIntoView({ block: 'end' });
+    }, [props.messages.length]);
     const closeReasonLabel = conversation.closeReason
         ? (copy.closeReasons[conversation.closeReason] ??
           conversation.closeReason)
@@ -298,6 +361,7 @@ export default function AdminConversationDetailPage() {
                             {copy.noMessages}
                         </p>
                     )}
+                    <div ref={transcriptEndRef} />
                 </div>
             </section>
 
@@ -622,6 +686,7 @@ function StaffReplyPanel({
     const [mode, setMode] = useState<'reply' | 'note'>('reply');
     const [content, setContent] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const maxLength = 4000;
     const trimmed = content.trim();
@@ -636,6 +701,8 @@ function StaffReplyPanel({
         }
 
         setIsSubmitting(true);
+        setError(null);
+
         router.post(
             `${conversationPath}/${mode === 'reply' ? 'reply' : 'note'}`,
             { content: trimmed },
@@ -643,6 +710,8 @@ function StaffReplyPanel({
                 preserveScroll: true,
                 onFinish: () => setIsSubmitting(false),
                 onSuccess: () => setContent(''),
+                onError: (errors) =>
+                    setError(errors.chat ?? errors.content ?? copy.replyFailed),
             },
         );
     };
@@ -698,6 +767,15 @@ function StaffReplyPanel({
                 dir="auto"
                 maxLength={maxLength}
                 onChange={(event) => setContent(event.target.value)}
+                onKeyDown={(event) => {
+                    // Enter sends, Shift+Enter breaks the line. Mohamed answers
+                    // dozens of these a day; reaching for the mouse each time is
+                    // the difference between a tool and a chore.
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                        event.preventDefault();
+                        submit();
+                    }
+                }}
                 placeholder={
                     mode === 'reply'
                         ? copy.replyPlaceholder
@@ -761,8 +839,18 @@ function StaffReplyPanel({
                 ) : null}
             </div>
 
+            {error !== null ? (
+                <p
+                    className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+                    role="alert"
+                >
+                    {error}
+                </p>
+            ) : null}
+
             <p className="mt-3 text-xs text-muted-foreground">
-                {mode === 'reply' ? copy.replyTakesOverNotice : copy.noteNotice}
+                {mode === 'reply' ? copy.replyTakesOverNotice : copy.noteNotice}{' '}
+                {copy.enterToSend}
             </p>
         </section>
     );
