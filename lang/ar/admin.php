@@ -1302,6 +1302,8 @@ return [
         'replyTakesOverNotice' => 'إرسال الرد يعني استلامك للمحادثة — نواف يتوقف عن الرد حتى تغلق التذكرة.',
         'noteNotice' => 'العميل لا يرى الملاحظة الداخلية أبدًا.',
         'ticketSection' => 'التذكرة',
+        'replyFailed' => 'تعذر الإرسال. حاول مرة أخرى.',
+        'enterToSend' => 'Enter للإرسال، Shift+Enter لسطر جديد.',
         'turnsSection' => 'دورات تشغيل المساعد',
         'publicId' => 'معرف المحادثة',
         'status' => 'الحالة',

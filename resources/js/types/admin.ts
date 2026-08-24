@@ -1287,6 +1287,8 @@ export type AdminTranslations = {
         replyTakesOverNotice: string;
         noteNotice: string;
         ticketSection: string;
+        replyFailed: string;
+        enterToSend: string;
         turnCreatedAt: string;
         turnId: string;
         turnStatus: string;

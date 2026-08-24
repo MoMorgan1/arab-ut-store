@@ -7,22 +7,26 @@ use App\Admin\Actions\RecordStaffAudit;
 use App\Admin\Audit\StaffAuditEvent;
 use App\Enums\AdminPermission;
 use App\Enums\Chat\ChatHandoffState;
+use App\Http\Controllers\Admin\Concerns\RespondsToAdminChatAction;
 use App\Http\Controllers\Controller;
 use App\Models\ChatConversation;
 use App\Models\SupportTicket;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 final class ResolveTicketController extends Controller
 {
+    use RespondsToAdminChatAction;
+
     public function __construct(
         private readonly ResolveSupportTicket $resolveSupportTicket,
         private readonly RecordStaffAudit $recordStaffAudit,
     ) {}
 
-    public function __invoke(Request $request, string $publicId): JsonResponse
+    public function __invoke(Request $request, string $publicId): JsonResponse|RedirectResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
@@ -58,16 +62,14 @@ final class ResolveTicketController extends Controller
             ),
         );
 
-        return response()->json([
-            'data' => [
-                'ticket' => [
-                    'publicId' => (string) $resolvedTicket->public_id,
-                    'ticketNumber' => (string) $resolvedTicket->ticket_number,
-                    'status' => $resolvedTicket->status->value,
-                    'resolvedAt' => $resolvedTicket->resolved_at?->utc()->toIso8601String(),
-                ],
-                'handoffState' => ChatHandoffState::Resolved->value,
+        return $this->respondToChatAction($request, [
+            'ticket' => [
+                'publicId' => (string) $resolvedTicket->public_id,
+                'ticketNumber' => (string) $resolvedTicket->ticket_number,
+                'status' => $resolvedTicket->status->value,
+                'resolvedAt' => $resolvedTicket->resolved_at?->utc()->toIso8601String(),
             ],
-        ], 200)->header('Cache-Control', 'no-store, private');
+            'handoffState' => ChatHandoffState::Resolved->value,
+        ], 200);
     }
 }

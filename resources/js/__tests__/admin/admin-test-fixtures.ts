@@ -1585,6 +1585,8 @@ export const englishAdminUi: AdminTranslations = {
         replyTakesOverNotice: 'Sending a reply takes over the chat.',
         noteNotice: 'The customer never sees an internal note.',
         ticketSection: 'Ticket',
+        replyFailed: 'That did not send. Try again.',
+        enterToSend: 'Enter sends, Shift+Enter adds a line.',
         turnCreatedAt: 'Turn started',
         turnId: 'Turn ID',
         turnStatus: 'Turn status',

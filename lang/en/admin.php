@@ -1303,6 +1303,8 @@ return [
         'replyTakesOverNotice' => 'Sending a reply takes over the chat — Nawaf stops answering until you resolve.',
         'noteNotice' => 'The customer never sees an internal note.',
         'ticketSection' => 'Ticket',
+        'replyFailed' => 'That did not send. Try again.',
+        'enterToSend' => 'Enter sends, Shift+Enter adds a line.',
         'turnsSection' => 'Agent runtime turns',
         'publicId' => 'Conversation ID',
         'status' => 'Status',
