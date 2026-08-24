@@ -8,7 +8,7 @@
 
 **Tech Stack:** Laravel 13, PHP 8.3, MariaDB/SQLite tests, Inertia 3, React 19, TypeScript, Vite, Pest/PHPUnit, Vitest/Testing Library, and the existing Arab UT CSS/token system.
 
-**Spec:** `docs/superpowers/specs/2026-08-16-fut-rivals-service-configurators-design.md`
+**Spec:** `docs/decisions/2026-08-16-fut-rivals-service-configurators-design.md`
 
 ## Global Constraints
 
@@ -564,7 +564,7 @@ git commit -m "feat: polish FUT and Rivals storefronts"
 
 **Files:**
 - Modify: `docs/operations/storefront-runbook.md`
-- Modify: `docs/superpowers/plans/2026-08-16-fut-rivals-service-configurators.md`
+- Modify: `docs/plans/2026-08-16-fut-rivals-service-configurators.md`
 - Create: `.superpowers/sdd/2026-08-16-fut-rivals-service-configurators/final-report.md`
 
 **Interfaces:**

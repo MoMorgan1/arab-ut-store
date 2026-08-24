@@ -8,7 +8,7 @@
 
 **Tech Stack:** Laravel 13, Inertia + React 19, TypeScript, Tailwind v4, MariaDB (production) / SQLite (tests), Pest, Vitest, Playwright.
 
-**Spec:** [`docs/superpowers/specs/2026-08-24-support-handoff-tickets-design.md`](../specs/2026-08-24-support-handoff-tickets-design.md)
+**Spec:** [`docs/decisions/2026-08-24-support-handoff-tickets-design.md`](../decisions/2026-08-24-support-handoff-tickets-design.md)
 
 ## Global Constraints
 

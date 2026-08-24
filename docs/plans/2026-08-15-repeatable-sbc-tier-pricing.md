@@ -8,7 +8,7 @@
 
 **Tech Stack:** Laravel 13, PHP 8.4+, Pest, MariaDB/SQLite, React 19, TypeScript, Vitest, Inertia, n8n Code nodes, Node test runner, CSS.
 
-**Spec:** `docs/superpowers/specs/2026-08-15-repeatable-sbc-tier-pricing-design.md`
+**Spec:** `docs/decisions/2026-08-15-repeatable-sbc-tier-pricing-design.md`
 
 ## Global Constraints
 

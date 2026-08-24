@@ -12,7 +12,7 @@ canonical design explicitly adopts these foundations.
 
 ## Binding sources
 
-1. Read `docs/superpowers/specs/2026-08-21-admin-dashboard-design.md`.
+1. Read `docs/decisions/2026-08-21-admin-dashboard-design.md`.
 2. Read the reference matching the touched domain.
 3. For UI work, also follow the repository `AGENTS.md`, `.impeccable.md`,
    `frontend-design`, `ui-ux-pro-max`, the relevant Impeccable skills, and a

@@ -8,7 +8,7 @@
 
 **Tech Stack:** React 19 + TypeScript, Tailwind v4 (arbitrary-value classes over CSS variables), Vitest + Testing Library (jsdom), lucide-react icons, Laravel/Inertia host.
 
-**Spec:** `docs/superpowers/specs/2026-08-22-ai-assistant-widget-ui-design.md`
+**Spec:** `docs/decisions/2026-08-22-ai-assistant-widget-ui-design.md`
 
 **Conventions for every task**
 - Run a single test file: `npx vitest run resources/js/__tests__/chat/<file> --reporter=dot`

@@ -8,7 +8,7 @@
 
 **Tech Stack:** PHP 8.3, Laravel 13.24, MariaDB 11.4 in CI/production, SQLite for fast tests, Guzzle 7.15.3 through Laravel's HTTP client, React 19, TypeScript 5.7, Vitest 4, Playwright 1.62 Chromium, OpenAI Responses API, `gpt-5.6-luna`.
 
-**Spec:** `docs/superpowers/specs/2026-08-20-ai-assistant-phases-1-2-design.md`
+**Spec:** `docs/decisions/2026-08-20-ai-assistant-phases-1-2-design.md`
 
 ## Global Constraints
 

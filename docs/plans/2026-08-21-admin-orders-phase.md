@@ -1,7 +1,7 @@
 # Admin Orders Phase — shadcn re-skin, orders, credential reveal, refunds
 
 **Status:** Draft for owner review (2026-08-21)
-**Spec:** `docs/superpowers/specs/2026-08-21-admin-dashboard-design.md`
+**Spec:** `docs/decisions/2026-08-21-admin-dashboard-design.md`
 **References:** `.agents/skills/arab-ut-admin/references/ui-reference.md`
 **Complexity:** Ambitious (split into five independently shippable tasks)
 

@@ -4,7 +4,7 @@
 
 Implemented the storefront footer as the page's single `contentinfo` landmark. The React hierarchy, content, destinations, payment marks, responsive behavior, and warm black/gold/cream styling reproduce the authoritative WordPress footer while preserving the existing storefront design system.
 
-Only the scoped footer implementation and its integration fixtures changed. The concurrent edit to `docs/superpowers/plans/2026-08-10-wordpress-header-footer-parity.md` was left untouched and is not part of this task.
+Only the scoped footer implementation and its integration fixtures changed. The concurrent edit to `docs/plans/2026-08-10-wordpress-header-footer-parity.md` was left untouched and is not part of this task.
 
 ## Sources and design decisions
 

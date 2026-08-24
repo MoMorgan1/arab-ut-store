@@ -166,7 +166,7 @@ Task 7 owns only:
 - `resources/js/__tests__/store/store-simple-page.test.tsx`
 - `resources/js/__tests__/store/coins-home.test.tsx`
 - `tests/Feature/Store/StoreTranslationParityTest.php`
-- `docs/superpowers/plans/2026-08-10-wordpress-header-footer-parity.md` (including the intentional incoming Task 6 evidence)
+- `docs/plans/2026-08-10-wordpress-header-footer-parity.md` (including the intentional incoming Task 6 evidence)
 - this report
 
 `store-header.test.tsx` and `store-layout.test.tsx` were run but did not require edits. No pricing, rate conversion, quote controller, cart, credential, route, migration, asset, dependency, build output, test database, preview cookie, or diagnostic fixture is staged. The diagnostic rate fixtures were deleted; final cached rows come only from the configured real provider. No push, merge, or deploy occurred.
