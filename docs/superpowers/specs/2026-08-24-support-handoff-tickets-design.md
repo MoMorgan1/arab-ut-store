@@ -1,6 +1,8 @@
 # Support handoff, tickets, and customer chat history — design
 
-**Status:** Approved by Mohamed on 2026-08-24; revised after the Fable architecture debate
+**Status:** Approved by Mohamed on 2026-08-24; revised after the Fable
+architecture debate, and again after his 2026-08-24 decisions to rename the
+assistant to نواف and to remove every automatic handoff offer
 **Base:** `origin/main` at `4c0d417`
 **Branch:** `claude/support-handoff`
 
@@ -8,7 +10,7 @@
 
 Three gaps in the shipped assistant:
 
-1. **No human path.** Luna answers from `support-v3` plus the curated knowledge
+1. **No human path.** نواف answers from `support-v6` plus the curated knowledge
    file. When it cannot help, the prompt tells it to offer that "the team will
    follow up here" — but no such follow-up exists. There is no way for Mohamed
    to reply to a customer, and no record of a request that needs a person.
@@ -28,22 +30,25 @@ Three gaps in the shipped assistant:
 
 | Question | Decision |
 | --- | --- |
-| Guest data | Guests keep Luna. Guest conversations are excluded from the admin inbox entirely and hard-deleted after 48 hours. |
+| Guest data | Guests keep نواف. Guest conversations are excluded from the admin inbox entirely and hard-deleted after 48 hours. |
 | Ticket shape | A real `support_tickets` record with its own number, status and assignee. |
-| Who escalates | Both: an always-available customer control, and a server-side auto-offer when Luna genuinely cannot help. Luna must try first. |
+| Who escalates | **The customer only** (revised 2026-08-24): they ask in words, or tap the always-available control. Nothing is ever offered automatically — "do not suggest to the customer unless the customer asks so you don't overload me." |
 | Admin chat ID | A short `CHT-XXXXXX` number replacing the ULID in the inbox. |
-| Luna during handoff | Silent for that conversation until the ticket is resolved. |
+| Assistant during handoff | نواف is silent in that conversation until the ticket is resolved. |
 | Delivery | Widget polls while open; admin dashboard badge + sound; email the customer when they are away. |
 | Customer ticket surface | Inside the chat widget only. |
 | Who may reply | New `chat.reply` permission, Admin-only for now. |
+| Assistant name | Renamed from Luna to **نواف / Nawaf**. Mohamed first suggested محمد; that collides with his own name on staff replies, which would leave a customer unable to tell a human reply from the bot. The name appears in one string and the prompt never names the assistant, so the deployed configuration is unaffected. |
 
 ## Non-goals
 
 - No websocket/Reverb transport, **no queue worker**, no realtime presence.
 - No SLA timers, routing rules, canned-response library, or CSAT survey.
 - No customer-facing ticket pages outside the widget.
-- No change to Luna's prompt, knowledge file, model, token budget, or eval
-  thresholds. `support-v3` and its accepted configuration are untouched.
+- No change to the prompt, knowledge file, model, token budget, or eval
+  thresholds. `support-v6` is the deployed prompt and is untouched by this work.
+  (Note: `support-v3` is the newest prompt to have passed a complete 16-case
+  batch; v4, v5 and v6 each shipped without one. See `EVALS.md`.)
 - No change to session configuration; `AI-B09` stays open.
 
 ### Cut from v1 after the debate
@@ -79,7 +84,7 @@ deliberately rather than rediscover them.
 | `last_staff_message_at` | `timestamp` nullable | Drives the customer-away email decision and the inbox unread dot. |
 
 `handoff_state` lives on the conversation rather than only on the ticket because
-it governs Luna's behaviour, which is checked on every turn claim and must not
+it governs the assistant's behaviour, which is checked on every turn claim and must not
 require a ticket join on the hot path. It is a **cache of ticket state, not a
 second authority**: `support_tickets.status` is authoritative, and the two only
 ever change together in one transaction under the conversation lock.
@@ -159,7 +164,7 @@ browser, not in the presenter's map step. A feature test asserts the customer
 conversation JSON for a conversation containing a note does not contain the
 note's text.
 
-Notes and staff messages can never reach Luna's prompt either, and that holds
+Notes and staff messages can never reach the assistant's prompt either, and that holds
 without new code: both context queries are allowlists —
 `PendingAgentMessages` requires `sender_type = customer`, and
 `CompletedAgentContextMessages` requires turn-completed customer/assistant rows.
@@ -204,7 +209,7 @@ number that does not correspond to a promise of a human reply.
    from `lockOwnedOpenConversation`'s `firstOrFail`. The widget treats
    404-on-send as "this conversation expired" and transparently starts a new
    one, the same way it already reacquires after a cross-tab close.
-6. Guests keep Luna, the knowledge grounding, service cards and cart offers
+6. Guests keep نواف, the knowledge grounding, service cards and cart offers
    exactly as today.
 7. The escalation control renders for a guest as "Log in to reach the team",
    linking to the existing login route with a return URL. `POST /chat/tickets`
@@ -229,56 +234,52 @@ abuse. This is the explicit request; it is recorded in `DECISIONS.md`.
 Luna answers first. The **server**, never the model, decides when a human is
 offered — the same rule that already governs service cards.
 
-### 3.1 Offer triggers
+### 3.1 The customer asks, or nothing happens
 
-`App\Actions\Support\EvaluateHandoffOffer` decides whether the conversation
-moves to `handoff_state = offered`. It offers when any of:
+**Owner decision, 2026-08-24 (supersedes the earlier auto-offer):** nothing is
+ever offered automatically. Mohamed's words: *"do not suggest to the customer
+unless the customer asks so you don't overload me."*
 
-1. **The customer asked for a person.** Bilingual lexical match against a
-   maintained list (`موظف`, `خدمة العملاء`, `بشري`, `شخص حقيقي`, `الدعم`,
-   `human`, `agent`, `real person`, `support team`, `representative`,
-   `talk to someone`). Word-boundary aware; Arabic matching is normalised for
-   tatweel and the alef/hamza family so `الدعم` and `الدّعم` both match.
-2. **Luna had nothing to ground on, twice.** Zero knowledge topics selected for
-   this turn *and* for the immediately preceding completed agent turn.
-3. **The turn failed terminally** during a live request — timeout, provider
-   error, or a non-retryable failure the customer was waiting on.
-4. **The sensitive-content guard blocked the claimed range.**
+A handoff begins in exactly two ways:
 
-**Trigger 2 is recomputed, not read back.** The selection happens inside
-`BuildAgentModelRequest::knowledgeBlock` and the result is discarded, and
-`agent_runs` is content-free by design — so there is nothing persisted to query.
-`SelectSupportKnowledge` is deterministic and the turn's customer-message bounds
-*are* persisted, so `EvaluateHandoffOffer` re-runs the selection over the
-current and previous completed turns' customer text. That is one lexical pass
-over a bounded string and touches no provider.
+1. **The customer asks for a person in words.** `HandoffPhrases::matches()` runs
+   a bilingual lexical match against a maintained list (`موظف`,
+   `خدمة العملاء`, `بشري`, `شخص حقيقي`, `الدعم`, `احد من الفريق`, `human`,
+   `agent`, `real person`, `support team`, `representative`,
+   `talk to someone`, `speak to someone`). Word-boundary aware for the Latin
+   entries; Arabic is normalised for tatweel and the alef/hamza family so
+   `الدعم` and `الدّعم` both match.
+2. **The customer taps the always-available control** in the widget header.
 
-Trigger 2 is **skipped entirely when `ai-assistant.knowledge_max_topics` is 0**.
-`BuildAgentModelRequest` returns an empty block without selecting at that
-setting, so treating it as "nothing to ground on" would offer a handoff on every
-single turn the moment grounding is switched off.
+That is the complete list. Deleted from the first draft, deliberately:
 
-**Trigger 3 excludes cron-recovered turns.** `RecoverStaleAgentTurns`
-terminalises abandoned turns every minute with `StaleTurnRecovered`. A customer
-who simply closed the tab mid-stream would otherwise return to a handoff chip
-they never asked for. Only a failure observed on a live request offers a human.
+- an offer when the knowledge selection came back empty twice;
+- an offer when the turn failed terminally;
+- an offer when the sensitive-content guard blocked the range.
 
-`EvaluateHandoffOffer` is called from exactly two places: after
-`FinalizeAgentTurn` terminalises a turn on a live request, and from
-`CreateChatMessage` for the lexical trigger. The cron recovery path does not
-call it.
+Cutting them also removes the whole recomputed-knowledge-selection mechanism —
+the selection result is not persisted and `agent_runs` is content-free, so that
+trigger would have had to re-run `SelectSupportKnowledge` over two turns' worth
+of customer text to reconstruct something nobody asked for. It was the most
+intricate part of this lane and it is now simply gone.
 
-### 3.2 The offer is not a ticket
+**What happens instead when the assistant cannot help:** it says so and stops.
+`support-v6` already handles this — it tells the model to say plainly what it
+cannot confirm and to ask at most one clarifying question. A customer who wants
+a person can always say so, or tap the control. The store is not obliged to
+volunteer a queue it has to staff.
 
-Reaching `offered` renders a chip in the thread ("Talk to the team" / "تحدث مع
-الفريق"). A ticket is created only when the customer taps it, or when Mohamed
-replies or takes over from the inbox. This mirrors the confirmation principle in
-`TOOLS.md` and prevents an accidental flood of tickets from one bad Luna day.
+### 3.2 Reaching a person is a deliberate act
 
-The always-available control in the widget header does the same thing without
-waiting for a trigger.
+Tapping the control, or asking in words, creates the ticket directly — there is
+no intermediate "offer" the customer has to accept, because the customer already
+asked. `handoff_state` therefore moves `none → requested`; the `offered` state
+exists in the enum but is written by nothing in v1, kept only so the column does
+not need a migration if an offer is ever reintroduced.
 
-### 3.3 Luna goes silent — enforced at claim time
+Guests get the login variant of the control and a 403 from the endpoint (§2.7).
+
+### 3.3 نواف goes silent — enforced at claim time
 
 `CreateChatMessage` sets `agent_eligible_at` only when `handoff_state` is not
 `requested` or `active`. **That write-time gate is a fast path, not the guard.**
@@ -577,10 +578,12 @@ Four lanes, sequenced so each starts from a merged base rather than a guess:
   window and open-thread purge, auto-close/purge exemption, admin list/detail
   guest exclusion, short-id column and backfill. Merges first; every other lane
   depends on it.
-- **Lane B — escalation and Luna silence.** `EvaluateHandoffOffer` and its two
-  call sites, the bilingual matcher, `handoff_state` transitions, the
+- **Lane B — escalation and نواف's silence.** `HandoffPhrases` and its single
+  call site in `CreateChatMessage`, `handoff_state` transitions, the
   **claim-time re-check in `CreateOrRecoverAgentTurn`**, ticket create/resolve
-  actions, the lock order, `POST /chat/tickets`, and the login-claim fix.
+  actions, the lock order, `POST /chat/conversations/{conversation}/ticket`, and
+  the login-claim fix. No `EvaluateHandoffOffer`: with the auto-offer cut there
+  is nothing for it to decide.
 - **Lane C — admin inbox UI.** Reply composer with implicit take-over, take
   over, notes, resolve, list columns and filters, audit events, 409 on
   cross-admin takeover.

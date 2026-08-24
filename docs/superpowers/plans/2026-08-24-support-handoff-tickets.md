@@ -14,7 +14,7 @@
 
 - **The orchestrator runs every gate.** Implementer agents are dispatched edit-only; they must not run shell commands, and must not commit. Every "run the test" step is executed by the orchestrator.
 - **Gate command:** `npm run ci:check`, then the Playwright suite. Partial runs have historically hidden real failures in this repo.
-- **Luna's accepted configuration is frozen.** No change to `resources/ai-assistant/prompts/support-v3.md`, `resources/ai-assistant/knowledge/arab-ut.json`, `config/ai-assistant.php` defaults, thresholds, guard, model, or token budgets. A change to any of them requires a fresh 16-case evaluation batch and a new owner acceptance.
+- **The deployed assistant configuration is frozen.** No change to `resources/ai-assistant/prompts/support-v3.md`, `resources/ai-assistant/knowledge/arab-ut.json`, `config/ai-assistant.php` defaults, thresholds, guard, model, or token budgets. A change to any of them requires a fresh 16-case evaluation batch and a new owner acceptance.
 - **Lock order is `conversation → ticket → turn → run`.** Never lock a ticket before its conversation.
 - **"Live ticket" means `status = 'open'`** — everywhere: index, badge, unread dot, unread count, auto-close exemption.
 - **A staff message leaves `reply_to_message_id` NULL.** That column is UNIQUE and `FinalizeAgentTurn` claims it.
@@ -838,11 +838,11 @@ git commit -m "feat(support): chat.reply permission, 48h guest retention, custom
 
 ---
 
-# Lane B — escalation and Luna's silence
+# Lane B — escalation and the assistant's silence
 
 Depends on Lane A being merged.
 
-### Task 6: Luna stays silent at claim time
+### Task 6: نواف stays silent at claim time
 
 This is the single most important task in the plan. Do it first in Lane B.
 
@@ -969,67 +969,105 @@ git commit -m "fix(support): silence Luna at claim time while a human owns the t
 
 ---
 
-### Task 7: The escalation offer
+### Task 7: The customer asks for a person
+
+**Owner decision 2026-08-24:** nothing auto-offers. A handoff starts only from a
+lexical match on the customer's own words, or the always-available control.
+Triggers 2, 3 and 4 from the first draft are cut, and with them the whole
+recomputed-knowledge-selection mechanism.
 
 **Files:**
-- Create: `app/Actions/Support/EvaluateHandoffOffer.php`
 - Create: `app/Support/HandoffPhrases.php`
-- Modify: `app/Actions/AI/FinalizeAgentTurn.php` (call site)
-- Modify: `app/Actions/Chat/CreateChatMessage.php` (call site)
-- Test: `tests/Feature/Support/EvaluateHandoffOfferTest.php`
+- Modify: `app/Actions/Chat/CreateChatMessage.php` (one call site)
+- Test: `tests/Feature/Support/HandoffPhrasesTest.php`
+- Test: `tests/Feature/Support/HandoffRequestTest.php`
 
 **Interfaces:**
-- Consumes: `ChatHandoffState`, `SelectSupportKnowledge`, `AgentRuntimeConfig::knowledgeTopicLimit()`.
-- Produces: `EvaluateHandoffOffer::afterCustomerMessage(ChatConversation $c, ChatMessage $m): void` and `::afterLiveTurnFailure(ChatConversation $c, AgentTurn $t): void`.
+- Consumes: `ChatHandoffState` (Task 2), `OpenSupportTicket` (Task 8).
+- Produces: `HandoffPhrases::matches(string $text): bool`.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing matcher test**
 
-Cover, at minimum: an Arabic request for a person offers; `الدّعم` with a shadda still matches; an ordinary product question does not offer; **one** empty knowledge selection does not offer but two consecutive do; `knowledge_max_topics = 0` never offers; a cron-recovered stale turn does not offer; and an offer never fires while `handoff_state` is already `Requested` or `Active`.
+```php
+<?php
+
+use App\Support\HandoffPhrases;
+
+it('matches a customer asking for a person', function (string $text): void {
+    expect(HandoffPhrases::matches($text))->toBeTrue();
+})->with([
+    'أبي أكلم موظف',
+    'ودني على خدمة العملاء',
+    'أبي أتكلم مع شخص حقيقي',
+    'الدعم لو سمحت',
+    'الدّعم لو سمحت',
+    'ابي احد من الفريق',
+    'can I talk to a human',
+    'let me speak to someone',
+    'I want a real person',
+    'connect me to an agent',
+]);
+
+it('does not match an ordinary question', function (string $text): void {
+    expect(HandoffPhrases::matches($text))->toBeFalse();
+})->with([
+    'كم سعر ٥٠٠ ألف كوينز؟',
+    'متى يوصل طلبي؟',
+    'ابي فوت شامبيونز رانك 1',
+    'how long does delivery take',
+    'is the service available on Xbox',
+    'do you have a management page',
+]);
+```
+
+The `الدّعم` case (shadda) and the `management` case (must not fire `agent`) are
+the two that fail on a naive implementation. They are the point of the test.
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `./vendor/bin/pest tests/Feature/Support/EvaluateHandoffOfferTest.php`
-Expected: FAIL — class not found.
+Run: `./vendor/bin/pest tests/Feature/Support/HandoffPhrasesTest.php`
+Expected: FAIL — `Class "App\Support\HandoffPhrases" not found`.
 
-- [ ] **Step 3: Implement the bilingual matcher**
+- [ ] **Step 3: Implement the matcher**
 
-`HandoffPhrases::matches(string $text): bool`. Normalise before comparing: strip tatweel (`\x{0640}`) and Arabic diacritics (`\x{064B}-\x{0652}`), fold the alef family (`أإآ` → `ا`), fold `ة` → `ه`, lowercase, then match against the phrase list with word boundaries for the Latin entries. Arabic list: `موظف`, `خدمة العملاء`, `بشري`, `شخص حقيقي`, `الدعم`, `احد من الفريق`. Latin list: `human`, `agent`, `real person`, `support team`, `representative`, `talk to someone`, `speak to someone`. Put the lists in one `private const` each so they are reviewable in one place.
+Two `private const` lists, Arabic and Latin, so the vocabulary is reviewable in
+one place. Normalise before comparing: strip tatweel (`\x{0640}`) and the
+diacritic range (`\x{064B}-\x{0652}`), fold the alef family (`أإآ` → `ا`), fold
+`ة` → `ه`, lowercase. Latin entries match on word boundaries (`\b`) so `agent`
+cannot fire inside `management`; Arabic entries match as substrings after
+normalisation. Use `preg_quote` on every needle.
 
-- [ ] **Step 4: Implement `EvaluateHandoffOffer`**
+Arabic list: `موظف`, `خدمة العملاء`, `بشري`, `شخص حقيقي`, `الدعم`,
+`احد من الفريق`.
+Latin list: `human`, `agent`, `real person`, `support team`, `representative`,
+`talk to someone`, `speak to someone`.
 
-Both entry points return early when `$conversation->handoff_state->isLive()` — an offer is meaningless once a human is already engaged.
+- [ ] **Step 4: Wire the one call site**
 
-`afterCustomerMessage` offers when `HandoffPhrases::matches($message->content)`.
+In `CreateChatMessage`, after the customer message is persisted and inside the
+same transaction: when `HandoffPhrases::matches($content)` is true, the
+conversation's `handoff_state` is not already live, **and the owner is
+authenticated**, open the ticket through `OpenSupportTicket` and set
+`handoff_state = requested`.
 
-`afterLiveTurnFailure` offers when the turn's terminal code is a live-request failure, **excluding** the stale-recovery code. Read `RecoverStaleAgentTurns` for the exact constant it writes (`StaleTurnRecovered` or equivalent) and exclude precisely that value — a customer who closed the tab mid-stream must not return to a handoff chip.
+A guest never gets a ticket here — the widget shows the login variant and
+`POST /chat/conversations/{conversation}/ticket` returns 403 regardless of what
+the client sent. Assert both.
 
-Trigger 2, the two-empty-selections rule, is **recomputed**:
-
-```php
-// The knowledge selection happens inside BuildAgentModelRequest and is discarded,
-// and agent_runs is content-free by design, so there is nothing persisted to read
-// back. SelectSupportKnowledge is deterministic and the turn's customer-message
-// bounds are persisted, so re-running the selection over this turn's and the
-// previous completed turn's customer text is exact and costs one lexical pass.
-if ($this->config->knowledgeTopicLimit() === 0) {
-    return false; // Grounding is off; every turn would look "ungrounded".
-}
-```
-
-Then select over the current turn's customer text and over the previous **completed** turn's; offer only when both come back empty.
-
-Wire the call sites: `FinalizeAgentTurn` calls `afterLiveTurnFailure` when it terminalises a turn **on a live request**; `CreateChatMessage` calls `afterCustomerMessage` after the message is persisted. `RecoverStaleAgentTurns` must **not** call either.
+Do **not** call this from `FinalizeAgentTurn` or `RecoverStaleAgentTurns`. A
+failed or abandoned turn must not conjure a ticket; that is precisely the
+auto-offer the owner cut.
 
 - [ ] **Step 5: Run the tests and confirm they pass**
 
-Run: `./vendor/bin/pest tests/Feature/Support/EvaluateHandoffOfferTest.php tests/Feature/AI/ tests/Feature/Console/`
+Run: `./vendor/bin/pest tests/Feature/Support tests/Feature/AI tests/Feature/Chat`
 Expected: PASS.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add app/Actions/Support app/Support/HandoffPhrases.php app/Actions/AI/FinalizeAgentTurn.php app/Actions/Chat/CreateChatMessage.php tests/Feature/Support/EvaluateHandoffOfferTest.php
-git commit -m "feat(support): server-decided bilingual handoff offer"
+git add app/Support/HandoffPhrases.php app/Actions/Chat/CreateChatMessage.php tests/Feature/Support
+git commit -m "feat(support): a customer asking for a person opens a ticket"
 ```
 
 ---
