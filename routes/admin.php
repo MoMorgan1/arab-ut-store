@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\Admin\ConversationDetailController;
+use App\Http\Controllers\Admin\ConversationNoteController;
+use App\Http\Controllers\Admin\ConversationReplyController;
 use App\Http\Controllers\Admin\ConversationsController;
+use App\Http\Controllers\Admin\ConversationTakeOverController;
 use App\Http\Controllers\Admin\CouponsController;
 use App\Http\Controllers\Admin\CreateCouponController;
 use App\Http\Controllers\Admin\CreatePromotionController;
@@ -23,6 +26,7 @@ use App\Http\Controllers\Admin\ProductDetailController;
 use App\Http\Controllers\Admin\ProductsController;
 use App\Http\Controllers\Admin\ProductVisibilityController;
 use App\Http\Controllers\Admin\PromotionsController;
+use App\Http\Controllers\Admin\ResolveTicketController;
 use App\Http\Controllers\Admin\ServicePricingController;
 use App\Http\Controllers\Admin\ServicePricingStatusController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -206,6 +210,38 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $supportUnreadCount->defaults('locale', $locale);
+                }
+
+                $conversationReply = Route::post('/conversations/{publicId}/reply', ConversationReplyController::class)
+                    ->middleware(['can:chat.reply', 'throttle:60,1'])
+                    ->name('conversations.reply');
+
+                if ($locale !== null) {
+                    $conversationReply->defaults('locale', $locale);
+                }
+
+                $conversationNote = Route::post('/conversations/{publicId}/note', ConversationNoteController::class)
+                    ->middleware('can:chat.reply')
+                    ->name('conversations.note');
+
+                if ($locale !== null) {
+                    $conversationNote->defaults('locale', $locale);
+                }
+
+                $conversationTakeOver = Route::post('/conversations/{publicId}/take-over', ConversationTakeOverController::class)
+                    ->middleware('can:chat.reply')
+                    ->name('conversations.take-over');
+
+                if ($locale !== null) {
+                    $conversationTakeOver->defaults('locale', $locale);
+                }
+
+                $ticketResolve = Route::patch('/tickets/{publicId}', ResolveTicketController::class)
+                    ->middleware('can:chat.reply')
+                    ->name('tickets.resolve');
+
+                if ($locale !== null) {
+                    $ticketResolve->defaults('locale', $locale);
                 }
 
                 $products = Route::get('/products', ProductsController::class)

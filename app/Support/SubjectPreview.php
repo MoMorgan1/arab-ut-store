@@ -37,7 +37,10 @@ final class SubjectPreview
             return $normalised;
         }
 
-        $clipped = Str::substr($normalised, 0, self::MAX_LENGTH);
+        // Clip one character short so the appended ellipsis still fits: this
+        // feeds support_tickets.subject, a string(160), and MariaDB in strict
+        // mode rejects the 161st character rather than truncating it.
+        $clipped = Str::substr($normalised, 0, self::MAX_LENGTH - 1);
         $lastSpace = mb_strrpos($clipped, ' ');
 
         // A single unbroken token longer than the ceiling has no boundary to
