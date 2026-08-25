@@ -111,6 +111,27 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
                         $validator->errors()->add('unexpected_fields', 'Unknown step keys are not allowed.');
                     }
                 }
+            } elseif ($serviceType === ServiceType::Coins->value) {
+                $allowedConfigKeys = ['minimum', 'tiers', 'presets'];
+                $extraConfigKeys = array_diff(array_keys($rawConfig), $allowedConfigKeys);
+                if (! empty($extraConfigKeys)) {
+                    $validator->errors()->add('unexpected_fields', 'Unknown configuration fields are not allowed.');
+
+                    return;
+                }
+
+                foreach ((array) ($rawConfig['tiers'] ?? []) as $tier) {
+                    if (! is_array($tier)) {
+                        continue;
+                    }
+
+                    $extraTierKeys = array_diff(array_keys($tier), ['upTo', 'step']);
+                    if (! empty($extraTierKeys)) {
+                        $validator->errors()->add('unexpected_fields', 'Unknown band fields are not allowed.');
+
+                        return;
+                    }
+                }
             }
         });
     }

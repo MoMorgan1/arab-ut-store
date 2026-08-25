@@ -1006,6 +1006,27 @@ export const englishAdminUi: AdminTranslations = {
         servicePricing: {
             futChampions: 'FUT Champions',
             rivals: 'Division Rivals',
+            coins: 'Coins — quantity limits',
+            coinsQuantities: {
+                addBand: 'Add a band',
+                band: 'Band',
+                bandPreview: ':from to :to, in steps of :step',
+                bandRange: ':from to :to',
+                bandUpTo: 'Up to',
+                bandsHint:
+                    'Each band starts where the one before it ends and must divide evenly by its own step, and the largest order is where the last band ends. A configuration that does not is refused, and the live values stay untouched.',
+                dialogDescription:
+                    'The smallest order a customer can place, the step at each level, and the quick buttons under the slider.',
+                dialogTitle: 'Edit the Coins quantity limits',
+                editLimits: 'Edit limits',
+                maximum: 'Largest order',
+                minimum: 'Smallest order',
+                presets: 'Quick amounts',
+                presetsHint:
+                    'Comma separated. Every number has to be a quantity the slider can land on.',
+                quantityStep: 'Step',
+                removeBand: 'Remove band :index',
+            },
             urgentSurcharge: 'Urgent surcharge',
             version: 'Version :version',
             lastUpdated: 'Last updated: :date',
@@ -2056,6 +2077,21 @@ export const sampleAdminServicePricingData: AdminServicePricingData = {
                     '2:1': 16000,
                     '1:elite': 17000,
                 },
+            },
+        },
+        {
+            serviceType: 'coins',
+            version: 1,
+            isActive: true,
+            updatedAt: '2026-08-20T12:00:00Z',
+            configuration: {
+                minimum: 50000,
+                tiers: [
+                    { upTo: 500000, step: 10000 },
+                    { upTo: 2000000, step: 50000 },
+                    { upTo: 20000000, step: 250000 },
+                ],
+                presets: [50000, 100000, 500000, 1000000, 5000000],
             },
         },
     ],

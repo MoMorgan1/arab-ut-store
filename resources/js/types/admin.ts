@@ -523,6 +523,24 @@ export type AdminTranslations = {
         servicePricing: {
             futChampions: string;
             rivals: string;
+            coins: string;
+            coinsQuantities: {
+                editLimits: string;
+                minimum: string;
+                maximum: string;
+                band: string;
+                quantityStep: string;
+                bandUpTo: string;
+                bandRange: string;
+                bandPreview: string;
+                presets: string;
+                presetsHint: string;
+                bandsHint: string;
+                addBand: string;
+                removeBand: string;
+                dialogTitle: string;
+                dialogDescription: string;
+            };
             urgentSurcharge: string;
             version: string;
             lastUpdated: string;
@@ -1585,7 +1603,7 @@ export type AdminTeamUrls = {
 };
 
 export type AdminServicePricingSchedule = {
-    serviceType: 'fut_champions' | 'rivals';
+    serviceType: 'fut_champions' | 'rivals' | 'coins';
     version: number;
     isActive: boolean;
     updatedAt: string;

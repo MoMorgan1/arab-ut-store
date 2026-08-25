@@ -496,3 +496,33 @@ test('Admin cannot save Coins bands the storefront could not price', function (a
         'presets' => [55_000],
     ], 'a quick-pick button must be a quantity the slider can reach'],
 ]);
+
+test('a stray field in the Coins configuration is refused, not quietly stored', function (array $configuration): void {
+    // The other two services already refuse unknown keys. Coins accepted them,
+    // which meant a typo could sit in the row forever, unread and unnoticed.
+    $admin = createPricingTestAdmin(UserRole::Admin);
+    $schedule = ServicePriceSchedule::query()->where('service_type', ServiceType::Coins)->firstOrFail();
+    $before = (array) $schedule->configuration;
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->postJson('/admin/api/settings/service-pricing/coins', [
+            'expected_version' => (int) $schedule->version,
+            'configuration' => $configuration,
+        ])
+        ->assertUnprocessable();
+
+    expect((array) $schedule->fresh()->configuration)->toBe($before);
+})->with([
+    'an unknown top-level key' => [[
+        'minimum' => 50_000,
+        'tiers' => [['upTo' => 500_000, 'step' => 10_000]],
+        'presets' => [],
+        'increment' => 10_000,
+    ]],
+    'an unknown key inside a band' => [[
+        'minimum' => 50_000,
+        'tiers' => [['upTo' => 500_000, 'step' => 10_000, 'label' => 'small']],
+        'presets' => [],
+    ]],
+]);

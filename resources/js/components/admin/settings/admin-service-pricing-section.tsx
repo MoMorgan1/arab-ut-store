@@ -6,9 +6,11 @@ import {
     CheckCircle2,
     Edit3,
     LoaderCircle,
+    Plus,
     Power,
     PowerOff,
     Tag,
+    Trash2,
 } from 'lucide-react';
 import React, { useState } from 'react';
 
@@ -39,6 +41,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { DATE_LOCALE } from '@/lib/date-locale';
+import { formatInteger } from '@/lib/money';
 import type {
     AdminServicePricingData,
     AdminServicePricingSchedule,
@@ -58,6 +61,8 @@ type ActionAlert = {
     text: string;
     type: 'success' | 'error';
 };
+
+type CoinsTierDraft = { upTo: string; step: string };
 
 const FUT_RANKS = [1, 2, 3, 4, 5, 6] as const;
 const RIVALS_STEPS = [
@@ -85,6 +90,7 @@ export default function AdminServicePricingSection({
 }: AdminServicePricingSectionProps) {
     const copy = adminUi.settings;
     const pricingCopy = copy.servicePricing;
+    const coinsCopy = pricingCopy.coinsQuantities;
 
     const [alertState, setAlertState] = useState<ActionAlert | null>(null);
 
@@ -95,6 +101,9 @@ export default function AdminServicePricingSection({
     const [futRanks, setFutRanks] = useState<Record<string, string>>({});
     const [futUrgent, setFutUrgent] = useState<string>('');
     const [rivalsSteps, setRivalsSteps] = useState<Record<string, string>>({});
+    const [coinsMinimum, setCoinsMinimum] = useState<string>('');
+    const [coinsTiers, setCoinsTiers] = useState<CoinsTierDraft[]>([]);
+    const [coinsPresets, setCoinsPresets] = useState<string>('');
     const [editSubmitting, setEditSubmitting] = useState(false);
     const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
@@ -117,6 +126,7 @@ export default function AdminServicePricingSection({
     const openEditDialog = (schedule: AdminServicePricingSchedule) => {
         setEditingSchedule(schedule);
         setEditErrors({});
+        setAlertState(null);
 
         if (schedule.serviceType === 'fut_champions') {
             const rawRanks = (schedule.configuration.ranks ?? {}) as Record<
@@ -152,6 +162,26 @@ export default function AdminServicePricingSection({
                     val !== undefined ? formatHalalahToSar(val) : '';
             });
             setRivalsSteps(stepsState);
+        } else if (schedule.serviceType === 'coins') {
+            const rawTiers = (schedule.configuration.tiers ?? []) as Array<{
+                upTo?: number;
+                step?: number;
+            }>;
+            const rawPresets = (schedule.configuration.presets ??
+                []) as number[];
+
+            setCoinsMinimum(
+                typeof schedule.configuration.minimum === 'number'
+                    ? String(schedule.configuration.minimum)
+                    : '',
+            );
+            setCoinsTiers(
+                rawTiers.map((tier) => ({
+                    step: tier.step !== undefined ? String(tier.step) : '',
+                    upTo: tier.upTo !== undefined ? String(tier.upTo) : '',
+                })),
+            );
+            setCoinsPresets(rawPresets.join(', '));
         }
 
         setEditDialogOpen(true);
@@ -204,6 +234,19 @@ export default function AdminServicePricingSection({
 
             configuration = {
                 steps: parsedSteps,
+            };
+        } else if (editingSchedule.serviceType === 'coins') {
+            configuration = {
+                minimum: Number(coinsMinimum) || 0,
+                presets: coinsPresets
+                    .split(',')
+                    .map((preset) => preset.trim())
+                    .filter((preset) => preset !== '')
+                    .map((preset) => Number(preset) || 0),
+                tiers: coinsTiers.map((tier) => ({
+                    step: Number(tier.step) || 0,
+                    upTo: Number(tier.upTo) || 0,
+                })),
             };
         }
 
@@ -369,6 +412,10 @@ export default function AdminServicePricingSection({
             return pricingCopy.rivals;
         }
 
+        if (serviceType === 'coins') {
+            return pricingCopy.coins;
+        }
+
         return serviceType;
     };
 
@@ -439,6 +486,13 @@ export default function AdminServicePricingSection({
                             schedule.serviceType,
                         );
                         const isFut = schedule.serviceType === 'fut_champions';
+                        const isCoins = schedule.serviceType === 'coins';
+                        const coinsMin = (schedule.configuration.minimum ??
+                            0) as number;
+                        const coinsTierList = (schedule.configuration.tiers ??
+                            []) as Array<{ upTo: number; step: number }>;
+                        const coinsPresetList = (schedule.configuration
+                            .presets ?? []) as number[];
                         const rawRanks = (schedule.configuration.ranks ??
                             {}) as Record<string, number>;
                         const urgentPrice = (schedule.configuration
@@ -507,56 +561,60 @@ export default function AdminServicePricingSection({
                                                         className="size-4"
                                                     />
                                                     <span>
-                                                        {pricingCopy.editPrices}
+                                                        {isCoins
+                                                            ? coinsCopy.editLimits
+                                                            : pricingCopy.editPrices}
                                                     </span>
                                                 </Button>
-                                                <Button
-                                                    className="min-h-11 touch-manipulation gap-1.5"
-                                                    onClick={() =>
-                                                        openStatusDialog(
-                                                            schedule,
+                                                {isCoins ? null : (
+                                                    <Button
+                                                        className="min-h-11 touch-manipulation gap-1.5"
+                                                        onClick={() =>
+                                                            openStatusDialog(
+                                                                schedule,
+                                                                schedule.isActive
+                                                                    ? 'deactivate'
+                                                                    : 'activate',
+                                                            )
+                                                        }
+                                                        type="button"
+                                                        variant={
                                                             schedule.isActive
-                                                                ? 'deactivate'
-                                                                : 'activate',
-                                                        )
-                                                    }
-                                                    type="button"
-                                                    variant={
-                                                        schedule.isActive
-                                                            ? 'destructive'
-                                                            : 'secondary'
-                                                    }
-                                                >
-                                                    {schedule.isActive ? (
-                                                        <>
-                                                            <PowerOff
-                                                                aria-hidden="true"
-                                                                className="size-4"
-                                                            />
-                                                            <span>
-                                                                {
-                                                                    pricingCopy
-                                                                        .actions
-                                                                        .deactivate
-                                                                }
-                                                            </span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Power
-                                                                aria-hidden="true"
-                                                                className="size-4"
-                                                            />
-                                                            <span>
-                                                                {
-                                                                    pricingCopy
-                                                                        .actions
-                                                                        .reactivate
-                                                                }
-                                                            </span>
-                                                        </>
-                                                    )}
-                                                </Button>
+                                                                ? 'destructive'
+                                                                : 'secondary'
+                                                        }
+                                                    >
+                                                        {schedule.isActive ? (
+                                                            <>
+                                                                <PowerOff
+                                                                    aria-hidden="true"
+                                                                    className="size-4"
+                                                                />
+                                                                <span>
+                                                                    {
+                                                                        pricingCopy
+                                                                            .actions
+                                                                            .deactivate
+                                                                    }
+                                                                </span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Power
+                                                                    aria-hidden="true"
+                                                                    className="size-4"
+                                                                />
+                                                                <span>
+                                                                    {
+                                                                        pricingCopy
+                                                                            .actions
+                                                                            .reactivate
+                                                                    }
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                )}
                                             </div>
                                         ) : null}
                                     </header>
@@ -570,17 +628,121 @@ export default function AdminServicePricingSection({
                                             <TableHeader>
                                                 <TableRow className="bg-muted/40">
                                                     <TableHead>
-                                                        {isFut
-                                                            ? pricingCopy.tableRank
-                                                            : pricingCopy.tableStep}
+                                                        {isCoins
+                                                            ? coinsCopy.band
+                                                            : isFut
+                                                              ? pricingCopy.tableRank
+                                                              : pricingCopy.tableStep}
                                                     </TableHead>
                                                     <TableHead className="text-end">
-                                                        {pricingCopy.tablePrice}
+                                                        {isCoins
+                                                            ? coinsCopy.quantityStep
+                                                            : pricingCopy.tablePrice}
                                                     </TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {isFut ? (
+                                                {isCoins ? (
+                                                    <>
+                                                        <TableRow className="bg-accent/20">
+                                                            <TableCell className="font-medium text-primary">
+                                                                {
+                                                                    coinsCopy.minimum
+                                                                }
+                                                            </TableCell>
+                                                            <TableCell className="text-end font-semibold text-primary tabular-nums">
+                                                                {formatInteger(
+                                                                    coinsMin,
+                                                                    locale,
+                                                                )}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                        {coinsTierList.map(
+                                                            (tier, index) => {
+                                                                const from =
+                                                                    index === 0
+                                                                        ? coinsMin
+                                                                        : (coinsTierList[
+                                                                              index -
+                                                                                  1
+                                                                          ]
+                                                                              ?.upTo ??
+                                                                          coinsMin);
+
+                                                                return (
+                                                                    <TableRow
+                                                                        key={
+                                                                            tier.upTo
+                                                                        }
+                                                                    >
+                                                                        <TableCell className="font-medium tabular-nums">
+                                                                            {coinsCopy.bandRange
+                                                                                .replace(
+                                                                                    ':from',
+                                                                                    formatInteger(
+                                                                                        from,
+                                                                                        locale,
+                                                                                    ),
+                                                                                )
+                                                                                .replace(
+                                                                                    ':to',
+                                                                                    formatInteger(
+                                                                                        tier.upTo,
+                                                                                        locale,
+                                                                                    ),
+                                                                                )}
+                                                                        </TableCell>
+                                                                        <TableCell className="text-end font-semibold text-foreground tabular-nums">
+                                                                            {formatInteger(
+                                                                                tier.step,
+                                                                                locale,
+                                                                            )}
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                );
+                                                            },
+                                                        )}
+                                                        <TableRow className="bg-accent/20">
+                                                            <TableCell className="font-medium text-primary">
+                                                                {
+                                                                    coinsCopy.maximum
+                                                                }
+                                                            </TableCell>
+                                                            <TableCell className="text-end font-semibold text-primary tabular-nums">
+                                                                {formatInteger(
+                                                                    coinsTierList[
+                                                                        coinsTierList.length -
+                                                                            1
+                                                                    ]?.upTo ??
+                                                                        coinsMin,
+                                                                    locale,
+                                                                )}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                        <TableRow>
+                                                            <TableCell className="align-top font-medium">
+                                                                {
+                                                                    coinsCopy.presets
+                                                                }
+                                                            </TableCell>
+                                                            <TableCell className="text-end text-xs text-muted-foreground tabular-nums">
+                                                                {coinsPresetList
+                                                                    .map(
+                                                                        (
+                                                                            preset,
+                                                                        ) =>
+                                                                            formatInteger(
+                                                                                preset,
+                                                                                locale,
+                                                                            ),
+                                                                    )
+                                                                    .join(
+                                                                        ' · ',
+                                                                    )}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    </>
+                                                ) : isFut ? (
                                                     <>
                                                         {FUT_RANKS.map(
                                                             (rank) => {
@@ -695,24 +857,28 @@ export default function AdminServicePricingSection({
                 <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingSchedule
-                                ? pricingCopy.editDialog.title.replace(
-                                      ':service',
-                                      getServiceName(
-                                          editingSchedule.serviceType,
-                                      ),
-                                  )
-                                : ''}
+                            {!editingSchedule
+                                ? ''
+                                : editingSchedule.serviceType === 'coins'
+                                  ? coinsCopy.dialogTitle
+                                  : pricingCopy.editDialog.title.replace(
+                                        ':service',
+                                        getServiceName(
+                                            editingSchedule.serviceType,
+                                        ),
+                                    )}
                         </DialogTitle>
                         <DialogDescription>
-                            {editingSchedule
-                                ? pricingCopy.editDialog.description.replace(
-                                      ':service',
-                                      getServiceName(
-                                          editingSchedule.serviceType,
-                                      ),
-                                  )
-                                : ''}
+                            {!editingSchedule
+                                ? ''
+                                : editingSchedule.serviceType === 'coins'
+                                  ? coinsCopy.dialogDescription
+                                  : pricingCopy.editDialog.description.replace(
+                                        ':service',
+                                        getServiceName(
+                                            editingSchedule.serviceType,
+                                        ),
+                                    )}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -727,7 +893,328 @@ export default function AdminServicePricingSection({
 
                     {editingSchedule ? (
                         <div className="flex flex-col gap-4 py-2">
-                            {editingSchedule.serviceType === 'fut_champions' ? (
+                            {editingSchedule.serviceType === 'coins' ? (
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex flex-col gap-1.5">
+                                        <Label
+                                            className="text-xs font-semibold"
+                                            htmlFor="input-coins-minimum"
+                                        >
+                                            {coinsCopy.minimum}
+                                        </Label>
+                                        <Input
+                                            aria-describedby={
+                                                editErrors[
+                                                    'configuration.minimum'
+                                                ]
+                                                    ? 'input-coins-minimum-error'
+                                                    : undefined
+                                            }
+                                            aria-invalid={
+                                                !!editErrors[
+                                                    'configuration.minimum'
+                                                ]
+                                            }
+                                            className="min-h-11 touch-manipulation text-xs tabular-nums"
+                                            disabled={editSubmitting}
+                                            id="input-coins-minimum"
+                                            inputMode="numeric"
+                                            min="1"
+                                            onChange={(e) =>
+                                                setCoinsMinimum(e.target.value)
+                                            }
+                                            required
+                                            step="1"
+                                            type="number"
+                                            value={coinsMinimum}
+                                        />
+                                        {editErrors['configuration.minimum'] ? (
+                                            <p
+                                                className="text-xs font-medium text-destructive"
+                                                id="input-coins-minimum-error"
+                                                role="alert"
+                                            >
+                                                {
+                                                    editErrors[
+                                                        'configuration.minimum'
+                                                    ]
+                                                }
+                                            </p>
+                                        ) : null}
+                                    </div>
+
+                                    <div className="flex flex-col gap-3 border-t border-border/70 pt-4">
+                                        {editErrors['configuration.tiers'] ||
+                                        editErrors.configuration ? (
+                                            <p
+                                                className="text-xs font-medium text-destructive"
+                                                role="alert"
+                                            >
+                                                {editErrors[
+                                                    'configuration.tiers'
+                                                ] ?? editErrors.configuration}
+                                            </p>
+                                        ) : null}
+
+                                        {coinsTiers.map((tier, index) => {
+                                            const upToKey = `configuration.tiers.${index}.upTo`;
+                                            const stepKey = `configuration.tiers.${index}.step`;
+                                            const error =
+                                                editErrors[upToKey] ||
+                                                editErrors[stepKey] ||
+                                                editErrors[
+                                                    `configuration.tiers.${index}`
+                                                ];
+                                            const bandStart =
+                                                index === 0
+                                                    ? Number(coinsMinimum) || 0
+                                                    : Number(
+                                                          coinsTiers[index - 1]
+                                                              ?.upTo,
+                                                      ) || 0;
+
+                                            return (
+                                                <div
+                                                    className="flex flex-col gap-1.5"
+                                                    key={index}
+                                                >
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <Label
+                                                            className="text-xs font-semibold"
+                                                            htmlFor={`input-coins-tier-${index}-upto`}
+                                                        >
+                                                            {coinsCopy.band}{' '}
+                                                            {index + 1}
+                                                        </Label>
+                                                        {coinsTiers.length >
+                                                        1 ? (
+                                                            <button
+                                                                aria-label={coinsCopy.removeBand.replace(
+                                                                    ':index',
+                                                                    String(
+                                                                        index +
+                                                                            1,
+                                                                    ),
+                                                                )}
+                                                                className="inline-flex min-h-11 min-w-11 cursor-pointer touch-manipulation items-center justify-center gap-1 rounded-md px-2 text-xs font-semibold text-muted-foreground hover:text-destructive focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                                                disabled={
+                                                                    editSubmitting
+                                                                }
+                                                                onClick={() =>
+                                                                    setCoinsTiers(
+                                                                        (
+                                                                            prev,
+                                                                        ) =>
+                                                                            prev.filter(
+                                                                                (
+                                                                                    _,
+                                                                                    i,
+                                                                                ) =>
+                                                                                    i !==
+                                                                                    index,
+                                                                            ),
+                                                                    )
+                                                                }
+                                                                type="button"
+                                                            >
+                                                                <Trash2
+                                                                    aria-hidden="true"
+                                                                    className="size-3.5"
+                                                                />
+                                                            </button>
+                                                        ) : null}
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <Input
+                                                            aria-label={`${coinsCopy.band} ${index + 1} — ${coinsCopy.bandUpTo}`}
+                                                            aria-invalid={
+                                                                !!error
+                                                            }
+                                                            className="min-h-11 touch-manipulation text-xs tabular-nums"
+                                                            disabled={
+                                                                editSubmitting
+                                                            }
+                                                            id={`input-coins-tier-${index}-upto`}
+                                                            inputMode="numeric"
+                                                            min="1"
+                                                            onChange={(e) =>
+                                                                setCoinsTiers(
+                                                                    (prev) =>
+                                                                        prev.map(
+                                                                            (
+                                                                                row,
+                                                                                i,
+                                                                            ) =>
+                                                                                i ===
+                                                                                index
+                                                                                    ? {
+                                                                                          ...row,
+                                                                                          upTo: e
+                                                                                              .target
+                                                                                              .value,
+                                                                                      }
+                                                                                    : row,
+                                                                        ),
+                                                                )
+                                                            }
+                                                            required
+                                                            step="1"
+                                                            type="number"
+                                                            value={tier.upTo}
+                                                        />
+                                                        <Input
+                                                            aria-label={`${coinsCopy.band} ${index + 1} — ${coinsCopy.quantityStep}`}
+                                                            aria-invalid={
+                                                                !!error
+                                                            }
+                                                            className="min-h-11 touch-manipulation text-xs tabular-nums"
+                                                            disabled={
+                                                                editSubmitting
+                                                            }
+                                                            id={`input-coins-tier-${index}-step`}
+                                                            inputMode="numeric"
+                                                            min="1"
+                                                            onChange={(e) =>
+                                                                setCoinsTiers(
+                                                                    (prev) =>
+                                                                        prev.map(
+                                                                            (
+                                                                                row,
+                                                                                i,
+                                                                            ) =>
+                                                                                i ===
+                                                                                index
+                                                                                    ? {
+                                                                                          ...row,
+                                                                                          step: e
+                                                                                              .target
+                                                                                              .value,
+                                                                                      }
+                                                                                    : row,
+                                                                        ),
+                                                                )
+                                                            }
+                                                            required
+                                                            step="1"
+                                                            type="number"
+                                                            value={tier.step}
+                                                        />
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground tabular-nums">
+                                                        {coinsCopy.bandPreview
+                                                            .replace(
+                                                                ':from',
+                                                                formatInteger(
+                                                                    bandStart,
+                                                                    locale,
+                                                                ),
+                                                            )
+                                                            .replace(
+                                                                ':to',
+                                                                formatInteger(
+                                                                    Number(
+                                                                        tier.upTo,
+                                                                    ) || 0,
+                                                                    locale,
+                                                                ),
+                                                            )
+                                                            .replace(
+                                                                ':step',
+                                                                formatInteger(
+                                                                    Number(
+                                                                        tier.step,
+                                                                    ) || 0,
+                                                                    locale,
+                                                                ),
+                                                            )}
+                                                    </p>
+                                                    {error ? (
+                                                        <p
+                                                            className="text-xs font-medium text-destructive"
+                                                            role="alert"
+                                                        >
+                                                            {error}
+                                                        </p>
+                                                    ) : null}
+                                                </div>
+                                            );
+                                        })}
+
+                                        <button
+                                            className="inline-flex min-h-11 cursor-pointer touch-manipulation items-center justify-center gap-1.5 self-start rounded-md border border-dashed border-border px-3 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                            disabled={editSubmitting}
+                                            onClick={() =>
+                                                setCoinsTiers((prev) => [
+                                                    ...prev,
+                                                    { step: '', upTo: '' },
+                                                ])
+                                            }
+                                            type="button"
+                                        >
+                                            <Plus
+                                                aria-hidden="true"
+                                                className="size-3.5"
+                                            />
+                                            <span>{coinsCopy.addBand}</span>
+                                        </button>
+
+                                        <p className="text-xs text-muted-foreground">
+                                            {coinsCopy.bandsHint}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex flex-col gap-1.5 border-t border-border/70 pt-4">
+                                        <Label
+                                            className="text-xs font-semibold"
+                                            htmlFor="input-coins-presets"
+                                        >
+                                            {coinsCopy.presets}
+                                        </Label>
+                                        <Input
+                                            aria-describedby={
+                                                editErrors[
+                                                    'configuration.presets'
+                                                ]
+                                                    ? 'input-coins-presets-hint input-coins-presets-error'
+                                                    : 'input-coins-presets-hint'
+                                            }
+                                            aria-invalid={
+                                                !!editErrors[
+                                                    'configuration.presets'
+                                                ]
+                                            }
+                                            className="min-h-11 touch-manipulation text-xs tabular-nums"
+                                            disabled={editSubmitting}
+                                            id="input-coins-presets"
+                                            onChange={(e) =>
+                                                setCoinsPresets(e.target.value)
+                                            }
+                                            type="text"
+                                            value={coinsPresets}
+                                        />
+                                        <p
+                                            className="text-xs text-muted-foreground"
+                                            id="input-coins-presets-hint"
+                                        >
+                                            {coinsCopy.presetsHint}
+                                        </p>
+                                        {editErrors['configuration.presets'] ? (
+                                            <p
+                                                className="text-xs font-medium text-destructive"
+                                                id="input-coins-presets-error"
+                                                role="alert"
+                                            >
+                                                {
+                                                    editErrors[
+                                                        'configuration.presets'
+                                                    ]
+                                                }
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            ) : editingSchedule.serviceType ===
+                              'fut_champions' ? (
                                 <>
                                     <div className="flex flex-col gap-3">
                                         {FUT_RANKS.map((rank) => {
