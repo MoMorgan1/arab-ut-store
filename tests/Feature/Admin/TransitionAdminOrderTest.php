@@ -37,13 +37,13 @@ test('admin can transition received order to in_progress with item propagation, 
         'total_halalah' => 5000,
     ]);
 
-    $failedItem = $order->items()->create([
-        'sku' => 'AUT-ITEM-FAIL',
-        'name_ar' => 'عنصر فاشل',
-        'name_en' => 'Failed item',
+    $cancelledItem = $order->items()->create([
+        'sku' => 'AUT-ITEM-CANCELLED',
+        'name_ar' => 'عنصر ملغي',
+        'name_en' => 'Cancelled item',
         'service_type' => ServiceType::Coins,
         'platform' => Platform::PlayStation,
-        'status' => OrderItemStatus::Failed,
+        'status' => OrderItemStatus::Cancelled,
         'quantity' => 1,
         'unit_price_halalah' => 5000,
         'subtotal_halalah' => 5000,
@@ -69,9 +69,9 @@ test('admin can transition received order to in_progress with item propagation, 
     $order->refresh();
     expect($order->status)->toBe(OrderStatus::InProgress);
 
-    // Propagated item status updated; failed item preserved
+    // The received item moves; an item already out of the flow stays put.
     expect($receivedItem->fresh()->status)->toBe(OrderItemStatus::InProgress)
-        ->and($failedItem->fresh()->status)->toBe(OrderItemStatus::Failed);
+        ->and($cancelledItem->fresh()->status)->toBe(OrderItemStatus::Cancelled);
 
     // Order status history created: 1 for order, 1 for propagated item
     $history = OrderStatusHistory::query()->where('order_id', $order->id)->get();

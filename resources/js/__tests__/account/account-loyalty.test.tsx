@@ -467,7 +467,6 @@ function loyaltyProps(): AccountLoyaltyPageProps {
                 completed: 'Completed',
                 cancelled: 'Cancelled',
                 refunded: 'Refunded',
-                failed: 'Needs attention',
             },
             actions: {
                 view_order: 'View order',

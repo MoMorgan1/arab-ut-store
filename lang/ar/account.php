@@ -269,7 +269,6 @@ return [
         'completed' => 'مكتمل',
         'cancelled' => 'ملغي',
         'refunded' => 'تم الاسترجاع',
-        'failed' => 'يحتاج مراجعة',
     ],
     'actions' => [
         'view_order' => 'عرض الطلب',

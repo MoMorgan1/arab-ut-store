@@ -138,7 +138,6 @@ return [
             'completed' => 'Completed',
             'cancelled' => 'Cancelled',
             'refunded' => 'Refunded',
-            'failed' => 'Needs attention',
         ],
     ],
     'seo_title' => 'Arab UT | FC 27 Ultimate Team Coins',

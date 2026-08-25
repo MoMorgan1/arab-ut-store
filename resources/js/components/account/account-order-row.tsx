@@ -17,8 +17,7 @@ export default function AccountOrderRow({
 }) {
     const isAttention =
         order.status === 'waiting_for_customer' ||
-        order.status === 'pending_payment' ||
-        order.status === 'failed';
+        order.status === 'pending_payment';
 
     const StatusIcon =
         order.status === 'completed'

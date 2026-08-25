@@ -39,7 +39,6 @@ export default function AccountOverview() {
 
     const isActionNeeded =
         props.activeOrder?.status === 'waiting_for_customer' ||
-        props.activeOrder?.status === 'failed' ||
         props.activeOrder?.status === 'pending_payment';
 
     const activeOrderHeading = isActionNeeded

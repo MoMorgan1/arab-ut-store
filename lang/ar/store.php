@@ -138,7 +138,6 @@ return [
             'completed' => 'مكتمل',
             'cancelled' => 'ملغي',
             'refunded' => 'تم الاسترجاع',
-            'failed' => 'يحتاج مراجعة',
         ],
     ],
     'seo_title' => 'Arab UT | كوينز FC 27 ألتيميت تيم',

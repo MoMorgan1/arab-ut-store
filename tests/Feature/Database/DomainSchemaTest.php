@@ -224,16 +224,17 @@ test('order status history persists through the singular history table', functio
     expect($history->status)->toBe(OrderStatusHistoryStatus::Received);
 });
 
-test('status history has an explicit boundary for order and item failure states', function () {
+test('status history can be scoped to a single item of an order', function () {
     $order = Order::factory()->hasItems(1)->create();
     $item = $order->items()->firstOrFail();
 
     $history = $order->statusHistory()->create([
         'order_item_id' => $item->id,
-        'status' => OrderStatusHistoryStatus::Failed,
+        'status' => OrderStatusHistoryStatus::WaitingForCustomer,
     ]);
 
-    expect($history->status)->toBe(OrderStatusHistoryStatus::Failed);
+    expect($history->status)->toBe(OrderStatusHistoryStatus::WaitingForCustomer)
+        ->and($history->order_item_id)->toBe($item->id);
 });
 
 test('each customer has at most one wallet account', function () {

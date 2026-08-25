@@ -18,8 +18,7 @@ export type AccountOrderStatus =
     | 'waiting_for_customer'
     | 'completed'
     | 'cancelled'
-    | 'refunded'
-    | 'failed';
+    | 'refunded';
 
 export type AccountOrderAction =
     'view_order' | 'pay_now' | 'retry_payment' | 'provide_details';
