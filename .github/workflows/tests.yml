@@ -42,9 +42,6 @@ jobs:
       - name: Run CI Checks
         run: composer ci:check
 
-      - name: Verify explicit stream-handler transport
-        run: php artisan test tests/Integration/AI/OpenAiStreamHandlerTransportTest.php
-
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 

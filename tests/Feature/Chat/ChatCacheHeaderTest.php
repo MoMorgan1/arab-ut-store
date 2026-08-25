@@ -85,7 +85,7 @@ test('429 throttle responses use the chat rate_limited envelope with private no-
 
     $response->assertStatus(429)
         ->assertJsonPath('error.code', 'rate_limited')
-        ->assertJsonPath('error.message', 'Too many chat requests. Please try again shortly.')
+        ->assertJsonPath('error.message', trans('chat.rate_limited'))
         ->assertJsonPath('error.details', []);
     expect($response->headers->get('Cache-Control'))->toBe('no-store, private')
         ->and($response->headers->get('Retry-After'))->not->toBeNull()
