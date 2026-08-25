@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\ServicePriceSchedule;
 use App\Models\StaffAuditLog;
 use App\Models\User;
+use App\Services\Catalog\CoinsCatalogReader;
 use App\ValueObjects\Pricing\FutChampionsPricing;
 use App\ValueObjects\Pricing\RivalsPricing;
 use Illuminate\Support\Str;
@@ -425,3 +426,73 @@ function createPricingTestAdmin(UserRole $role): User
 
     return $user;
 }
+
+test('Admin edits the Coins quantity bands and the storefront follows without a deploy', function (): void {
+    $admin = createPricingTestAdmin(UserRole::Admin);
+    $schedule = ServicePriceSchedule::query()->where('service_type', ServiceType::Coins)->firstOrFail();
+    $initialVersion = (int) $schedule->version;
+
+    // Coarsen the top band: one nudge at three million should move further.
+    $newConfig = [
+        'minimum' => 100_000,
+        'tiers' => [
+            ['upTo' => 1_000_000, 'step' => 100_000],
+            ['upTo' => 20_000_000, 'step' => 500_000],
+        ],
+        'presets' => [100_000, 500_000, 1_000_000, 5_000_000],
+    ];
+
+    $response = $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->postJson('/admin/api/settings/service-pricing/coins', [
+            'expected_version' => $initialVersion,
+            'configuration' => $newConfig,
+        ]);
+
+    $response->assertOk()
+        ->assertJson(['data' => ['serviceType' => 'coins', 'version' => $initialVersion + 1]]);
+
+    $rules = app(CoinsCatalogReader::class)->quantityRules();
+
+    expect($rules->minimum())->toBe(100_000)
+        ->and($rules->stepAt(500_000))->toBe(100_000)
+        ->and($rules->stepAt(3_000_000))->toBe(500_000)
+        ->and($rules->accepts(200_000))->toBeTrue()
+        ->and($rules->accepts(150_000))->toBeFalse()
+        ->and($rules->accepts(50_000))->toBeFalse();
+});
+
+test('Admin cannot save Coins bands the storefront could not price', function (array $configuration, string $why): void {
+    $admin = createPricingTestAdmin(UserRole::Admin);
+    $schedule = ServicePriceSchedule::query()->where('service_type', ServiceType::Coins)->firstOrFail();
+    $before = (array) $schedule->configuration;
+
+    $response = $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->postJson('/admin/api/settings/service-pricing/coins', [
+            'expected_version' => (int) $schedule->version,
+            'configuration' => $configuration,
+        ]);
+
+    $response->assertUnprocessable();
+
+    // A rejected save must leave the live bands untouched, or the storefront
+    // would start refusing quantities it still advertises.
+    expect((array) $schedule->fresh()->configuration)->toBe($before, $why);
+})->with([
+    'a band that does not divide by its own step' => [[
+        'minimum' => 50_000,
+        'tiers' => [['upTo' => 100_001, 'step' => 10_000]],
+        'presets' => [],
+    ], 'an indivisible band leaves a quantity the schedule cannot price'],
+    'bands that descend' => [[
+        'minimum' => 50_000,
+        'tiers' => [['upTo' => 500_000, 'step' => 10_000], ['upTo' => 100_000, 'step' => 10_000]],
+        'presets' => [],
+    ], 'descending bands make the ceiling ambiguous'],
+    'a preset nobody can select' => [[
+        'minimum' => 50_000,
+        'tiers' => [['upTo' => 500_000, 'step' => 10_000]],
+        'presets' => [55_000],
+    ], 'a quick-pick button must be a quantity the slider can reach'],
+]);

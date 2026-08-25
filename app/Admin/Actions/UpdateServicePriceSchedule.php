@@ -9,6 +9,7 @@ use App\Enums\UserRole;
 use App\Exceptions\AdminServicePricingConflict;
 use App\Models\ServicePriceSchedule;
 use App\Models\User;
+use App\ValueObjects\Pricing\CoinsQuantityRules;
 use App\ValueObjects\Pricing\FutChampionsPricing;
 use App\ValueObjects\Pricing\RivalsPricing;
 use DomainException;
@@ -42,7 +43,7 @@ final class UpdateServicePriceSchedule
 
         $type = is_string($serviceType) ? ServiceType::tryFrom($serviceType) : $serviceType;
 
-        if ($type === null || ! in_array($type, [ServiceType::FutChampions, ServiceType::Rivals], true)) {
+        if ($type === null || ! in_array($type, [ServiceType::FutChampions, ServiceType::Rivals, ServiceType::Coins], true)) {
             throw ValidationException::withMessages([
                 'service_type' => ['The requested service type is not supported.'],
             ]);
@@ -73,11 +74,11 @@ final class UpdateServicePriceSchedule
             // Validate configuration by instantiating the domain value object inside the transaction
             // before saving. Catch DomainException and surface it as a 422 ValidationException.
             try {
-                if ($type === ServiceType::FutChampions) {
-                    FutChampionsPricing::fromConfiguration($newConfiguration);
-                } else {
-                    RivalsPricing::fromConfiguration($newConfiguration);
-                }
+                match ($type) {
+                    ServiceType::FutChampions => FutChampionsPricing::fromConfiguration($newConfiguration),
+                    ServiceType::Rivals => RivalsPricing::fromConfiguration($newConfiguration),
+                    default => CoinsQuantityRules::fromConfiguration($newConfiguration),
+                };
             } catch (DomainException $exception) {
                 $field = 'configuration';
                 $message = $exception->getMessage();
@@ -86,6 +87,12 @@ final class UpdateServicePriceSchedule
                     $field = 'configuration.urgent_surcharge_halalah';
                 } elseif (str_contains(strtolower($message), 'rank')) {
                     $field = 'configuration.ranks';
+                } elseif (str_contains(strtolower($message), 'tier') || str_contains(strtolower($message), 'band')) {
+                    $field = 'configuration.tiers';
+                } elseif (str_contains(strtolower($message), 'preset')) {
+                    $field = 'configuration.presets';
+                } elseif (str_contains(strtolower($message), 'minimum')) {
+                    $field = 'configuration.minimum';
                 } elseif (str_contains(strtolower($message), 'step')) {
                     $field = 'configuration.steps';
                 }
@@ -185,6 +192,34 @@ final class UpdateServicePriceSchedule
                     $changed[] = $fieldKey;
                     $previousValues[$fieldKey] = $prevPrice;
                     $newValues[$fieldKey] = $newPrice;
+                }
+            }
+        } elseif ($type === ServiceType::Coins) {
+            // Coins carries what a customer may buy rather than a price, so the
+            // audit records the floor and each band's ceiling and step.
+            $prevMinimum = isset($previous['minimum']) ? (int) $previous['minimum'] : null;
+            $newMinimum = isset($new['minimum']) ? (int) $new['minimum'] : null;
+
+            if ($prevMinimum !== $newMinimum) {
+                $changed[] = 'minimum';
+                $previousValues['minimum'] = $prevMinimum;
+                $newValues['minimum'] = $newMinimum;
+            }
+
+            $prevTiers = is_array($previous['tiers'] ?? null) ? array_values($previous['tiers']) : [];
+            $newTiers = is_array($new['tiers'] ?? null) ? array_values($new['tiers']) : [];
+
+            foreach (range(0, max(count($prevTiers), count($newTiers)) - 1) as $index) {
+                foreach (['upTo', 'step'] as $part) {
+                    $prevPart = isset($prevTiers[$index][$part]) ? (int) $prevTiers[$index][$part] : null;
+                    $newPart = isset($newTiers[$index][$part]) ? (int) $newTiers[$index][$part] : null;
+
+                    if ($prevPart !== $newPart) {
+                        $fieldKey = "tiers.{$index}.{$part}";
+                        $changed[] = $fieldKey;
+                        $previousValues[$fieldKey] = $prevPart;
+                        $newValues[$fieldKey] = $newPart;
+                    }
                 }
             }
         }

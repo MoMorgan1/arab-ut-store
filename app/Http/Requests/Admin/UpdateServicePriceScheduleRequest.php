@@ -41,6 +41,16 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
             foreach ($steps as $step) {
                 $rules["configuration.steps.{$step}"] = ['required', 'integer', 'min:1'];
             }
+        } elseif ($serviceType === ServiceType::Coins->value) {
+            // Shape only. Whether the bands ascend, divide evenly and cover the
+            // presets is CoinsQuantityRules' job, checked inside the transaction.
+            $rules['configuration.minimum'] = ['required', 'integer', 'min:1'];
+            $rules['configuration.tiers'] = ['required', 'array', 'min:1'];
+            $rules['configuration.tiers.*'] = ['required', 'array'];
+            $rules['configuration.tiers.*.upTo'] = ['required', 'integer', 'min:1'];
+            $rules['configuration.tiers.*.step'] = ['required', 'integer', 'min:1'];
+            $rules['configuration.presets'] = ['present', 'array'];
+            $rules['configuration.presets.*'] = ['required', 'integer', 'min:1'];
         }
 
         return $rules;

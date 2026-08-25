@@ -57,7 +57,11 @@ it('installs the exact approved manual-service schedules idempotently', function
 
     manualServicePricingMigration()->up();
 
-    expect(ServicePriceSchedule::query()->count())->toBe(2);
+    // Count the two this migration owns, not every schedule — the table also
+    // carries the Coins quantity bands the admin edits.
+    expect(ServicePriceSchedule::query()
+        ->whereIn('service_type', [ServiceType::FutChampions, ServiceType::Rivals])
+        ->count())->toBe(2);
 });
 
 it('enforces unique services and positive schedule versions', function () {

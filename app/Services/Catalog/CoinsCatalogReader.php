@@ -7,6 +7,7 @@ use App\Enums\ServiceType;
 use App\Models\PriceRule;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\ServicePriceSchedule;
 use App\Services\Pricing\CoinsPriceCalculator;
 use App\ValueObjects\Pricing\CoinsPricingRule;
 use App\ValueObjects\Pricing\CoinsQuantityRules;
@@ -134,11 +135,30 @@ final class CoinsCatalogReader
      * storefront unable to price a legal quantity fails here rather than at
      * request time.
      */
+    private ?CoinsQuantityRules $quantityRules = null;
+
+    /**
+     * Resolved once per instance: the homepage builds a schedule per platform
+     * and delivery speed, and each one asks for the bounds.
+     */
     public function quantityRules(): CoinsQuantityRules
     {
-        return CoinsQuantityRules::fromConfiguration(
-            (array) Config::array('coins.quantity'),
-        );
+        if ($this->quantityRules !== null) {
+            return $this->quantityRules;
+        }
+
+        // The admin edits these; config carries the seeded default so a fresh
+        // database, and every test that never seeds one, still has bounds.
+        $schedule = ServicePriceSchedule::query()
+            ->where('service_type', ServiceType::Coins)
+            ->where('is_active', true)
+            ->first();
+
+        $configuration = $schedule === null
+            ? (array) Config::array('coins.quantity')
+            : (array) $schedule->configuration;
+
+        return $this->quantityRules = CoinsQuantityRules::fromConfiguration($configuration);
     }
 
     /** @param array<string, CoinsPricingRule> $rules */
