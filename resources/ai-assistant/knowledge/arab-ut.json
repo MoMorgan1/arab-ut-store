@@ -85,9 +85,9 @@
             "keywords_ar": ["كوينز", "شحن", "coins", "مليون", "كمية"],
             "keywords_en": ["coins", "top up", "million", "amount"],
             "title_ar": "خدمة شحن الكوينز",
-            "body_ar": "نشحن كوينز EA Sports FC على PlayStation و Xbox و PC. بلايستيشن وإكس بوكس يتشاركان نفس سوق الانتقالات، وPC له سوق منفصل. الكميات المتوفرة تبدأ من 20,000 كوينز، وللكميات الكبيرة جداً تواصل معنا هنا.",
+            "body_ar": "نشحن كوينز EA Sports FC على PlayStation و Xbox و PC. بلايستيشن وإكس بوكس يتشاركان نفس سوق الانتقالات، وPC له سوق منفصل. الكميات المتوفرة تبدأ من 50,000 كوينز، وللكميات الكبيرة جداً تواصل معنا هنا.",
             "title_en": "Coins Delivery Service",
-            "body_en": "We deliver EA Sports FC coins on PlayStation, Xbox, and PC. PlayStation and Xbox share the same Transfer Market, and PC has a separate market. Available quantities start from 20,000 coins, and for very large quantities contact us here in the chat."
+            "body_en": "We deliver EA Sports FC coins on PlayStation, Xbox, and PC. PlayStation and Xbox share the same Transfer Market, and PC has a separate market. Available quantities start from 50,000 coins, and for very large quantities contact us here in the chat."
         },
         {
             "id": "coins-speeds",
@@ -124,9 +124,9 @@
             ],
             "keywords_en": ["rivals", "division", "promotion", "weekly wins"],
             "title_ar": "خدمة الرايفلز",
-            "body_ar": "نلعب لك طور Division Rivals ونصعدك من Division 7 حتى Division 1 ثم Elite. تختار الديفيجن اللي أنت فيه والديفيجن اللي تبي توصله عند الطلب. السعر يعتمد على هذين الاثنين فقط — ما فيه فرق سعر بين المنصات ولا خيار توصيل سريع. متوفر أيضاً لعب المباريات الأسبوعية (12 فوز) بدون تصعيد. المدة يوم إلى يومين عمل. متاحة على PlayStation و PC فقط.",
+            "body_ar": "نلعب لك طور Division Rivals ونصعدك من Division 7 حتى Division 1 ثم Elite. تختار الديفيجن اللي أنت فيه والديفيجن اللي تبي توصله عند الطلب. السعر يعتمد على هذين الاثنين فقط — ما فيه فرق سعر بين المنصات ولا خيار توصيل سريع. لعب المباريات الأسبوعية بدون تصعيد متاح بالتنسيق معنا هنا في الشات، مش من صفحة الطلب. المدة يوم إلى يومين عمل. متاحة على PlayStation و PC فقط.",
             "title_en": "Division Rivals Service",
-            "body_en": "We play Division Rivals for you and promote you from Division 7 up to Division 1, then Elite. You choose the division you are in and the one you want to reach when ordering. The price depends on those two alone — there is no price difference between platforms and no fast-delivery option. Playing weekly matches (12 wins) without promotion is also available. Duration is 1 to 2 business days. Available on PlayStation and PC only."
+            "body_en": "We play Division Rivals for you and promote you from Division 7 up to Division 1, then Elite. You choose the division you are in and the one you want to reach when ordering. The price depends on those two alone — there is no price difference between platforms and no fast-delivery option. Playing the weekly matches without promotion is arranged with us here in the chat, not from the order page. Duration is 1 to 2 business days. Available on PlayStation and PC only."
         },
         {
             "id": "sbc",
