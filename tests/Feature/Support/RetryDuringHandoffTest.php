@@ -8,7 +8,6 @@ use App\Models\AgentTurn;
 use App\Models\ChatConversation;
 use App\Models\User;
 use App\ValueObjects\Chat\ChatOwner;
-use LogicException;
 
 beforeEach(function () {
     config()->set('chat.enabled', true);

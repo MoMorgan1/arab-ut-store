@@ -402,6 +402,10 @@ test('a stale guest send rejects after login claim commits before the action own
 });
 
 test('duplicate contention recovery cannot replay a message after guest ownership is revoked', function () {
+    if (! supportsConcurrentChatLocking()) {
+        $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL row locking.');
+    }
+
     $guestKey = hash_hmac('sha256', bin2hex(random_bytes(32)), 'chat-contention-owner');
     $conversation = ChatConversation::factory()->forGuest($guestKey)->create();
     $user = User::factory()->create();

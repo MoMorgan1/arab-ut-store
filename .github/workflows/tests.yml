@@ -54,6 +54,7 @@ jobs:
           npx playwright test
           tests/Browser/storefront-smoke.spec.ts
           tests/Browser/agent-stream.spec.ts
+          tests/Browser/agent-restart.spec.ts
           --project=chromium
 
       - name: Upload Playwright report on smoke failure
@@ -181,3 +182,6 @@ jobs:
           tests/Unit/Enums/PlatformTest.php
           tests/Unit/Support/MoneyTest.php
           tests/Integration/RecoverStaleAgentTurnsConcurrencyTest.php
+          tests/Integration/CouponRedemptionConcurrencyTest.php
+          tests/Integration/LoyaltyAccrualConcurrencyTest.php
+          tests/Integration/SupportTicketConcurrencyTest.php
