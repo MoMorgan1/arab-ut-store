@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import type { CSSProperties, Ref } from 'react';
-import { legalQuantities } from '@/lib/coins-quantity';
+import { nearestStopIndex, sliderStops } from '@/lib/coins-quantity';
 
 import { formatCoins, formatCompactCoins } from '@/lib/money';
 import type {
@@ -69,7 +69,7 @@ export function AmountStep({
             ? 0
             : ((quantity - amount.minimum) / (maximum - amount.minimum)) * 100;
     const sliderQuantities = useMemo(
-        () => legalQuantities(amount.minimum, amount.tiers, maximum),
+        () => sliderStops(amount.minimum, amount.tiers, maximum),
         [amount.minimum, amount.tiers, maximum],
     );
     const sliderStyle = {
@@ -206,7 +206,7 @@ export function AmountStep({
                 step={1}
                 style={sliderStyle}
                 type="range"
-                value={Math.max(0, sliderQuantities.indexOf(quantity))}
+                value={nearestStopIndex(quantity, sliderQuantities)}
             />
 
             <div className="coins-slider-labels">

@@ -1,4 +1,4 @@
-import { nearestQuantity } from '@/lib/coins-quantity';
+import { roundQuantity } from '@/lib/coins-quantity';
 import { getInitialCoinsConfig } from '@/lib/query-params';
 import type {
     CoinsAmountRules,
@@ -8,7 +8,6 @@ import type {
     CoinsQuote,
     CoinsQuoteViewState,
     CoinsResumeSelection,
-    CoinsQuantityTier,
 } from '@/types/coins';
 
 import type { CoinsStep } from './progress-rail';
@@ -65,23 +64,20 @@ export function clampAndSnapQuantity(
     value: number,
     minimum: number,
     maximum: number,
-    tiers: CoinsQuantityTier[],
+    roundingUnit: number,
 ): number {
     if (
         !Number.isSafeInteger(value) ||
         !Number.isSafeInteger(minimum) ||
         !Number.isSafeInteger(maximum) ||
-        tiers.length === 0 ||
+        !Number.isSafeInteger(roundingUnit) ||
+        roundingUnit <= 0 ||
         minimum > maximum
     ) {
         throw new RangeError('Invalid Coins quantity bounds.');
     }
 
-    // The step widens as the quantity climbs, so a typed value snaps to the
-    // nearest quantity the store can actually price rather than to a multiple.
-    const clamped = Math.min(maximum, Math.max(minimum, value));
-
-    return nearestQuantity(clamped, minimum, tiers, maximum);
+    return roundQuantity(value, minimum, maximum, roundingUnit);
 }
 
 export function createInitialConfiguratorState(

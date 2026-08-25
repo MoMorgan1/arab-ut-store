@@ -71,9 +71,9 @@ final readonly class BuildCoinsQuoteSchedule
 
         // A platform or delivery speed may cap below the catalogue ceiling —
         // normal console delivery stops at two million — so the schedule is the
-        // legal quantities up to this variant's own maximum, no further.
+        // slider stops up to this variant's own maximum, no further.
         $quantities = array_values(array_filter(
-            $rules->legalQuantities(),
+            $rules->sliderStops(),
             static fn (int $quantity): bool => $quantity <= $maximum,
         ));
         $expectedLength = count($quantities);

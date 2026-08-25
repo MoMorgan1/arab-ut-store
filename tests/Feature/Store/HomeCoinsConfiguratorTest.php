@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Pricing\BuildCoinsQuoteSchedule;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Models\ExchangeRate;
@@ -95,6 +96,7 @@ test('the Arabic and English homepages expose the exact localized Coins contract
             ->where('coinsCart.initialSelection', null)
             ->where('amount', [
                 'minimum' => 50_000,
+                'roundingUnit' => 5_000,
                 'tiers' => [
                     ['upTo' => 500_000, 'step' => 10_000],
                     ['upTo' => 2_000_000, 'step' => 50_000],
@@ -337,4 +339,41 @@ test('homepage props omit supplier market, policy proof, and credential values',
         ->not->toContain('"encrypted_payload"')
         ->not->toContain('"masked_summary"')
         ->not->toContain('checkout currency');
+});
+
+test('the quote schedule payload carries exactly the keys the storefront validates', function (): void {
+    // resources/js/lib/coins-quote-schedule.ts checks this payload with an
+    // EXACT key set and drops every schedule when it does not match, which the
+    // storefront shows as "prices unavailable" across the whole page. Adding a
+    // field server-side without adding it there once did precisely that, and
+    // no test noticed because the frontend fixtures are written from the
+    // frontend list. This is the pin that makes the two sides move together.
+    $expected = [
+        'delivery',
+        'displayCurrency',
+        'displayTotalsMinor',
+        'market',
+        'maximum',
+        'minimum',
+        'platform',
+        'priceVersion',
+        'pricedAt',
+        'productId',
+        'quantities',
+        'totalsHalalah',
+        'variantId',
+    ];
+
+    createHomeCatalog();
+
+    $schedules = app(BuildCoinsQuoteSchedule::class)->executeHomepage('SAR');
+
+    expect($schedules)->toHaveCount(3);
+
+    foreach ($schedules as $group => $schedule) {
+        $keys = array_keys($schedule);
+        sort($keys);
+
+        expect($keys)->toBe($expected, "the {$group} schedule no longer matches the storefront's key set");
+    }
 });

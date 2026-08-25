@@ -50,6 +50,7 @@ class HomeController extends Controller
             ],
             'amount' => [
                 'minimum' => $quantityRules->minimum(),
+                'roundingUnit' => $quantityRules->roundingUnit(),
                 'tiers' => $quantityRules->tiers(),
                 'presets' => $quantityRules->presets(),
             ],

@@ -54,6 +54,8 @@ export type CoinsQuantityTier = {
 
 export type CoinsAmountRules = {
     minimum: number;
+    /** The grain a typed quantity rounds to; the bands only move the slider. */
+    roundingUnit: number;
     tiers: CoinsQuantityTier[];
     presets: number[];
 };

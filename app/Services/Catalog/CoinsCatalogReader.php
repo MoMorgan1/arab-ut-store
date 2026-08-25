@@ -195,7 +195,10 @@ final class CoinsCatalogReader
             throw new DomainException('A Coins maximum quantity cannot be below the minimum.');
         }
 
-        foreach ($this->quantityRules()->legalQuantities() as $quantity) {
+        $this->calculator->calculate($rule, $minimum, $normalRule);
+        $this->calculator->calculate($rule, $maximum, $normalRule);
+
+        foreach ($this->quantityRules()->sliderStops() as $quantity) {
             if ($quantity < $minimum) {
                 continue;
             }

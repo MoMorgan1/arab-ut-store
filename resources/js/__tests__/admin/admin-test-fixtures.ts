@@ -1026,6 +1026,9 @@ export const englishAdminUi: AdminTranslations = {
                     'Comma separated. Every number has to be a quantity the slider can land on.',
                 quantityStep: 'Step',
                 removeBand: 'Remove band :index',
+                roundingUnit: 'Buying unit',
+                roundingUnitHint:
+                    'A customer can type any multiple of this. The bands below only place the slider stops, and every band step has to be a multiple of it.',
             },
             urgentSurcharge: 'Urgent surcharge',
             version: 'Version :version',
@@ -2086,6 +2089,7 @@ export const sampleAdminServicePricingData: AdminServicePricingData = {
             updatedAt: '2026-08-20T12:00:00Z',
             configuration: {
                 minimum: 50000,
+                roundingUnit: 5000,
                 tiers: [
                     { upTo: 500000, step: 10000 },
                     { upTo: 2000000, step: 50000 },

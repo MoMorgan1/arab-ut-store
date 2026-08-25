@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Automation;
 
+use App\Services\Catalog\CoinsCatalogReader;
 use App\ValueObjects\Pricing\CoinsPricingRule;
-use App\ValueObjects\Pricing\CoinsQuantityRules;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Foundation\Http\FormRequest;
@@ -113,7 +113,7 @@ final class CoinsPricingRunRequest extends FormRequest
 
     private function validateLegalRanges(Validator $validator): void
     {
-        $rules = CoinsQuantityRules::fromConfiguration((array) Config::array('coins.quantity'));
+        $rules = app(CoinsCatalogReader::class)->quantityRules();
         $minimum = $rules->minimum();
         $increment = $rules->finestStep();
 

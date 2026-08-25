@@ -572,6 +572,8 @@ return [
                 'maximum' => 'Largest order',
                 'band' => 'Band',
                 'quantityStep' => 'Step',
+                'roundingUnit' => 'Buying unit',
+                'roundingUnitHint' => 'A customer can type any multiple of this. The bands below only place the slider stops, and every band step has to be a multiple of it.',
                 'bandUpTo' => 'Up to',
                 'bandRange' => ':from to :to',
                 'bandPreview' => ':from to :to, in steps of :step',

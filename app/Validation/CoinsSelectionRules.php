@@ -4,7 +4,7 @@ namespace App\Validation;
 
 use App\Enums\DeliveryMode;
 use App\Enums\Platform;
-use App\ValueObjects\Pricing\CoinsQuantityRules;
+use App\Services\Catalog\CoinsCatalogReader;
 use Closure;
 use Illuminate\Validation\Rule;
 
@@ -14,7 +14,9 @@ final class CoinsSelectionRules
     public function for(mixed $platform, mixed $delivery): array
     {
         $isPc = $platform === Platform::Pc->value;
-        $rules = CoinsQuantityRules::fromConfiguration((array) config('coins.quantity'));
+        // The live rules, not the config defaults - the admin can move the
+        // floor and the rounding unit without a deploy.
+        $rules = app(CoinsCatalogReader::class)->quantityRules();
 
         return [
             'platform' => ['required', Rule::enum(Platform::class)->only([Platform::PlayStation, Platform::Pc])],
@@ -24,8 +26,9 @@ final class CoinsSelectionRules
                 'integer',
                 'min:'.$rules->minimum(),
                 'max:'.$this->maximum($isPc, $delivery),
-                // The step widens as the quantity climbs, so no single
-                // multiple_of can express what is buyable.
+                // multiple_of cannot express this: the floor is not zero, so
+                // what is buyable is the floor plus whole rounding units, and the
+                // ceiling depends on the platform and delivery speed chosen.
                 static function (string $attribute, mixed $value, Closure $fail) use ($rules): void {
                     // A query string arrives as text, so the value reaching a
                     // closure rule is not yet the integer the rules above proved

@@ -50,6 +50,7 @@ const amount = {
         { upTo: 20_000_000, step: 250_000 },
     ],
     minimum: 50_000,
+    roundingUnit: 5_000,
     presets: [50_000, 100_000, 500_000, 1_000_000],
 };
 

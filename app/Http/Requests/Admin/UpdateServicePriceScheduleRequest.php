@@ -45,6 +45,7 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
             // Shape only. Whether the bands ascend, divide evenly and cover the
             // presets is CoinsQuantityRules' job, checked inside the transaction.
             $rules['configuration.minimum'] = ['required', 'integer', 'min:1'];
+            $rules['configuration.roundingUnit'] = ['required', 'integer', 'min:1'];
             $rules['configuration.tiers'] = ['required', 'array', 'min:1'];
             $rules['configuration.tiers.*'] = ['required', 'array'];
             $rules['configuration.tiers.*.upTo'] = ['required', 'integer', 'min:1'];
@@ -112,7 +113,7 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
                     }
                 }
             } elseif ($serviceType === ServiceType::Coins->value) {
-                $allowedConfigKeys = ['minimum', 'tiers', 'presets'];
+                $allowedConfigKeys = ['minimum', 'roundingUnit', 'tiers', 'presets'];
                 $extraConfigKeys = array_diff(array_keys($rawConfig), $allowedConfigKeys);
                 if (! empty($extraConfigKeys)) {
                     $validator->errors()->add('unexpected_fields', 'Unknown configuration fields are not allowed.');

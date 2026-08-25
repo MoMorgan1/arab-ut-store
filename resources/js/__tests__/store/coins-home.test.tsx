@@ -4,10 +4,11 @@ import {
     fireEvent,
     render,
     screen,
+    waitFor,
     within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { legalQuantities } from '@/lib/coins-quantity';
+import { sliderStops } from '@/lib/coins-quantity';
 
 import StoreHome from '@/pages/store/home';
 
@@ -193,7 +194,7 @@ function quoteSchedule(
     displayCurrency = 'SAR',
 ) {
     const minimum = 50_000;
-    const quantities = legalQuantities(
+    const quantities = sliderStops(
         minimum,
         [
             { upTo: 500_000, step: 10_000 },
@@ -258,6 +259,7 @@ function availableProps() {
                 { upTo: 20_000_000, step: 250_000 },
             ],
             minimum: 50_000,
+            roundingUnit: 5_000,
             presets: [50_000, 100_000, 500_000, 1_000_000, 5_000_000],
         },
         auth: { user: { id: 1, name: 'Player', email: 'player@example.com' } },
@@ -371,7 +373,7 @@ const SCHEDULE_TIERS = [
 ];
 
 function scheduleQuantities(maximum: number): number[] {
-    return legalQuantities(50_000, SCHEDULE_TIERS, maximum);
+    return sliderStops(50_000, SCHEDULE_TIERS, maximum);
 }
 
 /**
@@ -987,7 +989,10 @@ describe('Coins homepage', () => {
         expect(range).toHaveValue(sliderIndex(750000, 20_000_000));
     });
 
-    it('snaps a typed 55K amount to 60K on blur', () => {
+    it('keeps a typed 55K exactly and parks the thumb on the nearest stop', () => {
+        // 55,000 sits between two slider stops. It used to be dragged up to
+        // 60,000; the bands now only move the slider, and a whole rounding
+        // unit is bought as typed.
         render(<StoreHome />);
         selectPlatform('PC');
 
@@ -1000,7 +1005,7 @@ describe('Coins homepage', () => {
         expect(amountInput).toHaveValue('55,000');
         fireEvent.blur(amountInput);
 
-        expect(amountInput).toHaveValue('60,000');
+        expect(amountInput).toHaveValue('55,000');
         expect(
             screen.getByRole('slider', {
                 name: store.amount_copy.slider_label,
@@ -1179,6 +1184,55 @@ describe('Coins homepage', () => {
         expect(screen.getByRole('radio', { name: 'Fast' })).toBeChecked();
     });
 
+    it('asks the server for a price the slider ladder cannot give', async () => {
+        // 155,000 is a whole rounding unit but not a slider stop, so it is not
+        // in the prebuilt ladder. Before this was wired up the customer was
+        // told prices were unavailable for an amount they were allowed to buy.
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    data: {
+                        productId: '01K00000000000000000000000',
+                        variantId: '01K00000000000000000000001',
+                        priceVersion: 1,
+                        platform: 'pc',
+                        market: 'pc',
+                        delivery: null,
+                        quantity: 155_000,
+                        total: { amountHalalah: 780, currency: 'SAR' },
+                        displayTotal: { amountMinor: 780, currency: 'SAR' },
+                        pricedAt: '2026-08-10T12:00:00+00:00',
+                    },
+                }),
+                {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                },
+            ),
+        );
+
+        // waitFor cannot settle under this file's fake timers.
+        vi.useRealTimers();
+        vi.stubGlobal('fetch', fetchMock);
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
+        });
+
+        fireEvent.change(amountInput, { target: { value: '155000' } });
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalled();
+        });
+
+        const requestedUrl = String(fetchMock.mock.calls[0][0]);
+
+        expect(requestedUrl).toContain('/en/coins/quote');
+        expect(requestedUrl).toContain('quantity=155000');
+        expect(requestedUrl).toContain('platform=pc');
+    });
     it.each([
         'typing',
         'slider',
@@ -1254,10 +1308,13 @@ describe('Coins homepage', () => {
 
         fireEvent.blur(amountInput);
 
-        expect(amountInput).toHaveValue('60,000');
+        // Rounded down to the nearest whole unit, and no longer priced from
+        // the prebuilt ladder - an off-stop amount is quoted by the server, so
+        // the stale total has to go rather than be shown against a new amount.
+        expect(amountInput).toHaveValue('55,000');
         expect(
-            screen.getByText((text) => text.includes('600.00')),
-        ).toBeVisible();
+            screen.queryByText((text) => text.includes('600.00')),
+        ).not.toBeInTheDocument();
     });
 
     it('fails only a malformed selected mode closed without carrying the PC total', () => {

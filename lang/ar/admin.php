@@ -572,6 +572,8 @@ return [
                 'maximum' => 'أقصى كمية',
                 'band' => 'النطاق',
                 'quantityStep' => 'الخطوة',
+                'roundingUnit' => 'وحدة الشراء',
+                'roundingUnitHint' => 'العميل يقدر يكتب أي رقم من مضاعفات الوحدة دي. النطاقات تحت بتحدد مواقف السلايدر بس، وكل خطوة فيها لازم تكون من مضاعفاتها.',
                 'bandUpTo' => 'حتى',
                 'bandRange' => 'من :from إلى :to',
                 'bandPreview' => 'من :from إلى :to، بخطوة :step',

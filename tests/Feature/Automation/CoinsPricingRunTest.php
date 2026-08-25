@@ -21,9 +21,9 @@ function coinsPricingRunPayload(array $changes = []): array
         'mode' => 'dry_run',
         'serviceType' => 'coins',
         'legalRanges' => [
-            'console_normal' => ['minimum' => 50_000, 'maximum' => 2_000_000, 'increment' => 10_000],
-            'console_fast' => ['minimum' => 50_000, 'maximum' => 20_000_000, 'increment' => 10_000],
-            'pc' => ['minimum' => 50_000, 'maximum' => 20_000_000, 'increment' => 10_000],
+            'console_normal' => ['minimum' => 50_000, 'maximum' => 2_000_000, 'increment' => 5_000],
+            'console_fast' => ['minimum' => 50_000, 'maximum' => 20_000_000, 'increment' => 5_000],
+            'pc' => ['minimum' => 50_000, 'maximum' => 20_000_000, 'increment' => 5_000],
         ],
         'rules' => [
             'console_normal' => coinsPricingRuleConfiguration('console_normal'),

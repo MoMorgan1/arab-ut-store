@@ -39,22 +39,69 @@ test('it accepts a quantity that lands on its own band and rejects one between s
         ->and($rules->accepts(20_000_001))->toBeFalse();
 });
 
-test('the schedule stays small enough to price ahead of time', function () {
-    $quantities = quantityRules()->legalQuantities();
+test('the slider ladder stays small enough to price ahead of time', function () {
+    $stops = quantityRules()->sliderStops();
 
-    // A flat 5,000 step over the same range would be 4,000 entries, and 1,000
-    // would be 19,996. Every one of these is priced on every quote build.
-    expect(count($quantities))->toBeLessThan(200)
-        ->and($quantities[0])->toBe(5_000)
-        ->and($quantities[count($quantities) - 1])->toBe(20_000_000);
+    // Every stop is priced on every quote build. A flat 5,000 ladder over the
+    // same range would be 4,000 entries; a typed quantity is quoted on its own
+    // request instead, which is why the ladder can stay short.
+    expect(count($stops))->toBeLessThan(200)
+        ->and($stops[0])->toBe(5_000)
+        ->and($stops[count($stops) - 1])->toBe(20_000_000);
 });
 
-test('every legal quantity is accepted, and the list has no gaps', function () {
+test('every slider stop is a quantity a customer may buy', function () {
+    // The slider must never park on something the cart would then refuse.
     $rules = quantityRules();
 
-    foreach ($rules->legalQuantities() as $quantity) {
-        expect($rules->accepts($quantity))->toBeTrue("{$quantity} is generated but rejected");
+    foreach ($rules->sliderStops() as $quantity) {
+        expect($rules->accepts($quantity))->toBeTrue("{$quantity} is a stop but is rejected");
     }
+});
+
+test('a typed quantity is rounded to the unit, not dragged onto a band', function () {
+    $rules = quantityRules();
+
+    // 155,000 sits between two band steps and is bought exactly as typed.
+    expect($rules->accepts(155_000))->toBeTrue()
+        ->and($rules->round(155_000))->toBe(155_000)
+        ->and($rules->round(152_300))->toBe(150_000)
+        ->and($rules->round(152_500))->toBe(155_000)
+        ->and($rules->round(154_999))->toBe(155_000);
+});
+
+test('rounding clamps to the floor and the ceiling', function () {
+    $rules = quantityRules();
+
+    expect($rules->round(1))->toBe(5_000)
+        ->and($rules->round(0))->toBe(5_000)
+        ->and($rules->round(-100))->toBe(5_000)
+        ->and($rules->round(999_999_999))->toBe(20_000_000);
+});
+
+test('the rounding unit is what the pricing run has to publish', function () {
+    // n8n declares one increment per group. It is the unit, not the finest
+    // band, or the run would advertise a coarser grid than the store sells on.
+    expect(quantityRules()->finestStep())->toBe(5_000)
+        ->and(quantityRules(['roundingUnit' => 1_000])->finestStep())->toBe(1_000);
+});
+
+test('a band step that is not a whole number of units is rejected', function () {
+    // Otherwise a slider stop would land somewhere the cart refuses.
+    expect(fn () => quantityRules([
+        'roundingUnit' => 5_000,
+        'tiers' => [['upTo' => 27_000, 'step' => 11_000]],
+        'presets' => [],
+    ]))->toThrow(DomainException::class);
+});
+
+test('a floor that is not a whole number of units is rejected', function () {
+    expect(fn () => quantityRules([
+        'minimum' => 7_000,
+        'roundingUnit' => 5_000,
+        'tiers' => [['upTo' => 57_000, 'step' => 5_000]],
+        'presets' => [],
+    ]))->toThrow(DomainException::class);
 });
 
 test('a band that does not divide by its own step is rejected', function () {

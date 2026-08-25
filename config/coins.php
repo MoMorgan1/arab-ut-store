@@ -23,6 +23,11 @@ return [
      */
     'quantity' => [
         'minimum' => 50_000,
+
+        // What a customer may actually buy: any multiple of this between the
+        // floor and the ceiling. The bands below only decide where the slider
+        // stops, so every band step has to be a multiple of this value.
+        'roundingUnit' => 5_000,
         'tiers' => [
             ['upTo' => 500_000, 'step' => 10_000],
             ['upTo' => 2_000_000, 'step' => 50_000],

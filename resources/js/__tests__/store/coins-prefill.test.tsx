@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { legalQuantities } from '@/lib/coins-quantity';
+import { sliderStops } from '@/lib/coins-quantity';
 
 import StoreHome from '@/pages/store/home';
 
@@ -218,7 +218,7 @@ const SCHEDULE_TIERS = [
 ];
 
 function scheduleQuantities(maximum: number): number[] {
-    return legalQuantities(50_000, SCHEDULE_TIERS, maximum);
+    return sliderStops(50_000, SCHEDULE_TIERS, maximum);
 }
 
 function quoteSchedules() {
@@ -276,6 +276,7 @@ function pageProps() {
                 { upTo: 20_000_000, step: 250_000 },
             ],
             minimum: 50_000,
+            roundingUnit: 5_000,
             presets: [50_000, 100_000, 500_000, 1_000_000],
         },
         auth: {

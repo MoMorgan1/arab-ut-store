@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { legalQuantities } from '@/lib/coins-quantity';
+import { sliderStops } from '@/lib/coins-quantity';
 
 import {
     parseCoinsQuoteSchedules,
@@ -14,6 +14,7 @@ const amount = {
         { upTo: 20_000_000, step: 250_000 },
     ],
     minimum: 50_000,
+    roundingUnit: 5_000,
     presets: [50_000, 100_000, 500_000, 1_000_000],
 };
 
@@ -54,7 +55,7 @@ function schedule(
 ): CoinsQuoteSchedule {
     // The step widens as the quantity climbs, so the schedule names each
     // quantity it priced instead of implying it from position.
-    const quantities = legalQuantities(amount.minimum, amount.tiers, maximum);
+    const quantities = sliderStops(amount.minimum, amount.tiers, maximum);
     const entryCount = quantities.length;
 
     return {

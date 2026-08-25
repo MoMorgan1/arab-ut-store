@@ -102,6 +102,7 @@ export default function AdminServicePricingSection({
     const [futUrgent, setFutUrgent] = useState<string>('');
     const [rivalsSteps, setRivalsSteps] = useState<Record<string, string>>({});
     const [coinsMinimum, setCoinsMinimum] = useState<string>('');
+    const [coinsUnitDraft, setCoinsUnitDraft] = useState<string>('');
     const [coinsTiers, setCoinsTiers] = useState<CoinsTierDraft[]>([]);
     const [coinsPresets, setCoinsPresets] = useState<string>('');
     const [editSubmitting, setEditSubmitting] = useState(false);
@@ -175,6 +176,11 @@ export default function AdminServicePricingSection({
                     ? String(schedule.configuration.minimum)
                     : '',
             );
+            setCoinsUnitDraft(
+                typeof schedule.configuration.roundingUnit === 'number'
+                    ? String(schedule.configuration.roundingUnit)
+                    : '',
+            );
             setCoinsTiers(
                 rawTiers.map((tier) => ({
                     step: tier.step !== undefined ? String(tier.step) : '',
@@ -238,6 +244,7 @@ export default function AdminServicePricingSection({
         } else if (editingSchedule.serviceType === 'coins') {
             configuration = {
                 minimum: Number(coinsMinimum) || 0,
+                roundingUnit: Number(coinsUnitDraft) || 0,
                 presets: coinsPresets
                     .split(',')
                     .map((preset) => preset.trim())
@@ -491,6 +498,8 @@ export default function AdminServicePricingSection({
                             0) as number;
                         const coinsTierList = (schedule.configuration.tiers ??
                             []) as Array<{ upTo: number; step: number }>;
+                        const coinsUnit = (schedule.configuration
+                            .roundingUnit ?? 0) as number;
                         const coinsPresetList = (schedule.configuration
                             .presets ?? []) as number[];
                         const rawRanks = (schedule.configuration.ranks ??
@@ -653,6 +662,19 @@ export default function AdminServicePricingSection({
                                                             <TableCell className="text-end font-semibold text-primary tabular-nums">
                                                                 {formatInteger(
                                                                     coinsMin,
+                                                                    locale,
+                                                                )}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                        <TableRow className="bg-accent/20">
+                                                            <TableCell className="font-medium text-primary">
+                                                                {
+                                                                    coinsCopy.roundingUnit
+                                                                }
+                                                            </TableCell>
+                                                            <TableCell className="text-end font-semibold text-primary tabular-nums">
+                                                                {formatInteger(
+                                                                    coinsUnit,
                                                                     locale,
                                                                 )}
                                                             </TableCell>
@@ -937,6 +959,64 @@ export default function AdminServicePricingSection({
                                                 {
                                                     editErrors[
                                                         'configuration.minimum'
+                                                    ]
+                                                }
+                                            </p>
+                                        ) : null}
+                                    </div>
+
+                                    <div className="flex flex-col gap-1.5">
+                                        <Label
+                                            className="text-xs font-semibold"
+                                            htmlFor="input-coins-unit"
+                                        >
+                                            {coinsCopy.roundingUnit}
+                                        </Label>
+                                        <Input
+                                            aria-describedby={
+                                                editErrors[
+                                                    'configuration.roundingUnit'
+                                                ]
+                                                    ? 'input-coins-unit-hint input-coins-unit-error'
+                                                    : 'input-coins-unit-hint'
+                                            }
+                                            aria-invalid={
+                                                !!editErrors[
+                                                    'configuration.roundingUnit'
+                                                ]
+                                            }
+                                            className="min-h-11 touch-manipulation text-xs tabular-nums"
+                                            disabled={editSubmitting}
+                                            id="input-coins-unit"
+                                            inputMode="numeric"
+                                            min="1"
+                                            onChange={(e) =>
+                                                setCoinsUnitDraft(
+                                                    e.target.value,
+                                                )
+                                            }
+                                            required
+                                            step="1"
+                                            type="number"
+                                            value={coinsUnitDraft}
+                                        />
+                                        <p
+                                            className="text-xs text-muted-foreground"
+                                            id="input-coins-unit-hint"
+                                        >
+                                            {coinsCopy.roundingUnitHint}
+                                        </p>
+                                        {editErrors[
+                                            'configuration.roundingUnit'
+                                        ] ? (
+                                            <p
+                                                className="text-xs font-medium text-destructive"
+                                                id="input-coins-unit-error"
+                                                role="alert"
+                                            >
+                                                {
+                                                    editErrors[
+                                                        'configuration.roundingUnit'
                                                     ]
                                                 }
                                             </p>

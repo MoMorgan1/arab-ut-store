@@ -344,7 +344,8 @@ test('quantity limits and increments are enforced for each mode', function (stri
 })->with([
     'minimum' => ['platform=playstation&delivery=normal&quantity=50000', 200],
     'below minimum' => ['platform=playstation&delivery=normal&quantity=40000', 422],
-    'wrong increment' => ['platform=playstation&delivery=normal&quantity=55000', 422],
+    'between two band steps, still buyable' => ['platform=playstation&delivery=normal&quantity=55000', 200],
+    'not a whole rounding unit' => ['platform=playstation&delivery=normal&quantity=52000', 422],
     'normal maximum' => ['platform=playstation&delivery=normal&quantity=2000000', 200],
     'normal over maximum' => ['platform=playstation&delivery=normal&quantity=2010000', 422],
     'fast maximum' => ['platform=playstation&delivery=fast&quantity=20000000', 200],

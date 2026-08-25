@@ -109,6 +109,10 @@ describe('AdminServicePricingSection', () => {
         ).toBeVisible();
         expect(within(coinsTable).getByText('Largest order')).toBeVisible();
         expect(within(coinsTable).getByText('Quick amounts')).toBeVisible();
+        // What a customer may actually buy, as distinct from where the slider stops.
+        expect(
+            within(coinsTable).getByRole('row', { name: 'Buying unit 5,000' }),
+        ).toBeVisible();
 
         // Coins carries no money and no division ladder, so neither may leak in.
         expect(within(coinsTable).queryByText(/SAR/)).toBeNull();
@@ -176,6 +180,7 @@ describe('AdminServicePricingSection', () => {
             configuration: {
                 tiers: Array<{ upTo: number; step: number }>;
                 presets: number[];
+                roundingUnit: number;
             };
         };
 
@@ -187,6 +192,7 @@ describe('AdminServicePricingSection', () => {
         expect(sent.configuration.presets).toEqual([
             50000, 100000, 500000, 1000000, 5000000,
         ]);
+        expect(sent.configuration.roundingUnit).toBe(5000);
     });
 
     it('adds and removes a band without touching the others', async () => {

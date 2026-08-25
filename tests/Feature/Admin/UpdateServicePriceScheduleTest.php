@@ -435,6 +435,7 @@ test('Admin edits the Coins quantity bands and the storefront follows without a 
     // Coarsen the top band: one nudge at three million should move further.
     $newConfig = [
         'minimum' => 100_000,
+        'roundingUnit' => 5_000,
         'tiers' => [
             ['upTo' => 1_000_000, 'step' => 100_000],
             ['upTo' => 20_000_000, 'step' => 500_000],
@@ -458,7 +459,10 @@ test('Admin edits the Coins quantity bands and the storefront follows without a 
         ->and($rules->stepAt(500_000))->toBe(100_000)
         ->and($rules->stepAt(3_000_000))->toBe(500_000)
         ->and($rules->accepts(200_000))->toBeTrue()
-        ->and($rules->accepts(150_000))->toBeFalse()
+        // Between two band steps, so the slider will not stop here - but the
+        // customer can still type it, because it is a whole rounding unit.
+        ->and($rules->accepts(150_000))->toBeTrue()
+        ->and($rules->accepts(152_000))->toBeFalse()
         ->and($rules->accepts(50_000))->toBeFalse();
 });
 
@@ -482,19 +486,22 @@ test('Admin cannot save Coins bands the storefront could not price', function (a
 })->with([
     'a band that does not divide by its own step' => [[
         'minimum' => 50_000,
+        'roundingUnit' => 5_000,
         'tiers' => [['upTo' => 100_001, 'step' => 10_000]],
         'presets' => [],
     ], 'an indivisible band leaves a quantity the schedule cannot price'],
     'bands that descend' => [[
         'minimum' => 50_000,
+        'roundingUnit' => 5_000,
         'tiers' => [['upTo' => 500_000, 'step' => 10_000], ['upTo' => 100_000, 'step' => 10_000]],
         'presets' => [],
     ], 'descending bands make the ceiling ambiguous'],
     'a preset nobody can select' => [[
         'minimum' => 50_000,
+        'roundingUnit' => 5_000,
         'tiers' => [['upTo' => 500_000, 'step' => 10_000]],
-        'presets' => [55_000],
-    ], 'a quick-pick button must be a quantity the slider can reach'],
+        'presets' => [52_000],
+    ], 'a quick-pick button must be a quantity a customer can actually buy'],
 ]);
 
 test('a stray field in the Coins configuration is refused, not quietly stored', function (array $configuration): void {
@@ -516,12 +523,14 @@ test('a stray field in the Coins configuration is refused, not quietly stored', 
 })->with([
     'an unknown top-level key' => [[
         'minimum' => 50_000,
+        'roundingUnit' => 5_000,
         'tiers' => [['upTo' => 500_000, 'step' => 10_000]],
         'presets' => [],
         'increment' => 10_000,
     ]],
     'an unknown key inside a band' => [[
         'minimum' => 50_000,
+        'roundingUnit' => 5_000,
         'tiers' => [['upTo' => 500_000, 'step' => 10_000, 'label' => 'small']],
         'presets' => [],
     ]],

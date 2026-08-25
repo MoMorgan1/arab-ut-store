@@ -5,7 +5,6 @@ import type {
     CoinsDeliveryValue,
     CoinsPlatformOption,
     CoinsPlatformValue,
-    CoinsQuantityTier,
 } from '@/types/coins';
 import type { Division } from '@/types/manual-services';
 
@@ -250,11 +249,9 @@ export function getInitialCoinsConfig(
 } {
     const minimum = typeof amount === 'number' ? amount : amount.minimum;
     // A bare number is the legacy caller that only knew a floor; give it the
-    // single band that shape implies.
-    const tiers: CoinsQuantityTier[] =
-        typeof amount === 'number'
-            ? [{ upTo: 20_000_000, step: 10_000 }]
-            : amount.tiers;
+    // shipped default grain, which is what that shape implied all along.
+    const roundingUnit =
+        typeof amount === 'number' ? 5_000 : amount.roundingUnit;
 
     const rawPlatform = readQueryParam(search, 'platform', [
         'playstation',
@@ -321,7 +318,7 @@ export function getInitialCoinsConfig(
         const isOffered =
             rawQuantity >= minimum &&
             rawQuantity <= maxAllowed &&
-            acceptsQuantity(rawQuantity, minimum, tiers, maxAllowed);
+            acceptsQuantity(rawQuantity, minimum, maxAllowed, roundingUnit);
 
         if (isOffered) {
             lastValidQuantity = rawQuantity;

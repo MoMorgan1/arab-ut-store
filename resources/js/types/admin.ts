@@ -530,6 +530,8 @@ export type AdminTranslations = {
                 maximum: string;
                 band: string;
                 quantityStep: string;
+                roundingUnit: string;
+                roundingUnitHint: string;
                 bandUpTo: string;
                 bandRange: string;
                 bandPreview: string;
