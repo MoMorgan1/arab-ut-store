@@ -180,7 +180,7 @@ jobs:
         run: >-
           php vendor/bin/pest --configuration phpunit.mariadb.xml
           tests/Feature/Database/DomainSchemaTest.php
-          tests/Integration/AdminOverviewMariaDbTest.php
+          tests/Integration
           tests/Feature/Database/CartSecuritySchemaTest.php
           tests/Feature/Database/ActiveCartAcquisitionTest.php
           tests/Feature/Cart/CartOwnerRotationTest.php
@@ -189,22 +189,9 @@ jobs:
           tests/Feature/Settings/ProfileUpdateTest.php
           tests/Feature/Store/CoinsCartTest.php
           tests/Feature/Console/PurgeGuestCartClaimsTest.php
-          tests/Integration/ActiveCartInvariantUpgradeTest.php
-          tests/Integration/CoinsCartConcurrencyTest.php
-          tests/Integration/GuestCartClaimPurgeConcurrencyTest.php
-          tests/Integration/ChatConversationLifecycleInvariantUpgradeTest.php
-          tests/Integration/ChatConversationConcurrencyTest.php
-          tests/Integration/MaintainChatConversationsConcurrencyTest.php
           tests/Feature/AI/AgentRuntimeSchemaTest.php
           tests/Feature/AI/AgentMessageEligibilityTest.php
-          tests/Integration/AgentRuntimeInvariantUpgradeTest.php
-          tests/Integration/AgentTurnConcurrencyTest.php
-          tests/Integration/AgentTurnFinalizationConcurrencyTest.php
           tests/Unit/Cart/CartOwnerTest.php
           tests/Unit/Enums/OrderItemStatusTest.php
           tests/Unit/Enums/PlatformTest.php
           tests/Unit/Support/MoneyTest.php
-          tests/Integration/RecoverStaleAgentTurnsConcurrencyTest.php
-          tests/Integration/CouponRedemptionConcurrencyTest.php
-          tests/Integration/LoyaltyAccrualConcurrencyTest.php
-          tests/Integration/SupportTicketConcurrencyTest.php
