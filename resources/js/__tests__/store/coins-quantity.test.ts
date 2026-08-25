@@ -26,14 +26,22 @@ describe('Coins quantity controls', () => {
         [55_000, 60_000],
         [2_004_999, 2_000_000],
     ])('clamps and snaps %i to %i', (input, expected) => {
-        expect(clampAndSnapQuantity(input, 50_000, 2_000_000, 10_000)).toBe(
-            expected,
-        );
+        expect(
+            clampAndSnapQuantity(input, 50_000, 2_000_000, [
+                { upTo: 500_000, step: 10_000 },
+                { upTo: 2_000_000, step: 50_000 },
+                { upTo: 20_000_000, step: 250_000 },
+            ]),
+        ).toBe(expected);
     });
 
     it('uses the selected delivery maximum', () => {
         expect(
-            clampAndSnapQuantity(20_500_000, 50_000, 20_000_000, 10_000),
+            clampAndSnapQuantity(20_500_000, 50_000, 20_000_000, [
+                { upTo: 500_000, step: 10_000 },
+                { upTo: 2_000_000, step: 50_000 },
+                { upTo: 20_000_000, step: 250_000 },
+            ]),
         ).toBe(20_000_000);
     });
 

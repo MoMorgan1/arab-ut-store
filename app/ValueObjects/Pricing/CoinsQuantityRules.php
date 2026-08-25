@@ -99,6 +99,19 @@ final readonly class CoinsQuantityRules
         return false;
     }
 
+    /**
+     * The finest step in the bands.
+     *
+     * Every coarser band is a multiple of it, so every quantity this object
+     * accepts also satisfies the single-increment contract the pricing run
+     * still speaks. That keeps the n8n handshake valid while the storefront
+     * quotes the narrower, banded set.
+     */
+    public function finestStep(): int
+    {
+        return min(array_column($this->tiers, 'step'));
+    }
+
     /** The step in force at a quantity, so the slider can widen as it climbs. */
     public function stepAt(int $quantity): int
     {

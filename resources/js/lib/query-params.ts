@@ -1,9 +1,11 @@
 import type { CoinsStep } from '@/components/configurator/coins/progress-rail';
+import { acceptsQuantity } from '@/lib/coins-quantity';
 import type {
     CoinsAmountRules,
     CoinsDeliveryValue,
     CoinsPlatformOption,
     CoinsPlatformValue,
+    CoinsQuantityTier,
 } from '@/types/coins';
 import type { Division } from '@/types/manual-services';
 
@@ -247,7 +249,12 @@ export function getInitialCoinsConfig(
     step: CoinsStep;
 } {
     const minimum = typeof amount === 'number' ? amount : amount.minimum;
-    const increment = typeof amount === 'number' ? 10_000 : amount.increment;
+    // A bare number is the legacy caller that only knew a floor; give it the
+    // single band that shape implies.
+    const tiers: CoinsQuantityTier[] =
+        typeof amount === 'number'
+            ? [{ upTo: 20_000_000, step: 10_000 }]
+            : amount.tiers;
 
     const rawPlatform = readQueryParam(search, 'platform', [
         'playstation',
@@ -314,7 +321,7 @@ export function getInitialCoinsConfig(
         const isOffered =
             rawQuantity >= minimum &&
             rawQuantity <= maxAllowed &&
-            (rawQuantity - minimum) % increment === 0;
+            acceptsQuantity(rawQuantity, minimum, tiers, maxAllowed);
 
         if (isOffered) {
             lastValidQuantity = rawQuantity;

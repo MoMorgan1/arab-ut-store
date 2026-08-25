@@ -9,8 +9,10 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\Pricing\CoinsPriceCalculator;
 use App\ValueObjects\Pricing\CoinsPricingRule;
+use App\ValueObjects\Pricing\CoinsQuantityRules;
 use DomainException;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Config;
 
 final class CoinsCatalogReader
 {
@@ -125,15 +127,24 @@ final class CoinsCatalogReader
         }
     }
 
+    /**
+     * The quantities a customer may buy and the step the slider moves in.
+     *
+     * The bands are validated on the way in, so anything that would leave the
+     * storefront unable to price a legal quantity fails here rather than at
+     * request time.
+     */
+    public function quantityRules(): CoinsQuantityRules
+    {
+        return CoinsQuantityRules::fromConfiguration(
+            (array) Config::array('coins.quantity'),
+        );
+    }
+
     /** @param array<string, CoinsPricingRule> $rules */
     private function assertPricingCoverage(array $rules): void
     {
-        $minimum = $this->positiveConfiguredInteger('coins.quantity.minimum');
-        $increment = $this->positiveConfiguredInteger('coins.quantity.increment');
-
-        if ($minimum % $increment !== 0) {
-            throw new DomainException('The Coins minimum quantity must align with its increment.');
-        }
+        $minimum = $this->quantityRules()->minimum();
 
         $normal = $rules['console_normal'];
         $this->assertRuleCoversRange(
@@ -164,14 +175,16 @@ final class CoinsCatalogReader
             throw new DomainException('A Coins maximum quantity cannot be below the minimum.');
         }
 
-        $increment = $this->positiveConfiguredInteger('coins.quantity.increment');
+        foreach ($this->quantityRules()->legalQuantities() as $quantity) {
+            if ($quantity < $minimum) {
+                continue;
+            }
 
-        for ($quantity = $minimum; $quantity <= $maximum; $quantity += $increment) {
-            $this->calculator->calculate($rule, $quantity, $normalRule);
-
-            if ($quantity > $maximum - $increment) {
+            if ($quantity > $maximum) {
                 break;
             }
+
+            $this->calculator->calculate($rule, $quantity, $normalRule);
         }
     }
 

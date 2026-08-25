@@ -101,7 +101,6 @@ test('it builds compact exact schedules at every legal quantity', function (
             'market' => $platform->market()->value,
             'minimum' => 50_000,
             'maximum' => $maximum,
-            'increment' => 10_000,
             'productId' => $catalog['product']->public_id,
             'variantId' => $catalog['variants'][$platform->value]->public_id,
             'priceVersion' => 7,
@@ -117,8 +116,14 @@ test('it builds compact exact schedules at every legal quantity', function (
         ->and(array_is_list($schedule['totalsHalalah']))->toBeTrue()
         ->and(array_is_list($schedule['displayTotalsMinor']))->toBeTrue();
 
+    // The schedule now carries the quantity each entry prices, because the step
+    // widens as the quantity climbs and position no longer implies quantity.
+    expect($schedule['quantities'])->toHaveCount($expectedEntries)
+        ->and($schedule['quantities'][0])->toBe($schedule['minimum'])
+        ->and($schedule['quantities'][$expectedEntries - 1])->toBe($schedule['maximum']);
+
     foreach ($schedule['totalsHalalah'] as $index => $totalHalalah) {
-        $quantity = $schedule['minimum'] + ($index * $schedule['increment']);
+        $quantity = $schedule['quantities'][$index];
 
         expect($quantity)->toBeLessThanOrEqual($schedule['maximum'])
             ->and($totalHalalah)->toBeInt()
@@ -127,9 +132,9 @@ test('it builds compact exact schedules at every legal quantity', function (
             ->and($schedule['displayTotalsMinor'][$index])->toBeGreaterThan(0);
     }
 })->with([
-    'PlayStation normal' => [Platform::PlayStation, DeliveryMode::Normal, 2_000_000, 196, 250, 10_000],
-    'PlayStation fast' => [Platform::PlayStation, DeliveryMode::Fast, 20_000_000, 1_996, 1_200, 300_000],
-    'PC' => [Platform::Pc, null, 20_000_000, 1_996, 250, 300_000],
+    'PlayStation normal' => [Platform::PlayStation, DeliveryMode::Normal, 2_000_000, 76, 250, 10_000],
+    'PlayStation fast' => [Platform::PlayStation, DeliveryMode::Fast, 20_000_000, 148, 1_200, 300_000],
+    'PC' => [Platform::Pc, null, 20_000_000, 148, 250, 300_000],
 ]);
 
 test('it uses the real fast tier and exact override totals at their indexed quantities', function () {
@@ -142,11 +147,15 @@ test('it uses the real fast tier and exact override totals at their indexed quan
         'SAR',
     );
 
-    expect($schedule['totalsHalalah'][0])->toBe(1_200)
-        ->and($schedule['totalsHalalah'][5])->toBe(600)
-        ->and($schedule['totalsHalalah'][195])->toBe(16_000)
-        ->and($schedule['totalsHalalah'][495])->toBe(90_000)
-        ->and($schedule['totalsHalalah'][1_995])->toBe(300_000)
+    // Look the quantity up rather than trusting its position: the step widens as
+    // the quantity climbs, so index no longer maps to quantity arithmetically.
+    $at = static fn (int $quantity): int => $schedule['totalsHalalah'][array_search($quantity, $schedule['quantities'], true)];
+
+    expect($at(50_000))->toBe(1_200)
+        ->and($at(100_000))->toBe(600)
+        ->and($at(2_000_000))->toBe(16_000)
+        ->and($at(5_000_000))->toBe(90_000)
+        ->and($at(20_000_000))->toBe(300_000)
         ->and($schedule['totalsHalalah'][0])->toBe(
             app(QuoteCoins::class)->execute(Platform::PlayStation, DeliveryMode::Fast, 50_000)->total->halalah(),
         );
@@ -168,7 +177,7 @@ test('it converts schedules through fixed-point display money with a single sche
     expect($schedule['pricedAt'])->toBe('2026-08-10T12:00:00+00:00')
         ->and($schedule['displayCurrency'])->toBe('USD')
         ->and($schedule['displayTotalsMinor'][0])->toBe(67)
-        ->and($schedule['displayTotalsMinor'][195])->toBe(4_267);
+        ->and($schedule['displayTotalsMinor'][array_search(2_000_000, $schedule['quantities'], true)])->toBe(4_267);
 });
 
 test('it fails closed when a foreign display rate is missing stale or malformed', function (string $failure) {
@@ -218,7 +227,9 @@ test('it matches server quotes at every tier cap exact override and fast floor b
     $schedule = app(BuildCoinsQuoteSchedule::class)->execute($platform, $delivery, $maximum, 'SAR');
 
     foreach ($quantities as $quantity) {
-        $index = intdiv($quantity - $schedule['minimum'], $schedule['increment']);
+        $index = array_search($quantity, $schedule['quantities'], true);
+
+        expect($index)->toBeInt("{$quantity} is not a quantity the schedule prices");
         $quote = app(QuoteCoins::class)->execute($platform, $delivery, $quantity);
 
         expect($schedule['totalsHalalah'][$index])->toBe($quote->total->halalah());

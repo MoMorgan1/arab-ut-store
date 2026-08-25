@@ -4,6 +4,8 @@ namespace App\Validation;
 
 use App\Enums\DeliveryMode;
 use App\Enums\Platform;
+use App\ValueObjects\Pricing\CoinsQuantityRules;
+use Closure;
 use Illuminate\Validation\Rule;
 
 final class CoinsSelectionRules
@@ -12,6 +14,7 @@ final class CoinsSelectionRules
     public function for(mixed $platform, mixed $delivery): array
     {
         $isPc = $platform === Platform::Pc->value;
+        $rules = CoinsQuantityRules::fromConfiguration((array) config('coins.quantity'));
 
         return [
             'platform' => ['required', Rule::enum(Platform::class)->only([Platform::PlayStation, Platform::Pc])],
@@ -19,9 +22,22 @@ final class CoinsSelectionRules
             'quantity' => [
                 'required',
                 'integer',
-                'min:'.config('coins.quantity.minimum'),
+                'min:'.$rules->minimum(),
                 'max:'.$this->maximum($isPc, $delivery),
-                'multiple_of:'.config('coins.quantity.increment'),
+                // The step widens as the quantity climbs, so no single
+                // multiple_of can express what is buyable.
+                static function (string $attribute, mixed $value, Closure $fail) use ($rules): void {
+                    // A query string arrives as text, so the value reaching a
+                    // closure rule is not yet the integer the rules above proved
+                    // it to be.
+                    if (! is_int($value) && ! (is_string($value) && ctype_digit($value))) {
+                        return;
+                    }
+
+                    if (! $rules->accepts((int) $value)) {
+                        $fail('store.errors.coins_quantity_step')->translate();
+                    }
+                },
             ],
         ];
     }

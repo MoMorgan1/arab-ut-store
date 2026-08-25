@@ -62,19 +62,25 @@ final readonly class BuildCoinsQuoteSchedule
     /** @return array<string, mixed> */
     private function build(CoinsQuoteScheduleContext $context, int $maximum, string $pricedAt): array
     {
-        $minimum = Config::integer('coins.quantity.minimum');
-        $increment = Config::integer('coins.quantity.increment');
+        $rules = $this->catalog->quantityRules();
+        $minimum = $rules->minimum();
 
-        if ($minimum <= 0 || $increment <= 0 || $maximum < $minimum || ($maximum - $minimum) % $increment !== 0) {
+        if ($maximum < $minimum || ! $rules->accepts($maximum)) {
             throw new DomainException('The Coins quote schedule bounds are invalid.');
         }
 
-        $expectedLength = intdiv($maximum - $minimum, $increment) + 1;
+        // A platform or delivery speed may cap below the catalogue ceiling —
+        // normal console delivery stops at two million — so the schedule is the
+        // legal quantities up to this variant's own maximum, no further.
+        $quantities = array_values(array_filter(
+            $rules->legalQuantities(),
+            static fn (int $quantity): bool => $quantity <= $maximum,
+        ));
+        $expectedLength = count($quantities);
         $totalsHalalah = [];
         $displayTotalsMinor = [];
 
-        for ($index = 0; $index < $expectedLength; $index++) {
-            $quantity = $minimum + ($index * $increment);
+        foreach ($quantities as $quantity) {
             $total = $this->calculator->calculate($context->rule, $quantity, $context->normalRule);
             $display = $context->displayConverter->convert($total);
 
@@ -94,7 +100,7 @@ final readonly class BuildCoinsQuoteSchedule
             'market' => $context->platform->market()->value,
             'minimum' => $minimum,
             'maximum' => $maximum,
-            'increment' => $increment,
+            'quantities' => $quantities,
             'productId' => $context->productId,
             'variantId' => $context->variantId,
             'priceVersion' => $context->priceVersion,

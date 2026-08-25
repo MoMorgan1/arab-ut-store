@@ -21,6 +21,7 @@ use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\WalletAccount;
+use App\ValueObjects\Pricing\CoinsQuantityRules;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Http\Request;
@@ -436,17 +437,14 @@ final class CartController extends Controller
     private function safeCoinsQuantity(array $configuration): array
     {
         $quantity = $configuration['coins_quantity'] ?? null;
-        $minimum = Config::integer('coins.quantity.minimum');
-        $increment = Config::integer('coins.quantity.increment');
         $maximum = max(
             Config::integer('coins.platforms.playstation.maximum'),
             Config::integer('coins.platforms.pc.maximum'),
         );
 
         return is_int($quantity)
-            && $quantity >= $minimum
             && $quantity <= $maximum
-            && $quantity % $increment === 0
+            && CoinsQuantityRules::fromConfiguration((array) Config::array('coins.quantity'))->accepts($quantity)
                 ? ['coins_quantity' => $quantity]
                 : [];
     }

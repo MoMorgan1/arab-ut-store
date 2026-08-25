@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { legalQuantities } from '@/lib/coins-quantity';
 
 import StoreHome from '@/pages/store/home';
 
@@ -207,15 +208,22 @@ const platforms = [
 ] as const;
 
 function scheduleTotals(maximum: number): number[] {
-    const length = (maximum - 50_000) / 10_000 + 1;
+    return scheduleQuantities(maximum).map((_, index) => 600 + index * 100);
+}
 
-    return Array.from({ length }, (_, index) => 600 + index * 100);
+const SCHEDULE_TIERS = [
+    { upTo: 500_000, step: 10_000 },
+    { upTo: 2_000_000, step: 50_000 },
+    { upTo: 20_000_000, step: 250_000 },
+];
+
+function scheduleQuantities(maximum: number): number[] {
+    return legalQuantities(50_000, SCHEDULE_TIERS, maximum);
 }
 
 function quoteSchedules() {
     const shared = {
         displayCurrency: 'SAR',
-        increment: 10_000,
         minimum: 50_000,
         pricedAt: '2026-08-10T12:00:00Z',
         priceVersion: 1,
@@ -229,6 +237,7 @@ function quoteSchedules() {
             displayTotalsMinor: scheduleTotals(2_000_000),
             market: 'pc' as const,
             maximum: 2_000_000,
+            quantities: scheduleQuantities(2_000_000),
             platform: 'pc' as const,
             totalsHalalah: scheduleTotals(2_000_000),
             variantId: '01K00000000000000000000001',
@@ -239,6 +248,7 @@ function quoteSchedules() {
             displayTotalsMinor: scheduleTotals(20_000_000),
             market: 'console' as const,
             maximum: 20_000_000,
+            quantities: scheduleQuantities(20_000_000),
             platform: 'playstation' as const,
             totalsHalalah: scheduleTotals(20_000_000),
             variantId: '01K00000000000000000000002',
@@ -249,6 +259,7 @@ function quoteSchedules() {
             displayTotalsMinor: scheduleTotals(2_000_000),
             market: 'console' as const,
             maximum: 2_000_000,
+            quantities: scheduleQuantities(2_000_000),
             platform: 'playstation' as const,
             totalsHalalah: scheduleTotals(2_000_000),
             variantId: '01K00000000000000000000003',
@@ -259,7 +270,11 @@ function quoteSchedules() {
 function pageProps() {
     return {
         amount: {
-            increment: 10_000,
+            tiers: [
+                { upTo: 500_000, step: 10_000 },
+                { upTo: 2_000_000, step: 50_000 },
+                { upTo: 20_000_000, step: 250_000 },
+            ],
             minimum: 50_000,
             presets: [50_000, 100_000, 500_000, 1_000_000],
         },

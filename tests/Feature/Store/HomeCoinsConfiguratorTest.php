@@ -82,20 +82,24 @@ test('the Arabic and English homepages expose the exact localized Coins contract
             ->has('quoteSchedules', 3)
             ->where('quoteSchedules.playstation:normal.minimum', 50_000)
             ->where('quoteSchedules.playstation:normal.maximum', 2_000_000)
-            ->where('quoteSchedules.playstation:normal.increment', 10_000)
             ->where('quoteSchedules.playstation:normal.priceVersion', 1)
-            ->has('quoteSchedules.playstation:normal.totalsHalalah', 196)
-            ->has('quoteSchedules.playstation:normal.displayTotalsMinor', 196)
+            ->has('quoteSchedules.playstation:normal.quantities', 76)
+            ->has('quoteSchedules.playstation:normal.totalsHalalah', 76)
+            ->has('quoteSchedules.playstation:normal.displayTotalsMinor', 76)
             ->where('quoteSchedules.playstation:fast.maximum', 20_000_000)
-            ->has('quoteSchedules.playstation:fast.totalsHalalah', 1_996)
+            ->has('quoteSchedules.playstation:fast.totalsHalalah', 148)
             ->where('quoteSchedules.pc.delivery', null)
-            ->has('quoteSchedules.pc.totalsHalalah', 1_996)
+            ->has('quoteSchedules.pc.totalsHalalah', 148)
             ->where('coinsCart.addUrl', $addUrl)
             ->missing('coinsCart.resumeUrl')
             ->where('coinsCart.initialSelection', null)
             ->where('amount', [
                 'minimum' => 50_000,
-                'increment' => 10_000,
+                'tiers' => [
+                    ['upTo' => 500_000, 'step' => 10_000],
+                    ['upTo' => 2_000_000, 'step' => 50_000],
+                    ['upTo' => 20_000_000, 'step' => 250_000],
+                ],
                 'presets' => [50_000, 100_000, 500_000, 1_000_000, 5_000_000],
             ])
             ->where('platforms.0.value', 'playstation')

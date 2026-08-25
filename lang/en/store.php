@@ -10,6 +10,7 @@ return [
         'internal_error' => 'Unable to add Coins to the cart.',
         'catalog_json_required' => 'Catalog additions require a JSON request.',
         'catalog_item_unavailable' => 'This option is unavailable. Refresh the page and choose another option.',
+        'coins_quantity_step' => 'That quantity is not available. Pick one of the steps on the slider.',
         'catalog_internal_error' => 'Unable to add this item to the cart.',
         'manual_service_unavailable' => 'The service or its price changed. Refresh the page and review your choices.',
     ],

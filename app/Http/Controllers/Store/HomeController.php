@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Store;
 use App\Actions\Pricing\BuildCoinsQuoteSchedule;
 use App\Enums\Platform;
 use App\Http\Controllers\Controller;
+use App\Services\Catalog\CoinsCatalogReader;
 use App\Services\Reviews\StoreReviewReader;
 use App\Validation\CoinsSelectionRules;
 use DomainException;
@@ -23,9 +24,11 @@ class HomeController extends Controller
         CoinsSelectionRules $selectionRules,
         BuildCoinsQuoteSchedule $buildCoinsQuoteSchedule,
         StoreReviewReader $reviews,
+        CoinsCatalogReader $catalog,
     ): Response {
         $status = 'unavailable';
         $quoteSchedules = null;
+        $quantityRules = $catalog->quantityRules();
 
         try {
             $displayCurrency = (string) $request->session()->get('display_currency');
@@ -46,9 +49,9 @@ class HomeController extends Controller
                 'initialSelection' => $this->initialSelection($request, $selectionRules),
             ],
             'amount' => [
-                'minimum' => config('coins.quantity.minimum'),
-                'increment' => config('coins.quantity.increment'),
-                'presets' => config('coins.quantity.presets'),
+                'minimum' => $quantityRules->minimum(),
+                'tiers' => $quantityRules->tiers(),
+                'presets' => $quantityRules->presets(),
             ],
             'platforms' => $this->platforms(),
             'homeContent' => [

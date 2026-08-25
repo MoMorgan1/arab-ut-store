@@ -44,7 +44,11 @@ const platforms: CoinsPlatformOption[] = [
     },
 ];
 const amount = {
-    increment: 10_000,
+    tiers: [
+        { upTo: 500_000, step: 10_000 },
+        { upTo: 2_000_000, step: 50_000 },
+        { upTo: 20_000_000, step: 250_000 },
+    ],
     minimum: 50_000,
     presets: [50_000, 100_000, 500_000, 1_000_000],
 };

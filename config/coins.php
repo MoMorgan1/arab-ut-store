@@ -9,9 +9,25 @@ return [
         ),
         'rate_limit_per_minute' => (int) env('COINS_CART_RATE_LIMIT_PER_MINUTE', 10),
     ],
+    /*
+     * The step widens as the quantity climbs. A single increment cannot serve a
+     * range from thousands to twenty million: fine enough at the bottom leaves
+     * the slider crawling at three million, coarse enough at the top skips every
+     * small order. Each band must divide evenly by its own step.
+     *
+     * The floor cannot drop below the lowest multiplier the pricing run
+     * publishes — today 50,000 — or a quantity arrives with no rate to price it.
+     * Lowering it means n8n covering the new range first.
+     *
+     * These are defaults. The live values are editable from the admin.
+     */
     'quantity' => [
         'minimum' => 50_000,
-        'increment' => 10_000,
+        'tiers' => [
+            ['upTo' => 500_000, 'step' => 10_000],
+            ['upTo' => 2_000_000, 'step' => 50_000],
+            ['upTo' => 20_000_000, 'step' => 250_000],
+        ],
         'presets' => [50_000, 100_000, 500_000, 1_000_000, 5_000_000],
     ],
     'platforms' => [

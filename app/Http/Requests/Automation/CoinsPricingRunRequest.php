@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Automation;
 
 use App\ValueObjects\Pricing\CoinsPricingRule;
+use App\ValueObjects\Pricing\CoinsQuantityRules;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Foundation\Http\FormRequest;
@@ -112,21 +113,25 @@ final class CoinsPricingRunRequest extends FormRequest
 
     private function validateLegalRanges(Validator $validator): void
     {
+        $rules = CoinsQuantityRules::fromConfiguration((array) Config::array('coins.quantity'));
+        $minimum = $rules->minimum();
+        $increment = $rules->finestStep();
+
         $expected = [
             'console_normal' => [
-                'minimum' => Config::integer('coins.quantity.minimum'),
+                'minimum' => $minimum,
                 'maximum' => Config::integer('coins.platforms.playstation.deliveries.normal.maximum'),
-                'increment' => Config::integer('coins.quantity.increment'),
+                'increment' => $increment,
             ],
             'console_fast' => [
-                'minimum' => Config::integer('coins.quantity.minimum'),
+                'minimum' => $minimum,
                 'maximum' => Config::integer('coins.platforms.playstation.deliveries.fast.maximum'),
-                'increment' => Config::integer('coins.quantity.increment'),
+                'increment' => $increment,
             ],
             'pc' => [
-                'minimum' => Config::integer('coins.quantity.minimum'),
+                'minimum' => $minimum,
                 'maximum' => Config::integer('coins.platforms.pc.maximum'),
-                'increment' => Config::integer('coins.quantity.increment'),
+                'increment' => $increment,
             ],
         ];
 

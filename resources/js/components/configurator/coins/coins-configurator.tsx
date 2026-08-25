@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
 import { announceCartAddition } from '@/lib/cart-added-event';
 import { CoinsCartRequestError, submitCoinsCart } from '@/lib/coins-cart-api';
+import { acceptsQuantity } from '@/lib/coins-quantity';
 import { quoteFromSchedule } from '@/lib/coins-quote-schedule';
 import type {
     CoinsAmountRules,
@@ -104,9 +105,7 @@ export function CoinsConfigurator({
     const maximum = selectedDelivery?.maximum ?? selectedPlatform?.maximum ?? 0;
     const quantityIsValid =
         quantity !== null &&
-        quantity >= amount.minimum &&
-        quantity <= maximum &&
-        quantity % amount.increment === 0;
+        acceptsQuantity(quantity, amount.minimum, amount.tiers, maximum);
     const isPc = selectedPlatform?.value === 'pc';
     const deliveryIsValid = isPc || selectedDelivery !== null;
     const requestDelivery = isPc ? null : (selectedDelivery?.value ?? null);
@@ -268,7 +267,12 @@ export function CoinsConfigurator({
             nextQuantity !== null &&
             nextQuantity >= amount.minimum &&
             nextQuantity <= maximum &&
-            nextQuantity % amount.increment === 0;
+            acceptsQuantity(
+                nextQuantity,
+                amount.minimum,
+                amount.tiers,
+                maximum,
+            );
 
         if (isValid && nextQuantity === state.lastValidQuantity) {
             const normalizedValue = String(nextQuantity);
@@ -296,7 +300,7 @@ export function CoinsConfigurator({
             value,
             amount.minimum,
             maximum,
-            amount.increment,
+            amount.tiers,
         );
         const quantityInputAlreadyMatches =
             quantityFromInput(state.quantityInput) === committedQuantity;

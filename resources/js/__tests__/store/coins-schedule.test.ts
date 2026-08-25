@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { legalQuantities } from '@/lib/coins-quantity';
 
 import {
     parseCoinsQuoteSchedules,
@@ -7,7 +8,11 @@ import {
 import type { CoinsPlatformOption, CoinsQuoteSchedule } from '@/types/coins';
 
 const amount = {
-    increment: 10_000,
+    tiers: [
+        { upTo: 500_000, step: 10_000 },
+        { upTo: 2_000_000, step: 50_000 },
+        { upTo: 20_000_000, step: 250_000 },
+    ],
     minimum: 50_000,
     presets: [50_000, 100_000, 500_000, 1_000_000],
 };
@@ -47,7 +52,10 @@ function schedule(
     delivery: 'normal' | 'fast' | null,
     maximum: number,
 ): CoinsQuoteSchedule {
-    const entryCount = (maximum - amount.minimum) / amount.increment + 1;
+    // The step widens as the quantity climbs, so the schedule names each
+    // quantity it priced instead of implying it from position.
+    const quantities = legalQuantities(amount.minimum, amount.tiers, maximum);
+    const entryCount = quantities.length;
 
     return {
         delivery,
@@ -56,7 +64,7 @@ function schedule(
             { length: entryCount },
             (_, index) => 100 + index,
         ),
-        increment: amount.increment,
+        quantities,
         market: platform === 'pc' ? 'pc' : 'console',
         maximum,
         minimum: amount.minimum,
@@ -243,7 +251,7 @@ describe('Coins quote schedule', () => {
         ['display currency', { displayCurrency: 'EUR' }],
         ['minimum', { minimum: 40_000 }],
         ['maximum', { maximum: 80_000 }],
-        ['increment', { increment: 5_000 }],
+        ['quantities', { quantities: [50_000, 55_000, 60_000] }],
         ['market', { market: 'console' }],
         ['delivery', { delivery: 'fast' }],
         ['platform', { platform: 'playstation' }],
