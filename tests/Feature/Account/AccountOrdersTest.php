@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
 use App\Models\User;
+use App\Support\OrderClosingNote;
 
 function ordersTestOrder(
     User $user,
@@ -300,4 +301,45 @@ test('the customer is shown four states where staff track seven', function (): v
     // The rows themselves never moved.
     expect($received->refresh()->status)->toBe(OrderStatus::Received)
         ->and($refunded->refresh()->status)->toBe(OrderStatus::Refunded);
+});
+
+test('a refunded order tells the customer the money came back, and where', function (): void {
+    // The customer is shown "cancelled" for a refund, which is the owner's
+    // call - but on its own that hides the refund entirely. The note is what
+    // carries it.
+    $owner = User::factory()->create();
+    $order = ordersTestOrder($owner, 15, OrderStatus::Refunded);
+
+    OrderStatusHistory::query()->create([
+        'order_id' => $order->id,
+        'status' => OrderStatusHistoryStatus::Refunded,
+        ...OrderClosingNote::refund(cardHalalah: 5_000, walletHalalah: 2_000),
+        'metadata' => ['source' => 'paylink'],
+    ]);
+
+    $this->actingAs($owner)
+        ->get('/my-account/orders/'.$order->public_id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('order.status', 'cancelled')
+            ->where('order.statusNote', fn (string $note): bool => str_contains($note, '50.00')
+                && str_contains($note, '20.00')));
+
+    $this->actingAs($owner)
+        ->get('/en/my-account/orders/'.$order->public_id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('order.statusNote', fn (string $note): bool => str_contains($note, 'wallet')
+                && str_contains($note, 'payment method')));
+});
+
+test('a refund names only the places the money actually went', function (): void {
+    // Naming a wallet refund that never happened sends the customer looking
+    // for money that is not there.
+    $cardOnly = OrderClosingNote::refund(cardHalalah: 5_000, walletHalalah: 0);
+    $walletOnly = OrderClosingNote::refund(cardHalalah: 0, walletHalalah: 2_000);
+
+    expect($cardOnly['note_en'])->toContain('50.00')->not->toContain('wallet')
+        ->and($walletOnly['note_en'])->toContain('20.00')->toContain('wallet')
+        ->and($walletOnly['note_ar'])->not->toBe($walletOnly['note_en']);
 });

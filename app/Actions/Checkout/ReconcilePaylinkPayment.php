@@ -11,6 +11,7 @@ use App\Models\IntegrationEvent;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\Payments\PaymentManager;
+use App\Support\OrderClosingNote;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -104,6 +105,7 @@ final readonly class ReconcilePaylinkPayment
                     $order->items()->update(['status' => OrderItemStatus::Cancelled->value]);
                     $order->statusHistory()->create([
                         'status' => OrderStatusHistoryStatus::Cancelled,
+                        ...OrderClosingNote::reason('payment_cancelled'),
                         'metadata' => ['source' => 'paylink'],
                     ]);
                 }

@@ -1,6 +1,16 @@
 <?php
 
 return [
+    // Written into order_status_history when an order ends, so a customer who
+    // sees "cancelled" is also told where their money went. The status alone
+    // cannot carry this: a cancelled order and a refunded one read the same.
+    'closed' => [
+        'refund_to_card' => 'The order was cancelled and :amount SAR was returned to your payment method. Banks can take up to 14 business days to show it.',
+        'refund_to_wallet' => 'The order was cancelled and :amount SAR went back to your wallet, ready to use straight away.',
+        'refund_split' => 'The order was cancelled: :card SAR was returned to your payment method and :wallet SAR went back to your wallet. Banks can take up to 14 business days to show the card amount.',
+        'checkout_expired' => 'The payment window closed, so the order was cancelled automatically. You were not charged, and any balance you used went back to your wallet.',
+        'payment_cancelled' => 'The payment was cancelled, so the order was too. You were not charged, and any balance you used went back to your wallet.',
+    ],
     // Shown to the customer on the order page when an order stops.
     // The admin picks one of these when moving an order to "waiting for customer";
     // the text is copied into the order history so later wording changes do not

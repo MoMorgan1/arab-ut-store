@@ -1,6 +1,16 @@
 <?php
 
 return [
+    // Written into order_status_history when an order ends, so a customer who
+    // sees "cancelled" is also told where their money went. The status alone
+    // cannot carry this: a cancelled order and a refunded one read the same.
+    'closed' => [
+        'refund_to_card' => 'تم إلغاء الطلب واسترجاع :amount ر.س إلى وسيلة الدفع. قد تستغرق البنوك حتى 14 يوم عمل لإظهار المبلغ.',
+        'refund_to_wallet' => 'تم إلغاء الطلب وإرجاع :amount ر.س إلى محفظتك، ومتاحة للاستخدام فورًا.',
+        'refund_split' => 'تم إلغاء الطلب واسترجاع :card ر.س إلى وسيلة الدفع و:wallet ر.س إلى محفظتك. قد تستغرق البنوك حتى 14 يوم عمل لإظهار مبلغ البطاقة.',
+        'checkout_expired' => 'انتهت مهلة الدفع فأُلغي الطلب تلقائيًا. لم يُخصم منك شيء، وأي رصيد استخدمته رجع إلى محفظتك.',
+        'payment_cancelled' => 'أُلغيت عملية الدفع فأُلغي الطلب. لم يُخصم منك شيء، وأي رصيد استخدمته رجع إلى محفظتك.',
+    ],
     // Shown to the customer on the order page when an order stops.
     // The admin picks one of these when moving an order to "waiting for customer";
     // the text is copied into the order history so later wording changes do not

@@ -4,6 +4,7 @@ use App\Actions\Checkout\ExpireAbandonedCheckouts;
 use App\Checkout\DiscountEngine;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
+use App\Enums\OrderStatusHistoryStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
@@ -12,6 +13,7 @@ use App\Loyalty\Support\WalletLedgerWriter;
 use App\Models\Coupon;
 use App\Models\CouponRedemption;
 use App\Models\Order;
+use App\Models\OrderStatusHistory;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\WalletEntry;
@@ -241,4 +243,26 @@ test('cancelling an expired checkout cancels its items too', function (): void {
     app(ExpireAbandonedCheckouts::class)->execute();
 
     expect($order->fresh()->items->first()->status)->toBe(OrderItemStatus::Cancelled);
+});
+
+test('an expired checkout records why it was cancelled, for the audit and for the customer', function (): void {
+    // This job used to change the status and write no history at all, so the
+    // order simply became "cancelled" with nothing behind it: no trail for
+    // staff, and nothing for the order page to tell the customer.
+    $user = User::factory()->create();
+    $coupon = abandonedCheckoutCoupon();
+    $order = pendingOrderFor($user, $coupon, ExpireAbandonedCheckouts::GRACE_HOURS + 2);
+
+    app(ExpireAbandonedCheckouts::class)->execute();
+
+    $history = OrderStatusHistory::query()
+        ->where('order_id', $order->id)
+        ->whereNull('order_item_id')
+        ->sole();
+
+    expect($history->status)->toBe(OrderStatusHistoryStatus::Cancelled)
+        ->and($history->metadata['source'])->toBe('checkout_expiry')
+        ->and($history->note_ar)->not->toBeNull()
+        ->and($history->note_en)->toContain('not charged')
+        ->and($history->note_ar)->not->toBe($history->note_en);
 });
