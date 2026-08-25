@@ -6,6 +6,7 @@ use App\Actions\Checkout\ReleaseOrderWalletFunds;
 use App\Admin\Audit\StaffAuditEvent;
 use App\Admin\Support\OrderStatusTransitionRules;
 use App\Enums\AdminPermission;
+use App\Enums\OrderHoldReason;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
@@ -34,6 +35,8 @@ final class TransitionAdminOrder
         string $orderPublicId,
         OrderStatus $targetStatus,
         OrderStatus $expectedStatus,
+        ?OrderHoldReason $reason = null,
+        ?string $note = null,
     ): Order {
         if ($targetStatus === OrderStatus::Refunded) {
             throw ValidationException::withMessages([
@@ -49,7 +52,7 @@ final class TransitionAdminOrder
             throw new AuthorizationException('This action requires orders.cancel permission.');
         }
 
-        return DB::transaction(function () use ($actor, $orderPublicId, $targetStatus, $expectedStatus): Order {
+        return DB::transaction(function () use ($actor, $orderPublicId, $targetStatus, $expectedStatus, $reason, $note): Order {
             /** @var Order $order */
             $order = Order::query()
                 ->where('public_id', $orderPublicId)
@@ -104,8 +107,8 @@ final class TransitionAdminOrder
                 'order_item_id' => null,
                 'actor_user_id' => $actor->id,
                 'status' => OrderStatusHistoryStatus::from($targetStatus->value),
-                'note_ar' => null,
-                'note_en' => null,
+                'note_ar' => self::composeNote($reason, $note, 'ar'),
+                'note_en' => self::composeNote($reason, $note, 'en'),
                 'metadata' => [
                     'source' => 'admin',
                     'previous_status' => $previousStatus->value,
@@ -154,6 +157,8 @@ final class TransitionAdminOrder
                         'new_status' => $targetStatus->value,
                         'order_public_id' => (string) $order->public_id,
                         'propagated_item_count' => $propagatedItemCount,
+                        'reason' => $reason?->value,
+                        'note_given' => $note !== null,
                     ],
                     ipAddress: request()->ip(),
                 ),
@@ -161,5 +166,21 @@ final class TransitionAdminOrder
 
             return $order;
         }, attempts: 3);
+    }
+
+    /**
+     * Freeze what the customer is told into the history row.
+     *
+     * The curated reason is resolved per locale now rather than at read time, so
+     * a later wording change never rewrites a message a customer already read.
+     */
+    private static function composeNote(?OrderHoldReason $reason, ?string $note, string $locale): ?string
+    {
+        $parts = array_values(array_filter([
+            $reason?->message($locale),
+            $note,
+        ], fn (?string $part): bool => $part !== null && $part !== ''));
+
+        return $parts === [] ? null : implode("\n\n", $parts);
     }
 }

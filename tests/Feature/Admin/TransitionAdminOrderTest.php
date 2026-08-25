@@ -104,6 +104,8 @@ test('admin can transition received order to in_progress with item propagation, 
             'new_status',
             'order_public_id',
             'propagated_item_count',
+            'reason',
+            'note_given',
         ])
         ->and($audit->metadata)->toBe([
             'source' => 'admin',
@@ -111,6 +113,8 @@ test('admin can transition received order to in_progress with item propagation, 
             'new_status' => 'in_progress',
             'order_public_id' => (string) $order->public_id,
             'propagated_item_count' => 1,
+            'reason' => null,
+            'note_given' => false,
         ]);
 });
 
@@ -303,6 +307,109 @@ test('localized transition alias routes execute successfully', function (): void
         ]);
 });
 
+test('an order cannot be paused without something the customer can read', function (): void {
+    // The whole defect was a stopped order with a blank explanation. Refusing
+    // the transition is what stops that from being possible again.
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::InProgress);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'in_progress',
+            'target_status' => 'waiting_for_customer',
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('reason');
+
+    expect($order->refresh()->status)->toBe(OrderStatus::InProgress)
+        ->and(OrderStatusHistory::query()->where('order_id', $order->id)->count())->toBe(0);
+});
+
+test('pausing an order freezes the chosen reason in both locales', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::InProgress);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'in_progress',
+            'target_status' => 'waiting_for_customer',
+            'reason' => 'insufficient_coins',
+        ])
+        ->assertOk();
+
+    $history = OrderStatusHistory::query()
+        ->where('order_id', $order->id)
+        ->whereNull('order_item_id')
+        ->sole();
+
+    expect($history->status)->toBe(OrderStatusHistoryStatus::WaitingForCustomer)
+        ->and($history->note_ar)->toBe(trans('orders.hold_reasons.insufficient_coins', locale: 'ar'))
+        ->and($history->note_en)->toBe(trans('orders.hold_reasons.insufficient_coins', locale: 'en'))
+        ->and($history->note_ar)->not->toBe($history->note_en);
+});
+
+test('a free note is kept alongside the curated reason', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::InProgress);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'in_progress',
+            'target_status' => 'waiting_for_customer',
+            'reason' => 'market_locked',
+            'note' => '  Your market opens on 3 September.  ',
+        ])
+        ->assertOk();
+
+    $history = OrderStatusHistory::query()
+        ->where('order_id', $order->id)
+        ->whereNull('order_item_id')
+        ->sole();
+
+    // The note is order-specific, so it reads the same in both locales, but it
+    // never replaces the curated explanation - it follows it.
+    expect($history->note_ar)
+        ->toStartWith(trans('orders.hold_reasons.market_locked', locale: 'ar'))
+        ->toEndWith('Your market opens on 3 September.')
+        ->and($history->note_en)->toEndWith('Your market opens on 3 September.');
+});
+
+test('a note alone is enough to pause an order', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::InProgress);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'in_progress',
+            'target_status' => 'waiting_for_customer',
+            'note' => 'We need a screenshot of your club.',
+        ])
+        ->assertOk();
+
+    $history = OrderStatusHistory::query()
+        ->where('order_id', $order->id)
+        ->whereNull('order_item_id')
+        ->sole();
+
+    expect($history->note_ar)->toBe('We need a screenshot of your club.')
+        ->and($history->note_en)->toBe('We need a screenshot of your club.');
+});
+
+test('an unknown reason is refused rather than written as a blank message', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::InProgress);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'in_progress',
+            'target_status' => 'waiting_for_customer',
+            'reason' => 'dog_ate_the_coins',
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('reason');
+
+    expect($order->refresh()->status)->toBe(OrderStatus::InProgress);
+});
 function createTransitionTestActor(UserRole $role, string $locale = 'en'): User
 {
     $actor = User::factory()->create([

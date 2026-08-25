@@ -2,8 +2,10 @@
 
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
+use App\Enums\OrderStatusHistoryStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderStatusHistory;
 use App\Models\User;
 
 function ordersTestOrder(
@@ -216,4 +218,86 @@ test('legacy direct order URLs do not reveal another customers order', function 
     $this->actingAs($other)
         ->get('/orders/'.$order->public_id)
         ->assertNotFound();
+});
+
+test('a paused order tells the customer why, in their own language', function (): void {
+    $owner = User::factory()->create();
+    $order = ordersTestOrder($owner, 11, OrderStatus::WaitingForCustomer);
+
+    OrderStatusHistory::query()->create([
+        'order_id' => $order->id,
+        'order_item_id' => null,
+        'actor_user_id' => null,
+        'status' => OrderStatusHistoryStatus::WaitingForCustomer,
+        'note_ar' => 'رصيد الكوينز غير كافٍ.',
+        'note_en' => 'Coin balance is too low.',
+        'metadata' => ['source' => 'admin'],
+    ]);
+
+    $this->actingAs($owner)
+        ->get('/my-account/orders/'.$order->public_id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('order.status', 'waiting_for_customer')
+            ->where('order.statusNote', 'رصيد الكوينز غير كافٍ.'));
+
+    $this->actingAs($owner)
+        ->get('/en/my-account/orders/'.$order->public_id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('order.statusNote', 'Coin balance is too low.'));
+});
+
+test('resuming an order clears the explanation instead of leaving it stale', function (): void {
+    // A note only speaks for the status it was written against, so the newer
+    // history row is enough to retire it - nothing has to go back and blank it.
+    $owner = User::factory()->create();
+    $order = ordersTestOrder($owner, 12, OrderStatus::WaitingForCustomer);
+
+    OrderStatusHistory::query()->create([
+        'order_id' => $order->id,
+        'status' => OrderStatusHistoryStatus::WaitingForCustomer,
+        'note_ar' => 'رصيد الكوينز غير كافٍ.',
+        'note_en' => 'Coin balance is too low.',
+        'metadata' => ['source' => 'admin'],
+    ]);
+
+    $order->forceFill(['status' => OrderStatus::InProgress])->save();
+
+    OrderStatusHistory::query()->create([
+        'order_id' => $order->id,
+        'status' => OrderStatusHistoryStatus::InProgress,
+        'note_ar' => null,
+        'note_en' => null,
+        'metadata' => ['source' => 'admin'],
+    ]);
+
+    $this->actingAs($owner)
+        ->get('/my-account/orders/'.$order->public_id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('order.status', 'in_progress')
+            ->where('order.statusNote', null));
+});
+
+test('the customer is shown four states where staff track seven', function (): void {
+    // "Payment received" and "in progress" are one wait to the customer, and a
+    // refund is a cancellation they were paid back for. Staff keep the ladder.
+    $owner = User::factory()->create();
+    $received = ordersTestOrder($owner, 13, OrderStatus::Received);
+    $refunded = ordersTestOrder($owner, 14, OrderStatus::Refunded);
+
+    $this->actingAs($owner)
+        ->get('/my-account/orders/'.$received->public_id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('order.status', 'in_progress'));
+
+    $this->actingAs($owner)
+        ->get('/my-account/orders/'.$refunded->public_id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('order.status', 'cancelled'));
+
+    // The rows themselves never moved.
+    expect($received->refresh()->status)->toBe(OrderStatus::Received)
+        ->and($refunded->refresh()->status)->toBe(OrderStatus::Refunded);
 });

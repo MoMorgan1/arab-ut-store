@@ -110,6 +110,7 @@ return [
         'ea_codes' => 'EA backup codes',
         'playstation_codes' => 'PlayStation backup codes',
         'refresh_status' => 'Refresh status',
+        'status_note_title' => 'Status details',
         'refreshing' => 'Refreshing…',
         'back' => 'Back to Orders',
         'copy' => 'Copy',

@@ -5957,6 +5957,40 @@ html.admin-document {
     animation: account-spin 800ms linear infinite;
 }
 
+/* Why the order is where it is, written by staff when they paused it. */
+.account-live-order__status-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    border: 1px solid rgb(212 168 67 / 30%);
+    border-radius: 0.9rem;
+    background: rgb(212 168 67 / 8%);
+    padding: 0.9rem 1rem;
+}
+
+.account-live-order__status-note > svg {
+    flex: none;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-block-start: 0.15rem;
+    color: var(--arabut-gold-bright);
+}
+
+.account-live-order__status-note h2 {
+    margin: 0;
+    color: var(--arabut-gold-bright);
+    font-size: 0.9rem;
+    font-weight: 800;
+}
+
+.account-live-order__status-note p {
+    margin: 0.35rem 0 0;
+    color: var(--arabut-ink);
+    font-size: 0.9rem;
+    line-height: 1.7;
+    white-space: pre-line;
+}
+
 .account-live-order__items > h2 {
     margin: 0 0 0.75rem;
     color: var(--arabut-ink);

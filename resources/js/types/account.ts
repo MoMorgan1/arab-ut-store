@@ -171,6 +171,7 @@ export type AccountTranslations = {
         playstation_codes: string;
         refresh_status: string;
         refreshing: string;
+        status_note_title: string;
         back: string;
         copy: string;
         copied: string;
@@ -398,6 +399,7 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
         id: string;
         number: string;
         status: AccountOrderStatus;
+        statusNote: string | null;
         placedAt: string;
         total: AccountMoney;
         discount: AccountMoney;

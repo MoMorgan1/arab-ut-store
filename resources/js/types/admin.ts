@@ -183,6 +183,13 @@ export type AdminTranslations = {
         auditSection: string;
         transitionsTitle: string;
         transitionsDescription: string;
+        holdReasonLabel: string;
+        holdReasonPlaceholder: string;
+        holdReasonHint: string;
+        holdNoteLabel: string;
+        holdNotePlaceholder: string;
+        holdReasonRequired: string;
+        historyNoteLabel: string;
         noHistory: string;
         noAudit: string;
         noItems: string;
@@ -271,6 +278,7 @@ export type AdminTranslations = {
         };
     };
     statuses: Record<string, string>;
+    holdReasons: Record<string, string>;
     mfa: {
         headTitle: string;
         eyebrow: string;
@@ -1682,6 +1690,7 @@ export type AdminStatusHistoryEntry = {
     source: string | null;
     previousStatus: string | null;
     newStatus: string | null;
+    note: string | null;
     createdAt: string;
     actor: { name: string; role: string } | null;
 };

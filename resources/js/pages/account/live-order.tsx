@@ -6,6 +6,7 @@ import {
     CheckCircle2,
     ChevronDown,
     Copy,
+    Info,
     RefreshCw,
     ShieldCheck,
 } from 'lucide-react';
@@ -164,6 +165,21 @@ export default function AccountLiveOrder() {
                         </button>
                     ) : null}
                 </div>
+
+                {props.order.statusNote ? (
+                    <aside
+                        aria-labelledby="account-order-status-note-title"
+                        className="account-live-order__status-note"
+                    >
+                        <Info aria-hidden="true" />
+                        <div>
+                            <h2 id="account-order-status-note-title">
+                                {props.accountUi.orders.status_note_title}
+                            </h2>
+                            <p>{props.order.statusNote}</p>
+                        </div>
+                    </aside>
+                ) : null}
 
                 <section
                     aria-labelledby="account-order-items-title"

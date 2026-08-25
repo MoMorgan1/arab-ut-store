@@ -110,6 +110,7 @@ return [
         'ea_codes' => 'أكواد EA الاحتياطية',
         'playstation_codes' => 'أكواد بلايستيشن الاحتياطية',
         'refresh_status' => 'تحديث الحالة',
+        'status_note_title' => 'تفاصيل الحالة',
         'refreshing' => 'جارٍ التحديث…',
         'back' => 'العودة إلى طلباتي',
         'copy' => 'نسخ',

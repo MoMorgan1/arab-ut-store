@@ -151,6 +151,64 @@ describe('AdminOrderDetailPage', () => {
         ).toBeVisible();
     });
 
+    it('asks for a reason before pausing an order and sends the chosen one', async () => {
+        http.submit.mockImplementationOnce(
+            (
+                _method: string,
+                _url: string,
+                options: { onSuccess?: (response: unknown) => void },
+            ) => {
+                options.onSuccess?.({
+                    order: sampleAdminOrderDetail,
+                    status: 'waiting_for_customer',
+                });
+
+                return Promise.resolve(sampleAdminOrderDetail);
+            },
+        );
+
+        render(<AdminOrderDetailPage />);
+
+        const statusSelect = screen.getByLabelText('Next status');
+        const applyButton = screen.getByRole('button', {
+            name: 'Apply status',
+        });
+
+        // Nothing about pausing shows until pausing is the chosen move.
+        expect(
+            screen.queryByLabelText(/Reason for pausing/),
+        ).not.toBeInTheDocument();
+
+        fireEvent.change(statusSelect, {
+            target: { value: 'waiting_for_customer' },
+        });
+
+        const reasonSelect = screen.getByLabelText(/Reason for pausing/);
+        expect(reasonSelect).toBeVisible();
+
+        // Applying with the reason still blank never reaches the server.
+        fireEvent.click(applyButton);
+        expect(http.submit).not.toHaveBeenCalled();
+        expect(
+            screen.getByText(
+                'Pick a reason or write a note before pausing the order.',
+                { selector: '[data-slot="alert-description"]' },
+            ),
+        ).toBeVisible();
+
+        fireEvent.change(reasonSelect, {
+            target: { value: 'insufficient_coins' },
+        });
+        fireEvent.click(applyButton);
+
+        await waitFor(() => {
+            expect(http.setData).toHaveBeenCalledWith({
+                expected_status: 'received',
+                target_status: 'waiting_for_customer',
+                reason: 'insufficient_coins',
+            });
+        });
+    });
     it('submits the transition through inertia http and updates state on success without optimistic update', async () => {
         const updatedOrder = {
             ...sampleAdminOrderDetail,

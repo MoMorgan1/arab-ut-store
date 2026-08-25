@@ -107,6 +107,16 @@ export default function AdminOrderHistory({
                                             </span>
                                         ) : null}
                                     </div>
+                                    {entry.note ? (
+                                        <div className="mt-1 rounded-md border border-border/60 bg-secondary/40 p-2">
+                                            <p className="font-semibold text-foreground">
+                                                {copy.historyNoteLabel}
+                                            </p>
+                                            <p className="mt-0.5 whitespace-pre-line text-muted-foreground">
+                                                {entry.note}
+                                            </p>
+                                        </div>
+                                    ) : null}
                                 </li>
                             );
                         })}

@@ -179,6 +179,32 @@ it('refreshes only current safe order data and keeps credentials opaque', () => 
     );
 });
 
+it('shows why a paused order stopped, and shows nothing when it has not', () => {
+    page.url = '/en/my-account/orders/01ORDER1';
+    page.props = {
+        ...shellProps(),
+        order: liveOrder(null),
+    };
+
+    const { rerender, container } = render(<AccountLiveOrder />);
+
+    expect(
+        container.querySelector('.account-live-order__status-note'),
+    ).toBeNull();
+
+    page.props = {
+        ...shellProps(),
+        order: {
+            ...liveOrder(null),
+            statusNote: 'Coin balance is too low.\n\nTop it up and tell us.',
+        },
+    };
+
+    rerender(<AccountLiveOrder />);
+
+    expect(screen.getByText('Status details')).toBeVisible();
+    expect(screen.getByText(/Coin balance is too low\./)).toBeVisible();
+});
 it('reveals manual-service credentials and squad image only after the owner asks', async () => {
     const orderData = liveOrder(null);
     orderData.items[0] = {
@@ -505,6 +531,7 @@ function liveOrder(
         id: '01ORDER1',
         number: 'UT-00000001',
         status: 'waiting_for_customer',
+        statusNote: null,
         placedAt: '2026-08-15T10:00:00+00:00',
         total: { amountMinor: '12999', currency: 'SAR' },
         discount: { amountMinor: '0', currency: 'SAR' },
@@ -624,6 +651,7 @@ function shellProps() {
                 ea_codes: 'EA backup codes',
                 playstation_codes: 'PlayStation backup codes',
                 refresh_status: 'Refresh status',
+                status_note_title: 'Status details',
                 refreshing: 'Refreshing…',
                 back: 'Back to Orders',
                 copy: 'Copy',
