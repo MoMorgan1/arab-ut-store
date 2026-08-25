@@ -259,7 +259,7 @@ test('an unclassifiable active Coins pricing rule fails the selected quote close
     'unknown group' => [['group' => 'legacy_console']],
 ]);
 
-test('a fast exact override wins without a usable normal pricing rule', function (bool $includeMalformedNormal) {
+test('a fast exact override still needs a usable normal pricing rule', function (bool $includeMalformedNormal) {
     createQuoteCatalog(withRules: false);
 
     PriceRule::create([
@@ -282,11 +282,13 @@ test('a fast exact override wins without a usable normal pricing rule', function
         ]);
     }
 
+    // A pinned price used to be served raw here, with no normal price to compare it
+    // against — which let one bad pricing run publish fast delivery below normal.
+    // Fast pricing now fails closed the same way formula pricing always has.
     $response = $this->getJson('/coins/quote?platform=playstation&delivery=fast&quantity=50000');
 
     assertQuoteIsNotStored($response);
-    $response->assertOk()
-        ->assertJsonPath('data.total.amountHalalah', 1_200);
+    $response->assertStatus(503);
 })->with([
     'normal pricing is missing' => false,
     'normal pricing is malformed' => true,

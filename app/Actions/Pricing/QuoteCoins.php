@@ -34,7 +34,7 @@ final readonly class QuoteCoins
         $rules = $this->catalog->pricingRules([$group]);
         $normalRule = null;
 
-        if ($group === 'console_fast' && $rules[$group]->exactOverrideHalalah($quantity) === null) {
+        if ($group === 'console_fast') {
             $normalRule = $this->catalog->pricingRules(['console_normal'])['console_normal'];
         }
 
