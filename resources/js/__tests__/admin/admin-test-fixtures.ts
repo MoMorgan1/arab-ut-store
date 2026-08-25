@@ -1030,6 +1030,14 @@ export const englishAdminUi: AdminTranslations = {
                 roundingUnitHint:
                     'A customer can type any multiple of this. The bands below only place the slider stops, and every band step has to be a multiple of it.',
             },
+            weeklyMatches: {
+                hint: 'Leave both blank and the option is not shown to customers at all. They have to be filled in together.',
+                notOffered: 'Not offered',
+                priceLabel: 'Weekly matches price (SAR)',
+                row: 'Weekly matches',
+                wins: ':wins wins',
+                winsLabel: 'Wins included',
+            },
             urgentSurcharge: 'Urgent surcharge',
             version: 'Version :version',
             lastUpdated: 'Last updated: :date',

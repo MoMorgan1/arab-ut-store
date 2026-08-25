@@ -112,6 +112,12 @@ export type RivalsServiceTranslations = {
     target_legend: string;
     division: string;
     elite: string;
+    mode_legend: string;
+    mode_promotion: string;
+    mode_promotion_hint: string;
+    mode_weekly: string;
+    mode_weekly_hint: string;
+    weekly_summary: string;
     standard_eta: string;
     notes: Record<'timing' | 'login' | 'shortfall' | 'safety', string>;
 };
@@ -162,6 +168,11 @@ export type ManualServicePageProps = {
                       to: Division;
                       price: ManualServiceMoney;
                   }>;
+                  /** null until an admin prices it; the option stays hidden. */
+                  weeklyMatches: {
+                      includedWins: number;
+                      price: ManualServiceMoney;
+                  } | null;
               }
             | null;
     };

@@ -334,6 +334,14 @@ return [
             'target_legend' => 'الديفجن المطلوب',
             'division' => 'ديفجن :division',
             'elite' => 'إيليت',
+            // The two ways to buy Rivals. Both play the same account with the
+            // same data; only what we do with the week differs.
+            'mode_legend' => 'إيش تبي نلعبه؟',
+            'mode_promotion' => 'تصعيد ديفجن',
+            'mode_promotion_hint' => 'نلعب لك لحد ما توصل الديفجن اللي تبيه.',
+            'mode_weekly' => 'المباريات الأسبوعية',
+            'mode_weekly_hint' => 'نلعب لك مباريات الأسبوع بدون تصعيد — :wins انتصارات مشمولة.',
+            'weekly_summary' => 'المباريات الأسبوعية (:wins انتصارات)',
             'standard_eta' => 'يستغرق الطلب عادةً من يوم إلى 3 أيام حسب ضغط الطلبات وعدد الديفجنات المطلوبة.',
             'notes' => [
                 'timing' => 'مدة التنفيذ تقديرية وتتأثر بضغط الطلبات وعدد الديفجنات المطلوبة.',

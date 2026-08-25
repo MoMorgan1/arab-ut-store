@@ -334,6 +334,14 @@ return [
             'target_legend' => 'Target division',
             'division' => 'Division :division',
             'elite' => 'Elite',
+            // The two ways to buy Rivals. Both play the same account with the
+            // same data; only what we do with the week differs.
+            'mode_legend' => 'What would you like us to play?',
+            'mode_promotion' => 'Division promotion',
+            'mode_promotion_hint' => 'We play until you reach the division you want.',
+            'mode_weekly' => 'Weekly matches',
+            'mode_weekly_hint' => 'We play your week without promoting — :wins wins included.',
+            'weekly_summary' => 'Weekly matches (:wins wins)',
             'standard_eta' => 'Orders usually take 1–3 days, depending on demand and the number of divisions requested.',
             'notes' => [
                 'timing' => 'The delivery time is an estimate and depends on demand and the number of divisions requested.',

@@ -228,7 +228,12 @@ it('keeps controls fully editable after prefilling without fighting user edits',
     expect(targetSlider.getAttribute('aria-valuetext')).toContain('Elite');
 });
 
-function renderRivals() {
+function renderRivals(
+    weeklyMatches: {
+        includedWins: number;
+        price: { amountMinor: number; currency: string };
+    } | null = null,
+) {
     render(
         <RivalsConfigurator
             addUrl="/cart/items/rivals"
@@ -250,6 +255,7 @@ function renderRivals() {
                     to: String(to) as '6',
                     price: { amountMinor: Number(amount), currency: 'SAR' },
                 })),
+                weeklyMatches,
             }}
             product={{
                 id: '01K00000000000000000000000',
@@ -326,6 +332,42 @@ const rivals = {
     target_legend: 'Target division',
     division: 'Division :division',
     elite: 'Elite',
+    mode_legend: 'What would you like us to play?',
+    mode_promotion: 'Division promotion',
+    mode_promotion_hint: 'We play until you reach the division you want.',
+    mode_weekly: 'Weekly matches',
+    mode_weekly_hint:
+        'We play your week without promoting — :wins wins included.',
+    weekly_summary: 'Weekly matches (:wins wins)',
     standard_eta: 'Usually one to three days depending on demand',
     notes: { timing: '', login: '', shortfall: '', safety: '' },
 } satisfies RivalsServiceTranslations;
+
+it('does not offer weekly matches until an admin has priced them', () => {
+    // The option carries a price and an included win count. Offering it before
+    // either exists would sell a promise nobody made.
+    renderRivals();
+
+    expect(screen.queryByText('Weekly matches')).not.toBeInTheDocument();
+    expect(
+        screen.getByRole('slider', { name: 'Current division' }),
+    ).toBeVisible();
+});
+
+it('sells a week of matches at its own price, with no divisions attached', async () => {
+    renderRivals({
+        includedWins: 8,
+        price: { amountMinor: 9000, currency: 'SAR' },
+    });
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Weekly matches' }));
+
+    expect(screen.getByText(/8 wins included/)).toBeVisible();
+
+    // The division sliders describe a promotion, which this is not.
+    expect(
+        screen
+            .getByRole('slider', { name: 'Current division', hidden: true })
+            .closest('[hidden]'),
+    ).not.toBeNull();
+});

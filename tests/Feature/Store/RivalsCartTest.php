@@ -187,3 +187,81 @@ it('projects only a safe immutable Rivals route into the cart', function () {
         'fulfillment/squad-images',
     );
 });
+
+/** Puts weekly matches on sale at a known price. */
+function priceRivalsWeeklyMatches(int $priceHalalah = 9_000, int $includedWins = 8): void
+{
+    $schedule = ServicePriceSchedule::query()->where('service_type', ServiceType::Rivals)->sole();
+
+    $schedule->forceFill([
+        'configuration' => [
+            ...(array) $schedule->configuration,
+            'weeklyMatches' => ['priceHalalah' => $priceHalalah, 'includedWins' => $includedWins],
+        ],
+    ])->save();
+}
+
+test('a week of matches is sold at its own price and carries no divisions', function (): void {
+    // Weekly matches promote nothing, so a division stored against one would be
+    // a claim the service does not make - and the price is flat, not a sum of
+    // ladder steps.
+    priceRivalsWeeklyMatches();
+
+    $payload = validRivalsCartPayload(['mode' => 'weekly_matches']);
+    unset($payload['currentDivision'], $payload['targetDivision']);
+
+    $this->post('/cart/items/rivals', $payload, ['Idempotency-Key' => (string) Str::uuid()])
+        ->assertCreated();
+
+    $item = CartItem::query()->sole();
+
+    expect($item->total_halalah)->toBe(9_000)
+        ->and($item->configuration['mode'])->toBe('weekly_matches')
+        ->and($item->configuration['current_division'])->toBeNull()
+        ->and($item->configuration['target_division'])->toBeNull()
+        // Frozen with the purchase, so changing the setting later never rewrites
+        // what an existing order was promised.
+        ->and($item->configuration['included_wins'])->toBe(8);
+});
+
+test('a division sent with a week of matches is refused', function (): void {
+    priceRivalsWeeklyMatches();
+
+    $this->post(
+        '/cart/items/rivals',
+        validRivalsCartPayload(['mode' => 'weekly_matches']),
+        ['Idempotency-Key' => (string) Str::uuid()],
+    )->assertUnprocessable();
+
+    expect(CartItem::query()->count())->toBe(0);
+});
+
+test('weekly matches cannot be bought before an admin prices them', function (): void {
+    // The storefront hides the option until it is priced. A request arriving
+    // anyway must not fall back to some default price.
+    $payload = validRivalsCartPayload(['mode' => 'weekly_matches']);
+    unset($payload['currentDivision'], $payload['targetDivision']);
+
+    $this->post('/cart/items/rivals', $payload, ['Idempotency-Key' => (string) Str::uuid()])
+        ->assertUnprocessable();
+
+    expect(CartItem::query()->count())->toBe(0);
+});
+
+test('a promotion and a week of matches are not confused for the same request', function (): void {
+    // Both carry the same credentials and the same image. Without the mode in
+    // the fingerprint the second would be replayed as the first, and the
+    // customer would be handed the wrong service.
+    priceRivalsWeeklyMatches();
+
+    $key = (string) Str::uuid();
+
+    $this->post('/cart/items/rivals', validRivalsCartPayload(), ['Idempotency-Key' => $key])
+        ->assertCreated();
+
+    $weekly = validRivalsCartPayload(['mode' => 'weekly_matches']);
+    unset($weekly['currentDivision'], $weekly['targetDivision']);
+
+    $this->post('/cart/items/rivals', $weekly, ['Idempotency-Key' => $key])
+        ->assertStatus(409);
+});

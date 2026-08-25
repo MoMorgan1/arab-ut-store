@@ -91,6 +91,7 @@ export default function AdminServicePricingSection({
     const copy = adminUi.settings;
     const pricingCopy = copy.servicePricing;
     const coinsCopy = pricingCopy.coinsQuantities;
+    const weeklyCopy = pricingCopy.weeklyMatches;
 
     const [alertState, setAlertState] = useState<ActionAlert | null>(null);
 
@@ -101,6 +102,8 @@ export default function AdminServicePricingSection({
     const [futRanks, setFutRanks] = useState<Record<string, string>>({});
     const [futUrgent, setFutUrgent] = useState<string>('');
     const [rivalsSteps, setRivalsSteps] = useState<Record<string, string>>({});
+    const [weeklyPrice, setWeeklyPrice] = useState<string>('');
+    const [weeklyWins, setWeeklyWins] = useState<string>('');
     const [coinsMinimum, setCoinsMinimum] = useState<string>('');
     const [coinsUnitDraft, setCoinsUnitDraft] = useState<string>('');
     const [coinsTiers, setCoinsTiers] = useState<CoinsTierDraft[]>([]);
@@ -163,6 +166,22 @@ export default function AdminServicePricingSection({
                     val !== undefined ? formatHalalahToSar(val) : '';
             });
             setRivalsSteps(stepsState);
+
+            const weekly = schedule.configuration.weeklyMatches as
+                | { priceHalalah?: number; includedWins?: number }
+                | null
+                | undefined;
+
+            setWeeklyPrice(
+                typeof weekly?.priceHalalah === 'number'
+                    ? formatHalalahToSar(weekly.priceHalalah)
+                    : '',
+            );
+            setWeeklyWins(
+                typeof weekly?.includedWins === 'number'
+                    ? String(weekly.includedWins)
+                    : '',
+            );
         } else if (schedule.serviceType === 'coins') {
             const rawTiers = (schedule.configuration.tiers ?? []) as Array<{
                 upTo?: number;
@@ -238,8 +257,22 @@ export default function AdminServicePricingSection({
                 parsedSteps[step] = parseSarToHalalah(rivalsSteps[step] || '0');
             }
 
+            const trimmedPrice = weeklyPrice.trim();
+            const trimmedWins = weeklyWins.trim();
+            const offersWeekly = trimmedPrice !== '' || trimmedWins !== '';
+
             configuration = {
                 steps: parsedSteps,
+                ...(offersWeekly
+                    ? {
+                          weeklyMatches: {
+                              includedWins: Number(trimmedWins) || 0,
+                              priceHalalah: parseSarToHalalah(
+                                  trimmedPrice || '0',
+                              ),
+                          },
+                      }
+                    : {}),
             };
         } else if (editingSchedule.serviceType === 'coins') {
             configuration = {
@@ -833,36 +866,89 @@ export default function AdminServicePricingSection({
                                                         </TableRow>
                                                     </>
                                                 ) : (
-                                                    RIVALS_STEPS.map((step) => {
-                                                        const priceHalalah =
-                                                            rawSteps[step] ?? 0;
-
-                                                        return (
-                                                            <TableRow
-                                                                key={step}
-                                                            >
-                                                                <TableCell className="font-medium">
-                                                                    {pricingCopy
-                                                                        .steps[
+                                                    <>
+                                                        {RIVALS_STEPS.map(
+                                                            (step) => {
+                                                                const priceHalalah =
+                                                                    rawSteps[
                                                                         step
-                                                                    ] ?? step}
-                                                                </TableCell>
-                                                                <TableCell className="text-end font-semibold text-foreground tabular-nums">
-                                                                    {formatAdminMoney(
+                                                                    ] ?? 0;
+
+                                                                return (
+                                                                    <TableRow
+                                                                        key={
+                                                                            step
+                                                                        }
+                                                                    >
+                                                                        <TableCell className="font-medium">
+                                                                            {pricingCopy
+                                                                                .steps[
+                                                                                step
+                                                                            ] ??
+                                                                                step}
+                                                                        </TableCell>
+                                                                        <TableCell className="text-end font-semibold text-foreground tabular-nums">
+                                                                            {formatAdminMoney(
+                                                                                {
+                                                                                    amountMinor:
+                                                                                        String(
+                                                                                            priceHalalah,
+                                                                                        ),
+                                                                                    currency:
+                                                                                        'SAR',
+                                                                                },
+                                                                                locale,
+                                                                            )}
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                );
+                                                            },
+                                                        )}
+                                                        <TableRow className="bg-accent/20">
+                                                            <TableCell className="font-medium text-primary">
+                                                                {weeklyCopy.row}
+                                                            </TableCell>
+                                                            <TableCell className="text-end font-semibold text-primary tabular-nums">
+                                                                {(() => {
+                                                                    const weekly =
+                                                                        schedule
+                                                                            .configuration
+                                                                            .weeklyMatches as
+                                                                            | {
+                                                                                  priceHalalah?: number;
+                                                                                  includedWins?: number;
+                                                                              }
+                                                                            | null
+                                                                            | undefined;
+
+                                                                    if (
+                                                                        typeof weekly?.priceHalalah !==
+                                                                        'number'
+                                                                    ) {
+                                                                        return weeklyCopy.notOffered;
+                                                                    }
+
+                                                                    return `${formatAdminMoney(
                                                                         {
                                                                             amountMinor:
                                                                                 String(
-                                                                                    priceHalalah,
+                                                                                    weekly.priceHalalah,
                                                                                 ),
                                                                             currency:
                                                                                 'SAR',
                                                                         },
                                                                         locale,
-                                                                    )}
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        );
-                                                    })
+                                                                    )} · ${weeklyCopy.wins.replace(
+                                                                        ':wins',
+                                                                        String(
+                                                                            weekly.includedWins ??
+                                                                                0,
+                                                                        ),
+                                                                    )}`;
+                                                                })()}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    </>
                                                 )}
                                             </TableBody>
                                         </Table>
@@ -1539,6 +1625,92 @@ export default function AdminServicePricingSection({
                                             </div>
                                         );
                                     })}
+
+                                    <div className="flex flex-col gap-3 border-t border-border/70 pt-4">
+                                        <div className="flex flex-col gap-1.5">
+                                            <Label
+                                                className="text-xs font-semibold"
+                                                htmlFor="input-rivals-weekly-price"
+                                            >
+                                                {weeklyCopy.priceLabel}
+                                            </Label>
+                                            <Input
+                                                aria-invalid={
+                                                    !!editErrors[
+                                                        'configuration.weeklyMatches.priceHalalah'
+                                                    ]
+                                                }
+                                                className="min-h-11 touch-manipulation text-xs tabular-nums"
+                                                disabled={editSubmitting}
+                                                id="input-rivals-weekly-price"
+                                                inputMode="decimal"
+                                                onChange={(e) =>
+                                                    setWeeklyPrice(
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder="0.00"
+                                                step="0.01"
+                                                type="number"
+                                                value={weeklyPrice}
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-1.5">
+                                            <Label
+                                                className="text-xs font-semibold"
+                                                htmlFor="input-rivals-weekly-wins"
+                                            >
+                                                {weeklyCopy.winsLabel}
+                                            </Label>
+                                            <Input
+                                                aria-invalid={
+                                                    !!editErrors[
+                                                        'configuration.weeklyMatches.includedWins'
+                                                    ]
+                                                }
+                                                className="min-h-11 touch-manipulation text-xs tabular-nums"
+                                                disabled={editSubmitting}
+                                                id="input-rivals-weekly-wins"
+                                                inputMode="numeric"
+                                                min="1"
+                                                onChange={(e) =>
+                                                    setWeeklyWins(
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                step="1"
+                                                type="number"
+                                                value={weeklyWins}
+                                            />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            {weeklyCopy.hint}
+                                        </p>
+                                        {editErrors[
+                                            'configuration.weeklyMatches.priceHalalah'
+                                        ] ||
+                                        editErrors[
+                                            'configuration.weeklyMatches.includedWins'
+                                        ] ||
+                                        editErrors[
+                                            'configuration.weeklyMatches'
+                                        ] ? (
+                                            <p
+                                                className="text-xs font-medium text-destructive"
+                                                role="alert"
+                                            >
+                                                {editErrors[
+                                                    'configuration.weeklyMatches.priceHalalah'
+                                                ] ??
+                                                    editErrors[
+                                                        'configuration.weeklyMatches.includedWins'
+                                                    ] ??
+                                                    editErrors[
+                                                        'configuration.weeklyMatches'
+                                                    ]}
+                                            </p>
+                                        ) : null}
+                                    </div>
                                 </div>
                             )}
                         </div>

@@ -543,6 +543,14 @@ export type AdminTranslations = {
                 dialogTitle: string;
                 dialogDescription: string;
             };
+            weeklyMatches: {
+                row: string;
+                notOffered: string;
+                wins: string;
+                priceLabel: string;
+                winsLabel: string;
+                hint: string;
+            };
             urgentSurcharge: string;
             version: string;
             lastUpdated: string;

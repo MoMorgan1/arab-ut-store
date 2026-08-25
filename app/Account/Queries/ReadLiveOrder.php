@@ -214,6 +214,17 @@ final class ReadLiveOrder
             return $safe;
         }
 
+        if (($configuration['mode'] ?? null) === 'weekly_matches') {
+            $includedWins = $configuration['included_wins'] ?? null;
+            $safe['weeklyMatches'] = true;
+
+            if (is_int($includedWins) && $includedWins > 0 && $includedWins <= 100) {
+                $safe['includedWins'] = $includedWins;
+            }
+
+            return $safe;
+        }
+
         foreach (['current_division' => 'fromDivision', 'target_division' => 'toDivision'] as $key => $output) {
             $division = $configuration[$key] ?? null;
 

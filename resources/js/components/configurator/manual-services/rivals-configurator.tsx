@@ -67,6 +67,9 @@ export function RivalsConfigurator({
 
         return getInitialRivalsRoute(search, pricing.ladder).to;
     });
+    const [mode, setMode] = useState<'promotion' | 'weekly_matches'>(
+        'promotion',
+    );
     const [credentials, setCredentials] = useState(emptyManualCredentials);
     const [image, setImage] = useState<File | null>(null);
     const [imageError, setImageError] = useState<string>();
@@ -82,13 +85,16 @@ export function RivalsConfigurator({
             : pricing.stepOptions
                   .slice(fromIndex, toIndex)
                   .reduce((sum, step) => sum + step.price.amountMinor, 0);
-    const price =
-        amount === null
-            ? null
-            : {
-                  amountMinor: amount,
-                  currency: pricing.stepOptions[0]?.price.currency ?? 'SAR',
-              };
+    const weekly = pricing.weeklyMatches;
+    const isWeekly = mode === 'weekly_matches' && weekly !== null;
+    const price = isWeekly
+        ? weekly.price
+        : amount === null
+          ? null
+          : {
+                amountMinor: amount,
+                currency: pricing.stepOptions[0]?.price.currency ?? 'SAR',
+            };
     const formattedPrice =
         price === null
             ? ''
@@ -129,7 +135,11 @@ export function RivalsConfigurator({
 
         const imageIssue = validSquadImage(image);
 
-        if (imageIssue !== null || image === null || amount === null) {
+        if (
+            imageIssue !== null ||
+            image === null ||
+            (!isWeekly && amount === null)
+        ) {
             setImageError(
                 imageIssue === 'size'
                     ? common.image_too_large
@@ -144,8 +154,13 @@ export function RivalsConfigurator({
         const form = new FormData();
         form.set('scheduleVersion', String(scheduleVersion));
         form.set('platform', platform);
-        form.set('currentDivision', from);
-        form.set('targetDivision', to);
+        form.set('mode', isWeekly ? 'weekly_matches' : 'promotion');
+
+        if (!isWeekly) {
+            form.set('currentDivision', from);
+            form.set('targetDivision', to);
+        }
+
         form.set('squadImage', image);
 
         if (platform === 'pc' && launcher !== null) {
@@ -226,7 +241,38 @@ export function RivalsConfigurator({
                     </div>
                 </fieldset>
             ) : null}
-            <div className="manual-rivals-route">
+            {weekly !== null ? (
+                <fieldset>
+                    <legend>{service.mode_legend}</legend>
+                    <div className="manual-selection-grid">
+                        <SelectionCard
+                            checked={!isWeekly}
+                            name="mode"
+                            onChange={() => setMode('promotion')}
+                            value="promotion"
+                        >
+                            {service.mode_promotion}
+                        </SelectionCard>
+                        <SelectionCard
+                            checked={isWeekly}
+                            name="mode"
+                            onChange={() => setMode('weekly_matches')}
+                            value="weekly_matches"
+                        >
+                            {service.mode_weekly}
+                        </SelectionCard>
+                    </div>
+                    <p className="manual-configurator__hint">
+                        {isWeekly
+                            ? service.mode_weekly_hint.replace(
+                                  ':wins',
+                                  formatInteger(weekly.includedWins, locale),
+                              )
+                            : service.mode_promotion_hint}
+                    </p>
+                </fieldset>
+            ) : null}
+            <div className="manual-rivals-route" hidden={isWeekly}>
                 <ServiceSlider
                     direction={locale === 'ar' ? 'rtl' : 'ltr'}
                     inputName="from-division"

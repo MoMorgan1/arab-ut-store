@@ -52,12 +52,29 @@ final readonly class AddRivalsToCart
 
             $platform = Platform::from($validated['platform']);
             $variant = $this->support->eligibleVariant(ServiceType::Rivals, $platform);
-            $price = $pricing['pricing']->priceForRoute(
-                $validated['currentDivision'],
-                $validated['targetDivision'],
-            );
+            $rules = $pricing['pricing'];
+            $weeklyMatches = $validated['mode'] === 'weekly_matches';
+
+            // offersWeeklyMatches() is false until an admin sets both the price
+            // and the included wins, and the storefront hides the option until
+            // then. A request arriving anyway is refused rather than priced at
+            // a number nobody chose.
+            if ($weeklyMatches && ! $rules->offersWeeklyMatches()) {
+                throw new DomainException('Rivals weekly matches are not on sale.');
+            }
+
+            $price = $weeklyMatches
+                ? $rules->weeklyMatchesPriceHalalah()
+                : $rules->priceForRoute($validated['currentDivision'], $validated['targetDivision']);
             $cart = $this->acquireActiveCart->execute($owner);
-            $item = $this->createItem($cart, $variant, $validated, $price, $schedule->version);
+            $item = $this->createItem(
+                $cart,
+                $variant,
+                $validated,
+                $price,
+                $schedule->version,
+                $weeklyMatches ? $rules->weeklyMatchesIncludedWins() : null,
+            );
             $this->persistFulfillment->execute(
                 $item,
                 $this->support->credentials($validated),
@@ -77,6 +94,7 @@ final readonly class AddRivalsToCart
         array $validated,
         int $price,
         int $scheduleVersion,
+        ?int $includedWins,
     ): CartItem {
         return $cart->items()->create([
             'product_variant_id' => $variant->id,
@@ -88,8 +106,12 @@ final readonly class AddRivalsToCart
                 'platform' => $variant->platform->value,
                 'market' => $variant->market->value,
                 'pc_store' => $validated['pcStore'] ?? null,
-                'current_division' => $validated['currentDivision'],
-                'target_division' => $validated['targetDivision'],
+                'mode' => $validated['mode'],
+                'current_division' => $validated['currentDivision'] ?? null,
+                'target_division' => $validated['targetDivision'] ?? null,
+                // Frozen with the order: what the week included when it was
+                // bought, so a later settings change never rewrites the promise.
+                'included_wins' => $includedWins,
                 'quoted_at' => now()->utc()->toIso8601String(),
                 'price_version' => $scheduleVersion,
                 'schedule_version' => $scheduleVersion,

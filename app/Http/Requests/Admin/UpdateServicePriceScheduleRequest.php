@@ -41,6 +41,12 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
             foreach ($steps as $step) {
                 $rules["configuration.steps.{$step}"] = ['required', 'integer', 'min:1'];
             }
+            // Weekly matches are optional: absent means not on sale, and the
+            // storefront hides the option entirely. Half-filled is refused,
+            // because a price with no win count promises nothing.
+            $rules['configuration.weeklyMatches'] = ['sometimes', 'nullable', 'array'];
+            $rules['configuration.weeklyMatches.priceHalalah'] = ['required_with:configuration.weeklyMatches', 'integer', 'min:1'];
+            $rules['configuration.weeklyMatches.includedWins'] = ['required_with:configuration.weeklyMatches', 'integer', 'min:1'];
         } elseif ($serviceType === ServiceType::Coins->value) {
             // Shape only. Whether the bands ascend, divide evenly and cover the
             // presets is CoinsQuantityRules' job, checked inside the transaction.
@@ -95,7 +101,7 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
                     }
                 }
             } elseif ($serviceType === ServiceType::Rivals->value) {
-                $allowedConfigKeys = ['steps'];
+                $allowedConfigKeys = ['steps', 'weeklyMatches'];
                 $extraConfigKeys = array_diff(array_keys($rawConfig), $allowedConfigKeys);
                 if (! empty($extraConfigKeys)) {
                     $validator->errors()->add('unexpected_fields', 'Unknown configuration fields are not allowed.');
@@ -168,8 +174,18 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
                 $steps[(string) $k] = (int) $v;
             }
 
+            $weeklyMatches = $config['weeklyMatches'] ?? null;
+
+            if (! is_array($weeklyMatches) || $weeklyMatches === []) {
+                return ['steps' => $steps];
+            }
+
             return [
                 'steps' => $steps,
+                'weeklyMatches' => [
+                    'priceHalalah' => (int) ($weeklyMatches['priceHalalah'] ?? 0),
+                    'includedWins' => (int) ($weeklyMatches['includedWins'] ?? 0),
+                ],
             ];
         }
 
