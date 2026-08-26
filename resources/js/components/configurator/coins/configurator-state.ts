@@ -1,3 +1,4 @@
+import { roundQuantity } from '@/lib/coins-quantity';
 import { getInitialCoinsConfig } from '@/lib/query-params';
 import type {
     CoinsAmountRules,
@@ -63,23 +64,20 @@ export function clampAndSnapQuantity(
     value: number,
     minimum: number,
     maximum: number,
-    increment: number,
+    roundingUnit: number,
 ): number {
     if (
         !Number.isSafeInteger(value) ||
         !Number.isSafeInteger(minimum) ||
         !Number.isSafeInteger(maximum) ||
-        !Number.isSafeInteger(increment) ||
-        increment <= 0 ||
+        !Number.isSafeInteger(roundingUnit) ||
+        roundingUnit <= 0 ||
         minimum > maximum
     ) {
         throw new RangeError('Invalid Coins quantity bounds.');
     }
 
-    const clamped = Math.min(maximum, Math.max(minimum, value));
-    const snapped = Math.round(clamped / increment) * increment;
-
-    return Math.min(maximum, Math.max(minimum, snapped));
+    return roundQuantity(value, minimum, maximum, roundingUnit);
 }
 
 export function createInitialConfiguratorState(

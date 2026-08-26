@@ -1,5 +1,7 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+
 import type { CSSProperties, Ref } from 'react';
+import { nearestStopIndex, sliderStops } from '@/lib/coins-quantity';
 
 import { formatCoins, formatCompactCoins } from '@/lib/money';
 import type {
@@ -66,6 +68,10 @@ export function AmountStep({
         maximum === amount.minimum
             ? 0
             : ((quantity - amount.minimum) / (maximum - amount.minimum)) * 100;
+    const sliderQuantities = useMemo(
+        () => sliderStops(amount.minimum, amount.tiers, maximum),
+        [amount.minimum, amount.tiers, maximum],
+    );
     const sliderStyle = {
         '--coins-slider-fill': `${Math.max(0, Math.min(100, fillPercentage)).toFixed(2)}%`,
     } as CSSProperties;
@@ -178,18 +184,29 @@ export function AmountStep({
                     ))}
             </div>
 
+            {/*
+             * The slider runs over an index into the buyable quantities rather
+             * than over the quantity itself: the step widens as the amount
+             * climbs, so no single `step` describes the range. Look and layout
+             * are unchanged — only how far one nudge moves.
+             */}
             <input
                 aria-label={translations.amount_copy.slider_label}
                 className="coins-amount-slider"
-                max={maximum}
-                min={amount.minimum}
-                onChange={(event) =>
-                    commitDirectly(Number(event.currentTarget.value))
-                }
-                step={amount.increment}
+                max={Math.max(0, sliderQuantities.length - 1)}
+                min={0}
+                onChange={(event) => {
+                    const next =
+                        sliderQuantities[Number(event.currentTarget.value)];
+
+                    if (next !== undefined) {
+                        commitDirectly(next);
+                    }
+                }}
+                step={1}
                 style={sliderStyle}
                 type="range"
-                value={quantity}
+                value={nearestStopIndex(quantity, sliderQuantities)}
             />
 
             <div className="coins-slider-labels">

@@ -531,10 +531,12 @@ final readonly class PlaceOrder
             } else {
                 $pricing = $this->readManualServicePricing->rivals(lock: true);
                 $schedule = $pricing['schedule'];
-                $total = $pricing['pricing']->priceForRoute(
-                    $configuration['current_division'],
-                    $configuration['target_division'],
-                );
+                $total = $configuration['mode'] === 'weekly_matches'
+                    ? $pricing['pricing']->weeklyMatchesPriceHalalah()
+                    : $pricing['pricing']->priceForRoute(
+                        $configuration['current_division'],
+                        $configuration['target_division'],
+                    );
             }
 
             if ($configuration['schedule_version'] !== $schedule->version
@@ -559,7 +561,7 @@ final readonly class PlaceOrder
         ];
         $expected = $service === ServiceType::FutChampions
             ? [...$common, 'rank', 'urgent', 'matches_played']
-            : [...$common, 'current_division', 'target_division'];
+            : [...$common, 'mode', 'current_division', 'target_division', 'included_wins'];
         $actual = array_keys($configuration);
         sort($actual);
         sort($expected);
@@ -584,8 +586,17 @@ final readonly class PlaceOrder
                 && $configuration['matches_played'] <= 100;
         }
 
-        return is_string($configuration['current_division'])
-            && is_string($configuration['target_division']);
+        if ($configuration['mode'] === 'weekly_matches') {
+            return $configuration['current_division'] === null
+                && $configuration['target_division'] === null
+                && is_int($configuration['included_wins'])
+                && $configuration['included_wins'] > 0;
+        }
+
+        return $configuration['mode'] === 'promotion'
+            && is_string($configuration['current_division'])
+            && is_string($configuration['target_division'])
+            && $configuration['included_wins'] === null;
     }
 
     /** @param array<string, mixed> $configuration */

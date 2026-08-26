@@ -7,7 +7,9 @@ use App\Enums\OrderStatus;
 use App\Enums\ServiceType;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderStatusHistory;
 use App\Models\User;
+use BackedEnum;
 use Carbon\CarbonInterface;
 
 final class ReadLiveOrder
@@ -60,7 +62,8 @@ final class ReadLiveOrder
         return [
             'id' => (string) $order->getAttribute('public_id'),
             'number' => (string) $order->getAttribute('order_number'),
-            'status' => $order->status->value,
+            'status' => $order->status->forCustomer()->value,
+            'statusNote' => $this->statusNote($order, $locale),
             'placedAt' => $placedAt instanceof CarbonInterface ? $placedAt->toIso8601String() : '',
             'total' => AccountMoney::fromMinor(
                 (int) $order->getAttribute('total_halalah'),
@@ -90,7 +93,7 @@ final class ReadLiveOrder
                 ->map(fn (OrderItem $item): array => [
                     'id' => (string) $item->getAttribute('public_id'),
                     'name' => (string) $item->getAttribute($locale === 'en' ? 'name_en' : 'name_ar'),
-                    'status' => $item->status->value,
+                    'status' => $item->status->forCustomer()->value,
                     'quantity' => (int) $item->getAttribute('quantity'),
                     'total' => AccountMoney::fromMinor(
                         (int) $item->getAttribute('total_halalah'),
@@ -102,6 +105,40 @@ final class ReadLiveOrder
                 ->values()
                 ->all(),
         ];
+    }
+
+    /**
+     * Why the order is where it is, in the customer's own words.
+     *
+     * Only the newest order-level entry counts, and only while it still
+     * describes the current status - so resuming an order clears the message
+     * on its own instead of leaving a stale explanation on the page.
+     */
+    private function statusNote(Order $order, string $locale): ?string
+    {
+        $latest = OrderStatusHistory::query()
+            ->select(['id', 'status', 'note_ar', 'note_en'])
+            ->where('order_id', $order->id)
+            ->whereNull('order_item_id')
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $latest instanceof OrderStatusHistory) {
+            return null;
+        }
+
+        $historyStatus = $latest->getAttribute('status');
+        $historyStatus = $historyStatus instanceof BackedEnum
+            ? (string) $historyStatus->value
+            : (string) $historyStatus;
+
+        if ($historyStatus !== $order->status->value) {
+            return null;
+        }
+
+        $note = $latest->getAttribute($locale === 'en' ? 'note_en' : 'note_ar');
+
+        return is_string($note) && trim($note) !== '' ? $note : null;
     }
 
     /** @return array<string, mixed>|null */
@@ -172,6 +209,17 @@ final class ReadLiveOrder
 
             if (is_int($matchesPlayed) && $matchesPlayed >= 0 && $matchesPlayed <= 100) {
                 $safe['matchesPlayed'] = $matchesPlayed;
+            }
+
+            return $safe;
+        }
+
+        if (($configuration['mode'] ?? null) === 'weekly_matches') {
+            $includedWins = $configuration['included_wins'] ?? null;
+            $safe['weeklyMatches'] = true;
+
+            if (is_int($includedWins) && $includedWins > 0 && $includedWins <= 100) {
+                $safe['includedWins'] = $includedWins;
             }
 
             return $safe;

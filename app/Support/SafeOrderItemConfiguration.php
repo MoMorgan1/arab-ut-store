@@ -34,7 +34,7 @@ final class SafeOrderItemConfiguration
         } elseif ($service === ServiceType::FutChampions) {
             array_push($keys, 'pc_store', 'schedule_version', 'rank', 'urgent', 'matches_played');
         } elseif ($service === ServiceType::Rivals) {
-            array_push($keys, 'pc_store', 'schedule_version', 'current_division', 'target_division');
+            array_push($keys, 'pc_store', 'schedule_version', 'mode', 'current_division', 'target_division', 'included_wins');
         }
 
         return $keys;

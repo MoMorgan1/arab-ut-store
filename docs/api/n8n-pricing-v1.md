@@ -163,7 +163,16 @@ Default anchors:
 | 15M | 1.04 |
 | 20M | 1.05 |
 
-The workflow linearly interpolates these anchors at every legal 10K increment. Laravel still receives a normal threshold map, but the dense map avoids abrupt transitions such as 990K becoming more expensive than 1M.
+The workflow linearly interpolates these anchors at every legal increment, so the
+curve has no abrupt transition such as 990K becoming more expensive than 1M.
+
+The map is a **threshold** map, not a lookup table: Laravel answers with the last
+entry at or below the requested quantity. An entry that repeats the value before it
+is therefore already implied, and Laravel drops those entries before storing the
+run - the same prices, roughly a fifth of the rows. The workflow may publish the
+dense form or the collapsed one; both are accepted and both are stored collapsed.
+The one requirement is an entry **at the range minimum**, since nothing below the
+first entry can be answered.
 
 ## Small-order fee
 
@@ -187,7 +196,7 @@ After a successful n8n baseline exists:
 - larger decreases are partially applied;
 - the maximum decrease per run is capped by the Config settings.
 
-Before signing, the workflow simulates every legal quantity in 10K increments using the same whole-SAR arithmetic and fast-delivery floors as Laravel. A higher quantity may never produce a lower total. Exact whole-SAR overrides are generated only when rounding would otherwise create a descending point.
+Before signing, the workflow simulates every legal quantity using the same whole-SAR arithmetic and fast-delivery floors as Laravel. A higher quantity may never produce a lower total. Exact whole-SAR overrides are generated only when rounding would otherwise create a descending point.
 
 Supplier request errors fail closed after retry. The previous Laravel rule set stays active.
 
@@ -198,6 +207,24 @@ Supplier request errors fail closed after retry. The previous Laravel rule set s
 - A duplicate `runId` returns `coins_pricing_run_replayed`; a duplicate `eventId` returns `coins_pricing_event_replayed`.
 - The workflow treats a same-event replay caused by its own HTTP retry as confirmation that the original transaction committed.
 - Invalid signature, stale timestamp, missing credentials, malformed groups, unsupported fields, or a failed transaction leave the previous active rules intact.
+
+## Retention
+
+`pricing-history:prune` runs daily and deletes pricing runs, and the global Coins
+rules a later run superseded, once they have been out of service longer than
+`COINS_PRICING_RETENTION_DAYS` (30). The window is measured from when a row last
+changed, not from when it was written, so a rule that served prices through a long
+stall gets its full window from the day it stopped serving. Variant-scoped rules and
+rules for other services are never touched: inactive is not the same claim as
+superseded. Two things are
+never deleted whatever their age: the **active** rules, which are what the storefront
+prices from, and the **newest run plus the newest applied run**, which are the record
+of where the live prices came from. If pricing ever stalls past the window - n8n down,
+credentials expired - the last thing that worked survives.
+
+Pruning cannot weaken replay protection: a pricing request carries a signed timestamp
+and is refused above five minutes old, so a request old enough to be pruned here never
+reaches the `runId`/`eventId` checks.
 
 Successful response:
 

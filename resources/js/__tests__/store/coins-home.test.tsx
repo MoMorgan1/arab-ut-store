@@ -4,9 +4,11 @@ import {
     fireEvent,
     render,
     screen,
+    waitFor,
     within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { sliderStops } from '@/lib/coins-quantity';
 
 import StoreHome from '@/pages/store/home';
 
@@ -192,17 +194,21 @@ function quoteSchedule(
     displayCurrency = 'SAR',
 ) {
     const minimum = 50_000;
-    const increment = 10_000;
-    const quantities = Array.from(
-        { length: (maximum - minimum) / increment + 1 },
-        (_, index) => minimum + index * increment,
+    const quantities = sliderStops(
+        minimum,
+        [
+            { upTo: 500_000, step: 10_000 },
+            { upTo: 2_000_000, step: 50_000 },
+            { upTo: 20_000_000, step: 250_000 },
+        ],
+        maximum,
     );
 
     return {
         delivery,
         displayCurrency,
         displayTotalsMinor: quantities.map(amountMinorFor),
-        increment,
+        quantities,
         market: platform === 'pc' ? 'pc' : 'console',
         maximum,
         minimum,
@@ -247,8 +253,13 @@ function quoteSchedules(displayCurrency = 'SAR') {
 function availableProps() {
     return {
         amount: {
-            increment: 10_000,
+            tiers: [
+                { upTo: 500_000, step: 10_000 },
+                { upTo: 2_000_000, step: 50_000 },
+                { upTo: 20_000_000, step: 250_000 },
+            ],
             minimum: 50_000,
+            roundingUnit: 5_000,
             presets: [50_000, 100_000, 500_000, 1_000_000, 5_000_000],
         },
         auth: { user: { id: 1, name: 'Player', email: 'player@example.com' } },
@@ -354,6 +365,24 @@ afterEach(() => {
     vi.unstubAllGlobals();
     document.title = '';
 });
+
+const SCHEDULE_TIERS = [
+    { upTo: 500_000, step: 10_000 },
+    { upTo: 2_000_000, step: 50_000 },
+    { upTo: 20_000_000, step: 250_000 },
+];
+
+function scheduleQuantities(maximum: number): number[] {
+    return sliderStops(50_000, SCHEDULE_TIERS, maximum);
+}
+
+/**
+ * The slider is an index into the buyable quantities, not the quantity itself:
+ * the step widens as the amount climbs, so no single `step` covers the range.
+ */
+function sliderIndex(quantity: number, maximum: number): string {
+    return String(scheduleQuantities(maximum).indexOf(quantity));
+}
 
 describe('Coins homepage', () => {
     it('shows exact schedule totals immediately without requesting another quote', () => {
@@ -849,13 +878,19 @@ describe('Coins homepage', () => {
                     Node.DOCUMENT_POSITION_FOLLOWING,
             ).toBeTruthy();
         });
-        expect(range).toHaveAttribute('min', '50000');
-        expect(range).toHaveAttribute('max', '20000000');
-        expect(range).toHaveAttribute('step', '10000');
-        expect(range).toHaveValue('50000');
+        // The slider runs over an index into the buyable quantities: the step
+        // widens as the amount climbs, so no single `step` describes the range.
+        const fastQuantities = scheduleQuantities(20_000_000);
+
+        expect(range).toHaveAttribute('min', '0');
+        expect(range).toHaveAttribute('max', String(fastQuantities.length - 1));
+        expect(range).toHaveAttribute('step', '1');
+        expect(range).toHaveValue(sliderIndex(50000, 20_000_000));
         expect(fiveMillion).toBeVisible();
 
-        fireEvent.change(range, { target: { value: '500000' } });
+        fireEvent.change(range, {
+            target: { value: sliderIndex(500000, 20_000_000) },
+        });
 
         expect(amountInput).toHaveValue('500,000');
         expect(screen.getByRole('button', { name: '+1M' })).toBeVisible();
@@ -909,7 +944,10 @@ describe('Coins homepage', () => {
                 screen.getByRole('slider', {
                     name: store.amount_copy.slider_label,
                 }),
-            ).toHaveAttribute('max', '2000000');
+            ).toHaveAttribute(
+                'max',
+                String(scheduleQuantities(2000000).length - 1),
+            );
             expect(screen.getByText('2M')).toBeVisible();
             expect(
                 screen.queryByRole('button', { name: '5M' }),
@@ -930,26 +968,31 @@ describe('Coins homepage', () => {
 
         fireEvent.click(screen.getByRole('button', { name: '500K' }));
         expect(amountInput).toHaveValue('500,000');
-        expect(range).toHaveValue('500000');
+        expect(range).toHaveValue(sliderIndex(500000, 20_000_000));
 
-        fireEvent.change(range, { target: { value: '1000000' } });
+        fireEvent.change(range, {
+            target: { value: sliderIndex(1000000, 20_000_000) },
+        });
         expect(amountInput).toHaveValue('1,000,000');
 
         fireEvent.focus(amountInput);
         fireEvent.change(amountInput, { target: { value: '750,000 coins' } });
         expect(amountInput).toHaveValue('750,000');
         fireEvent.blur(amountInput);
-        expect(range).toHaveValue('750000');
+        expect(range).toHaveValue(sliderIndex(750000, 20_000_000));
 
         fireEvent.click(screen.getByRole('button', { name: '+1M' }));
         expect(amountInput).toHaveValue('1,750,000');
-        expect(range).toHaveValue('1750000');
+        expect(range).toHaveValue(sliderIndex(1750000, 20_000_000));
         fireEvent.click(screen.getByRole('button', { name: '-1M' }));
         expect(amountInput).toHaveValue('750,000');
-        expect(range).toHaveValue('750000');
+        expect(range).toHaveValue(sliderIndex(750000, 20_000_000));
     });
 
-    it('snaps a typed 55K amount to 60K on blur', () => {
+    it('keeps a typed 55K exactly and parks the thumb on the nearest stop', () => {
+        // 55,000 sits between two slider stops. It used to be dragged up to
+        // 60,000; the bands now only move the slider, and a whole rounding
+        // unit is bought as typed.
         render(<StoreHome />);
         selectPlatform('PC');
 
@@ -962,12 +1005,12 @@ describe('Coins homepage', () => {
         expect(amountInput).toHaveValue('55,000');
         fireEvent.blur(amountInput);
 
-        expect(amountInput).toHaveValue('60,000');
+        expect(amountInput).toHaveValue('55,000');
         expect(
             screen.getByRole('slider', {
                 name: store.amount_copy.slider_label,
             }),
-        ).toHaveValue('60000');
+        ).toHaveValue(sliderIndex(60000, 2_000_000));
     });
 
     it('restores the last valid quantity when the typed amount is empty on blur', () => {
@@ -1014,9 +1057,15 @@ describe('Coins homepage', () => {
         const range = screen.getByRole('slider', {
             name: store.amount_copy.slider_label,
         });
-        fireEvent.change(range, { target: { value: '100000' } });
-        fireEvent.change(range, { target: { value: '500000' } });
-        fireEvent.change(range, { target: { value: '1000000' } });
+        fireEvent.change(range, {
+            target: { value: sliderIndex(100000, 20_000_000) },
+        });
+        fireEvent.change(range, {
+            target: { value: sliderIndex(500000, 20_000_000) },
+        });
+        fireEvent.change(range, {
+            target: { value: sliderIndex(1000000, 20_000_000) },
+        });
 
         expect(
             screen.getByText((text) => text.includes('10,000.00')),
@@ -1041,7 +1090,7 @@ describe('Coins homepage', () => {
             screen.getByRole('slider', {
                 name: store.amount_copy.slider_label,
             }),
-            { target: { value: '1000000' } },
+            { target: { value: sliderIndex(1000000, 20_000_000) } },
         );
         expect(amountInput).toHaveValue('1,000,000');
         fireEvent.click(screen.getByRole('button', { name: '500K' }));
@@ -1135,6 +1184,55 @@ describe('Coins homepage', () => {
         expect(screen.getByRole('radio', { name: 'Fast' })).toBeChecked();
     });
 
+    it('asks the server for a price the slider ladder cannot give', async () => {
+        // 155,000 is a whole rounding unit but not a slider stop, so it is not
+        // in the prebuilt ladder. Before this was wired up the customer was
+        // told prices were unavailable for an amount they were allowed to buy.
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    data: {
+                        productId: '01K00000000000000000000000',
+                        variantId: '01K00000000000000000000001',
+                        priceVersion: 1,
+                        platform: 'pc',
+                        market: 'pc',
+                        delivery: null,
+                        quantity: 155_000,
+                        total: { amountHalalah: 780, currency: 'SAR' },
+                        displayTotal: { amountMinor: 780, currency: 'SAR' },
+                        pricedAt: '2026-08-10T12:00:00+00:00',
+                    },
+                }),
+                {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                },
+            ),
+        );
+
+        // waitFor cannot settle under this file's fake timers.
+        vi.useRealTimers();
+        vi.stubGlobal('fetch', fetchMock);
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
+        });
+
+        fireEvent.change(amountInput, { target: { value: '155000' } });
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalled();
+        });
+
+        const requestedUrl = String(fetchMock.mock.calls[0][0]);
+
+        expect(requestedUrl).toContain('/en/coins/quote');
+        expect(requestedUrl).toContain('quantity=155000');
+        expect(requestedUrl).toContain('platform=pc');
+    });
     it.each([
         'typing',
         'slider',
@@ -1169,7 +1267,9 @@ describe('Coins homepage', () => {
                     fireEvent.keyDown(slider, { key: 'ArrowRight' });
                 }
 
-                fireEvent.change(slider, { target: { value: '100000' } });
+                fireEvent.change(slider, {
+                    target: { value: sliderIndex(100000, 20_000_000) },
+                });
             } else if (interaction === 'chip') {
                 fireEvent.click(screen.getByRole('button', { name: '100K' }));
             } else {
@@ -1208,10 +1308,13 @@ describe('Coins homepage', () => {
 
         fireEvent.blur(amountInput);
 
-        expect(amountInput).toHaveValue('60,000');
+        // Rounded down to the nearest whole unit, and no longer priced from
+        // the prebuilt ladder - an off-stop amount is quoted by the server, so
+        // the stale total has to go rather than be shown against a new amount.
+        expect(amountInput).toHaveValue('55,000');
         expect(
-            screen.getByText((text) => text.includes('600.00')),
-        ).toBeVisible();
+            screen.queryByText((text) => text.includes('600.00')),
+        ).not.toBeInTheDocument();
     });
 
     it('fails only a malformed selected mode closed without carrying the PC total', () => {
@@ -1313,7 +1416,10 @@ describe('Coins homepage', () => {
             screen.getByRole('slider', {
                 name: store.amount_copy.slider_label,
             }),
-        ).toHaveAttribute('max', '2000000');
+        ).toHaveAttribute(
+            'max',
+            String(scheduleQuantities(2000000).length - 1),
+        );
 
         expect(
             screen.getByText((text) => text.includes('500.00')),
@@ -1338,9 +1444,13 @@ describe('Coins homepage', () => {
         const range = screen.getByRole('slider', {
             name: store.amount_copy.slider_label,
         });
-        expect(range).toHaveAttribute('min', '50000');
-        expect(range).toHaveAttribute('max', '20000000');
-        expect(range).toHaveAttribute('step', '10000');
+        // The slider runs over an index into the buyable quantities: the step
+        // widens as the amount climbs, so no single `step` describes the range.
+        const fastQuantities = scheduleQuantities(20_000_000);
+
+        expect(range).toHaveAttribute('min', '0');
+        expect(range).toHaveAttribute('max', String(fastQuantities.length - 1));
+        expect(range).toHaveAttribute('step', '1');
     });
 
     it('clamps an excessive fast amount when delivery changes to normal and announces it', () => {

@@ -5,6 +5,11 @@ import {
     coinsConfiguratorReducer,
     createInitialConfiguratorState,
 } from '@/components/configurator/coins/configurator-state';
+import {
+    acceptsQuantity,
+    nearestStopIndex,
+    sliderStops,
+} from '@/lib/coins-quantity';
 import { formatCoins, formatCompactCoins, formatMinorUnits } from '@/lib/money';
 
 const quote = {
@@ -22,19 +27,53 @@ const quote = {
 describe('Coins quantity controls', () => {
     it.each([
         [1, 50_000],
-        [54_999, 50_000],
-        [55_000, 60_000],
-        [2_004_999, 2_000_000],
-    ])('clamps and snaps %i to %i', (input, expected) => {
-        expect(clampAndSnapQuantity(input, 50_000, 2_000_000, 10_000)).toBe(
+        [52_499, 50_000],
+        [52_500, 55_000],
+        // 155,000 sits between two band steps and survives untouched: the
+        // bands move the slider, they no longer decide what can be bought.
+        [155_000, 155_000],
+        [2_004_999, 2_005_000],
+    ])('clamps and rounds %i to %i', (input, expected) => {
+        expect(clampAndSnapQuantity(input, 50_000, 20_000_000, 5_000)).toBe(
             expected,
         );
     });
 
     it('uses the selected delivery maximum', () => {
         expect(
-            clampAndSnapQuantity(20_500_000, 50_000, 20_000_000, 10_000),
+            clampAndSnapQuantity(20_500_000, 50_000, 20_000_000, 5_000),
         ).toBe(20_000_000);
+    });
+
+    it('refuses bounds it cannot round against', () => {
+        expect(() =>
+            clampAndSnapQuantity(100_000, 50_000, 20_000_000, 0),
+        ).toThrow(RangeError);
+    });
+
+    it('parks the slider thumb on the stop nearest a typed amount', () => {
+        // Without this the thumb fell back to index zero and told the customer
+        // their order had jumped to the minimum when it had not.
+        const stops = sliderStops(
+            50_000,
+            [{ upTo: 500_000, step: 10_000 }],
+            500_000,
+        );
+
+        expect(stops[nearestStopIndex(155_000, stops)]).toBe(160_000);
+        expect(stops[nearestStopIndex(150_000, stops)]).toBe(150_000);
+        expect(stops[nearestStopIndex(51_000, stops)]).toBe(50_000);
+    });
+
+    it.each([
+        [155_000, true],
+        [152_000, false],
+        [45_000, false],
+        [20_005_000, false],
+    ])('accepts %i as buyable: %s', (quantity, expected) => {
+        expect(acceptsQuantity(quantity, 50_000, 20_000_000, 5_000)).toBe(
+            expected,
+        );
     });
 
     it.each([

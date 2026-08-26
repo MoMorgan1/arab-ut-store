@@ -55,6 +55,7 @@ final class AdminOrderDetail
      *             source: ?string,
      *             previousStatus: ?string,
      *             newStatus: ?string,
+     *             note: ?string,
      *             createdAt: string,
      *             actor: ?array{name: string, role: string}
      *         }>
@@ -90,6 +91,7 @@ final class AdminOrderDetail
      *         source: ?string,
      *         previousStatus: ?string,
      *         newStatus: ?string,
+     *         note: ?string,
      *         createdAt: string,
      *         actor: ?array{name: string, role: string}
      *     }>,
@@ -144,7 +146,7 @@ final class AdminOrderDetail
                     : SafeOrderItemConfiguration::project($item->configuration, $item->service_type),
                 'hasSecret' => $item->secret !== null,
                 'maskedSummary' => $item->secret?->masked_summary,
-                'statusHistory' => self::historyList($item->statusHistory),
+                'statusHistory' => self::historyList($item->statusHistory, $locale),
             ])->all()),
             'payments' => array_values($order->payments->map(fn (Payment $payment): array => [
                 'id' => (string) $payment->public_id,
@@ -171,7 +173,7 @@ final class AdminOrderDetail
                 'label' => $locale === 'ar' ? (string) $discount->label_ar : (string) $discount->label_en,
                 'amount' => self::money($discount->getAttribute('amount_halalah'), $currency),
             ])->all()),
-            'statusHistory' => self::historyList($order->statusHistory),
+            'statusHistory' => self::historyList($order->statusHistory, $locale),
             'auditContext' => $auditLogs !== null ? array_map(
                 fn (StaffAuditLog $log): array => [
                     'id' => (string) $log->public_id,
@@ -189,23 +191,23 @@ final class AdminOrderDetail
 
     /**
      * @param  Collection<int, OrderStatusHistory>  $histories
-     * @return list<array{id: string, status: string, source: ?string, previousStatus: ?string, newStatus: ?string, createdAt: string, actor: ?array{name: string, role: string}}>
+     * @return list<array{id: string, status: string, source: ?string, previousStatus: ?string, newStatus: ?string, note: ?string, createdAt: string, actor: ?array{name: string, role: string}}>
      */
-    private static function historyList(Collection $histories): array
+    private static function historyList(Collection $histories, string $locale): array
     {
         return array_values(array_map(
             fn (OrderStatusHistory $history): array => [
                 'id' => (string) $history->public_id,
-                ...self::historyEntry($history),
+                ...self::historyEntry($history, $locale),
             ],
             $histories->all(),
         ));
     }
 
     /**
-     * @return array{status: string, source: ?string, previousStatus: ?string, newStatus: ?string, createdAt: string, actor: ?array{name: string, role: string}}
+     * @return array{status: string, source: ?string, previousStatus: ?string, newStatus: ?string, note: ?string, createdAt: string, actor: ?array{name: string, role: string}}
      */
-    private static function historyEntry(OrderStatusHistory $history): array
+    private static function historyEntry(OrderStatusHistory $history, string $locale): array
     {
         $metadata = $history->getAttribute('metadata');
         /** @var array<string, mixed>|null $metadataArray */
@@ -217,12 +219,21 @@ final class AdminOrderDetail
             'source' => isset($metadataArray['source']) ? (string) $metadataArray['source'] : null,
             'previousStatus' => isset($metadataArray['previous_status']) ? (string) $metadataArray['previous_status'] : null,
             'newStatus' => isset($metadataArray['new_status']) ? (string) $metadataArray['new_status'] : null,
+            'note' => self::note($history, $locale),
             'createdAt' => (string) self::isoDate($history->getAttribute('created_at')),
             'actor' => $actor !== null ? [
                 'name' => (string) $actor->name,
                 'role' => (string) $actor->role->value,
             ] : null,
         ];
+    }
+
+    /** What staff told the customer at this step, in the reading locale. */
+    private static function note(OrderStatusHistory $history, string $locale): ?string
+    {
+        $note = $history->getAttribute($locale === 'en' ? 'note_en' : 'note_ar');
+
+        return is_string($note) && trim($note) !== '' ? $note : null;
     }
 
     /**

@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Models\WalletEntry;
 use App\Payments\RefundResult;
 use App\Services\Payments\PaymentManager;
+use App\Support\OrderClosingNote;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
@@ -258,6 +259,7 @@ final readonly class RefundPaylinkOrder
         $order->statusHistory()->create([
             'actor_user_id' => $actor->id,
             'status' => OrderStatusHistoryStatus::Refunded,
+            ...OrderClosingNote::refund($result->amountHalalah, (int) $order->wallet_halalah),
             'metadata' => ['source' => 'paylink', 'refund_id' => $locked->public_id],
         ]);
         $locked->forceFill([

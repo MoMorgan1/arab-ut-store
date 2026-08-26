@@ -1,4 +1,5 @@
 import type { CoinsStep } from '@/components/configurator/coins/progress-rail';
+import { acceptsQuantity } from '@/lib/coins-quantity';
 import type {
     CoinsAmountRules,
     CoinsDeliveryValue,
@@ -247,7 +248,10 @@ export function getInitialCoinsConfig(
     step: CoinsStep;
 } {
     const minimum = typeof amount === 'number' ? amount : amount.minimum;
-    const increment = typeof amount === 'number' ? 10_000 : amount.increment;
+    // A bare number is the legacy caller that only knew a floor; give it the
+    // shipped default grain, which is what that shape implied all along.
+    const roundingUnit =
+        typeof amount === 'number' ? 5_000 : amount.roundingUnit;
 
     const rawPlatform = readQueryParam(search, 'platform', [
         'playstation',
@@ -314,7 +318,7 @@ export function getInitialCoinsConfig(
         const isOffered =
             rawQuantity >= minimum &&
             rawQuantity <= maxAllowed &&
-            (rawQuantity - minimum) % increment === 0;
+            acceptsQuantity(rawQuantity, minimum, maxAllowed, roundingUnit);
 
         if (isOffered) {
             lastValidQuantity = rawQuantity;

@@ -32,11 +32,16 @@ final class CoinsPriceCalculator
 
         $override = $rule->exactOverrideHalalah($quantity);
 
-        if ($override !== null) {
+        if ($override !== null && $rule->group !== 'console_fast') {
             return Money::fromHalalah($override);
         }
 
-        $total = $this->calculateFormula($rule, $quantity);
+        // A pinned fast price is a candidate, not an exemption. It still clears the
+        // floors below, so a bad pricing run can never publish fast delivery cheaper
+        // than normal for the same quantity.
+        $total = $override !== null
+            ? Money::fromHalalah($override)
+            : $this->calculateFormula($rule, $quantity);
 
         if ($rule->group !== 'console_fast') {
             return $total;

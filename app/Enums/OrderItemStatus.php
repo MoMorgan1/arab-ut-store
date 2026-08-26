@@ -11,5 +11,14 @@ enum OrderItemStatus: string
     case Completed = 'completed';
     case Cancelled = 'cancelled';
     case Refunded = 'refunded';
-    case Failed = 'failed';
+
+    /** Mirrors OrderStatus::forCustomer(); see the note there. */
+    public function forCustomer(): self
+    {
+        return match ($this) {
+            self::Received => self::InProgress,
+            self::Refunded => self::Cancelled,
+            default => $this,
+        };
+    }
 }

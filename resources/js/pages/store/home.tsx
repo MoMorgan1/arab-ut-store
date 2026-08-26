@@ -52,6 +52,7 @@ export default function StoreHome() {
         homeContent,
         platforms,
         quoteSchedules,
+        quoteUrl,
         status,
         store,
         storeShell,
@@ -197,9 +198,11 @@ export default function StoreHome() {
                                 <CoinsConfigurator
                                     amount={amount}
                                     cart={coinsCart}
+                                    displayCurrency={displayCurrency}
                                     locale={locale}
                                     platforms={platforms}
                                     quoteSchedules={schedules}
+                                    quoteUrl={quoteUrl}
                                     termsUrl={storeShell.termsUrl}
                                     translations={store}
                                     warrantyUrl={storeShell.warrantyUrl}

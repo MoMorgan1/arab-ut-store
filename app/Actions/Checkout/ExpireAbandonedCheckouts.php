@@ -4,8 +4,10 @@ namespace App\Actions\Checkout;
 
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
+use App\Enums\OrderStatusHistoryStatus;
 use App\Enums\PaymentStatus;
 use App\Models\Order;
+use App\Support\OrderClosingNote;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -118,6 +120,12 @@ final class ExpireAbandonedCheckouts
             // transition do; otherwise they sit at pending_payment underneath a
             // cancelled order.
             $locked->items()->update(['status' => OrderItemStatus::Cancelled->value]);
+
+            $locked->statusHistory()->create([
+                'status' => OrderStatusHistoryStatus::Cancelled,
+                ...OrderClosingNote::reason('checkout_expired'),
+                'metadata' => ['source' => 'checkout_expiry'],
+            ]);
 
             return 1;
         });

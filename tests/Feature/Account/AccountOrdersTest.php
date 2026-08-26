@@ -2,9 +2,12 @@
 
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
+use App\Enums\OrderStatusHistoryStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderStatusHistory;
 use App\Models\User;
+use App\Support\OrderClosingNote;
 
 function ordersTestOrder(
     User $user,
@@ -216,4 +219,137 @@ test('legacy direct order URLs do not reveal another customers order', function 
     $this->actingAs($other)
         ->get('/orders/'.$order->public_id)
         ->assertNotFound();
+});
+
+test('a paused order tells the customer why, in their own language', function (): void {
+    $owner = User::factory()->create();
+    $order = ordersTestOrder($owner, 11, OrderStatus::WaitingForCustomer);
+
+    OrderStatusHistory::query()->create([
+        'order_id' => $order->id,
+        'order_item_id' => null,
+        'actor_user_id' => null,
+        'status' => OrderStatusHistoryStatus::WaitingForCustomer,
+        'note_ar' => 'رصيد الكوينز غير كافٍ.',
+        'note_en' => 'Coin balance is too low.',
+        'metadata' => ['source' => 'admin'],
+    ]);
+
+    $this->actingAs($owner)
+        ->get('/my-account/orders/'.$order->public_id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('order.status', 'waiting_for_customer')
+            ->where('order.statusNote', 'رصيد الكوينز غير كافٍ.'));
+
+    $this->actingAs($owner)
+        ->get('/en/my-account/orders/'.$order->public_id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('order.statusNote', 'Coin balance is too low.'));
+});
+
+test('resuming an order clears the explanation instead of leaving it stale', function (): void {
+    // A note only speaks for the status it was written against, so the newer
+    // history row is enough to retire it - nothing has to go back and blank it.
+    $owner = User::factory()->create();
+    $order = ordersTestOrder($owner, 12, OrderStatus::WaitingForCustomer);
+
+    OrderStatusHistory::query()->create([
+        'order_id' => $order->id,
+        'status' => OrderStatusHistoryStatus::WaitingForCustomer,
+        'note_ar' => 'رصيد الكوينز غير كافٍ.',
+        'note_en' => 'Coin balance is too low.',
+        'metadata' => ['source' => 'admin'],
+    ]);
+
+    $order->forceFill(['status' => OrderStatus::InProgress])->save();
+
+    OrderStatusHistory::query()->create([
+        'order_id' => $order->id,
+        'status' => OrderStatusHistoryStatus::InProgress,
+        'note_ar' => null,
+        'note_en' => null,
+        'metadata' => ['source' => 'admin'],
+    ]);
+
+    $this->actingAs($owner)
+        ->get('/my-account/orders/'.$order->public_id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('order.status', 'in_progress')
+            ->where('order.statusNote', null));
+});
+
+test('the customer is shown four states where staff track seven', function (): void {
+    // "Payment received" and "in progress" are one wait to the customer, and a
+    // refund is a cancellation they were paid back for. Staff keep the ladder.
+    $owner = User::factory()->create();
+    $received = ordersTestOrder($owner, 13, OrderStatus::Received);
+    $refunded = ordersTestOrder($owner, 14, OrderStatus::Refunded);
+
+    $this->actingAs($owner)
+        ->get('/my-account/orders/'.$received->public_id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('order.status', 'in_progress'));
+
+    $this->actingAs($owner)
+        ->get('/my-account/orders/'.$refunded->public_id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('order.status', 'cancelled'));
+
+    // The rows themselves never moved.
+    expect($received->refresh()->status)->toBe(OrderStatus::Received)
+        ->and($refunded->refresh()->status)->toBe(OrderStatus::Refunded);
+});
+
+test('a refunded order tells the customer the money came back, and where', function (): void {
+    // The customer is shown "cancelled" for a refund, which is the owner's
+    // call - but on its own that hides the refund entirely. The note is what
+    // carries it.
+    $owner = User::factory()->create();
+    $order = ordersTestOrder($owner, 15, OrderStatus::Refunded);
+
+    OrderStatusHistory::query()->create([
+        'order_id' => $order->id,
+        'status' => OrderStatusHistoryStatus::Refunded,
+        ...OrderClosingNote::refund(cardHalalah: 5_000, walletHalalah: 2_000),
+        'metadata' => ['source' => 'paylink'],
+    ]);
+
+    $this->actingAs($owner)
+        ->get('/my-account/orders/'.$order->public_id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('order.status', 'cancelled')
+            ->where('order.statusNote', fn (string $note): bool => str_contains($note, '50.00')
+                && str_contains($note, '20.00')));
+
+    $this->actingAs($owner)
+        ->get('/en/my-account/orders/'.$order->public_id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('order.statusNote', fn (string $note): bool => str_contains($note, 'wallet')
+                && str_contains($note, 'payment method')));
+});
+
+test('a refund names only the places the money actually went', function (): void {
+    // Naming a wallet refund that never happened sends the customer looking
+    // for money that is not there.
+    $cardOnly = OrderClosingNote::refund(cardHalalah: 5_000, walletHalalah: 0);
+    $walletOnly = OrderClosingNote::refund(cardHalalah: 0, walletHalalah: 2_000);
+
+    expect($cardOnly['note_en'])->toContain('50.00')->not->toContain('wallet')
+        ->and($walletOnly['note_en'])->toContain('20.00')->toContain('wallet')
+        ->and($walletOnly['note_ar'])->not->toBe($walletOnly['note_en']);
+});
+
+test('a refund of nothing names no figure', function (): void {
+    // Unreachable from the refund path today, but a branch that says
+    // "0.00 was returned to your payment method" is a lie waiting for its
+    // next caller.
+    $note = OrderClosingNote::refund(cardHalalah: 0, walletHalalah: 0);
+
+    expect($note['note_en'])->not->toContain('0.00')
+        ->and($note['note_en'])->toContain('not charged');
 });

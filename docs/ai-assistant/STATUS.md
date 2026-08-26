@@ -96,7 +96,7 @@ The accepted configuration is `support-v3` with knowledge grounding
 
 Phases 1-3 are accepted and active. The next gate is the approved human support
 handoff and ticketing work designed in
-[`2026-08-24-support-handoff-tickets-design.md`](../superpowers/specs/2026-08-24-support-handoff-tickets-design.md):
+[`2026-08-24-support-handoff-tickets-design.md`](../decisions/2026-08-24-support-handoff-tickets-design.md):
 staff replies from the admin inbox, a `support_tickets` record, a 48-hour guest
 retention window with guests removed from the operator inbox, and a
 customer-visible conversation history. That work must not change the accepted

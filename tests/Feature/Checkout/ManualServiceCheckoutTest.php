@@ -53,7 +53,14 @@ function manualServiceCheckoutCart(ServiceType $service): array
         'schedule_version' => 1,
         ...($service === ServiceType::FutChampions
             ? ['rank' => 3, 'urgent' => true, 'matches_played' => 4]
-            : ['current_division' => '5', 'target_division' => 'elite']),
+            // Exactly what AddRivalsToCart writes. This fixture drifting from it
+            // is how a checkout that refused every Rivals order sat green.
+            : [
+                'mode' => 'promotion',
+                'current_division' => '5',
+                'target_division' => 'elite',
+                'included_wins' => null,
+            ]),
     ];
     $price = $service === ServiceType::FutChampions ? 21_000 : 75_000;
     $item = $cart->items()->create([

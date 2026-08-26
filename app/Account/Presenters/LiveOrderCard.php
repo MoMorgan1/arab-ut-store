@@ -34,7 +34,7 @@ final class LiveOrderCard
             'id' => (string) $order->getAttribute('public_id'),
             'source' => 'live',
             'number' => (string) $order->getAttribute('order_number'),
-            'status' => $order->status->value,
+            'status' => $order->status->forCustomer()->value,
             'placedAt' => $placedAt instanceof CarbonInterface ? $placedAt->toIso8601String() : '',
             'summary' => $this->summary($firstItem, $itemCount, $locale),
             'itemCount' => $itemCount,

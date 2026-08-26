@@ -905,6 +905,21 @@ function CartLine({
                         )}
                     />
                 ) : null}
+                {isRivals && configuration.weekly_matches ? (
+                    <CartFact
+                        label={translations.mode}
+                        value={translations.mode_weekly}
+                    />
+                ) : null}
+                {isRivals && configuration.included_wins !== undefined ? (
+                    <CartFact
+                        label={translations.included_wins}
+                        value={formatInteger(
+                            configuration.included_wins,
+                            locale,
+                        )}
+                    />
+                ) : null}
                 {isRivals && configuration.from_division !== undefined ? (
                     <CartFact
                         label={translations.from_division}

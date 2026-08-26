@@ -35,9 +35,12 @@ test('Admin with confirmed MFA receives settings page with security and team pro
             ->where('team.members.1.mfaConfirmed', false)
             ->where('teamUrls.roleUrlTemplate', '/admin/api/team/__ID__/role')
             ->where('teamUrls.statusUrlTemplate', '/admin/api/team/__ID__/status')
-            ->has('servicePricing.schedules', 2)
+            ->has('servicePricing.schedules', 3)
             ->where('servicePricing.schedules.0.serviceType', 'fut_champions')
             ->where('servicePricing.schedules.1.serviceType', 'rivals')
+            ->where('servicePricing.schedules.2.serviceType', 'coins')
+            ->where('servicePricing.schedules.2.configuration.minimum', 50_000)
+            ->has('servicePricing.schedules.2.configuration.tiers', 3)
             ->where('servicePricingUrls.updateUrlTemplate', '/admin/api/settings/service-pricing/__SERVICE__')
             ->where('servicePricingUrls.statusUrlTemplate', '/admin/api/settings/service-pricing/__SERVICE__/status'));
 

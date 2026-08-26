@@ -9,15 +9,19 @@ use App\Enums\UserRole;
 use App\Exceptions\AdminServicePricingConflict;
 use App\Models\ServicePriceSchedule;
 use App\Models\User;
+use App\ValueObjects\Pricing\CoinsQuantityRules;
 use App\ValueObjects\Pricing\FutChampionsPricing;
 use App\ValueObjects\Pricing\RivalsPricing;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class UpdateServicePriceSchedule
 {
+    private const MAXIMUM_COINS_SLIDER_STOPS = 400;
+
     public function __construct(
         private readonly RecordStaffAudit $recordStaffAudit,
     ) {}
@@ -42,7 +46,7 @@ final class UpdateServicePriceSchedule
 
         $type = is_string($serviceType) ? ServiceType::tryFrom($serviceType) : $serviceType;
 
-        if ($type === null || ! in_array($type, [ServiceType::FutChampions, ServiceType::Rivals], true)) {
+        if ($type === null || ! in_array($type, [ServiceType::FutChampions, ServiceType::Rivals, ServiceType::Coins], true)) {
             throw ValidationException::withMessages([
                 'service_type' => ['The requested service type is not supported.'],
             ]);
@@ -73,11 +77,13 @@ final class UpdateServicePriceSchedule
             // Validate configuration by instantiating the domain value object inside the transaction
             // before saving. Catch DomainException and surface it as a 422 ValidationException.
             try {
-                if ($type === ServiceType::FutChampions) {
-                    FutChampionsPricing::fromConfiguration($newConfiguration);
-                } else {
-                    RivalsPricing::fromConfiguration($newConfiguration);
-                }
+                match ($type) {
+                    ServiceType::FutChampions => FutChampionsPricing::fromConfiguration($newConfiguration),
+                    ServiceType::Rivals => RivalsPricing::fromConfiguration($newConfiguration),
+                    default => $this->assertCoinsBandsServeEveryPlatform(
+                        CoinsQuantityRules::fromConfiguration($newConfiguration),
+                    ),
+                };
             } catch (DomainException $exception) {
                 $field = 'configuration';
                 $message = $exception->getMessage();
@@ -86,6 +92,14 @@ final class UpdateServicePriceSchedule
                     $field = 'configuration.urgent_surcharge_halalah';
                 } elseif (str_contains(strtolower($message), 'rank')) {
                     $field = 'configuration.ranks';
+                } elseif (str_contains(strtolower($message), 'tier')
+                    || str_contains(strtolower($message), 'band')
+                    || str_contains(strtolower($message), 'slider stop')) {
+                    $field = 'configuration.tiers';
+                } elseif (str_contains(strtolower($message), 'preset')) {
+                    $field = 'configuration.presets';
+                } elseif (str_contains(strtolower($message), 'minimum')) {
+                    $field = 'configuration.minimum';
                 } elseif (str_contains(strtolower($message), 'step')) {
                     $field = 'configuration.steps';
                 }
@@ -129,70 +143,126 @@ final class UpdateServicePriceSchedule
     }
 
     /**
+     * What actually changed between two stored configurations.
+     *
+     * This used to name every field by hand, per service type, which meant a
+     * field added later was invisible to it: the save is gated on this diff, so
+     * an edit touching only the new field validated, returned 200 and wrote
+     * nothing. Weekly matches could not be put on sale, and the coins rounding
+     * unit and quick amounts could not be changed on their own.
+     *
+     * Comparing the flattened configurations instead makes the diff total by
+     * construction, and yields the same dotted keys the audit already used -
+     * ranks.1, steps.7:6, tiers.0.upTo.
+     *
      * @param  array<string, mixed>  $previous
      * @param  array<string, mixed>  $new
      * @return array{
      *     changed: list<string>,
-     *     previous: array<string, int|null>,
-     *     new: array<string, int|null>
+     *     previous: array<string, scalar|null>,
+     *     new: array<string, scalar|null>
      * }
      */
     private function calculatePriceDiff(ServiceType $type, array $previous, array $new): array
     {
+        $previousLeaves = self::flatten($previous);
+        $newLeaves = self::flatten($new);
+
         /** @var list<string> $changed */
         $changed = [];
-        /** @var array<string, int|null> $previousValues */
+        /** @var array<string, scalar|null> $previousValues */
         $previousValues = [];
-        /** @var array<string, int|null> $newValues */
+        /** @var array<string, scalar|null> $newValues */
         $newValues = [];
 
-        if ($type === ServiceType::FutChampions) {
-            $prevRanks = is_array($previous['ranks'] ?? null) ? $previous['ranks'] : [];
-            $newRanks = is_array($new['ranks'] ?? null) ? $new['ranks'] : [];
+        foreach (array_keys($previousLeaves + $newLeaves) as $key) {
+            $before = $previousLeaves[$key] ?? null;
+            $after = $newLeaves[$key] ?? null;
 
-            for ($rank = 1; $rank <= 6; $rank++) {
-                $key = (string) $rank;
-                $prevPrice = isset($prevRanks[$key]) ? (int) $prevRanks[$key] : (isset($prevRanks[$rank]) ? (int) $prevRanks[$rank] : null);
-                $newPrice = isset($newRanks[$key]) ? (int) $newRanks[$key] : (isset($newRanks[$rank]) ? (int) $newRanks[$rank] : null);
-
-                if ($prevPrice !== $newPrice) {
-                    $fieldKey = "ranks.{$rank}";
-                    $changed[] = $fieldKey;
-                    $previousValues[$fieldKey] = $prevPrice;
-                    $newValues[$fieldKey] = $newPrice;
-                }
+            if ($before === $after) {
+                continue;
             }
 
-            $prevUrgent = isset($previous['urgent_surcharge_halalah']) ? (int) $previous['urgent_surcharge_halalah'] : null;
-            $newUrgent = isset($new['urgent_surcharge_halalah']) ? (int) $new['urgent_surcharge_halalah'] : null;
-
-            if ($prevUrgent !== $newUrgent) {
-                $changed[] = 'urgent_surcharge_halalah';
-                $previousValues['urgent_surcharge_halalah'] = $prevUrgent;
-                $newValues['urgent_surcharge_halalah'] = $newUrgent;
-            }
-        } elseif ($type === ServiceType::Rivals) {
-            $prevSteps = is_array($previous['steps'] ?? null) ? $previous['steps'] : [];
-            $newSteps = is_array($new['steps'] ?? null) ? $new['steps'] : [];
-            $steps = ['7:6', '6:5', '5:4', '4:3', '3:2', '2:1', '1:elite'];
-
-            foreach ($steps as $step) {
-                $prevPrice = isset($prevSteps[$step]) ? (int) $prevSteps[$step] : null;
-                $newPrice = isset($newSteps[$step]) ? (int) $newSteps[$step] : null;
-
-                if ($prevPrice !== $newPrice) {
-                    $fieldKey = "steps.{$step}";
-                    $changed[] = $fieldKey;
-                    $previousValues[$fieldKey] = $prevPrice;
-                    $newValues[$fieldKey] = $newPrice;
-                }
-            }
+            $changed[] = $key;
+            $previousValues[$key] = $before;
+            $newValues[$key] = $after;
         }
+
+        sort($changed);
 
         return [
             'changed' => $changed,
             'previous' => $previousValues,
             'new' => $newValues,
+        ];
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $configuration
+     * @return array<string, scalar|null>
+     */
+    private static function flatten(array $configuration, string $prefix = ''): array
+    {
+        $leaves = [];
+
+        foreach ($configuration as $key => $value) {
+            $path = $prefix === '' ? (string) $key : $prefix.'.'.$key;
+
+            if (is_array($value)) {
+                $leaves = [...$leaves, ...self::flatten($value, $path)];
+
+                continue;
+            }
+
+            $leaves[$path] = is_scalar($value) ? $value : null;
+        }
+
+        return $leaves;
+    }
+
+    /**
+     * Refuse Coins bands that would take a delivery lane off sale.
+     *
+     * A platform or delivery speed caps below the catalogue ceiling - console
+     * normal stops at two million - and the storefront requires the quote
+     * schedule for that lane to end exactly on its cap. Bands can be valid on
+     * their own terms and still step straight over one, which leaves the last
+     * stop below the cap and renders the whole lane unavailable. The caps are
+     * deploy-time config while the bands are editable, so nothing else pairs
+     * them; check it here, where there is an admin to tell.
+     */
+    private function assertCoinsBandsServeEveryPlatform(CoinsQuantityRules $rules): void
+    {
+        // Every stop is priced on every homepage render, once per variant, and
+        // is carried in the page payload. A step typed in coins rather than
+        // thousands would otherwise be accepted and quietly cost thousands of
+        // calculations per request.
+        if (count($rules->sliderStops()) > self::MAXIMUM_COINS_SLIDER_STOPS) {
+            throw new DomainException(sprintf(
+                'These Coins bands produce %d slider stops, more than the %d the storefront can price ahead of time. Use a coarser step.',
+                count($rules->sliderStops()),
+                self::MAXIMUM_COINS_SLIDER_STOPS,
+            ));
+        }
+
+        foreach (self::coinsPlatformCeilings() as $label => $ceiling) {
+            if (! $rules->hasStopAt($ceiling)) {
+                throw new DomainException(sprintf(
+                    'The Coins bands step over the %s ceiling of %s without landing on it, which would take that option off sale.',
+                    $label,
+                    number_format($ceiling),
+                ));
+            }
+        }
+    }
+
+    /** @return array<string, int> */
+    private static function coinsPlatformCeilings(): array
+    {
+        return [
+            'console normal delivery' => Config::integer('coins.platforms.playstation.deliveries.normal.maximum'),
+            'console fast delivery' => Config::integer('coins.platforms.playstation.deliveries.fast.maximum'),
+            'PC' => Config::integer('coins.platforms.pc.maximum'),
         ];
     }
 }

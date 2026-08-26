@@ -154,6 +154,10 @@ final class ManualServiceProductController extends Controller
             'currency' => $converter->currency,
             'ladder' => $ladder,
             'stepOptions' => $steps,
+            'weeklyMatches' => $pricing->offersWeeklyMatches() ? [
+                'includedWins' => $pricing->weeklyMatchesIncludedWins(),
+                'price' => $this->money($pricing->weeklyMatchesPriceHalalah(), $converter),
+            ] : null,
         ];
     }
 

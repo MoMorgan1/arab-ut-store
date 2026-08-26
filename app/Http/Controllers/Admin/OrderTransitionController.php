@@ -31,6 +31,8 @@ final class OrderTransitionController extends Controller
             orderPublicId: $publicId,
             targetStatus: $targetStatus,
             expectedStatus: $expectedStatus,
+            reason: $request->reason(),
+            note: $request->note(),
         );
 
         $locale = $request->route('locale') === 'en' ? 'en' : 'ar';

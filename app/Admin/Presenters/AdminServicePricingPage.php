@@ -25,7 +25,7 @@ final readonly class AdminServicePricingPage
     public function for(User $actor): array
     {
         $schedules = ServicePriceSchedule::query()
-            ->whereIn('service_type', [ServiceType::FutChampions, ServiceType::Rivals])
+            ->whereIn('service_type', [ServiceType::FutChampions, ServiceType::Rivals, ServiceType::Coins])
             ->orderBy('id')
             ->get();
 

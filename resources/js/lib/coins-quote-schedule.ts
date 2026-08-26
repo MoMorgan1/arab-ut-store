@@ -28,7 +28,7 @@ const SCHEDULE_FIELDS = [
     'delivery',
     'displayCurrency',
     'displayTotalsMinor',
-    'increment',
+    'quantities',
     'market',
     'maximum',
     'minimum',
@@ -131,11 +131,14 @@ function hasValidBounds(
     return (
         candidate.minimum === amount.minimum &&
         candidate.maximum === expected.maximum &&
-        candidate.increment === amount.increment &&
         isPositiveSafeInteger(candidate.minimum) &&
         isPositiveSafeInteger(candidate.maximum) &&
-        isPositiveSafeInteger(candidate.increment) &&
-        (candidate.maximum - candidate.minimum) % candidate.increment === 0
+        Array.isArray(candidate.quantities) &&
+        candidate.quantities.length > 0 &&
+        candidate.quantities.every(isPositiveSafeInteger) &&
+        candidate.quantities[0] === candidate.minimum &&
+        candidate.quantities[candidate.quantities.length - 1] ===
+            candidate.maximum
     );
 }
 
@@ -161,10 +164,9 @@ function hasValidTotals(candidate: JsonRecord): boolean {
         return false;
     }
 
-    const expectedLength =
-        (Number(candidate.maximum) - Number(candidate.minimum)) /
-            Number(candidate.increment) +
-        1;
+    const expectedLength = Array.isArray(candidate.quantities)
+        ? candidate.quantities.length
+        : -1;
 
     return (
         candidate.totalsHalalah.length === expectedLength &&
@@ -252,9 +254,13 @@ function scheduleHeaderIsValid(schedule: CoinsQuoteSchedule): boolean {
     return (
         isPositiveSafeInteger(schedule.minimum) &&
         isPositiveSafeInteger(schedule.maximum) &&
-        isPositiveSafeInteger(schedule.increment) &&
+        Array.isArray(schedule.quantities) &&
+        schedule.quantities.length > 0 &&
+        schedule.quantities.every(isPositiveSafeInteger) &&
+        schedule.quantities[0] === schedule.minimum &&
+        schedule.quantities[schedule.quantities.length - 1] ===
+            schedule.maximum &&
         schedule.maximum >= schedule.minimum &&
-        (schedule.maximum - schedule.minimum) % schedule.increment === 0 &&
         CURRENCY_PATTERN.test(schedule.displayCurrency) &&
         hasValidIdentity(
             schedule.productId,
@@ -274,8 +280,9 @@ function scheduleTupleIsValid(schedule: CoinsQuoteSchedule): boolean {
 }
 
 function hasExpectedArrayLengths(schedule: CoinsQuoteSchedule): boolean {
-    const expectedLength =
-        (schedule.maximum - schedule.minimum) / schedule.increment + 1;
+    // The step widens as the quantity climbs, so the schedule names the
+    // quantity it priced at each position rather than implying it.
+    const expectedLength = schedule.quantities.length;
 
     return (
         schedule.totalsHalalah.length === expectedLength &&
@@ -288,10 +295,7 @@ function isLegalQuantity(
     quantity: number,
 ): boolean {
     return (
-        Number.isSafeInteger(quantity) &&
-        quantity >= schedule.minimum &&
-        quantity <= schedule.maximum &&
-        (quantity - schedule.minimum) % schedule.increment === 0
+        Number.isSafeInteger(quantity) && schedule.quantities.includes(quantity)
     );
 }
 
@@ -310,7 +314,7 @@ export function quoteFromSchedule(
         return null;
     }
 
-    const index = (quantity - schedule.minimum) / schedule.increment;
+    const index = schedule.quantities.indexOf(quantity);
     const amountHalalah = schedule.totalsHalalah[index];
     const amountMinor = schedule.displayTotalsMinor[index];
 

@@ -21,6 +21,7 @@ use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\WalletAccount;
+use App\Services\Catalog\CoinsCatalogReader;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Http\Request;
@@ -390,6 +391,17 @@ final class CartController extends Controller
             return $safe;
         }
 
+        if (($configuration['mode'] ?? null) === 'weekly_matches') {
+            $includedWins = $configuration['included_wins'] ?? null;
+            $safe['weekly_matches'] = true;
+
+            if (is_int($includedWins) && $includedWins > 0 && $includedWins <= 100) {
+                $safe['included_wins'] = $includedWins;
+            }
+
+            return $safe;
+        }
+
         $divisions = ['7', '6', '5', '4', '3', '2', '1', 'elite'];
         $from = $configuration['current_division'] ?? null;
         $to = $configuration['target_division'] ?? null;
@@ -436,17 +448,17 @@ final class CartController extends Controller
     private function safeCoinsQuantity(array $configuration): array
     {
         $quantity = $configuration['coins_quantity'] ?? null;
-        $minimum = Config::integer('coins.quantity.minimum');
-        $increment = Config::integer('coins.quantity.increment');
         $maximum = max(
             Config::integer('coins.platforms.playstation.maximum'),
             Config::integer('coins.platforms.pc.maximum'),
         );
 
+        // The live rules, not the config defaults: an admin can move the floor
+        // and the rounding unit, and a prefill judged against stale numbers is
+        // either dropped when it was buyable or echoed when it was not.
         return is_int($quantity)
-            && $quantity >= $minimum
             && $quantity <= $maximum
-            && $quantity % $increment === 0
+            && app(CoinsCatalogReader::class)->quantityRules()->accepts($quantity)
                 ? ['coins_quantity' => $quantity]
                 : [];
     }

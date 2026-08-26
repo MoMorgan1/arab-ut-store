@@ -31,12 +31,12 @@ final readonly class QuoteCoins
             $delivery === DeliveryMode::Normal => 'console_normal',
             default => 'console_fast',
         };
-        $rules = $this->catalog->pricingRules([$group]);
-        $normalRule = null;
-
-        if ($group === 'console_fast' && $rules[$group]->exactOverrideHalalah($quantity) === null) {
-            $normalRule = $this->catalog->pricingRules(['console_normal'])['console_normal'];
-        }
+        // Both groups in one read. Asking twice loaded and re-parsed every active
+        // rule a second time for what is one row more.
+        $rules = $this->catalog->pricingRules(
+            $group === 'console_fast' ? ['console_fast', 'console_normal'] : [$group],
+        );
+        $normalRule = $group === 'console_fast' ? $rules['console_normal'] : null;
 
         $total = $this->calculator->calculate($rules[$group], $quantity, $normalRule);
 

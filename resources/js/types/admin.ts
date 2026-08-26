@@ -183,6 +183,13 @@ export type AdminTranslations = {
         auditSection: string;
         transitionsTitle: string;
         transitionsDescription: string;
+        holdReasonLabel: string;
+        holdReasonPlaceholder: string;
+        holdReasonHint: string;
+        holdNoteLabel: string;
+        holdNotePlaceholder: string;
+        holdReasonRequired: string;
+        historyNoteLabel: string;
         noHistory: string;
         noAudit: string;
         noItems: string;
@@ -271,6 +278,7 @@ export type AdminTranslations = {
         };
     };
     statuses: Record<string, string>;
+    holdReasons: Record<string, string>;
     mfa: {
         headTitle: string;
         eyebrow: string;
@@ -515,6 +523,35 @@ export type AdminTranslations = {
         servicePricing: {
             futChampions: string;
             rivals: string;
+            coins: string;
+            coinsQuantities: {
+                editLimits: string;
+                minimum: string;
+                maximum: string;
+                band: string;
+                quantityStep: string;
+                roundingUnit: string;
+                roundingUnitHint: string;
+                automationWarning: string;
+                bandUpTo: string;
+                bandRange: string;
+                bandPreview: string;
+                presets: string;
+                presetsHint: string;
+                bandsHint: string;
+                addBand: string;
+                removeBand: string;
+                dialogTitle: string;
+                dialogDescription: string;
+            };
+            weeklyMatches: {
+                row: string;
+                notOffered: string;
+                wins: string;
+                priceLabel: string;
+                winsLabel: string;
+                hint: string;
+            };
             urgentSurcharge: string;
             version: string;
             lastUpdated: string;
@@ -1577,7 +1614,7 @@ export type AdminTeamUrls = {
 };
 
 export type AdminServicePricingSchedule = {
-    serviceType: 'fut_champions' | 'rivals';
+    serviceType: 'fut_champions' | 'rivals' | 'coins';
     version: number;
     isActive: boolean;
     updatedAt: string;
@@ -1682,6 +1719,7 @@ export type AdminStatusHistoryEntry = {
     source: string | null;
     previousStatus: string | null;
     newStatus: string | null;
+    note: string | null;
     createdAt: string;
     actor: { name: string; role: string } | null;
 };

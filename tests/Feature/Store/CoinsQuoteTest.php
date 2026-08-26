@@ -259,7 +259,7 @@ test('an unclassifiable active Coins pricing rule fails the selected quote close
     'unknown group' => [['group' => 'legacy_console']],
 ]);
 
-test('a fast exact override wins without a usable normal pricing rule', function (bool $includeMalformedNormal) {
+test('a fast exact override still needs a usable normal pricing rule', function (bool $includeMalformedNormal) {
     createQuoteCatalog(withRules: false);
 
     PriceRule::create([
@@ -282,11 +282,13 @@ test('a fast exact override wins without a usable normal pricing rule', function
         ]);
     }
 
+    // A pinned price used to be served raw here, with no normal price to compare it
+    // against — which let one bad pricing run publish fast delivery below normal.
+    // Fast pricing now fails closed the same way formula pricing always has.
     $response = $this->getJson('/coins/quote?platform=playstation&delivery=fast&quantity=50000');
 
     assertQuoteIsNotStored($response);
-    $response->assertOk()
-        ->assertJsonPath('data.total.amountHalalah', 1_200);
+    $response->assertStatus(503);
 })->with([
     'normal pricing is missing' => false,
     'normal pricing is malformed' => true,
@@ -342,7 +344,8 @@ test('quantity limits and increments are enforced for each mode', function (stri
 })->with([
     'minimum' => ['platform=playstation&delivery=normal&quantity=50000', 200],
     'below minimum' => ['platform=playstation&delivery=normal&quantity=40000', 422],
-    'wrong increment' => ['platform=playstation&delivery=normal&quantity=55000', 422],
+    'between two band steps, still buyable' => ['platform=playstation&delivery=normal&quantity=55000', 200],
+    'not a whole rounding unit' => ['platform=playstation&delivery=normal&quantity=52000', 422],
     'normal maximum' => ['platform=playstation&delivery=normal&quantity=2000000', 200],
     'normal over maximum' => ['platform=playstation&delivery=normal&quantity=2010000', 422],
     'fast maximum' => ['platform=playstation&delivery=fast&quantity=20000000', 200],

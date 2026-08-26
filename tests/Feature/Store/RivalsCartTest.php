@@ -1,8 +1,10 @@
 <?php
 
+use App\Actions\Checkout\PlaceOrder;
 use App\Enums\ServiceType;
 use App\Models\CartItem;
 use App\Models\ServicePriceSchedule;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -185,5 +187,135 @@ it('projects only a safe immutable Rivals route into the cart', function () {
         '12345678',
         'a1b2c3',
         'fulfillment/squad-images',
+    );
+});
+
+/** Puts weekly matches on sale at a known price. */
+function priceRivalsWeeklyMatches(int $priceHalalah = 9_000, int $includedWins = 8): void
+{
+    $schedule = ServicePriceSchedule::query()->where('service_type', ServiceType::Rivals)->sole();
+
+    $schedule->forceFill([
+        'configuration' => [
+            ...(array) $schedule->configuration,
+            'weeklyMatches' => ['priceHalalah' => $priceHalalah, 'includedWins' => $includedWins],
+        ],
+    ])->save();
+}
+
+test('a week of matches is sold at its own price and carries no divisions', function (): void {
+    // Weekly matches promote nothing, so a division stored against one would be
+    // a claim the service does not make - and the price is flat, not a sum of
+    // ladder steps.
+    priceRivalsWeeklyMatches();
+
+    $payload = validRivalsCartPayload(['mode' => 'weekly_matches']);
+    unset($payload['currentDivision'], $payload['targetDivision']);
+
+    $this->post('/cart/items/rivals', $payload, ['Idempotency-Key' => (string) Str::uuid()])
+        ->assertCreated();
+
+    $item = CartItem::query()->sole();
+
+    expect($item->total_halalah)->toBe(9_000)
+        ->and($item->configuration['mode'])->toBe('weekly_matches')
+        ->and($item->configuration['current_division'])->toBeNull()
+        ->and($item->configuration['target_division'])->toBeNull()
+        // Frozen with the purchase, so changing the setting later never rewrites
+        // what an existing order was promised.
+        ->and($item->configuration['included_wins'])->toBe(8);
+});
+
+test('a division sent with a week of matches is refused', function (): void {
+    priceRivalsWeeklyMatches();
+
+    $this->post(
+        '/cart/items/rivals',
+        validRivalsCartPayload(['mode' => 'weekly_matches']),
+        ['Idempotency-Key' => (string) Str::uuid()],
+    )->assertUnprocessable();
+
+    expect(CartItem::query()->count())->toBe(0);
+});
+
+test('weekly matches cannot be bought before an admin prices them', function (): void {
+    // The storefront hides the option until it is priced. A request arriving
+    // anyway must not fall back to some default price.
+    $payload = validRivalsCartPayload(['mode' => 'weekly_matches']);
+    unset($payload['currentDivision'], $payload['targetDivision']);
+
+    $this->post('/cart/items/rivals', $payload, ['Idempotency-Key' => (string) Str::uuid()])
+        ->assertUnprocessable();
+
+    expect(CartItem::query()->count())->toBe(0);
+});
+
+test('a promotion and a week of matches are not confused for the same request', function (): void {
+    // Both carry the same credentials and the same image. Without the mode in
+    // the fingerprint the second would be replayed as the first, and the
+    // customer would be handed the wrong service.
+    priceRivalsWeeklyMatches();
+
+    $key = (string) Str::uuid();
+
+    $this->post('/cart/items/rivals', validRivalsCartPayload(), ['Idempotency-Key' => $key])
+        ->assertCreated();
+
+    $weekly = validRivalsCartPayload(['mode' => 'weekly_matches']);
+    unset($weekly['currentDivision'], $weekly['targetDivision']);
+
+    $this->post('/cart/items/rivals', $weekly, ['Idempotency-Key' => $key])
+        ->assertStatus(409);
+});
+
+it('places an order for a Rivals item added the way the storefront adds it', function (string $mode, int $expectedHalalah) {
+    // The checkout fixtures hand-build a cart item configuration. That is how a
+    // mismatch between what AddRivalsToCart writes and what PlaceOrder accepts
+    // could sit here fully green: nothing walked the real path from the button
+    // to the order.
+    $user = User::factory()->create([
+        'phone' => '+966500000001',
+        'phone_verified_at' => now(),
+    ]);
+    $this->actingAs($user);
+
+    $payload = validRivalsCartPayload(['mode' => $mode]);
+
+    if ($mode === 'weekly_matches') {
+        priceRivalsWeeklyMatches();
+        unset($payload['currentDivision'], $payload['targetDivision']);
+    }
+
+    postRivalsCart($payload, "rivals-checkout-{$mode}")->assertCreated();
+
+    $result = app(PlaceOrder::class)->execute($user, 'ar', "rivals-place-{$mode}");
+
+    // The week is a flat price, the promotion is the ladder summed. Checkout
+    // re-prices from the server, so asserting the total here is what proves it
+    // priced the mode the customer actually chose.
+    expect($result->order->items()->count())->toBe(1)
+        ->and($result->order->items()->sole()->service_type)->toBe(ServiceType::Rivals)
+        ->and($result->order->total_halalah)->toBe($expectedHalalah);
+})->with([
+    'a promotion up the ladder' => ['promotion', 75_000],
+    'a week of matches' => ['weekly_matches', 9_000],
+]);
+
+it('shows the week of matches and its win count on the cart page', function () {
+    // The line has no divisions to show, so without these the customer reads
+    // "Division Rivals" and a price, and pays without ever seeing which of the
+    // two services they picked.
+    priceRivalsWeeklyMatches();
+
+    $payload = validRivalsCartPayload(['mode' => 'weekly_matches']);
+    unset($payload['currentDivision'], $payload['targetDivision']);
+
+    postRivalsCart($payload, 'rivals-cart-page')->assertCreated();
+
+    $this->get('/cart')->assertInertia(
+        fn (Assert $page) => $page
+            ->where('cart.items.0.configuration.weekly_matches', true)
+            ->where('cart.items.0.configuration.included_wins', 8)
+            ->missing('cart.items.0.configuration.from_division'),
     );
 });

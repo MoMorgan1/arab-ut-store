@@ -10,6 +10,7 @@ return [
         'internal_error' => 'Unable to add Coins to the cart.',
         'catalog_json_required' => 'Catalog additions require a JSON request.',
         'catalog_item_unavailable' => 'This option is unavailable. Refresh the page and choose another option.',
+        'coins_quantity_step' => 'That quantity is not available. Pick one of the steps on the slider.',
         'catalog_internal_error' => 'Unable to add this item to the cart.',
         'manual_service_unavailable' => 'The service or its price changed. Refresh the page and review your choices.',
     ],
@@ -48,6 +49,12 @@ return [
         'matches_played' => 'Matches already played',
         'from_division' => 'Current division',
         'to_division' => 'Target division',
+        // A week of matches promotes nothing, so it has no divisions to show.
+        // Without these the cart line is a bare service name and the customer
+        // pays without ever seeing what they picked.
+        'mode' => 'Service',
+        'mode_weekly' => 'Weekly matches',
+        'included_wins' => 'Wins included',
         'division_elite' => 'Elite',
         'coins_unit' => 'Coins',
         'total' => 'Total',
@@ -118,27 +125,6 @@ return [
         'price_changed' => 'The price changed while you were checking out. Please review your cart and try again.',
         'expected_total' => 'The expected total is invalid.',
         'paylink_minimum_gap' => 'The remaining payment amount is below the Paylink minimum of SAR 5.00. The difference is SAR :gap.',
-    ],
-    'order_page' => [
-        'title' => 'Order status',
-        'eyebrow' => 'Arab UT order',
-        'number' => 'Order number',
-        'pay_now' => 'Complete payment with Paylink',
-        'pay_loading' => 'Opening secure payment…',
-        'pay_error' => 'Payment could not be opened. Try again.',
-        'status' => 'Status',
-        'total' => 'Total',
-        'back' => 'Back to store',
-        'statuses' => [
-            'pending_payment' => 'Awaiting payment',
-            'received' => 'Payment received',
-            'in_progress' => 'In progress',
-            'waiting_for_customer' => 'Waiting for you',
-            'completed' => 'Completed',
-            'cancelled' => 'Cancelled',
-            'refunded' => 'Refunded',
-            'failed' => 'Needs attention',
-        ],
     ],
     'seo_title' => 'Arab UT | FC 27 Ultimate Team Coins',
     'hero' => [
@@ -334,6 +320,14 @@ return [
             'target_legend' => 'Target division',
             'division' => 'Division :division',
             'elite' => 'Elite',
+            // The two ways to buy Rivals. Both play the same account with the
+            // same data; only what we do with the week differs.
+            'mode_legend' => 'What would you like us to play?',
+            'mode_promotion' => 'Division promotion',
+            'mode_promotion_hint' => 'We play until you reach the division you want.',
+            'mode_weekly' => 'Weekly matches',
+            'mode_weekly_hint' => 'We play your week without promoting — :wins wins included.',
+            'weekly_summary' => 'Weekly matches (:wins wins)',
             'standard_eta' => 'Orders usually take 1–3 days, depending on demand and the number of divisions requested.',
             'notes' => [
                 'timing' => 'The delivery time is an estimate and depends on demand and the number of divisions requested.',

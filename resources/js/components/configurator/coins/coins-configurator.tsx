@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
 import { announceCartAddition } from '@/lib/cart-added-event';
 import { CoinsCartRequestError, submitCoinsCart } from '@/lib/coins-cart-api';
+import { acceptsQuantity } from '@/lib/coins-quantity';
 import { quoteFromSchedule } from '@/lib/coins-quote-schedule';
 import type {
     CoinsAmountRules,
@@ -30,13 +31,16 @@ import { PlatformStep } from './platform-step';
 import { ProgressRail } from './progress-rail';
 import type { CoinsStep } from './progress-rail';
 import { SummaryStep } from './summary-step';
+import { useCoinsQuoteRequest } from './use-coins-quote-request';
 
 type CoinsConfiguratorProps = {
     amount: CoinsAmountRules;
     cart: CoinsCartConfig;
+    displayCurrency: string;
     locale: 'ar' | 'en';
     platforms: CoinsPlatformOption[];
     quoteSchedules: CoinsQuoteSchedules;
+    quoteUrl: string;
     termsUrl: string;
     translations: CoinsStoreTranslations;
     warrantyUrl: string;
@@ -45,9 +49,11 @@ type CoinsConfiguratorProps = {
 export function CoinsConfigurator({
     amount,
     cart,
+    displayCurrency,
     locale,
     platforms,
     quoteSchedules,
+    quoteUrl,
     termsUrl,
     translations,
     warrantyUrl,
@@ -104,9 +110,7 @@ export function CoinsConfigurator({
     const maximum = selectedDelivery?.maximum ?? selectedPlatform?.maximum ?? 0;
     const quantityIsValid =
         quantity !== null &&
-        quantity >= amount.minimum &&
-        quantity <= maximum &&
-        quantity % amount.increment === 0;
+        acceptsQuantity(quantity, amount.minimum, maximum, amount.roundingUnit);
     const isPc = selectedPlatform?.value === 'pc';
     const deliveryIsValid = isPc || selectedDelivery !== null;
     const requestDelivery = isPc ? null : (selectedDelivery?.value ?? null);
@@ -124,6 +128,35 @@ export function CoinsConfigurator({
 
         return quoteSchedules[`playstation:${requestDelivery}`];
     }, [quoteSchedules, requestDelivery, selectedPlatform?.value]);
+    const selectedQuantity = quantityIsValid
+        ? quantity
+        : state.lastValidQuantity;
+    // The slider stops are priced ahead of time, so dragging never waits on the
+    // network. A typed amount between two stops is not in that list, and asking
+    // the server for it is what lets a customer buy the amount they meant.
+    const scheduleQuote = useMemo(
+        () =>
+            selectedSchedule === null
+                ? null
+                : quoteFromSchedule(selectedSchedule, selectedQuantity),
+        [selectedQuantity, selectedSchedule],
+    );
+    const needsLiveQuote =
+        selectedPlatform !== null &&
+        deliveryIsValid &&
+        selectedSchedule !== null &&
+        scheduleQuote === null;
+
+    useCoinsQuoteRequest({
+        active: needsLiveQuote,
+        delivery: requestDelivery,
+        dispatch,
+        expectedDisplayCurrency: displayCurrency,
+        platform: selectedPlatform?.value ?? null,
+        quantity: needsLiveQuote ? selectedQuantity : null,
+        quoteUrl,
+    });
+
     const quoteState = useMemo<CoinsQuoteViewState>(() => {
         if (selectedPlatform === null || !deliveryIsValid) {
             return { status: 'idle' };
@@ -133,21 +166,15 @@ export function CoinsConfigurator({
             return { status: 'unavailable' };
         }
 
-        const selectedQuantity = quantityIsValid
-            ? quantity
-            : state.lastValidQuantity;
-        const quote = quoteFromSchedule(selectedSchedule, selectedQuantity);
-
-        return quote === null
-            ? { status: 'unavailable' }
-            : { quote, status: 'success' };
+        return scheduleQuote === null
+            ? state.quoteState
+            : { quote: scheduleQuote, status: 'success' };
     }, [
         deliveryIsValid,
-        quantity,
-        quantityIsValid,
+        scheduleQuote,
         selectedPlatform,
         selectedSchedule,
-        state.lastValidQuantity,
+        state.quoteState,
     ]);
 
     useEffect(() => {
@@ -268,7 +295,12 @@ export function CoinsConfigurator({
             nextQuantity !== null &&
             nextQuantity >= amount.minimum &&
             nextQuantity <= maximum &&
-            nextQuantity % amount.increment === 0;
+            acceptsQuantity(
+                nextQuantity,
+                amount.minimum,
+                maximum,
+                amount.roundingUnit,
+            );
 
         if (isValid && nextQuantity === state.lastValidQuantity) {
             const normalizedValue = String(nextQuantity);
@@ -296,7 +328,7 @@ export function CoinsConfigurator({
             value,
             amount.minimum,
             maximum,
-            amount.increment,
+            amount.roundingUnit,
         );
         const quantityInputAlreadyMatches =
             quantityFromInput(state.quantityInput) === committedQuantity;

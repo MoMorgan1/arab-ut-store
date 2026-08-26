@@ -37,13 +37,13 @@ test('admin can transition received order to in_progress with item propagation, 
         'total_halalah' => 5000,
     ]);
 
-    $failedItem = $order->items()->create([
-        'sku' => 'AUT-ITEM-FAIL',
-        'name_ar' => 'عنصر فاشل',
-        'name_en' => 'Failed item',
+    $cancelledItem = $order->items()->create([
+        'sku' => 'AUT-ITEM-CANCELLED',
+        'name_ar' => 'عنصر ملغي',
+        'name_en' => 'Cancelled item',
         'service_type' => ServiceType::Coins,
         'platform' => Platform::PlayStation,
-        'status' => OrderItemStatus::Failed,
+        'status' => OrderItemStatus::Cancelled,
         'quantity' => 1,
         'unit_price_halalah' => 5000,
         'subtotal_halalah' => 5000,
@@ -69,9 +69,9 @@ test('admin can transition received order to in_progress with item propagation, 
     $order->refresh();
     expect($order->status)->toBe(OrderStatus::InProgress);
 
-    // Propagated item status updated; failed item preserved
+    // The received item moves; an item already out of the flow stays put.
     expect($receivedItem->fresh()->status)->toBe(OrderItemStatus::InProgress)
-        ->and($failedItem->fresh()->status)->toBe(OrderItemStatus::Failed);
+        ->and($cancelledItem->fresh()->status)->toBe(OrderItemStatus::Cancelled);
 
     // Order status history created: 1 for order, 1 for propagated item
     $history = OrderStatusHistory::query()->where('order_id', $order->id)->get();
@@ -104,6 +104,8 @@ test('admin can transition received order to in_progress with item propagation, 
             'new_status',
             'order_public_id',
             'propagated_item_count',
+            'reason',
+            'note_given',
         ])
         ->and($audit->metadata)->toBe([
             'source' => 'admin',
@@ -111,6 +113,8 @@ test('admin can transition received order to in_progress with item propagation, 
             'new_status' => 'in_progress',
             'order_public_id' => (string) $order->public_id,
             'propagated_item_count' => 1,
+            'reason' => null,
+            'note_given' => false,
         ]);
 });
 
@@ -303,6 +307,109 @@ test('localized transition alias routes execute successfully', function (): void
         ]);
 });
 
+test('an order cannot be paused without something the customer can read', function (): void {
+    // The whole defect was a stopped order with a blank explanation. Refusing
+    // the transition is what stops that from being possible again.
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::InProgress);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'in_progress',
+            'target_status' => 'waiting_for_customer',
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('reason');
+
+    expect($order->refresh()->status)->toBe(OrderStatus::InProgress)
+        ->and(OrderStatusHistory::query()->where('order_id', $order->id)->count())->toBe(0);
+});
+
+test('pausing an order freezes the chosen reason in both locales', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::InProgress);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'in_progress',
+            'target_status' => 'waiting_for_customer',
+            'reason' => 'insufficient_coins',
+        ])
+        ->assertOk();
+
+    $history = OrderStatusHistory::query()
+        ->where('order_id', $order->id)
+        ->whereNull('order_item_id')
+        ->sole();
+
+    expect($history->status)->toBe(OrderStatusHistoryStatus::WaitingForCustomer)
+        ->and($history->note_ar)->toBe(trans('orders.hold_reasons.insufficient_coins', locale: 'ar'))
+        ->and($history->note_en)->toBe(trans('orders.hold_reasons.insufficient_coins', locale: 'en'))
+        ->and($history->note_ar)->not->toBe($history->note_en);
+});
+
+test('a free note is kept alongside the curated reason', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::InProgress);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'in_progress',
+            'target_status' => 'waiting_for_customer',
+            'reason' => 'market_locked',
+            'note' => '  Your market opens on 3 September.  ',
+        ])
+        ->assertOk();
+
+    $history = OrderStatusHistory::query()
+        ->where('order_id', $order->id)
+        ->whereNull('order_item_id')
+        ->sole();
+
+    // The note is order-specific, so it reads the same in both locales, but it
+    // never replaces the curated explanation - it follows it.
+    expect($history->note_ar)
+        ->toStartWith(trans('orders.hold_reasons.market_locked', locale: 'ar'))
+        ->toEndWith('Your market opens on 3 September.')
+        ->and($history->note_en)->toEndWith('Your market opens on 3 September.');
+});
+
+test('a note alone is enough to pause an order', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::InProgress);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'in_progress',
+            'target_status' => 'waiting_for_customer',
+            'note' => 'We need a screenshot of your club.',
+        ])
+        ->assertOk();
+
+    $history = OrderStatusHistory::query()
+        ->where('order_id', $order->id)
+        ->whereNull('order_item_id')
+        ->sole();
+
+    expect($history->note_ar)->toBe('We need a screenshot of your club.')
+        ->and($history->note_en)->toBe('We need a screenshot of your club.');
+});
+
+test('an unknown reason is refused rather than written as a blank message', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::InProgress);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'in_progress',
+            'target_status' => 'waiting_for_customer',
+            'reason' => 'dog_ate_the_coins',
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('reason');
+
+    expect($order->refresh()->status)->toBe(OrderStatus::InProgress);
+});
 function createTransitionTestActor(UserRole $role, string $locale = 'en'): User
 {
     $actor = User::factory()->create([
@@ -336,3 +443,79 @@ function createTransitionTestOrder(OrderStatus $status): Order
         'placed_at' => now(),
     ]);
 }
+
+test('cancelling a wallet-funded order tells the customer their money came back', function (): void {
+    // The cancellation returns real money to the wallet. Saying only "cancelled"
+    // leaves the customer to discover their balance is whole again on their own,
+    // or to assume it is not.
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::WaitingForCustomer);
+    $order->forceFill(['wallet_halalah' => 4_500, 'payment_halalah' => 500])->save();
+
+    $order->items()->create([
+        'sku' => 'AUT-ITEM-WALLET',
+        'name_ar' => 'عنصر',
+        'name_en' => 'Item',
+        'service_type' => ServiceType::Coins,
+        'platform' => Platform::PlayStation,
+        'status' => OrderItemStatus::WaitingForCustomer,
+        'quantity' => 1,
+        'unit_price_halalah' => 5000,
+        'subtotal_halalah' => 5000,
+        'discount_halalah' => 0,
+        'total_halalah' => 5000,
+    ]);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'waiting_for_customer',
+            'target_status' => 'cancelled',
+        ])
+        ->assertOk();
+
+    $note = OrderStatusHistory::query()
+        ->where('order_id', $order->id)
+        ->whereNull('order_item_id')
+        ->latest('id')
+        ->sole();
+
+    // 45.00 is the wallet half alone, not the 50.00 total. The gateway half is
+    // not refunded on this path, so a figure covering both would be a promise
+    // nothing keeps.
+    expect($note->note_ar)->toContain('45.00')
+        ->and($note->note_en)->toContain('45.00')
+        ->and($note->note_en)->not->toContain('50.00');
+});
+
+test('cancelling an order that held no wallet money names no figure', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::WaitingForCustomer);
+
+    $order->items()->create([
+        'sku' => 'AUT-ITEM-CARD',
+        'name_ar' => 'عنصر',
+        'name_en' => 'Item',
+        'service_type' => ServiceType::Coins,
+        'platform' => Platform::PlayStation,
+        'status' => OrderItemStatus::WaitingForCustomer,
+        'quantity' => 1,
+        'unit_price_halalah' => 5000,
+        'subtotal_halalah' => 5000,
+        'discount_halalah' => 0,
+        'total_halalah' => 5000,
+    ]);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'waiting_for_customer',
+            'target_status' => 'cancelled',
+        ])
+        ->assertOk();
+
+    expect(OrderStatusHistory::query()
+        ->where('order_id', $order->id)
+        ->whereNull('order_item_id')
+        ->latest('id')
+        ->sole()
+        ->note_en)->toBeNull();
+});

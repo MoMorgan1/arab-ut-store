@@ -66,6 +66,48 @@ test('sub-riyal overrides are accepted on the 0.1-SAR display grid', function ()
         ->toBe(150);
 });
 
+test('a pinned fast price is lifted to the fast floors instead of undercutting normal', function () {
+    // A pricing run could pin any positive multiple of 0.1 SAR — 1.50 SAR for
+    // 50,000 coins here — and it used to be served raw, below the normal price
+    // for the same quantity. The floors now apply to pinned prices too.
+    $normal = pricingRule();
+    $fast = CoinsPricingRule::fromConfiguration([
+        'version' => 1,
+        'group' => 'console_fast',
+        'tier_upper_bounds_k' => [100, 500, 1000, 2000, 5000],
+        'tier_rates_halalah_per_million' => array_fill(0, 6, 5_000),
+        'multipliers_basis_points' => ['50000' => 11_000, '100000' => 10_000],
+        'service_fee_halalah' => 300,
+        'discount_divisor_basis_points' => 10_000,
+        'exact_overrides_halalah' => ['50000' => 150],
+    ], 'console_fast');
+
+    $calculator = new CoinsPriceCalculator;
+    $normalTotal = $calculator->calculate($normal, 50_000)->halalah();
+    $fastTotal = $calculator->calculate($fast, 50_000, $normal)->halalah();
+
+    expect($fastTotal)->toBeGreaterThan(150)
+        ->and($fastTotal)->toBeGreaterThan($normalTotal)
+        ->and($fastTotal)->toBeGreaterThanOrEqual($normalTotal + 100);
+});
+
+test('a pinned fast price above the floors is served exactly as pinned', function () {
+    $normal = pricingRule();
+    $fast = CoinsPricingRule::fromConfiguration([
+        'version' => 1,
+        'group' => 'console_fast',
+        'tier_upper_bounds_k' => [100, 500, 1000, 2000, 5000],
+        'tier_rates_halalah_per_million' => array_fill(0, 6, 5_000),
+        'multipliers_basis_points' => ['50000' => 11_000, '100000' => 10_000],
+        'service_fee_halalah' => 300,
+        'discount_divisor_basis_points' => 10_000,
+        'exact_overrides_halalah' => ['50000' => 99_000],
+    ], 'console_fast');
+
+    expect((new CoinsPriceCalculator)->calculate($fast, 50_000, $normal)->halalah())
+        ->toBe(99_000);
+});
+
 test('exact overrides must preserve the positive 0.1-SAR price boundary', function (int $override) {
     expect(fn () => pricingRule([
         'exact_overrides_halalah' => ['50000' => $override],

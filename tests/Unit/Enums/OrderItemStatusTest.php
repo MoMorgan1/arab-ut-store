@@ -4,18 +4,12 @@ use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
 
-test('order item status vocabulary includes terminal failure', function () {
+test('an item status is an order status and nothing else', function () {
+    // There used to be a 'failed' case here that nothing ever assigned, yet it
+    // shipped a customer-facing label. An item state no order can reach is a
+    // state no customer can be told the truth about.
     expect(array_column(OrderItemStatus::cases(), 'value'))
-        ->toBe([
-            'pending_payment',
-            'received',
-            'in_progress',
-            'waiting_for_customer',
-            'completed',
-            'cancelled',
-            'refunded',
-            'failed',
-        ]);
+        ->toBe(array_column(OrderStatus::cases(), 'value'));
 });
 
 test('status history boundary covers every approved order and item status', function () {

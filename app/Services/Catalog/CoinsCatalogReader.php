@@ -7,10 +7,13 @@ use App\Enums\ServiceType;
 use App\Models\PriceRule;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\ServicePriceSchedule;
 use App\Services\Pricing\CoinsPriceCalculator;
 use App\ValueObjects\Pricing\CoinsPricingRule;
+use App\ValueObjects\Pricing\CoinsQuantityRules;
 use DomainException;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Config;
 
 final class CoinsCatalogReader
 {
@@ -125,15 +128,36 @@ final class CoinsCatalogReader
         }
     }
 
+    private ?CoinsQuantityRules $quantityRules = null;
+
+    /**
+     * Resolved once per instance: the homepage builds a schedule per platform
+     * and delivery speed, and each one asks for the bounds.
+     */
+    public function quantityRules(): CoinsQuantityRules
+    {
+        if ($this->quantityRules !== null) {
+            return $this->quantityRules;
+        }
+
+        // The admin edits these; config carries the seeded default so a fresh
+        // database, and every test that never seeds one, still has bounds.
+        $schedule = ServicePriceSchedule::query()
+            ->where('service_type', ServiceType::Coins)
+            ->where('is_active', true)
+            ->first();
+
+        $configuration = $schedule === null
+            ? (array) Config::array('coins.quantity')
+            : (array) $schedule->configuration;
+
+        return $this->quantityRules = CoinsQuantityRules::fromConfiguration($configuration);
+    }
+
     /** @param array<string, CoinsPricingRule> $rules */
     private function assertPricingCoverage(array $rules): void
     {
-        $minimum = $this->positiveConfiguredInteger('coins.quantity.minimum');
-        $increment = $this->positiveConfiguredInteger('coins.quantity.increment');
-
-        if ($minimum % $increment !== 0) {
-            throw new DomainException('The Coins minimum quantity must align with its increment.');
-        }
+        $minimum = $this->quantityRules()->minimum();
 
         $normal = $rules['console_normal'];
         $this->assertRuleCoversRange(
@@ -164,14 +188,19 @@ final class CoinsCatalogReader
             throw new DomainException('A Coins maximum quantity cannot be below the minimum.');
         }
 
-        $increment = $this->positiveConfiguredInteger('coins.quantity.increment');
+        $this->calculator->calculate($rule, $minimum, $normalRule);
+        $this->calculator->calculate($rule, $maximum, $normalRule);
 
-        for ($quantity = $minimum; $quantity <= $maximum; $quantity += $increment) {
-            $this->calculator->calculate($rule, $quantity, $normalRule);
+        foreach ($this->quantityRules()->sliderStops() as $quantity) {
+            if ($quantity < $minimum) {
+                continue;
+            }
 
-            if ($quantity > $maximum - $increment) {
+            if ($quantity > $maximum) {
                 break;
             }
+
+            $this->calculator->calculate($rule, $quantity, $normalRule);
         }
     }
 

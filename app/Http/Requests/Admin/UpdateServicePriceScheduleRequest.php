@@ -41,6 +41,23 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
             foreach ($steps as $step) {
                 $rules["configuration.steps.{$step}"] = ['required', 'integer', 'min:1'];
             }
+            // Weekly matches are optional: absent means not on sale, and the
+            // storefront hides the option entirely. Half-filled is refused,
+            // because a price with no win count promises nothing.
+            $rules['configuration.weeklyMatches'] = ['sometimes', 'nullable', 'array'];
+            $rules['configuration.weeklyMatches.priceHalalah'] = ['required_with:configuration.weeklyMatches', 'integer', 'min:1'];
+            $rules['configuration.weeklyMatches.includedWins'] = ['required_with:configuration.weeklyMatches', 'integer', 'min:1'];
+        } elseif ($serviceType === ServiceType::Coins->value) {
+            // Shape only. Whether the bands ascend, divide evenly and cover the
+            // presets is CoinsQuantityRules' job, checked inside the transaction.
+            $rules['configuration.minimum'] = ['required', 'integer', 'min:1'];
+            $rules['configuration.roundingUnit'] = ['required', 'integer', 'min:1'];
+            $rules['configuration.tiers'] = ['required', 'array', 'min:1'];
+            $rules['configuration.tiers.*'] = ['required', 'array'];
+            $rules['configuration.tiers.*.upTo'] = ['required', 'integer', 'min:1'];
+            $rules['configuration.tiers.*.step'] = ['required', 'integer', 'min:1'];
+            $rules['configuration.presets'] = ['present', 'array'];
+            $rules['configuration.presets.*'] = ['required', 'integer', 'min:1'];
         }
 
         return $rules;
@@ -84,7 +101,7 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
                     }
                 }
             } elseif ($serviceType === ServiceType::Rivals->value) {
-                $allowedConfigKeys = ['steps'];
+                $allowedConfigKeys = ['steps', 'weeklyMatches'];
                 $extraConfigKeys = array_diff(array_keys($rawConfig), $allowedConfigKeys);
                 if (! empty($extraConfigKeys)) {
                     $validator->errors()->add('unexpected_fields', 'Unknown configuration fields are not allowed.');
@@ -99,6 +116,27 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
                     $extraSteps = array_diff($stepKeys, $allowedSteps);
                     if (! empty($extraSteps)) {
                         $validator->errors()->add('unexpected_fields', 'Unknown step keys are not allowed.');
+                    }
+                }
+            } elseif ($serviceType === ServiceType::Coins->value) {
+                $allowedConfigKeys = ['minimum', 'roundingUnit', 'tiers', 'presets'];
+                $extraConfigKeys = array_diff(array_keys($rawConfig), $allowedConfigKeys);
+                if (! empty($extraConfigKeys)) {
+                    $validator->errors()->add('unexpected_fields', 'Unknown configuration fields are not allowed.');
+
+                    return;
+                }
+
+                foreach ((array) ($rawConfig['tiers'] ?? []) as $tier) {
+                    if (! is_array($tier)) {
+                        continue;
+                    }
+
+                    $extraTierKeys = array_diff(array_keys($tier), ['upTo', 'step']);
+                    if (! empty($extraTierKeys)) {
+                        $validator->errors()->add('unexpected_fields', 'Unknown band fields are not allowed.');
+
+                        return;
                     }
                 }
             }
@@ -136,8 +174,18 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
                 $steps[(string) $k] = (int) $v;
             }
 
+            $weeklyMatches = $config['weeklyMatches'] ?? null;
+
+            if (! is_array($weeklyMatches) || $weeklyMatches === []) {
+                return ['steps' => $steps];
+            }
+
             return [
                 'steps' => $steps,
+                'weeklyMatches' => [
+                    'priceHalalah' => (int) ($weeklyMatches['priceHalalah'] ?? 0),
+                    'includedWins' => (int) ($weeklyMatches['includedWins'] ?? 0),
+                ],
             ];
         }
 

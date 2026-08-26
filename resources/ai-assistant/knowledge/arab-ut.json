@@ -85,9 +85,9 @@
             "keywords_ar": ["كوينز", "شحن", "coins", "مليون", "كمية"],
             "keywords_en": ["coins", "top up", "million", "amount"],
             "title_ar": "خدمة شحن الكوينز",
-            "body_ar": "نشحن كوينز EA Sports FC على PlayStation و Xbox و PC. بلايستيشن وإكس بوكس يتشاركان نفس سوق الانتقالات، وPC له سوق منفصل. الكميات المتوفرة تبدأ من 20,000 كوينز، وللكميات الكبيرة جداً تواصل معنا هنا.",
+            "body_ar": "نشحن كوينز EA Sports FC على PlayStation و Xbox و PC. بلايستيشن وإكس بوكس يتشاركان نفس سوق الانتقالات، وPC له سوق منفصل. الكميات المتوفرة تبدأ من 50,000 كوينز، وللكميات الكبيرة جداً تواصل معنا هنا.",
             "title_en": "Coins Delivery Service",
-            "body_en": "We deliver EA Sports FC coins on PlayStation, Xbox, and PC. PlayStation and Xbox share the same Transfer Market, and PC has a separate market. Available quantities start from 20,000 coins, and for very large quantities contact us here in the chat."
+            "body_en": "We deliver EA Sports FC coins on PlayStation, Xbox, and PC. PlayStation and Xbox share the same Transfer Market, and PC has a separate market. Available quantities start from 50,000 coins, and for very large quantities contact us here in the chat."
         },
         {
             "id": "coins-speeds",
@@ -124,9 +124,9 @@
             ],
             "keywords_en": ["rivals", "division", "promotion", "weekly wins"],
             "title_ar": "خدمة الرايفلز",
-            "body_ar": "نلعب لك طور Division Rivals ونصعدك من Division 7 حتى Division 1 ثم Elite. تختار الديفيجن اللي أنت فيه والديفيجن اللي تبي توصله عند الطلب. السعر يعتمد على هذين الاثنين فقط — ما فيه فرق سعر بين المنصات ولا خيار توصيل سريع. متوفر أيضاً لعب المباريات الأسبوعية (12 فوز) بدون تصعيد. المدة يوم إلى يومين عمل. متاحة على PlayStation و PC فقط.",
+            "body_ar": "نلعب لك طور Division Rivals ونصعدك من Division 7 حتى Division 1 ثم Elite. تختار الديفيجن اللي أنت فيه والديفيجن اللي تبي توصله عند الطلب. السعر يعتمد على هذين الاثنين فقط — ما فيه فرق سعر بين المنصات ولا خيار توصيل سريع. تقدر كمان تطلب لعب المباريات الأسبوعية بدون تصعيد من نفس صفحة الرايفلز — تختار «المباريات الأسبوعية» بدل التصعيد، وعدد الانتصارات المشمول مكتوب في الصفحة. المدة يوم إلى يومين عمل. متاحة على PlayStation و PC فقط.",
             "title_en": "Division Rivals Service",
-            "body_en": "We play Division Rivals for you and promote you from Division 7 up to Division 1, then Elite. You choose the division you are in and the one you want to reach when ordering. The price depends on those two alone — there is no price difference between platforms and no fast-delivery option. Playing weekly matches (12 wins) without promotion is also available. Duration is 1 to 2 business days. Available on PlayStation and PC only."
+            "body_en": "We play Division Rivals for you and promote you from Division 7 up to Division 1, then Elite. You choose the division you are in and the one you want to reach when ordering. The price depends on those two alone — there is no price difference between platforms and no fast-delivery option. You can also order the weekly matches without promotion from the same Rivals page — choose Weekly matches instead of a promotion, and the number of wins included is shown on the page. Duration is 1 to 2 business days. Available on PlayStation and PC only."
         },
         {
             "id": "sbc",
@@ -466,9 +466,9 @@
             "keywords_ar": ["الحساب متصل", "جلسة نشطة", "سجل خروج"],
             "keywords_en": ["active session", "logged in", "sign out"],
             "title_ar": "مشكلة: الحساب متصل أو جلسة نشطة",
-            "body_ar": "رسالة الخطأ: يرجى تسجيل الخروج من اللعبة وتطبيق الجوال. الحل: من الكونسول ادخل Ultimate Team ثم اخرج للقائمة الرئيسية وأقفل اللعبة تماماً، وأقفل تطبيق Companion بالكامل واسحبه من التطبيقات المفتوحة، وسجّل الخروج من Web App وأقفل المتصفح، ثم انتظر دقيقة أو دقيقتين وحدّث الطلب.",
+            "body_ar": "رسالة الخطأ: يرجى تسجيل الخروج من اللعبة وتطبيق الجوال. السبب أن الحساب ما زال مفتوحاً في مكان ما — الكونسول أو تطبيق Companion أو Web App — وEA تسمح بجلسة واحدة فقط، فلا نستطيع الدخول لتنفيذ الشحن. الحل: من الكونسول ادخل Ultimate Team ثم اخرج للقائمة الرئيسية وأقفل اللعبة تماماً، وأقفل تطبيق Companion بالكامل واسحبه من التطبيقات المفتوحة، وسجّل الخروج من Web App وأقفل المتصفح، ثم انتظر دقيقة أو دقيقتين وحدّث الطلب.",
             "title_en": "Issue: Account Connected or Active Session",
-            "body_en": "Error message: Please log out of the game and mobile app. Fix: On console, enter Ultimate Team then exit to the main menu and close the game completely, close the Companion App completely and swipe it away from open apps, log out of the Web App and close the browser, then wait 1 or 2 minutes and update the order."
+            "body_en": "Error message: Please log out of the game and mobile app. Cause: The account is still open somewhere — the console, the Companion App, or the Web App — and EA allows only one session at a time, so we cannot sign in to deliver. Fix: On console, enter Ultimate Team then exit to the main menu and close the game completely, close the Companion App completely and swipe it away from open apps, log out of the Web App and close the browser, then wait 1 or 2 minutes and update the order."
         },
         {
             "id": "issue-ea-servers",
@@ -499,9 +499,9 @@
             "keywords_ar": ["قائمة النقل", "transfer list", "ممتلئة"],
             "keywords_en": ["transfer list full"],
             "title_ar": "مشكلة: قائمة النقل ممتلئة",
-            "body_ar": "رسالة الخطأ: قائمة النقل ممتلئة. الحل: افتح Companion أو Web App واذهب إلى Transfer List واحذف أو انقل اللاعبين المعروضين حتى يتوفر 3 أماكن فارغة على الأقل ثم حدّث الطلب.",
+            "body_ar": "رسالة الخطأ: قائمة النقل ممتلئة. السبب أن القائمة وصلت حدها الأقصى، ونحن نشحن عن طريق شراء لاعبين معروضين من حسابك، فبدون أماكن فارغة لا تتم العملية. الحل: افتح Companion أو Web App واذهب إلى Transfer List واحذف أو انقل اللاعبين المعروضين حتى يتوفر 3 أماكن فارغة على الأقل ثم حدّث الطلب.",
             "title_en": "Issue: Transfer List Full",
-            "body_en": "Error message: Transfer List is full. Fix: Open Companion App or Web App, go to Transfer List, and remove or move listed players until at least 3 empty slots are available, then update the order."
+            "body_en": "Error message: Transfer List is full. Cause: The list has hit its limit. We deliver by buying players you list from your account, so with no free slots the delivery cannot go through. Fix: Open Companion App or Web App, go to Transfer List, and remove or move listed players until at least 3 empty slots are available, then update the order."
         },
         {
             "id": "issue-captcha",
@@ -532,9 +532,9 @@
             "keywords_ar": ["الحساب محظور", "banned", "حظر"],
             "keywords_en": ["account banned", "ban"],
             "title_ar": "مشكلة: الحساب محظور",
-            "body_ar": "رسالة الخطأ: الحساب محظور. الحل: تحقق من إيميلك لمعرفة سبب الحظر ومدته؛ إذا كان مؤقتاً انتظر انتهاء المدة، وإذا كان دائماً لا يمكن الشحن على هذا الحساب. إذا كان الحظر بسبب شحن سابق خلال فترة الضمان راجع سياسة الضمان للتعويض.",
+            "body_ar": "رسالة الخطأ: الحساب محظور. السبب قرار من EA وحدها بسبب نشاط رصدته على الحساب، ولا علاقة له بالمتجر ولا بالطلب. الحل: تحقق من إيميلك لمعرفة سبب الحظر ومدته؛ إذا كان مؤقتاً انتظر انتهاء المدة، وإذا كان دائماً لا يمكن الشحن على هذا الحساب. إذا كان الحظر بسبب شحن سابق خلال فترة الضمان راجع سياسة الضمان للتعويض.",
             "title_en": "Issue: Account Banned",
-            "body_en": "Error message: Account is banned. Fix: Check your email to find out the ban reason and duration; if temporary, wait until the duration ends, and if permanent, delivery cannot be performed on this account. If the ban was due to a previous delivery during the warranty period, review the warranty policy for compensation."
+            "body_en": "Error message: Account is banned. Cause: EA alone made this decision because of activity it flagged on the account; it has nothing to do with the store or your order. Fix: Check your email to find out the ban reason and duration; if temporary, wait until the duration ends, and if permanent, delivery cannot be performed on this account. If the ban was due to a previous delivery during the warranty period, review the warranty policy for compensation."
         },
         {
             "id": "issue-store-stock",

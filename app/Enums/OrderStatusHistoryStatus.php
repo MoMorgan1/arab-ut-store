@@ -11,5 +11,4 @@ enum OrderStatusHistoryStatus: string
     case Completed = 'completed';
     case Cancelled = 'cancelled';
     case Refunded = 'refunded';
-    case Failed = 'failed';
 }

@@ -79,6 +79,47 @@ final readonly class CoinsPricingRule
         return $matched;
     }
 
+    /**
+     * The same rule with every multiplier entry that says nothing removed.
+     *
+     * multiplierBasisPoints() above answers with the last entry at or below the
+     * quantity, so an entry repeating the value before it is never the answer to
+     * any question - it is already what the previous entry says. The pricing run
+     * publishes one entry per legal quantity, and at a five-thousand grain across
+     * twenty million coins that is 8,373 of them per group, of which around four
+     * in five are repeats. Dropping the repeats changes no price at any quantity;
+     * it only stops the storefront from carrying, storing and re-reading the same
+     * number thousands of times over.
+     *
+     * @param  array<string, mixed>  $configuration
+     * @return array<string, mixed>
+     */
+    public static function withoutRedundantMultipliers(array $configuration): array
+    {
+        $configured = $configuration['multipliers_basis_points'] ?? null;
+
+        if (! is_array($configured) || $configured === []) {
+            return $configuration;
+        }
+
+        $kept = [];
+        $previous = null;
+
+        // positiveIntegerMap() sorts numerically, which is what makes "the value
+        // before it" mean the next quantity down rather than whatever order the
+        // pricing run happened to serialise.
+        foreach (self::positiveIntegerMap($configured, 'multipliers') as $quantity => $basisPoints) {
+            if ($basisPoints !== $previous) {
+                $kept[$quantity] = $basisPoints;
+                $previous = $basisPoints;
+            }
+        }
+
+        $configuration['multipliers_basis_points'] = $kept;
+
+        return $configuration;
+    }
+
     public function rateHalalahPerMillion(int $quantity): int
     {
         if ($this->flatRateHalalahPerMillion !== null) {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Automation;
 
+use App\Services\Catalog\CoinsCatalogReader;
 use App\ValueObjects\Pricing\CoinsPricingRule;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -112,21 +113,25 @@ final class CoinsPricingRunRequest extends FormRequest
 
     private function validateLegalRanges(Validator $validator): void
     {
+        $rules = app(CoinsCatalogReader::class)->quantityRules();
+        $minimum = $rules->minimum();
+        $increment = $rules->finestStep();
+
         $expected = [
             'console_normal' => [
-                'minimum' => Config::integer('coins.quantity.minimum'),
+                'minimum' => $minimum,
                 'maximum' => Config::integer('coins.platforms.playstation.deliveries.normal.maximum'),
-                'increment' => Config::integer('coins.quantity.increment'),
+                'increment' => $increment,
             ],
             'console_fast' => [
-                'minimum' => Config::integer('coins.quantity.minimum'),
+                'minimum' => $minimum,
                 'maximum' => Config::integer('coins.platforms.playstation.deliveries.fast.maximum'),
-                'increment' => Config::integer('coins.quantity.increment'),
+                'increment' => $increment,
             ],
             'pc' => [
-                'minimum' => Config::integer('coins.quantity.minimum'),
+                'minimum' => $minimum,
                 'maximum' => Config::integer('coins.platforms.pc.maximum'),
-                'increment' => Config::integer('coins.quantity.increment'),
+                'increment' => $increment,
             ],
         ];
 
@@ -136,7 +141,11 @@ final class CoinsPricingRunRequest extends FormRequest
             if (! is_array($range) || $range !== $expected[$group]) {
                 $validator->errors()->add(
                     "legalRanges.{$group}",
-                    'The pricing range does not match the active Coins quantity settings.',
+                    sprintf(
+                        'The pricing range does not match the active Coins quantity settings. Expected %s, received %s.',
+                        json_encode($expected[$group]),
+                        is_array($range) ? (string) json_encode($range) : 'nothing',
+                    ),
                 );
             }
         }

@@ -255,7 +255,8 @@ test('the Paylink return verifies the invoice before marking the owner order rec
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('account/live-order')
-            ->where('order.status', 'received')
+            // The row is 'received'; the customer is shown the collapsed state.
+            ->where('order.status', 'in_progress')
             ->where('order.total', ['amountMinor' => '1250', 'currency' => 'SAR'])
             ->missing('order.payments'));
 });

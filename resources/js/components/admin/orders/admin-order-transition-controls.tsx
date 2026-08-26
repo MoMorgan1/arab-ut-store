@@ -29,6 +29,8 @@ export type AdminOrderTransitionControlsProps = {
 type TransitionPayload = {
     target_status: string;
     expected_status: string;
+    reason?: string;
+    note?: string;
 };
 
 type TransitionResponse = {
@@ -48,6 +50,8 @@ export default function AdminOrderTransitionControls({
     const copy = adminUi.orderDetail;
     const statuses = adminUi.statuses;
     const [selectedStatus, setSelectedStatus] = useState<string>('');
+    const [holdReason, setHoldReason] = useState<string>('');
+    const [holdNote, setHoldNote] = useState<string>('');
     const [showCancelDialog, setShowCancelDialog] = useState(false);
     const [feedback, setFeedback] = useState<{
         type: 'success' | 'error' | 'conflict';
@@ -62,6 +66,15 @@ export default function AdminOrderTransitionControls({
         },
     );
 
+    const holdReasonId =
+        variant === 'bar'
+            ? 'admin-order-hold-reason-bar'
+            : 'admin-order-hold-reason';
+    const holdNoteId =
+        variant === 'bar'
+            ? 'admin-order-hold-note-bar'
+            : 'admin-order-hold-note';
+
     const canUpdate = permissions.includes('orders.update');
     const canCancel = permissions.includes('orders.cancel');
 
@@ -72,9 +85,16 @@ export default function AdminOrderTransitionControls({
     const handleTransition = useCallback(
         async (target: string) => {
             setFeedback(null);
+            const trimmedNote = holdNote.trim();
             http.setData({
                 expected_status: order.status,
                 target_status: target,
+                ...(target === 'waiting_for_customer' && holdReason
+                    ? { reason: holdReason }
+                    : {}),
+                ...(target === 'waiting_for_customer' && trimmedNote
+                    ? { note: trimmedNote }
+                    : {}),
             });
 
             let handled = false;
@@ -147,6 +167,8 @@ export default function AdminOrderTransitionControls({
                             type: 'success',
                         });
                         setSelectedStatus('');
+                        setHoldReason('');
+                        setHoldNote('');
                         setShowCancelDialog(false);
 
                         if (onStatusUpdated && response.order) {
@@ -174,6 +196,8 @@ export default function AdminOrderTransitionControls({
             copy.forbiddenTransition,
             copy.statusUpdated,
             copy.transitionFailed,
+            holdNote,
+            holdReason,
             http,
             onStatusUpdated,
             order.status,
@@ -184,6 +208,19 @@ export default function AdminOrderTransitionControls({
 
     const handleApply = () => {
         if (!selectedStatus) {
+            return;
+        }
+
+        if (
+            selectedStatus === 'waiting_for_customer' &&
+            !holdReason &&
+            !holdNote.trim()
+        ) {
+            setFeedback({
+                message: copy.holdReasonRequired,
+                type: 'error',
+            });
+
             return;
         }
 
@@ -296,6 +333,68 @@ export default function AdminOrderTransitionControls({
                     </Button>
                 </div>
             </div>
+
+            {selectedStatus === 'waiting_for_customer' ? (
+                <div className="flex flex-col gap-2 rounded-md border border-border/60 bg-secondary/30 p-3">
+                    <Label
+                        className="text-xs font-semibold text-foreground"
+                        htmlFor={holdReasonId}
+                    >
+                        {copy.holdReasonLabel}
+                    </Label>
+                    <select
+                        className="flex min-h-11 w-full items-center rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+                        disabled={http.processing}
+                        id={holdReasonId}
+                        onChange={(e) => {
+                            setFeedback(null);
+                            setHoldReason(e.target.value);
+                        }}
+                        value={holdReason}
+                    >
+                        <option
+                            className="bg-popover text-popover-foreground"
+                            value=""
+                        >
+                            {copy.holdReasonPlaceholder}
+                        </option>
+                        {Object.entries(adminUi.holdReasons).map(
+                            ([key, label]) => (
+                                <option
+                                    className="bg-popover text-popover-foreground"
+                                    key={key}
+                                    value={key}
+                                >
+                                    {label}
+                                </option>
+                            ),
+                        )}
+                    </select>
+
+                    <Label
+                        className="mt-1 text-xs font-semibold text-foreground"
+                        htmlFor={holdNoteId}
+                    >
+                        {copy.holdNoteLabel}
+                    </Label>
+                    <textarea
+                        className="min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+                        disabled={http.processing}
+                        id={holdNoteId}
+                        maxLength={500}
+                        onChange={(e) => {
+                            setFeedback(null);
+                            setHoldNote(e.target.value);
+                        }}
+                        placeholder={copy.holdNotePlaceholder}
+                        value={holdNote}
+                    />
+
+                    <p className="text-[11px] text-muted-foreground">
+                        {copy.holdReasonHint}
+                    </p>
+                </div>
+            ) : null}
 
             <Dialog
                 onOpenChange={(open) => {

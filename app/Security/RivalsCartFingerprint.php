@@ -16,8 +16,9 @@ final class RivalsCartFingerprint
             'schedule_version' => $validated['scheduleVersion'],
             'platform' => $validated['platform'],
             'pc_store' => $validated['pcStore'] ?? null,
-            'current_division' => $validated['currentDivision'],
-            'target_division' => $validated['targetDivision'],
+            'mode' => $validated['mode'],
+            'current_division' => $validated['currentDivision'] ?? null,
+            'target_division' => $validated['targetDivision'] ?? null,
             'credentials' => self::credentials($validated)->payload(),
             'squad_image_sha256' => self::imageHash($validated['squadImage'] ?? null),
         ], JSON_THROW_ON_ERROR), $applicationKey);

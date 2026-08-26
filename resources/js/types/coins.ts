@@ -47,9 +47,16 @@ export type CoinsPlatformOption = {
     deliveries: CoinsDeliveryOption[];
 };
 
+export type CoinsQuantityTier = {
+    upTo: number;
+    step: number;
+};
+
 export type CoinsAmountRules = {
     minimum: number;
-    increment: number;
+    /** The grain a typed quantity rounds to; the bands only move the slider. */
+    roundingUnit: number;
+    tiers: CoinsQuantityTier[];
     presets: number[];
 };
 
@@ -214,7 +221,7 @@ export type CoinsQuoteSchedule = {
     delivery: CoinsDeliveryValue | null;
     displayCurrency: string;
     displayTotalsMinor: number[];
-    increment: number;
+    quantities: number[];
     market: 'console' | 'pc';
     maximum: number;
     minimum: number;

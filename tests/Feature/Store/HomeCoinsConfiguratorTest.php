@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Pricing\BuildCoinsQuoteSchedule;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Models\ExchangeRate;
@@ -82,20 +83,25 @@ test('the Arabic and English homepages expose the exact localized Coins contract
             ->has('quoteSchedules', 3)
             ->where('quoteSchedules.playstation:normal.minimum', 50_000)
             ->where('quoteSchedules.playstation:normal.maximum', 2_000_000)
-            ->where('quoteSchedules.playstation:normal.increment', 10_000)
             ->where('quoteSchedules.playstation:normal.priceVersion', 1)
-            ->has('quoteSchedules.playstation:normal.totalsHalalah', 196)
-            ->has('quoteSchedules.playstation:normal.displayTotalsMinor', 196)
+            ->has('quoteSchedules.playstation:normal.quantities', 76)
+            ->has('quoteSchedules.playstation:normal.totalsHalalah', 76)
+            ->has('quoteSchedules.playstation:normal.displayTotalsMinor', 76)
             ->where('quoteSchedules.playstation:fast.maximum', 20_000_000)
-            ->has('quoteSchedules.playstation:fast.totalsHalalah', 1_996)
+            ->has('quoteSchedules.playstation:fast.totalsHalalah', 148)
             ->where('quoteSchedules.pc.delivery', null)
-            ->has('quoteSchedules.pc.totalsHalalah', 1_996)
+            ->has('quoteSchedules.pc.totalsHalalah', 148)
             ->where('coinsCart.addUrl', $addUrl)
             ->missing('coinsCart.resumeUrl')
             ->where('coinsCart.initialSelection', null)
             ->where('amount', [
                 'minimum' => 50_000,
-                'increment' => 10_000,
+                'roundingUnit' => 5_000,
+                'tiers' => [
+                    ['upTo' => 500_000, 'step' => 10_000],
+                    ['upTo' => 2_000_000, 'step' => 50_000],
+                    ['upTo' => 20_000_000, 'step' => 250_000],
+                ],
                 'presets' => [50_000, 100_000, 500_000, 1_000_000, 5_000_000],
             ])
             ->where('platforms.0.value', 'playstation')
@@ -333,4 +339,41 @@ test('homepage props omit supplier market, policy proof, and credential values',
         ->not->toContain('"encrypted_payload"')
         ->not->toContain('"masked_summary"')
         ->not->toContain('checkout currency');
+});
+
+test('the quote schedule payload carries exactly the keys the storefront validates', function (): void {
+    // resources/js/lib/coins-quote-schedule.ts checks this payload with an
+    // EXACT key set and drops every schedule when it does not match, which the
+    // storefront shows as "prices unavailable" across the whole page. Adding a
+    // field server-side without adding it there once did precisely that, and
+    // no test noticed because the frontend fixtures are written from the
+    // frontend list. This is the pin that makes the two sides move together.
+    $expected = [
+        'delivery',
+        'displayCurrency',
+        'displayTotalsMinor',
+        'market',
+        'maximum',
+        'minimum',
+        'platform',
+        'priceVersion',
+        'pricedAt',
+        'productId',
+        'quantities',
+        'totalsHalalah',
+        'variantId',
+    ];
+
+    createHomeCatalog();
+
+    $schedules = app(BuildCoinsQuoteSchedule::class)->executeHomepage('SAR');
+
+    expect($schedules)->toHaveCount(3);
+
+    foreach ($schedules as $group => $schedule) {
+        $keys = array_keys($schedule);
+        sort($keys);
+
+        expect($keys)->toBe($expected, "the {$group} schedule no longer matches the storefront's key set");
+    }
 });

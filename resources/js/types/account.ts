@@ -18,8 +18,7 @@ export type AccountOrderStatus =
     | 'waiting_for_customer'
     | 'completed'
     | 'cancelled'
-    | 'refunded'
-    | 'failed';
+    | 'refunded';
 
 export type AccountOrderAction =
     'view_order' | 'pay_now' | 'retry_payment' | 'provide_details';
@@ -155,6 +154,9 @@ export type AccountTranslations = {
         matches_played: string;
         from_division: string;
         to_division: string;
+        mode: string;
+        mode_weekly: string;
+        included_wins: string;
         elite: string;
         show_credentials: string;
         hide_credentials: string;
@@ -171,6 +173,7 @@ export type AccountTranslations = {
         playstation_codes: string;
         refresh_status: string;
         refreshing: string;
+        status_note_title: string;
         back: string;
         copy: string;
         copied: string;
@@ -398,6 +401,7 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
         id: string;
         number: string;
         status: AccountOrderStatus;
+        statusNote: string | null;
         placedAt: string;
         total: AccountMoney;
         discount: AccountMoney;
@@ -422,6 +426,8 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
                 fromDivision?:
                     '7' | '6' | '5' | '4' | '3' | '2' | '1' | 'elite';
                 toDivision?: '7' | '6' | '5' | '4' | '3' | '2' | '1' | 'elite';
+                weeklyMatches?: true;
+                includedWins?: number;
             } | null;
         }>;
     };
