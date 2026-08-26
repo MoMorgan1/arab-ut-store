@@ -210,8 +210,13 @@ Supplier request errors fail closed after retry. The previous Laravel rule set s
 
 ## Retention
 
-`pricing-history:prune` runs daily and deletes pricing runs, and price rules already
-taken out of service, older than `COINS_PRICING_RETENTION_DAYS` (30). Two things are
+`pricing-history:prune` runs daily and deletes pricing runs, and the global Coins
+rules a later run superseded, once they have been out of service longer than
+`COINS_PRICING_RETENTION_DAYS` (30). The window is measured from when a row last
+changed, not from when it was written, so a rule that served prices through a long
+stall gets its full window from the day it stopped serving. Variant-scoped rules and
+rules for other services are never touched: inactive is not the same claim as
+superseded. Two things are
 never deleted whatever their age: the **active** rules, which are what the storefront
 prices from, and the **newest run plus the newest applied run**, which are the record
 of where the live prices came from. If pricing ever stalls past the window - n8n down,

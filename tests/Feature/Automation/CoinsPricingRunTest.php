@@ -154,6 +154,20 @@ it('stores the multiplier curve without the entries that only repeat the one bef
         ->and(PriceRun::sole()->payload['rules']['pc']['multipliers_basis_points'])
         ->toBe(['50000' => 10_000, '60000' => 10_500]);
 });
+it('collapses the curve on a dry run too, so a proposal weighs what applying it would', function () {
+    $payload = coinsPricingRunPayload();
+
+    foreach (['console_normal', 'console_fast', 'pc'] as $group) {
+        $payload['rules'][$group]['multipliers_basis_points'] =
+            ['50000' => 10_000, '55000' => 10_000, '60000' => 10_500];
+    }
+
+    signedCoinsPricingRun($payload)->assertCreated();
+
+    expect(PriceRun::sole()->payload['rules']['console_fast']['multipliers_basis_points'])
+        ->toBe(['50000' => 10_000, '60000' => 10_500]);
+});
+
 it('rejects a malformed or incomplete rules payload before writing', function (string $case) {
     $payload = coinsPricingRunPayload();
 

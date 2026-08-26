@@ -4,6 +4,7 @@ use App\Actions\Pricing\PrunePricingHistory;
 use App\Enums\ServiceType;
 use App\Models\PriceRule;
 use App\Models\PriceRun;
+use App\Models\ProductVariant;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -23,7 +24,10 @@ function pricingRun(string $status, int $daysAgo): PriceRun
         'completed_at' => now()->subDays($daysAgo),
     ]);
 
-    $run->forceFill(['created_at' => now()->subDays($daysAgo)])->save();
+    $run->forceFill([
+        'created_at' => now()->subDays($daysAgo),
+        'updated_at' => now()->subDays($daysAgo),
+    ])->saveQuietly();
 
     return $run;
 }
@@ -37,7 +41,10 @@ function supersededRule(bool $isActive, int $daysAgo): PriceRule
         'is_active' => $isActive,
     ]);
 
-    $rule->forceFill(['created_at' => now()->subDays($daysAgo)])->save();
+    $rule->forceFill([
+        'created_at' => now()->subDays($daysAgo),
+        'updated_at' => now()->subDays($daysAgo),
+    ])->saveQuietly();
 
     return $rule;
 }
@@ -86,13 +93,49 @@ it('refuses to run when the retention window is not a usable number', function (
 });
 
 it('prunes more rows than one chunk holds', function () {
-    foreach (range(1, 12) as $ignored) {
-        supersededRule(isActive: false, daysAgo: 60);
+    // 501 against a 500-row chunk. Anything smaller never enters the loop a
+    // second time, which is the only part of deleteInChunks worth testing.
+    $aged = now()->subDays(60);
+    $rows = [];
+
+    foreach (range(1, 501) as $index) {
+        $rows[] = [
+            'public_id' => (string) Str::ulid(),
+            'name' => "Superseded {$index}",
+            'service_type' => ServiceType::Coins->value,
+            'platform' => null,
+            'product_variant_id' => null,
+            'configuration' => json_encode(['group' => 'pc']),
+            'is_active' => false,
+            'created_at' => $aged,
+            'updated_at' => $aged,
+        ];
     }
 
-    // Keep the loop honest if CHUNK_SIZE is ever lowered below the fixture count.
-    expect((new PrunePricingHistory)->execute()['rules'])->toBe(12)
+    PriceRule::query()->insert($rows);
+
+    expect((new PrunePricingHistory)->execute()['rules'])->toBe(501)
         ->and(PriceRule::count())->toBe(0);
+});
+
+it('leaves alone a rule that is merely switched off, not superseded', function () {
+    // price_rules is shared. A variant-scoped rule an admin paused by hand is
+    // inactive for a completely different reason, and deleting it a month later
+    // would be destroying a setting rather than tidying history.
+    $paused = PriceRule::create([
+        'name' => 'Paused variant rule',
+        'service_type' => ServiceType::Coins,
+        'product_variant_id' => ProductVariant::factory()->create()->id,
+        'configuration' => ['group' => 'pc'],
+        'is_active' => false,
+    ]);
+    $paused->forceFill([
+        'created_at' => now()->subDays(400),
+        'updated_at' => now()->subDays(400),
+    ])->saveQuietly();
+
+    expect((new PrunePricingHistory)->execute()['rules'])->toBe(0)
+        ->and(PriceRule::find($paused->id))->not->toBeNull();
 });
 
 test('the prune is scheduled daily and reports what it removed', function () {

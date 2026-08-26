@@ -163,3 +163,23 @@ test('a value that returns after a different one is written again', function () 
     expect($collapsed['multipliers_basis_points'])
         ->toBe([50_000 => 10_500, 60_000 => 10_000, 65_000 => 10_500]);
 });
+
+test('dense and collapsed agree off the grid and refuse the same quantities below it', function () {
+    // Nothing prices an off-grid quantity today, but the equivalence does not
+    // depend on the grid and the next caller should not have to rediscover that.
+    $dense = coinsRuleWithMultipliers('pc', denseCoinsMultipliers(50_000, 20_000_000, 5_000));
+    $denseRule = CoinsPricingRule::fromConfiguration($dense, 'pc');
+    $collapsedRule = CoinsPricingRule::fromConfiguration(
+        CoinsPricingRule::withoutRedundantMultipliers($dense),
+        'pc',
+    );
+
+    foreach ([50_001, 54_999, 999_999, 1_000_001, 3_141_593, 19_999_999, 20_000_001] as $quantity) {
+        expect($collapsedRule->multiplierBasisPoints($quantity))
+            ->toBe($denseRule->multiplierBasisPoints($quantity), "at {$quantity}");
+    }
+
+    // And below the first entry neither can answer, rather than one guessing.
+    expect(fn () => $denseRule->multiplierBasisPoints(49_999))->toThrow(DomainException::class)
+        ->and(fn () => $collapsedRule->multiplierBasisPoints(49_999))->toThrow(DomainException::class);
+});
