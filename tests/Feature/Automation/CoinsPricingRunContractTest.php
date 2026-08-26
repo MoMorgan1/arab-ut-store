@@ -72,7 +72,10 @@ function n8nSnapshot(int $increment): array
             ),
             'service_fee_halalah' => 300,
             'discount_divisor_basis_points' => 10_000,
-            'exact_overrides_halalah' => [],
+            // The workflow writes one of these wherever whole-grain rounding
+            // would otherwise let the price descend. They are displayed prices
+            // on the 0.1-SAR grain, which is the shape the contract requires.
+            'exact_overrides_halalah' => ['55000' => 1_240, '155000' => 3_480],
         ];
 
         if ($group === 'console_normal') {
@@ -152,7 +155,15 @@ it('refuses the grain the pricing run publishes today, and says which one it wan
     $response = postN8nSnapshot(n8nSnapshot(increment: 10_000))
         ->assertUnprocessable();
 
-    expect(json_encode($response->json()))->toContain('5000')
+    $message = (string) collect((array) $response->json('errors'))
+        ->flatten()
+        ->first(fn (string $error): bool => str_contains($error, 'increment'));
+
+    // Named as its own field, not as a loose "5000" - which the 50,000 minimum
+    // already contains, and would have passed a message that never mentioned
+    // the increment at all.
+    expect($message)->toContain('"increment":5000')
+        ->and($message)->toContain('"increment":10000')
         ->and(PriceRun::count())->toBe(0)
         ->and(PriceRule::count())->toBe(0);
 });
