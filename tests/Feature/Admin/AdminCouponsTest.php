@@ -27,7 +27,7 @@ beforeEach(function (): void {
 });
 
 test('guests and nonprivileged accounts cannot enter the marketing coupons page', function (): void {
-    $this->get('/admin/marketing/coupons')->assertRedirect('/login');
+    $this->get('/admin/marketing/coupons')->assertRedirect('/en/login');
 
     foreach ([UserRole::Customer, UserRole::ServiceAccount] as $role) {
         $account = User::factory()->create(['role' => $role]);
@@ -60,7 +60,7 @@ test('confirmed admin can open localized coupon pages with counts', function (st
             ->where('counts.active', 1)
             ->where('coupons.0.code', 'EXPIRED5'));
 })->with([
-    'Canonical' => ['/admin/marketing/coupons', 'rtl'],
+    'Canonical' => ['/admin/marketing/coupons', 'ltr'],
     'Localized' => ['/en/admin/marketing/coupons', 'ltr'],
 ]);
 

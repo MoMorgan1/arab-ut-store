@@ -532,6 +532,7 @@ export type AdminTranslations = {
                 quantityStep: string;
                 roundingUnit: string;
                 roundingUnitHint: string;
+                automationWarning: string;
                 bandUpTo: string;
                 bandRange: string;
                 bandPreview: string;

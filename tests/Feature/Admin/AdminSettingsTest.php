@@ -18,8 +18,8 @@ test('Admin with confirmed MFA receives settings page with security and team pro
         ->assertHeader('Cache-Control', 'no-store, private')
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/settings')
-            ->where('locale', 'ar')
-            ->where('direction', 'rtl')
+            ->where('locale', 'en')
+            ->where('direction', 'ltr')
             ->where('auth', null)
             ->where('adminIdentity.name', $admin->name)
             ->where('adminIdentity.role', 'admin')

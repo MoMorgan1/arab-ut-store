@@ -101,10 +101,10 @@ test('Admin more page renders all six permission-filtered tiles for Admin actor'
             ->where('groups.2.tiles.1.key', 'settings')
         );
 })->with([
-    // The canonical family is Arabic and the /en family is English
-    // (routes/admin.php), so these rows now prove both the reachability and the
-    // locale of each.
-    'Canonical family' => ['/admin/more', 'ar', 'rtl'],
+    // Both admin route families register locale 'en' (routes/admin.php), so the
+    // dashboard is English/LTR on either path. The datasets exist to prove the
+    // page is reachable from both families, not to vary the locale.
+    'Canonical family' => ['/admin/more', 'en', 'ltr'],
     'Localized family' => ['/en/admin/more', 'en', 'ltr'],
 ]);
 
@@ -143,7 +143,7 @@ test('Admin more page filters tiles for Staff actor with only order permissions'
 });
 
 test('Admin more page requires authentication and confirmed MFA', function (): void {
-    $this->get('/admin/more')->assertRedirect('/login');
+    $this->get('/admin/more')->assertRedirect('/en/login');
 
     $userWithoutMfa = User::factory()->create([
         'role' => UserRole::Admin,

@@ -390,8 +390,8 @@ test('confirmed privileged actors can open localized private overview routes', f
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/overview', false)
             ->where('auth', null)
-            ->where('locale', str_starts_with($path, '/en/') ? 'en' : 'ar')
-            ->where('direction', str_starts_with($path, '/en/') ? 'ltr' : 'rtl')
+            ->where('locale', 'en')
+            ->where('direction', 'ltr')
             ->where('overview.rangeDays', 30));
 })->with([
     'Canonical Admin' => [UserRole::Admin, 'en', '/admin?range=30'],
@@ -399,7 +399,7 @@ test('confirmed privileged actors can open localized private overview routes', f
 ]);
 
 test('guests and nonprivileged accounts cannot enter the Admin overview', function (): void {
-    $this->get('/admin')->assertRedirect('/login');
+    $this->get('/admin')->assertRedirect('/en/login');
 
     $customer = User::factory()->create(['role' => UserRole::Customer]);
     $this->actingAs($customer)->get('/admin')->assertForbidden();

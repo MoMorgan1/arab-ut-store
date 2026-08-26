@@ -535,3 +535,59 @@ test('a stray field in the Coins configuration is refused, not quietly stored', 
         'presets' => [],
     ]],
 ]);
+
+test('an edit that touches only a newly editable field is still saved', function (array $configuration, string $expectedAuditKey): void {
+    // The save was gated on a hand-written per-field diff, so any field added
+    // later was invisible to it: the request validated, returned 200, and wrote
+    // nothing. Weekly matches could never be put on sale, and the coins
+    // rounding unit and quick amounts could never be changed on their own.
+    $admin = createPricingTestAdmin(UserRole::Admin);
+    $serviceType = isset($configuration['steps']) ? ServiceType::Rivals : ServiceType::Coins;
+    $schedule = ServicePriceSchedule::query()->where('service_type', $serviceType)->firstOrFail();
+    $initialVersion = (int) $schedule->version;
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->postJson('/admin/api/settings/service-pricing/'.$serviceType->value, [
+            'expected_version' => $initialVersion,
+            'configuration' => $configuration,
+        ])
+        ->assertOk();
+
+    $schedule->refresh();
+
+    expect((int) $schedule->version)->toBe($initialVersion + 1)
+        ->and((array) $schedule->configuration)->toBe($configuration);
+
+    $audit = StaffAuditLog::query()->where('action', 'settings.service_pricing_updated')->latest('id')->first();
+
+    expect($audit?->metadata['prices_changed'])->toContain($expectedAuditKey);
+})->with([
+    'weekly matches put on sale, steps untouched' => [[
+        'steps' => [
+            '7:6' => 11_000, '6:5' => 12_000, '5:4' => 13_000, '4:3' => 14_000,
+            '3:2' => 15_000, '2:1' => 16_000, '1:elite' => 17_000,
+        ],
+        'weeklyMatches' => ['priceHalalah' => 9_000, 'includedWins' => 8],
+    ], 'weeklyMatches.priceHalalah'],
+    'coins rounding unit alone' => [[
+        'minimum' => 50_000,
+        'roundingUnit' => 1_000,
+        'tiers' => [
+            ['upTo' => 500_000, 'step' => 10_000],
+            ['upTo' => 2_000_000, 'step' => 50_000],
+            ['upTo' => 20_000_000, 'step' => 250_000],
+        ],
+        'presets' => [50_000, 100_000, 500_000, 1_000_000, 5_000_000],
+    ], 'roundingUnit'],
+    'coins quick amounts alone' => [[
+        'minimum' => 50_000,
+        'roundingUnit' => 5_000,
+        'tiers' => [
+            ['upTo' => 500_000, 'step' => 10_000],
+            ['upTo' => 2_000_000, 'step' => 50_000],
+            ['upTo' => 20_000_000, 'step' => 250_000],
+        ],
+        'presets' => [100_000, 200_000],
+    ], 'presets.0'],
+]);

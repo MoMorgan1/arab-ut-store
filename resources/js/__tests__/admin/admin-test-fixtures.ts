@@ -1026,6 +1026,8 @@ export const englishAdminUi: AdminTranslations = {
                     'Comma separated. Every number has to be a quantity the slider can land on.',
                 quantityStep: 'Step',
                 removeBand: 'Remove band :index',
+                automationWarning:
+                    '⚠️ Changing the smallest order or the buying unit has to be matched in n8n. If it is not, the pricing run is refused and Coins prices freeze at the last successful update.',
                 roundingUnit: 'Buying unit',
                 roundingUnitHint:
                     'A customer can type any multiple of this. The bands below only place the slider stops, and every band step has to be a multiple of it.',

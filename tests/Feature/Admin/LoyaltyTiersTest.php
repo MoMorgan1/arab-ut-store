@@ -19,7 +19,7 @@ afterEach(function (): void {
 });
 
 test('guests and nonprivileged accounts cannot access loyalty page', function (): void {
-    $this->get('/admin/marketing/loyalty')->assertRedirect('/login');
+    $this->get('/admin/marketing/loyalty')->assertRedirect('/en/login');
 
     foreach ([UserRole::Customer, UserRole::ServiceAccount] as $role) {
         $account = User::factory()->create(['role' => $role]);
@@ -56,7 +56,7 @@ test('confirmed Admin can open loyalty page and view tiers and KPIs', function (
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/marketing/loyalty', false)
             ->where('auth', null)
-            ->where('locale', str_starts_with($prefix, '/en/') ? 'en' : 'ar')
+            ->where('locale', 'en')
             ->has('tiers', 4)
             ->has('kpis.customersPerTier')
             ->has('kpis.cashbackCreditedLast30Days')

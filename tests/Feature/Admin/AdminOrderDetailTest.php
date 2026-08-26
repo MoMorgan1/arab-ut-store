@@ -23,7 +23,7 @@ afterEach(function (): void {
 test('guests and nonprivileged accounts cannot open the Admin order detail', function (): void {
     $order = createDetailTestOrder();
 
-    $this->get("/admin/orders/{$order->public_id}")->assertRedirect('/login');
+    $this->get("/admin/orders/{$order->public_id}")->assertRedirect('/en/login');
 
     foreach ([UserRole::Customer, UserRole::ServiceAccount] as $role) {
         $account = User::factory()->create(['role' => $role]);
@@ -59,8 +59,8 @@ test('confirmed privileged actors can open localized private order detail routes
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/orders/show', false)
             ->where('auth', null)
-            ->where('locale', str_starts_with($prefix, '/en/') ? 'en' : 'ar')
-            ->where('direction', str_starts_with($prefix, '/en/') ? 'ltr' : 'rtl')
+            ->where('locale', 'en')
+            ->where('direction', 'ltr')
             ->where('order.id', (string) $order->public_id)
             ->where('order.orderNumber', $order->order_number)
             ->where('order.status', $order->status->value)

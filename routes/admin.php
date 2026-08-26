@@ -434,9 +434,5 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
         });
 };
 
-// Arabic is the default everywhere else in the store, and lang/ar/admin.php
-// has carried a full translation all along - 1,387 keys, every one of them
-// matching the English file - that nothing ever rendered because both groups
-// were pinned to English. /admin is Arabic; /en/admin stays English.
-$registerAdminRoutes('admin', 'admin.', null);
+$registerAdminRoutes('admin', 'admin.', 'en');
 $registerAdminRoutes('en/admin', 'localized.admin.', 'en');

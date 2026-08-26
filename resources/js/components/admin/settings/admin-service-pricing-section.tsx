@@ -1003,6 +1003,9 @@ export default function AdminServicePricingSection({
                         <div className="flex flex-col gap-4 py-2">
                             {editingSchedule.serviceType === 'coins' ? (
                                 <div className="flex flex-col gap-4">
+                                    <p className="rounded-md border border-status-warning/40 bg-status-warning/10 p-2 text-xs font-medium text-status-warning">
+                                        {coinsCopy.automationWarning}
+                                    </p>
                                     <div className="flex flex-col gap-1.5">
                                         <Label
                                             className="text-xs font-semibold"

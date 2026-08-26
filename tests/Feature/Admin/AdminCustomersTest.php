@@ -59,7 +59,7 @@ test('the Admin customer list index migration rolls back and reapplies on dispos
 });
 
 test('guests and nonprivileged accounts cannot enter the Admin customers list', function (): void {
-    $this->get('/admin/customers')->assertRedirect('/login');
+    $this->get('/admin/customers')->assertRedirect('/en/login');
 
     foreach ([UserRole::Customer, UserRole::ServiceAccount] as $role) {
         $account = User::factory()->create(['role' => $role]);
@@ -94,8 +94,8 @@ test('confirmed Admin can open localized private customers routes', function (st
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/customers/index', false)
             ->where('auth', null)
-            ->where('locale', str_starts_with($path, '/en/') ? 'en' : 'ar')
-            ->where('direction', str_starts_with($path, '/en/') ? 'ltr' : 'rtl')
+            ->where('locale', 'en')
+            ->where('direction', 'ltr')
             ->has('customers')
             ->has('pagination')
             ->has('filters')

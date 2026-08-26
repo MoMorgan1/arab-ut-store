@@ -25,7 +25,7 @@ afterEach(function (): void {
 test('guests and nonprivileged accounts cannot access product detail', function (): void {
     $product = Product::factory()->create();
 
-    $this->get("/admin/products/{$product->public_id}")->assertRedirect('/login');
+    $this->get("/admin/products/{$product->public_id}")->assertRedirect('/en/login');
 
     foreach ([UserRole::Customer, UserRole::ServiceAccount] as $role) {
         $account = User::factory()->create(['role' => $role]);

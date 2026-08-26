@@ -141,7 +141,11 @@ final class CoinsPricingRunRequest extends FormRequest
             if (! is_array($range) || $range !== $expected[$group]) {
                 $validator->errors()->add(
                     "legalRanges.{$group}",
-                    'The pricing range does not match the active Coins quantity settings.',
+                    sprintf(
+                        'The pricing range does not match the active Coins quantity settings. Expected %s, received %s.',
+                        json_encode($expected[$group]),
+                        is_array($range) ? (string) json_encode($range) : 'nothing',
+                    ),
                 );
             }
         }

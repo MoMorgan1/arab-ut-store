@@ -136,98 +136,80 @@ final class UpdateServicePriceSchedule
     }
 
     /**
+     * What actually changed between two stored configurations.
+     *
+     * This used to name every field by hand, per service type, which meant a
+     * field added later was invisible to it: the save is gated on this diff, so
+     * an edit touching only the new field validated, returned 200 and wrote
+     * nothing. Weekly matches could not be put on sale, and the coins rounding
+     * unit and quick amounts could not be changed on their own.
+     *
+     * Comparing the flattened configurations instead makes the diff total by
+     * construction, and yields the same dotted keys the audit already used -
+     * ranks.1, steps.7:6, tiers.0.upTo.
+     *
      * @param  array<string, mixed>  $previous
      * @param  array<string, mixed>  $new
      * @return array{
      *     changed: list<string>,
-     *     previous: array<string, int|null>,
-     *     new: array<string, int|null>
+     *     previous: array<string, scalar|null>,
+     *     new: array<string, scalar|null>
      * }
      */
     private function calculatePriceDiff(ServiceType $type, array $previous, array $new): array
     {
+        $previousLeaves = self::flatten($previous);
+        $newLeaves = self::flatten($new);
+
         /** @var list<string> $changed */
         $changed = [];
-        /** @var array<string, int|null> $previousValues */
+        /** @var array<string, scalar|null> $previousValues */
         $previousValues = [];
-        /** @var array<string, int|null> $newValues */
+        /** @var array<string, scalar|null> $newValues */
         $newValues = [];
 
-        if ($type === ServiceType::FutChampions) {
-            $prevRanks = is_array($previous['ranks'] ?? null) ? $previous['ranks'] : [];
-            $newRanks = is_array($new['ranks'] ?? null) ? $new['ranks'] : [];
+        foreach (array_keys($previousLeaves + $newLeaves) as $key) {
+            $before = $previousLeaves[$key] ?? null;
+            $after = $newLeaves[$key] ?? null;
 
-            for ($rank = 1; $rank <= 6; $rank++) {
-                $key = (string) $rank;
-                $prevPrice = isset($prevRanks[$key]) ? (int) $prevRanks[$key] : (isset($prevRanks[$rank]) ? (int) $prevRanks[$rank] : null);
-                $newPrice = isset($newRanks[$key]) ? (int) $newRanks[$key] : (isset($newRanks[$rank]) ? (int) $newRanks[$rank] : null);
-
-                if ($prevPrice !== $newPrice) {
-                    $fieldKey = "ranks.{$rank}";
-                    $changed[] = $fieldKey;
-                    $previousValues[$fieldKey] = $prevPrice;
-                    $newValues[$fieldKey] = $newPrice;
-                }
+            if ($before === $after) {
+                continue;
             }
 
-            $prevUrgent = isset($previous['urgent_surcharge_halalah']) ? (int) $previous['urgent_surcharge_halalah'] : null;
-            $newUrgent = isset($new['urgent_surcharge_halalah']) ? (int) $new['urgent_surcharge_halalah'] : null;
-
-            if ($prevUrgent !== $newUrgent) {
-                $changed[] = 'urgent_surcharge_halalah';
-                $previousValues['urgent_surcharge_halalah'] = $prevUrgent;
-                $newValues['urgent_surcharge_halalah'] = $newUrgent;
-            }
-        } elseif ($type === ServiceType::Rivals) {
-            $prevSteps = is_array($previous['steps'] ?? null) ? $previous['steps'] : [];
-            $newSteps = is_array($new['steps'] ?? null) ? $new['steps'] : [];
-            $steps = ['7:6', '6:5', '5:4', '4:3', '3:2', '2:1', '1:elite'];
-
-            foreach ($steps as $step) {
-                $prevPrice = isset($prevSteps[$step]) ? (int) $prevSteps[$step] : null;
-                $newPrice = isset($newSteps[$step]) ? (int) $newSteps[$step] : null;
-
-                if ($prevPrice !== $newPrice) {
-                    $fieldKey = "steps.{$step}";
-                    $changed[] = $fieldKey;
-                    $previousValues[$fieldKey] = $prevPrice;
-                    $newValues[$fieldKey] = $newPrice;
-                }
-            }
-        } elseif ($type === ServiceType::Coins) {
-            // Coins carries what a customer may buy rather than a price, so the
-            // audit records the floor and each band's ceiling and step.
-            $prevMinimum = isset($previous['minimum']) ? (int) $previous['minimum'] : null;
-            $newMinimum = isset($new['minimum']) ? (int) $new['minimum'] : null;
-
-            if ($prevMinimum !== $newMinimum) {
-                $changed[] = 'minimum';
-                $previousValues['minimum'] = $prevMinimum;
-                $newValues['minimum'] = $newMinimum;
-            }
-
-            $prevTiers = is_array($previous['tiers'] ?? null) ? array_values($previous['tiers']) : [];
-            $newTiers = is_array($new['tiers'] ?? null) ? array_values($new['tiers']) : [];
-
-            foreach (range(0, max(count($prevTiers), count($newTiers)) - 1) as $index) {
-                foreach (['upTo', 'step'] as $part) {
-                    $prevPart = isset($prevTiers[$index][$part]) ? (int) $prevTiers[$index][$part] : null;
-                    $newPart = isset($newTiers[$index][$part]) ? (int) $newTiers[$index][$part] : null;
-
-                    if ($prevPart !== $newPart) {
-                        $fieldKey = "tiers.{$index}.{$part}";
-                        $changed[] = $fieldKey;
-                        $previousValues[$fieldKey] = $prevPart;
-                        $newValues[$fieldKey] = $newPart;
-                    }
-                }
-            }
+            $changed[] = $key;
+            $previousValues[$key] = $before;
+            $newValues[$key] = $after;
         }
+
+        sort($changed);
 
         return [
             'changed' => $changed,
             'previous' => $previousValues,
             'new' => $newValues,
         ];
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $configuration
+     * @return array<string, scalar|null>
+     */
+    private static function flatten(array $configuration, string $prefix = ''): array
+    {
+        $leaves = [];
+
+        foreach ($configuration as $key => $value) {
+            $path = $prefix === '' ? (string) $key : $prefix.'.'.$key;
+
+            if (is_array($value)) {
+                $leaves = [...$leaves, ...self::flatten($value, $path)];
+
+                continue;
+            }
+
+            $leaves[$path] = is_scalar($value) ? $value : null;
+        }
+
+        return $leaves;
     }
 }

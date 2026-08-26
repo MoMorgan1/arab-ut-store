@@ -37,7 +37,7 @@ beforeEach(function (): void {
 test('guests cannot enter the Admin settings route', function (string $path, string $login): void {
     $this->get($path)->assertRedirect($login);
 })->with([
-    'Canonical' => ['/admin/settings', '/login'],
+    'Canonical' => ['/admin/settings', '/en/login'],
     'English' => ['/en/admin/settings', '/en/login'],
 ]);
 
@@ -78,7 +78,7 @@ test('passwordless Staff are sent to the localized account security setup', func
 
     $this->actingAs($staff)->get($path)->assertRedirect($destination);
 })->with([
-    'Canonical' => ['en', '/admin/settings', '/my-account/security'],
+    'Canonical' => ['en', '/admin/settings', '/en/my-account/security'],
     'English' => ['en', '/en/admin/settings', '/en/my-account/security'],
 ]);
 
