@@ -163,7 +163,16 @@ Default anchors:
 | 15M | 1.04 |
 | 20M | 1.05 |
 
-The workflow linearly interpolates these anchors at every legal 10K increment. Laravel still receives a normal threshold map, but the dense map avoids abrupt transitions such as 990K becoming more expensive than 1M.
+The workflow linearly interpolates these anchors at every legal increment, so the
+curve has no abrupt transition such as 990K becoming more expensive than 1M.
+
+The map is a **threshold** map, not a lookup table: Laravel answers with the last
+entry at or below the requested quantity. An entry that repeats the value before it
+is therefore already implied, and Laravel drops those entries before storing the
+run - the same prices, roughly a fifth of the rows. The workflow may publish the
+dense form or the collapsed one; both are accepted and both are stored collapsed.
+The one requirement is an entry **at the range minimum**, since nothing below the
+first entry can be answered.
 
 ## Small-order fee
 
@@ -187,7 +196,7 @@ After a successful n8n baseline exists:
 - larger decreases are partially applied;
 - the maximum decrease per run is capped by the Config settings.
 
-Before signing, the workflow simulates every legal quantity in 10K increments using the same whole-SAR arithmetic and fast-delivery floors as Laravel. A higher quantity may never produce a lower total. Exact whole-SAR overrides are generated only when rounding would otherwise create a descending point.
+Before signing, the workflow simulates every legal quantity using the same whole-SAR arithmetic and fast-delivery floors as Laravel. A higher quantity may never produce a lower total. Exact whole-SAR overrides are generated only when rounding would otherwise create a descending point.
 
 Supplier request errors fail closed after retry. The previous Laravel rule set stays active.
 

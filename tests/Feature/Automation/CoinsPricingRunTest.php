@@ -129,6 +129,31 @@ it('applies three groups atomically and bumps active Coins variant versions', fu
         ->and($variant->fresh()->price_version)->toBe(5);
 });
 
+it('stores the multiplier curve without the entries that only repeat the one before', function () {
+    // The pricing run publishes one entry per legal quantity - thousands of them,
+    // most identical to their neighbour. The lookup answers with the last entry at
+    // or below the quantity, so the repeats are already implied. Keeping them would
+    // mean writing the same number twice per run, forever: once into the run's own
+    // payload and once into the rule every storefront request reads.
+    $repetitive = ['50000' => 10_000, '55000' => 10_000, '60000' => 10_500, '65000' => 10_500];
+    $payload = coinsPricingRunPayload(['mode' => 'apply']);
+
+    foreach (['console_normal', 'console_fast', 'pc'] as $group) {
+        $payload['rules'][$group]['multipliers_basis_points'] = $repetitive;
+    }
+
+    signedCoinsPricingRun($payload)->assertCreated();
+
+    $stored = PriceRule::query()
+        ->where('service_type', ServiceType::Coins)
+        ->where('is_active', true)
+        ->get()
+        ->map(fn (PriceRule $rule): array => $rule->configuration['multipliers_basis_points']);
+
+    expect($stored)->each->toBe(['50000' => 10_000, '60000' => 10_500])
+        ->and(PriceRun::sole()->payload['rules']['pc']['multipliers_basis_points'])
+        ->toBe(['50000' => 10_000, '60000' => 10_500]);
+});
 it('rejects a malformed or incomplete rules payload before writing', function (string $case) {
     $payload = coinsPricingRunPayload();
 

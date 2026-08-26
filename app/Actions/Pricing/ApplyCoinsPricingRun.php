@@ -8,6 +8,7 @@ use App\Exceptions\CoinsPricingRunReplay;
 use App\Models\PriceRule;
 use App\Models\PriceRun;
 use App\Models\ProductVariant;
+use App\ValueObjects\Pricing\CoinsPricingRule;
 use Illuminate\Support\Facades\DB;
 
 final class ApplyCoinsPricingRun
@@ -30,6 +31,17 @@ final class ApplyCoinsPricingRun
 
         if (PriceRun::query()->where('event_id', $eventId)->exists()) {
             throw new CoinsPricingEventReplay;
+        }
+
+        // Every entry that only repeats the one before it is dropped here, before
+        // a single row is written. The run is already validated at this point and
+        // the collapse is price-preserving, so this is purely a matter of not
+        // storing the same number several thousand times per group - twice, once
+        // in the run's own payload and once in the rule the storefront reads.
+        foreach (self::GROUPS as $group) {
+            $payload['rules'][$group] = CoinsPricingRule::withoutRedundantMultipliers(
+                $payload['rules'][$group],
+            );
         }
 
         return DB::transaction(function () use ($payload, $runId, $eventId): array {
