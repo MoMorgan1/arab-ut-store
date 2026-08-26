@@ -14,11 +14,14 @@ use App\ValueObjects\Pricing\FutChampionsPricing;
 use App\ValueObjects\Pricing\RivalsPricing;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class UpdateServicePriceSchedule
 {
+    private const MAXIMUM_COINS_SLIDER_STOPS = 400;
+
     public function __construct(
         private readonly RecordStaffAudit $recordStaffAudit,
     ) {}
@@ -77,7 +80,9 @@ final class UpdateServicePriceSchedule
                 match ($type) {
                     ServiceType::FutChampions => FutChampionsPricing::fromConfiguration($newConfiguration),
                     ServiceType::Rivals => RivalsPricing::fromConfiguration($newConfiguration),
-                    default => CoinsQuantityRules::fromConfiguration($newConfiguration),
+                    default => $this->assertCoinsBandsServeEveryPlatform(
+                        CoinsQuantityRules::fromConfiguration($newConfiguration),
+                    ),
                 };
             } catch (DomainException $exception) {
                 $field = 'configuration';
@@ -87,7 +92,9 @@ final class UpdateServicePriceSchedule
                     $field = 'configuration.urgent_surcharge_halalah';
                 } elseif (str_contains(strtolower($message), 'rank')) {
                     $field = 'configuration.ranks';
-                } elseif (str_contains(strtolower($message), 'tier') || str_contains(strtolower($message), 'band')) {
+                } elseif (str_contains(strtolower($message), 'tier')
+                    || str_contains(strtolower($message), 'band')
+                    || str_contains(strtolower($message), 'slider stop')) {
                     $field = 'configuration.tiers';
                 } elseif (str_contains(strtolower($message), 'preset')) {
                     $field = 'configuration.presets';
@@ -211,5 +218,51 @@ final class UpdateServicePriceSchedule
         }
 
         return $leaves;
+    }
+
+    /**
+     * Refuse Coins bands that would take a delivery lane off sale.
+     *
+     * A platform or delivery speed caps below the catalogue ceiling - console
+     * normal stops at two million - and the storefront requires the quote
+     * schedule for that lane to end exactly on its cap. Bands can be valid on
+     * their own terms and still step straight over one, which leaves the last
+     * stop below the cap and renders the whole lane unavailable. The caps are
+     * deploy-time config while the bands are editable, so nothing else pairs
+     * them; check it here, where there is an admin to tell.
+     */
+    private function assertCoinsBandsServeEveryPlatform(CoinsQuantityRules $rules): void
+    {
+        // Every stop is priced on every homepage render, once per variant, and
+        // is carried in the page payload. A step typed in coins rather than
+        // thousands would otherwise be accepted and quietly cost thousands of
+        // calculations per request.
+        if (count($rules->sliderStops()) > self::MAXIMUM_COINS_SLIDER_STOPS) {
+            throw new DomainException(sprintf(
+                'These Coins bands produce %d slider stops, more than the %d the storefront can price ahead of time. Use a coarser step.',
+                count($rules->sliderStops()),
+                self::MAXIMUM_COINS_SLIDER_STOPS,
+            ));
+        }
+
+        foreach (self::coinsPlatformCeilings() as $label => $ceiling) {
+            if (! $rules->hasStopAt($ceiling)) {
+                throw new DomainException(sprintf(
+                    'The Coins bands step over the %s ceiling of %s without landing on it, which would take that option off sale.',
+                    $label,
+                    number_format($ceiling),
+                ));
+            }
+        }
+    }
+
+    /** @return array<string, int> */
+    private static function coinsPlatformCeilings(): array
+    {
+        return [
+            'console normal delivery' => Config::integer('coins.platforms.playstation.deliveries.normal.maximum'),
+            'console fast delivery' => Config::integer('coins.platforms.playstation.deliveries.fast.maximum'),
+            'PC' => Config::integer('coins.platforms.pc.maximum'),
+        ];
     }
 }

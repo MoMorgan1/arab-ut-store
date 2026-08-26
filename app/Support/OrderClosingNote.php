@@ -23,6 +23,13 @@ final class OrderClosingNote
      */
     public static function refund(int $cardHalalah, int $walletHalalah): array
     {
+        if ($cardHalalah <= 0 && $walletHalalah <= 0) {
+            // Unreachable from the refund path today, which refuses a payment
+            // with nothing captured. Saying "0.00 was returned" would be a lie
+            // told by default, so name no figure at all.
+            return self::reason('payment_cancelled');
+        }
+
         if ($cardHalalah > 0 && $walletHalalah > 0) {
             return self::render('closed.refund_split', [
                 'card' => self::amount($cardHalalah),

@@ -21,7 +21,7 @@ use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\WalletAccount;
-use App\ValueObjects\Pricing\CoinsQuantityRules;
+use App\Services\Catalog\CoinsCatalogReader;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Http\Request;
@@ -442,9 +442,12 @@ final class CartController extends Controller
             Config::integer('coins.platforms.pc.maximum'),
         );
 
+        // The live rules, not the config defaults: an admin can move the floor
+        // and the rounding unit, and a prefill judged against stale numbers is
+        // either dropped when it was buyable or echoed when it was not.
         return is_int($quantity)
             && $quantity <= $maximum
-            && CoinsQuantityRules::fromConfiguration((array) Config::array('coins.quantity'))->accepts($quantity)
+            && app(CoinsCatalogReader::class)->quantityRules()->accepts($quantity)
                 ? ['coins_quantity' => $quantity]
                 : [];
     }

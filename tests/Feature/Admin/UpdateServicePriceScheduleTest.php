@@ -591,3 +591,59 @@ test('an edit that touches only a newly editable field is still saved', function
         'presets' => [100_000, 200_000],
     ], 'presets.0'],
 ]);
+
+test('Coins bands that skip a platform ceiling are refused', function (): void {
+    // A platform or delivery speed caps below the catalogue ceiling - console
+    // normal stops at two million - and the storefront requires the quote
+    // schedule to end exactly on that cap. Bands that step over it are valid on
+    // their own terms yet leave the last stop below the cap, and the whole
+    // delivery lane then renders as unavailable. Refuse at the save, where
+    // there is somebody to tell.
+    $admin = createPricingTestAdmin(UserRole::Admin);
+    $schedule = ServicePriceSchedule::query()->where('service_type', ServiceType::Coins)->firstOrFail();
+    $before = (array) $schedule->configuration;
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->postJson('/admin/api/settings/service-pricing/coins', [
+            'expected_version' => (int) $schedule->version,
+            'configuration' => [
+                'minimum' => 50_000,
+                'roundingUnit' => 5_000,
+                'tiers' => [
+                    ['upTo' => 550_000, 'step' => 125_000],
+                    ['upTo' => 1_800_000, 'step' => 250_000],
+                    // Steps over 2,000,000 without ever landing on it.
+                    ['upTo' => 20_000_000, 'step' => 35_000],
+                ],
+                'presets' => [],
+            ],
+        ])
+        ->assertUnprocessable();
+
+    expect((array) $schedule->fresh()->configuration)->toBe($before);
+});
+
+test('Coins bands too fine to price ahead of time are refused', function (): void {
+    // Every slider stop is priced on every homepage render, for three variants.
+    // A step typed in coins instead of thousands turns that into thousands of
+    // calculations per request.
+    $admin = createPricingTestAdmin(UserRole::Admin);
+    $schedule = ServicePriceSchedule::query()->where('service_type', ServiceType::Coins)->firstOrFail();
+    $before = (array) $schedule->configuration;
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->postJson('/admin/api/settings/service-pricing/coins', [
+            'expected_version' => (int) $schedule->version,
+            'configuration' => [
+                'minimum' => 50_000,
+                'roundingUnit' => 5_000,
+                'tiers' => [['upTo' => 20_000_000, 'step' => 5_000]],
+                'presets' => [],
+            ],
+        ])
+        ->assertUnprocessable();
+
+    expect((array) $schedule->fresh()->configuration)->toBe($before);
+});

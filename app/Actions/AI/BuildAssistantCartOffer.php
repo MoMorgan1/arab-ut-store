@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\AI;
 
 use App\Enums\Platform;
-use App\ValueObjects\Pricing\CoinsQuantityRules;
+use App\Services\Catalog\CoinsCatalogReader;
 
 /**
  * Offers to put a fully configured service in the customer's cart, without
@@ -28,6 +28,7 @@ final readonly class BuildAssistantCartOffer
     public function __construct(
         private SelectSupportKnowledge $selectKnowledge,
         private SelectServiceOptions $selectOptions,
+        private CoinsCatalogReader $catalog,
     ) {}
 
     /**
@@ -83,7 +84,7 @@ final readonly class BuildAssistantCartOffer
     private function sellable(int $quantity, int $maximum): bool
     {
         return $quantity <= $maximum
-            && CoinsQuantityRules::fromConfiguration((array) config('coins.quantity'))->accepts($quantity);
+            && $this->catalog->quantityRules()->accepts($quantity);
     }
 
     /**

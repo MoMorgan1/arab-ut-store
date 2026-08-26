@@ -110,6 +110,18 @@ final readonly class CoinsQuantityRules
         return $stops;
     }
 
+    /**
+     * Whether the slider actually stops on a quantity.
+     *
+     * Distinct from accepts(): a quantity can be perfectly buyable by typing it
+     * and still be somewhere the slider steps over. It matters for the platform
+     * ceilings, because the quote schedule has to end exactly on one.
+     */
+    public function hasStopAt(int $quantity): bool
+    {
+        return in_array($quantity, $this->sliderStops(), true);
+    }
+
     public function accepts(int $quantity): bool
     {
         return $quantity >= $this->minimum

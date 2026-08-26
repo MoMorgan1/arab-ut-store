@@ -343,3 +343,13 @@ test('a refund names only the places the money actually went', function (): void
         ->and($walletOnly['note_en'])->toContain('20.00')->toContain('wallet')
         ->and($walletOnly['note_ar'])->not->toBe($walletOnly['note_en']);
 });
+
+test('a refund of nothing names no figure', function (): void {
+    // Unreachable from the refund path today, but a branch that says
+    // "0.00 was returned to your payment method" is a lie waiting for its
+    // next caller.
+    $note = OrderClosingNote::refund(cardHalalah: 0, walletHalalah: 0);
+
+    expect($note['note_en'])->not->toContain('0.00')
+        ->and($note['note_en'])->toContain('not charged');
+});

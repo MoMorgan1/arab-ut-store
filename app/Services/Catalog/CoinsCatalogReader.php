@@ -128,13 +128,6 @@ final class CoinsCatalogReader
         }
     }
 
-    /**
-     * The quantities a customer may buy and the step the slider moves in.
-     *
-     * The bands are validated on the way in, so anything that would leave the
-     * storefront unable to price a legal quantity fails here rather than at
-     * request time.
-     */
     private ?CoinsQuantityRules $quantityRules = null;
 
     /**
