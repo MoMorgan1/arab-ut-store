@@ -208,6 +208,19 @@ Supplier request errors fail closed after retry. The previous Laravel rule set s
 - The workflow treats a same-event replay caused by its own HTTP retry as confirmation that the original transaction committed.
 - Invalid signature, stale timestamp, missing credentials, malformed groups, unsupported fields, or a failed transaction leave the previous active rules intact.
 
+## Retention
+
+`pricing-history:prune` runs daily and deletes pricing runs, and price rules already
+taken out of service, older than `COINS_PRICING_RETENTION_DAYS` (30). Two things are
+never deleted whatever their age: the **active** rules, which are what the storefront
+prices from, and the **newest run plus the newest applied run**, which are the record
+of where the live prices came from. If pricing ever stalls past the window - n8n down,
+credentials expired - the last thing that worked survives.
+
+Pruning cannot weaken replay protection: a pricing request carries a signed timestamp
+and is refused above five minutes old, so a request old enough to be pruned here never
+reaches the `runId`/`eventId` checks.
+
 Successful response:
 
 ```json

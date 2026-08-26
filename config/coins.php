@@ -9,6 +9,16 @@ return [
         ),
         'rate_limit_per_minute' => (int) env('COINS_CART_RATE_LIMIT_PER_MINUTE', 10),
     ],
+
+    /*
+     * A pricing run lands every hour and stores its whole snapshot, so without a
+     * cutoff price_runs and the rules it supersedes grow forever. A month is long
+     * enough to answer why a price was what it was, and short enough that the
+     * tables stay small. The run behind the live prices is never deleted.
+     */
+    'pricing' => [
+        'retention_days' => (int) env('COINS_PRICING_RETENTION_DAYS', 30),
+    ],
     /*
      * The step widens as the quantity climbs. A single increment cannot serve a
      * range from thousands to twenty million: fine enough at the bottom leaves
