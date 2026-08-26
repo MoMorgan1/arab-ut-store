@@ -88,11 +88,7 @@ export default function StoreCart() {
             storeShell={storeShell}
             ui={ui}
         >
-            <StoreSeoHead
-                title={cartPage.translations.title}
-                description={cartPage.translations.eyebrow}
-                locale={locale}
-            />
+            <StoreSeoHead title={cartPage.translations.title} />
             <section
                 aria-labelledby="store-cart-title"
                 className="store-cart-page"

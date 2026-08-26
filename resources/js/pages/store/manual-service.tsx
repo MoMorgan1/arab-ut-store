@@ -32,12 +32,7 @@ export default function StoreManualService() {
             storeShell={props.storeShell}
             ui={props.ui}
         >
-            <StoreSeoHead
-                title={manual.product.name}
-                description={manual.product.description}
-                locale={props.locale}
-                schemaType="Product"
-            />
+            <StoreSeoHead title={manual.product.name} />
             <main className="manual-service-page" id="store-content">
                 <a className="manual-service-page__back" href={props.backUrl}>
                     {common.back}

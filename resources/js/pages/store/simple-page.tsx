@@ -29,11 +29,7 @@ export default function SimpleStorePage() {
             storeShell={storeShell}
             ui={ui}
         >
-            <StoreSeoHead
-                title={page.title}
-                description={page.subtitle}
-                locale={locale}
-            />
+            <StoreSeoHead title={page.title} />
             <StoreInformationPageContent
                 homeUrl={storeShell.homeUrl}
                 page={page}

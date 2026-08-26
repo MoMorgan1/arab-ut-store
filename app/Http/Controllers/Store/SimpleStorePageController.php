@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Store;
 
 use App\Actions\Store\ValidateStoreInformationPage;
 use App\Http\Controllers\Controller;
+use App\Support\Seo\StorePageSeo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Inertia\Inertia;
@@ -31,6 +32,11 @@ class SimpleStorePageController extends Controller
                 $meta,
                 config('store.support.whatsapp_url'),
             ),
+            'seo' => StorePageSeo::default(
+                is_array($translations) && isset($translations['title'])
+                    ? (string) $translations['title']
+                    : null,
+            )->toArray(),
         ]);
     }
 }

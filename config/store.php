@@ -20,6 +20,14 @@ return [
         'whatsapp_url' => 'https://wa.me/966537998099',
         'email' => 'info@arab-ut.com',
     ],
+    'seo' => [
+        // The image WhatsApp, X, and Facebook show when the store is shared.
+        // It must be at least 300x200 or scrapers fall back to a tiny icon;
+        // 1200x630 is the ideal. The header logo (96x68) is far too small.
+        'share_image' => '/images/store/hero/background.webp',
+        // Used as the schema.org organisation logo, where a small square is fine.
+        'logo' => '/images/arabut-logo-header.webp',
+    ],
     'socials' => [
         'x' => 'https://x.com/fut_fi',
         'instagram' => 'https://www.instagram.com/arabutcoins/',
