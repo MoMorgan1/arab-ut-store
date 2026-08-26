@@ -443,3 +443,79 @@ function createTransitionTestOrder(OrderStatus $status): Order
         'placed_at' => now(),
     ]);
 }
+
+test('cancelling a wallet-funded order tells the customer their money came back', function (): void {
+    // The cancellation returns real money to the wallet. Saying only "cancelled"
+    // leaves the customer to discover their balance is whole again on their own,
+    // or to assume it is not.
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::WaitingForCustomer);
+    $order->forceFill(['wallet_halalah' => 4_500, 'payment_halalah' => 500])->save();
+
+    $order->items()->create([
+        'sku' => 'AUT-ITEM-WALLET',
+        'name_ar' => 'عنصر',
+        'name_en' => 'Item',
+        'service_type' => ServiceType::Coins,
+        'platform' => Platform::PlayStation,
+        'status' => OrderItemStatus::WaitingForCustomer,
+        'quantity' => 1,
+        'unit_price_halalah' => 5000,
+        'subtotal_halalah' => 5000,
+        'discount_halalah' => 0,
+        'total_halalah' => 5000,
+    ]);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'waiting_for_customer',
+            'target_status' => 'cancelled',
+        ])
+        ->assertOk();
+
+    $note = OrderStatusHistory::query()
+        ->where('order_id', $order->id)
+        ->whereNull('order_item_id')
+        ->latest('id')
+        ->sole();
+
+    // 45.00 is the wallet half alone, not the 50.00 total. The gateway half is
+    // not refunded on this path, so a figure covering both would be a promise
+    // nothing keeps.
+    expect($note->note_ar)->toContain('45.00')
+        ->and($note->note_en)->toContain('45.00')
+        ->and($note->note_en)->not->toContain('50.00');
+});
+
+test('cancelling an order that held no wallet money names no figure', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::WaitingForCustomer);
+
+    $order->items()->create([
+        'sku' => 'AUT-ITEM-CARD',
+        'name_ar' => 'عنصر',
+        'name_en' => 'Item',
+        'service_type' => ServiceType::Coins,
+        'platform' => Platform::PlayStation,
+        'status' => OrderItemStatus::WaitingForCustomer,
+        'quantity' => 1,
+        'unit_price_halalah' => 5000,
+        'subtotal_halalah' => 5000,
+        'discount_halalah' => 0,
+        'total_halalah' => 5000,
+    ]);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'waiting_for_customer',
+            'target_status' => 'cancelled',
+        ])
+        ->assertOk();
+
+    expect(OrderStatusHistory::query()
+        ->where('order_id', $order->id)
+        ->whereNull('order_item_id')
+        ->latest('id')
+        ->sole()
+        ->note_en)->toBeNull();
+});
