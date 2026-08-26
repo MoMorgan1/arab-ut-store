@@ -1,8 +1,10 @@
 <?php
 
+use App\Actions\Checkout\PlaceOrder;
 use App\Enums\ServiceType;
 use App\Models\CartItem;
 use App\Models\ServicePriceSchedule;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -264,4 +266,56 @@ test('a promotion and a week of matches are not confused for the same request', 
 
     $this->post('/cart/items/rivals', $weekly, ['Idempotency-Key' => $key])
         ->assertStatus(409);
+});
+
+it('places an order for a Rivals item added the way the storefront adds it', function (string $mode, int $expectedHalalah) {
+    // The checkout fixtures hand-build a cart item configuration. That is how a
+    // mismatch between what AddRivalsToCart writes and what PlaceOrder accepts
+    // could sit here fully green: nothing walked the real path from the button
+    // to the order.
+    $user = User::factory()->create([
+        'phone' => '+966500000001',
+        'phone_verified_at' => now(),
+    ]);
+    $this->actingAs($user);
+
+    $payload = validRivalsCartPayload(['mode' => $mode]);
+
+    if ($mode === 'weekly_matches') {
+        priceRivalsWeeklyMatches();
+        unset($payload['currentDivision'], $payload['targetDivision']);
+    }
+
+    postRivalsCart($payload, "rivals-checkout-{$mode}")->assertCreated();
+
+    $result = app(PlaceOrder::class)->execute($user, 'ar', "rivals-place-{$mode}");
+
+    // The week is a flat price, the promotion is the ladder summed. Checkout
+    // re-prices from the server, so asserting the total here is what proves it
+    // priced the mode the customer actually chose.
+    expect($result->order->items()->count())->toBe(1)
+        ->and($result->order->items()->sole()->service_type)->toBe(ServiceType::Rivals)
+        ->and($result->order->total_halalah)->toBe($expectedHalalah);
+})->with([
+    'a promotion up the ladder' => ['promotion', 75_000],
+    'a week of matches' => ['weekly_matches', 9_000],
+]);
+
+it('shows the week of matches and its win count on the cart page', function () {
+    // The line has no divisions to show, so without these the customer reads
+    // "Division Rivals" and a price, and pays without ever seeing which of the
+    // two services they picked.
+    priceRivalsWeeklyMatches();
+
+    $payload = validRivalsCartPayload(['mode' => 'weekly_matches']);
+    unset($payload['currentDivision'], $payload['targetDivision']);
+
+    postRivalsCart($payload, 'rivals-cart-page')->assertCreated();
+
+    $this->get('/cart')->assertInertia(
+        fn (Assert $page) => $page
+            ->where('cart.items.0.configuration.weekly_matches', true)
+            ->where('cart.items.0.configuration.included_wins', 8)
+            ->missing('cart.items.0.configuration.from_division'),
+    );
 });

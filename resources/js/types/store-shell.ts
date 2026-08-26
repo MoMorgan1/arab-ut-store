@@ -141,6 +141,8 @@ export type StoreCartConfiguration = Partial<{
     urgent: boolean;
     from_division: '7' | '6' | '5' | '4' | '3' | '2' | '1' | 'elite';
     to_division: '7' | '6' | '5' | '4' | '3' | '2' | '1' | 'elite';
+    weekly_matches: true;
+    included_wins: number;
 }>;
 
 export type StoreCartItem = {
@@ -207,6 +209,9 @@ export type StoreCartTranslations = {
     matches_played: string;
     from_division: string;
     to_division: string;
+    mode: string;
+    mode_weekly: string;
+    included_wins: string;
     division_elite: string;
     coins_unit: string;
     total: string;

@@ -154,6 +154,9 @@ export type AccountTranslations = {
         matches_played: string;
         from_division: string;
         to_division: string;
+        mode: string;
+        mode_weekly: string;
+        included_wins: string;
         elite: string;
         show_credentials: string;
         hide_credentials: string;
@@ -423,6 +426,8 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
                 fromDivision?:
                     '7' | '6' | '5' | '4' | '3' | '2' | '1' | 'elite';
                 toDivision?: '7' | '6' | '5' | '4' | '3' | '2' | '1' | 'elite';
+                weeklyMatches?: true;
+                includedWins?: number;
             } | null;
         }>;
     };

@@ -391,6 +391,17 @@ final class CartController extends Controller
             return $safe;
         }
 
+        if (($configuration['mode'] ?? null) === 'weekly_matches') {
+            $includedWins = $configuration['included_wins'] ?? null;
+            $safe['weekly_matches'] = true;
+
+            if (is_int($includedWins) && $includedWins > 0 && $includedWins <= 100) {
+                $safe['included_wins'] = $includedWins;
+            }
+
+            return $safe;
+        }
+
         $divisions = ['7', '6', '5', '4', '3', '2', '1', 'elite'];
         $from = $configuration['current_division'] ?? null;
         $to = $configuration['target_division'] ?? null;

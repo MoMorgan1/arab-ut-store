@@ -49,6 +49,12 @@ return [
         'matches_played' => 'Matches already played',
         'from_division' => 'Current division',
         'to_division' => 'Target division',
+        // A week of matches promotes nothing, so it has no divisions to show.
+        // Without these the cart line is a bare service name and the customer
+        // pays without ever seeing what they picked.
+        'mode' => 'Service',
+        'mode_weekly' => 'Weekly matches',
+        'included_wins' => 'Wins included',
         'division_elite' => 'Elite',
         'coins_unit' => 'Coins',
         'total' => 'Total',

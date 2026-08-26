@@ -353,6 +353,18 @@ function ManualOrderFulfillment({
                         value={formatInteger(fulfillment.matchesPlayed, locale)}
                     />
                 ) : null}
+                {fulfillment.weeklyMatches ? (
+                    <OrderFact
+                        label={translations.mode}
+                        value={translations.mode_weekly}
+                    />
+                ) : null}
+                {fulfillment.includedWins !== undefined ? (
+                    <OrderFact
+                        label={translations.included_wins}
+                        value={formatInteger(fulfillment.includedWins, locale)}
+                    />
+                ) : null}
                 {fulfillment.fromDivision !== undefined ? (
                     <OrderFact
                         label={translations.from_division}
