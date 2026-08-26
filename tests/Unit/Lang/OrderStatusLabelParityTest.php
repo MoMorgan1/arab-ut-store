@@ -4,65 +4,57 @@ use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 
 /**
- * The order status is the only signal a customer gets about a stalled order, and
- * it renders from two different translation groups on two different pages. Those
- * two used to disagree — «بانتظار ردك» on the order page against «بانتظارك» in
- * the account, «تم الاسترجاع» against «مسترد» — with nothing to catch it.
+ * The order status is the only signal a customer gets about a stalled order.
+ *
+ * It used to render from two translation groups on two different pages, and the
+ * two disagreed - «بانتظار ردك» on the order page against «بانتظارك» in the
+ * account, «تم الاسترجاع» against «مسترد» - with nothing to catch it. The store
+ * order page is now a redirect to the account, so there is one copy of these
+ * labels and no second copy to drift from. What is still worth guarding is that
+ * the one copy covers every status a customer can actually reach.
  */
-$groups = [
-    'store' => 'order_page.statuses',
-    'account' => 'statuses',
-];
+$read = function (string $locale): array {
+    $translations = require dirname(__DIR__, 3)."/lang/{$locale}/account.php";
 
-$read = function (string $locale, string $file, string $path): array {
-    $translations = require dirname(__DIR__, 3)."/lang/{$locale}/{$file}.php";
+    expect($translations)->toHaveKey('statuses');
 
-    foreach (explode('.', $path) as $segment) {
-        expect($translations)->toHaveKey($segment);
-        $translations = $translations[$segment];
-    }
-
-    return $translations;
+    return $translations['statuses'];
 };
 
-test('every order status a customer can reach is labelled in both locales', function () use ($groups, $read) {
+test('every order status a customer can reach is labelled in both locales', function () use ($read) {
     $expected = array_map(static fn (OrderStatus $status): string => $status->value, OrderStatus::cases());
     sort($expected);
 
-    foreach ($groups as $file => $path) {
-        foreach (['ar', 'en'] as $locale) {
-            $labels = $read($locale, $file, $path);
-            $covered = array_keys($labels);
-            sort($covered);
-
-            expect(array_diff($expected, $covered))->toBe([], "lang/{$locale}/{$file}.php is missing an order status label");
-
-            foreach ($labels as $key => $label) {
-                expect($label)->toBeString()->not->toBe('', "lang/{$locale}/{$file}.php has an empty label for {$key}");
-            }
-        }
-    }
-});
-
-test('the order page and the account agree on what each status is called', function () use ($groups, $read) {
     foreach (['ar', 'en'] as $locale) {
-        $store = $read($locale, 'store', $groups['store']);
-        $account = $read($locale, 'account', $groups['account']);
+        $labels = $read($locale);
+        $covered = array_keys($labels);
+        sort($covered);
 
-        expect(array_keys($account))->toEqualCanonicalizing(array_keys($store));
+        expect(array_diff($expected, $covered))->toBe([], "lang/{$locale}/account.php is missing an order status label");
 
-        foreach ($store as $key => $label) {
-            expect($account[$key])->toBe($label, "lang/{$locale}: the order page calls {$key} \"{$label}\" but the account calls it \"{$account[$key]}\"");
+        foreach ($labels as $key => $label) {
+            expect($label)->toBeString()->not->toBe('', "lang/{$locale}/account.php has an empty label for {$key}");
         }
     }
 });
 
-test('the blocked status tells the customer an action is needed', function () use ($groups, $read) {
+test('no status is labelled that no order can reach', function () use ($read) {
+    // A label with no status behind it ships a state to customers that nothing
+    // can produce - which is exactly what the deleted 'failed' case did.
+    $reachable = array_map(static fn (OrderStatus $status): string => $status->value, OrderStatus::cases());
+
+    foreach (['ar', 'en'] as $locale) {
+        expect(array_diff(array_keys($read($locale)), $reachable))
+            ->toBe([], "lang/{$locale}/account.php labels a status no order can reach");
+    }
+});
+
+test('the blocked status tells the customer an action is needed', function () use ($read) {
     // waiting_for_customer is the one status that demands the customer act. None
     // of the 17 tracker states it covers wants a reply — they want credentials
     // fixed, a game session signed out, a transfer list cleared.
-    expect($read('ar', 'store', $groups['store'])['waiting_for_customer'])->toContain('إجراء')
-        ->and($read('en', 'store', $groups['store'])['waiting_for_customer'])->toContain('action');
+    expect($read('ar')['waiting_for_customer'])->toContain('إجراء')
+        ->and($read('en')['waiting_for_customer'])->toContain('action');
 });
 
 test('order item statuses stay a superset of order statuses', function () {

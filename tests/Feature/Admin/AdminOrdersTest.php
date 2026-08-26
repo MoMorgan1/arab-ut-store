@@ -65,7 +65,7 @@ test('the Admin orders list index migration rolls back and reapplies on disposab
 });
 
 test('guests and nonprivileged accounts cannot enter the Admin orders list', function (): void {
-    $this->get('/admin/orders')->assertRedirect('/en/login');
+    $this->get('/admin/orders')->assertRedirect('/login');
 
     foreach ([UserRole::Customer, UserRole::ServiceAccount] as $role) {
         $account = User::factory()->create(['role' => $role]);
@@ -97,8 +97,8 @@ test('confirmed privileged actors can open localized private orders routes', fun
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/orders/index', false)
             ->where('auth', null)
-            ->where('locale', 'en')
-            ->where('direction', 'ltr')
+            ->where('locale', str_starts_with($path, '/en/') ? 'en' : 'ar')
+            ->where('direction', str_starts_with($path, '/en/') ? 'ltr' : 'rtl')
             ->has('orders')
             ->has('pagination')
             ->has('filters')

@@ -21,7 +21,7 @@ beforeEach(function (): void {
 });
 
 test('guests and nonprivileged accounts cannot enter the marketing promotions page', function (): void {
-    $this->get('/admin/marketing/promotions')->assertRedirect('/en/login');
+    $this->get('/admin/marketing/promotions')->assertRedirect('/login');
 
     foreach ([UserRole::Customer, UserRole::ServiceAccount] as $role) {
         $account = User::factory()->create(['role' => $role]);
@@ -66,7 +66,7 @@ test('confirmed admin can open localized promotion pages with counts and categor
             ->has('categories', 1)
             ->where('categories.0.name', 'Icon challenges'));
 })->with([
-    'Canonical' => ['/admin/marketing/promotions', 'ltr'],
+    'Canonical' => ['/admin/marketing/promotions', 'rtl'],
     'Localized' => ['/en/admin/marketing/promotions', 'ltr'],
 ]);
 

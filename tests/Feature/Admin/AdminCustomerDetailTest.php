@@ -22,7 +22,7 @@ afterEach(function (): void {
 test('guests and nonprivileged accounts cannot open the Admin customer detail', function (): void {
     $customer = createCustomerDetailFixture();
 
-    $this->get("/admin/customers/{$customer->public_id}")->assertRedirect('/en/login');
+    $this->get("/admin/customers/{$customer->public_id}")->assertRedirect('/login');
 
     foreach ([UserRole::Customer, UserRole::ServiceAccount] as $role) {
         $account = User::factory()->create(['role' => $role]);
@@ -62,8 +62,8 @@ test('confirmed Admin can open localized private customer detail routes', functi
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/customers/show', false)
             ->where('auth', null)
-            ->where('locale', 'en')
-            ->where('direction', 'ltr')
+            ->where('locale', str_starts_with($prefix, '/en/') ? 'en' : 'ar')
+            ->where('direction', str_starts_with($prefix, '/en/') ? 'ltr' : 'rtl')
             ->where('customer.id', (string) $customer->public_id)
             ->where('customer.name', $customer->name)
             ->where('customer.email', $customer->email)

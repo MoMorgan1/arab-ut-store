@@ -22,7 +22,7 @@ afterEach(function (): void {
 });
 
 test('guests and nonprivileged accounts cannot access admin conversations list', function (): void {
-    $this->get('/admin/conversations')->assertRedirect('/en/login');
+    $this->get('/admin/conversations')->assertRedirect('/login');
 
     foreach ([UserRole::Customer, UserRole::ServiceAccount] as $role) {
         $account = User::factory()->create(['role' => $role]);
@@ -81,8 +81,8 @@ test('an admin can load the conversations index and sees a seeded conversation',
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/conversations/index', false)
             ->where('auth', null)
-            ->where('locale', 'en')
-            ->where('direction', 'ltr')
+            ->where('locale', str_starts_with($path, '/en/') ? 'en' : 'ar')
+            ->where('direction', str_starts_with($path, '/en/') ? 'ltr' : 'rtl')
             ->has('rows', 1)
             ->where('rows.0.publicId', (string) $conversation->public_id)
             ->where('rows.0.status', 'open')

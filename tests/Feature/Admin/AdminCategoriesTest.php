@@ -41,7 +41,7 @@ function adminCategoriesActor(UserRole $role = UserRole::Admin, string $locale =
 }
 
 test('guests and nonprivileged accounts cannot enter the Admin categories list', function (): void {
-    $this->get('/admin/categories')->assertRedirect('/en/login');
+    $this->get('/admin/categories')->assertRedirect('/login');
 
     foreach ([UserRole::Customer, UserRole::ServiceAccount] as $role) {
         $account = User::factory()->create(['role' => $role]);
@@ -70,8 +70,8 @@ test('confirmed Admin can open localized private categories routes', function (s
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/categories/index', false)
             ->where('auth', null)
-            ->where('locale', 'en')
-            ->where('direction', 'ltr')
+            ->where('locale', str_starts_with($path, '/en/') ? 'en' : 'ar')
+            ->where('direction', str_starts_with($path, '/en/') ? 'ltr' : 'rtl')
             ->has('categories')
             ->has('pagination')
             ->has('filters')

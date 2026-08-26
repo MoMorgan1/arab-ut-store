@@ -23,8 +23,8 @@ test('the Admin settings page exposes only safe booleans and relative endpoint U
         ->assertHeader('Cache-Control', 'no-store, private')
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/settings')
-            ->where('locale', 'en')
-            ->where('direction', 'ltr')
+            ->where('locale', str_starts_with($path, '/en/') ? 'en' : 'ar')
+            ->where('direction', str_starts_with($path, '/en/') ? 'ltr' : 'rtl')
             ->where('auth', null)
             ->where('mfa.passwordConfigured', true)
             ->where('mfa.enabled', true)

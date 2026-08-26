@@ -21,7 +21,7 @@ afterEach(function (): void {
 });
 
 test('guests and nonprivileged accounts cannot access admin products list', function (): void {
-    $this->get('/admin/products')->assertRedirect('/en/login');
+    $this->get('/admin/products')->assertRedirect('/login');
 
     foreach ([UserRole::Customer, UserRole::ServiceAccount] as $role) {
         $account = User::factory()->create(['role' => $role]);
@@ -53,6 +53,7 @@ test('confirmed Admin can view products list with Inertia payload', function (st
     $product = Product::factory()->create([
         'category_id' => $category->id,
         'authority' => ProductAuthority::Manual,
+        'name_ar' => 'منتج كوينز للاختبار',
         'name_en' => 'Test Coins Product',
         'slug' => 'test-coins-product',
         'is_visible' => true,
@@ -68,8 +69,8 @@ test('confirmed Admin can view products list with Inertia payload', function (st
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/products/index', false)
             ->where('auth', null)
-            ->where('locale', 'en')
-            ->where('direction', 'ltr')
+            ->where('locale', str_starts_with($path, '/en/') ? 'en' : 'ar')
+            ->where('direction', str_starts_with($path, '/en/') ? 'ltr' : 'rtl')
             // The catalog is never empty: 2026_08_16_000003 provisions the
             // fut-champions and division-rivals manual service products, so
             // search for the row under test rather than assuming it is alone.
@@ -78,7 +79,7 @@ test('confirmed Admin can view products list with Inertia payload', function (st
             ->has('filters')
             ->has('filterOptions')
             ->where('products', fn (Collection $products) => $products
-                ->contains(fn (array $row) => $row['name'] === 'Test Coins Product'
+                ->contains(fn (array $row) => $row['name'] === (str_starts_with($path, '/en/') ? 'Test Coins Product' : 'منتج كوينز للاختبار')
                     && $row['variantsCount'] === 2
                     && $row['authority'] === 'manual'))
         );
