@@ -1,0 +1,368 @@
+/* Arab UT email theme.
+ *
+ * Direction: a merchant's paper receipt under a black masthead. A warm
+ * off-white card (#fffdf9) floats on paper (#f2efe9) beneath a near-black
+ * brand band closed by a gold rule. Gold is spent three times only - the
+ * rule, the total, the action button - never as decoration.
+ *
+ * The card is deliberately light. A dark card was tried first and Gmail's
+ * dark mode inverted it into a light one anyway (2026-08-28), so the design
+ * would have been decided by the client rather than by us. A light card
+ * under a black band survives that inversion and reads the same everywhere;
+ * the metas in layout.blade.php declare "light" for the same reason.
+ *
+ * Laravel inlines these rules onto the markup before sending (CssToInlineStyles
+ * in Illuminate\Mail\Markdown), so this file is written for mail clients rather
+ * than browsers: tables for layout, no flex, no grid, no custom properties, no
+ * pseudo elements, and an explicit colour on every element that shows one. A
+ * client that inverts colours for dark mode has less to guess at when nothing
+ * is left to inherit. Media queries only work from the <style> block kept in
+ * layout.blade.php; anything not inlined there cannot be responsive.
+ *
+ * Letter-spacing rule: tracking is applied ONLY to Latin strings (brand label,
+ * order numbers, English labels). Arabic is a connected script; letter-spacing
+ * breaks the joins, so components carry no tracking and locale-aware views
+ * add it conditionally.
+ *
+ * Thmanyah is the store's Arabic face but web fonts do not load in most mail
+ * clients, so the stack falls back to faces that ship with the reading device.
+ */
+
+body,
+body *:not(html):not(style):not(br):not(tr):not(code) {
+    box-sizing: border-box;
+    font-family: 'Thmanyah Sans', 'Segoe UI', Tahoma, Arial, sans-serif;
+    position: relative;
+}
+
+body {
+    -webkit-text-size-adjust: none;
+    background-color: #f2efe9;
+    color: #17140d;
+    height: 100%;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    width: 100% !important;
+}
+
+p,
+ul,
+ol,
+blockquote {
+    line-height: 1.7;
+    text-align: start;
+}
+
+a {
+    color: #8a6d1f;
+    text-decoration: underline;
+}
+
+a img {
+    border: none;
+}
+
+/* Typography. Generous line-height throughout so Arabic ascenders,
+ * descenders, and diacritics never clip. */
+
+h1,
+h2,
+h3 {
+    color: #17140d;
+    font-weight: 800;
+    line-height: 1.5;
+    margin: 0 0 10px;
+    text-align: start;
+}
+
+h1 {
+    font-size: 21px;
+}
+
+h2 {
+    font-size: 18px;
+}
+
+h3 {
+    font-size: 15px;
+}
+
+p {
+    color: #3d372c;
+    font-size: 15px;
+    line-height: 1.7;
+    margin: 0 0 18px;
+    text-align: start;
+}
+
+p.sub {
+    font-size: 12px;
+}
+
+img {
+    max-width: 100%;
+}
+
+/* Layout. wrapper-cell keeps the card floating on the paper so it never
+ * touches a screen edge; the mobile query trims it in layout.blade.php. */
+
+.wrapper {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    background-color: #f2efe9;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.wrapper-cell {
+    padding: 28px 12px;
+}
+
+.content {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+/* Header band. The logo doubles as the wordmark when images are blocked:
+ * the fallback alt text inherits the gold anchor styling. */
+
+.header {
+    background-color: #0f0e0c;
+    border-radius: 14px 14px 0 0;
+    padding: 28px 0 26px;
+    text-align: center;
+}
+
+.header a {
+    color: #e4b756;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-decoration: none;
+}
+
+.logo {
+    height: 52px;
+    max-height: 52px;
+    width: auto;
+}
+
+/* Body and card. */
+
+.body {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    background-color: #f2efe9;
+    border-bottom: hidden;
+    border-top: hidden;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.inner-body {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 570px;
+    background-color: #fffdf9;
+    border: 1px solid #e2dbcb;
+    border-radius: 0 0 14px 14px;
+    border-top: 3px solid #d4a843;
+    margin: 0 auto;
+    padding: 0;
+    width: 570px;
+}
+
+.content-cell {
+    max-width: 100vw;
+    padding: 34px 38px 32px;
+}
+
+/* Subcopy - the fine print under an action, e.g. the copy-paste URL note. */
+
+.subcopy {
+    border-top: 1px solid #e6ddc9;
+    margin-top: 28px;
+    padding-top: 22px;
+}
+
+.subcopy p {
+    color: #6b6252;
+    font-size: 13px;
+}
+
+/* Footer colophon. Sits on the paper below the card, so it closes the
+ * document without competing with the masthead. Every line states
+ * text-align: center because the inlined element rule for p (start)
+ * would otherwise override the cell's align attribute. */
+
+.footer {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 570px;
+    margin: 0 auto;
+    padding: 0;
+    width: 570px;
+}
+
+.footer-cell {
+    padding: 26px 24px 32px;
+    text-align: center;
+}
+
+/* The footer sits on the darker paper, not the card, so its bronze ink
+ * is one step deeper to hold contrast. */
+
+.footer-brand {
+    color: #82661d;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    margin: 0 0 10px;
+    text-align: center;
+}
+
+.footer-links {
+    color: #6b6252;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 0 0 10px;
+    text-align: center;
+}
+
+.footer-links a {
+    color: #82661d;
+    text-decoration: underline;
+}
+
+.footer-fine {
+    color: #6b6252;
+    font-size: 11px;
+    line-height: 1.6;
+    margin: 0 0 4px;
+    text-align: center;
+}
+
+/* Markdown data tables. */
+
+.table table {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 24px 0;
+    width: 100%;
+}
+
+.table th {
+    border-bottom: 2px solid #e6ddc9;
+    color: #6b6252;
+    font-size: 11px;
+    font-weight: 700;
+    margin: 0;
+    padding-bottom: 8px;
+    text-align: start;
+}
+
+.table td {
+    border-bottom: 1px solid #f0e8d8;
+    color: #17140d;
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 10px 0;
+}
+
+/* Action button. Padding lives on the borders so Outlook renders the same
+ * button as everyone else; the darker bottom edge gives it weight. */
+
+.action {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 26px auto;
+    padding: 0;
+    text-align: center;
+    width: 100%;
+}
+
+.button {
+    -webkit-text-size-adjust: none;
+    border-radius: 8px;
+    color: #17140d;
+    display: inline-block;
+    font-size: 15px;
+    font-weight: 800;
+    overflow: hidden;
+    text-decoration: none;
+}
+
+.button-blue,
+.button-primary,
+.button-green,
+.button-success {
+    background-color: #d4a843;
+    border-bottom: 12px solid #c19a37;
+    border-left: 24px solid #d4a843;
+    border-right: 24px solid #d4a843;
+    border-top: 12px solid #d4a843;
+}
+
+.button-red,
+.button-error {
+    background-color: #8f1d1d;
+    border-bottom: 12px solid #7c1717;
+    border-left: 24px solid #8f1d1d;
+    border-right: 24px solid #8f1d1d;
+    border-top: 12px solid #8f1d1d;
+    color: #fdf0ec;
+}
+
+/* Panel - a warm callout. The gold accent side is applied inline by
+ * panel.blade.php (computed from the locale) so it always leads the
+ * reading direction; the theme deliberately sets no side border, or the
+ * inliner would add the wrong second edge in Arabic. */
+
+.panel {
+    margin: 22px 0;
+}
+
+.panel-content {
+    background-color: #f8f3e6;
+    border-radius: 10px;
+    color: #17140d;
+    padding: 16px 18px;
+}
+
+.panel-content p {
+    color: #17140d;
+    margin-bottom: 0;
+}
+
+/* Promotions */
+
+.promotion {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    background-color: #fffdf9;
+    border: 2px dashed #d9cfb6;
+    margin: 24px 0;
+    padding: 24px;
+    width: 100%;
+}
+
+.promotion h1 {
+    text-align: center;
+}
+
+.promotion p {
+    font-size: 15px;
+    text-align: center;
+}

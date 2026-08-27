@@ -40,6 +40,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\WalletEntry;
+use App\Notifications\OrderPaidNotification;
 use App\Security\CheckoutFingerprint;
 use App\Support\SafeOrderItemConfiguration;
 use App\ValueObjects\Cart\CartItemPrice;
@@ -346,6 +347,11 @@ final readonly class PlaceOrder
                 'attempts' => 0,
                 'available_at' => now(),
             ]);
+
+            // A wallet-covered order is paid the moment it is placed, so the
+            // receipt belongs here. Queued after commit: the mail server must
+            // never be able to fail a checkout that already moved money.
+            $user->notify(new OrderPaidNotification($order));
         } else {
             $payment = $order->payments()->create([
                 'provider' => 'paylink',
