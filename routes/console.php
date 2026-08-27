@@ -22,3 +22,22 @@ Schedule::command(MaintainChatConversations::class)->hourly()->withoutOverlappin
 Schedule::command(RecoverStaleAgentTurns::class)->everyMinute()->withoutOverlapping();
 Schedule::command(ExpireAbandonedCheckouts::class)->hourly()->withoutOverlapping();
 Schedule::command(PrunePricingHistory::class)->dailyAt('03:20')->withoutOverlapping();
+
+/*
+ * Queued work is drained by the scheduler rather than a long-running worker.
+ *
+ * The host runs `schedule:run` every minute by cron and has no supervisor, so a
+ * daemon worker would have nothing to keep it alive. `--stop-when-empty` lets
+ * each run finish once the queue drains, `--max-time` keeps a busy run from
+ * overlapping the next minute, and `withoutOverlapping` means a long job never
+ * gets a second worker on top of it.
+ *
+ * Without this, queued mail - the order receipt among it - sits in the jobs
+ * table and is never delivered.
+ */
+Schedule::command('queue:work', [
+    '--stop-when-empty',
+    '--max-time=55',
+    '--tries=3',
+    '--backoff=30',
+])->everyMinute()->withoutOverlapping()->runInBackground();

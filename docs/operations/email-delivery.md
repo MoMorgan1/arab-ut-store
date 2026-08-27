@@ -55,3 +55,52 @@ email-change confirmation, pending email change, support replies, and Fortify's 
 email verification. A paid order publishes an `order.paid` integration event to n8n
 (`app/Actions/Fulfillment/PublishOrderPaidEvent.php`) and nothing else. A customer who pays receives
 no email from the store.
+
+## Delivery is queued
+
+The order receipt is a queued notification, dispatched after the checkout
+transaction commits. A slow or refusing mail server must never be able to fail a
+checkout that has already taken the customer's money — and Zoho does time out
+occasionally, which was observed twice during setup.
+
+Queued work is drained by the scheduler, not by a long-running worker: the host
+runs `schedule:run` every minute by cron and has no supervisor to keep a daemon
+alive. `routes/console.php` therefore schedules:
+
+```
+queue:work --stop-when-empty --max-time=55 --tries=3 --backoff=30
+```
+
+Each run finishes when the queue drains, never overlaps the next minute, and
+retries a failed send three times thirty seconds apart.
+
+**If mail stops arriving, check the queue before blaming the mailer:**
+
+```bash
+php artisan queue:monitor default
+php artisan queue:failed
+```
+
+Jobs piling up in the `jobs` table means the scheduler cron is not running.
+Rows in `failed_jobs` mean the send itself failed three times; the exception is
+stored with each row.
+
+## Domain authentication
+
+Gmail shows a red question mark beside the sender when it cannot authenticate
+the domain. As of 2026-08-28 `arab-ut.com` publishes a DMARC record and Zoho's
+verification TXT, but **no SPF and no DKIM** — so DMARC asks receivers to check
+something that does not exist. Only `p=none` keeps those messages out of spam.
+
+Both records are added in Hostinger's DNS panel:
+
+| Type | Name | Value |
+| --- | --- | --- |
+| TXT | `@` | `v=spf1 include:zoho.com ~all` |
+| TXT | `<selector>._domainkey` | the key Zoho generates under Email Authentication → DKIM |
+
+A domain must never carry two `v=spf1` records — that fails authentication
+outright. Edit the existing one rather than adding a second.
+
+Once both resolve and a test message authenticates, tighten DMARC from
+`p=none` to `p=quarantine`.
