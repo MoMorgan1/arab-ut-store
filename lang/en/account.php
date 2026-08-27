@@ -131,8 +131,15 @@ return [
         'wallet_deduction' => 'Paid from wallet',
         'total_paid' => 'Total paid',
         'payment_method' => 'Payment method',
-        'method_wallet' => 'Wallet',
-        'method_paylink' => 'Paylink',
+        'methods' => [
+            'wallet' => 'Wallet',
+            'mada' => 'mada',
+            'visa' => 'Visa',
+            'mastercard' => 'Mastercard',
+            'apple_pay' => 'Apple Pay',
+            'stc_pay' => 'STC Pay',
+            'card' => 'Card',
+        ],
     ],
     'wallet' => [
         'title' => 'Wallet',

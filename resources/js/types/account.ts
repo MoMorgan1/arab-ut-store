@@ -1,3 +1,12 @@
+export type AccountPaymentMethod =
+    | 'wallet'
+    | 'mada'
+    | 'visa'
+    | 'mastercard'
+    | 'apple_pay'
+    | 'stc_pay'
+    | 'card';
+
 import type {
     StoreLocale,
     StoreShellConfig,
@@ -190,8 +199,7 @@ export type AccountTranslations = {
         wallet_deduction: string;
         total_paid: string;
         payment_method: string;
-        method_wallet: string;
-        method_paylink: string;
+        methods: Record<AccountPaymentMethod, string>;
     };
     wallet: {
         title: string;
@@ -422,7 +430,7 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
         subtotal: AccountMoney;
         discount: AccountMoney;
         paymentAmount: AccountMoney;
-        paymentMethod?: 'wallet' | 'paylink' | null;
+        paymentMethod?: AccountPaymentMethod | null;
         walletPayment?: AccountMoney | null;
         refreshable: boolean;
         paymentStartUrl: string | null;

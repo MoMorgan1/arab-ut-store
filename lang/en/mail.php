@@ -12,8 +12,6 @@ return [
     'order_paid_wallet' => 'Paid from wallet',
     'order_paid_total' => 'Total paid',
     'order_paid_method' => 'Payment method',
-    'order_paid_method_wallet' => 'Wallet',
-    'order_paid_method_paylink' => 'Paylink',
     'order_paid_action' => 'Track your order',
     'order_paid_help' => 'If you have any question about this order, message us on WhatsApp and we will get back to you.',
     'footer_freelance' => 'Freelance work number FL-621205220',

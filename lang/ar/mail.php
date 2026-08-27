@@ -12,8 +12,6 @@ return [
     'order_paid_wallet' => 'مدفوع من المحفظة',
     'order_paid_total' => 'الإجمالي المدفوع',
     'order_paid_method' => 'طريقة الدفع',
-    'order_paid_method_wallet' => 'المحفظة',
-    'order_paid_method_paylink' => 'بيلينك',
     'order_paid_action' => 'متابعة الطلب',
     'order_paid_help' => 'لأي استفسار عن طلبك، تواصل معنا على واتساب وسنرد عليك في أقرب وقت.',
     'footer_freelance' => 'رقم العمل الحر FL-621205220',

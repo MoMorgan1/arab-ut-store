@@ -5,10 +5,10 @@ namespace App\Notifications;
 use App\Enums\ServiceType;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
+use App\Payments\PaymentMethodLabel;
 use Carbon\CarbonInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -86,17 +86,9 @@ final class OrderPaidNotification extends Notification implements ShouldQueue
 
     private function paymentMethod(Order $order, string $locale): ?string
     {
-        $payment = $order->payments->sortByDesc('id')->first();
+        $method = PaymentMethodLabel::for($order->payments->sortByDesc('id')->first());
 
-        if (! $payment instanceof Payment) {
-            return null;
-        }
-
-        return match ((string) $payment->getAttribute('provider')) {
-            'wallet' => (string) trans('mail.order_paid_method_wallet', [], $locale),
-            'paylink' => (string) trans('mail.order_paid_method_paylink', [], $locale),
-            default => null,
-        };
+        return $method === null ? null : (string) trans("payments.method_{$method}", [], $locale);
     }
 
     private function placedAt(Order $order): string

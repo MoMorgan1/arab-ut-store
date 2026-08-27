@@ -320,7 +320,8 @@ it('renders the paid invoice with letterhead, totals, and method, and no payment
     expect(invoice.getByText('Freelance No.')).toBeVisible();
     expect(invoice.getByText('FL-621205220')).toBeVisible();
     expect(invoice.getByText('Total paid')).toBeVisible();
-    expect(invoice.getByText('Payment method: Paylink')).toBeVisible();
+    // The method the customer used, not the gateway that moved the money.
+    expect(invoice.getByText('Payment method: mada')).toBeVisible();
     expect(invoice.queryByText('Amount due')).not.toBeInTheDocument();
     expect(container.querySelector('.account-invoice__pay')).toBeNull();
     expect(container.querySelector('.account-invoice__mark')).toBeNull();
@@ -600,7 +601,7 @@ function liveOrder(
         subtotal: { amountMinor: '12999', currency: 'SAR' },
         discount: { amountMinor: '0', currency: 'SAR' },
         paymentAmount: { amountMinor: '12999', currency: 'SAR' },
-        paymentMethod: 'paylink',
+        paymentMethod: 'mada',
         refreshable: true,
         paymentStartUrl,
         items: [
@@ -737,8 +738,15 @@ function shellProps() {
                 wallet_deduction: 'Paid from wallet',
                 total_paid: 'Total paid',
                 payment_method: 'Payment method',
-                method_wallet: 'Wallet',
-                method_paylink: 'Paylink',
+                methods: {
+                    wallet: 'Wallet',
+                    mada: 'mada',
+                    visa: 'Visa',
+                    mastercard: 'Mastercard',
+                    apple_pay: 'Apple Pay',
+                    stc_pay: 'STC Pay',
+                    card: 'Card',
+                },
             },
             statuses: {
                 pending_payment: 'Awaiting payment',

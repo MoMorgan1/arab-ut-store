@@ -131,8 +131,15 @@ return [
         'wallet_deduction' => 'مدفوع من المحفظة',
         'total_paid' => 'الإجمالي المدفوع',
         'payment_method' => 'طريقة الدفع',
-        'method_wallet' => 'المحفظة',
-        'method_paylink' => 'بيلينك',
+        'methods' => [
+            'wallet' => 'المحفظة',
+            'mada' => 'مدى',
+            'visa' => 'فيزا',
+            'mastercard' => 'ماستركارد',
+            'apple_pay' => 'Apple Pay',
+            'stc_pay' => 'STC Pay',
+            'card' => 'بطاقة',
+        ],
     ],
     'wallet' => [
         'title' => 'محفظتي',

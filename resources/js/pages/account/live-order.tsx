@@ -304,11 +304,12 @@ export default function AccountLiveOrder() {
                                 <p className="account-invoice__method">
                                     {props.accountUi.invoice.payment_method}
                                     {': '}
-                                    {props.order.paymentMethod === 'wallet'
-                                        ? props.accountUi.invoice.method_wallet
-                                        : props.accountUi.invoice
-                                              .method_paylink}
-                                    {props.order.paymentMethod === 'paylink' &&
+                                    {
+                                        props.accountUi.invoice.methods[
+                                            props.order.paymentMethod
+                                        ]
+                                    }
+                                    {props.order.paymentMethod !== 'wallet' &&
                                     props.order.walletPayment &&
                                     props.order.walletPayment.amountMinor !==
                                         '0' ? (

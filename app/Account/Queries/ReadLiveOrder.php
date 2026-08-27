@@ -13,6 +13,7 @@ use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Payments\PaymentMethodLabel;
 use BackedEnum;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Storage;
@@ -41,7 +42,7 @@ final class ReadLiveOrder
             ->where('public_id', $publicId)
             ->where('user_id', $user->id)
             ->with(['payments' => fn ($payments) => $payments
-                ->select(['id', 'order_id', 'provider'])
+                ->select(['id', 'order_id', 'provider', 'provider_metadata'])
                 ->orderByDesc('id')])
             ->with(['items' => fn ($items) => $items
                 ->select([
@@ -171,22 +172,12 @@ final class ReadLiveOrder
     }
 
     /**
-     * How the customer settled the order, from the newest payment row.
-     *
-     * Only the two providers this storefront writes are named; anything else
-     * stays unnamed rather than leaking an internal provider string.
+     * What the customer paid with, from the newest payment row - the method,
+     * never the gateway. A receipt says "mada", not the name of the plumbing.
      */
     private function paymentMethod(Order $order): ?string
     {
-        $payment = $order->payments->first();
-
-        if (! $payment instanceof Payment) {
-            return null;
-        }
-
-        $provider = (string) $payment->getAttribute('provider');
-
-        return in_array($provider, ['wallet', 'paylink'], true) ? $provider : null;
+        return PaymentMethodLabel::for($order->payments->first());
     }
 
     /**
