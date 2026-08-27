@@ -48,13 +48,18 @@ credentials are wrong — that is a useful signal, not a dead end.
 
 Run it after any change to mail configuration, and after a deploy that touched the environment.
 
-## Still missing
+## What the store sends
 
-There is **no order confirmation or payment receipt email**. The only mail the application sends is
-email-change confirmation, pending email change, support replies, and Fortify's password reset and
-email verification. A paid order publishes an `order.paid` integration event to n8n
-(`app/Actions/Fulfillment/PublishOrderPaidEvent.php`) and nothing else. A customer who pays receives
-no email from the store.
+A paid order sends the customer a receipt (`App\Notifications\OrderPaidNotification`) from both
+places an order becomes paid: the wallet-covered path in `PlaceOrder`, and the Paylink confirmation
+in `ReconcilePaylinkPayment`. Alongside it the store sends email-change confirmation, pending email
+change, support replies, and Fortify's password reset and email verification.
+
+All of them share the Arab UT template, because `config/mail.php` points the markdown theme at it —
+including the two Fortify sends, which were never touched.
+
+A paid order also publishes an `order.paid` integration event to n8n
+(`app/Actions/Fulfillment/PublishOrderPaidEvent.php`). That path is unrelated to email.
 
 ## Delivery is queued
 
