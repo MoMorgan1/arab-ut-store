@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Seo;
 
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Illuminate\Support\Str;
 
 /**
@@ -101,7 +102,7 @@ final class StoreCanonicalUrls
             return null;
         }
 
-        $parameters = self::scalarParameters($route->parameters());
+        $parameters = self::urlParameters($route);
 
         $arabic = route($base, $parameters);
         $english = route(
@@ -120,28 +121,34 @@ final class StoreCanonicalUrls
     }
 
     /**
-     * Keep only the scalar route parameters both URL variants share.
+     * The route parameters that are genuinely part of the URL path.
      *
-     * `locale` is dropped because each variant supplies its own, and non-scalar
-     * bindings are dropped because they cannot be re-encoded into a URL safely.
+     * `Route::parameters()` also returns values set with `->defaults()`, such
+     * as the `service` and `storePage` discriminators these routes carry.
+     * Passing those to `route()` appends them as a query string, which would
+     * make the canonical disagree with the clean URL in the sitemap. Only
+     * names that appear as `{placeholders}` in the URI belong here.
      *
-     * @param  array<string, mixed>  $parameters
+     * `locale` is dropped because each language variant supplies its own, and
+     * non-scalar bindings are dropped because they cannot be re-encoded safely.
+     *
      * @return array<string, string>
      */
-    private static function scalarParameters(array $parameters): array
+    private static function urlParameters(Route $route): array
     {
-        $scalars = [];
+        $pathNames = array_flip($route->parameterNames());
+        $parameters = [];
 
-        foreach ($parameters as $key => $value) {
-            if ($key === 'locale') {
+        foreach ($route->parameters() as $key => $value) {
+            if ($key === 'locale' || ! isset($pathNames[$key])) {
                 continue;
             }
 
             if (is_string($value) || is_int($value)) {
-                $scalars[$key] = (string) $value;
+                $parameters[$key] = (string) $value;
             }
         }
 
-        return $scalars;
+        return $parameters;
     }
 }

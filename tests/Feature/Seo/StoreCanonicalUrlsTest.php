@@ -68,3 +68,30 @@ it('keeps the product slug in both hreflang alternates', function () {
 it('emits no canonical for cart, auth, or account routes', function (string $uri) {
     expect(canonicalFor($uri))->toBeNull();
 })->with(['/cart', '/login', '/en/cart', '/en/login']);
+
+it('never leaks a route default into the canonical as a query string', function (string $uri) {
+    // These routes carry `->defaults('service', ...)` and
+    // `->defaults('storePage', ...)`. Route::parameters() returns those too, and
+    // passing them to route() appends `?service=sbc`, which makes the canonical
+    // disagree with the clean URL the sitemap submits.
+    $seo = canonicalFor($uri);
+
+    expect($seo)->not->toBeNull()
+        ->and($seo['canonical'])->not->toContain('?')
+        ->and($seo['alternates']['ar'])->not->toContain('?')
+        ->and($seo['alternates']['en'])->not->toContain('?');
+})->with(['/', '/sbc', '/objectives', '/privacy', '/terms', '/fut-champions', '/rivals', '/reviews']);
+
+it('canonicalises each store page to its own exact URL', function () {
+    // toBe, not toContain: a trailing query string would slip past containment.
+    expect(canonicalFor('/sbc')['canonical'])->toBe(url('/sbc'))
+        ->and(canonicalFor('/privacy')['canonical'])->toBe(url('/privacy'))
+        ->and(canonicalFor('/en/sbc')['canonical'])->toBe(url('/en/sbc'));
+});
+
+it('keeps the product slug and nothing else in a product canonical', function () {
+    $seo = canonicalFor('/sbc/example-product');
+
+    expect($seo['canonical'])->toBe(url('/sbc/example-product'))
+        ->and($seo['alternates']['en'])->toBe(url('/en/sbc/example-product'));
+});
