@@ -164,6 +164,8 @@ export type StoreCartItem = {
         serviceType:
             'coins' | 'sbc' | 'objectives' | 'rivals' | 'fut_champions';
     };
+    previousTotalHalalah: number | null;
+    priceChanged: boolean;
     promotion: {
         badge: string;
         discountHalalah: number;
@@ -171,6 +173,13 @@ export type StoreCartItem = {
     quantity: number;
     requiresCredentials: boolean;
     totalHalalah: number;
+    unavailableReason:
+        | 'variant_inactive'
+        | 'product_hidden'
+        | 'tier_removed'
+        | 'schedule_route_removed'
+        | 'configuration_invalid'
+        | null;
     unitPriceHalalah: number;
 };
 
@@ -283,6 +292,10 @@ export type StoreCartPageProps = {
     auth: { user: { id: number; name: string } | null };
     cartCount: number;
     cart: {
+        // Lives beside the items rather than in cartPage: partial reloads on the
+        // cart page ask for `cart` only, so eligibility parked in cartPage would
+        // stay stale after an unavailable item is removed.
+        canCheckout: boolean;
         count: number;
         currency: 'SAR';
         items: StoreCartItem[];
@@ -291,7 +304,6 @@ export type StoreCartPageProps = {
     };
     cartPage: {
         checkout: {
-            canCheckout: boolean;
             checkoutUrl: string;
             couponApplyUrl: string;
             couponRemoveUrl: string;

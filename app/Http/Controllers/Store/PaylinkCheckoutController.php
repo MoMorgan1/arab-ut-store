@@ -6,7 +6,9 @@ use App\Actions\Checkout\PlaceOrder;
 use App\Actions\Checkout\ReconcilePaylinkPayment;
 use App\Actions\Checkout\StartPaylinkPayment;
 use App\Enums\OrderStatus;
+use App\Exceptions\Checkout\CartRepriced;
 use App\Exceptions\Checkout\CheckoutUnavailable;
+use App\Exceptions\Checkout\PricingRunInProgress;
 use App\Exceptions\IdempotencyConflict;
 use App\Exceptions\Payments\PaymentConfigurationException;
 use App\Exceptions\Payments\PaymentGatewayException;
@@ -35,6 +37,7 @@ final class PaylinkCheckoutController extends Controller
                 $request->route('locale') === 'en' ? 'en' : 'ar',
                 $request->idempotencyKey(),
                 $request->expectedPayableHalalah(),
+                $request->expectedOrderTotalHalalah(),
             );
 
             $localized = $checkout->order->locale === 'en';
@@ -55,6 +58,22 @@ final class PaylinkCheckoutController extends Controller
             $invoice = $startPayment->execute($checkout->order, $checkout->payment);
         } catch (IdempotencyConflict) {
             return $this->error('idempotency_conflict', trans('store.checkout.idempotency_conflict'), 409);
+        } catch (CartRepriced $repriced) {
+            return response()->json([
+                'error' => [
+                    'code' => 'cart_repriced',
+                    'message' => trans('store.checkout.cart_repriced'),
+                ],
+                'repricing' => [
+                    'orderTotalHalalah' => $repriced->orderTotalHalalah,
+                    'previousOrderTotalHalalah' => $repriced->previousOrderTotalHalalah,
+                    'payableHalalah' => $repriced->payableHalalah,
+                    'previousPayableHalalah' => $repriced->previousPayableHalalah,
+                    'couponRemoved' => $repriced->couponRemoved,
+                ],
+            ], 422)->header('Cache-Control', 'no-store, private');
+        } catch (PricingRunInProgress) {
+            return $this->error('pricing_updating', trans('store.checkout.pricing_updating'), 503);
         } catch (CheckoutUnavailable $exception) {
             $phoneRequired = $exception->getMessage() === 'A verified mobile number is required.';
 

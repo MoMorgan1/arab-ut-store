@@ -61,17 +61,25 @@ export default function StoreCart() {
         ui,
     } = page.props;
     const authenticated = page.props.auth.user !== null;
-    const [items, setItems] = useState(cart.items);
+    const items = cart.items;
+    // An unavailable line has no live price, and the server leaves it out of the
+    // totals it computes. Counting it here would make every expected total
+    // disagree and refuse the checkout outright.
     const totalHalalah = items.reduce(
         (total, cartItem) =>
-            total +
-            cartItem.totalHalalah -
-            (cartItem.promotion?.discountHalalah ?? 0),
+            cartItem.unavailableReason
+                ? total
+                : total +
+                  cartItem.totalHalalah -
+                  (cartItem.promotion?.discountHalalah ?? 0),
         0,
     );
 
-    function itemRemoved(itemId: string, count: number) {
-        setItems((current) => current.filter((item) => item.id !== itemId));
+    function itemRemoved(_itemId: string, count: number) {
+        // Reload rather than filter local state: removing an unavailable item
+        // has to refresh `cart.canCheckout` as well, or the checkout button
+        // stays dead until a manual refresh.
+        router.reload({ only: ['cart'] });
         window.dispatchEvent(
             new CustomEvent<number>('arabut:cart-count', { detail: count }),
         );
@@ -132,6 +140,7 @@ export default function StoreCart() {
                             </section>
                             <CheckoutPanel
                                 authenticated={authenticated}
+                                canCheckout={cart.canCheckout}
                                 checkout={cartPage.checkout}
                                 coupon={cart.coupon}
                                 locale={locale}
@@ -230,6 +239,7 @@ function CheckoutProgress({
 
 function CheckoutPanel({
     authenticated,
+    canCheckout,
     checkout,
     coupon,
     locale,
@@ -239,6 +249,7 @@ function CheckoutPanel({
     useWallet: initialUseWallet,
 }: {
     authenticated: boolean;
+    canCheckout: boolean;
     checkout: StoreCartPageProps['cartPage']['checkout'];
     coupon: StoredCartCoupon | null;
     locale: 'ar' | 'en';
@@ -291,7 +302,7 @@ function CheckoutPanel({
     }
 
     async function startPayment() {
-        if (!checkout.canCheckout || state === 'loading') {
+        if (!canCheckout || state === 'loading') {
             return;
         }
 
@@ -303,6 +314,7 @@ function CheckoutPanel({
                 checkout.checkoutUrl,
                 idempotencyKey.current,
                 payableHalalah,
+                totalAfterDiscount,
             );
 
             if (result.paymentUrl === null) {
@@ -420,7 +432,7 @@ function CheckoutPanel({
             ) : (
                 <button
                     className="store-cart-checkout__action"
-                    disabled={!checkout.canCheckout || state === 'loading'}
+                    disabled={!canCheckout || state === 'loading'}
                     onClick={startPayment}
                     type="button"
                 >

@@ -1,7 +1,9 @@
 <?php
 
 use App\Actions\Checkout\PlaceOrder;
+use App\Actions\Pricing\ReadManualServicePricing;
 use App\Enums\ServiceType;
+use App\Exceptions\Checkout\CartRepriced;
 use App\Exceptions\Checkout\CheckoutUnavailable;
 use App\Models\Cart;
 use App\Models\CartItem;
@@ -138,9 +140,6 @@ it('rejects stale, inactive, or incomplete manual-service carts without partial 
     $state = manualServiceCheckoutCart(ServiceType::FutChampions);
 
     match ($failure) {
-        'stale schedule' => ServicePriceSchedule::query()
-            ->where('service_type', ServiceType::FutChampions)
-            ->update(['version' => 2]),
         'inactive schedule' => ServicePriceSchedule::query()
             ->where('service_type', ServiceType::FutChampions)
             ->update(['is_active' => false]),
@@ -165,7 +164,6 @@ it('rejects stale, inactive, or incomplete manual-service carts without partial 
         ->and(Payment::query()->count())->toBe(0)
         ->and($state['cart']->fresh()?->status)->toBe('active');
 })->with([
-    'stale schedule',
     'inactive schedule',
     'missing secret',
     'invalid secret',
@@ -173,7 +171,21 @@ it('rejects stale, inactive, or incomplete manual-service carts without partial 
     'missing image file',
 ]);
 
-it('rejects any manual-service price or route tampering even when the stored total was changed too', function () {
+it('reprices a manual-service cart onto a newer schedule instead of refusing it', function () {
+    $state = manualServiceCheckoutCart(ServiceType::FutChampions);
+    ServicePriceSchedule::query()
+        ->where('service_type', ServiceType::FutChampions)
+        ->update(['version' => 2]);
+
+    // The schedule moved but the price did not, so there is nothing for the
+    // customer to confirm - and the order records the version it was charged at.
+    $checkout = app(PlaceOrder::class)->execute($state['user'], 'en', 'manual-newer-schedule', 21_000, 21_000);
+
+    expect($checkout->order->items()->sole()->configuration['schedule_version'])->toBe(2)
+        ->and($checkout->order->items()->sole()->configuration['price_version'])->toBe(2);
+});
+
+it('ignores a tampered manual-service line price and charges the live route instead', function () {
     $state = manualServiceCheckoutCart(ServiceType::Rivals);
     $state['item']->update([
         'unit_price_halalah' => 18_000,
@@ -185,11 +197,24 @@ it('rejects any manual-service price or route tampering even when the stored tot
         ],
     ]);
 
+    // The stored line price is no longer an input to what is charged, so
+    // editing it cannot buy a cheaper order: the tampered figure is refused as
+    // a changed total.
     expect(fn () => app(PlaceOrder::class)->execute(
         $state['user'],
         'ar',
         'manual-route-tampering',
-    ))->toThrow(CheckoutUnavailable::class);
+        18_000,
+        18_000,
+    ))->toThrow(CartRepriced::class);
 
     expect(Order::query()->count())->toBe(0);
+
+    $live = app(ReadManualServicePricing::class)->rivals();
+    $routePrice = $live['pricing']->priceForRoute('1', 'elite');
+
+    $checkout = app(PlaceOrder::class)->execute($state['user'], 'ar', 'manual-route-live', $routePrice, $routePrice);
+
+    expect($checkout->order->total_halalah)->toBe($routePrice)
+        ->and($routePrice)->not->toBe(18_000);
 });

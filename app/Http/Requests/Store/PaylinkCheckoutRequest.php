@@ -33,13 +33,15 @@ final class PaylinkCheckoutRequest extends FormRequest
                 $validator->errors()->add('idempotency_key', trans('store.checkout.idempotency_key'));
             }
 
-            // Carried as a header rather than a body field because this request
+            // Carried as headers rather than body fields because this request
             // rejects a non-empty body outright, and the idempotency key already
             // establishes that idiom.
-            $expected = $this->header('X-Expected-Total-Halalah');
+            foreach (['X-Expected-Total-Halalah', 'X-Expected-Order-Total-Halalah'] as $header) {
+                $expected = $this->header($header);
 
-            if ($expected !== null && preg_match('/\A[0-9]{1,18}\z/D', (string) $expected) !== 1) {
-                $validator->errors()->add('expected_total', trans('store.checkout.expected_total'));
+                if (! is_string($expected) || preg_match('/\A[0-9]{1,18}\z/D', $expected) !== 1) {
+                    $validator->errors()->add('expected_total', trans('store.checkout.expected_total'));
+                }
             }
         }];
     }
@@ -50,16 +52,21 @@ final class PaylinkCheckoutRequest extends FormRequest
     }
 
     /**
-     * The payable total the cart showed, when the client sent one.
+     * The cash payable the cart showed, after the wallet deduction.
      *
-     * Null means "not supplied" and skips the check, so an older client still
-     * checks out; the storefront always sends it.
+     * Both expected totals are now mandatory. Skipping the check on an absent
+     * header would charge a customer a price they were never shown, which is
+     * exactly what this pair exists to prevent.
      */
-    public function expectedPayableHalalah(): ?int
+    public function expectedPayableHalalah(): int
     {
-        $expected = $this->header('X-Expected-Total-Halalah');
+        return (int) $this->header('X-Expected-Total-Halalah');
+    }
 
-        return $expected === null ? null : (int) $expected;
+    /** The order total the cart showed, before the wallet deduction. */
+    public function expectedOrderTotalHalalah(): int
+    {
+        return (int) $this->header('X-Expected-Order-Total-Halalah');
     }
 
     protected function failedValidation(Validator $validator): never

@@ -6,7 +6,7 @@ use App\Checkout\DiscountEngine;
 use App\Checkout\DiscountLine;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
-use App\Exceptions\Checkout\CheckoutUnavailable;
+use App\Exceptions\Checkout\CartRepriced;
 use App\Marketing\PromotionPricing;
 use App\Models\Cart;
 use App\Models\CartItemSecret;
@@ -606,8 +606,8 @@ test('a promotion ending between preview and pay refuses the order instead of ch
     // pressing pay.
     $promotion->forceFill(['is_active' => false])->save();
 
-    expect(fn () => app(PlaceOrder::class)->execute($user, 'ar', 'promo-vanished', $previewed))
-        ->toThrow(CheckoutUnavailable::class, (string) trans('store.checkout.price_changed', locale: 'ar'))
+    expect(fn () => app(PlaceOrder::class)->execute($user, 'ar', 'promo-vanished', $previewed, $previewed))
+        ->toThrow(CartRepriced::class)
         ->and(Order::query()->count())->toBe(0);
 });
 

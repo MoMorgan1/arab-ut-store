@@ -12,15 +12,73 @@ const CHECKOUT_PATH_PATTERN = /^\/(?:en\/)?checkout\/paylink$/;
 const PAYMENT_START_PATH_PATTERN =
     /^\/(?:en\/)?orders\/[0-7][0-9A-HJKMNP-TV-Z]{25}\/payments\/paylink$/;
 
+export type PaylinkRepricing = {
+    couponRemoved: boolean;
+    orderTotalHalalah: number;
+    payableHalalah: number;
+    previousOrderTotalHalalah: number;
+    previousPayableHalalah: number;
+};
+
 export class PaylinkCheckoutError extends Error {
     constructor(
         readonly code: string,
         readonly status: number,
         readonly conclusive: boolean,
+        // Present only on `cart_repriced`: the figures the confirmation dialog
+        // needs. Parsed as strictly as the success body, since it decides what
+        // the customer is asked to agree to pay.
+        readonly repricing: PaylinkRepricing | null = null,
     ) {
         super('Paylink checkout request failed.');
         this.name = 'PaylinkCheckoutError';
     }
+}
+
+function safeRepricing(payload: unknown): PaylinkRepricing | null {
+    if (!isRecord(payload) || !isRecord(payload.repricing)) {
+        return null;
+    }
+
+    const repricing = payload.repricing;
+
+    if (
+        Object.keys(repricing).sort().join(',') !==
+        'couponRemoved,orderTotalHalalah,payableHalalah,previousOrderTotalHalalah,previousPayableHalalah'
+    ) {
+        return null;
+    }
+
+    if (typeof repricing.couponRemoved !== 'boolean') {
+        return null;
+    }
+
+    const amounts = [
+        repricing.orderTotalHalalah,
+        repricing.payableHalalah,
+        repricing.previousOrderTotalHalalah,
+        repricing.previousPayableHalalah,
+    ];
+
+    if (
+        amounts.some(
+            (amount) =>
+                typeof amount !== 'number' ||
+                !Number.isInteger(amount) ||
+                amount < 0,
+        )
+    ) {
+        return null;
+    }
+
+    return {
+        couponRemoved: repricing.couponRemoved,
+        orderTotalHalalah: repricing.orderTotalHalalah as number,
+        payableHalalah: repricing.payableHalalah as number,
+        previousOrderTotalHalalah:
+            repricing.previousOrderTotalHalalah as number,
+        previousPayableHalalah: repricing.previousPayableHalalah as number,
+    };
 }
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -127,7 +185,8 @@ function safeSuccess(payload: unknown): PaylinkCheckoutSuccess | null {
 export async function startPaylinkCheckout(
     path: string,
     idempotencyKey: string,
-    expectedPayableHalalah?: number,
+    expectedPayableHalalah: number,
+    expectedOrderTotalHalalah: number,
 ): Promise<PaylinkCheckoutSuccess> {
     const url = sameOriginUrl(path);
 
@@ -139,7 +198,12 @@ export async function startPaylinkCheckout(
         throw new PaylinkCheckoutError('unsafe_endpoint', 0, false);
     }
 
-    return submitPaylinkCheckout(url, idempotencyKey, expectedPayableHalalah);
+    return submitPaylinkCheckout(
+        url,
+        idempotencyKey,
+        expectedPayableHalalah,
+        expectedOrderTotalHalalah,
+    );
 }
 
 export async function resumePaylinkCheckout(
@@ -154,10 +218,17 @@ export async function resumePaylinkCheckout(
     return submitPaylinkCheckout(url, null);
 }
 
+function halalahHeader(amount: number | undefined): string | null {
+    return typeof amount === 'number' && Number.isInteger(amount) && amount >= 0
+        ? String(amount)
+        : null;
+}
+
 async function submitPaylinkCheckout(
     url: URL,
     idempotencyKey: string | null,
     expectedPayableHalalah?: number,
+    expectedOrderTotalHalalah?: number,
 ): Promise<PaylinkCheckoutSuccess> {
     const token = csrfToken();
 
@@ -177,16 +248,19 @@ async function submitPaylinkCheckout(
         headers['Idempotency-Key'] = idempotencyKey;
     }
 
-    // The total the customer was actually shown. The server recomputes discounts
-    // from live promotion and coupon rows, so if a promotion ends between this
-    // page rendering and the customer pressing pay, the order is refused rather
-    // than silently charged at the new price.
-    if (
-        typeof expectedPayableHalalah === 'number' &&
-        Number.isInteger(expectedPayableHalalah) &&
-        expectedPayableHalalah >= 0
-    ) {
-        headers['X-Expected-Total-Halalah'] = String(expectedPayableHalalah);
+    // Both totals the customer was actually shown. The order total is sent as
+    // well as the cash payable because the wallet absorbs movement in the
+    // payable: a fully covered cart owes zero cash whatever the order total
+    // does, so the payable alone cannot prove the price did not change.
+    const payable = halalahHeader(expectedPayableHalalah);
+    const orderTotal = halalahHeader(expectedOrderTotalHalalah);
+
+    if (payable !== null) {
+        headers['X-Expected-Total-Halalah'] = payable;
+    }
+
+    if (orderTotal !== null) {
+        headers['X-Expected-Order-Total-Halalah'] = orderTotal;
     }
 
     try {
@@ -208,11 +282,20 @@ async function submitPaylinkCheckout(
     const payload = await responsePayload(response);
 
     if (response.status !== 200 && response.status !== 201) {
-        throw new PaylinkCheckoutError(
-            errorCode(payload),
-            response.status,
-            true,
-        );
+        const code = errorCode(payload);
+        const repricing =
+            code === 'cart_repriced' ? safeRepricing(payload) : null;
+
+        // A repricing the client cannot read is not something to confirm.
+        if (code === 'cart_repriced' && repricing === null) {
+            throw new PaylinkCheckoutError(
+                'unsafe_response',
+                response.status,
+                true,
+            );
+        }
+
+        throw new PaylinkCheckoutError(code, response.status, true, repricing);
     }
 
     const success = safeSuccess(payload);

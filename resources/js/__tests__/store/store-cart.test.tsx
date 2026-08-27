@@ -36,6 +36,7 @@ const mockPage = vi.hoisted(() => ({
     props: {
         auth: { user: null as { id: number; name: string } | null },
         cart: {
+            canCheckout: false,
             count: 1,
             currency: 'SAR',
             items: [
@@ -74,7 +75,6 @@ const mockPage = vi.hoisted(() => ({
         } as StoreCartPageProps['cart'],
         cartPage: {
             checkout: {
-                canCheckout: false,
                 checkoutUrl: '/en/checkout/paylink',
                 couponApplyUrl: '/en/cart/coupon',
                 couponRemoveUrl: '/en/cart/coupon',
@@ -287,7 +287,7 @@ afterEach(cleanup);
 beforeEach(() => {
     document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
     mockPage.props.auth.user = null;
-    mockPage.props.cartPage.checkout.canCheckout = false;
+    mockPage.props.cart.canCheckout = false;
     mockPage.props.cartPage.checkout.phoneVerified = false;
     mockPage.props.cart.count = 1;
     mockPage.props.cart.items = [defaultCartItem];
@@ -393,7 +393,7 @@ it('offers the Coins route from a purposeful empty state without a back link', (
 
 it('locks checkout while Paylink opens and navigates only to the validated hosted URL', async () => {
     mockPage.props.auth.user = { id: 1, name: 'Buyer' };
-    mockPage.props.cartPage.checkout.canCheckout = true;
+    mockPage.props.cart.canCheckout = true;
     mockPage.props.cartPage.checkout.phoneVerified = true;
     const fetchMock = vi.fn().mockImplementation(() =>
         Promise.resolve(
@@ -441,7 +441,7 @@ it('locks checkout while Paylink opens and navigates only to the validated hoste
 
 it('opens the existing order when an idempotent checkout retry is already paid', async () => {
     mockPage.props.auth.user = { id: 1, name: 'Buyer' };
-    mockPage.props.cartPage.checkout.canCheckout = true;
+    mockPage.props.cart.canCheckout = true;
     mockPage.props.cartPage.checkout.phoneVerified = true;
     vi.stubGlobal(
         'fetch',
@@ -688,16 +688,17 @@ it('removes a cart product only after inline confirmation and updates the cart c
     fireEvent.click(screen.getByRole('button', { name: 'Confirm removal' }));
 
     await waitFor(() =>
-        expect(screen.queryByText('FC 27 Coins')).not.toBeInTheDocument(),
+        expect(fetchMock).toHaveBeenCalledWith(
+            '/en/cart/items/01K00000000000000000000000',
+            expect.objectContaining({ method: 'DELETE' }),
+        ),
     );
-    expect(fetchMock).toHaveBeenCalledWith(
-        '/en/cart/items/01K00000000000000000000000',
-        expect.objectContaining({ method: 'DELETE' }),
-    );
+
+    // Removal reloads the cart prop rather than filtering local state, because
+    // checkout eligibility lives there too: dropping the last unavailable item
+    // has to re-enable the checkout button without a full page refresh.
+    expect(router.reload).toHaveBeenCalledWith({ only: ['cart'] });
     expect(cartCountEvents).toEqual([0]);
-    expect(
-        screen.getByRole('heading', { name: 'Your cart is empty' }),
-    ).toBeVisible();
 });
 
 it('does not invent cart facts when a safe projected field is absent', () => {

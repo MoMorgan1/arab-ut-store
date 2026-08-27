@@ -36,14 +36,18 @@ const promotedItem: StoreCartItem = {
         badge: 'خصم 20%',
         discountHalalah: 2_500,
     },
+    previousTotalHalalah: null,
+    priceChanged: false,
     quantity: 1,
     requiresCredentials: false,
     totalHalalah: 12_500,
+    unavailableReason: null,
     unitPriceHalalah: 12_500,
 };
 
 function cartProps(items: StoreCartItem[]): StoreCartPageProps['cart'] {
     return {
+        canCheckout: true,
         count: items.length,
         currency: 'SAR',
         items,
