@@ -48,8 +48,6 @@ import type {
     StoreCartTranslations,
 } from '@/types/store-shell';
 
-const UNDO_WINDOW_MS = 6000;
-
 export default function StoreCart() {
     const page = usePage<StoreCartPageProps>();
     const {
@@ -64,38 +62,7 @@ export default function StoreCart() {
         ui,
     } = page.props;
     const authenticated = page.props.auth.user !== null;
-    // The delete is deferred, not undone: the row leaves immediately and the
-    // request only fires once the undo window closes. The server hard-deletes a
-    // cart item and its attachment, so anything actually sent is unrecoverable.
-    const [pendingRemoval, setPendingRemoval] = useState<StoreCartItem | null>(
-        null,
-    );
-    const items = cart.items.filter(
-        (cartItem) => cartItem.id !== pendingRemoval?.id,
-    );
-
-    useEffect(() => {
-        if (pendingRemoval === null) {
-            return;
-        }
-
-        const timer = setTimeout(() => {
-            void removeCartItem(pendingRemoval.deleteUrl)
-                .then((result) => {
-                    window.dispatchEvent(
-                        new CustomEvent<number>('arabut:cart-count', {
-                            detail: result.cartCount,
-                        }),
-                    );
-                })
-                .finally(() => {
-                    setPendingRemoval(null);
-                    router.reload({ only: ['cart'] });
-                });
-        }, UNDO_WINDOW_MS);
-
-        return () => clearTimeout(timer);
-    }, [pendingRemoval]);
+    const items = cart.items;
     // An unavailable line has no live price, and the server leaves it out of the
     // totals it computes. Counting it here would make every expected total
     // disagree and refuse the checkout outright.
@@ -109,8 +76,14 @@ export default function StoreCart() {
         0,
     );
 
-    function itemRemoved(cartItem: StoreCartItem) {
-        setPendingRemoval(cartItem);
+    function itemRemoved(count: number) {
+        // Reload rather than filter local state: removing an unavailable item
+        // has to refresh `cart.canCheckout` too, or the checkout button stays
+        // dead until a manual refresh.
+        router.reload({ only: ['cart'] });
+        window.dispatchEvent(
+            new CustomEvent<number>('arabut:cart-count', { detail: count }),
+        );
     }
 
     return (
@@ -134,21 +107,6 @@ export default function StoreCart() {
                     <h1 id="store-cart-title">{cartPage.translations.title}</h1>
                 </header>
 
-                {pendingRemoval !== null ? (
-                    <div className="store-cart-undo" role="status">
-                        <p>
-                            {interpolate(cartPage.translations.removed_item, {
-                                name: pendingRemoval.product.name,
-                            })}
-                        </p>
-                        <button
-                            onClick={() => setPendingRemoval(null)}
-                            type="button"
-                        >
-                            {cartPage.translations.undo}
-                        </button>
-                    </div>
-                ) : null}
                 {items.length === 0 ? (
                     <CartEmptyState
                         coinsUrl={storeShell.coinsUrl}
@@ -916,12 +874,14 @@ function CartLine({
 }: {
     cartItem: StoreCartItem;
     locale: 'ar' | 'en';
-    onRemoved: (cartItem: StoreCartItem) => void;
+    onRemoved: (cartCount: number) => void;
     translations: StoreCartTranslations;
 }) {
     // Hold to delete rather than click-then-confirm: one gesture the customer
     // can abandon at any moment by letting go, and no second control to read.
     const [holdProgress, setHoldProgress] = useState(0);
+    const [removing, setRemoving] = useState(false);
+    const [failed, setFailed] = useState(false);
     const holdFrame = useRef<number | null>(null);
     const configuration = cartItem.configuration;
     const isCoins = cartItem.product.serviceType === 'coins';
@@ -984,7 +944,13 @@ function CartLine({
 
             holdFrame.current = null;
             setHoldProgress(0);
-            onRemoved(cartItem);
+            setRemoving(true);
+            void removeCartItem(cartItem.deleteUrl)
+                .then((result) => onRemoved(result.cartCount))
+                .catch(() => {
+                    setRemoving(false);
+                    setFailed(true);
+                });
         };
 
         holdFrame.current = requestAnimationFrame(step);
@@ -1027,6 +993,7 @@ function CartLine({
                     aria-describedby={`remove-hint-${cartItem.id}`}
                     aria-label={translations.remove_item}
                     className="store-cart-line__remove"
+                    disabled={removing}
                     onBlur={cancelHold}
                     onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
@@ -1057,6 +1024,11 @@ function CartLine({
                     {translations.remove_hint}
                 </span>
             </div>
+            {failed ? (
+                <p className="store-cart-line__remove-error" role="alert">
+                    {translations.remove_error}
+                </p>
+            ) : null}
             <dl className="store-cart-line__summary">
                 <CartFact label={translations.platform} value={platform} />
                 {isCoins ? (

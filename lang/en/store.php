@@ -77,8 +77,6 @@ return [
         'credentials_saved' => 'EA details saved',
         'credentials_load_error' => 'EA details could not be loaded.',
         'credentials_save_error' => 'EA details could not be saved.',
-        'removed_item' => 'Removed :name',
-        'undo' => 'Undo',
         'remove_hint' => 'Press and hold until the bar fills to remove this product.',
         'remove_item' => 'Remove product',
         'remove_confirm' => 'Confirm removal',

@@ -3422,45 +3422,7 @@ html.admin-document {
         border-color: rgb(234 105 105 / 55%);
     }
 
-    .store-cart-undo {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.5rem 0.85rem;
-        margin: 0.85rem 0 0;
-        border: 1px solid var(--arabut-line);
-        border-radius: 0.75rem;
-        background: rgb(20 18 15 / 88%);
-        padding: 0.65rem 0.9rem;
-    }
-
-    .store-cart-undo p {
-        margin: 0;
-        color: var(--arabut-muted);
-        font-size: 0.85rem;
-        overflow-wrap: anywhere;
-    }
-
-    .store-cart-undo button {
-        min-height: 2.75rem;
-        margin-inline-start: auto;
-        border: 1px solid rgb(217 171 58 / 52%);
-        border-radius: 0.6rem;
-        background: rgb(217 171 58 / 10%);
-        padding-inline: 0.9rem;
-        color: var(--arabut-gold-bright);
-        cursor: pointer;
-        font-size: 0.85rem;
-        font-weight: 800;
-    }
-
-    .store-cart-undo button:hover {
-        border-color: var(--arabut-gold-bright);
-        color: var(--arabut-ink);
-    }
-
     .store-cart-coupon__toggle:focus-visible,
-    .store-cart-undo button:focus-visible,
     .store-cart-confirm__actions button:focus-visible,
     .store-cart-line__remove:focus-visible {
         outline: 2px solid var(--arabut-gold-bright);

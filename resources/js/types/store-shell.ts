@@ -245,8 +245,6 @@ export type StoreCartTranslations = {
     credentials_save_error: string;
     remove_item: string;
     remove_hint: string;
-    removed_item: string;
-    undo: string;
     remove_confirm: string;
     remove_cancel: string;
     remove_error: string;

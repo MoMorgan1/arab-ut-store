@@ -132,8 +132,6 @@ const mockPage = vi.hoisted(() => ({
                 credentials_hide: 'Hide EA details',
                 remove_item: 'Remove product',
                 remove_hint: 'Press and hold until the bar fills.',
-                removed_item: 'Removed :name',
-                undo: 'Undo',
                 remove_confirm: 'Confirm removal',
                 remove_cancel: 'Keep product',
                 remove_error: 'The product could not be removed.',
@@ -685,11 +683,15 @@ it('loads owner-only credentials only after disclosure and edits exactly three c
     expect(localStorageSpy).not.toHaveBeenCalled();
 });
 
-it('removes a product only after a sustained hold, and lets it be undone', async () => {
+it('removes a product only after a sustained hold', async () => {
     const cartCountEvents: number[] = [];
-    window.addEventListener('arabut:cart-count', (event) => {
-        cartCountEvents.push((event as CustomEvent<number>).detail);
-    });
+    window.addEventListener(
+        'arabut:cart-count',
+        (event) => {
+            cartCountEvents.push((event as CustomEvent<number>).detail);
+        },
+        { once: true },
+    );
     const fetchMock = vi.fn().mockResolvedValue(
         new Response(JSON.stringify({ data: { cartCount: 0 } }), {
             status: 200,
@@ -715,10 +717,10 @@ it('removes a product only after a sustained hold, and lets it be undone', async
     render(<StoreCart />);
     const remove = screen.getByRole('button', { name: 'Remove product' });
 
-    // A tap that is not held deletes nothing.
+    // A tap that is not held deletes nothing. The hold is the confirmation,
+    // and the delete it commits to is immediate and final.
     fireEvent.pointerUp(remove);
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.getByText('FC 27 Coins')).toBeVisible();
 
     fireEvent.pointerDown(remove);
     expect(frame).not.toBeNull();
@@ -729,16 +731,13 @@ it('removes a product only after a sustained hold, and lets it be undone', async
     });
 
     await waitFor(() =>
-        expect(screen.queryByText('FC 27 Coins')).not.toBeInTheDocument(),
+        expect(fetchMock).toHaveBeenCalledWith(
+            '/en/cart/items/01K00000000000000000000000',
+            expect.objectContaining({ method: 'DELETE' }),
+        ),
     );
-    // Gone from the page, but nothing has been sent yet - the window is open.
-    expect(fetchMock).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
-
-    expect(screen.getByText('FC 27 Coins')).toBeVisible();
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(cartCountEvents).toEqual([]);
+    expect(router.reload).toHaveBeenCalledWith({ only: ['cart'] });
+    expect(cartCountEvents).toEqual([0]);
 });
 
 it('does not invent cart facts when a safe projected field is absent', () => {

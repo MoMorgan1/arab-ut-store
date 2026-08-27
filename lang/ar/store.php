@@ -74,8 +74,6 @@ return [
         'credentials_saved' => 'تم حفظ بيانات EA',
         'credentials_load_error' => 'تعذر تحميل بيانات EA.',
         'credentials_save_error' => 'تعذر حفظ بيانات EA.',
-        'removed_item' => 'تم حذف :name',
-        'undo' => 'تراجع',
         'remove_hint' => 'استمر بالضغط حتى يكتمل الشريط لحذف المنتج.',
         'remove_item' => 'حذف المنتج',
         'remove_confirm' => 'تأكيد الحذف',
