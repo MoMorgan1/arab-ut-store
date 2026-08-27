@@ -183,6 +183,14 @@ Outside the published range the curve clamps, and each end is bounded at ingest:
   such as `{5M: 1.035, 20M: 1.05}` would otherwise clamp every order below five
   million down to 1.035 and undercharge a 100K order by roughly 2.4%.
 
+Below the first anchor the band is priced at the first anchor's rate rather than
+on the curve. The owner accepted this on 2026-08-27: the band is small orders at
+a low absolute price, and the first anchor is already the rate intended for
+them. It is a deliberate trade for decoupling - requiring an anchor at or below
+the admin minimum would put the minimum back in n8n's hands, which is the
+coupling this design removes. The only bound is the one above: the first anchor
+must be at or below the minimum, or be the dearest rate on the table.
+
 `multipliers_basis_points` is a **threshold map**. Laravel answers with the last
 entry at or below the quantity, so an entry repeating the one before it is
 already implied and is dropped before storing - the same prices, roughly a fifth
