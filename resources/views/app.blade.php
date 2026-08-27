@@ -75,9 +75,9 @@
             <script type="application/ld+json">{!! json_encode($seo['schema'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
         @endif
 
-        <link rel="icon" href="/favicon-32x32.png?v=arab-ut-2026" sizes="32x32" type="image/png">
-        <link rel="shortcut icon" href="/favicon-32x32.png?v=arab-ut-2026" type="image/png">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=arab-ut-2026">
+        <link rel="icon" href="/favicon-32x32.png?v=arab-ut-2026-2" sizes="32x32" type="image/png">
+        <link rel="shortcut icon" href="/favicon-32x32.png?v=arab-ut-2026-2" type="image/png">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=arab-ut-2026-2">
 
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
