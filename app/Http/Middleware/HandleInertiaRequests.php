@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Actions\Cart\ResolveCartOwner;
 use App\Models\Cart;
+use App\Support\Seo\StorePageSeo;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -92,6 +93,9 @@ class HandleInertiaRequests extends Middleware
             'chat' => [
                 'enabled' => (bool) config('chat.enabled', false),
             ],
+            // Storefront defaults, so every page renders valid social metadata
+            // server-side. Controllers with richer data override this prop.
+            'seo' => StorePageSeo::default()->toArray(),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

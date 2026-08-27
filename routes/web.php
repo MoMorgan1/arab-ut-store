@@ -24,6 +24,7 @@ use App\Http\Controllers\Store\ReviewsController;
 use App\Http\Controllers\Store\RivalsCartController;
 use App\Http\Controllers\Store\SbcCartController;
 use App\Http\Controllers\Store\SimpleStorePageController;
+use App\Http\Controllers\Store\SitemapController;
 use App\Http\Middleware\NoStore;
 use App\Http\Middleware\RequireCatalogCartJson;
 use App\Http\Middleware\RequireCoinsCartJson;
@@ -126,6 +127,9 @@ $localizedLoginMiddleware = array_filter([
         ? 'throttle:'.config('fortify.limiters.login')
         : null,
 ]);
+
+// Not locale-prefixed: one sitemap lists both locales as xhtml alternates.
+Route::get('/sitemap.xml', SitemapController::class)->name('store.sitemap');
 
 foreach ($simpleStorePages as $page => $uri) {
     Route::get($uri, SimpleStorePageController::class)

@@ -127,6 +127,8 @@ return [
         'paylink_minimum_gap' => 'The remaining payment amount is below the Paylink minimum of SAR 5.00. The difference is SAR :gap.',
     ],
     'seo_title' => 'Arab UT | FC 27 Ultimate Team Coins',
+    'seo_description' => 'Arab UT Store specializes in FC 27 services, delivering coins safely with a full guarantee and competitive prices — Officially verified with freelance doc FL-621205220.',
+    'seo_brand' => 'Arab UT Store',
     'hero' => [
         'badge' => 'Everything you need for FC 27, all in one place.',
         'title' => 'FIFA 27 Coins',

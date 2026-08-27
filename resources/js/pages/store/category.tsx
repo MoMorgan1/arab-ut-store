@@ -68,14 +68,7 @@ export default function StoreCategory() {
             storeShell={props.storeShell}
             ui={props.ui}
         >
-            <StoreSeoHead
-                title={pageTitle}
-                description={
-                    props.servicePage.card_description ||
-                    props.servicePage.intro
-                }
-                locale={props.locale}
-            />
+            <StoreSeoHead title={pageTitle} />
             <section
                 aria-labelledby="store-catalog-title"
                 className={[

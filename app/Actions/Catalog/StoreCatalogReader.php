@@ -12,6 +12,7 @@ use App\Models\ProductVariant;
 use App\Support\Money;
 use App\ValueObjects\Pricing\PreparedDisplayMoneyConverter;
 use App\ValueObjects\Pricing\SbcCompletionPricing;
+use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -146,6 +147,30 @@ final class StoreCatalogReader
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
+    }
+
+    /** @return Builder<Product> */
+    /**
+     * Slugs of every product a visitor can reach, for the sitemap.
+     *
+     * Deliberately built on the same visibility query the storefront uses, so a
+     * hidden or archived product can never leak into the sitemap.
+     *
+     * @return list<array{slug: string, updatedAt: CarbonImmutable|null}>
+     */
+    public function publicProductSlugs(ServiceType $service): array
+    {
+        return array_values(
+            $this->publicProductsQuery($service)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get(['slug', 'updated_at'])
+                ->map(fn (Product $product): array => [
+                    'slug' => (string) $product->slug,
+                    'updatedAt' => $product->updated_at,
+                ])
+                ->all(),
+        );
     }
 
     /** @return Builder<Product> */

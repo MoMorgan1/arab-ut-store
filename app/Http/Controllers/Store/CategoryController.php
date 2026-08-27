@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Store;
 use App\Actions\Catalog\StoreCatalogReader;
 use App\Enums\ServiceType;
 use App\Http\Controllers\Controller;
+use App\Support\Seo\StorePageSeo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -31,6 +32,7 @@ final class CategoryController extends Controller
             'catalogPageUrl' => $this->route($request, "store.{$service->value}"),
             'catalogPage' => trans('store.catalog'),
             'servicePage' => trans("store.services.{$service->value}"),
+            'seo' => StorePageSeo::default(trans("store.services.{$service->value}.page_title"))->toArray(),
             'catalog' => $catalog->category(
                 $service,
                 app()->getLocale(),

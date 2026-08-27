@@ -81,11 +81,7 @@ export default function StoreHome() {
             storeShell={storeShell}
             ui={ui}
         >
-            <StoreSeoHead
-                title={store?.seo_title ?? ui.home_title}
-                description={ui.footer?.description}
-                locale={locale}
-            />
+            <StoreSeoHead title={store?.seo_title ?? ui.home_title} />
             {hasHomepageContract ? (
                 <>
                     <section

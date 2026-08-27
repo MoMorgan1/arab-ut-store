@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ServicePriceSchedule;
 use App\Support\Money;
+use App\Support\Seo\StorePageSeo;
 use App\ValueObjects\Pricing\FutChampionsPricing;
 use App\ValueObjects\Pricing\PreparedDisplayMoneyConverter;
 use App\ValueObjects\Pricing\RivalsPricing;
@@ -66,6 +67,9 @@ final class ManualServiceProductController extends Controller
 
         return Inertia::render('store/manual-service', [
             'backUrl' => $this->route($request, 'home').'#services',
+            'seo' => StorePageSeo::default(
+                trans("store.manual_services.{$service->value}.title"),
+            )->toArray(),
             'manualServicePage' => [
                 'common' => trans('store.manual_services.common'),
                 'relatedServices' => $this->relatedServices($request, $service),

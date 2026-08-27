@@ -28,12 +28,7 @@ export default function StoreCatalogProduct() {
             storeShell={props.storeShell}
             ui={props.ui}
         >
-            <StoreSeoHead
-                title={product.name}
-                description={product.description}
-                locale={props.locale}
-                schemaType="Product"
-            />
+            <StoreSeoHead title={product.name} />
             <main
                 className={[
                     'store-catalog-product',

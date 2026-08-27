@@ -21,11 +21,7 @@ export default function StoreReviews() {
             storeShell={props.storeShell}
             ui={props.ui}
         >
-            <StoreSeoHead
-                title={props.reviewsPage.title}
-                description={props.reviewsPage.eyebrow}
-                locale={props.locale}
-            />
+            <StoreSeoHead title={props.reviewsPage.title} />
             <main className="store-reviews-page" id="store-content">
                 <header className="store-catalog-hero">
                     <p>{props.reviewsPage.eyebrow}</p>

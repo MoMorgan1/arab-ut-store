@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Store;
 
 use App\Http\Controllers\Controller;
 use App\Services\Reviews\StoreReviewReader;
+use App\Support\Seo\StorePageSeo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
@@ -20,6 +21,7 @@ final class ReviewsController extends Controller
         return Inertia::render('store/reviews', [
             'reviews' => $reviews->paginate(app()->getLocale(), (int) ($query['page'] ?? 1)),
             'reviewsPage' => trans('store.reviews'),
+            'seo' => StorePageSeo::default(trans('store.reviews.title'))->toArray(),
         ]);
     }
 }
