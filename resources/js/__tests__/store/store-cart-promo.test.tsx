@@ -216,6 +216,7 @@ function translations(): Record<string, string> {
         phone_delivery_error: 'The WhatsApp code could not be sent right now.',
         order_total: 'Order total',
         coupon_label: 'Discount code',
+        coupon_prompt: 'Have a discount code?',
         coupon_placeholder: 'Enter coupon code',
         coupon_apply: 'Apply',
         coupon_applying: 'Applying…',

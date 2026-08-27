@@ -3376,10 +3376,116 @@ html.admin-document {
         align-items: center;
         gap: 0.45rem;
         margin-inline-start: auto;
-        padding-inline: 0.75rem;
-        border-color: rgb(214 90 90 / 62%);
-        background: #7d0d0d;
-        color: #fff0e8;
+        padding-inline: 0.8rem;
+        border-color: rgb(237 228 208 / 16%);
+        background: rgb(8 8 8 / 38%);
+        color: var(--arabut-muted);
+        cursor: pointer;
+        transition:
+            color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+            border-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+            background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .store-cart-line__remove svg {
+        position: relative;
+        z-index: 1;
+        opacity: 0.75;
+        transition: opacity 160ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .store-cart-line__remove > span:not(.store-cart-line__remove-fill) {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* The hold gesture is the confirmation: the fill is how far the customer
+       has committed, and letting go at any point abandons it. */
+    .store-cart-line__remove {
+        position: relative;
+        overflow: hidden;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    .store-cart-line__remove-fill {
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: 0;
+        z-index: 0;
+        width: calc(var(--hold, 0) * 100%);
+        background: rgb(214 90 90 / 55%);
+    }
+
+    .store-cart-line__remove:has(.store-cart-line__remove-fill[style]) {
+        border-color: rgb(234 105 105 / 55%);
+    }
+
+    .store-cart-undo {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 0.85rem;
+        margin: 0.85rem 0 0;
+        border: 1px solid var(--arabut-line);
+        border-radius: 0.75rem;
+        background: rgb(20 18 15 / 88%);
+        padding: 0.65rem 0.9rem;
+    }
+
+    .store-cart-undo p {
+        margin: 0;
+        color: var(--arabut-muted);
+        font-size: 0.85rem;
+        overflow-wrap: anywhere;
+    }
+
+    .store-cart-undo button {
+        min-height: 2.75rem;
+        margin-inline-start: auto;
+        border: 1px solid rgb(217 171 58 / 52%);
+        border-radius: 0.6rem;
+        background: rgb(217 171 58 / 10%);
+        padding-inline: 0.9rem;
+        color: var(--arabut-gold-bright);
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 800;
+    }
+
+    .store-cart-undo button:hover {
+        border-color: var(--arabut-gold-bright);
+        color: var(--arabut-ink);
+    }
+
+    .store-cart-coupon__toggle:focus-visible,
+    .store-cart-undo button:focus-visible,
+    .store-cart-confirm__actions button:focus-visible,
+    .store-cart-line__remove:focus-visible {
+        outline: 2px solid var(--arabut-gold-bright);
+        outline-offset: 2px;
+    }
+
+    /* The fill is a progress readout, not decoration, so it stays; only its
+       easing is dropped. */
+    @media (prefers-reduced-motion: reduce) {
+        .store-cart-line__remove,
+        .store-cart-line__remove svg {
+            transition-duration: 0.01ms;
+        }
+    }
+
+    .store-cart-line__remove:hover,
+    .store-cart-line__remove:focus-visible {
+        border-color: rgb(234 105 105 / 55%);
+        background: rgb(214 90 90 / 12%);
+        color: #ffb0b0;
+    }
+
+    .store-cart-line__remove:hover svg,
+    .store-cart-line__remove:focus-visible svg {
+        opacity: 1;
     }
 
     .store-cart-line__remove svg {
@@ -3403,7 +3509,6 @@ html.admin-document {
         color: #ffb0b0;
     }
 
-    .store-cart-line__remove:hover,
     .store-cart-line__remove-confirmation button:hover {
         border-color: rgb(217 171 58 / 52%);
         color: var(--arabut-ink);
@@ -3412,6 +3517,143 @@ html.admin-document {
     .store-cart-line__remove-error {
         margin: 0.75rem 0 0;
         color: #ffb0b0;
+    }
+
+    /* Repricing states. Gold carries the decision the customer still has to
+       make; red is reserved for the line they have to act on before paying. */
+    .store-cart-repriced {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem 0.5rem;
+        margin: 0.85rem 0 0;
+        border-inline-start: 3px solid var(--arabut-gold);
+        padding-inline-start: 0.75rem;
+        color: var(--arabut-muted);
+        font-size: 0.85rem;
+    }
+
+    .store-cart-repriced strong {
+        color: var(--arabut-gold-bright);
+    }
+
+    .store-cart-line--unavailable {
+        border-color: rgb(214 90 90 / 45%);
+    }
+
+    .store-cart-line--unavailable .store-cart-line__summary,
+    .store-cart-line--unavailable .store-cart-line__title img {
+        opacity: 0.55;
+    }
+
+    .store-cart-line__unavailable {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0.4rem 0.5rem;
+        margin: 0.35rem 0 0;
+        color: #ffb0b0;
+        font-size: 0.82rem;
+    }
+
+    .store-cart-line__unavailable > span {
+        border: 1px solid rgb(234 105 105 / 48%);
+        border-radius: 0.4rem;
+        background: rgb(214 90 90 / 12%);
+        padding: 0.1rem 0.45rem;
+        font-weight: 800;
+        letter-spacing: 0.01em;
+    }
+
+    .store-cart-line__repriced {
+        display: flex;
+        gap: 0.4rem;
+        margin: 0.65rem 0 0;
+        color: var(--arabut-muted);
+        font-size: 0.82rem;
+    }
+
+    .store-cart-line__repriced del {
+        color: var(--arabut-muted);
+        font-variant-numeric: tabular-nums;
+        text-decoration-thickness: 1px;
+    }
+
+    .store-cart-confirm {
+        display: grid;
+        gap: 0.55rem;
+        border: 1px solid rgb(217 171 58 / 52%);
+        border-radius: 0.85rem;
+        background: rgb(217 171 58 / 8%);
+        padding: 0.9rem;
+    }
+
+    .store-cart-confirm__title {
+        margin: 0;
+        color: var(--arabut-gold-bright);
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+        font-size: 1.05rem;
+    }
+
+    .store-cart-confirm__note,
+    .store-cart-confirm__coupon {
+        margin: 0;
+        color: var(--arabut-muted);
+        font-size: 0.82rem;
+    }
+
+    .store-cart-confirm__coupon {
+        color: #ffb0b0;
+    }
+
+    .store-cart-confirm__figures {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: baseline;
+        gap: 0.25rem 0.75rem;
+        color: var(--arabut-muted);
+        font-size: 0.85rem;
+    }
+
+    .store-cart-confirm__figures del,
+    .store-cart-confirm__figures strong {
+        justify-self: end;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .store-cart-confirm__figures strong {
+        color: var(--arabut-gold-bright);
+        font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+        font-size: 1.3rem;
+    }
+
+    .store-cart-confirm__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .store-cart-confirm__actions button {
+        min-height: 2.75rem;
+        flex: 1 1 8rem;
+        border-radius: 0.65rem;
+        font-size: 0.85rem;
+        font-weight: 800;
+    }
+
+    .store-cart-confirm__actions button:first-child {
+        border: 1px solid var(--arabut-gold-bright);
+        background: var(--arabut-gold);
+        color: #17140d;
+    }
+
+    .store-cart-confirm__actions button:last-child {
+        border: 1px solid rgb(237 228 208 / 22%);
+        background: rgb(8 8 8 / 38%);
+        color: var(--arabut-muted);
+    }
+
+    .store-cart-confirm__actions button:hover {
+        border-color: rgb(217 171 58 / 72%);
     }
 
     .store-cart-line__title img {
@@ -4015,8 +4257,39 @@ html.admin-document {
     }
 
     .store-cart-checkout__action:disabled {
-        cursor: wait;
+        cursor: not-allowed;
         opacity: 0.66;
+    }
+
+    .store-cart-checkout__action[data-busy='true']:disabled {
+        cursor: wait;
+    }
+
+    .store-cart-checkout__blocked {
+        margin: 0;
+        border-inline-start: 3px solid rgb(234 105 105 / 55%);
+        padding-inline-start: 0.75rem;
+        color: #ffb0b0;
+        font-size: 0.82rem;
+    }
+
+    .store-cart-coupon__toggle {
+        justify-self: start;
+        min-height: 2.75rem;
+        border: none;
+        background: none;
+        padding: 0;
+        color: var(--arabut-gold-bright);
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-align: start;
+        text-decoration: underline;
+        text-underline-offset: 0.25rem;
+    }
+
+    .store-cart-coupon__toggle:hover {
+        color: var(--arabut-ink);
     }
 
     .store-cart-checkout__action:focus-visible {

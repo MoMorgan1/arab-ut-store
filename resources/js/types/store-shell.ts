@@ -244,6 +244,9 @@ export type StoreCartTranslations = {
     credentials_load_error: string;
     credentials_save_error: string;
     remove_item: string;
+    remove_hint: string;
+    removed_item: string;
+    undo: string;
     remove_confirm: string;
     remove_cancel: string;
     remove_error: string;
@@ -253,6 +256,20 @@ export type StoreCartTranslations = {
     checkout_phone: string;
     checkout_error: string;
     checkout_cart_changed: string;
+    checkout_pricing_updating: string;
+    checkout_too_many_requests: string;
+    prices_updated: string;
+    prices_updated_note: string;
+    price_was: string;
+    unavailable: string;
+    unavailable_note: string;
+    confirm_total_title: string;
+    confirm_total_note: string;
+    confirm_total_previous: string;
+    confirm_total_new: string;
+    confirm_coupon_removed: string;
+    confirm_pay: string;
+    confirm_cancel: string;
     phone_country: string;
     phone_number: string;
     phone_code: string;
@@ -266,6 +283,7 @@ export type StoreCartTranslations = {
     phone_delivery_error: string;
     order_total: string;
     coupon_label: string;
+    coupon_prompt: string;
     coupon_placeholder: string;
     coupon_apply: string;
     coupon_applying: string;

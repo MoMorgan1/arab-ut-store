@@ -40,12 +40,15 @@ import {
     PaylinkCheckoutError,
     startPaylinkCheckout,
 } from '@/lib/paylink-checkout-api';
+import type { PaylinkRepricing } from '@/lib/paylink-checkout-api';
 import type {
     StoredCartCoupon,
     StoreCartItem,
     StoreCartPageProps,
     StoreCartTranslations,
 } from '@/types/store-shell';
+
+const UNDO_WINDOW_MS = 6000;
 
 export default function StoreCart() {
     const page = usePage<StoreCartPageProps>();
@@ -61,7 +64,38 @@ export default function StoreCart() {
         ui,
     } = page.props;
     const authenticated = page.props.auth.user !== null;
-    const items = cart.items;
+    // The delete is deferred, not undone: the row leaves immediately and the
+    // request only fires once the undo window closes. The server hard-deletes a
+    // cart item and its attachment, so anything actually sent is unrecoverable.
+    const [pendingRemoval, setPendingRemoval] = useState<StoreCartItem | null>(
+        null,
+    );
+    const items = cart.items.filter(
+        (cartItem) => cartItem.id !== pendingRemoval?.id,
+    );
+
+    useEffect(() => {
+        if (pendingRemoval === null) {
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            void removeCartItem(pendingRemoval.deleteUrl)
+                .then((result) => {
+                    window.dispatchEvent(
+                        new CustomEvent<number>('arabut:cart-count', {
+                            detail: result.cartCount,
+                        }),
+                    );
+                })
+                .finally(() => {
+                    setPendingRemoval(null);
+                    router.reload({ only: ['cart'] });
+                });
+        }, UNDO_WINDOW_MS);
+
+        return () => clearTimeout(timer);
+    }, [pendingRemoval]);
     // An unavailable line has no live price, and the server leaves it out of the
     // totals it computes. Counting it here would make every expected total
     // disagree and refuse the checkout outright.
@@ -75,14 +109,8 @@ export default function StoreCart() {
         0,
     );
 
-    function itemRemoved(_itemId: string, count: number) {
-        // Reload rather than filter local state: removing an unavailable item
-        // has to refresh `cart.canCheckout` as well, or the checkout button
-        // stays dead until a manual refresh.
-        router.reload({ only: ['cart'] });
-        window.dispatchEvent(
-            new CustomEvent<number>('arabut:cart-count', { detail: count }),
-        );
+    function itemRemoved(cartItem: StoreCartItem) {
+        setPendingRemoval(cartItem);
     }
 
     return (
@@ -106,6 +134,21 @@ export default function StoreCart() {
                     <h1 id="store-cart-title">{cartPage.translations.title}</h1>
                 </header>
 
+                {pendingRemoval !== null ? (
+                    <div className="store-cart-undo" role="status">
+                        <p>
+                            {interpolate(cartPage.translations.removed_item, {
+                                name: pendingRemoval.product.name,
+                            })}
+                        </p>
+                        <button
+                            onClick={() => setPendingRemoval(null)}
+                            type="button"
+                        >
+                            {cartPage.translations.undo}
+                        </button>
+                    </div>
+                ) : null}
                 {items.length === 0 ? (
                     <CartEmptyState
                         coinsUrl={storeShell.coinsUrl}
@@ -126,6 +169,23 @@ export default function StoreCart() {
                                 <h2 id="store-cart-items-title">
                                     {cartPage.translations.items_heading}
                                 </h2>
+                                {items.some((item) => item.priceChanged) ? (
+                                    <p
+                                        className="store-cart-repriced"
+                                        role="status"
+                                    >
+                                        <strong>
+                                            {
+                                                cartPage.translations
+                                                    .prices_updated
+                                            }
+                                        </strong>
+                                        {
+                                            cartPage.translations
+                                                .prices_updated_note
+                                        }
+                                    </p>
+                                ) : null}
                                 <ol className="store-cart-lines">
                                     {items.map((cartItem) => (
                                         <CartLine
@@ -141,6 +201,9 @@ export default function StoreCart() {
                             <CheckoutPanel
                                 authenticated={authenticated}
                                 canCheckout={cart.canCheckout}
+                                blockedByUnavailable={items.some(
+                                    (item) => item.unavailableReason,
+                                )}
                                 checkout={cartPage.checkout}
                                 coupon={cart.coupon}
                                 locale={locale}
@@ -239,6 +302,7 @@ function CheckoutProgress({
 
 function CheckoutPanel({
     authenticated,
+    blockedByUnavailable,
     canCheckout,
     checkout,
     coupon,
@@ -249,6 +313,7 @@ function CheckoutPanel({
     useWallet: initialUseWallet,
 }: {
     authenticated: boolean;
+    blockedByUnavailable: boolean;
     canCheckout: boolean;
     checkout: StoreCartPageProps['cartPage']['checkout'];
     coupon: StoredCartCoupon | null;
@@ -262,8 +327,11 @@ function CheckoutPanel({
     useWallet: boolean;
 }) {
     const idempotencyKey = useRef(crypto.randomUUID());
-    const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
+    const [state, setState] = useState<
+        'idle' | 'loading' | 'confirming' | 'error'
+    >('idle');
     const [errorCode, setErrorCode] = useState<string | null>(null);
+    const [repricing, setRepricing] = useState<PaylinkRepricing | null>(null);
     const [useWallet, setUseWallet] = useState(initialUseWallet);
     const [walletBusy, setWalletBusy] = useState(false);
 
@@ -301,7 +369,7 @@ function CheckoutPanel({
         }
     }
 
-    async function startPayment() {
+    async function startPayment(confirmed?: PaylinkRepricing) {
         if (!canCheckout || state === 'loading') {
             return;
         }
@@ -313,8 +381,8 @@ function CheckoutPanel({
             const result = await startPaylinkCheckout(
                 checkout.checkoutUrl,
                 idempotencyKey.current,
-                payableHalalah,
-                totalAfterDiscount,
+                confirmed?.payableHalalah ?? payableHalalah,
+                confirmed?.orderTotalHalalah ?? totalAfterDiscount,
             );
 
             if (result.paymentUrl === null) {
@@ -324,11 +392,20 @@ function CheckoutPanel({
             }
         } catch (error) {
             if (error instanceof PaylinkCheckoutError) {
-                setErrorCode(error.code);
-
                 if (error.conclusive) {
                     idempotencyKey.current = crypto.randomUUID();
                 }
+
+                // Not an error the customer has to read and recover from: the
+                // price moved, and they are being asked to agree to the new one.
+                if (error.repricing !== null) {
+                    setRepricing(error.repricing);
+                    setState('confirming');
+
+                    return;
+                }
+
+                setErrorCode(error.code);
             } else {
                 setErrorCode('checkout_error');
             }
@@ -429,23 +506,85 @@ function CheckoutPanel({
                     locale={locale}
                     translations={translations}
                 />
+            ) : state === 'confirming' && repricing !== null ? (
+                <div className="store-cart-confirm" role="alert">
+                    <p className="store-cart-confirm__title">
+                        {translations.confirm_total_title}
+                    </p>
+                    <p className="store-cart-confirm__note">
+                        {translations.confirm_total_note}
+                    </p>
+                    <div className="store-cart-confirm__figures">
+                        <span>{translations.confirm_total_previous}</span>
+                        <del>
+                            {formatMinorUnits(
+                                repricing.previousPayableHalalah,
+                                'SAR',
+                                locale,
+                            )}
+                        </del>
+                        <span>{translations.confirm_total_new}</span>
+                        <strong>
+                            {formatMinorUnits(
+                                repricing.payableHalalah,
+                                'SAR',
+                                locale,
+                            )}
+                        </strong>
+                    </div>
+                    {repricing.couponRemoved ? (
+                        <p className="store-cart-confirm__coupon">
+                            {translations.confirm_coupon_removed}
+                        </p>
+                    ) : null}
+                    <div className="store-cart-confirm__actions">
+                        <button
+                            onClick={() => startPayment(repricing)}
+                            type="button"
+                        >
+                            {translations.confirm_pay}
+                        </button>
+                        <button
+                            onClick={() => {
+                                setRepricing(null);
+                                setState('idle');
+                                router.reload({ only: ['cart'] });
+                            }}
+                            type="button"
+                        >
+                            {translations.confirm_cancel}
+                        </button>
+                    </div>
+                </div>
             ) : (
-                <button
-                    className="store-cart-checkout__action"
-                    disabled={!canCheckout || state === 'loading'}
-                    onClick={startPayment}
-                    type="button"
-                >
-                    {state === 'loading'
-                        ? translations.checkout_loading
-                        : translations.checkout}
-                </button>
+                <>
+                    <button
+                        className="store-cart-checkout__action"
+                        data-busy={state === 'loading'}
+                        disabled={!canCheckout || state === 'loading'}
+                        onClick={() => startPayment()}
+                        type="button"
+                    >
+                        {state === 'loading'
+                            ? translations.checkout_loading
+                            : translations.checkout}
+                    </button>
+                    {blockedByUnavailable ? (
+                        <p className="store-cart-checkout__blocked">
+                            {translations.unavailable_note}
+                        </p>
+                    ) : null}
+                </>
             )}
             {state === 'error' ? (
                 <p className="store-cart-checkout__error" role="alert">
                     {errorCode === 'cart_changed'
                         ? translations.checkout_cart_changed
-                        : translations.checkout_error}
+                        : errorCode === 'pricing_updating'
+                          ? translations.checkout_pricing_updating
+                          : errorCode === 'too_many_requests'
+                            ? translations.checkout_too_many_requests
+                            : translations.checkout_error}
                 </p>
             ) : null}
         </aside>
@@ -628,6 +767,9 @@ function CouponField({
     const [code, setCode] = useState('');
     const [busy, setBusy] = useState(false);
     const [errorText, setErrorText] = useState<string | null>(null);
+    // Most orders carry no coupon, so the field stays folded behind one line
+    // and only the customers who arrived with a code pay for the space.
+    const [open, setOpen] = useState(false);
 
     async function apply() {
         if (busy || code.trim() === '') {
@@ -698,6 +840,21 @@ function CouponField({
         );
     }
 
+    if (!open) {
+        return (
+            <div className="store-cart-coupon">
+                <button
+                    aria-expanded={false}
+                    className="store-cart-coupon__toggle"
+                    onClick={() => setOpen(true)}
+                    type="button"
+                >
+                    {translations.coupon_prompt}
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className="store-cart-coupon">
             <Label
@@ -710,6 +867,7 @@ function CouponField({
                 <input
                     aria-label={translations.coupon_label}
                     autoComplete="off"
+                    autoFocus
                     dir="ltr"
                     id="cart-coupon-code"
                     maxLength={24}
@@ -758,12 +916,13 @@ function CartLine({
 }: {
     cartItem: StoreCartItem;
     locale: 'ar' | 'en';
-    onRemoved: (itemId: string, count: number) => void;
+    onRemoved: (cartItem: StoreCartItem) => void;
     translations: StoreCartTranslations;
 }) {
-    const [removalState, setRemovalState] = useState<
-        'idle' | 'confirming' | 'removing' | 'failed'
-    >('idle');
+    // Hold to delete rather than click-then-confirm: one gesture the customer
+    // can abandon at any moment by letting go, and no second control to read.
+    const [holdProgress, setHoldProgress] = useState(0);
+    const holdFrame = useRef<number | null>(null);
     const configuration = cartItem.configuration;
     const isCoins = cartItem.product.serviceType === 'coins';
     const isFutChampions = cartItem.product.serviceType === 'fut_champions';
@@ -792,23 +951,58 @@ function CartLine({
             ? '—'
             : `${formatCoins(configuration.coins_quantity, locale)} ${translations.coins_unit}`;
 
-    async function remove() {
-        if (removalState === 'removing') {
+    const HOLD_MS = 900;
+
+    function cancelHold() {
+        if (holdFrame.current !== null) {
+            cancelAnimationFrame(holdFrame.current);
+            holdFrame.current = null;
+        }
+
+        setHoldProgress(0);
+    }
+
+    function startHold() {
+        if (holdFrame.current !== null) {
             return;
         }
 
-        setRemovalState('removing');
+        const started = performance.now();
 
-        try {
-            const result = await removeCartItem(cartItem.deleteUrl);
-            onRemoved(cartItem.id, result.cartCount);
-        } catch {
-            setRemovalState('failed');
-        }
+        const step = () => {
+            const progress = Math.min(
+                (performance.now() - started) / HOLD_MS,
+                1,
+            );
+            setHoldProgress(progress);
+
+            if (progress < 1) {
+                holdFrame.current = requestAnimationFrame(step);
+
+                return;
+            }
+
+            holdFrame.current = null;
+            setHoldProgress(0);
+            onRemoved(cartItem);
+        };
+
+        holdFrame.current = requestAnimationFrame(step);
     }
 
+    useEffect(() => cancelHold, []);
+
     return (
-        <li className="store-cart-line">
+        <li
+            className={[
+                'store-cart-line',
+                cartItem.unavailableReason
+                    ? 'store-cart-line--unavailable'
+                    : '',
+            ]
+                .filter(Boolean)
+                .join(' ')}
+        >
             <div className="store-cart-line__title">
                 {cartItem.product.imageUrl !== null ? (
                     <img
@@ -822,37 +1016,47 @@ function CartLine({
                 <div>
                     <span>{translations.service}</span>
                     <h2>{cartItem.product.name}</h2>
+                    {cartItem.unavailableReason ? (
+                        <p className="store-cart-line__unavailable">
+                            <span>{translations.unavailable}</span>
+                            {translations.unavailable_note}
+                        </p>
+                    ) : null}
                 </div>
-                {removalState === 'confirming' ? (
-                    <div className="store-cart-line__remove-confirmation">
-                        <button onClick={remove} type="button">
-                            {translations.remove_confirm}
-                        </button>
-                        <button
-                            onClick={() => setRemovalState('idle')}
-                            type="button"
-                        >
-                            {translations.remove_cancel}
-                        </button>
-                    </div>
-                ) : (
-                    <button
-                        aria-label={translations.remove_item}
-                        className="store-cart-line__remove"
-                        disabled={removalState === 'removing'}
-                        onClick={() => setRemovalState('confirming')}
-                        type="button"
-                    >
-                        <Trash2 aria-hidden="true" />
-                        <span>{translations.remove_item}</span>
-                    </button>
-                )}
+                <button
+                    aria-describedby={`remove-hint-${cartItem.id}`}
+                    aria-label={translations.remove_item}
+                    className="store-cart-line__remove"
+                    onBlur={cancelHold}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            startHold();
+                        }
+                    }}
+                    onKeyUp={cancelHold}
+                    onPointerCancel={cancelHold}
+                    onPointerDown={startHold}
+                    onPointerLeave={cancelHold}
+                    onPointerUp={cancelHold}
+                    style={
+                        {
+                            '--hold': String(holdProgress),
+                        } as React.CSSProperties
+                    }
+                    type="button"
+                >
+                    <span
+                        aria-hidden="true"
+                        className="store-cart-line__remove-fill"
+                    />
+                    <Trash2 aria-hidden="true" />
+                    <span>{translations.remove_item}</span>
+                </button>
+                <span className="sr-only" id={`remove-hint-${cartItem.id}`}>
+                    {translations.remove_hint}
+                </span>
             </div>
-            {removalState === 'failed' ? (
-                <p className="store-cart-line__remove-error" role="alert">
-                    {translations.remove_error}
-                </p>
-            ) : null}
             <dl className="store-cart-line__summary">
                 <CartFact label={translations.platform} value={platform} />
                 {isCoins ? (
@@ -984,6 +1188,18 @@ function CartLine({
                     />
                 )}
             </dl>
+            {cartItem.priceChanged && cartItem.previousTotalHalalah !== null ? (
+                <p className="store-cart-line__repriced">
+                    <span>{translations.price_was}</span>
+                    <del>
+                        {formatMinorUnits(
+                            cartItem.previousTotalHalalah,
+                            'SAR',
+                            locale,
+                        )}
+                    </del>
+                </p>
+            ) : null}
             {isManualService ? (
                 <ManualFulfillmentState
                     fulfillment={cartItem.fulfillment ?? null}

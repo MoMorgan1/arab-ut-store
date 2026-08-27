@@ -282,7 +282,10 @@ async function submitPaylinkCheckout(
     const payload = await responsePayload(response);
 
     if (response.status !== 200 && response.status !== 201) {
-        const code = errorCode(payload);
+        // Throttling answers with Laravel's own shape, not our error envelope,
+        // so it would otherwise read as an unparseable response.
+        const code =
+            response.status === 429 ? 'too_many_requests' : errorCode(payload);
         const repricing =
             code === 'cart_repriced' ? safeRepricing(payload) : null;
 
