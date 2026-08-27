@@ -6513,6 +6513,247 @@ html.admin-document {
     color: var(--arabut-danger);
 }
 
+/* The invoice a customer keeps: what was bought, and what was paid. */
+.account-invoice {
+    display: grid;
+    gap: 1.15rem;
+    border: 1px solid var(--arabut-line);
+    border-radius: 1rem;
+    background: rgb(28 24 20 / 68%);
+    padding: clamp(1rem, 4vw, 1.5rem);
+}
+
+.account-invoice__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.9rem 1.5rem;
+}
+
+.account-invoice__brand > p {
+    margin: 0 0 0.3rem;
+    color: var(--arabut-gold-bright);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+[dir='ltr'] .account-invoice__brand > p {
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.account-invoice__brand h2 {
+    margin: 0;
+    color: var(--arabut-ink);
+    font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+    font-size: clamp(1.45rem, 3.5vw, 1.9rem);
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.account-invoice__freelance {
+    display: inline-flex;
+    margin-block-start: 0.5rem;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--arabut-muted);
+    font-size: 0.85rem;
+}
+
+.account-invoice__meta {
+    display: grid;
+    flex: 0 0 auto;
+    gap: 0.5rem;
+    margin: 0;
+    text-align: end;
+}
+
+.account-invoice__meta dt {
+    color: var(--arabut-muted);
+    font-size: 0.78rem;
+}
+
+.account-invoice__meta dd {
+    margin: 0;
+    color: var(--arabut-ink);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.account-invoice__items {
+    display: grid;
+    margin: 0;
+    gap: 0.85rem;
+    padding: 0;
+    list-style: none;
+}
+
+.account-invoice__items li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.account-invoice__items li + li {
+    border-block-start: 1px solid var(--arabut-line);
+    padding-block-start: 0.85rem;
+}
+
+.account-invoice__items img,
+.account-invoice__item-image {
+    width: 2.75rem;
+    height: 2.75rem;
+    object-fit: contain;
+}
+
+.account-invoice__item-image {
+    border-radius: 0.5rem;
+    background: rgb(212 168 67 / 6%);
+}
+
+.account-invoice__item-main {
+    min-width: 0;
+}
+
+.account-invoice__item-main h3 {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--arabut-ink);
+    font-size: 1rem;
+}
+
+.account-invoice__item-main span,
+.account-invoice__item-main small {
+    display: block;
+    margin-block-start: 0.2rem;
+    color: var(--arabut-muted);
+    font-size: 0.78rem;
+}
+
+.account-invoice__item-total {
+    color: var(--arabut-ink);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.account-invoice__totals {
+    display: grid;
+    gap: 0.55rem;
+    margin: 0;
+    border-block-start: 1px solid var(--arabut-line);
+    padding-block-start: 0.95rem;
+}
+
+.account-invoice__totals > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.account-invoice__totals dt {
+    color: var(--arabut-muted);
+    font-size: 0.88rem;
+}
+
+.account-invoice__totals dd {
+    margin: 0;
+    color: var(--arabut-ink);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.account-invoice__deduction {
+    color: #8ce3ad;
+}
+
+.account-invoice__grand dt {
+    color: var(--arabut-ink);
+    font-weight: 800;
+}
+
+.account-invoice__grand dd {
+    color: var(--arabut-gold-bright);
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
+.account-invoice__method {
+    margin: 0;
+    color: var(--arabut-muted);
+    font-size: 0.85rem;
+}
+
+.account-invoice__method bdi {
+    font-variant-numeric: tabular-nums;
+}
+
+/* An unpaid order is a payment request, not an invoice: it borrows the
+   action-needed gold language the pay-now panel already uses. */
+.account-invoice--request {
+    border-color: rgb(212 168 67 / 30%);
+    background: rgb(212 168 67 / 7%);
+}
+
+.account-invoice__head > h2 {
+    margin: 0;
+    color: var(--arabut-ink);
+    font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+    font-size: clamp(1.3rem, 3.2vw, 1.7rem);
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.account-invoice__mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    color: var(--arabut-muted);
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.account-invoice__mark > span {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--arabut-muted);
+}
+
+.account-invoice__mark:is([data-status='cancelled'], [data-status='refunded']) {
+    color: var(--arabut-danger);
+}
+
+.account-invoice__mark:is([data-status='cancelled'], [data-status='refunded'])
+    > span {
+    background: var(--arabut-danger);
+}
+
+.account-invoice__pay {
+    display: inline-flex;
+    width: 100%;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--arabut-gold);
+    border-radius: 0.7rem;
+    background: var(--arabut-gold);
+    padding: 0.6rem 0.9rem;
+    color: var(--arabut-navy-deep);
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.account-invoice__pay:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
 @keyframes account-spin {
     to {
         transform: rotate(1turn);
@@ -6539,6 +6780,23 @@ html.admin-document {
     }
 
     .account-live-order__item-total {
+        grid-column: 2;
+        text-align: start;
+    }
+
+    .account-invoice__head {
+        flex-direction: column;
+    }
+
+    .account-invoice__meta {
+        text-align: start;
+    }
+
+    .account-invoice__items li {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .account-invoice__item-total {
         grid-column: 2;
         text-align: start;
     }

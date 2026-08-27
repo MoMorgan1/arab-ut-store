@@ -2,7 +2,6 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     ArrowRight,
-    CalendarDays,
     CheckCircle2,
     ChevronDown,
     Copy,
@@ -94,53 +93,240 @@ export default function AccountLiveOrder() {
                     {props.accountUi.orders.back}
                 </Link>
 
-                <header className="account-live-order__header">
-                    <div>
-                        <p>{props.accountUi.orders.number}</p>
-                        <h2>
-                            <bdi>{props.order.number}</bdi>
-                        </h2>
-                        <span className="account-live-order__date">
-                            <CalendarDays aria-hidden="true" />
-                            <time dateTime={props.order.placedAt}>
-                                {placedAt}
-                            </time>
-                        </span>
-                    </div>
-                    <div className="account-live-order__total">
-                        {props.order.discount.amountMinor !== '0' ? (
-                            <span className="account-live-order__discount">
-                                {props.accountUi.orders.discount}{' '}
-                                <bdi dir="ltr">
-                                    -
+                <section
+                    aria-labelledby="account-order-invoice-title"
+                    className={
+                        props.order.status === 'pending_payment'
+                            ? 'account-invoice account-invoice--request'
+                            : 'account-invoice'
+                    }
+                >
+                    {props.order.status === 'pending_payment' ? (
+                        <header className="account-invoice__head">
+                            <h2 id="account-order-invoice-title">
+                                {props.accountUi.invoice.request_title}
+                            </h2>
+                            <dl className="account-invoice__meta">
+                                <div>
+                                    <dt>{props.accountUi.orders.number}</dt>
+                                    <dd>
+                                        <bdi>{props.order.number}</bdi>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>{props.accountUi.orders.placed_at}</dt>
+                                    <dd>
+                                        <time dateTime={props.order.placedAt}>
+                                            {placedAt}
+                                        </time>
+                                    </dd>
+                                </div>
+                            </dl>
+                        </header>
+                    ) : (
+                        <header className="account-invoice__head">
+                            <div className="account-invoice__brand">
+                                <p>{props.accountUi.invoice.title}</p>
+                                <h2 id="account-order-invoice-title">
+                                    {props.accountUi.invoice.store_name}
+                                </h2>
+                                <span className="account-invoice__freelance">
+                                    {props.accountUi.invoice.freelance_label}{' '}
+                                    <bdi dir="ltr">FL-621205220</bdi>
+                                </span>
+                            </div>
+                            {props.order.status === 'cancelled' ||
+                            props.order.status === 'refunded' ? (
+                                <p
+                                    className="account-invoice__mark"
+                                    data-status={props.order.status}
+                                >
+                                    <span aria-hidden="true" />
+                                    {
+                                        props.accountUi.statuses[
+                                            props.order.status
+                                        ]
+                                    }
+                                </p>
+                            ) : null}
+                            <dl className="account-invoice__meta">
+                                <div>
+                                    <dt>{props.accountUi.orders.number}</dt>
+                                    <dd>
+                                        <bdi>{props.order.number}</bdi>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>{props.accountUi.orders.placed_at}</dt>
+                                    <dd>
+                                        <time dateTime={props.order.placedAt}>
+                                            {placedAt}
+                                        </time>
+                                    </dd>
+                                </div>
+                            </dl>
+                        </header>
+                    )}
+
+                    <ol className="account-invoice__items">
+                        {props.order.items.map((item) => (
+                            <li key={item.id}>
+                                {item.imageUrl ? (
+                                    <img
+                                        alt=""
+                                        height="44"
+                                        loading="lazy"
+                                        src={item.imageUrl}
+                                        width="44"
+                                    />
+                                ) : (
+                                    <span
+                                        aria-hidden="true"
+                                        className="account-invoice__item-image"
+                                    />
+                                )}
+                                <div className="account-invoice__item-main">
+                                    <h3>{item.name}</h3>
+                                    <span>
+                                        {platformName(
+                                            item.platform,
+                                            props.accountUi.orders,
+                                        )}
+                                    </span>
+                                    <small>
+                                        {props.accountUi.orders.item_quantity.replace(
+                                            ':count',
+                                            formatInteger(
+                                                item.quantity,
+                                                props.locale,
+                                            ),
+                                        )}
+                                    </small>
+                                </div>
+                                <strong className="account-invoice__item-total">
                                     {formatAccountMoney(
-                                        props.order.discount,
+                                        item.total,
                                         props.locale,
                                     )}
-                                </bdi>
-                            </span>
-                        ) : null}
-                        {props.order.walletPayment &&
-                        props.order.walletPayment.amountMinor !== '0' ? (
-                            <span className="account-live-order__wallet-paid">
-                                {props.accountUi.orders.wallet_paid.replace(
-                                    ':amount',
-                                    formatAccountMoney(
-                                        props.order.walletPayment,
-                                        props.locale,
-                                    ),
-                                )}
-                            </span>
-                        ) : null}
-                        <span>{props.accountUi.orders.total}</span>
-                        <strong>
-                            {formatAccountMoney(
-                                props.order.total,
-                                props.locale,
+                                </strong>
+                            </li>
+                        ))}
+                    </ol>
+
+                    {props.order.status === 'pending_payment' ? (
+                        <>
+                            <dl className="account-invoice__totals">
+                                <div className="account-invoice__grand">
+                                    <dt>
+                                        {props.accountUi.invoice.amount_due}
+                                    </dt>
+                                    <dd>
+                                        {formatAccountMoney(
+                                            props.order.paymentAmount,
+                                            props.locale,
+                                        )}
+                                    </dd>
+                                </div>
+                            </dl>
+                            {props.order.paymentStartUrl === null ? null : (
+                                <button
+                                    className="account-invoice__pay"
+                                    disabled={paymentState === 'loading'}
+                                    onClick={resumePayment}
+                                    type="button"
+                                >
+                                    {paymentState === 'loading'
+                                        ? props.accountUi.orders.refreshing
+                                        : props.accountUi.invoice.pay_action}
+                                </button>
                             )}
-                        </strong>
-                    </div>
-                </header>
+                        </>
+                    ) : (
+                        <>
+                            <dl className="account-invoice__totals">
+                                <div>
+                                    <dt>{props.accountUi.invoice.subtotal}</dt>
+                                    <dd>
+                                        {formatAccountMoney(
+                                            props.order.subtotal,
+                                            props.locale,
+                                        )}
+                                    </dd>
+                                </div>
+                                {props.order.discount.amountMinor !== '0' ? (
+                                    <div>
+                                        <dt>
+                                            {props.accountUi.orders.discount}
+                                        </dt>
+                                        <dd className="account-invoice__deduction">
+                                            <bdi dir="ltr">
+                                                -
+                                                {formatAccountMoney(
+                                                    props.order.discount,
+                                                    props.locale,
+                                                )}
+                                            </bdi>
+                                        </dd>
+                                    </div>
+                                ) : null}
+                                {props.order.walletPayment &&
+                                props.order.walletPayment.amountMinor !==
+                                    '0' ? (
+                                    <div>
+                                        <dt>
+                                            {
+                                                props.accountUi.invoice
+                                                    .wallet_deduction
+                                            }
+                                        </dt>
+                                        <dd>
+                                            {formatAccountMoney(
+                                                props.order.walletPayment,
+                                                props.locale,
+                                            )}
+                                        </dd>
+                                    </div>
+                                ) : null}
+                                <div className="account-invoice__grand">
+                                    <dt>
+                                        {props.accountUi.invoice.total_paid}
+                                    </dt>
+                                    <dd>
+                                        {formatAccountMoney(
+                                            props.order.total,
+                                            props.locale,
+                                        )}
+                                    </dd>
+                                </div>
+                            </dl>
+
+                            {props.order.paymentMethod != null ? (
+                                <p className="account-invoice__method">
+                                    {props.accountUi.invoice.payment_method}
+                                    {': '}
+                                    {props.order.paymentMethod === 'wallet'
+                                        ? props.accountUi.invoice.method_wallet
+                                        : props.accountUi.invoice
+                                              .method_paylink}
+                                    {props.order.paymentMethod === 'paylink' &&
+                                    props.order.walletPayment &&
+                                    props.order.walletPayment.amountMinor !==
+                                        '0' ? (
+                                        <>
+                                            {' · '}
+                                            <bdi>
+                                                {formatAccountMoney(
+                                                    props.order.paymentAmount,
+                                                    props.locale,
+                                                )}
+                                            </bdi>
+                                        </>
+                                    ) : null}
+                                </p>
+                            ) : null}
+                        </>
+                    )}
+                </section>
 
                 <div className="account-live-order__statusbar">
                     <div aria-live="polite">
@@ -626,4 +812,17 @@ function divisionName(
     return value === 'elite'
         ? translations.elite
         : formatInteger(Number(value), locale);
+}
+
+function platformName(
+    value: LiveOrderItem['platform'],
+    translations: OrderTranslations,
+): string {
+    if (value === 'playstation') {
+        return translations.platform_playstation;
+    }
+
+    return value === 'xbox'
+        ? translations.platform_xbox
+        : translations.platform_pc;
 }
