@@ -111,13 +111,18 @@ final class CoinsPricingRunRequest extends FormRequest
         }
     }
 
-    private function validateLegalRanges(Validator $validator): void
+    /**
+     * The quantity range the storefront is actually selling, per group.
+     *
+     * @return array<string, array{minimum: int, maximum: int, increment: int}>
+     */
+    private function expectedRanges(): array
     {
         $rules = app(CoinsCatalogReader::class)->quantityRules();
         $minimum = $rules->minimum();
         $increment = $rules->finestStep();
 
-        $expected = [
+        return [
             'console_normal' => [
                 'minimum' => $minimum,
                 'maximum' => Config::integer('coins.platforms.playstation.deliveries.normal.maximum'),
@@ -134,17 +139,47 @@ final class CoinsPricingRunRequest extends FormRequest
                 'increment' => $increment,
             ],
         ];
+    }
+
+    private function anchored(string $group): bool
+    {
+        $configuration = $this->input("rules.{$group}");
+
+        return is_array($configuration)
+            && isset($configuration['multiplier_anchors_basis_points']);
+    }
+
+    private function validateLegalRanges(Validator $validator): void
+    {
+        $expected = $this->expectedRanges();
 
         foreach (self::GROUPS as $group) {
             $range = $this->input("legalRanges.{$group}");
 
-            if (! is_array($range) || $range !== $expected[$group]) {
+            if (! is_array($range)) {
+                $validator->errors()->add(
+                    "legalRanges.{$group}",
+                    'The pricing snapshot declares no legal range for this group.',
+                );
+
+                continue;
+            }
+
+            // An anchor curve derives its floor from the live admin settings, so
+            // the declared minimum is advisory - that is what stops an admin
+            // change from needing a matching edit in n8n. A threshold map cannot
+            // answer below its first entry, so its declared minimum must agree.
+            $ignore = $this->anchored($group) ? ['minimum' => null] : [];
+            $received = array_diff_key($range, $ignore);
+            $against = array_diff_key($expected[$group], $ignore);
+
+            if ($received !== $against) {
                 $validator->errors()->add(
                     "legalRanges.{$group}",
                     sprintf(
                         'The pricing range does not match the active Coins quantity settings. Expected %s, received %s.',
-                        json_encode($expected[$group]),
-                        is_array($range) ? (string) json_encode($range) : 'nothing',
+                        json_encode($against),
+                        json_encode($received),
                     ),
                 );
             }
@@ -153,6 +188,8 @@ final class CoinsPricingRunRequest extends FormRequest
 
     private function validateRuleConfigurations(Validator $validator): void
     {
+        $expected = $this->expectedRanges();
+
         foreach (self::GROUPS as $group) {
             $configuration = $this->input("rules.{$group}");
 
@@ -169,7 +206,54 @@ final class CoinsPricingRunRequest extends FormRequest
                     "rules.{$group}",
                     'The Coins pricing rule is malformed or does not cover its legal quantity range.',
                 );
+
+                continue;
             }
+
+            if ($rule->isAnchored()) {
+                $this->validateAnchorCoverage($validator, $group, $rule, $expected[$group]);
+            }
+        }
+    }
+
+    /**
+     * An anchor curve clamps outside its published range, so both ends need a
+     * bound that the threshold shape got for free by simply throwing.
+     *
+     * @param  array{minimum: int, maximum: int, increment: int}  $range
+     */
+    private function validateAnchorCoverage(
+        Validator $validator,
+        string $group,
+        CoinsPricingRule $rule,
+        array $range,
+    ): void {
+        // Clamping at the top is never safe: a curve stopping at two million
+        // would price a twenty million order at the two million rate.
+        if ($rule->highestCoveredQuantity() < $range['maximum']) {
+            $validator->errors()->add(
+                "rules.{$group}",
+                sprintf(
+                    'The multiplier curve does not reach the store maximum. Highest anchor %d, maximum %d.',
+                    $rule->highestCoveredQuantity(),
+                    $range['maximum'],
+                ),
+            );
+        }
+
+        // Clamping at the bottom is safe only when there is nothing to clamp, or
+        // when the first anchor is the dearest rate on the table. The commercial
+        // curve dips at one million and climbs again, so being dearest is a
+        // property to check rather than a shape to assume.
+        if ($rule->lowestCoveredQuantity() > $range['minimum'] && ! $rule->firstAnchorIsDearest()) {
+            $validator->errors()->add(
+                "rules.{$group}",
+                sprintf(
+                    'The multiplier curve starts at %d, above the %d minimum, and its first anchor is not its dearest rate.',
+                    $rule->lowestCoveredQuantity(),
+                    $range['minimum'],
+                ),
+            );
         }
     }
 }

@@ -163,16 +163,37 @@ Default anchors:
 | 15M | 1.04 |
 | 20M | 1.05 |
 
-The workflow linearly interpolates these anchors at every legal increment, so the
-curve has no abrupt transition such as 990K becoming more expensive than 1M.
+A rule publishes the curve in **exactly one** of two shapes.
 
-The map is a **threshold** map, not a lookup table: Laravel answers with the last
-entry at or below the requested quantity. An entry that repeats the value before it
-is therefore already implied, and Laravel drops those entries before storing the
-run - the same prices, roughly a fifth of the rows. The workflow may publish the
-dense form or the collapsed one; both are accepted and both are stored collapsed.
-The one requirement is an entry **at the range minimum**, since nothing below the
-first entry can be answered.
+`multiplier_anchors_basis_points` is an **anchor table**. Laravel interpolates
+linearly between the two bracketing anchors at read time and rounds a half
+upward on both slopes, matching the expansion the workflow used to publish.
+Every entry is load-bearing, so Laravel never drops one. Publish the eleven
+anchors above and nothing else.
+
+Outside the published range the curve clamps, and each end is bounded at ingest:
+
+- The **last anchor must reach the group maximum** - 2,000,000 for
+  `console_normal`, 20,000,000 for the other two. Clamping at the top would
+  price a twenty million order at the two million rate.
+- The **first anchor must sit at or below the store minimum, or carry the
+  highest rate on the table**. Clamping at the bottom is only safe when there is
+  nothing to clamp or when the first anchor is the dearest rate. The curve dips
+  at one million and climbs again, so this is checked rather than assumed: a set
+  such as `{5M: 1.035, 20M: 1.05}` would otherwise clamp every order below five
+  million down to 1.035 and undercharge a 100K order by roughly 2.4%.
+
+`multipliers_basis_points` is a **threshold map**. Laravel answers with the last
+entry at or below the quantity, so an entry repeating the one before it is
+already implied and is dropped before storing - the same prices, roughly a fifth
+of the rows. It cannot answer below its first entry, so that entry must sit at
+the range minimum.
+
+`legalRanges.*.minimum` is compared for equality only for a threshold map. An
+anchor table derives its floor from the live admin quantity settings, so
+lowering the minimum in the admin no longer requires a matching edit in n8n -
+which is the whole reason the anchor shape exists. `maximum` and `increment` are
+compared for equality in both shapes.
 
 ## Small-order fee
 

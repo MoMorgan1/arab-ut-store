@@ -183,3 +183,18 @@ test('dense and collapsed agree off the grid and refuse the same quantities belo
     expect(fn () => $denseRule->multiplierBasisPoints(49_999))->toThrow(DomainException::class)
         ->and(fn () => $collapsedRule->multiplierBasisPoints(49_999))->toThrow(DomainException::class);
 });
+
+it('leaves an anchor table untouched', function () {
+    // Collapsing a repeat out of an anchor table would make interpolation
+    // invent a value between the survivors that was never published.
+    $configuration = [
+        'group' => 'pc',
+        'multiplier_anchors_basis_points' => [
+            50_000 => 11_000,
+            55_000 => 11_000,
+            60_000 => 10_960,
+        ],
+    ];
+
+    expect(CoinsPricingRule::withoutRedundantMultipliers($configuration))->toBe($configuration);
+});

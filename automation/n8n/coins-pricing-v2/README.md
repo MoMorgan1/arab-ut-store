@@ -52,3 +52,28 @@ the unpatched workflow is the only unsafe combination.
   multiple of 0.1 SAR (`>= 10 && % 10 === 0`). The pre-v2.3 validator required
   whole riyals — if you ever re-import `workflow.json`, restore that stricter
   pairing or hourly runs will fail closed with `exact override is invalid`.
+
+## REQUIRED SYNC: publish anchors, not the expansion (2026-08-27)
+
+The workflow expands the eleven commercial anchors into one entry per legal
+quantity - 3,991 per group for `pc` and `console_fast` - and publishes the
+expansion. An expansion is bound to the range it was computed for, so lowering
+the Coins minimum in the admin on 2026-08-26 invalidated it. Every hourly run
+since has been rejected with a 422, and quantities between 10,000 and 45,000
+stopped pricing on the storefront entirely.
+
+Laravel now interpolates. In the "Prepare Coins Snapshot" node:
+
+1. Stop expanding the anchors.
+2. Emit them under `multiplier_anchors_basis_points` instead of
+   `multipliers_basis_points`. Send exactly the eleven anchors.
+3. Leave `legalRanges.*.minimum` as it is. Laravel no longer compares it for an
+   anchor curve, though `maximum` and `increment` must still match.
+
+The last anchor has to reach the group maximum - 2,000,000 for `console_normal`,
+20,000,000 for the other two - or the snapshot is refused. So is a curve whose
+first anchor sits above the store minimum without being its dearest rate.
+
+Both shapes are accepted, so this can land before or after the Laravel release
+without a coordinated deploy. Nothing recovers until it lands, though: see the
+launch section of `docs/plans/2026-08-27-coins-multiplier-anchors.md`.

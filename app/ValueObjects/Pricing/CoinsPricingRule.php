@@ -11,7 +11,6 @@ final readonly class CoinsPricingRule
     /**
      * @param  list<int>  $tierUpperBoundsK
      * @param  list<int>  $tierRatesHalalahPerMillion
-     * @param  array<int, int>  $multipliersBasisPoints
      * @param  array<int, int>  $exactOverridesHalalah
      */
     private function __construct(
@@ -19,7 +18,7 @@ final readonly class CoinsPricingRule
         private array $tierUpperBoundsK,
         private ?int $flatRateHalalahPerMillion,
         private array $tierRatesHalalahPerMillion,
-        private array $multipliersBasisPoints,
+        private CoinsMultiplierCurve $multiplierCurve,
         public int $serviceFeeHalalah,
         public int $discountDivisorBasisPoints,
         private array $exactOverridesHalalah,
@@ -31,18 +30,14 @@ final readonly class CoinsPricingRule
         self::validateIdentity($configuration, $expectedGroup);
         $bounds = self::tierUpperBounds($configuration['tier_upper_bounds_k'] ?? null);
         [$flatRate, $tierRates] = self::rates($configuration, $expectedGroup);
-        $multipliers = self::positiveIntegerMap($configuration['multipliers_basis_points'] ?? null, 'multipliers');
-
-        if ($multipliers === []) {
-            throw new DomainException('The Coins pricing multipliers cannot be empty.');
-        }
+        $curve = self::curve($configuration);
 
         return new self(
             group: $expectedGroup,
             tierUpperBoundsK: $bounds,
             flatRateHalalahPerMillion: $flatRate,
             tierRatesHalalahPerMillion: $tierRates,
-            multipliersBasisPoints: $multipliers,
+            multiplierCurve: $curve,
             serviceFeeHalalah: self::nonnegativeInteger(
                 $configuration['service_fee_halalah'] ?? null,
                 'service fee',
@@ -62,21 +57,62 @@ final readonly class CoinsPricingRule
 
     public function multiplierBasisPoints(int $quantity): int
     {
-        $matched = null;
+        return $this->multiplierCurve->basisPointsAt($quantity);
+    }
 
-        foreach ($this->multipliersBasisPoints as $minimumQuantity => $basisPoints) {
-            if ($minimumQuantity > $quantity) {
-                break;
-            }
+    public function isAnchored(): bool
+    {
+        return $this->multiplierCurve->isAnchored();
+    }
 
-            $matched = $basisPoints;
+    public function lowestCoveredQuantity(): int
+    {
+        return $this->multiplierCurve->lowestCoveredQuantity();
+    }
+
+    public function highestCoveredQuantity(): int
+    {
+        return $this->multiplierCurve->highestCoveredQuantity();
+    }
+
+    public function firstAnchorIsDearest(): bool
+    {
+        return $this->multiplierCurve->firstAnchorIsDearest();
+    }
+
+    /**
+     * A rule carries exactly one multiplier shape.
+     *
+     * They are answered differently - thresholds hold their value until the
+     * next entry, anchors interpolate towards it - so a rule carrying both
+     * would have two different prices for the same quantity.
+     *
+     * @param  array<string, mixed>  $configuration
+     */
+    private static function curve(array $configuration): CoinsMultiplierCurve
+    {
+        $hasThresholds = isset($configuration['multipliers_basis_points']);
+        $hasAnchors = isset($configuration['multiplier_anchors_basis_points']);
+
+        if ($hasThresholds === $hasAnchors) {
+            throw new DomainException(
+                'A Coins pricing rule must carry exactly one of multipliers_basis_points or multiplier_anchors_basis_points.',
+            );
         }
 
-        if ($matched === null) {
-            throw new DomainException('No Coins pricing multiplier covers the requested quantity.');
+        if ($hasAnchors) {
+            return CoinsMultiplierCurve::anchors(
+                self::positiveIntegerMap($configuration['multiplier_anchors_basis_points'], 'multiplier anchors'),
+            );
         }
 
-        return $matched;
+        $thresholds = self::positiveIntegerMap($configuration['multipliers_basis_points'], 'multipliers');
+
+        if ($thresholds === []) {
+            throw new DomainException('The Coins pricing multipliers cannot be empty.');
+        }
+
+        return CoinsMultiplierCurve::thresholds($thresholds);
     }
 
     /**
@@ -96,6 +132,13 @@ final readonly class CoinsPricingRule
      */
     public static function withoutRedundantMultipliers(array $configuration): array
     {
+        // An anchor table is interpolated, so every entry is load-bearing even
+        // when it repeats the one before it. Dropping a repeat would move every
+        // price between the two surviving anchors.
+        if (isset($configuration['multiplier_anchors_basis_points'])) {
+            return $configuration;
+        }
+
         $configured = $configuration['multipliers_basis_points'] ?? null;
 
         if (! is_array($configured) || $configured === []) {
@@ -149,8 +192,9 @@ final readonly class CoinsPricingRule
             : 'tier_rates_halalah_per_million';
         $allowedFields = [
             'version', 'group', 'tier_upper_bounds_k', $rateField,
-            'multipliers_basis_points', 'service_fee_halalah',
-            'discount_divisor_basis_points', 'exact_overrides_halalah',
+            'multipliers_basis_points', 'multiplier_anchors_basis_points',
+            'service_fee_halalah', 'discount_divisor_basis_points',
+            'exact_overrides_halalah',
         ];
 
         if (array_diff(array_keys($configuration), $allowedFields) !== []) {
