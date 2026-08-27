@@ -166,18 +166,50 @@ final readonly class CoinsMultiplierCurve
         $travelled = $quantity - $fromQuantity;
         $rise = $toBasisPoints - $fromBasisPoints;
 
-        // Both guards run before their multiply, not after it.
-        if ($fromBasisPoints !== 0 && $span > intdiv(PHP_INT_MAX, $fromBasisPoints)) {
+        // Guard the sum, not each product: two factors can each fit and still
+        // overflow once added. Every term is bounded before it is computed.
+        $base = self::product($fromBasisPoints, $span);
+        $shift = self::product($rise, $travelled);
+
+        if ($shift >= 0 ? $base > PHP_INT_MAX - $shift : $base < PHP_INT_MIN - $shift) {
             throw new DomainException('A Coins multiplier interpolation would overflow a signed 64-bit integer.');
         }
 
-        if ($rise !== 0 && $travelled > intdiv(PHP_INT_MAX, abs($rise))) {
+        $numerator = $base + $shift;
+        $half = intdiv($span, 2);
+
+        if ($numerator > PHP_INT_MAX - $half) {
             throw new DomainException('A Coins multiplier interpolation would overflow a signed 64-bit integer.');
         }
 
         // Scaling the low anchor keeps the half landing upward on both slopes,
         // exactly as the published expansion does.
-        return intdiv($fromBasisPoints * $span + $rise * $travelled + intdiv($span, 2), $span);
+        // Scaling the low anchor keeps the half landing upward on both slopes,
+        // exactly as the published expansion does.
+        return intdiv($numerator + $half, $span);
+    }
+
+    /**
+     * A multiplication that refuses to wrap.
+     *
+     * PHP_INT_MIN has no positive counterpart, so it is rejected outright
+     * rather than reasoned about; no legitimate anchor is anywhere near it.
+     */
+    private static function product(int $left, int $right): int
+    {
+        if ($left === 0 || $right === 0) {
+            return 0;
+        }
+
+        if ($left === PHP_INT_MIN || $right === PHP_INT_MIN) {
+            throw new DomainException('A Coins multiplier interpolation would overflow a signed 64-bit integer.');
+        }
+
+        if (abs($left) > intdiv(PHP_INT_MAX, abs($right))) {
+            throw new DomainException('A Coins multiplier interpolation would overflow a signed 64-bit integer.');
+        }
+
+        return $left * $right;
     }
 
     /**

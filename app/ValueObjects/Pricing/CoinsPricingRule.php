@@ -91,8 +91,11 @@ final readonly class CoinsPricingRule
      */
     private static function curve(array $configuration): CoinsMultiplierCurve
     {
-        $hasThresholds = isset($configuration['multipliers_basis_points']);
-        $hasAnchors = isset($configuration['multiplier_anchors_basis_points']);
+        // array_key_exists, not isset: a payload naming the field as null is
+        // declaring a shape it did not supply, and silently treating that as
+        // "absent" would let a rule carrying both keys through as a threshold.
+        $hasThresholds = array_key_exists('multipliers_basis_points', $configuration);
+        $hasAnchors = array_key_exists('multiplier_anchors_basis_points', $configuration);
 
         if ($hasThresholds === $hasAnchors) {
             throw new DomainException(

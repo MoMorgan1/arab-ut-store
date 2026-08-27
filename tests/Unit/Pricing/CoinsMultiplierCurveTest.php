@@ -119,3 +119,16 @@ it('reproduces the published expansion at every grid point of the live anchors',
         expect($curve->basisPointsAt($quantity))->toBe($expected, "quantity {$quantity}");
     }
 });
+
+it('refuses an interpolation whose terms would overflow once summed', function () {
+    // Each product fits on its own; their sum does not. Guarding the factors
+    // individually would let this wrap to a negative multiplier and surface as
+    // a 500 on a customer quote instead of a refused snapshot.
+    $curve = CoinsMultiplierCurve::anchors([
+        0 => 1,
+        1_000_000_000 => intdiv(PHP_INT_MAX, 500_000_000),
+    ]);
+
+    expect(fn () => $curve->basisPointsAt(500_000_000))
+        ->toThrow(DomainException::class, 'overflow');
+});

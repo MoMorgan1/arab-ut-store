@@ -130,3 +130,14 @@ it('reports a threshold rule as not anchored', function () {
     expect(CoinsPricingRule::fromConfiguration(validPcRuleConfiguration(), 'pc')->isAnchored())
         ->toBeFalse();
 });
+
+it('treats an explicit null anchor field as a declared shape, not an absent one', function () {
+    // Naming the field as null while also carrying thresholds is a payload that
+    // cannot decide what it is; accepting it as a threshold rule would hide the
+    // contradiction rather than surface it.
+    $configuration = validPcRuleConfiguration();
+    $configuration['multiplier_anchors_basis_points'] = null;
+
+    expect(fn () => CoinsPricingRule::fromConfiguration($configuration, 'pc'))
+        ->toThrow(DomainException::class, 'exactly one');
+});

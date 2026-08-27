@@ -62,18 +62,46 @@ the Coins minimum in the admin on 2026-08-26 invalidated it. Every hourly run
 since has been rejected with a 422, and quantities between 10,000 and 45,000
 stopped pricing on the storefront entirely.
 
-Laravel now interpolates. In the "Prepare Coins Snapshot" node:
+Laravel now interpolates. **Two nodes have to change, not one.** Editing only
+"Prepare Coins Snapshot" leaves the run failing inside n8n, before it ever
+reaches Laravel, with no 422 to notice.
 
-1. Stop expanding the anchors.
-2. Emit them under `multiplier_anchors_basis_points` instead of
-   `multipliers_basis_points`. Send exactly the eleven anchors.
-3. Leave `legalRanges.*.minimum` as it is. Laravel no longer compares it for an
-   anchor curve, though `maximum` and `increment` must still match.
+### 1. Prepare Coins Snapshot
 
-The last anchor has to reach the group maximum - 2,000,000 for `console_normal`,
-20,000,000 for the other two - or the snapshot is refused. So is a curve whose
-first anchor sits above the store minimum without being its dearest rate.
+- Stop expanding the anchors.
+- Emit them under `multiplier_anchors_basis_points` instead of
+  `multipliers_basis_points`. Send exactly the eleven anchors.
+- Leave `legalRanges.*.minimum` as it is. Laravel no longer compares it for an
+  anchor curve, though `maximum` and `increment` must still match.
 
-Both shapes are accepted, so this can land before or after the Laravel release
-without a coordinated deploy. Nothing recovers until it lands, though: see the
-launch section of `docs/plans/2026-08-27-coins-multiplier-anchors.md`.
+### 2. Validate Snapshot
+
+This node re-checks the payload before signing, and every one of these rejects
+an anchor table:
+
+| Check in the node | Why it fails |
+| --- | --- |
+| `exactKeys(rule, expectedKeys)` | The list names `multipliers_basis_points` and has no entry for the anchor field. |
+| `!isPlainObject(rule.multipliers_basis_points)` | The field is now absent. |
+| `Object.keys(...).length !== ((max - min) / increment) + 1` | Demands one entry per legal quantity - the expansion this change removes. |
+| `expectedRanges` hard-codes `minimum: 50_000, increment: 10_000` | Both are admin-managed values that already drifted. |
+
+Replace the multiplier checks with anchor equivalents: the field is a plain
+object of at least two entries; keys are positive integers; the largest key
+reaches the group maximum; the smallest key is at or below the smallest quantity
+preset. Drop the length check entirely - an anchor table has no expected length.
+
+**`increment` is a second, independent drift.** The node hard-codes `10_000`
+while the live admin setting is `5_000`. Read both `minimum` and `increment`
+from the snapshot the Prepare node built rather than restating them, or this
+node will keep disagreeing with Laravel every time either value is edited.
+
+### 3. Then
+
+Trigger "Run Coins Pricing Now" manually rather than waiting for the hour, and
+confirm the run was **accepted** rather than merely sent. The launch section of
+`docs/plans/2026-08-27-coins-multiplier-anchors.md` has the exact commands.
+
+Both shapes are accepted on the Laravel side, so this can land before or after
+the Laravel release without a coordinated deploy. Nothing recovers until it
+lands, though.

@@ -146,7 +146,7 @@ final class CoinsPricingRunRequest extends FormRequest
         $configuration = $this->input("rules.{$group}");
 
         return is_array($configuration)
-            && isset($configuration['multiplier_anchors_basis_points']);
+            && array_key_exists('multiplier_anchors_basis_points', $configuration);
     }
 
     private function validateLegalRanges(Validator $validator): void
