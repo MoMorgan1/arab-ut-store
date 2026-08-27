@@ -79,12 +79,22 @@ today both paths share one exception.
 `ReadManualServicePricing`, exactly as `PlaceOrder` does today. The cart page calls it with
 `$lock = false`.
 
-When a coins item's live quote resolves to a **different** variant than the one on the cart row
-(`CoinsQuote::$variantId`), the item is repriced onto the live variant and the snapshot records that
-`product_variant_id`; the tier only counts as `tier_removed` when no live variant offers it.
+Each service maps into the reason set explicitly, so nothing is left to an implementer's judgement:
+
+| Condition | Reason |
+| --- | --- |
+| variant missing, `is_active` false, or product not storefront-visible | `variant_inactive` / `product_hidden` |
+| SBC `SbcCompletionPricing::tierTotal()` returns null (`app/Actions/Checkout/PlaceOrder.php:483-507`) | `tier_removed` |
+| coins quantity no longer offered by any live variant | `tier_removed` |
+| `SbcCompletionPricing::fromConfiguration()` throws `DomainException` | `configuration_invalid` |
+| manual-service rank or division route absent from the live schedule (`app/Actions/Checkout/PlaceOrder.php:526-548`) | `schedule_route_removed` |
 
 `quoted_at` is set to the ISO-8601 timestamp of the repricing call, in the same format
-`AddCoinsToCart` writes.
+`AddCoinsToCart` writes. `price_version` is recorded for every service; `schedule_version` **only** for
+FUT Champions and Rivals — the coins, catalog, and SBC configuration allow-lists do not carry it
+(`app/Support/SafeOrderItemConfiguration.php:28-38`), and manual-service configurations are checked
+against an exact key set (`app/Actions/Checkout/PlaceOrder.php:569`), so adding a key anywhere else
+fails validation rather than being ignored.
 
 ### 1.1 The coins torn-read guard is kept, not deleted
 
@@ -96,11 +106,28 @@ run commits, the quote can be computed from the old rules while the locked varia
 new `price_version`.
 
 That comparison is an **internal-consistency guard**, not the staleness check this design removes, and
-`RepriceCart` keeps it. Disagreement is neither "priced" nor "unavailable": it yields
-`pricing_run_in_progress`, which the checkout route reports as a transient `pricing_updating` (`503`,
-"الأسعار بتتحدث دلوقتي، حاول بعد لحظات") and the cart page renders as a retry notice. No cart mutation,
-no order. Without this, an order could be charged old-rule totals while its configuration records the
-new `price_version` — the exact mis-documentation §3 exists to prevent.
+`RepriceCart` keeps it — but **split into its two legs**, which mean opposite things. The comparison at
+line 470 is compound (`variantId` **or** `priceVersion`), and collapsing both into one outcome would
+strand a whole class of carts forever:
+
+- **`priceVersion` differs, same variant** — a pricing run is committing right now.
+  `ApplyCoinsPricingRun` only increments `price_version` on the existing rows
+  (`app/Actions/Pricing/ApplyCoinsPricingRun.php:56-60,98-100`), so this is genuinely transient: one
+  short transaction. Outcome `pricing_run_in_progress`, reported by the checkout route as
+  `pricing_updating` (`503`, "الأسعار بتتحدث دلوقتي، حاول بعد لحظات"). No cart mutation, no order.
+- **`variantId` differs** — this is **permanent**, not a run window. Pricing runs never change variant
+  ids; a different id means the old variant was deactivated and replaced, since
+  `CoinsCatalogReader::variant()` resolves the single *active* variant per platform
+  (`app/Services/Catalog/CoinsCatalogReader.php:36-44`). Outcome: reprice onto the quoted variant and
+  record that `product_variant_id` on the order item, or `tier_removed` when the quantity is no longer
+  offered. Routing this to `pricing_updating` would loop the customer through a transient-retry message
+  that can never clear.
+
+This guard fires only under locks, so it belongs to the checkout path. On the unlocked render path the
+quote and the variant read come from the same snapshot and cannot disagree on `priceVersion`; the cart
+page therefore has no retry notice for it. Without the guard, an order could be charged old-rule totals
+while its configuration records the new `price_version` — the exact mis-documentation §3 exists to
+prevent.
 
 `PlaceOrder::currentPrices()`, `currentManualServicePrices()`, and `validManualConfiguration()` move
 into the action. `PlaceOrder` keeps its structural configuration validation and its secret, attachment,
@@ -133,7 +160,28 @@ Each item's payload gains three fields:
 | `unavailableReason` | the closed-set reason, or `null` |
 
 `unitPriceHalalah` and `totalHalalah` continue to be the numbers the customer is charged — they now
-carry live values. `checkout.canCheckout` becomes false while any item is unavailable.
+carry live values. An unavailable item also carries `promotion: null`: `safeCartItem`'s fallback
+`$discountResult?->linePromotion(…) ?? $this->itemPromotion($cartItem)`
+(`app/Http/Controllers/Store/CartController.php:157`) would otherwise resolve a promotion badge from
+the stored total on an item that has no live price.
+
+#### Checkout eligibility must move into the `cart` payload
+
+Checkout is blocked while any item is unavailable — but `canCheckout` currently lives in the `cartPage`
+prop (`app/Http/Controllers/Store/CartController.php:62-65`), and every partial reload on the cart page
+requests only `cart` (`resources/js/pages/store/cart.tsx:285,631,656`). Inertia runs the controller but
+delivers only the requested prop, so `cartPage.checkout` stays stale. Item removal is worse: it is a
+plain XHR that filters local state and reloads nothing
+(`resources/js/pages/store/cart.tsx:73-78,783-796`), while the button's disabled state reads the stale
+prop (`resources/js/pages/store/cart.tsx:423`).
+
+Left alone, the design's own escape hatch dead-ends: the customer removes the unavailable item and the
+checkout button stays dead until a manual refresh — the exact experience this work exists to delete.
+So:
+
+- `canCheckout` moves into the `cart` payload, alongside the items it depends on;
+- item removal calls `router.reload({ only: ['cart'] })` instead of filtering local state, so removal,
+  repricing, and eligibility all refresh together.
 
 ### 3. Checkout — reprice, then require the shown total
 
@@ -173,10 +221,25 @@ The first closes the wallet hole; the second keeps a wallet-balance change (a ca
 admin credit) from silently shifting how much cash the customer is charged. `null` no longer skips
 either check: an absent header is `checkout_validation_error`.
 
-**Accepted consequence:** two items moving in opposite directions by the same amount cancel in both
-sums and check out unconfirmed, recording per-item prices the customer was not shown. Owner decision 2
-is about the payable total, and per-item expectations would mean shipping the whole cart in the
-request. Recorded here as accepted, not overlooked.
+**The client computes both headers over the same filtered set the server does** — unavailable items
+excluded. The client currently sums every item (`resources/js/pages/store/cart.tsx:65-71`); if it
+summed a set the server filtered, every checkout would be refused. `canCheckout: false` hides this
+today, but the two rules only work stated together.
+
+**Both `previous…` figures in the refusal payload are the request's own headers**, not something the
+server reconstructs. The server never stored what the customer was shown: cart rows hold
+pre-repricing prices and discounts recompute from live rows. Nothing else can supply them.
+
+**This breaks the existing checkout tests and that churn is part of the work.** Twelve checkout POSTs
+send no expected-total header today (`tests/Feature/Checkout/PaylinkCheckoutTest.php:99,110,113,134,141,151,203,209,224,240,270`
+and `tests/Feature/Checkout/CartWalletTest.php:297`); under a mandatory header every one of them fails
+and must be updated.
+
+**Accepted consequence:** figures *below* the two totals can still move while both totals hold — two
+items shifting in opposite directions by the same amount, or a promotion-versus-coupon split changing
+the recorded `discount_halalah`. Those check out unconfirmed and record per-item prices the customer
+was not shown. Owner decision 2 is about the payable total, and per-item expectations would mean
+shipping the whole cart in the request. Recorded here as accepted, not overlooked.
 
 ### 4. The confirmation contract
 
@@ -231,19 +294,31 @@ with a `CheckoutFingerprint` that changed in between.
 
 - The two compared totals cover promotions, coupon, and wallet between them: the first is computed
   after promotions and coupon, the second after the wallet deduction.
-- **The coupon path needs a second discount pass.** When repricing pushes the eligible net below a
-  coupon's minimum, `DiscountEngine` throws before any `DiscountResult` exists
-  (`app/Checkout/DiscountEngine.php:258-261`, minimum at `:686-687`), so the new totals the payload
-  promises are never computed. `PlaceOrder` therefore catches `CouponRejected` and re-runs
+- **Only the minimum-spend rejection is a repricing event.** `DiscountEngine` rejects coupons for
+  invalid, expired, first-order-only, and usage-limit reasons *before* it reaches the minimum check
+  (`app/Checkout/DiscountEngine.php:618-649` versus `:686-687`). A coupon that expired between render
+  and pay has nothing to do with repricing, and presenting it as `cart_repriced` with "the total fell
+  below the minimum" copy would be a lie. `CouponRejected` carries a `reason`
+  (`app/Exceptions/Checkout/CouponRejected.php:10-12`); **only `CouponRejection::Minimum` takes the
+  path below.** Every other reason keeps today's `StaleCartCoupon` behaviour unchanged.
+- **The minimum path needs a second discount pass.** `DiscountEngine` throws before any
+  `DiscountResult` exists (`app/Checkout/DiscountEngine.php:258-261`), so the new totals the payload
+  promises are never computed. `PlaceOrder` catches `CouponRejected`, and on the minimum reason re-runs
   `calculateForSnapshots()` **with `$coupon = null`**, still inside the transaction, to obtain the
   coupon-free totals; it then raises `CartRepriced` carrying them with `couponRemoved: true`. The
-  transaction rolls back as today and the coupon is cleared from the cart on the way out — the figures
-  survive because they live on the exception, not in the database.
-- **The coupon is cleared even if the customer cancels.** This is current behaviour
-  (`app/Actions/Checkout/PlaceOrder.php:97-104`) and it is kept: the coupon genuinely no longer
-  qualifies for this cart, so leaving it attached would only reproduce the same refusal. It is a cart
-  mutation the customer did not consent to, so it must be stated in the dialog and in the reloaded cart
-  — "الكوبون اتشال لأن الإجمالي نزل تحت الحد الأدنى" — not applied silently.
+  second call cannot itself re-throw, and the engine's only cross-call state is the benign
+  `activeCartPromotions` memo (`app/Checkout/DiscountEngine.php:43,830-838`). The figures survive the
+  rollback because they live on the exception, not in the database.
+- **`execute()` needs a `CartRepriced` handler that clears the coupon.** Today's clearing runs only in
+  the `StaleCartCoupon` catch (`app/Actions/Checkout/PlaceOrder.php:97-104`), which the new exception
+  never reaches. Without a handler the loop never terminates: coupon attached → reprice below minimum →
+  `cart_repriced` → customer confirms → coupon still attached → rejected again → `cart_repriced` again.
+  `execute()` therefore catches `CartRepriced` and, when `couponRemoved` is set, performs the same
+  `coupon_id => null` update outside the transaction before rethrowing.
+- **The coupon is cleared even if the customer cancels.** The coupon genuinely no longer qualifies for
+  this cart, so leaving it attached would only reproduce the refusal. It is still a cart mutation the
+  customer did not consent to, so it must be stated in the dialog and in the reloaded cart —
+  "الكوبون اتشال لأن الإجمالي نزل تحت الحد الأدنى" — never applied silently.
 - The "below the Paylink minimum" and wallet-gap refusals stay refusals, with the added repricing
   context described in §4.
 
@@ -265,7 +340,16 @@ verified at 320px, 390px, 768px, and 1440px, with keyboard focus, 44px touch tar
 no horizontal overflow, and a clean console.
 
 New translation keys land in `lang/ar/store.php` and `lang/en/store.php`; the existing
-`checkout_cart_changed` string keeps its place for the genuine cart-changed cases.
+`checkout_cart_changed` string keeps its place for the genuine cart-changed cases, while
+`store.checkout.price_changed` (`lang/ar/store.php:122`, `lang/en/store.php:125`) is orphaned by
+`cart_repriced` and is removed.
+
+The cart page maps the two new codes explicitly. It currently maps only `cart_changed` and falls back
+to a generic message (`resources/js/pages/store/cart.tsx:434-436`), which would render a `429` from
+`throttle:coins-cart` — 10 requests per minute per owner, shared with item removal, coupon, and wallet
+toggles (`app/Providers/AppServiceProvider.php:68-73`, `config/coins.php:10`) — as an unexplained
+checkout error. A fix-the-cart-then-confirm sequence can plausibly reach that ceiling, so `429` gets
+its own "حاول بعد دقيقة" message rather than a shrug.
 
 ## Testing
 
@@ -300,6 +384,15 @@ New translation keys land in `lang/ar/store.php` and `lang/en/store.php`; the ex
 - **Pest, coins variant replaced** — a tier that moved to a different live variant reprices onto it and
   the order records that `product_variant_id`.
 - **Pest, guest cart** — the cart page renders repriced and unavailable items for a guest owner.
+- **Pest, coupon loop** — after a `cart_repriced` carrying `couponRemoved: true`, the coupon is
+  detached and the confirming re-submit succeeds. Without the `CartRepriced` handler this test loops.
+- **Pest, coupon reason split** — an expired coupon still produces `cart_changed`, not `cart_repriced`.
+- **Pest, coins variant replaced vs pricing run** — a `variantId` mismatch reprices onto the live
+  variant, while a `priceVersion`-only mismatch returns `pricing_updating`. One test per leg, so
+  collapsing them again fails loudly.
+- **Vitest, eligibility refresh** — removing an unavailable item re-enables the checkout button
+  without a full page reload.
+- **Existing suite** — the twelve checkout POSTs listed in §3 are updated to send both headers.
 - **Vitest** — `paylink-checkout-api` parses and rejects `cart_repriced` payloads; the cart page renders
   the notice, badge, and dialog.
 - **Playwright** — the full path: stale cart, open cart page, see the notice, press pay, confirm, reach
@@ -331,6 +424,27 @@ The review confirmed as correct: the idempotency rollback and fresh-key reasonin
 model mutation on the GET render path, and the two-tab confirmation race resolving through the cart
 `lockForUpdate` and converted status. Its remaining points are folded into §2, §3, §4, §5, and the
 test list.
+
+Reviewed again the same day by a separate read-only OpenCode session (`opencode-go/glm-5.3-flash`),
+targeting the three fixes above because they were new and unreviewed. Verdict:
+`APPROVE WITH CHANGES`. It confirmed fixes 1, 3, 4, and 5 hold, and found three further defects — two
+of them introduced by the first round's own fixes:
+
+1. §1.1 collapsed the compound guard at `app/Actions/Checkout/PlaceOrder.php:470` into one outcome,
+   which would route the **permanent** variant-replacement case into an endless transient-retry 503 and
+   make §1's replacement rule unreachable — now split by leg (§1.1);
+2. blocking checkout via `cartPage.canCheckout` dead-ends against the existing Inertia partial reloads
+   and the local-state removal flow, so removing the unavailable item would leave the button dead —
+   the flag moves into the `cart` payload and removal reloads it (§2);
+3. `CartRepriced` had no coupon-clearing handler, making the confirm flow loop forever (§5).
+
+It also caught that only `CouponRejection::Minimum` is a repricing event, that both `previous…` figures
+can only come from the request headers, that the client must filter unavailable items from its own
+header sums, and that the mandatory header breaks twelve existing checkout tests. All are folded in
+above.
+
+Both reviews independently agreed the architecture is sound and that every defect found was a
+specification defect, not a structural one.
 
 ## Complexity
 
