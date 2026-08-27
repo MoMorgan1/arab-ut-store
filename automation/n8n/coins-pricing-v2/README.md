@@ -62,7 +62,10 @@ the Coins minimum in the admin on 2026-08-26 invalidated it. Every hourly run
 since has been rejected with a 422, and quantities between 10,000 and 45,000
 stopped pricing on the storefront entirely.
 
-Laravel now interpolates. **Two nodes have to change, not one.** Editing only
+**`workflow-v2.4.json` is the ready-to-import artifact.** Import it and skip the
+rest of this section; the detail below records what changed and why.
+
+Laravel now interpolates. **Two nodes had to change, not one.** Editing only
 "Prepare Coins Snapshot" leaves the run failing inside n8n, before it ever
 reaches Laravel, with no 422 to notice.
 
@@ -95,6 +98,31 @@ preset. Drop the length check entirely - an anchor table has no expected length.
 while the live admin setting is `5_000`. Read both `minimum` and `increment`
 from the snapshot the Prepare node built rather than restating them, or this
 node will keep disagreeing with Laravel every time either value is edited.
+
+### What v2.4 changed
+
+| Node | Change |
+| --- | --- |
+| Prepare | `commonRule()` emits `multiplier_anchors_basis_points: anchorTable()` |
+| Prepare | `anchorTable()` replaces `multiplierMap()`; the expansion is gone |
+| Prepare | `multiplierFor()` interpolates instead of reading the expansion |
+| Validate | allowlist names the anchor field |
+| Validate | `multiplierFor()` mirrors Laravel's `CoinsMultiplierCurve` |
+| Validate | anchor table shape check: at least two, positive integer pairs |
+| Validate | the length check became a top-coverage check |
+| Validate | `minimum` and `increment` come from the snapshot, not hard-coded |
+
+The last one matters beyond this change: the node pinned `minimum: 50_000` and
+`increment: 10_000` while the live settings were 10,000 and 5,000. Only the
+per-group `maximum` is still pinned, because nothing upstream bounds it.
+
+The eleven anchors, the pricing formula, the fast-delivery floors, the
+descending-price guard, the exact overrides and the signing are untouched.
+
+Verified before publishing this file: every code node parses, no reference to
+`multipliers_basis_points` remains, and Laravel accepts the exact payload
+`anchorTable()` produces - a 10,000-coin order prices at 11,000 bp, a 200,000
+order at 10,400, and a 20,000,000 order at 10,500.
 
 ### 3. Then
 

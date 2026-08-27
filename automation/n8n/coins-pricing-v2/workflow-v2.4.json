@@ -1,0 +1,564 @@
+{
+  "name": "ArabUT Coins Pricing v2.1 - Adaptive FFT + UTT Carry Forward",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1166400f-3283-4764-ad84-dcd5f75897c9",
+      "name": "Run Coins Pricing Now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2528,
+        -1008
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "6d5f23b1-0253-4a48-b2c9-5df4ea72a8af",
+      "name": "Every 1 Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2528,
+        -848
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/* eslint-disable */\n// ArabUT Coins Pricing v2\n// Manual and scheduled runs both APPLY directly to Laravel.\n// Provider secrets are read by the probe nodes from environment variables.\n// Keep every non-secret business/probe value here so a future settings UI can\n// replace this object without changing the rest of the workflow.\n\nconst alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';\n\nfunction ulid() {\n  let time = Date.now();\n  let timestamp = '';\n  for (let index = 0; index < 10; index += 1) {\n    timestamp = alphabet[time % 32] + timestamp;\n    time = Math.floor(time / 32);\n  }\n\n  let random = '';\n  for (let index = 0; index < 16; index += 1) {\n    random += alphabet[Math.floor(Math.random() * alphabet.length)];\n  }\n\n  return timestamp + random;\n}\n\nfunction generatedAt() {\n  return new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n}\n\nconst legalRanges = {\n  console_normal: { minimum: 50_000, maximum: 2_000_000, increment: 10_000 },\n  console_fast: { minimum: 50_000, maximum: 20_000_000, increment: 10_000 },\n  pc: { minimum: 50_000, maximum: 20_000_000, increment: 10_000 },\n};\n\n// 1M is the promotional, lowest-uplift point. Smaller orders keep a stronger\n// operating contribution; larger orders receive a small guarantee/liquidity\n// uplift. Values are basis points and are linearly interpolated every 10K.\nconst quantityCommercialUpliftAnchorsBps = {\n  50_000: 11_000,\n  100_000: 10_600,\n  150_000: 10_500,\n  250_000: 10_300,\n  500_000: 10_200,\n  1_000_000: 10_000,\n  2_000_000: 10_150,\n  5_000_000: 10_250,\n  10_000_000: 10_350,\n  15_000_000: 10_400,\n  20_000_000: 10_500,\n};\n\nconst settings = {\n  mode: 'apply',\n  endpoint: 'https://store.arab-ut.com/api/automation/v1/pricing/coins/runs',\n\n  // Provider secrets are read by the probe nodes from environment variables:\n  // FFT_API_USER, FFT_API_KEY and UTT_API_KEY.\n  providers: {\n    fft: {\n      baseUrl: 'https://futtransfer.top',\n    },\n    utt: {\n      baseUrl: 'https://utautotransfer.com/api',\n    },\n  },\n\n  legalRanges,\n  tierCapsK: [1_000, 2_000, 5_000, 10_000, 15_000, 20_000],\n  tierUpperBoundsK: [1_000, 2_000, 5_000, 10_000, 15_000],\n\n  // Shared economics.\n  effectiveUsdToSar: 3.85,\n  smallOrderFeeHalalah: 300,\n  discountDivisorBasisPoints: 10_000,\n  quantityCommercialUpliftAnchorsBps,\n\n  // Provider probes. There is no historical market floor/ceiling. Cycle uses\n  // seller hint + exponential expansion + binary search. Targeted starts from\n  // the provider's live distribution. Risk level matches fulfillment.\n  probe: {\n    transferRiskLevel: 10,\n    maximumSupportedCoins: 20_000_000,\n    providerTimeoutMs: 12_000,\n    retryCount: 2,\n    retryDelayMs: 500,\n\n    cycleAmountCoins: {\n      ps: 2_000_000,\n      pc: 2_000_000,\n    },\n    cyclePricePrecisionUsdPer100K: 0.01,\n    cycleFallbackStartUsdPer100K: 0.50,\n    cycleExpansionMultiplier: 2,\n    cycleMaximumExpansionSteps: 18,\n    cycleConfirmationCalls: 2,\n    cycleBacktrackSteps: 5,\n\n    targetedPricePrecisionEurPer100K: 0.01,\n    targetedMaximumCandidateTicks: 5_000,\n\n    // Deliberately unconstrained theoretical receiver balance for UTT's\n    // capacity prediction. UTT documents 999,999,999 as its default.\n    uttPredictionStartCoins: 999_999_999,\n  },\n\n  // The formula keeps the current business economics. `marginDivisor` is the\n  // historical divisor used by the existing workflow, not a literal margin %.\n  groups: {\n    console_normal: {\n      marginDivisor: 0.80,\n      operationalMarkupUsdPerM: 0.5,\n      commissionUsdPerM: 1,\n    },\n    console_fast: {\n      marginDivisor: 0.80,\n      operationalMarkupUsdPerM: 0.5,\n      commissionUsdPerM: 1,\n    },\n    pc: {\n      marginDivisor: 0.65,\n      operationalMarkupUsdPerM: 1.5,\n      commissionUsdPerM: 2,\n    },\n  },\n\n  // Increases apply immediately. Confirmed decreases are softened after a\n  // successful production baseline exists in n8n static data.\n  stability: {\n    enabled: true,\n    holdDecreaseBelowBps: 100,\n    applyDecreaseFractionBps: 5_000,\n    maximumDecreasePerRunBps: 1_500,\n  },\n};\n\nreturn [{\n  json: {\n    settings,\n    eventId: ulid(),\n    runId: ulid(),\n    generatedAt: generatedAt(),\n  },\n}];\n"
+      },
+      "id": "0be62a4f-6088-4e92-8bea-de533b39a26c",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2288,
+        -928
+      ],
+      "notes": "All tunable economics, tier and stability values live here. v2.2 uses environment-backed provider credentials."
+    },
+    {
+      "parameters": {
+        "jsCode": "/* eslint-disable */\nconst config = $('Config').first().json;\nconst cfg = config.settings;\nconst provider = {\n  ...cfg.providers.fft,\n  apiUser: $env.FFT_API_USER,\n  apiKey: $env.FFT_API_KEY,\n};\nconst probe = cfg.probe;\nconst helpers = this.helpers;\n\nif (!provider.apiUser || !provider.apiKey) {\n  return [{\n    json: {\n      source: 'fft',\n      failed: true,\n      failureReason: 'FFT_API_USER or FFT_API_KEY is not configured',\n      cycle: { ps: null, pc: null },\n      targeted: { ps: [], pc: [] },\n      audit: { calls: 0, errors: 0, retries: 0 },\n    },\n  }];\n}\n\nconst audit = {\n  calls: 0,\n  errors: 0,\n  retries: 0,\n};\n\nfunction parse(value) {\n  if (typeof value === 'string') {\n    try { return JSON.parse(value); } catch { return {}; }\n  }\n  return value && typeof value === 'object' ? value : {};\n}\n\nfunction sleep(ms) {\n  return new Promise((resolve) => setTimeout(resolve, ms));\n}\n\nfunction round(value, places = 4) {\n  const factor = 10 ** places;\n  return Math.round(Number(value) * factor) / factor;\n}\n\nasync function request(path, body) {\n  let lastError = null;\n  for (let attempt = 1; attempt <= probe.retryCount; attempt += 1) {\n    audit.calls += 1;\n    try {\n      const response = await helpers.httpRequest({\n        method: 'POST',\n        url: `${provider.baseUrl}/${path}`,\n        headers: {\n          'Content-Type': 'application/json',\n          Accept: 'application/json',\n          'User-Agent': 'ArabUT-Coins-Pricing/2.2',\n        },\n        body: JSON.stringify({\n          ...body,\n          apiUser: provider.apiUser,\n          apiKey: provider.apiKey,\n        }),\n        timeout: probe.providerTimeoutMs,\n      });\n\n      const parsed = parse(response);\n      // getMarketFeedback documents provider errors inside HTTP 200 bodies.\n      // Do not reinterpret those errors as ordinary \"no stock\" observations.\n      if (parsed.error) {\n        throw new Error(`FFT ${path} returned error: ${parsed.error}`);\n      }\n      return parsed;\n    } catch (error) {\n      lastError = error;\n      audit.errors += 1;\n      if (attempt < probe.retryCount) {\n        audit.retries += 1;\n        await sleep(probe.retryDelayMs * attempt);\n      }\n    }\n  }\n  throw lastError ?? new Error(`FFT ${path} failed`);\n}\n\nfunction amountUnits(platform) {\n  const coins = platform === 'PC'\n    ? probe.cycleAmountCoins.pc\n    : probe.cycleAmountCoins.ps;\n  return Math.max(1, Math.ceil(Number(coins) / 100_000));\n}\n\nasync function probeCycle(platform) {\n  const step = Number(probe.cyclePricePrecisionUsdPer100K);\n  if (!Number.isFinite(step) || step <= 0) {\n    throw new Error('FFT cycle precision is invalid');\n  }\n\n  let hint = null;\n  try {\n    const seller = await request('getMarketFeedback', {\n      role: 'seller',\n      price: 0.1,\n      platform,\n      priceCurrency: 'USD',\n      mode: 'cycle',\n    });\n    hint = Number(seller.avgFillPrice || seller.priceMin) || null;\n  } catch {}\n\n  const cache = new Map();\n  const keyFor = (tick) => String(tick);\n  const priceFor = (tick) => round(tick * step, 4);\n\n  async function coverageAt(tick, bypassCache = false) {\n    const key = keyFor(tick);\n    if (!bypassCache && cache.has(key)) return cache.get(key);\n\n    const response = await request('getMarketFeedback', {\n      role: 'buyer',\n      price: priceFor(tick),\n      platform,\n      priceCurrency: 'USD',\n      amount: amountUnits(platform),\n      mode: 'cycle',\n    });\n    const value = String(response.coverage || 'none').toLowerCase();\n\n    if (!bypassCache) cache.set(key, value);\n    return value;\n  }\n\n  const minimumTick = 1;\n  if ((await coverageAt(minimumTick)) === 'enough') {\n    const confirmations = [];\n    for (let index = 0; index < probe.cycleConfirmationCalls; index += 1) {\n      confirmations.push(await coverageAt(minimumTick, true));\n    }\n    if (confirmations.every((value) => value === 'enough')) {\n      const price = priceFor(minimumTick);\n      return {\n        platform,\n        hintUsdPer100K: hint,\n        clearingUsdPer100K: price,\n        usdPerM: round(price * 10, 4),\n        amountCoins: amountUnits(platform) * 100_000,\n        probePoints: cache.size + confirmations.length,\n      };\n    }\n  }\n\n  let lowTick = minimumTick;\n  let highTick = Math.max(\n    lowTick + 1,\n    Math.ceil(\n      Number(hint || probe.cycleFallbackStartUsdPer100K) / step,\n    ),\n  );\n\n  let highCoverage = await coverageAt(highTick);\n  let expansions = 0;\n  while (\n    highCoverage !== 'enough' &&\n    expansions < probe.cycleMaximumExpansionSteps\n  ) {\n    lowTick = highTick;\n    highTick = Math.max(\n      highTick + 1,\n      Math.ceil(highTick * probe.cycleExpansionMultiplier),\n    );\n    highCoverage = await coverageAt(highTick);\n    expansions += 1;\n  }\n\n  if (highCoverage !== 'enough') {\n    return {\n      platform,\n      hintUsdPer100K: hint,\n      clearingUsdPer100K: null,\n      usdPerM: null,\n      amountCoins: amountUnits(platform) * 100_000,\n      probePoints: cache.size,\n      failureReason: 'No FFT cycle clearing price was found',\n    };\n  }\n\n  while (highTick - lowTick > 1) {\n    const middleTick = Math.floor((lowTick + highTick) / 2);\n    const coverage = await coverageAt(middleTick);\n    if (coverage === 'enough') highTick = middleTick;\n    else lowTick = middleTick;\n  }\n\n  // Backtrack a few fresh ticks in case one cached result was transient.\n  for (let index = 0; index < probe.cycleBacktrackSteps; index += 1) {\n    if (highTick <= minimumTick) break;\n    const lowerCoverage = await coverageAt(highTick - 1, true);\n    if (lowerCoverage === 'enough') highTick -= 1;\n    else break;\n  }\n\n  const confirmations = [];\n  for (let index = 0; index < probe.cycleConfirmationCalls; index += 1) {\n    confirmations.push(await coverageAt(highTick, true));\n  }\n  if (!confirmations.every((value) => value === 'enough')) {\n    return {\n      platform,\n      hintUsdPer100K: hint,\n      clearingUsdPer100K: null,\n      usdPerM: null,\n      amountCoins: amountUnits(platform) * 100_000,\n      probePoints: cache.size + confirmations.length,\n      failureReason: 'FFT cycle clearing price did not pass confirmation',\n    };\n  }\n\n  const price = priceFor(highTick);\n  return {\n    platform,\n    hintUsdPer100K: hint,\n    clearingUsdPer100K: price,\n    usdPerM: round(price * 10, 4),\n    amountCoins: amountUnits(platform) * 100_000,\n    probePoints: cache.size + confirmations.length,\n  };\n}\n\nfunction candidatePriceTicks(distribution, step) {\n  const maximumTicks = Math.max(\n    1,\n    Number(probe.targetedMaximumCandidateTicks || 5_000),\n  );\n  const ticks = new Set();\n  const epsilon = step / 1000;\n\n  for (const bracket of distribution) {\n    const from = Number(bracket.from);\n    const to = Number(bracket.to);\n    if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) continue;\n\n    const first = Math.max(1, Math.ceil((from - epsilon) / step));\n    const last = Math.max(first, Math.floor((to - epsilon) / step));\n    const bracketTickCount = last - first + 1;\n\n    // Fail closed before entering a pathological synchronous loop.\n    if (bracketTickCount > maximumTicks) {\n      throw new Error(\n        `FFT targeted bracket requires ${bracketTickCount} ticks; limit is ${maximumTicks}`,\n      );\n    }\n\n    for (let tick = first; tick <= last; tick += 1) {\n      ticks.add(tick);\n      if (ticks.size > maximumTicks) {\n        throw new Error(\n          `FFT targeted distribution exceeds ${maximumTicks} candidate ticks`,\n        );\n      }\n    }\n  }\n\n  return [...ticks].sort((left, right) => left - right);\n}\n\nasync function probeTargeted(platform) {\n  const step = Number(probe.targetedPricePrecisionEurPer100K);\n  if (!Number.isFinite(step) || step <= 0) {\n    throw new Error('FFT targeted precision is invalid');\n  }\n\n  let feedback;\n  try {\n    feedback = await request('getMarketFeedback', {\n      role: 'buyer',\n      price: 0,\n      platform,\n      priceCurrency: 'EUR',\n      mode: 'targeted',\n    });\n  } catch (error) {\n    return {\n      platform,\n      distribution: [],\n      tiers: [],\n      failed: true,\n      failureReason: 'FFT targeted distribution request failed',\n    };\n  }\n\n  const distribution = (feedback.distribution || [])\n    .map((entry) => ({\n      from: Number(entry.from),\n      to: Number(entry.to),\n      stock: Number(entry.stock),\n    }))\n    .filter((entry) =>\n      Number.isFinite(entry.from) &&\n      Number.isFinite(entry.to) &&\n      entry.to > entry.from &&\n      entry.stock > 0,\n    )\n    .sort((left, right) => left.from - right.from);\n\n  if (distribution.length === 0) {\n    return {\n      platform,\n      distribution: [],\n      tiers: cfg.tierCapsK.map((targetK) => ({\n        targetK,\n        covered: false,\n        priceEurPer100K: null,\n        maxK: 0,\n      })),\n      failed: false,\n      failureReason: null,\n      highestAvailable: null,\n    };\n  }\n\n  let ticks;\n  try {\n    ticks = candidatePriceTicks(distribution, step);\n  } catch (error) {\n    return {\n      platform,\n      distribution: [],\n      tiers: [],\n      failed: true,\n      failureReason: error.message || 'FFT targeted candidate generation failed',\n    };\n  }\n\n  const cache = new Map();\n  const priceFor = (tick) => round(tick * step, 4);\n\n  async function maxKAt(index) {\n    if (cache.has(index)) return cache.get(index);\n    const price = priceFor(ticks[index]);\n    // This operational endpoint is retained because it is already returning\n    // live riskLevel-aware capacity in production, even though the public\n    // Postman collection documents maxOrderPreviewAPI instead.\n    const response = await request('calculateTargetedSnipe', {\n      customerBalance: probe.maximumSupportedCoins,\n      platform,\n      maxPrice: price,\n      riskLevel: probe.transferRiskLevel,\n    });\n    const maxK = Number(response.maxPossibleK);\n    if (!Number.isFinite(maxK) || maxK < 0) {\n      throw new Error(\n        `FFT ${platform} targeted prediction omitted a valid maxPossibleK`,\n      );\n    }\n    cache.set(index, maxK);\n    return maxK;\n  }\n\n  async function firstCover(targetK) {\n    if (ticks.length === 0) return null;\n    const lastIndex = ticks.length - 1;\n    if ((await maxKAt(lastIndex)) < targetK) return null;\n\n    let low = 0;\n    let high = lastIndex;\n    while (low < high) {\n      const middle = Math.floor((low + high) / 2);\n      if ((await maxKAt(middle)) >= targetK) high = middle;\n      else low = middle + 1;\n    }\n\n    return {\n      targetK,\n      covered: true,\n      priceEurPer100K: priceFor(ticks[low]),\n      maxK: await maxKAt(low),\n    };\n  }\n\n  const tiers = [];\n  for (const targetK of cfg.tierCapsK) {\n    const covered = await firstCover(targetK);\n    tiers.push(covered || {\n      targetK,\n      covered: false,\n      priceEurPer100K: null,\n      maxK: 0,\n    });\n  }\n\n  const highestIndex = ticks.length - 1;\n  const highestMaxK = highestIndex >= 0 ? await maxKAt(highestIndex) : 0;\n  const cheapestHighest = highestMaxK > 0\n    ? await firstCover(highestMaxK)\n    : null;\n  const highestAvailable = cheapestHighest\n    ? {\n        priceEurPer100K: cheapestHighest.priceEurPer100K,\n        maxK: highestMaxK,\n        capacityCoins: highestMaxK * 1_000,\n      }\n    : null;\n\n  return {\n    platform,\n    distribution,\n    tiers,\n    highestAvailable,\n    failed: false,\n    failureReason: null,\n    candidatePriceCount: ticks.length,\n    probedPriceCount: cache.size,\n    riskLevel: probe.transferRiskLevel,\n    customerBalance: probe.maximumSupportedCoins,\n  };\n}\n\nlet cyclePs;\nlet cyclePc;\nlet targetedPs;\nlet targetedPc;\ntry {\n  [cyclePs, cyclePc, targetedPs, targetedPc] = await Promise.all([\n    probeCycle('PS'),\n    probeCycle('PC'),\n    probeTargeted('PS'),\n    probeTargeted('PC'),\n  ]);\n} catch (error) {\n  return [{\n    json: {\n      source: 'fft',\n      failed: true,\n      failureReason: error.message || 'FFT probe failed',\n      cycle: { ps: null, pc: null },\n      targeted: { ps: [], pc: [] },\n      audit,\n    },\n  }];\n}\n\nconst failed = !Number.isFinite(Number(cyclePs?.usdPerM));\nreturn [{\n  json: {\n    source: 'fft',\n    cycle: {\n      ps: cyclePs,\n      pc: cyclePc,\n    },\n    targeted: {\n      ps: targetedPs,\n      pc: targetedPc,\n    },\n    failed,\n    failureReason: failed\n      ? (cyclePs?.failureReason || 'FFT PS cycle cost is unavailable')\n      : null,\n    audit,\n  },\n}];\n"
+      },
+      "id": "c1403280-fbc8-417a-8043-34ab382f57c4",
+      "name": "Probe FFT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2032,
+        -1040
+      ],
+      "notes": "v2.2: adaptive cycle + targeted pricing; detects HTTP-200 provider errors; riskLevel=10."
+    },
+    {
+      "parameters": {
+        "jsCode": "/* eslint-disable */\nconst config = $('Config').first().json;\nconst cfg = config.settings;\nconst provider = {\n  ...cfg.providers.utt,\n  apiKey: $env.UTT_API_KEY,\n};\nconst probe = cfg.probe;\nconst helpers = this.helpers;\n\nif (!provider.apiKey) {\n  return [{\n    json: {\n      source: 'utt',\n      ratioEuroUsd: null,\n      ps: { tiers: [], failed: true },\n      pc: { tiers: [], failed: true },\n      failed: true,\n      failureReason: 'UTT_API_KEY is not configured',\n      audit: { calls: 0, errors: 0, retries: 0 },\n    },\n  }];\n}\n\nconst audit = {\n  calls: 0,\n  errors: 0,\n  retries: 0,\n};\n\nfunction parse(value) {\n  if (typeof value === 'string') {\n    try { return JSON.parse(value); } catch { return {}; }\n  }\n  return value && typeof value === 'object' ? value : {};\n}\n\nfunction sleep(ms) {\n  return new Promise((resolve) => setTimeout(resolve, ms));\n}\n\n// n8n's Code-node sandbox doesn't expose URLSearchParams on every runtime.\n// Build application/x-www-form-urlencoded bodies with standard primitives.\n// UTT's stockSection is sent as its documented flat comma-separated string.\nfunction formEncode(fields) {\n  return Object.entries(fields)\n    .filter(([, value]) => value !== undefined && value !== null)\n    .map(([key, value]) =>\n      `${encodeURIComponent(String(key))}=${encodeURIComponent(String(value))}`,\n    )\n    .join('&');\n}\n\nasync function request(path, body) {\n  let lastError = null;\n  for (let attempt = 1; attempt <= probe.retryCount; attempt += 1) {\n    audit.calls += 1;\n    try {\n      const encodedBody = formEncode({\n        apiKey: provider.apiKey,\n        ...body,\n      });\n      const response = await helpers.httpRequest({\n        method: 'POST',\n        url: `${provider.baseUrl}/${path}`,\n        headers: {\n          'Content-Type': 'application/x-www-form-urlencoded',\n          Accept: 'application/json',\n          'User-Agent': 'ArabUT-Coins-Pricing/2.1',\n        },\n        body: encodedBody,\n        timeout: probe.providerTimeoutMs,\n      });\n      return parse(response);\n    } catch (error) {\n      lastError = error;\n      audit.errors += 1;\n      if (attempt < probe.retryCount) {\n        audit.retries += 1;\n        await sleep(probe.retryDelayMs * attempt);\n      }\n    }\n  }\n  throw lastError ?? new Error(`UTT ${path} failed`);\n}\n\nfunction round(value, places = 5) {\n  const factor = 10 ** places;\n  return Math.round(Number(value) * factor) / factor;\n}\n\nasync function fetchPlatform(platform) {\n  const sale = await request('getPublicSaleStocks', {\n    platform: platform.toLowerCase(),\n  });\n\n  const ratioEuroUsd = Number(sale.ratioEuroUsd);\n  if (!Number.isFinite(ratioEuroUsd) || ratioEuroUsd <= 0) {\n    throw new Error(`UTT ${platform} EUR/USD ratio is missing`);\n  }\n\n  const stocks = (Array.isArray(sale.stocks) ? sale.stocks : [])\n    .map((stock) => ({\n      numberStock: String(stock.numberStock ?? '').trim(),\n      price: Number(stock.price),\n      // Preserve the provider's decimal representation in stockSection.\n      priceToken: String(stock.price ?? '').trim(),\n      averageCoinsAvailable: Number(stock.averageCoinsAvailable),\n      totalCoinsStock: Number(stock.totalCoinsStock),\n      accountsAvailable: Number(stock.accountsAvailable),\n    }))\n    // Owner-approved: do not impose a minimum average or stock quantity.\n    // getMaxOrderPrediction is the authority on usable capacity.\n    .filter((stock) =>\n      stock.numberStock &&\n      Number.isFinite(stock.price) &&\n      stock.price > 0 &&\n      stock.priceToken,\n    )\n    .sort((left, right) =>\n      left.price - right.price ||\n      left.numberStock.localeCompare(right.numberStock),\n    );\n\n  if (stocks.length === 0) {\n    return {\n      platform,\n      ratioEuroUsd,\n      tiers: cfg.tierCapsK.map((targetK) => ({\n        targetK,\n        covered: false,\n        priceEurPer100K: null,\n        maxTransferable: 0,\n      })),\n      failed: true,\n      failureReason: `UTT ${platform} returned no eligible stocks`,\n      stockCount: 0,\n      priceLevelCount: 0,\n    };\n  }\n\n  const priceLevels = [...new Set(stocks.map((stock) => stock.price))]\n    .sort((left, right) => left - right);\n\n  // Precompute the cumulative section count once. predictionAt() now slices an\n  // already-built string array instead of filtering and mapping every stock on\n  // every provider call.\n  const stockSections = stocks.map(\n    (stock) => `${stock.numberStock},${stock.priceToken}`,\n  );\n  const sectionCountByPriceLevel = [];\n  let stockCursor = 0;\n\n  for (const priceLevel of priceLevels) {\n    while (\n      stockCursor < stocks.length &&\n      stocks[stockCursor].price <= priceLevel\n    ) {\n      stockCursor += 1;\n    }\n    sectionCountByPriceLevel.push(stockCursor);\n  }\n\n  const cache = new Map();\n\n  async function predictionAt(index) {\n    if (cache.has(index)) return cache.get(index);\n\n    const price = priceLevels[index];\n    const sections = stockSections.slice(\n      0,\n      sectionCountByPriceLevel[index],\n    );\n\n    const response = await request('getMaxOrderPrediction', {\n      platform: platform.toLowerCase(),\n      orderMethod: 'public',\n      stockSection: sections.join(','),\n      startCoins: probe.uttPredictionStartCoins,\n    });\n\n    const maxTransferable = Number(response.maxTransferable);\n    if (!Number.isFinite(maxTransferable) || maxTransferable < 0) {\n      throw new Error(\n        `UTT ${platform} prediction omitted a valid maxTransferable`,\n      );\n    }\n\n    const cardLimit = Number(response.orderCardLimit);\n    const cardsRemaining = Number(response.orderCardsRemaining);\n    const result = {\n      price,\n      maxTransferable,\n      orderCardLimit: Number.isFinite(cardLimit) ? cardLimit : null,\n      orderCardsRemaining:\n        Number.isFinite(cardsRemaining) ? cardsRemaining : null,\n      cooldownCount: Array.isArray(response.cooldowns)\n        ? response.cooldowns.length\n        : 0,\n      sectionCount: sections.length,\n    };\n\n    cache.set(index, result);\n    return result;\n  }\n\n  async function firstCover(targetCoins) {\n    const lastIndex = priceLevels.length - 1;\n    if ((await predictionAt(lastIndex)).maxTransferable < targetCoins) {\n      return null;\n    }\n\n    let low = 0;\n    let high = lastIndex;\n    while (low < high) {\n      const middle = Math.floor((low + high) / 2);\n      if ((await predictionAt(middle)).maxTransferable >= targetCoins) {\n        high = middle;\n      } else {\n        low = middle + 1;\n      }\n    }\n\n    // stockSection only grows as price rises, so the capacity sequence is\n    // monotonic and the binary-search result is already the first cover.\n    const prediction = await predictionAt(low);\n    return {\n      covered: true,\n      priceEurPer100K: round(prediction.price, 4),\n      maxTransferable: prediction.maxTransferable,\n      orderCardLimit: prediction.orderCardLimit,\n      orderCardsRemaining: prediction.orderCardsRemaining,\n      cooldownCount: prediction.cooldownCount,\n      sectionCount: prediction.sectionCount,\n    };\n  }\n\n  const tiers = [];\n  for (const targetK of cfg.tierCapsK) {\n    const targetCoins = targetK * 1_000;\n    const covered = await firstCover(targetCoins);\n    tiers.push({\n      targetK,\n      targetCoins,\n      ...(covered || {\n        covered: false,\n        priceEurPer100K: null,\n        maxTransferable: 0,\n        orderCardLimit: null,\n        orderCardsRemaining: null,\n        cooldownCount: 0,\n        sectionCount: 0,\n      }),\n    });\n  }\n\n  const highestPrediction = await predictionAt(priceLevels.length - 1);\n  const cheapestHighest = highestPrediction.maxTransferable > 0\n    ? await firstCover(highestPrediction.maxTransferable)\n    : null;\n  const highestAvailable = cheapestHighest\n    ? {\n        priceEurPer100K: cheapestHighest.priceEurPer100K,\n        maxTransferable: highestPrediction.maxTransferable,\n        capacityCoins: highestPrediction.maxTransferable,\n        orderCardLimit: cheapestHighest.orderCardLimit,\n        orderCardsRemaining: cheapestHighest.orderCardsRemaining,\n        cooldownCount: cheapestHighest.cooldownCount,\n        sectionCount: cheapestHighest.sectionCount,\n      }\n    : null;\n\n  return {\n    platform,\n    ratioEuroUsd,\n    tiers,\n    highestAvailable,\n    failed: false,\n    failureReason: null,\n    stockCount: stocks.length,\n    priceLevelCount: priceLevels.length,\n    probedPriceLevelCount: cache.size,\n    predictionStartCoins: probe.uttPredictionStartCoins,\n    minimumAverageFilterApplied: false,\n  };\n}\n\nlet ps;\nlet pc;\ntry {\n  [ps, pc] = await Promise.all([\n    fetchPlatform('PS'),\n    fetchPlatform('PC'),\n  ]);\n} catch (error) {\n  return [{\n    json: {\n      source: 'utt',\n      ratioEuroUsd: null,\n      ps: { tiers: [], failed: true },\n      pc: { tiers: [], failed: true },\n      failed: true,\n      failureReason: error.message || 'UTT probe failed',\n      audit,\n    },\n  }];\n}\n\nconst ratios = [ps.ratioEuroUsd, pc.ratioEuroUsd]\n  .filter((value) => Number.isFinite(value) && value > 0);\nconst ratioEuroUsd = ratios.length\n  ? round(ratios.reduce((sum, value) => sum + value, 0) / ratios.length, 5)\n  : null;\n\nconst failed = !Number.isFinite(ratioEuroUsd) || (ps.failed && pc.failed);\nreturn [{\n  json: {\n    source: 'utt',\n    ratioEuroUsd,\n    ps,\n    pc,\n    failed,\n    failureReason: failed\n      ? (ps.failureReason || pc.failureReason || 'UTT returned no usable observations')\n      : null,\n    audit,\n  },\n}];\n"
+      },
+      "id": "701e42f3-e7f2-407c-9dcc-d5836fa7c91e",
+      "name": "Probe UTT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2032,
+        -832
+      ],
+      "notes": "v2.2: documented flat stockSection, no minimum-average filter, theoretical startCoins, monotonic binary search."
+    },
+    {
+      "parameters": {},
+      "id": "30ce833d-f512-41b4-bd2d-533870db6fdf",
+      "name": "Merge Supplier Observations",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -1792,
+        -928
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/* eslint-disable */\nconst config = $('Config').first().json;\nconst settings = config.settings;\nconst supplierItems = $input.all().map((item) => item.json);\nconst fft = supplierItems.find((item) => item.source === 'fft');\nconst utt = supplierItems.find((item) => item.source === 'utt');\n\nfunction fail(reason, details = {}) {\n  return [{\n    json: {\n      valid: false,\n      failureReason: reason,\n      eventId: config.eventId ?? null,\n      runId: config.runId ?? null,\n      pricingAudit: details,\n    },\n  }];\n}\n\nfunction roundTenth(value) {\n  return Math.round(Number(value) * 10) / 10;\n}\n\nfunction roundHalfUpBigInt(numerator, denominator) {\n  const quotient = numerator / denominator;\n  const remainder = numerator % denominator;\n  const half = denominator / 2n + (denominator % 2n);\n  return remainder >= half ? quotient + 1n : quotient;\n}\n\n\nfunction roundToDisplayGrain(halalah) {\n  return Number(roundHalfUpBigInt(BigInt(halalah), 10n)) * 10;\n}\n\nfunction positiveNumber(value) {\n  const number = Number(value);\n  return Number.isFinite(number) && number > 0 ? number : null;\n}\n\nif (!fft || !utt) {\n  return fail('Supplier observations are incomplete');\n}\nif (!positiveNumber(fft.cycle?.ps?.usdPerM)) {\n  return fail(fft.failureReason || 'FFT PS cycle cost is unavailable');\n}\nif (!positiveNumber(utt.ratioEuroUsd)) {\n  return fail(utt.failureReason || 'UTT EUR/USD ratio is unavailable');\n}\n\nconst ratioEuroUsd = Number(utt.ratioEuroUsd);\nconst tierCaps = settings.tierCapsK;\n\nfunction tierEntry(container, targetK) {\n  const tiers = container?.tiers;\n  if (!Array.isArray(tiers)) return null;\n  return tiers.find((entry) => Number(entry.targetK) === Number(targetK)) || null;\n}\n\nfunction fftTargetedCandidate(platform, targetK) {\n  const entry = tierEntry(fft.targeted?.[platform], targetK);\n  const price = positiveNumber(entry?.priceEurPer100K);\n  if (!entry?.covered || price === null) return null;\n  return {\n    source: `fft_targeted_${platform}`,\n    rawUsdPerM: price * 10 * ratioEuroUsd,\n    providerPriceEurPer100K: price,\n    providerCapacityCoins: Number(entry.maxK || 0) * 1_000,\n  };\n}\n\nfunction uttCandidate(platform, targetK) {\n  const entry = tierEntry(utt?.[platform], targetK);\n  const price = positiveNumber(entry?.priceEurPer100K);\n  if (!entry?.covered || price === null) return null;\n  return {\n    source: `utt_${platform}`,\n    rawUsdPerM: price * 10 * ratioEuroUsd,\n    providerPriceEurPer100K: price,\n    providerCapacityCoins: Number(entry.maxTransferable || 0),\n    orderCardLimit: entry.orderCardLimit ?? null,\n    orderCardsRemaining: entry.orderCardsRemaining ?? null,\n    cooldownCount: Number(entry.cooldownCount || 0),\n  };\n}\n\nfunction cycleCost(platform) {\n  return positiveNumber(fft.cycle?.[platform]?.usdPerM);\n}\n\nfunction highestAvailableCandidates(platform) {\n  const candidates = [];\n\n  const fftHighest = fft.targeted?.[platform]?.highestAvailable;\n  const fftPrice = positiveNumber(fftHighest?.priceEurPer100K);\n  const fftCapacity = Number(fftHighest?.capacityCoins || 0);\n  if (fftPrice !== null && fftCapacity > 0) {\n    candidates.push({\n      source: `fft_targeted_${platform}`,\n      rawUsdPerM: fftPrice * 10 * ratioEuroUsd,\n      providerPriceEurPer100K: fftPrice,\n      providerCapacityCoins: fftCapacity,\n    });\n  }\n\n  const uttHighest = utt?.[platform]?.highestAvailable;\n  const uttPrice = positiveNumber(uttHighest?.priceEurPer100K);\n  const uttCapacity = Number(uttHighest?.capacityCoins || uttHighest?.maxTransferable || 0);\n  if (uttPrice !== null && uttCapacity > 0) {\n    candidates.push({\n      source: `utt_${platform}`,\n      rawUsdPerM: uttPrice * 10 * ratioEuroUsd,\n      providerPriceEurPer100K: uttPrice,\n      providerCapacityCoins: uttCapacity,\n      orderCardLimit: uttHighest.orderCardLimit ?? null,\n      orderCardsRemaining: uttHighest.orderCardsRemaining ?? null,\n      cooldownCount: Number(uttHighest.cooldownCount || 0),\n    });\n  }\n\n  return candidates;\n}\n\nfunction buildPlatformCosts(platform) {\n  const cycle = cycleCost(platform);\n  const highestAvailable = highestAvailableCandidates(platform);\n  const rows = [];\n  let previous = null;\n\n  for (const targetK of tierCaps) {\n    const candidates = [\n      fftTargetedCandidate(platform, targetK),\n      uttCandidate(platform, targetK),\n    ].filter(Boolean).sort((left, right) => left.rawUsdPerM - right.rawUsdPerM);\n\n    let row;\n    if (candidates.length > 0) {\n      const selected = candidates[0];\n      row = {\n        targetK,\n        directCoverage: true,\n        fallback: false,\n        selectedSource: selected.source,\n        rawUsdPerM: roundTenth(selected.rawUsdPerM),\n        candidates,\n        fallbackFromTierK: null,\n      };\n    } else {\n      // Owner-approved rule: if the requested tier has no direct coverage,\n      // price it using the provider price that reaches the HIGHEST quantity\n      // currently possible below that tier. This is more accurate than simply\n      // reusing the previous named tier when a provider can reach, for example,\n      // 8.2M even though the previous configured tier is 5M.\n      const targetCoins = targetK * 1_000;\n      const bestHighestAvailable = highestAvailable\n        .filter((entry) =>\n          entry.providerCapacityCoins > 0 &&\n          entry.providerCapacityCoins < targetCoins,\n        )\n        .sort((left, right) =>\n          right.providerCapacityCoins - left.providerCapacityCoins ||\n          left.rawUsdPerM - right.rawUsdPerM,\n        )[0] || null;\n\n      if (bestHighestAvailable) {\n        row = {\n          targetK,\n          directCoverage: false,\n          fallback: true,\n          selectedSource: `highest_available:${bestHighestAvailable.source}`,\n          rawUsdPerM: roundTenth(bestHighestAvailable.rawUsdPerM),\n          candidates: [],\n          fallbackFromTierK: null,\n          fallbackCapacityCoins: bestHighestAvailable.providerCapacityCoins,\n          fallbackProviderPriceEurPer100K:\n            bestHighestAvailable.providerPriceEurPer100K,\n        };\n      } else if (previous) {\n        row = {\n          targetK,\n          directCoverage: false,\n          fallback: true,\n          selectedSource: `carry_forward:${previous.selectedSource}`,\n          rawUsdPerM: previous.rawUsdPerM,\n          candidates: [],\n          fallbackFromTierK: previous.targetK,\n          fallbackCapacityCoins: previous.fallbackCapacityCoins || previous.targetK * 1_000,\n        };\n      } else if (cycle !== null) {\n        row = {\n          targetK,\n          directCoverage: false,\n          fallback: true,\n          selectedSource: `cycle_fallback_${platform}`,\n          rawUsdPerM: roundTenth(cycle),\n          candidates: [],\n          fallbackFromTierK: null,\n          fallbackCapacityCoins: null,\n        };\n      } else {\n        return null;\n      }\n    }\n\n\n    if (cycle !== null && row.rawUsdPerM < cycle) {\n      row.rawUsdPerM = roundTenth(cycle);\n      row.cycleFloorApplied = true;\n    } else {\n      row.cycleFloorApplied = false;\n    }\n\n    if (previous && row.rawUsdPerM < previous.rawUsdPerM) {\n      row.rawUsdPerM = previous.rawUsdPerM;\n      row.monotonicFloorApplied = true;\n    } else {\n      row.monotonicFloorApplied = false;\n    }\n\n    rows.push(row);\n    previous = row;\n  }\n\n  return rows;\n}\n\nconst psCosts = buildPlatformCosts('ps');\nconst pcCosts = buildPlatformCosts('pc');\nif (!psCosts || !pcCosts) {\n  return fail('A supplier cost basis could not be built for every platform');\n}\n\nfunction rateHalalahPerMillion(rawSupplierCostUsdPerM, groupName) {\n  const group = settings.groups[groupName];\n  const sellUsdPerM = (\n    (Number(rawSupplierCostUsdPerM) + Number(group.operationalMarkupUsdPerM)) /\n    Number(group.marginDivisor)\n  ) + Number(group.commissionUsdPerM);\n\n  const rate = Math.round(\n    sellUsdPerM * Number(settings.effectiveUsdToSar) * 100,\n  );\n  if (!Number.isInteger(rate) || rate <= 0) {\n    throw new Error(`${groupName} generated an invalid rate`);\n  }\n  return rate;\n}\n\n// Parse and sort the commercial uplift anchors once. The previous version\n// repeated Object.entries(...).sort(...) for every legal quantity.\nconst multiplierAnchors = Object.entries(\n  settings.quantityCommercialUpliftAnchorsBps,\n)\n  .map(([coins, bps]) => [Number(coins), Number(bps)])\n  .sort((left, right) => left[0] - right[0]);\n\nfunction interpolateMultiplierBps(quantity) {\n  if (quantity <= multiplierAnchors[0][0]) {\n    return Math.round(multiplierAnchors[0][1]);\n  }\n\n  const lastAnchor = multiplierAnchors[multiplierAnchors.length - 1];\n  if (quantity >= lastAnchor[0]) {\n    return Math.round(lastAnchor[1]);\n  }\n\n  for (let index = 1; index < multiplierAnchors.length; index += 1) {\n    const [rightCoins, rightBps] = multiplierAnchors[index];\n    if (quantity > rightCoins) continue;\n\n    const [leftCoins, leftBps] = multiplierAnchors[index - 1];\n    const progress = (quantity - leftCoins) / (rightCoins - leftCoins);\n    return Math.round(leftBps + (rightBps - leftBps) * progress);\n  }\n\n  return 10_000;\n}\n\n// The anchors themselves are what gets published now. Laravel interpolates\n// between them at read time against its own live quantity settings, so lowering\n// the storefront minimum no longer needs a matching edit here.\n//\n// Every entry is load-bearing: Laravel drops repeats out of a threshold map but\n// never out of an anchor table, because dropping one would move every price\n// between the two survivors.\nfunction anchorTable() {\n  const table = {};\n\n  for (const [coins, bps] of multiplierAnchors) {\n    table[String(coins)] = Math.round(bps);\n  }\n\n  return table;\n}\n\nfunction tierRateFor(quantity, rates) {\n  for (let index = 0; index < settings.tierUpperBoundsK.length; index += 1) {\n    if (quantity <= settings.tierUpperBoundsK[index] * 1_000) {\n      return rates[index];\n    }\n  }\n  return rates[5];\n}\n\n// The published rule no longer carries an expansion to look a quantity up in,\n// so the simulation interpolates the same anchors Laravel will. Clamping past\n// the last anchor reproduces the terminal-carry-forward behaviour console_fast\n// relies on above the 2M normal maximum.\nfunction multiplierFor(rule, quantity) {\n  const basisPoints = interpolateMultiplierBps(quantity);\n\n  if (!Number.isInteger(basisPoints) || basisPoints <= 0) {\n    throw new Error(`No multiplier covers ${rule.group} ${quantity}`);\n  }\n\n  return basisPoints;\n}\n\nfunction formulaSar(rule, quantity) {\n  const rate = rule.group === 'console_normal'\n    ? rule.flat_rate_halalah_per_million\n    : tierRateFor(quantity, rule.tier_rates_halalah_per_million);\n  const multiplier = multiplierFor(rule, quantity);\n  const rateNumerator = BigInt(quantity) * BigInt(rate) * BigInt(multiplier);\n  const feeGap = Math.max(0, 1_000_000 - quantity);\n  const feeNumerator =\n    BigInt(rule.service_fee_halalah) * BigInt(feeGap) * 10_000n;\n  const denominator =\n    1_000_000n * BigInt(rule.discount_divisor_basis_points);\n  const rounded = roundHalfUpBigInt(rateNumerator + feeNumerator, denominator);\n  return Math.max(roundToDisplayGrain(Number(rounded)), 100);\n}\n\nfunction percentageFloor(normalHalalah) {\n  return roundToDisplayGrain(\n    Number(roundHalfUpBigInt(BigInt(normalHalalah) * 105n, 100n)),\n  );\n}\n\nfunction perMillionFloor(normalHalalah, quantity) {\n  return roundToDisplayGrain(Number(roundHalfUpBigInt(\n    BigInt(normalHalalah) * 1_000_000n + BigInt(quantity) * 500n,\n    1_000_000n,\n  )));\n}\n\nfunction displayedSar(group, quantity, rules, useOverrides = true) {\n  const rule = rules[group];\n  const override = useOverrides\n    ? rule.exact_overrides_halalah?.[String(quantity)]\n    : null;\n  if (Number.isInteger(override) && override > 0) return override;\n\n  const base = formulaSar(rule, quantity);\n  if (group !== 'console_fast') return base;\n\n  // Laravel's fast floor uses the normal formula (not a normal exact override).\n  const normal = formulaSar(rules.console_normal, quantity);\n  return Math.max(\n    base,\n    percentageFloor(normal),\n    perMillionFloor(normal, quantity),\n    normal + 100,\n  );\n}\n\nfunction smoothRate(previous, candidate) {\n  if (!settings.stability.enabled || !Number.isInteger(previous) || previous <= 0) {\n    return candidate;\n  }\n  if (candidate >= previous) return candidate;\n\n  const dropBps = Math.round(((previous - candidate) / previous) * 10_000);\n  if (dropBps < settings.stability.holdDecreaseBelowBps) return previous;\n\n  const partial = previous - Math.round(\n    (previous - candidate) * settings.stability.applyDecreaseFractionBps / 10_000,\n  );\n  const maximumDropFloor = Math.ceil(\n    previous * (10_000 - settings.stability.maximumDecreasePerRunBps) / 10_000,\n  );\n  return Math.max(candidate, partial, maximumDropFloor);\n}\n\nconst globalData = $getWorkflowStaticData('global');\nconst previousRates = globalData.coinsPricingV2?.lastSuccessfulRates ?? null;\n\nconst candidateRates = {\n  console_normal: rateHalalahPerMillion(\n    Number(fft.cycle.ps.usdPerM),\n    'console_normal',\n  ),\n  console_fast: psCosts.map((row) =>\n    rateHalalahPerMillion(row.rawUsdPerM, 'console_fast'),\n  ),\n  pc: pcCosts.map((row) =>\n    rateHalalahPerMillion(row.rawUsdPerM, 'pc'),\n  ),\n};\n\nconst finalRates = {\n  console_normal: smoothRate(\n    previousRates?.console_normal,\n    candidateRates.console_normal,\n  ),\n  console_fast: candidateRates.console_fast.map((rate, index) =>\n    smoothRate(previousRates?.console_fast?.[index], rate),\n  ),\n  pc: candidateRates.pc.map((rate, index) =>\n    smoothRate(previousRates?.pc?.[index], rate),\n  ),\n};\n\n// Preserve non-decreasing rate tiers after independent smoothing.\nfor (const group of ['console_fast', 'pc']) {\n  for (let index = 1; index < finalRates[group].length; index += 1) {\n    finalRates[group][index] = Math.max(\n      finalRates[group][index],\n      finalRates[group][index - 1],\n    );\n  }\n}\n\nfunction commonRule(groupName) {\n  return {\n    version: 1,\n    group: groupName,\n    tier_upper_bounds_k: [...settings.tierUpperBoundsK],\n    multiplier_anchors_basis_points: anchorTable(),\n    service_fee_halalah: Math.round(settings.smallOrderFeeHalalah),\n    discount_divisor_basis_points: Math.round(settings.discountDivisorBasisPoints),\n    exact_overrides_halalah: {},\n  };\n}\n\nconst rules = {\n  console_normal: {\n    ...commonRule('console_normal'),\n    flat_rate_halalah_per_million: finalRates.console_normal,\n  },\n  console_fast: {\n    ...commonRule('console_fast'),\n    tier_rates_halalah_per_million: finalRates.console_fast,\n  },\n  pc: {\n    ...commonRule('pc'),\n    tier_rates_halalah_per_million: finalRates.pc,\n  },\n};\n\n// Whole-SAR rounding plus a promotional 1M point can occasionally make the\n// next 10K cheaper. Add exact overrides only where needed to guarantee that\n// every legal schedule is non-decreasing.\nfor (const group of ['console_normal', 'console_fast', 'pc']) {\n  const range = settings.legalRanges[group];\n  let previousPrice = null;\n  for (\n    let quantity = range.minimum;\n    quantity <= range.maximum;\n    quantity += range.increment\n  ) {\n    let price = displayedSar(group, quantity, rules, true);\n    if (previousPrice !== null && price < previousPrice) {\n      const safe = previousPrice;\n      rules[group].exact_overrides_halalah[String(quantity)] = safe;\n      price = safe;\n    }\n    previousPrice = price;\n  }\n}\n\nconst pricingAudit = {\n  ratioEuroUsd,\n  riskLevel: settings.probe.transferRiskLevel,\n  candidateRates,\n  finalRates,\n  stabilityBaselineFound: !!previousRates,\n  tierCosts: {\n    console_fast: psCosts,\n    pc: pcCosts,\n  },\n  fallbackTiers: {\n    console_fast: psCosts.filter((row) => row.fallback).map((row) => ({\n      targetK: row.targetK,\n      fallbackFromTierK: row.fallbackFromTierK,\n      fallbackCapacityCoins: row.fallbackCapacityCoins ?? null,\n      fallbackProviderPriceEurPer100K:\n        row.fallbackProviderPriceEurPer100K ?? null,\n      rawUsdPerM: row.rawUsdPerM,\n      source: row.selectedSource,\n    })),\n    pc: pcCosts.filter((row) => row.fallback).map((row) => ({\n      targetK: row.targetK,\n      fallbackFromTierK: row.fallbackFromTierK,\n      fallbackCapacityCoins: row.fallbackCapacityCoins ?? null,\n      fallbackProviderPriceEurPer100K:\n        row.fallbackProviderPriceEurPer100K ?? null,\n      rawUsdPerM: row.rawUsdPerM,\n      source: row.selectedSource,\n    })),\n  },\n};\n\nconst snapshot = {\n  schemaVersion: 1,\n  eventId: config.eventId,\n  runId: config.runId,\n  generatedAt: new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z'),\n  mode: settings.mode,\n  serviceType: 'coins',\n  legalRanges: settings.legalRanges,\n  rules,\n  observations: {\n    source: 'fft+utt-v2',\n    ratioEuroUsd,\n    cyclePSUsdPerM: Number(fft.cycle.ps.usdPerM),\n    cyclePCUsdPerM: positiveNumber(fft.cycle.pc?.usdPerM),\n    riskLevel: settings.probe.transferRiskLevel,\n    tierCosts: pricingAudit.tierCosts,\n    fallbackTiers: pricingAudit.fallbackTiers,\n  },\n};\n\nreturn [{\n  json: {\n    valid: true,\n    failureReason: null,\n    snapshot,\n    pricingAudit,\n  },\n}];\n"
+      },
+      "id": "a3f3608b-ed99-4ebb-a6e7-7ef87f0ac576",
+      "name": "Prepare Coins Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1552,
+        -928
+      ],
+      "notes": "Optimized: cached multiplier maps, one-time anchor parsing, O(1) boundary-aware multiplier lookup, compact output."
+    },
+    {
+      "parameters": {
+        "jsCode": "/* eslint-disable */\nconst startedAt = Date.now();\nconst item = $input.first().json;\nconst snapshot = item?.snapshot;\n\nfunction fail(reason) {\n  return [{\n    json: {\n      valid: false,\n      failureReason: reason,\n      eventId: snapshot?.eventId ?? item?.eventId ?? null,\n      runId: snapshot?.runId ?? item?.runId ?? null,\n      pricingAudit: item?.pricingAudit ?? null,\n    },\n  }];\n}\n\nfunction isPlainObject(value) {\n  return !!value && typeof value === 'object' && !Array.isArray(value);\n}\n\nfunction exactKeys(value, expected) {\n  if (!isPlainObject(value)) return false;\n\n  const keys = Object.keys(value);\n  if (keys.length !== expected.length) return false;\n\n  const allowed = new Set(expected);\n  return keys.every((key) => allowed.has(key));\n}\n\nfunction roundHalfUpBigInt(numerator, denominator) {\n  const quotient = numerator / denominator;\n  const remainder = numerator % denominator;\n  const half = denominator / 2n + (denominator % 2n);\n  return remainder >= half ? quotient + 1n : quotient;\n}\n\n\nfunction roundToDisplayGrain(halalah) {\n  return Number(roundHalfUpBigInt(BigInt(halalah), 10n)) * 10;\n}\n\nif (!item?.valid || !snapshot) {\n  return fail(item?.failureReason || 'Snapshot was not built');\n}\n\nconst groups = ['console_normal', 'console_fast', 'pc'];\n\nif (!exactKeys(snapshot.rules, groups)) {\n  return fail('Snapshot must contain exactly three pricing groups');\n}\n\nif (!isPlainObject(snapshot.legalRanges)) {\n  return fail('Snapshot legal ranges are missing or invalid');\n}\n\n// Mirrors Laravel's CoinsMultiplierCurve: linear interpolation between the two\n// bracketing anchors, clamping outside the published range. Clamping past the\n// last anchor is what carries the terminal rate forward for console_fast above\n// the 2M normal maximum.\nfunction multiplierFor(rule, quantity) {\n  const anchors = Object.entries(rule.multiplier_anchors_basis_points)\n    .map(([coins, bps]) => [Number(coins), Number(bps)])\n    .sort((left, right) => left[0] - right[0]);\n\n  if (anchors.length < 2) {\n    return null;\n  }\n\n  if (quantity <= anchors[0][0]) {\n    return anchors[0][1];\n  }\n\n  const last = anchors[anchors.length - 1];\n  if (quantity >= last[0]) {\n    return last[1];\n  }\n\n  for (let index = 1; index < anchors.length; index += 1) {\n    const [rightCoins, rightBps] = anchors[index];\n    if (quantity > rightCoins) continue;\n\n    const [leftCoins, leftBps] = anchors[index - 1];\n    const progress = (quantity - leftCoins) / (rightCoins - leftCoins);\n\n    return Math.round(leftBps + (rightBps - leftBps) * progress);\n  }\n\n  return null;\n}\n\nfunction tierRate(rule, quantity) {\n  if (rule.group === 'console_normal') {\n    return rule.flat_rate_halalah_per_million;\n  }\n\n  for (let index = 0; index < rule.tier_upper_bounds_k.length; index += 1) {\n    if (quantity <= rule.tier_upper_bounds_k[index] * 1_000) {\n      return rule.tier_rates_halalah_per_million[index];\n    }\n  }\n\n  return rule.tier_rates_halalah_per_million[5];\n}\n\nfunction formulaSar(rule, quantity) {\n  const rate = tierRate(rule, quantity);\n  const multiplier = multiplierFor(rule, quantity);\n\n  if (!Number.isInteger(multiplier) || multiplier <= 0) {\n    return null;\n  }\n\n  const rateNumerator =\n    BigInt(quantity) *\n    BigInt(rate) *\n    BigInt(multiplier);\n\n  const feeGap = Math.max(0, 1_000_000 - quantity);\n  const feeNumerator =\n    BigInt(rule.service_fee_halalah) *\n    BigInt(feeGap) *\n    10_000n;\n\n  const denominator =\n    1_000_000n *\n    BigInt(rule.discount_divisor_basis_points);\n\n  return Math.max(\n    roundToDisplayGrain(\n      Number(\n        roundHalfUpBigInt(\n          rateNumerator + feeNumerator,\n          denominator,\n        ),\n      ),\n    ),\n    100,\n  );\n}\n\nfunction displayedSar(group, quantity) {\n  const rule = snapshot.rules[group];\n  const override = rule.exact_overrides_halalah[String(quantity)];\n\n  if (Number.isInteger(override) && override > 0) {\n    return override;\n  }\n\n  const base = formulaSar(rule, quantity);\n  if (!Number.isInteger(base) || base <= 0) {\n    return null;\n  }\n\n  if (group !== 'console_fast') {\n    return base;\n  }\n\n  const normal = formulaSar(snapshot.rules.console_normal, quantity);\n  if (!Number.isInteger(normal) || normal <= 0) {\n    return null;\n  }\n\n  return Math.max(\n    base,\n    roundToDisplayGrain(\n      Number(\n        roundHalfUpBigInt(\n          BigInt(normal) * 105n,\n          100n,\n        ),\n      ),\n    ),\n    roundToDisplayGrain(\n      Number(\n        roundHalfUpBigInt(\n          BigInt(normal) * 1_000_000n +\n            BigInt(quantity) * 500n,\n          1_000_000n,\n        ),\n      ),\n    ),\n    normal + 100,\n  );\n}\n\nlet pricesChecked = 0;\n\nfor (const group of groups) {\n  const rule = snapshot.rules[group];\n\n  const rateKey = group === 'console_normal'\n    ? 'flat_rate_halalah_per_million'\n    : 'tier_rates_halalah_per_million';\n\n  const expectedKeys = [\n    'version',\n    'group',\n    'tier_upper_bounds_k',\n    rateKey,\n    'multiplier_anchors_basis_points',\n    'service_fee_halalah',\n    'discount_divisor_basis_points',\n    'exact_overrides_halalah',\n  ];\n\n  if (!exactKeys(rule, expectedKeys)) {\n    return fail(`${group} has unsupported or missing rule fields`);\n  }\n\n  if (rule.version !== 1 || rule.group !== group) {\n    return fail(`${group} rule identity is invalid`);\n  }\n\n  if (\n    !Array.isArray(rule.tier_upper_bounds_k) ||\n    rule.tier_upper_bounds_k.length !== 5 ||\n    rule.tier_upper_bounds_k.some((value, index, values) =>\n      !Number.isInteger(value) ||\n      value <= 0 ||\n      (index > 0 && value <= values[index - 1]),\n    )\n  ) {\n    return fail(`${group} tier bounds are invalid`);\n  }\n\n  if (!isPlainObject(rule.multiplier_anchors_basis_points)) {\n    return fail(`${group} multiplier anchor table is invalid`);\n  }\n\n  const anchorQuantities = Object.keys(rule.multiplier_anchors_basis_points);\n\n  if (anchorQuantities.length < 2) {\n    return fail(`${group} needs at least two multiplier anchors`);\n  }\n\n  for (const [quantity, bps] of Object.entries(\n    rule.multiplier_anchors_basis_points,\n  )) {\n    if (\n      !/^\\d+$/.test(quantity) ||\n      Number(quantity) <= 0 ||\n      !Number.isInteger(bps) ||\n      bps <= 0\n    ) {\n      return fail(`${group} multiplier anchor ${quantity} is invalid`);\n    }\n  }\n\n  if (\n    !Number.isInteger(rule.service_fee_halalah) ||\n    rule.service_fee_halalah < 0\n  ) {\n    return fail(`${group} small-order fee is invalid`);\n  }\n\n  if (\n    !Number.isInteger(rule.discount_divisor_basis_points) ||\n    rule.discount_divisor_basis_points <= 0\n  ) {\n    return fail(`${group} discount divisor is invalid`);\n  }\n\n  if (!isPlainObject(rule.exact_overrides_halalah)) {\n    return fail(`${group} exact override map is invalid`);\n  }\n\n  for (const [quantity, value] of Object.entries(\n    rule.exact_overrides_halalah,\n  )) {\n    if (\n      !/^\\d+$/.test(quantity) ||\n      !Number.isInteger(value) ||\n      value < 10 ||\n      value % 10 !== 0\n    ) {\n      return fail(`${group} exact override is invalid`);\n    }\n  }\n\n  if (group === 'console_normal') {\n    if (\n      !Number.isInteger(rule.flat_rate_halalah_per_million) ||\n      rule.flat_rate_halalah_per_million <= 0\n    ) {\n      return fail('Normal group rate is invalid');\n    }\n  } else if (\n    !Array.isArray(rule.tier_rates_halalah_per_million) ||\n    rule.tier_rates_halalah_per_million.length !== 6 ||\n    rule.tier_rates_halalah_per_million.some(\n      (rate) => !Number.isInteger(rate) || rate <= 0,\n    )\n  ) {\n    return fail(`${group} must contain six positive tier rates`);\n  }\n\n  const range = snapshot.legalRanges[group];\n\n  if (\n    !isPlainObject(range) ||\n    !Number.isInteger(range.minimum) ||\n    !Number.isInteger(range.maximum) ||\n    !Number.isInteger(range.increment) ||\n    range.minimum <= 0 ||\n    range.maximum < range.minimum ||\n    range.increment <= 0 ||\n    (range.maximum - range.minimum) % range.increment !== 0\n  ) {\n    return fail(`${group} legal range is invalid`);\n  }\n\n  // An anchor table has no expected length - that check belonged to the\n  // expansion. What matters is that the last anchor reaches the maximum, since\n  // Laravel clamps above it and would otherwise price a 20M order at the rate\n  // of whatever the table stopped at.\n  const highestAnchor = Math.max(\n    ...Object.keys(rule.multiplier_anchors_basis_points).map(Number),\n  );\n\n  if (highestAnchor < range.maximum) {\n    return fail(\n      `${group} multiplier anchors stop at ${highestAnchor}, below the ${range.maximum} maximum`,\n    );\n  }\n\n  let previous = null;\n\n  for (\n    let quantity = range.minimum;\n    quantity <= range.maximum;\n    quantity += range.increment\n  ) {\n    const multiplier = multiplierFor(rule, quantity);\n\n    if (!Number.isInteger(multiplier) || multiplier <= 0) {\n      return fail(`${group} has no multiplier for ${quantity}`);\n    }\n\n    const total = displayedSar(group, quantity);\n\n    if (!Number.isInteger(total) || total <= 0) {\n      return fail(`${group} generated an invalid price at ${quantity}`);\n    }\n\n    if (previous !== null && total < previous) {\n      return fail(\n        `${group} price descends at ${quantity}: ${total} < ${previous}`,\n      );\n    }\n\n    previous = total;\n    pricesChecked += 1;\n  }\n}\n\n// The storefront maximum per group is the one fact this node still pins, because\n// nothing upstream can be trusted to bound it. The minimum and the increment are\n// admin-managed and already drifted once - 50,000 to 10,000, and 10,000 to\n// 5,000 - so they are taken from the snapshot rather than restated here, and\n// Laravel checks them against its own live settings.\nconst expectedMaximums = {\n  console_normal: 2_000_000,\n  console_fast: 20_000_000,\n  pc: 20_000_000,\n};\n\nconst expectedRanges = Object.fromEntries(\n  groups.map((group) => [group, {\n    minimum: snapshot.legalRanges?.[group]?.minimum,\n    maximum: expectedMaximums[group],\n    increment: snapshot.legalRanges?.[group]?.increment,\n  }]),\n);\n\nfor (const group of groups) {\n  if (!exactKeys(snapshot.legalRanges[group], [\n    'minimum',\n    'maximum',\n    'increment',\n  ])) {\n    return fail(`${group} legal range fields are invalid`);\n  }\n\n  for (const key of ['minimum', 'maximum', 'increment']) {\n    if (\n      snapshot.legalRanges[group][key] !==\n      expectedRanges[group][key]\n    ) {\n      return fail(\n        'Coins legal ranges do not match the active storefront contract',\n      );\n    }\n  }\n}\n\nif (Number(snapshot.observations?.riskLevel) !== 10) {\n  return fail('Transfer risk level must be 10');\n}\n\nreturn [{\n  json: {\n    valid: true,\n    failureReason: null,\n    coinsPricingSnapshot: snapshot,\n    pricingAudit: item.pricingAudit ?? null,\n    validationSummary: {\n      groups: groups.length,\n      pricesChecked,\n      fullScheduleChecked: true,\n      durationMs: Date.now() - startedAt,\n      exactOverrideCounts: Object.fromEntries(\n        groups.map((group) => [\n          group,\n          Object.keys(\n            snapshot.rules[group].exact_overrides_halalah,\n          ).length,\n        ]),\n      ),\n    },\n  },\n}];\n"
+      },
+      "id": "05527e77-49ab-4aab-a0bc-424234c35130",
+      "name": "Validate Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1312,
+        -928
+      ],
+      "notes": "Optimized: O(1) boundary-aware multiplier lookup, full 4,188-price validation, compact output and duration metric."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1b9ba728-35e1-4351-ba56-4fec18bffec8",
+      "name": "Snapshot OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1088,
+        -928
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nif (!item.valid || !item.coinsPricingSnapshot) {\n  return [{\n    json: {\n      signed: false,\n      failureReason: item.failureReason || 'Cannot sign an invalid snapshot',\n      eventId: item.coinsPricingSnapshot?.eventId ?? null,\n      runId: item.coinsPricingSnapshot?.runId ?? null,\n    },\n  }];\n}\n\nconst secret = $env.N8N_PRICING_SECRET;\nif (!secret) {\n  return [{\n    json: {\n      signed: false,\n      failureReason: 'N8N_PRICING_SECRET is not configured on the n8n host',\n      eventId: item.coinsPricingSnapshot.eventId,\n      runId: item.coinsPricingSnapshot.runId,\n    },\n  }];\n}\n\nconst crypto = require('crypto');\nconst timestamp = String(Math.floor(Date.now() / 1000));\nconst event = item.coinsPricingSnapshot.eventId;\nconst rawBody = JSON.stringify(item.coinsPricingSnapshot);\nconst signingInput = `${timestamp}\\n${event}\\n${rawBody}`;\nconst signature = crypto\n  .createHmac('sha256', secret)\n  .update(signingInput)\n  .digest('hex');\n\nreturn [{\n  json: {\n    ...item,\n    signed: true,\n    timestamp,\n    event,\n    rawBody,\n    signature,\n  },\n}];\n"
+      },
+      "id": "881688c4-aaa6-4e4b-a04c-5660dd3b68af",
+      "name": "Sign Pricing Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -864,
+        -1040
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.signed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9852489d-6653-4c28-ae80-f0950eaf6f78",
+      "name": "Signature Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -640,
+        -1040
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $(\"Config\").first().json.settings.endpoint }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-ArabUT-Timestamp",
+              "value": "={{ $(\"Sign Pricing Payload\").first().json.timestamp }}"
+            },
+            {
+              "name": "X-ArabUT-Event",
+              "value": "={{ $(\"Sign Pricing Payload\").first().json.event }}"
+            },
+            {
+              "name": "X-ArabUT-Signature",
+              "value": "={{ $(\"Sign Pricing Payload\").first().json.signature }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $(\"Sign Pricing Payload\").first().json.rawBody }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "id": "e3ae272e-b79a-4723-bf9d-f8dd6816e202",
+      "name": "Publish Coins Pricing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -400,
+        -1040
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "ArabUTPricing01",
+          "name": "ArabUT Pricing API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "/* eslint-disable */\nconst response = $input.first().json;\nlet body = response.body ?? response.data ?? response;\nif (typeof body === 'string') {\n  try { body = JSON.parse(body); } catch {}\n}\n\nconst statusCode = Number(response.statusCode || 0);\nconst expectedRunId = $('Sign Pricing Payload').first().json.coinsPricingSnapshot.runId;\nconst data = body?.data ?? body;\nconst replayCode = body?.error?.code ?? null;\nconst replayConfirmed =\n  statusCode === 409 &&\n  ['coins_pricing_run_replayed', 'coins_pricing_event_replayed'].includes(replayCode);\nconst appliedConfirmed =\n  !response.error &&\n  !response.errorMessage &&\n  (statusCode === 201 || statusCode === 200) &&\n  data &&\n  data.runId === expectedRunId &&\n  data.status === 'applied';\nconst publishOk = appliedConfirmed || replayConfirmed;\n\nconst signed = $('Sign Pricing Payload').first().json;\nif (publishOk) {\n  const globalData = $getWorkflowStaticData('global');\n  const current = globalData.coinsPricingV2 ?? {};\n  const rules = signed.coinsPricingSnapshot.rules;\n  globalData.coinsPricingV2 = {\n    ...current,\n    lastSuccessfulAt: new Date().toISOString(),\n    lastSuccessfulRunId: expectedRunId,\n    lastSuccessfulRates: {\n      console_normal: rules.console_normal.flat_rate_halalah_per_million,\n      console_fast: [...rules.console_fast.tier_rates_halalah_per_million],\n      pc: [...rules.pc.tier_rates_halalah_per_million],\n    },\n  };\n}\n\nreturn [{\n  json: {\n    publishOk,\n    failureReason: publishOk\n      ? null\n      : `Laravel rejected or did not confirm the Coins pricing run (HTTP ${statusCode || 'unknown'})`,\n    publishResponse: publishOk ? body : undefined,\n    publishConfirmation: replayConfirmed\n      ? 'replayed_after_retry'\n      : (appliedConfirmed ? 'applied' : null),\n    runId: expectedRunId,\n    eventId: signed.coinsPricingSnapshot.eventId,\n  },\n}];\n"
+      },
+      "id": "bd9c8130-96b8-433b-8d97-165970bdbcf3",
+      "name": "Evaluate Publish Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        -1040
+      ],
+      "notes": "Confirms apply/replay, updates stability baseline, and returns a compact result without duplicating the snapshot."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.publishOk }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6e14cbb5-4035-4ebf-b64a-5a67e87ef9e7",
+      "name": "Publish OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        48,
+        -1040
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/* eslint-disable */\nconst result = $('Evaluate Publish Result').first().json;\nconst signed = $('Sign Pricing Payload').first().json;\nconst snapshot = signed.coinsPricingSnapshot;\nconst rules = snapshot.rules;\n\nreturn [{\n  json: {\n    status: 'published',\n    runId: snapshot.runId,\n    eventId: snapshot.eventId,\n    generatedAt: snapshot.generatedAt,\n    publishResponse: result.publishResponse,\n    publishConfirmation: result.publishConfirmation,\n    rates: {\n      console_normal:\n        rules.console_normal.flat_rate_halalah_per_million,\n      console_fast: [\n        ...rules.console_fast.tier_rates_halalah_per_million,\n      ],\n      pc: [\n        ...rules.pc.tier_rates_halalah_per_million,\n      ],\n    },\n    pricingAudit: signed.pricingAudit,\n    validationSummary: signed.validationSummary,\n  },\n}];\n"
+      },
+      "id": "ff83ae15-1483-4b0c-bc99-c6dbce56a46a",
+      "name": "Success Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        -1120
+      ],
+      "notes": "Compact terminal summary; the full signed snapshot was already sent to Laravel."
+    },
+    {
+      "parameters": {
+        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst reason = item.failureReason || 'Coins pricing workflow failed closed';\nreturn [{\n  json: {\n    to: $env.OPS_WHATSAPP_TARGET || '',\n    body: `Coins pricing failed closed. No pricing rules were changed. Reason: ${reason}`,\n    failureReason: reason,\n  },\n}];\n"
+      },
+      "id": "2d58c31b-8301-486c-abaf-722c93a323fb",
+      "name": "Prepare Failure Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        -768
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gate.whapi.cloud/messages/text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ to: $json.to, body: $json.body }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "2850ca13-e952-4a83-bd6e-9f8a200c21dc",
+      "name": "Whapi Failure Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        512,
+        -768
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "KPkjgdkBHxl9UCeA",
+          "name": "Whapi Auth"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Run Coins Pricing Now": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 1 Hour": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Probe FFT",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Probe UTT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Probe FFT": {
+      "main": [
+        [
+          {
+            "node": "Merge Supplier Observations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Probe UTT": {
+      "main": [
+        [
+          {
+            "node": "Merge Supplier Observations",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Supplier Observations": {
+      "main": [
+        [
+          {
+            "node": "Prepare Coins Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Coins Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Validate Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Snapshot OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Snapshot OK?": {
+      "main": [
+        [
+          {
+            "node": "Sign Pricing Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign Pricing Payload": {
+      "main": [
+        [
+          {
+            "node": "Signature Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Signature Ready?": {
+      "main": [
+        [
+          {
+            "node": "Publish Coins Pricing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish Coins Pricing": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Publish Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Publish Result": {
+      "main": [
+        [
+          {
+            "node": "Publish OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish OK?": {
+      "main": [
+        [
+          {
+            "node": "Success Summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Failure Alert": {
+      "main": [
+        [
+          {
+            "node": "Whapi Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "4205de05-f101-4dfd-a522-154b866784de",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "3cececcd6153efcbc2981ed6742f9244b2549468da7874f536a04d19205d1844"
+  },
+  "id": "MgXwWm3xI6594I4K",
+  "tags": []
+}
