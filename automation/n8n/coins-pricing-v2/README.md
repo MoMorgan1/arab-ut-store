@@ -32,13 +32,11 @@ byte-identical to the production export except the pricing math inside the
   (matching Laravel's `>= 10 && % 10 !== 0` contract), so the override-grid
   asymmetry noted below disappears once v2.3 is imported.
 
-Import checklist:
-
-1. Import `workflow-v2.3.json` into n8n (replaces the active workflow).
-2. Confirm no executions are pinned to old code (remove any pin data).
-3. Trigger "Run Coins Pricing Now" manually and confirm "Validate Snapshot"
-   passes with `fullScheduleChecked: true`.
-4. Verify one storefront quote lands on the 0.1-SAR grid.
+Its import checklist has been removed. Following it today re-imports the
+expansion workflow, whose `increment` is 10,000 against a live rounding unit of
+5,000 - Laravel compares that strictly for both shapes, so every hourly run
+would 422 again and the 10,000-45,000 band would stay unpriced. Import
+`workflow-v2.4.json` instead; its steps are at the end of this file.
 
 Ordering rule: patched-n8n against old Laravel is safe; new-Laravel against
 the unpatched workflow is the only unsafe combination.
@@ -85,6 +83,7 @@ Laravel now interpolates, so the workflow publishes the anchors themselves.
 | Validate | `multiplierFor()` mirrors Laravel's `CoinsMultiplierCurve` |
 | Validate | anchor table shape check: at least two entries, positive integer pairs |
 | Validate | the length check became a top-coverage check |
+| Validate | a bottom-coverage check: the lowest anchor must reach the range minimum |
 
 Both nodes had to change. Editing only "Prepare Coins Snapshot" leaves the run
 failing inside n8n, before it ever reaches Laravel, with no 422 to notice - its
@@ -145,9 +144,14 @@ first anchor to the admin floor if that guarantee is wanted back.
   seven functional edits, and Config for a one-line comment that said the
   anchors are "linearly interpolated every 10K". That was stale twice over: the
   grain is 5,000, and the workflow no longer interpolates at all.
-- Laravel accepts the exact payload `anchorTable()` produces: a 10,000-coin
-  order prices at 11,000 bp, a 200,000 order at 10,400, a 20,000,000 order at
-  10,500.
+- `tests/Feature/Automation/CoinsPricingWorkflowExportTest.php` reads the eleven
+  anchors out of this export's own Config node, posts them through the live
+  contract, and asserts Laravel accepts them - a 10,000-coin order prices at
+  11,000 bp, a 200,000 order at 10,400, a 20,000,000 order at 10,500. It also
+  walks all 4,000 buyable quantities and asserts the export's interpolation and
+  `CoinsMultiplierCurve` agree at every one. Editing the anchors in Config
+  without re-running the suite will now fail the build rather than pass against
+  a stale constant.
 
 ### After importing
 
