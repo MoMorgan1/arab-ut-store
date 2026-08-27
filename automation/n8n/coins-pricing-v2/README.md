@@ -55,49 +55,22 @@ the unpatched workflow is the only unsafe combination.
 
 ## REQUIRED SYNC: publish anchors, not the expansion (2026-08-27)
 
-The workflow expands the eleven commercial anchors into one entry per legal
-quantity - 3,991 per group for `pc` and `console_fast` - and publishes the
+**`workflow-v2.4.json` is the ready-to-import artifact.** It is derived from
+`workflow-v2.3.1-current.json`, the owner's live export of 2026-08-27
+(`versionId d9c8c908`), with seven edits across two nodes and nothing else
+touched. Import it and skip the rest of this section; the detail below records
+what changed and why.
+
+### Why this changed
+
+The workflow expanded the eleven commercial anchors into one entry per legal
+quantity - 3,991 per group for `pc` and `console_fast` - and published the
 expansion. An expansion is bound to the range it was computed for, so lowering
 the Coins minimum in the admin on 2026-08-26 invalidated it. Every hourly run
-since has been rejected with a 422, and quantities between 10,000 and 45,000
-stopped pricing on the storefront entirely.
+since was rejected with a 422, and quantities between 10,000 and 45,000 stopped
+pricing on the storefront entirely.
 
-**`workflow-v2.4.json` is the ready-to-import artifact.** Import it and skip the
-rest of this section; the detail below records what changed and why.
-
-Laravel now interpolates. **Two nodes had to change, not one.** Editing only
-"Prepare Coins Snapshot" leaves the run failing inside n8n, before it ever
-reaches Laravel, with no 422 to notice.
-
-### 1. Prepare Coins Snapshot
-
-- Stop expanding the anchors.
-- Emit them under `multiplier_anchors_basis_points` instead of
-  `multipliers_basis_points`. Send exactly the eleven anchors.
-- Leave `legalRanges.*.minimum` as it is. Laravel no longer compares it for an
-  anchor curve, though `maximum` and `increment` must still match.
-
-### 2. Validate Snapshot
-
-This node re-checks the payload before signing, and every one of these rejects
-an anchor table:
-
-| Check in the node | Why it fails |
-| --- | --- |
-| `exactKeys(rule, expectedKeys)` | The list names `multipliers_basis_points` and has no entry for the anchor field. |
-| `!isPlainObject(rule.multipliers_basis_points)` | The field is now absent. |
-| `Object.keys(...).length !== ((max - min) / increment) + 1` | Demands one entry per legal quantity - the expansion this change removes. |
-| `expectedRanges` hard-codes `minimum: 50_000, increment: 10_000` | Both are admin-managed values that already drifted. |
-
-Replace the multiplier checks with anchor equivalents: the field is a plain
-object of at least two entries; keys are positive integers; the largest key
-reaches the group maximum; the smallest key is at or below the smallest quantity
-preset. Drop the length check entirely - an anchor table has no expected length.
-
-**`increment` is a second, independent drift.** The node hard-codes `10_000`
-while the live admin setting is `5_000`. Read both `minimum` and `increment`
-from the snapshot the Prepare node built rather than restating them, or this
-node will keep disagreeing with Laravel every time either value is edited.
+Laravel now interpolates, so the workflow publishes the anchors themselves.
 
 ### What v2.4 changed
 
@@ -106,30 +79,57 @@ node will keep disagreeing with Laravel every time either value is edited.
 | Prepare | `commonRule()` emits `multiplier_anchors_basis_points: anchorTable()` |
 | Prepare | `anchorTable()` replaces `multiplierMap()`; the expansion is gone |
 | Prepare | `multiplierFor()` interpolates instead of reading the expansion |
-| Validate | allowlist names the anchor field |
+| Validate | the rule allowlist names the anchor field |
 | Validate | `multiplierFor()` mirrors Laravel's `CoinsMultiplierCurve` |
-| Validate | anchor table shape check: at least two, positive integer pairs |
+| Validate | anchor table shape check: at least two entries, positive integer pairs |
 | Validate | the length check became a top-coverage check |
-| Validate | `minimum` and `increment` come from the snapshot, not hard-coded |
 
-The last one matters beyond this change: the node pinned `minimum: 50_000` and
-`increment: 10_000` while the live settings were 10,000 and 5,000. Only the
-per-group `maximum` is still pinned, because nothing upstream bounds it.
+Both nodes had to change. Editing only "Prepare Coins Snapshot" leaves the run
+failing inside n8n, before it ever reaches Laravel, with no 422 to notice - its
+"Validate Snapshot" allowlist, plain-object check and length check all reject an
+anchor table.
 
-The eleven anchors, the pricing formula, the fast-delivery floors, the
-descending-price guard, the exact overrides and the signing are untouched.
+### What v2.4 deliberately did NOT change
 
-Verified before publishing this file: every code node parses, no reference to
-`multipliers_basis_points` remains, and Laravel accepts the exact payload
-`anchorTable()` produces - a 10,000-coin order prices at 11,000 bp, a 200,000
-order at 10,400, and a 20,000,000 order at 10,500.
+`expectedRanges` in "Validate Snapshot" stays restated rather than read from the
+snapshot. The node documents itself as an independent guard that catches a
+Prepare bug mangling `legalRanges` on the way through; reading the values it is
+meant to check from the thing it is checking would defeat it.
 
-### 3. Then
+Its `minimum` stays 50,000 while the live admin floor is 10,000, and that is
+correct: the guard only needs n8n to agree with itself, and Laravel no longer
+compares the minimum for an anchor curve. Its `increment` is already 5,000,
+matching the live rounding unit.
 
-Trigger "Run Coins Pricing Now" manually rather than waiting for the hour, and
-confirm the run was **accepted** rather than merely sent. The launch section of
-`docs/plans/2026-08-27-coins-multiplier-anchors.md` has the exact commands.
+Everything else is carried through untouched: the eleven anchors, the pricing
+formula, the grain-first `percentageFloor`, the PS-only cycle floor, the
+fast-delivery floors, the descending-price guard, the exact overrides, the
+throw-based `fail()` routing, and the signing.
 
-Both shapes are accepted on the Laravel side, so this can land before or after
-the Laravel release without a coordinated deploy. Nothing recovers until it
-lands, though.
+### Verification before this file was published
+
+- Every code node parses.
+- No reference to `multipliers_basis_points` remains anywhere in the export.
+- The node set is identical - 18 nodes, same names - and only the two intended
+  code nodes differ from the live export.
+- Laravel accepts the exact payload `anchorTable()` produces: a 10,000-coin
+  order prices at 11,000 bp, a 200,000 order at 10,400, a 20,000,000 order at
+  10,500.
+
+### After importing
+
+1. Import `workflow-v2.4.json`; it replaces the active workflow.
+2. Remove any pin data left on the code nodes.
+3. Trigger "Run Coins Pricing Now" manually rather than waiting for the hour.
+4. Confirm the run was **accepted**, not merely sent:
+
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' 'https://store.arab-ut.com/coins/quote?platform=pc&quantity=10000'
+   ```
+
+   Expected: `200`. It returns `503` until an anchored run lands, because the
+   stored rules still start at 50,000.
+
+Both shapes are accepted on the Laravel side, so this can land before or after a
+Laravel release without a coordinated deploy. Nothing recovers until it lands,
+though.
