@@ -9,14 +9,16 @@ Provider secrets stay in n8n environment variables (`FFT_API_USER`,
 `FFT_API_KEY`, `UTT_API_KEY`, `N8N_PRICING_SECRET`, `OPS_WHATSAPP_TARGET`);
 this file contains none.
 
-## REQUIRED SYNC: 0.1-SAR display grain (2026-08-21)
+## Superseded: 0.1-SAR display grain (2026-08-21)
 
 Laravel rounds coins prices at a **0.1-SAR grain** instead of whole riyals
 (`CoinsPriceCalculator::DISPLAY_GRAIN_HALALAH = 10`). The original export in
 `workflow.json` carries the old whole-riyal math and must not be imported onto
 the new backend.
 
-**`workflow-v2.3.json` is the corrected, ready-to-import artifact.** It is
+`workflow-v2.3.json` was the ready-to-import artifact at the time. **It is
+superseded by `workflow-v2.4.json`; do not import it.** Importing it now
+reverts both the live improvements and the anchors change. It is
 byte-identical to the production export except the pricing math inside the
 "Prepare Coins Snapshot" and "Validate Snapshot" code nodes:
 
@@ -57,9 +59,9 @@ the unpatched workflow is the only unsafe combination.
 
 **`workflow-v2.4.json` is the ready-to-import artifact.** It is derived from
 `workflow-v2.3.1-current.json`, the owner's live export of 2026-08-27
-(`versionId d9c8c908`), with seven edits across two nodes and nothing else
-touched. Import it and skip the rest of this section; the detail below records
-what changed and why.
+(`versionId d9c8c908`), with seven edits across two code nodes plus one stale
+comment corrected in Config, and nothing else touched. Import it and skip the
+rest of this section; the detail below records what changed and why.
 
 ### Why this changed
 
@@ -103,15 +105,46 @@ matching the live rounding unit.
 
 Everything else is carried through untouched: the eleven anchors, the pricing
 formula, the grain-first `percentageFloor`, the PS-only cycle floor, the
-fast-delivery floors, the descending-price guard, the exact overrides, the
-throw-based `fail()` routing, and the signing.
+descending-price guard, the exact overrides, the throw-based `fail()` routing,
+and the signing.
+
+### One price change the owner should know about
+
+Above 2,000,000 the `console_fast` floor moves. The old workflow carried
+`console_normal`'s terminal multiplier - 10,150 at its 2M maximum - forward when
+comparing a fast price against the normal formula. v2.4 follows the curve
+instead, and the curve keeps rising past 2M: 10,250 at 5M, 10,500 at 20M.
+
+Wherever a normal-derived floor binds for `console_fast` between 2M and 20M, it
+is now up to 3.45% higher. Laravel's anchored curve does the same thing, so the
+two agree with each other; the change is against the previous workflow.
+
+This is arguably the more correct reading - a fast order at 15M should not be
+floored against a rate the curve left behind at 2M - but it can move large-order
+fast prices the first time an anchored run lands.
+
+### A guarantee that narrowed
+
+Prepare's override pass and Validate's simulation both walk from each group's
+declared minimum, which is 50,000. Laravel now serves from the live admin floor
+of 10,000 by clamping to the first anchor, so the eight quantities from 10,000
+to 45,000 are priced but never simulated for non-descent, and can never receive
+an exact override.
+
+With current rates the schedule stays ascending there - the fixed 300-halalah
+fee term dominates, and a descent would need a rate under about 2.7 SAR per
+million - so this is a gap in what the run proves, not a live defect. Lower the
+first anchor to the admin floor if that guarantee is wanted back.
 
 ### Verification before this file was published
 
 - Every code node parses.
 - No reference to `multipliers_basis_points` remains anywhere in the export.
-- The node set is identical - 18 nodes, same names - and only the two intended
-  code nodes differ from the live export.
+- The node set is identical - 18 nodes, same names, same connections - and
+  three code nodes differ from the live export: Prepare and Validate for the
+  seven functional edits, and Config for a one-line comment that said the
+  anchors are "linearly interpolated every 10K". That was stale twice over: the
+  grain is 5,000, and the workflow no longer interpolates at all.
 - Laravel accepts the exact payload `anchorTable()` produces: a 10,000-coin
   order prices at 11,000 bp, a 200,000 order at 10,400, a 20,000,000 order at
   10,500.
