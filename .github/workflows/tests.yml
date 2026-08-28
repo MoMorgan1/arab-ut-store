@@ -238,3 +238,14 @@ jobs:
               DB::table('carts')->where('session_key', 'ci-probe-session-key')->first()
             ), PHP_EOL;
           "
+
+      # CoinsCartController converts every DomainException into a bare 503, so
+      # the assertion only ever reports "expected 201, got 503". It now report()s
+      # the cause first, which lands here.
+      - name: Show the exceptions behind the 503s
+        if: ${{ failure() && steps.mariadb-tests.outcome == 'failure' }}
+        run: |
+          test -f storage/logs/laravel.log \
+            && grep -oE "(DomainException|ValueError|RuntimeException|ErrorException)[^\"]{0,220}" storage/logs/laravel.log \
+              | sort -u | head -20 \
+            || echo "no laravel.log written"

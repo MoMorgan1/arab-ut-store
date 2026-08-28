@@ -27,7 +27,13 @@ final class CoinsCartController extends Controller
             );
         } catch (IdempotencyConflict) {
             return $this->errorResponse('idempotency_conflict', trans('store.cart.idempotency_conflict'), 409);
-        } catch (DomainException|ValueError) {
+        } catch (DomainException|ValueError $exception) {
+            // The customer still gets the same generic 503, but the cause is no
+            // longer thrown away. Without this an operator seeing this status in
+            // production has nothing to debug from, and a failing test reports
+            // only "expected 201, got 503" while the real reason is discarded.
+            report($exception);
+
             return $this->errorResponse('coins_pricing_unavailable', trans('store.quote.unavailable'), 503);
         }
 
