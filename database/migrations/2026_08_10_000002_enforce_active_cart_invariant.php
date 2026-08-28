@@ -125,12 +125,6 @@ return new class extends Migration
 
     private function enforceMariaDb(): void
     {
-        // AFTER currency is load-bearing, not cosmetic. The column was created
-        // after session_key, which puts it BEFORE status and currency -- the
-        // two columns this expression reads. MySQL rejects such a forward
-        // reference outright; MariaDB accepts the DDL and then evaluates in
-        // column order, so status and currency are still unset when the
-        // expression runs and every row falls through to ELSE NULL.
         DB::statement(<<<'SQL'
             ALTER TABLE carts
             MODIFY active_owner_key VARCHAR(255)
@@ -141,7 +135,6 @@ return new class extends Migration
                     ELSE NULL
                 END
             ) STORED
-            AFTER currency
             SQL);
     }
 };
