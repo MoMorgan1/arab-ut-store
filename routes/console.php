@@ -40,4 +40,9 @@ Schedule::command('queue:work', [
     '--max-time=55',
     '--tries=3',
     '--backoff=30',
-])->everyMinute()->withoutOverlapping()->runInBackground();
+    // The mutex expires after two minutes rather than Laravel's default day:
+    // runInBackground releases it through schedule:finish, which never runs if
+    // the worker is OOM-killed or the box reboots mid-run. A --max-time of 55
+    // seconds means a live run can never need longer than this, so a stale
+    // mutex cannot silently stop all mail for twenty-four hours.
+])->everyMinute()->withoutOverlapping(2)->runInBackground();

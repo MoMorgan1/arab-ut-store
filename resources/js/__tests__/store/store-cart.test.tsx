@@ -6,6 +6,7 @@ import {
     render,
     screen,
     waitFor,
+    within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -132,8 +133,6 @@ const mockPage = vi.hoisted(() => ({
                 credentials_hide: 'Hide EA details',
                 remove_item: 'Remove product',
                 remove_hint: 'Press and hold until the bar fills.',
-                remove_confirm: 'Confirm removal',
-                remove_cancel: 'Keep product',
                 remove_error: 'The product could not be removed.',
                 backup_code: 'Backup code :number',
                 checkout: 'Continue to secure payment',
@@ -153,6 +152,8 @@ const mockPage = vi.hoisted(() => ({
                 unavailable_note: 'Remove it to continue to checkout.',
                 confirm_total_title: 'Your total changed',
                 confirm_total_note: 'Check the new amount before you pay.',
+                confirm_order_previous: 'Order total before',
+                confirm_order_new: 'Order total now',
                 confirm_total_previous: 'Total shown before',
                 confirm_total_new: 'Total now',
                 confirm_coupon_removed:
@@ -1200,7 +1201,10 @@ describe('cart repricing states', () => {
         await waitFor(() =>
             expect(screen.getByText('Your total changed')).toBeVisible(),
         );
-        expect(screen.getByText('SAR 130.00')).toBeVisible();
+        // Both pairs are shown now, so the figure appears more than once.
+        expect(
+            within(screen.getByRole('alert')).getAllByText('SAR 130.00'),
+        ).not.toHaveLength(0);
         expect(
             screen.getByText(
                 'The coupon was removed because the total fell below its minimum.',
@@ -1219,4 +1223,52 @@ describe('cart repricing states', () => {
         expect(headers['X-Expected-Order-Total-Halalah']).toBe('13000');
         expect(headers['X-Expected-Total-Halalah']).toBe('13000');
     });
+});
+
+it('shows the order total in the confirmation when a wallet hides the change', async () => {
+    mockPage.props.auth.user = { id: 1, name: 'Buyer' };
+    mockPage.props.cart.canCheckout = true;
+    mockPage.props.cartPage.checkout.phoneVerified = true;
+
+    // The case the two-figure check exists for: the price rose, the wallet
+    // absorbed all of it, and the cash payable did not move. Showing only the
+    // payable would print two identical numbers under "your total changed".
+    vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL) => {
+            if (String(input).endsWith('/credentials')) {
+                return Promise.resolve(new Response('{}', { status: 404 }));
+            }
+
+            return Promise.resolve(
+                new Response(
+                    JSON.stringify({
+                        error: { code: 'cart_repriced' },
+                        repricing: {
+                            couponRemoved: false,
+                            orderTotalHalalah: 15_000,
+                            payableHalalah: 0,
+                            previousOrderTotalHalalah: 12_500,
+                            previousPayableHalalah: 0,
+                        },
+                    }),
+                    { status: 422 },
+                ),
+            );
+        }),
+    );
+
+    render(<StoreCart />);
+    fireEvent.click(
+        screen.getByRole('button', { name: 'Continue to secure payment' }),
+    );
+
+    await waitFor(() =>
+        expect(screen.getByText('Your total changed')).toBeVisible(),
+    );
+    const confirm = screen.getByRole('alert');
+
+    expect(within(confirm).getByText('Order total before')).toBeVisible();
+    expect(within(confirm).getByText('SAR 125.00')).toBeVisible();
+    expect(within(confirm).getByText('SAR 150.00')).toBeVisible();
 });

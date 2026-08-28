@@ -245,8 +245,6 @@ export type StoreCartTranslations = {
     credentials_save_error: string;
     remove_item: string;
     remove_hint: string;
-    remove_confirm: string;
-    remove_cancel: string;
     remove_error: string;
     checkout: string;
     checkout_loading: string;
@@ -263,6 +261,8 @@ export type StoreCartTranslations = {
     unavailable_note: string;
     confirm_total_title: string;
     confirm_total_note: string;
+    confirm_order_previous: string;
+    confirm_order_new: string;
     confirm_total_previous: string;
     confirm_total_new: string;
     confirm_coupon_removed: string;

@@ -473,6 +473,35 @@ function CheckoutPanel({
                         {translations.confirm_total_note}
                     </p>
                     <div className="store-cart-confirm__figures">
+                        {/* The order total is shown whenever it moved, not just
+                            the cash. A wallet can absorb a price rise entirely,
+                            leaving the payable identical - which is the exact
+                            case the two-figure check exists for, and showing
+                            only the payable would present two equal numbers
+                            under the words "your total changed". */}
+                        {repricing.orderTotalHalalah !==
+                        repricing.previousOrderTotalHalalah ? (
+                            <>
+                                <span>
+                                    {translations.confirm_order_previous}
+                                </span>
+                                <del>
+                                    {formatMinorUnits(
+                                        repricing.previousOrderTotalHalalah,
+                                        'SAR',
+                                        locale,
+                                    )}
+                                </del>
+                                <span>{translations.confirm_order_new}</span>
+                                <strong>
+                                    {formatMinorUnits(
+                                        repricing.orderTotalHalalah,
+                                        'SAR',
+                                        locale,
+                                    )}
+                                </strong>
+                            </>
+                        ) : null}
                         <span>{translations.confirm_total_previous}</span>
                         <del>
                             {formatMinorUnits(

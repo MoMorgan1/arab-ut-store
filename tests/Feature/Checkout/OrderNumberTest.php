@@ -1,6 +1,7 @@
 <?php
 
 use App\Checkout\OrderNumber;
+use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 
 test('numbers count upward and stay readable', function (): void {
@@ -32,4 +33,17 @@ test('the older random numbers are still recognised', function (): void {
         ->and(OrderNumber::matches('AUT-1043'))->toBeTrue()
         ->and(OrderNumber::matches('AUT-0043'))->toBeFalse()
         ->and(OrderNumber::matches('nonsense'))->toBeFalse();
+});
+
+test('it steps past a legacy number the counter would collide with', function (): void {
+    // The legacy alphabet included digits 2-9, so an old order can hold a
+    // number this counter will eventually reach. order_number is unique, so
+    // walking into one would fail a checkout.
+    DB::table('order_number_sequence')->update(['next_value' => 234567]);
+    Order::factory()->create(['order_number' => 'AUT-234567']);
+
+    $number = DB::transaction(fn (): string => OrderNumber::generate());
+
+    expect($number)->not->toBe('AUT-234567')
+        ->and(OrderNumber::matches($number))->toBeTrue();
 });

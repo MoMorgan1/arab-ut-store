@@ -2,6 +2,7 @@
 
 namespace App\Checkout;
 
+use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -47,6 +48,14 @@ final class OrderNumber
         }
 
         $value = (int) $row->next_value;
+
+        // The legacy alphabet contained the digits 2-9, so an old order can be
+        // sitting on an all-numeric number such as AUT-234567 that this counter
+        // will eventually walk into. order_number is unique, so the collision
+        // would surface as a failed checkout; stepping past it costs one query.
+        while (Order::query()->where('order_number', self::PREFIX.$value)->exists()) {
+            $value += random_int(self::MIN_STEP, self::MAX_STEP);
+        }
 
         DB::table('order_number_sequence')
             ->where('id', $row->id)
