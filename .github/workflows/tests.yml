@@ -217,6 +217,24 @@ jobs:
       # than inferring it from the symptom.
       - name: Dump carts schema on failure
         if: ${{ failure() && steps.mariadb-tests.outcome == 'failure' }}
-        run: >-
-          php artisan tinker --execute="echo
-          json_encode(DB::select('SHOW CREATE TABLE carts'), JSON_PRETTY_PRINT);"
+        run: |
+          php artisan tinker --execute="
+            echo json_encode(DB::select('SHOW CREATE TABLE carts'), JSON_PRETTY_PRINT), PHP_EOL;
+            echo json_encode(DB::select(
+              \"SELECT column_name, ordinal_position, extra, generation_expression
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE() AND table_name = 'carts'
+                ORDER BY ordinal_position\"
+            ), JSON_PRETTY_PRINT), PHP_EOL;
+            DB::table('carts')->insert([
+              'public_id' => (string) str()->ulid(),
+              'session_key' => 'ci-probe-session-key',
+              'status' => 'active',
+              'currency' => 'SAR',
+              'created_at' => now(),
+              'updated_at' => now(),
+            ]);
+            echo 'PROBE ROW: ', json_encode(
+              DB::table('carts')->where('session_key', 'ci-probe-session-key')->first()
+            ), PHP_EOL;
+          "
