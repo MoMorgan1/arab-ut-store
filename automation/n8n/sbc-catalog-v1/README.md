@@ -1,112 +1,158 @@
-# SBC Catalog v1
+# SBC Catalog v4 — FFT authority, signed Laravel snapshot
 
-This package is the versioned source and inactive n8n export for the Arab UT SBC catalog. It reads the two authoritative one-million Coins quotes from Laravel, reads one bounded EasySBC page, validates every source record, maps eligible challenges into a complete `n8n-sbc` catalog snapshot, and either reports a dry run or publishes one signed snapshot back to Laravel.
+Builds the SBC storefront catalog from two providers, prices it in SAR, signs it,
+and POSTs it to the Laravel automation endpoint.
 
-It has no external storefront mutation or product-platform dependency. Laravel and MariaDB remain authoritative after an accepted snapshot. The approved Gemini credential is used only to enrich missing Arabic SBC names; exact validated translations are cached in workflow static data.
+- **FuTTransfer (FFT)** is authoritative for availability and the current
+  console/PC coin requirement.
+- **EasySBC** supplies metadata — name, category, images, repeatability — and a
+  cross-source identity check.
 
-## v1 behavior
+`workflow.json` and `error-workflow.json` are generated from `nodes/*.js`. Edit
+the node sources, never the exports.
 
-- Inspection-only Manual Trigger, authenticated production Webhook Trigger, and a two-hour Schedule Trigger.
-- Manual runs are always `dry_run`. The production webhook accepts only the exact JSON body `{ "mode": "dry_run" }` or `{ "mode": "apply" }`. The schedule uses `apply` only after a production webhook bootstrap has persisted `lastSuccessfulItems`; before that it fails closed. Dry runs have no graph path to the catalog POST.
-- EasySBC request: `GET https://api-fc26.easysbc.io/sbc-sets?page=1&limit=200`.
-- Bootstrap is pinned to the manually reviewed 56-source/39-eligible observation captured at `2026-08-12T05:46:36.701Z`, including every eligible source ID, exact source name, and expiry.
-- After an exact fresh HTTP 201 completion, workflow static data replaces that bootstrap with the accepted snapshot's public source IDs, names, expiries, and counts. Dry runs, failures, and replay responses never mutate this durable safety state; no credentials or customer data are stored there.
-- Every later run fails closed when the source falls below 85% of the last successful source count or when a previously accepted ID disappears unexpectedly. A prior item may leave only when its stored expiry is inside the configured lead window or its current source record is present and deterministically ineligible. New IDs are allowed, while same-count replacement/churn and source-name changes are rejected. After permitted departures, the remaining eligible count must retain at least 80% of the adjusted prior set.
-- Also fails closed at 200 records (pagination ambiguity), on duplicate IDs, or on any malformed complete source record.
-- Categories: `players`, `upgrades` (source categories 2, 3, and 6), `icons`, and `foundations`.
-- Eligibility: active, more than two hours before expiry, no Bronze/Silver names, PlayStation coins at least 1,500, non-repeatable PlayStation coins at least 20,000, and a positive PC coin value.
-- Exactly one PlayStation/Xbox and one PC variant per product. Non-repeatable challenges retain the audited one-completion price. Repeatable challenges publish exact, independent platform totals for every allowed completion tier in `configuration.completionPricing`.
-- Images are optional. A supplied image must be HTTPS on `assets.easysbc.io`.
-- English names remain byte-for-byte exact. Missing Arabic names are sent in one exact ID/name batch through `Google Gemini(PaLM) Api account 2` with temperature `0` and `maxOutputTokens: 8192`; output must contain the same IDs, count, order-independent source names, Arabic script, no Latin letters, and at most 120 characters. Validation is atomic: any missing, extra, mismatched, mixed-language, or malformed entry fails the run and leaves the cache unchanged.
-- Every invalid branch ends in `Stop And Error` after the optional Whapi attempt, so a failed scheduled execution is visibly nonzero.
-- Dry-run reports source/eligible safety counts. It reports create/update/archive as unavailable—not fabricated—because Laravel does not yet expose an authenticated current `n8n-sbc` snapshot-read endpoint.
-
-## Audited pricing formula
-
-For each platform, Laravel returns its current one-million Coins total in halalah. Convert that base to SAR. Non-repeatable challenges keep the existing one-completion formula:
-
-```text
-M(c) = 1.15 when c < 50,000
-       1.10 when 50,000 <= c < 900,000
-       1.00 when 900,000 <= c <= 1,000,000
-       1.025 when c > 1,000,000
-
-SAR = round(challengeCount*2 + coins*M(c)*1.02*(baseSar/1,000,000) + 2) + 3
-priceMinor = SAR*100
-```
-
-Repeatable challenges use the original Salla quantity policy without its approximate PC surcharge. PlayStation/Xbox and PC are calculated separately:
-
-```text
-perCompletion = coins*M(c)*1.02*(baseSar/1,000,000) + 1.10
-bundleSar = round(perCompletion*multiplier*completions) + 3
-totalMinor = bundleSar*100
-
-tiers = 5@1.00, 10@0.95, 15@0.92, 20@0.90, 30@0.87,
-        40@0.85, 50@0.82, 75@0.78, 100@0.76
-```
-
-Unlimited and 100+ challenges expose the full tier list. Limits from two through four expose every integer at multiplier 1.00. Limits from five through 99 expose standard tiers up to the limit and append a missing maximum at two percentage points below the previous multiplier, floored at 0.70. The three-SAR service fee is charged once per selected bundle. `priceMinor` equals the first published tier total.
-
-The workflow sends `priceVersion: 1` for contract compatibility. Laravel owns stored price-version increments.
-
-## Credentials and host environment
-
-Create these credentials with the exact exported names:
-
-1. `ArabUT SBC Pricing Read API` — adds `X-ArabUT-Key` with the pricing-read public key.
-2. `ArabUT SBC Catalog API` — adds `X-ArabUT-Key` with the separately scoped SBC catalog public key.
-3. `Whapi Alerts` — adds the Whapi authorization header; alerts run only when `OPS_WHATSAPP_TARGET` is configured.
-4. `Google Gemini(PaLM) Api account 2` — existing Google PaLM/Gemini credential used only for missing Arabic-name enrichment.
-5. `ArabUT SBC Bootstrap Trigger` — HTTP Header Auth on the production webhook. Generate a dedicated high-entropy value in n8n; never place it in this package or chat.
-
-Set secrets only on the n8n host:
-
-- `N8N_SBC_PRICING_READ_SECRET`
-- `N8N_SBC_CATALOG_SECRET`
-- optional `OPS_WHATSAPP_TARGET`
-- `NODE_FUNCTION_ALLOW_BUILTIN=crypto`
-
-The exported JSON contains placeholder credential IDs/names and no secret values.
-
-Before apply, set this Laravel/Hostinger environment value and refresh configuration cache:
-
-```text
-N8N_CATALOG_MEDIA_HOSTS=assets.easysbc.io
-```
-
-This is required so the catalog endpoint can mirror the approved EasySBC image host instead of rejecting the snapshot.
-
-## Build and test
-
-```powershell
-cd automation/n8n/sbc-catalog-v1
+```bash
 npm run build
 npm test
 ```
 
-`workflow.json` is generated from `nodes/*.js`; `npm test` fails when the export is stale.
+`npm test` runs `build:check` first and fails when either export is stale.
+
+## Failure model
+
+**Every failure throws.** There is no in-flow failure rail: v3 routed a
+`failureReason` through ten IF gates, and the two largest Code nodes had no
+`onError` and bypassed that rail entirely — which is why a production outage was
+found in the execution log rather than on anyone's phone.
+
+Instead, set **Workflow Settings → Error Workflow** to
+**SBC Catalog - Failure Alert** (`error-workflow.json`). That catches every
+throw, including the ones the old rail could never see: timeouts, out-of-memory,
+and crashes inside the Code nodes themselves.
+
+**Without that setting, nothing alerts.** It holds an instance-specific
+workflow id, so it cannot be committed here.
+
+## Environment
+
+| Variable | Purpose |
+| --- | --- |
+| `FFT_API_USER` | FuTTransfer API user |
+| `FFT_API_KEY` | FuTTransfer API key |
+| `N8N_SBC_PRICING_READ_SECRET` | HMAC for the Laravel pricing read |
+| `N8N_SBC_CATALOG_SECRET` | HMAC for the catalog publish |
+| `OPS_TELEGRAM_CHAT_ID` | Telegram chat for failure alerts |
+
+`Config` fails the run at the first node if any of the first four is unset,
+rather than letting an HTTP node send empty credentials and surfacing it as a
+provider fault six nodes later.
+
+The v3 export carried the FuTTransfer key inline in the request body, so it
+landed in every commit, export, and backup. **That key is burned and must be
+rotated.** `npm test` asserts it never reappears.
+
+On Hostinger, set `N8N_CATALOG_MEDIA_HOSTS=assets.easysbc.io` before any apply.
+
+## Tolerance policy
+
+Both providers are third parties that routinely serve a few partial rows. Every
+per-record problem is skipped and counted; the run fails only when a **ratio**
+shows the feed itself is broken. v3 threw on the first invalid EasySBC record —
+three cosmetic rows out of fifty-six stopped every price in the store.
+
+Two separate health signals, because one number cannot answer both questions:
+
+- **Join integrity** (`minJoinIntegrity`, 85%) — of the SBCs *both* providers
+  list, how many agree on name and squad count. This is the safety property: it
+  is what verifies FFT's `setID` 412 and EasySBC's `id` 412 are the same
+  challenge. Expect ~100%.
+- **FFT coverage** (`minFftCoverage`, 50%) — what share of EasySBC's catalog FFT
+  sells at all. Structurally well under 100%, because FFT does not sell daily
+  freebie upgrades or OVR Token Swaps; those are not bought with coins. Loose on
+  purpose — it catches FFT's feed collapsing, not the normal overlap gap.
+
+EasySBC prices are **not** required for an SBC that FFT lists, because FFT is the
+price authority. Requiring them discarded sellable ~1M-coin player SBCs whose
+EasySBC `pcPrice` happened to be blank.
+
+## Pricing
+
+One formula, in `build-and-price.js`. v3 computed a full legacy price in
+`prepare-snapshot.js` and then overwrote every total in a second node.
+
+1. The FFT coin requirement already contains its provider-side cushion.
+2. Add Arab UT's own coin buffer (approved default 5%).
+3. Convert buffered coins at the signed retail 1M quote.
+4. Add automation cost per submitted squad.
+5. Add service margin and one fixed order fee.
+6. Round up to the next whole SAR. Minimum 6 SAR.
+
+Commercial and platform adjustments scale **service margin only**; they can
+never reduce retail coin value, automation cost, or the fixed order fee.
+
+### `multiplierBps` is a policy constant, not a computed discount
+
+The store validates it with `!==` against a fixed table in
+`app/ValueObjects/Pricing/SbcCompletionPricing.php::expectedTiers`, so any other
+value is rejected outright. `validate-snapshot.js` mirrors that table and
+`tests/pricing.test.mjs` transcribes the whole PHP rule, so a drift fails here
+with a readable message instead of as a 422 from the store.
+
+Be aware that this percentage does **not** describe the price beside it. The
+admin price dialog renders it verbatim while the price comes from the
+`fft-plus-owner-buffer-v2` formula. No customer sees it. Reconciling the two is
+a store-side decision — the workflow cannot fix it by sending different numbers,
+because those get rejected.
+
+## Workflow static data
+
+The translation cache and the safety baseline live in workflow static data.
+
+**A manual or test execution does not persist workflow static data** — n8n only
+writes it for production-triggered runs. Bootstrap the first production baseline
+from the webhook or the schedule, not from **Run SBC Catalog Now**, or the run
+stays in bootstrap mode and re-pays for every translation. A failed run also discards the translations it just paid for,
+because static data is only written when an execution completes.
+
+There is no workflow-level concurrency lock in n8n, and a static-data lock
+cannot work — static data is persisted only at the end of an execution, so a
+second run would not see it. If the schedule and a webhook overlap, the later
+run wins the baseline. Publishing itself is safe: Laravel deduplicates on
+`eventId`. Keep the instance concurrency limit at 1 for production if this
+matters.
 
 ## Safe rollout
 
-1. Deploy and verify the signed Laravel pricing-read and SBC snapshot endpoints.
-2. Import `workflow.json` inactive. Attach all five credentials and set the host environment values. On Hostinger, set `N8N_CATALOG_MEDIA_HOSTS=assets.easysbc.io` before any apply.
-3. A Manual Trigger run is allowed for inspection only. It is forced to `dry_run`, and n8n does not persist workflow static data from manual/test executions; do not use it for bootstrap or apply.
-4. Publish and activate the workflow so its production webhook is registered. The scheduled branch fails closed without publishing until a durable bootstrap exists.
-5. Call the authenticated production webhook with `Content-Type: application/json` and the exact body `{ "mode": "dry_run" }`. Confirm the source still matches the versioned bootstrap observation: 56 source records and the exact 39 eligible IDs, names, and expiries captured at `2026-08-12T05:46:36.701Z`. Review products/variants, prices, persisted translation cache results, expected departures/new IDs, and `publishAttempted: false`.
-6. After approving that production dry run, call the same production webhook with the exact body `{ "mode": "apply" }`. Require a fresh HTTP 201 with the same `runId` and `status: completed`, then verify workflow static data contains `lastSuccessfulItems` and the accepted counts. An exact replay 409 does not mutate state; HTTP 422 or 5xx fails closed and retains the previous catalog and guard state.
-7. Verify the Laravel catalog and storefront, and verify mirrored media counts match products with supplied EasySBC images. Leave the published workflow active; subsequent two-hour scheduled executions may now apply under the durable identity/expiry guard.
+1. Deploy and verify the signed Laravel pricing-read and catalog endpoints.
+2. Import `workflow.json` and `error-workflow.json` inactive. Attach every
+   credential (the exports carry `CONFIGURE_*` placeholders) and set the host
+   environment values.
+3. **Set Workflow Settings → Error Workflow to SBC Catalog - Failure Alert.**
+   Nothing alerts until you do.
+4. Rotate the FuTTransfer API key if it has not been rotated since the v3 export.
+5. Publish and activate, so the production webhook is registered.
+6. Trigger the production webhook once. Confirm HTTP 201 with a matching `runId`
+   and `status: completed`, then check that static data holds
+   `lastSuccessfulItems` and the accepted counts. The first run reports
+   `bootstrapMode: true`; the next should report `false` — that is the signal
+   the baseline actually persisted.
+7. Verify the storefront and that mirrored media counts match products with
+   EasySBC images. Leave the workflow active; two-hourly runs then apply under
+   the identity, expiry, and safety-floor guards.
 
-The current dry-run cannot calculate an absolute `wouldArchive` count because there is no authenticated Laravel read endpoint for the current `n8n-sbc` snapshot. The production webhook sequence above is required because n8n saves workflow static data only for active production-triggered executions, not manual/test runs. Adding a Laravel snapshot-read endpoint remains the follow-up needed for exact create/update/archive previews.
+A replay 409 does not mutate state. HTTP 422 or 5xx fails closed and retains the
+previous catalog.
 
 ## Official n8n references checked
 
 - [Schedule Trigger](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/)
 - [Webhook](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/)
 - [HTTP Request](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/)
+- [Error Trigger](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.errortrigger/)
+- [Error handling](https://docs.n8n.io/flow-logic/error-handling/)
 - [Code node cookbook](https://docs.n8n.io/code/cookbook/code-node/)
 - [Workflow static data](https://docs.n8n.io/code/cookbook/builtin/get-workflow-static-data/)
-- [Google Gemini Chat Model](https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglegemini/)
-- [Stop And Error](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.stopanderror/)
+- [OpenAI Chat Model](https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/)
+- [Telegram](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.telegram/)
 - [HTTP Request credentials](https://docs.n8n.io/integrations/builtin/credentials/httprequest/)
 - [Security audit](https://docs.n8n.io/hosting/securing/security-audit/)

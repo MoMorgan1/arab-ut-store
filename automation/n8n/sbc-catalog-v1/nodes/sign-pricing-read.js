@@ -3,16 +3,9 @@ const item = $input.first().json;
 const secret = $env.N8N_SBC_PRICING_READ_SECRET;
 
 if (!secret) {
-    return [
-        {
-            json: {
-                ...item,
-                pricingReadSigned: false,
-                failureReason:
-                    'N8N_SBC_PRICING_READ_SECRET is not configured on the n8n host',
-            },
-        },
-    ];
+    throw new Error(
+        '[config] N8N_SBC_PRICING_READ_SECRET is not configured on the n8n host',
+    );
 }
 
 const crypto = require('crypto');
@@ -23,4 +16,4 @@ const signature = crypto
     .update(canonical)
     .digest('hex');
 
-return [{ json: { ...item, pricingReadSigned: true, timestamp, signature } }];
+return [{ json: { ...item, timestamp, signature } }];

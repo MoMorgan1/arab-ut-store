@@ -1,5 +1,5 @@
 {
-  "name": "SBC Catalog v1 - Signed Laravel Snapshot",
+  "name": "SBC Catalog v4 - FFT Authority, Signed Laravel Snapshot",
   "nodes": [
     {
       "parameters": {},
@@ -9,7 +9,7 @@
       "typeVersion": 1,
       "position": [
         180,
-        280
+        120
       ]
     },
     {
@@ -29,7 +29,7 @@
       "typeVersion": 1.2,
       "position": [
         180,
-        440
+        280
       ]
     },
     {
@@ -46,7 +46,7 @@
       "typeVersion": 2.1,
       "position": [
         180,
-        600
+        440
       ],
       "webhookId": "07b2a529-b860-4517-a03c-c72854a423ca",
       "credentials": {
@@ -58,149 +58,33 @@
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "manual-context-sbc-catalog-v1-source",
-              "name": "triggerSource",
-              "value": "manual",
-              "type": "string"
-            },
-            {
-              "id": "manual-context-sbc-catalog-v1-mode",
-              "name": "requestedMode",
-              "value": "dry_run",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "manual-context-sbc-catalog-v1",
-      "name": "Manual Dry Run Context",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        420,
-        280
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "schedule-context-sbc-catalog-v1-source",
-              "name": "triggerSource",
-              "value": "schedule",
-              "type": "string"
-            },
-            {
-              "id": "schedule-context-sbc-catalog-v1-mode",
-              "name": "requestedMode",
-              "value": "apply",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "schedule-context-sbc-catalog-v1",
-      "name": "Scheduled Apply Context",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        420,
-        440
-      ]
-    },
-    {
-      "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\n// SBC Catalog v1 settings. Secrets remain in n8n environment and Credentials.\n\nconst alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';\n\nfunction ulid() {\n    let time = Date.now();\n    let timestamp = '';\n    for (let index = 0; index < 10; index += 1) {\n        timestamp = alphabet[time % 32] + timestamp;\n        time = Math.floor(time / 32);\n    }\n\n    let random = '';\n    for (let index = 0; index < 16; index += 1) {\n        random += alphabet[Math.floor(Math.random() * alphabet.length)];\n    }\n\n    return timestamp + random;\n}\n\nfunction generatedAt() {\n    return new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n}\n\nconst approvedEligibleItems = [\n    ['1340', 'Ayden Heaven', '2026-08-18T17:00:00.000Z'],\n    ['1351', '1 of 3 85+ Player Pick', '2026-08-17T17:00:00.000Z'],\n    [\n        '1348',\n        '1 of 4 95+ FOF or FUTTIES T1-T3 Player Pick',\n        '2026-08-18T17:00:00.000Z',\n    ],\n    ['1344', '7x 87+ Upgrade', '2026-08-18T17:00:00.000Z'],\n    ['1339', 'Patrick Kluivert', '2026-08-24T17:00:00.000Z'],\n    ['1337', '4 of 10 84+ Player Pick', '2026-08-17T17:00:00.000Z'],\n    ['1338', 'Marcos Llorente', '2026-08-23T17:00:00.000Z'],\n    [\n        '1328',\n        '94+ GOTG & FUTTIES Team 1 & 2 (Icons & Heroes) Upgrade',\n        '2026-08-23T17:00:00.000Z',\n    ],\n    ['1327', 'Striker Instinct EVO', '2026-08-16T17:00:00.000Z'],\n    ['1335', 'Antonio Rüdiger', '2026-08-22T17:00:00.000Z'],\n    ['1329', 'Debinha', '2026-08-15T17:00:00.000Z'],\n    ['1333', '10x 85+ Upgrade', '2026-08-15T17:00:00.000Z'],\n    ['1325', 'Jérémy Doku', '2026-08-28T17:00:00.000Z'],\n    [\n        '1326',\n        '1 of 3 95+ FOF or FUTTIES T1 & T2 Player Pick',\n        '2026-08-14T17:00:00.000Z',\n    ],\n    ['1332', '2x 85+ Upgrade', '2026-08-21T17:00:00.000Z'],\n    ['1324', 'Saeed Al-Owairan', '2026-08-14T17:00:00.000Z'],\n    ['1334', '2 of 3 86+ Player Pick', '2026-08-14T17:00:00.000Z'],\n    ['1309', 'Moussa Sissoko', '2026-08-13T17:00:00.000Z'],\n    [\n        '1321',\n        'Repeatable FUTTIES Provisions Upgrade',\n        '2026-08-13T17:00:00.000Z',\n    ],\n    ['1320', '3x 87-90 Upgrade', '2026-08-13T17:00:00.000Z'],\n    ['1316', '1 of 3 FUTTIES Team 2 Player Pick', '2026-08-12T17:00:00.000Z'],\n    ['1319', 'Eusébio', '2026-08-23T17:00:00.000Z'],\n    [\n        '1298',\n        '1 of 3 94+ GOTG or FUTTIES Icon or Hero Player Pick',\n        '2026-08-16T17:00:00.000Z',\n    ],\n    ['1302', 'Fernando Torres', '2026-08-21T17:00:00.000Z'],\n    ['1306', 'Frenkie de Jong', '2026-08-21T17:00:00.000Z'],\n    ['1310', '10x 84+ Upgrade', '2026-08-14T17:00:00.000Z'],\n    ['1274', 'Antonio Di Natale', '2026-08-14T17:00:00.000Z'],\n    ['1261', '5x 80+ Upgrade', '2026-08-21T17:00:00.000Z'],\n    ['1248', 'Johan Cruyff', '2026-08-13T17:00:00.000Z'],\n    ['1237', '89 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1236', '88 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1231', '83 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1235', '87 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1238', '90 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1234', '86 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1232', '84 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1233', '85 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['1239', '91 OVR Token Swap', '2026-08-13T17:00:00.000Z'],\n    ['7', 'Gold Upgrade', '2035-07-30T17:00:00.000Z'],\n].map(([sourceId, sourceName, expiresAt]) => ({\n    sourceId,\n    sourceName,\n    expiresAt,\n}));\n\nconst triggerInput = $input.first().json;\nconst workflowState = $getWorkflowStaticData('global').sbcCatalogV1 ?? {};\nlet configValid = true;\nlet failureReason = null;\nlet triggerSource = null;\nlet mode = 'dry_run';\n\nif (\n    triggerInput?.triggerSource === 'manual' &&\n    triggerInput?.requestedMode === 'dry_run'\n) {\n    triggerSource = 'manual';\n} else if (\n    triggerInput?.triggerSource === 'schedule' &&\n    triggerInput?.requestedMode === 'apply'\n) {\n    triggerSource = 'schedule';\n    mode = 'apply';\n    if (\n        !Array.isArray(workflowState.lastSuccessfulItems) ||\n        workflowState.lastSuccessfulItems.length === 0\n    ) {\n        configValid = false;\n        failureReason =\n            'Scheduled apply is blocked until a production webhook bootstrap completes with fresh HTTP 201';\n    }\n} else if (\n    triggerInput?.body &&\n    typeof triggerInput.body === 'object' &&\n    !Array.isArray(triggerInput.body) &&\n    Object.keys(triggerInput.body).length === 1 &&\n    ['dry_run', 'apply'].includes(triggerInput.body.mode)\n) {\n    triggerSource = 'webhook';\n    mode = triggerInput.body.mode;\n} else {\n    configValid = false;\n    failureReason =\n        'Trigger contract is invalid; use manual dry-run, scheduled apply, or exact webhook body {\"mode\":\"dry_run|apply\"}';\n}\n\nreturn [\n    {\n        json: {\n            settings: {\n                mode,\n                pricingEndpoint:\n                    'https://store.arab-ut.com/api/automation/v1/pricing/coins/sbc-bases',\n                pricingPath: '/api/automation/v1/pricing/coins/sbc-bases',\n                sourceEndpoint:\n                    'https://api-fc26.easysbc.io/sbc-sets?page=1&limit=200',\n                catalogEndpoint:\n                    'https://store.arab-ut.com/api/automation/v1/catalog/sbc/snapshots',\n                catalogSource: 'n8n-sbc',\n                sourceMinCount: 20,\n                sourceLimit: 200,\n                minimumExpiryLeadSeconds: 7200,\n                approvedBaseline: {\n                    sourceCount: 56,\n                    eligibleCount: 39,\n                    observedAt: '2026-08-12T05:46:36.701Z',\n                    approvedAt: '2026-08-12T05:46:36.701Z',\n                    approvedBy: 'operator',\n                    eligibleItems: approvedEligibleItems,\n                },\n            },\n            eventId: ulid(),\n            runId: ulid(),\n            generatedAt: generatedAt(),\n            configValid,\n            failureReason,\n            triggerSource,\n        },\n    },\n];\n"
+        "jsCode": "/* eslint-disable */\n// SBC Catalog v4.0 — direct apply.\n// Every failure in this workflow THROWS. The n8n Error Workflow catches it and\n// sends the Telegram alert, so there is no in-flow failure rail to maintain.\n\nconst ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';\n\nfunction ulid() {\n    let time = Date.now();\n    let timestamp = '';\n    for (let index = 0; index < 10; index += 1) {\n        timestamp = ALPHABET[time % 32] + timestamp;\n        time = Math.floor(time / 32);\n    }\n    let random = '';\n    for (let index = 0; index < 16; index += 1) {\n        random += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];\n    }\n    return timestamp + random;\n}\n\n// Laravel requires microsecond precision on generatedAt.\nfunction generatedAt() {\n    return new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n}\n\n// The three triggers are distinguishable by the shape of what they emit, so\n// they wire straight into this node without a Set node each.\nfunction detectTriggerSource(json) {\n    if (json && (json.headers || json.body || json.query)) return 'webhook';\n    if (json && (json.timestamp || json['Readable date'])) return 'schedule';\n    return 'manual';\n}\n\nconst triggerSource = detectTriggerSource($input.first().json ?? {});\n\n// Fail at the very first node, with a clear message, rather than letting an\n// HTTP node send empty credentials and reporting it as a provider problem 6\n// nodes later. The v3 export carried the FFT key in plaintext in the request\n// body; it now lives in n8n environment variables.\nconst requiredEnv = [\n    'FFT_API_USER',\n    'FFT_API_KEY',\n    'N8N_SBC_PRICING_READ_SECRET',\n    'N8N_SBC_CATALOG_SECRET',\n];\nconst missingEnv = requiredEnv.filter((name) => !$env[name]);\nif (missingEnv.length) {\n    throw new Error(\n        `[config] missing n8n environment variable(s): ${missingEnv.join(', ')}`,\n    );\n}\n\nreturn [\n    {\n        json: {\n            settings: {\n                mode: 'apply',\n\n                pricingEndpoint:\n                    'https://store.arab-ut.com/api/automation/v1/pricing/coins/sbc-bases',\n                pricingPath: '/api/automation/v1/pricing/coins/sbc-bases',\n                sourceEndpoint:\n                    'https://api-fc26.easysbc.io/sbc-sets?page=1&limit=200',\n                catalogEndpoint:\n                    'https://store.arab-ut.com/api/automation/v1/catalog/sbc/snapshots',\n                catalogSource: 'n8n-sbc',\n\n                // Every source threshold lives here. v3 scattered these between Config\n                // and hardcoded constants inside three separate Code nodes, where they\n                // drifted out of agreement with each other.\n                source: {\n                    minUniqueFftRecords: 100,\n                    minUniqueMetadataRecords: 20,\n                    minMatchedRecords: 20,\n                    metadataLimit: 200,\n                    // Split from the old single minMatchRate, which asked one number to\n                    // answer two questions and failed a healthy feed at 77.4%.\n                    // Join integrity: of the SBCs BOTH providers list, how many agree on\n                    // name and squad count. This is the safety property -- it verifies the\n                    // two id spaces still mean the same thing. Should be ~100%.\n                    minJoinIntegrity: 0.85,\n                    // FFT coverage: what share of EasySBC's catalog FFT sells at all.\n                    // Structurally well under 100% -- FFT does not sell daily freebies or\n                    // OVR Token Swaps, which are not bought with coins. Loose on purpose:\n                    // it catches FFT's feed collapsing, not the normal overlap gap.\n                    minFftCoverage: 0.5,\n                    // Symmetric tolerances. v3 allowed 10% invalid FFT records but zero\n                    // invalid EasySBC records, so three cosmetic metadata rows took the\n                    // whole catalog down.\n                    maxInvalidFftRatio: 0.1,\n                    maxInvalidMetadataRatio: 0.1,\n                    maxMismatchRatio: 0.1,\n                },\n\n                sourceMinCount: 20,\n                sourceLimit: 200,\n                bootstrapMinimumEligibleCount: 20,\n                minimumExpiryLeadSeconds: 7200,\n\n                eligibility: {\n                    minConsoleCoins: 1500,\n                    minNonRepeatableConsoleCoins: 20000,\n                    // Double backslash is REQUIRED: this is a JS string that becomes a\n                    // RegExp, so '\\b' would be a backspace character (U+0008) and the\n                    // filter would silently match nothing. Build & Price Snapshot\n                    // canary-tests this pattern before using it.\n                    excludedNamePattern: '\\\\b(?:bronze|silver)\\\\b',\n                },\n\n                pricingPolicy: {\n                    formulaVersion: 'fft-plus-owner-buffer-v2',\n                    ownerCoinBufferBps: 500,\n                    automationCostPerSquadMinor: 37.5,\n                    nonRepeatServiceMarginPerSquadMinor: 60,\n                    fixedOrderFeeMinor: 300,\n                    minimumPriceMinor: 600,\n                    commercialAdjustmentBps: 10000,\n                    platformAdjustmentBps: {\n                        playstation: 10000,\n                        pc: 10000,\n                    },\n                    repeatServiceMarginPerRunMinor: {\n                        1: 125,\n                        2: 90,\n                        3: 75,\n                        5: 60,\n                        10: 40,\n                        15: 32,\n                        20: 28,\n                        30: 23,\n                        40: 20,\n                        50: 18,\n                        75: 14,\n                        100: 12,\n                    },\n                },\n            },\n            eventId: ulid(),\n            runId: ulid(),\n            generatedAt: generatedAt(),\n            triggerSource,\n        },\n    },\n];\n"
       },
       "id": "config-sbc-catalog-v1",
       "name": "Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        660,
-        440
+        420,
+        280
       ],
       "notes": "Source: nodes/config.js"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.configValid }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        }
-      },
-      "id": "config-valid-sbc-v1",
-      "name": "Config Valid?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        900,
-        440
-      ]
-    },
-    {
-      "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst secret = $env.N8N_SBC_PRICING_READ_SECRET;\n\nif (!secret) {\n    return [\n        {\n            json: {\n                ...item,\n                pricingReadSigned: false,\n                failureReason:\n                    'N8N_SBC_PRICING_READ_SECRET is not configured on the n8n host',\n            },\n        },\n    ];\n}\n\nconst crypto = require('crypto');\nconst timestamp = String(Math.floor(Date.now() / 1000));\nconst canonical = `${timestamp}\\nGET\\n${item.settings.pricingPath}\\n`;\nconst signature = crypto\n    .createHmac('sha256', secret)\n    .update(canonical)\n    .digest('hex');\n\nreturn [{ json: { ...item, pricingReadSigned: true, timestamp, signature } }];\n"
+        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst secret = $env.N8N_SBC_PRICING_READ_SECRET;\n\nif (!secret) {\n    throw new Error(\n        '[config] N8N_SBC_PRICING_READ_SECRET is not configured on the n8n host',\n    );\n}\n\nconst crypto = require('crypto');\nconst timestamp = String(Math.floor(Date.now() / 1000));\nconst canonical = `${timestamp}\\nGET\\n${item.settings.pricingPath}\\n`;\nconst signature = crypto\n    .createHmac('sha256', secret)\n    .update(canonical)\n    .digest('hex');\n\nreturn [{ json: { ...item, timestamp, signature } }];\n"
       },
       "id": "sign-pricing-read-sbc-v1",
       "name": "Sign Pricing Read",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1140,
-        360
+        660,
+        280
       ],
       "notes": "Source: nodes/sign-pricing-read.js"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.pricingReadSigned }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        }
-      },
-      "id": "pricing-read-signed-sbc-v1",
-      "name": "Pricing Read Signed?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        900,
-        360
-      ]
     },
     {
       "parameters": {
@@ -217,11 +101,11 @@
             },
             {
               "name": "X-ArabUT-Timestamp",
-              "value": "={{ $(\"Sign Pricing Read\").first().json.timestamp }}"
+              "value": "={{ $json.timestamp }}"
             },
             {
               "name": "X-ArabUT-Signature",
-              "value": "={{ $(\"Sign Pricing Read\").first().json.signature }}"
+              "value": "={{ $json.signature }}"
             }
           ]
         },
@@ -232,7 +116,8 @@
               "neverError": true,
               "responseFormat": "json"
             }
-          }
+          },
+          "timeout": 15000
         }
       },
       "id": "read-coins-bases-sbc-v1",
@@ -240,9 +125,12 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        1140,
+        900,
         280
       ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
       "credentials": {
         "httpCustomAuth": {
           "id": "CONFIGURE_ARABUT_SBC_PRICING_READ_CREDENTIAL_ID",
@@ -254,46 +142,60 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst response = $input.first().json;\nconst statusCode = Number(response.statusCode || 200);\nlet body = response.body ?? response;\n\nif (typeof body === 'string') {\n    try {\n        body = JSON.parse(body);\n    } catch {}\n}\n\nfunction failure(reason) {\n    return [{ json: { valid: false, failureReason: reason } }];\n}\n\nif (\n    response.error ||\n    response.errorMessage ||\n    statusCode !== 200 ||\n    !body ||\n    typeof body !== 'object' ||\n    Array.isArray(body)\n) {\n    return failure(`Laravel SBC pricing read failed with HTTP ${statusCode}`);\n}\n\nif (\n    JSON.stringify(Object.keys(body)) !==\n    JSON.stringify(['schemaVersion', 'pricingVersion', 'pricedAt', 'quotes'])\n) {\n    return failure('SBC pricing response has an unexpected top-level shape');\n}\n\nif (\n    body.schemaVersion !== 1 ||\n    !Number.isInteger(body.pricingVersion) ||\n    body.pricingVersion < 1 ||\n    typeof body.pricedAt !== 'string'\n) {\n    return failure('SBC pricing response metadata is invalid');\n}\n\nif (\n    !body.quotes ||\n    JSON.stringify(Object.keys(body.quotes)) !==\n        JSON.stringify(['playstation_fast', 'pc'])\n) {\n    return failure(\n        'SBC pricing response must contain exactly the PlayStation fast and PC quotes',\n    );\n}\n\nconst expected = {\n    playstation_fast: { platform: 'playstation', delivery: 'fast' },\n    pc: { platform: 'pc', delivery: null },\n};\n\nfor (const [key, identity] of Object.entries(expected)) {\n    const quote = body.quotes[key];\n    if (\n        !quote ||\n        JSON.stringify(Object.keys(quote)) !==\n            JSON.stringify(['platform', 'delivery', 'quantity', 'totalHalalah'])\n    ) {\n        return failure(`${key} quote has an unexpected shape`);\n    }\n    if (\n        quote.platform !== identity.platform ||\n        quote.delivery !== identity.delivery ||\n        quote.quantity !== 1_000_000\n    ) {\n        return failure(`${key} is not the authoritative one-million quote`);\n    }\n    if (!Number.isInteger(quote.totalHalalah) || quote.totalHalalah <= 0) {\n        return failure(`${key} totalHalalah is invalid`);\n    }\n}\n\nreturn [{ json: { valid: true, failureReason: null, pricing: body } }];\n"
+        "jsCode": "/* eslint-disable */\nconst response = $input.first().json;\nconst statusCode = Number(response.statusCode || 200);\n\n// n8n does not always hand back parsed JSON -- depending on the response\n// headers it returns the body as a Buffer, which arrives here as\n// { type: 'Buffer', data: [ ... ] }. That is an object, so a `typeof === string`\n// check silently skips it and every field read below comes back undefined.\nfunction bytesToString(bytes) {\n    let out = '';\n    for (let index = 0; index < bytes.length; index += 8192) {\n        out += String.fromCharCode.apply(\n            null,\n            bytes.slice(index, index + 8192),\n        );\n    }\n    try {\n        return decodeURIComponent(escape(out));\n    } catch {\n        return out;\n    }\n}\n\nfunction decodeHttpBody(raw) {\n    if (raw == null) return raw;\n    if (typeof raw === 'object' && !Array.isArray(raw)) {\n        // The `type === 'Buffer'` tag is required: an ordinary { data: [...] }\n        // response must not be mistaken for bytes.\n        if (raw.type === 'Buffer' && Array.isArray(raw.data)) {\n            return decodeHttpBody(bytesToString(raw.data));\n        }\n        if (\n            raw.constructor?.name === 'Buffer' &&\n            typeof raw.toString === 'function'\n        ) {\n            return decodeHttpBody(raw.toString('utf8'));\n        }\n    }\n    if (typeof raw === 'string') {\n        const trimmed = raw.trim();\n        if (!trimmed) return raw;\n        try {\n            return JSON.parse(trimmed);\n        } catch {\n            return raw;\n        }\n    }\n    return raw;\n}\n\nconst body = decodeHttpBody(response.body ?? response);\n\nfunction reject(reason) {\n    throw new Error(`[pricing_read] ${reason}`);\n}\n\n// Order-insensitive: an object with the expected keys in any order is fine.\nfunction exactKeys(value, expected) {\n    if (!value || typeof value !== 'object' || Array.isArray(value))\n        return false;\n    const actual = Object.keys(value).sort();\n    return JSON.stringify(actual) === JSON.stringify([...expected].sort());\n}\n\nif (\n    response.error ||\n    response.errorMessage ||\n    statusCode !== 200 ||\n    !body ||\n    typeof body !== 'object' ||\n    Array.isArray(body)\n) {\n    reject(`Laravel pricing read failed with HTTP ${statusCode}`);\n}\n\nif (\n    !exactKeys(body, ['schemaVersion', 'pricingVersion', 'pricedAt', 'quotes'])\n) {\n    reject(\n        `Pricing response shape is unexpected; keys: ${Object.keys(body).join(', ')}`,\n    );\n}\n\nif (\n    body.schemaVersion !== 1 ||\n    !Number.isInteger(body.pricingVersion) ||\n    body.pricingVersion < 1 ||\n    typeof body.pricedAt !== 'string'\n) {\n    reject('Pricing response metadata is invalid');\n}\n\nconst pricedAtMs = Date.parse(body.pricedAt);\nconst nowMs = Date.now();\nif (!Number.isFinite(pricedAtMs)) reject('pricedAt is not a valid timestamp');\nif (nowMs - pricedAtMs > 15 * 60 * 1000) {\n    reject('Authoritative pricing is older than 15 minutes');\n}\nif (pricedAtMs - nowMs > 5 * 60 * 1000) {\n    reject('Authoritative pricing timestamp is too far in the future');\n}\n\nconst globalData = $getWorkflowStaticData('global');\nconst previousPricingVersion = globalData.sbcCatalog?.lastPricingVersion;\nif (\n    Number.isInteger(previousPricingVersion) &&\n    body.pricingVersion < previousPricingVersion\n) {\n    reject(\n        `Pricing version rollback detected (${body.pricingVersion} < ${previousPricingVersion})`,\n    );\n}\n\nif (!exactKeys(body.quotes, ['playstation_fast', 'pc'])) {\n    reject(\n        'Pricing response must contain exactly the PlayStation fast and PC quotes',\n    );\n}\n\nconst expected = {\n    playstation_fast: { platform: 'playstation', delivery: 'fast' },\n    pc: { platform: 'pc', delivery: null },\n};\n\nfor (const [key, identity] of Object.entries(expected)) {\n    const quote = body.quotes[key];\n    if (\n        !exactKeys(quote, ['platform', 'delivery', 'quantity', 'totalHalalah'])\n    ) {\n        reject(`${key} quote has an unexpected shape`);\n    }\n    if (\n        quote.platform !== identity.platform ||\n        quote.delivery !== identity.delivery ||\n        quote.quantity !== 1_000_000\n    ) {\n        reject(`${key} is not the authoritative one-million quote`);\n    }\n    if (!Number.isInteger(quote.totalHalalah) || quote.totalHalalah <= 0) {\n        reject(`${key} totalHalalah is invalid`);\n    }\n}\n\nreturn [\n    {\n        json: {\n            pricing: body,\n            pricingAgeSeconds: Math.max(\n                0,\n                Math.round((nowMs - pricedAtMs) / 1000),\n            ),\n        },\n    },\n];\n"
       },
       "id": "evaluate-pricing-read-sbc-v1",
       "name": "Evaluate Pricing Read",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1380,
+        1140,
         280
       ],
       "notes": "Source: nodes/evaluate-pricing-read.js"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
+        "method": "POST",
+        "url": "https://futtransfer.top/availableSBCsAPI",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
             {
-              "leftValue": "={{ $json.valid }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
+              "name": "apiUser",
+              "value": "={{ $env.FFT_API_USER }}"
+            },
+            {
+              "name": "apiKey",
+              "value": "={{ $env.FFT_API_KEY }}"
             }
-          ],
-          "combinator": "and"
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
         }
       },
-      "id": "pricing-ready-sbc-v1",
-      "name": "Pricing Ready?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
+      "id": "fetch-fft-sbcs-sbc-v1",
+      "name": "Fetch FFT SBCs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
       "position": [
-        1620,
+        1380,
         280
-      ]
+      ],
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "onError": "continueRegularOutput",
+      "notes": "Credentials come from the FFT_API_USER / FFT_API_KEY environment variables. Config fails the run at the first node if either is unset. Never inline the key here: workflow exports get committed."
     },
     {
       "parameters": {
@@ -308,17 +210,19 @@
             },
             {
               "name": "User-Agent",
-              "value": "ArabUT-SBC-Catalog/1.0"
+              "value": "ArabUT-SBC-Catalog/4.0"
             }
           ]
         },
         "options": {
           "response": {
             "response": {
+              "fullResponse": true,
               "neverError": true,
               "responseFormat": "json"
             }
-          }
+          },
+          "timeout": 20000
         }
       },
       "id": "fetch-easysbc-sets-v1",
@@ -326,311 +230,183 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        1860,
-        200
+        1620,
+        280
       ],
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst config = $('Config').first().json;\n\nfunction result(fields) {\n    return [{ json: { ...config, ...fields } }];\n}\n\nfunction fail(reason, records = []) {\n    return result({\n        translationPlanValid: false,\n        translationReady: false,\n        failureReason: reason,\n        sourceRecords: records,\n        missingTranslations: [],\n        prompt: null,\n    });\n}\n\nlet records = $input.all().map((item) => item.json);\nif (records.length === 1 && Array.isArray(records[0]?.body))\n    records = records[0].body;\nif (records.length === 1 && Array.isArray(records[0]?.data))\n    records = records[0].data;\n\nconst settings = config.settings;\nif (records.length < settings.sourceMinCount) {\n    return fail(\n        `EasySBC source is below the minimum complete record count of ${settings.sourceMinCount}`,\n        records,\n    );\n}\nif (records.length >= settings.sourceLimit) {\n    return fail(\n        `EasySBC pagination is ambiguous at the configured limit of ${settings.sourceLimit}`,\n        records,\n    );\n}\n\nconst allowedCategories = new Set([1, 2, 3, 4, 5, 6]);\nconst allowedModes = new Set(['NON_REPEATABLE', 'UNLIMITED', 'REFRESH']);\nconst ids = new Set();\nfor (let index = 0; index < records.length; index += 1) {\n    const record = records[index];\n    const label = `EasySBC record ${index}`;\n    if (!record || typeof record !== 'object' || Array.isArray(record))\n        return fail(`${label} is not an object`, records);\n    if (!Number.isInteger(record.id) || record.id <= 0)\n        return fail(`${label} id is invalid`, records);\n    if (ids.has(record.id))\n        return fail(\n            `EasySBC source contains duplicate id ${record.id}`,\n            records,\n        );\n    ids.add(record.id);\n    if (\n        typeof record.name !== 'string' ||\n        !record.name.trim() ||\n        record.name.length > 220\n    )\n        return fail(`${label} name is invalid`, records);\n    if (!allowedCategories.has(record.categoryId))\n        return fail(`${label} categoryId is invalid`, records);\n    if (!Number.isInteger(record.sbcsCount) || record.sbcsCount <= 0)\n        return fail(`${label} sbcsCount is invalid`, records);\n    if (typeof record.repeatable !== 'boolean')\n        return fail(`${label} repeatable is invalid`, records);\n    if (!allowedModes.has(record.repeatabilityMode))\n        return fail(`${label} repeatabilityMode is invalid`, records);\n    if (!Number.isInteger(record.endTime) || record.endTime <= 0)\n        return fail(`${label} endTime is invalid`, records);\n    if (typeof record.active !== 'boolean')\n        return fail(`${label} active is invalid`, records);\n    if (!Number.isFinite(Number(record.psPrice)) || Number(record.psPrice) <= 0)\n        return fail(`${label} psPrice is invalid`, records);\n    if (!Number.isFinite(Number(record.pcPrice)) || Number(record.pcPrice) <= 0)\n        return fail(`${label} pcPrice is invalid`, records);\n}\n\nconst now = Math.floor(new Date(config.generatedAt).getTime() / 1000);\nconst eligible = records.filter((record) => {\n    if (!record.active) return false;\n    if (record.endTime <= now + settings.minimumExpiryLeadSeconds) return false;\n    if (/\\b(?:bronze|silver)\\b/i.test(record.name)) return false;\n    if (Number(record.psPrice) < 1500) return false;\n    if (!record.repeatable && Number(record.psPrice) < 20_000) return false;\n    return Number(record.pcPrice) > 0;\n});\nif (eligible.length === 0)\n    return fail('EasySBC source produced no eligible challenges', records);\n\nconst globalData = $getWorkflowStaticData('global');\nconst cache = globalData.sbcCatalogV1?.translations ?? {};\nconst missingTranslations = [];\n\nfor (const record of eligible) {\n    const sourceName = record.name.trim();\n    const key = `${record.id}\\u0000${sourceName}`;\n    const cached = cache[key];\n    if (!cached) {\n        missingTranslations.push({ id: String(record.id), sourceName });\n        continue;\n    }\n    if (cached.sourceName !== sourceName) {\n        return fail(\n            `Cached translation source name mismatch for EasySBC id ${record.id}`,\n            records,\n        );\n    }\n    if (\n        typeof cached.nameAr !== 'string' ||\n        cached.nameAr.length < 2 ||\n        cached.nameAr.length > 120 ||\n        !/[\\u0600-\\u06ff]/.test(cached.nameAr) ||\n        /[A-Za-z]/.test(cached.nameAr)\n    ) {\n        return fail(\n            `Cached translation for EasySBC id ${record.id} must be Arabic-only and at most 120 characters`,\n            records,\n        );\n    }\n}\n\nconst prompt = missingTranslations.length\n    ? [\n          'Translate these exact EA FC Squad Building Challenge names into concise natural Gulf gaming Arabic.',\n          'Preserve meaning and transliterate player names. Translate pack, pick, upgrade, token, icon, hero, and evolution terms.',\n          'Arabic script and digits only: no Latin letters, no generic prefix, no commentary.',\n          'Keep every id and sourceName byte-for-byte exact. Do not add, remove, or reorder entries.',\n          'Return only a JSON array with exactly these keys: id, sourceName, nameAr.',\n          `INPUT:${JSON.stringify(missingTranslations)}`,\n      ].join('\\n')\n    : null;\n\nreturn result({\n    translationPlanValid: true,\n    translationReady: missingTranslations.length === 0,\n    failureReason: null,\n    sourceRecords: records,\n    missingTranslations,\n    prompt,\n});\n"
+        "jsCode": "/* eslint-disable */\n// FFT is authoritative for availability and current console/PC coin requirements.\n// EasySBC supplies metadata, repeatability, image, category, and a cross-source\n// identity check.\n//\n// Tolerance policy: both providers are third parties that routinely serve a few\n// partial rows. Every per-record problem is SKIPPED and counted; the run only\n// fails when a ratio shows the feed itself is broken. v3 threw on the first\n// invalid EasySBC record, which is what took the catalog down.\n\nconst FFT_NODE = 'Fetch FFT SBCs';\nconst META_NODE = 'Fetch EasySBC Sets';\n\nconst config = $('Config').first().json;\nconst limits = config.settings.source;\n\nfunction fail(reason) {\n    throw new Error(`[merge_sources] ${reason}`);\n}\n\nfunction finiteNumber(value) {\n    if (value && typeof value === 'object') {\n        for (const key of ['amount', 'value', 'price']) {\n            if (value[key] !== undefined) return finiteNumber(value[key]);\n        }\n        return null;\n    }\n    // null / '' / false must not read as 0 here: a missing price has to be\n    // rejected, not silently priced at zero.\n    if (value == null || value === '' || typeof value === 'boolean')\n        return null;\n    // Providers occasionally send thousands separators or padded strings.\n    const normalized =\n        typeof value === 'string' ? value.replace(/[\\s,_]/g, '') : value;\n    const number = Number(normalized);\n    return Number.isFinite(number) ? number : null;\n}\n\nfunction timestampSeconds(value) {\n    const numeric = finiteNumber(value);\n    if (numeric && numeric > 0) {\n        return numeric > 10000000000\n            ? Math.floor(numeric / 1000)\n            : Math.floor(numeric);\n    }\n    if (typeof value === 'string' && value.trim()) {\n        const parsed = Date.parse(value);\n        if (Number.isFinite(parsed)) return Math.floor(parsed / 1000);\n    }\n    return null;\n}\n\nfunction normalizeName(value) {\n    return String(value ?? '')\n        .normalize('NFKD')\n        .replace(/[\\u0300-\\u036f]/g, '')\n        .toLowerCase()\n        .replace(/[^a-z0-9]+/g, ' ')\n        .trim();\n}\n\n// Both providers key the same SBC by the same integer. Resolve to one canonical\n// string so \"007\" and 7 join. v3 used a different key precedence per source, so\n// a row carrying both an auxiliary `id` and a `setID` resolved to a different\n// identity on each side and silently failed to join.\nconst ID_KEYS = ['setID', 'setId', 'id'];\n\nfunction canonicalId(record) {\n    for (const key of ID_KEYS) {\n        const raw = record[key];\n        if (raw == null) continue;\n        const text = String(raw).trim();\n        if (!text) continue;\n        const numeric = Number(text);\n        return Number.isSafeInteger(numeric) && numeric > 0\n            ? String(numeric)\n            : text;\n    }\n    return '';\n}\n\n// n8n sometimes returns an HTTP body as a Buffer rather than parsed JSON, which\n// arrives as { type: 'Buffer', data: [ ... ] }. Left undecoded the harvester\n// would walk a byte array, find nothing, and report \"0 unique usable records\"\n// while the provider was in fact answering perfectly.\nfunction bytesToString(bytes) {\n    let out = '';\n    for (let index = 0; index < bytes.length; index += 8192) {\n        out += String.fromCharCode.apply(\n            null,\n            bytes.slice(index, index + 8192),\n        );\n    }\n    try {\n        return decodeURIComponent(escape(out));\n    } catch {\n        return out;\n    }\n}\n\nfunction parseJsonString(value) {\n    // The `type === 'Buffer'` tag is required: an ordinary { data: [...] }\n    // provider response must not be mistaken for bytes.\n    if (\n        value &&\n        typeof value === 'object' &&\n        !Array.isArray(value) &&\n        value.type === 'Buffer' &&\n        Array.isArray(value.data)\n    ) {\n        return parseJsonString(bytesToString(value.data));\n    }\n    if (typeof value !== 'string') return value;\n    const trimmed = value.trim();\n    if (!trimmed || !['[', '{'].includes(trimmed[0])) return value;\n    try {\n        return JSON.parse(trimmed);\n    } catch {\n        return value;\n    }\n}\n\n// Harvesting is deliberately STRUCTURAL: an id plus a price key present. It is\n// not the place to judge whether the prices are good -- that happens below, so\n// that a bad row is counted in the invalid ratio instead of vanishing before\n// anyone can see it.\n//\n// The v3 bug here was not the loose test, it was that a match STOPPED the\n// recursion (see collectMatchingRecords): a page envelope such as\n// { id: 'page-3', pcPrice: null, sets: [...] } was harvested as one bogus\n// record and its real children were never collected at all.\nfunction isMatchingRecord(value, priceKeys) {\n    if (!value || typeof value !== 'object' || Array.isArray(value))\n        return false;\n    if (!canonicalId(value)) return false;\n    return priceKeys.some((key) => value[key] !== undefined);\n}\n\nfunction hasNestedContainer(value) {\n    return Object.values(value).some(\n        (child) => child && typeof child === 'object',\n    );\n}\n\nfunction collectMatchingRecords(value, priceKeys, output, seen, depth) {\n    if (depth > 8) return output;\n    const parsed = parseJsonString(value);\n\n    if (Array.isArray(parsed)) {\n        for (const child of parsed) {\n            collectMatchingRecords(child, priceKeys, output, seen, depth + 1);\n        }\n        return output;\n    }\n    if (!parsed || typeof parsed !== 'object') return output;\n\n    const matches = isMatchingRecord(parsed, priceKeys);\n    if (matches && !seen.has(parsed)) {\n        seen.add(parsed);\n        output.push(parsed);\n    }\n\n    // Keep descending even after a match unless this really is a leaf record, so\n    // an envelope that happens to look like a record cannot swallow its children.\n    if (!matches || hasNestedContainer(parsed)) {\n        for (const child of Object.values(parsed)) {\n            if (child && typeof child === 'object') {\n                collectMatchingRecords(\n                    child,\n                    priceKeys,\n                    output,\n                    seen,\n                    depth + 1,\n                );\n            }\n        }\n    }\n    return output;\n}\n\nfunction recordsFromNode(nodeName, priceKeys) {\n    const nodeItems = $(nodeName).all();\n    const records = [];\n    const seen = new Set();\n    for (const item of nodeItems) {\n        collectMatchingRecords(item.json, priceKeys, records, seen, 0);\n    }\n    return { records, nodeItems };\n}\n\nfunction firstItemShape(nodeItems) {\n    const firstJson = nodeItems[0]?.json;\n    if (Array.isArray(firstJson)) return '(root array)';\n    if (firstJson && typeof firstJson === 'object') {\n        return Object.keys(firstJson).slice(0, 20).join(', ') || '(no keys)';\n    }\n    return String(typeof firstJson);\n}\n\n// Both fetches run with neverError + fullResponse so a bad status reaches here\n// as data instead of killing the node with n8n's own message. Check it FIRST:\n// without this a provider 500 surfaces further down as \"0 unique usable\n// records\", which points the on-call at the wrong system entirely.\nfunction assertHttpOk(nodeName) {\n    for (const item of $(nodeName).all()) {\n        const json = item.json ?? {};\n        if (json.statusCode === undefined) continue;\n        const status = Number(json.statusCode);\n        if (!Number.isFinite(status) || status < 200 || status >= 300) {\n            const body =\n                typeof json.body === 'string'\n                    ? json.body.slice(0, 200)\n                    : JSON.stringify(json.body ?? null).slice(0, 200);\n            fail(\n                `${nodeName} returned HTTP ${json.statusCode}; body starts: ${body}`,\n            );\n        }\n    }\n}\n\nassertHttpOk(FFT_NODE);\nassertHttpOk(META_NODE);\n\nconst fftSource = recordsFromNode(FFT_NODE, ['consolePrice', 'pcPrice']);\nconst metadataSource = recordsFromNode(META_NODE, ['psPrice', 'pcPrice']);\n\n/* --------------------------------------------------------------- FFT side */\n\nconst fftById = new Map();\nconst fftInvalidIds = [];\nconst fftDuplicateIds = [];\n\nfor (const record of fftSource.records) {\n    const id = canonicalId(record);\n    const consolePrice = finiteNumber(record.consolePrice ?? record.psPrice);\n    const pcPrice = finiteNumber(record.pcPrice);\n    const challengeAmount = finiteNumber(\n        record.challengeAmount ?? record.sbcsCount ?? record.challengeCount,\n    );\n\n    if (\n        !id ||\n        !(consolePrice > 0) ||\n        !(pcPrice > 0) ||\n        !(challengeAmount > 0)\n    ) {\n        fftInvalidIds.push(id || '(no id)');\n        continue;\n    }\n    if (fftById.has(id)) {\n        fftDuplicateIds.push(id);\n        continue;\n    }\n    fftById.set(id, record);\n}\n\nif (fftById.size < limits.minUniqueFftRecords) {\n    fail(\n        `FFT produced ${fftById.size} unique usable records from ${fftSource.records.length} parsed and ${fftSource.nodeItems.length} n8n item(s); minimum is ${limits.minUniqueFftRecords}; first-item shape: ${firstItemShape(fftSource.nodeItems)}`,\n    );\n}\n\nconst fftInvalidRatio =\n    fftInvalidIds.length / Math.max(1, fftSource.records.length);\nif (fftInvalidRatio > limits.maxInvalidFftRatio) {\n    fail(\n        `${(fftInvalidRatio * 100).toFixed(1)}% of parsed FFT records are invalid (max ${(limits.maxInvalidFftRatio * 100).toFixed(0)}%); sample ids: ${fftInvalidIds.slice(0, 10).join(', ')}`,\n    );\n}\n\n// Duplicate FFT ids resolve first-wins, which is arbitrary for the price\n// AUTHORITY. v3 counted them and then never looked at the number. A handful is\n// provider noise; a lot means the feed is repeating pages and whichever copy\n// arrived first is setting prices.\nconst fftDuplicateRatio =\n    fftDuplicateIds.length / Math.max(1, fftSource.records.length);\nif (fftDuplicateRatio > limits.maxInvalidFftRatio) {\n    fail(\n        `${(fftDuplicateRatio * 100).toFixed(1)}% of parsed FFT records are duplicate ids (max ${(limits.maxInvalidFftRatio * 100).toFixed(0)}%); sample ids: ${fftDuplicateIds.slice(0, 10).join(', ')}`,\n    );\n}\n\n/* ----------------------------------------------------------- EasySBC side */\n\nconst metadataById = new Map();\nconst metadataInvalidIds = [];\nconst metadataDuplicateIds = [];\n\n// EasySBC supplies IDENTITY AND METADATA. Its prices are not used for any SBC\n// that FFT lists -- those take consolePrice/pcPrice from FFT, which is the price\n// authority. EasySBC's own prices are read in exactly one place, the\n// `fft_missing` archive branch below, and that branch checks them itself.\n//\n// So requiring a price here was rejecting perfectly sellable products over a\n// field this node never reads for them. It cost the catalog two ~1M-coin player\n// SBCs (Marcelo, Rafael Leao) that carry psPrice but no pcPrice.\nfor (const record of metadataSource.records) {\n    const id = canonicalId(record);\n    const name = typeof record.name === 'string' ? record.name.trim() : '';\n\n    if (!id || !name) {\n        metadataInvalidIds.push(id || '(no id)');\n        continue;\n    }\n    if (metadataById.has(id)) {\n        metadataDuplicateIds.push(id);\n        continue;\n    }\n    metadataById.set(id, record);\n}\n\nif (metadataById.size < limits.minUniqueMetadataRecords) {\n    fail(\n        `EasySBC produced ${metadataById.size} unique usable metadata records from ${metadataSource.records.length} parsed; minimum is ${limits.minUniqueMetadataRecords}; first-item shape: ${firstItemShape(metadataSource.nodeItems)}`,\n    );\n}\n\n// Check the RAW parsed count, not the post-validation unique count. v3 tested\n// metadataById.size, so a provider returning a full page of 200 that included\n// one bad row read as 199 and the silent truncation went unnoticed.\nif (metadataSource.records.length >= limits.metadataLimit) {\n    fail(\n        `EasySBC returned ${metadataSource.records.length} records at the configured limit of ${limits.metadataLimit}; pagination is ambiguous`,\n    );\n}\n\n// THE v3.2.6 OUTAGE: this was `if (invalid > 0 || duplicate > 0) throw`.\n// Three cosmetic metadata rows stopped every price in the store. Invalid rows\n// are already quarantined above and can no longer reach the merge, so the only\n// thing worth failing on is a ratio that says the whole feed is broken.\nconst metadataInvalidRatio =\n    metadataInvalidIds.length / Math.max(1, metadataSource.records.length);\nif (metadataInvalidRatio > limits.maxInvalidMetadataRatio) {\n    fail(\n        `${(metadataInvalidRatio * 100).toFixed(1)}% of parsed EasySBC records are invalid (max ${(limits.maxInvalidMetadataRatio * 100).toFixed(0)}%); sample ids: ${metadataInvalidIds.slice(0, 10).join(', ')}`,\n    );\n}\n\n/* -------------------------------------------------------------- Merge */\n\nconst mergedRecords = [];\nconst identityMismatchIds = [];\nconst challengeMismatchIds = [];\nconst missingFftIds = [];\nconst missingFftUnusableIds = [];\nconst droppedNoChallengeIds = [];\nconst droppedNoPriceIds = [];\nconst droppedNoExpiryIds = [];\n\n// Distinguish \"the provider did not tell us\" from \"the provider said 1\". v3\n// coalesced both to 1 via Math.max(1, ...), so its cross-source squad check\n// silently passed on rows where neither side had supplied a count at all.\nfunction challengeCount(record, keys) {\n    for (const key of keys) {\n        const value = finiteNumber(record[key]);\n        if (value != null && value > 0) return Math.max(1, Math.round(value));\n    }\n    return null;\n}\n\nfor (const [id, meta] of metadataById) {\n    const fft = fftById.get(id);\n\n    if (!fft) {\n        const metaPsPrice = Math.round(finiteNumber(meta.psPrice) ?? 0);\n        const metaPcPrice = Math.round(finiteNumber(meta.pcPrice) ?? 0);\n        const metaChallenges = challengeCount(meta, [\n            'sbcsCount',\n            'challengeAmount',\n        ]);\n        const metaExpiry = timestampSeconds(meta.endTime ?? meta.expiry);\n\n        if (\n            metaPsPrice > 0 &&\n            metaPcPrice > 0 &&\n            metaChallenges &&\n            metaExpiry\n        ) {\n            // Keep the identity in the complete snapshot but mark it unavailable.\n            // Laravel archives it; a later trusted FFT return restores it.\n            mergedRecords.push({\n                ...meta,\n                id: Number.isSafeInteger(Number(id)) ? Number(id) : id,\n                name: String(meta.name ?? `SBC ${id}`).trim(),\n                psPrice: metaPsPrice,\n                pcPrice: metaPcPrice,\n                sbcsCount: metaChallenges,\n                challengeAmount: metaChallenges,\n                endTime: metaExpiry,\n                active: false,\n                source: 'fft_missing',\n                fftSetID: id,\n            });\n            missingFftIds.push(id);\n        } else {\n            // FFT does not list it AND its metadata is too thin to archive it\n            // properly. v3 counted this in missingFftIds too, mixing two different\n            // exclusions into one number.\n            missingFftUnusableIds.push(id);\n        }\n        continue;\n    }\n\n    const fftName = fft.sbcName ?? fft.name ?? fft.title;\n    const metaName = meta.name;\n    if (\n        !fftName ||\n        !metaName ||\n        normalizeName(fftName) !== normalizeName(metaName)\n    ) {\n        identityMismatchIds.push(id);\n        continue;\n    }\n\n    const fftChallenges = challengeCount(fft, [\n        'challengeAmount',\n        'sbcsCount',\n        'challengeCount',\n    ]);\n    const metaChallenges = challengeCount(meta, [\n        'sbcsCount',\n        'challengeAmount',\n    ]);\n    // Only a genuine disagreement counts; an absent count on one side is not\n    // evidence of drift.\n    if (fftChallenges && metaChallenges && fftChallenges !== metaChallenges) {\n        challengeMismatchIds.push(id);\n        continue;\n    }\n    const challenges = fftChallenges ?? metaChallenges;\n    if (!challenges) {\n        droppedNoChallengeIds.push(id);\n        continue;\n    }\n\n    const consolePrice = Math.round(\n        finiteNumber(fft.consolePrice ?? fft.psPrice) ?? 0,\n    );\n    const pcPrice = Math.round(finiteNumber(fft.pcPrice) ?? 0);\n    if (!(consolePrice > 0) || !(pcPrice > 0)) {\n        droppedNoPriceIds.push(id);\n        continue;\n    }\n\n    const fftExpiry = timestampSeconds(fft.expiry ?? fft.endTime);\n    const metaExpiry = timestampSeconds(meta.endTime ?? meta.expiry);\n    const expiries = [fftExpiry, metaExpiry].filter(\n        (value) => value && value > 0,\n    );\n    const endTime = expiries.length ? Math.min(...expiries) : null;\n    if (!endTime) {\n        droppedNoExpiryIds.push(id);\n        continue;\n    }\n\n    mergedRecords.push({\n        ...meta,\n        id: Number.isSafeInteger(Number(id)) ? Number(id) : id,\n        name: String(metaName).trim(),\n        psPrice: consolePrice,\n        pcPrice,\n        sbcsCount: challenges,\n        challengeAmount: challenges,\n        endTime,\n        // FFT is the availability authority. EasySBC's active flag is metadata only.\n        active: true,\n        source: 'fft',\n        fftSetID: id,\n    });\n}\n\n// Cross-provider drift is normal when the two fetches land either side of an EA\n// edit. v3 threw on a single mismatched id; those rows were already skipped, so\n// the throw bought no safety and cost a full outage.\nconst mismatchCount = identityMismatchIds.length + challengeMismatchIds.length;\nconst mismatchRatio = mismatchCount / Math.max(1, metadataById.size);\nif (mismatchRatio > limits.maxMismatchRatio) {\n    fail(\n        `${(mismatchRatio * 100).toFixed(1)}% of EasySBC ids disagree with FFT on name or squad count (max ${(limits.maxMismatchRatio * 100).toFixed(0)}%); name: ${identityMismatchIds.slice(0, 8).join(', ')}; squads: ${challengeMismatchIds.slice(0, 8).join(', ')}`,\n    );\n}\n\nconst exactMatches = mergedRecords.filter(\n    (record) => record.source === 'fft',\n).length;\nif (exactMatches < limits.minMatchedRecords) {\n    fail(\n        `Only ${exactMatches} exact FFT/EasySBC matches remained (minimum ${limits.minMatchedRecords}); dropped for mismatch: ${mismatchCount}, no squad count: ${droppedNoChallengeIds.length}, no price: ${droppedNoPriceIds.length}, no expiry: ${droppedNoExpiryIds.length}, FFT missing: ${missingFftIds.length}`,\n    );\n}\n\n// v3 and early v4 had ONE metric here -- exactMatches / all EasySBC metadata --\n// and used it to answer two unrelated questions at once. That conflation is why\n// a healthy feed read as 77.4% and failed an 85% gate.\n//\n// FFT is a coin-farming service. It structurally does not sell daily freebie\n// upgrades or OVR Token Swaps, because those are not bought with coins. EasySBC\n// lists them anyway. Their absence is the correct answer, not a fault, and the\n// count of them moves every time EA ships another token swap -- so it can never\n// be a stable denominator for a safety threshold.\n\n// 1) JOIN INTEGRITY -- the safety property. Of the SBCs BOTH providers describe,\n//    how many agree on name and squad count? This is the only thing verifying\n//    that FFT's setID 412 and EasySBC's id 412 are the same challenge. It should\n//    sit at ~100%; anything less means the id spaces are drifting apart and\n//    prices could attach to the wrong product.\nconst joinable =\n    exactMatches +\n    mismatchCount +\n    droppedNoChallengeIds.length +\n    droppedNoPriceIds.length +\n    droppedNoExpiryIds.length;\nconst joinIntegrity = exactMatches / Math.max(1, joinable);\nif (joinable > 0 && joinIntegrity < limits.minJoinIntegrity) {\n    fail(\n        `Only ${(joinIntegrity * 100).toFixed(1)}% of the ${joinable} SBCs listed by BOTH providers agree on name and squad count (minimum ${(limits.minJoinIntegrity * 100).toFixed(0)}%) -- the two id spaces may no longer refer to the same challenges; name mismatch: ${identityMismatchIds.length}, squad mismatch: ${challengeMismatchIds.length}, no squad count: ${droppedNoChallengeIds.length}, no price: ${droppedNoPriceIds.length}, no expiry: ${droppedNoExpiryIds.length}`,\n    );\n}\n\n// 2) FFT COVERAGE -- business reality, not integrity. What share of EasySBC's\n//    catalog does FFT sell at all? Normal is well under 100% and drifts with\n//    EA's content mix, so the floor here is deliberately loose: it exists to\n//    catch FFT's feed collapsing, not to police the overlap.\nconst fftCoverage = joinable / Math.max(1, metadataById.size);\nif (fftCoverage < limits.minFftCoverage) {\n    fail(\n        `FFT lists only ${(fftCoverage * 100).toFixed(1)}% of the ${metadataById.size} unique EasySBC SBCs (minimum ${(limits.minFftCoverage * 100).toFixed(0)}%); FFT missing: ${missingFftIds.length}. If the missing ones are freebies or token swaps this is normal, and the floor needs revisiting rather than the feed.`,\n    );\n}\n\n// Kept for the audit trail and for comparison against previous runs.\nconst matchRate = exactMatches / Math.max(1, metadataById.size);\n\nconst fftOnlyIds = [...fftById.keys()].filter((id) => !metadataById.has(id));\n\nreturn [\n    {\n        json: {\n            body: mergedRecords,\n            // Every counter below is now reported honestly. v3 hardcoded the mismatch\n            // fields to 0, which was only \"true\" because the sole way past that point\n            // was for them to be 0.\n            sourceAudit: {\n                authority: 'fft',\n                metadata: 'easysbc',\n                fftN8nItems: fftSource.nodeItems.length,\n                fftParsed: fftSource.records.length,\n                fftUniqueUsable: fftById.size,\n                fftInvalid: fftInvalidIds.length,\n                fftDuplicates: fftDuplicateIds.length,\n                fftOnlyCount: fftOnlyIds.length,\n                // NOT truncated: Build & Price Snapshot uses this list to tell a real\n                // departure from an SBC that FFT still sells but EasySBC stopped\n                // describing. A truncated list would silently archive live products.\n                fftOnlyIds,\n                metadataParsed: metadataSource.records.length,\n                metadataUniqueUsable: metadataById.size,\n                metadataInvalid: metadataInvalidIds.length,\n                metadataInvalidIds: metadataInvalidIds.slice(0, 50),\n                metadataDuplicates: metadataDuplicateIds.length,\n                sourceRecords: mergedRecords.length,\n                exactMatches,\n                identityMismatches: identityMismatchIds.length,\n                identityMismatchIds: identityMismatchIds.slice(0, 50),\n                challengeMismatches: challengeMismatchIds.length,\n                challengeMismatchIds: challengeMismatchIds.slice(0, 50),\n                droppedNoChallenge: droppedNoChallengeIds.length,\n                droppedNoPrice: droppedNoPriceIds.length,\n                droppedNoExpiry: droppedNoExpiryIds.length,\n                missingFftCount: missingFftIds.length,\n                missingFftIds: missingFftIds.slice(0, 50),\n                missingFftUnusableCount: missingFftUnusableIds.length,\n                missingFftUnusableIds: missingFftUnusableIds.slice(0, 50),\n                matchRate,\n                matchRateBps: Math.round(matchRate * 10000),\n                joinable,\n                joinIntegrity,\n                joinIntegrityBps: Math.round(joinIntegrity * 10000),\n                fftCoverage,\n                fftCoverageBps: Math.round(fftCoverage * 10000),\n            },\n        },\n    },\n];\n"
       },
-      "id": "prepare-translations-sbc-v1",
-      "name": "Prepare Translations",
+      "id": "merge-sources-sbc-v1",
+      "name": "Merge Provider Sources",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1860,
+        280
+      ],
+      "notes": "Source: nodes/merge-sources.js"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// Decides which SBC names still need an Arabic title from the LLM.\n//\n// v3 re-ran the whole source-record validation loop here, a near-copy of the\n// one in Prepare SBC Snapshot -- and the two copies had already drifted (this\n// one tested record.repeatable, the other tested isRepeatableBundle()). Record\n// validation now happens once, in Build & Price Snapshot.\n//\n// The filter below is deliberately a SUPERSET of that node's eligibility rule:\n// active and not already inside the expiry lead. Anything the snapshot will\n// actually publish is contained in it, so a rule change over there can never\n// leave a product without a translation. Over-translating a handful of names is\n// cheap and the results are cached.\n\nconst config = $('Config').first().json;\nconst settings = config.settings;\n\nconst MAX_NAME_LENGTH = 40;\nconst TRANSLATION_SCHEMA_VERSION = 4;\nconst BIDI_CONTROL_PATTERN = /[\\u2066\\u2067\\u2068\\u2069]/g;\n\nfunction stripBidiControls(value) {\n    return String(value ?? '').replace(BIDI_CONTROL_PATTERN, '');\n}\n\nfunction toEnglishDigits(value) {\n    return String(value ?? '')\n        .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660))\n        .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 0x06f0));\n}\n\nfunction normalizeCachedName(value) {\n    return toEnglishDigits(stripBidiControls(value))\n        .replace(/\\bUpgrade\\b/gi, 'ترقية')\n        .replace(/(\\d{2,3})\\s*\\+/g, '+$1')\n        .replace(/\\s+/g, ' ')\n        .trim();\n}\n\nlet records = $input.all().map((item) => item.json);\nif (records.length === 1 && Array.isArray(records[0]?.body)) {\n    records = records[0].body;\n}\n\nif (records.length < settings.sourceMinCount) {\n    throw new Error(\n        `[translations] merged source holds ${records.length} records; minimum is ${settings.sourceMinCount}`,\n    );\n}\n\n// Same clock guard as Build & Price Snapshot. Without it an unparseable\n// generatedAt makes `now` NaN, every `endTime > NaN` comparison is false, and\n// this node reports \"no translatable challenges\" -- which sends whoever is on\n// call looking at the providers instead of at the clock.\nconst generatedAtMs = Date.parse(config.generatedAt);\nif (!Number.isFinite(generatedAtMs)) {\n    throw new Error(\n        `[translations] config.generatedAt is not a parseable timestamp: ${JSON.stringify(config.generatedAt)}`,\n    );\n}\nif (\n    !Number.isInteger(settings.minimumExpiryLeadSeconds) ||\n    settings.minimumExpiryLeadSeconds < 0\n) {\n    throw new Error(\n        `[translations] settings.minimumExpiryLeadSeconds must be a non-negative integer; got ${JSON.stringify(settings.minimumExpiryLeadSeconds)}`,\n    );\n}\n\nconst now = Math.floor(generatedAtMs / 1000);\nconst candidates = records.filter(\n    (record) =>\n        record &&\n        record.active === true &&\n        Number.isInteger(record.endTime) &&\n        record.endTime > now + settings.minimumExpiryLeadSeconds &&\n        typeof record.name === 'string' &&\n        record.name.trim(),\n);\n\nif (candidates.length === 0) {\n    throw new Error(\n        '[translations] merged source produced no translatable challenges',\n    );\n}\n\nconst globalData = $getWorkflowStaticData('global');\nconst cache = globalData.sbcCatalog?.translations ?? {};\nconst missingTranslations = [];\n\nfor (const record of candidates) {\n    const sourceName = record.name.trim();\n    const key = `${record.id}\\u0000${sourceName}`;\n    const cached = cache[key];\n\n    if (!cached || cached.sourceName !== sourceName) {\n        missingTranslations.push({ id: String(record.id), sourceName });\n        continue;\n    }\n\n    const normalized = normalizeCachedName(cached.nameAr);\n    const stale =\n        cached.schemaVersion !== TRANSLATION_SCHEMA_VERSION ||\n        typeof cached.nameAr !== 'string' ||\n        normalized.length < 2 ||\n        normalized.length > MAX_NAME_LENGTH ||\n        !/[\\u0600-\\u06ff]/.test(normalized);\n\n    if (stale) missingTranslations.push({ id: String(record.id), sourceName });\n}\n\nconst prompt = missingTranslations.length\n    ? [\n          'Translate the following EA FC Squad Building Challenge names into short, clear and attractive Arabic storefront titles.',\n          'Use simple Gulf-leaning Arabic. Never use Egyptian slang.',\n          'Translate freely and naturally. Keep only the information a customer needs to identify the reward or challenge.',\n          'Maximum nameAr length is 40 visible characters INCLUDING spaces. Aim for 25-35 characters whenever possible.',\n          'English gaming abbreviations and terms are allowed when shorter or clearer, including SBC, FUTTIES, TOTW, FOF, GOTG, Icon and Hero.',\n          'Use ترقية for Upgrade. Never use أبجريد.',\n          'Keep all numbers as English digits 0-9. Never use Arabic-Indic or Persian digits.',\n          'Write ratings in the compact form +85, +87, +95 rather than 85+.',\n          'Prefer direct explanatory names instead of literal formulas.',\n          'Examples:',\n          '10x 85+ Upgrade -> ترقية 10 لاعبين +85',\n          '3x 87-90 Upgrade -> ترقية 3 لاعبين 87-90',\n          '1 of 3 87+ Player Pick -> اختيار 1 من 3 لاعبين +87',\n          '1 of 3 95+ FOF or FUTTIES T1-T3 Player Pick -> اختيار 1 من 3 +95 FOF/FUTTIES T1-3',\n          '94+ GOTG or FUTTIES Icon or Hero Player Pick -> اختيار +94 GOTG/FUTTIES Icon/Hero',\n          'Player names should normally be transliterated into Arabic.',\n          'Do not add a generic word such as تحدي unless it is necessary.',\n          'Keep every id and sourceName byte-for-byte exact. Do not add, remove, merge or reorder entries.',\n          'Return ONLY a valid JSON array. Every object must contain exactly: id, sourceName, nameAr.',\n          `INPUT:${JSON.stringify(missingTranslations)}`,\n      ].join('\\n')\n    : null;\n\nreturn [\n    {\n        json: {\n            ...config,\n            translationReady: missingTranslations.length === 0,\n            sourceRecords: records,\n            missingTranslations,\n            prompt,\n            translationSchemaVersion: TRANSLATION_SCHEMA_VERSION,\n            translationMaxVisibleLength: MAX_NAME_LENGTH,\n            sourceAudit:\n                $('Merge Provider Sources').first().json.sourceAudit ?? null,\n        },\n    },\n];\n"
+      },
+      "id": "plan-translations-sbc-v1",
+      "name": "Plan Translations",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         2100,
-        200
+        280
       ],
-      "notes": "Source: nodes/prepare-translations.js"
+      "notes": "Source: nodes/plan-translations.js"
     },
     {
       "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
-            "typeValidation": "strict"
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
           },
           "conditions": [
             {
-              "leftValue": "={{ $json.translationPlanValid }}",
-              "rightValue": true,
+              "id": "needs-translation",
+              "leftValue": "={{ $json.translationReady }}",
+              "rightValue": false,
               "operator": {
                 "type": "boolean",
-                "operation": "equals"
+                "operation": "false",
+                "singleValue": true
               }
             }
           ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
-      "id": "translation-plan-valid-sbc-v1",
-      "name": "Translation Plan Valid?",
+      "id": "needs-translation-sbc-v1",
+      "name": "Needs Translation?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
+      "typeVersion": 2.2,
       "position": [
         2340,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.translationReady }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        }
-      },
-      "id": "translation-ready-sbc-v1",
-      "name": "Translation Ready?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        2580,
-        200
-      ]
+        280
+      ],
+      "notes": "The only routing decision left in the workflow. Every other branch in v3 existed to reach the failure rail; those nodes now throw instead. True = names are missing, ask the model."
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $json.prompt }}"
+        "text": "={{ $json.prompt }}",
+        "options": {}
       },
       "id": "translate-sbc-names-v1",
       "name": "Translate SBC Names",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.5,
       "position": [
-        2820,
-        320
+        2580,
+        160
       ],
-      "onError": "continueRegularOutput"
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "options": {
-          "temperature": 0,
-          "maxOutputTokens": 8192
-        }
+        "model": {
+          "__rl": true,
+          "value": "openai/gpt-5.6-luna",
+          "mode": "list",
+          "cachedResultName": "openai/gpt-5.6-luna"
+        },
+        "builtInTools": {},
+        "options": {}
       },
-      "id": "gemini-translation-model-sbc-v1",
-      "name": "Gemini Translation Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "typeVersion": 1,
+      "id": "openai-translation-model-sbc-v1",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
       "position": [
-        2820,
-        520
+        2580,
+        360
       ],
       "credentials": {
-        "googlePalmApi": {
-          "id": "WgUWtkjmfC1iEIMi",
-          "name": "Google Gemini(PaLM) Api account 2"
+        "openAiApi": {
+          "id": "CONFIGURE_ARABUT_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAi account 2"
         }
       }
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst plan = $('Prepare Translations').first().json;\n\nfunction result(fields) {\n    return [{ json: { ...plan, ...fields } }];\n}\n\nfunction fail(reason) {\n    return result({\n        translationReady: false,\n        failureReason: reason,\n    });\n}\n\nfunction normalizeApprovedFcTerms(value) {\n    return value\n        .trim()\n        .replace(/\\bFUTTIES\\b/gi, '\\u0641\\u0648\\u062a\\u064a\\u0632')\n        .replace(\n            /\\bFOF\\b/gi,\n            '\\u0645\\u0647\\u0631\\u062c\\u0627\\u0646 \\u0643\\u0631\\u0629 \\u0627\\u0644\\u0642\\u062f\\u0645',\n        )\n        .replace(\n            /\\bGOTG\\b/gi,\n            '\\u0639\\u0638\\u0645\\u0627\\u0621 \\u0627\\u0644\\u0644\\u0639\\u0628\\u0629',\n        )\n        .replace(\n            /\\bTOTW\\b/gi,\n            '\\u0641\\u0631\\u064a\\u0642 \\u0627\\u0644\\u0623\\u0633\\u0628\\u0648\\u0639',\n        )\n        .replace(/\\bOVR\\b/gi, '\\u062a\\u0642\\u064a\\u064a\\u0645')\n        .replace(/\\bEVO\\b/gi, '')\n        .replace(\n            /\\bSBCs?\\b/gi,\n            '\\u062a\\u062d\\u062f\\u064a\\u0627\\u062a \\u0628\\u0646\\u0627\\u0621 \\u0627\\u0644\\u062a\\u0634\\u0643\\u064a\\u0644\\u0627\\u062a',\n        )\n        .replace(/(\\d+)\\s*x\\b/gi, '$1\\u00d7')\n        .replace(/\\s{2,}/g, ' ')\n        .trim();\n}\n\nif (!plan.translationPlanValid || !Array.isArray(plan.missingTranslations)) {\n    return fail(plan.failureReason || 'Translation plan is invalid');\n}\nif (plan.missingTranslations.length === 0) {\n    return result({ translationReady: true, failureReason: null });\n}\n\nconst response = $input.first().json;\nlet raw = response.text ?? response.output ?? response.response ?? response;\nif (typeof raw === 'object' && raw !== null) raw = JSON.stringify(raw);\nif (typeof raw !== 'string')\n    return fail('Gemini translation response is missing');\nraw = raw\n    .trim()\n    .replace(/^```(?:json)?\\s*/i, '')\n    .replace(/\\s*```$/, '');\n\nlet translated;\ntry {\n    translated = JSON.parse(raw);\n} catch {\n    return fail('Gemini translation response is not valid JSON');\n}\nif (!Array.isArray(translated))\n    return fail('Gemini translation response must be a JSON array');\nif (translated.length !== plan.missingTranslations.length) {\n    return fail(\n        `Gemini translation count ${translated.length} does not match requested count ${plan.missingTranslations.length}`,\n    );\n}\n\nconst expected = new Map(\n    plan.missingTranslations.map((pair) => [String(pair.id), pair.sourceName]),\n);\nconst staged = {};\nconst seen = new Set();\nfor (const entry of translated) {\n    if (!entry || typeof entry !== 'object' || Array.isArray(entry))\n        return fail('Gemini translation entry is invalid');\n    if (!Object.hasOwn(entry, 'id') || !Object.hasOwn(entry, 'sourceName'))\n        return fail(\n            'Gemini translation entry is missing exact identity fields',\n        );\n    const id = String(entry.id);\n    if (!expected.has(id))\n        return fail(`Gemini returned unexpected EasySBC id ${id}`);\n    if (seen.has(id)) return fail(`Gemini returned duplicate EasySBC id ${id}`);\n    seen.add(id);\n    if (entry.sourceName !== expected.get(id))\n        return fail(`Gemini source name mismatch for EasySBC id ${id}`);\n    const nameAr =\n        typeof entry.nameAr === 'string'\n            ? normalizeApprovedFcTerms(entry.nameAr)\n            : '';\n    if (\n        nameAr.length < 2 ||\n        nameAr.length > 120 ||\n        !/[\\u0600-\\u06ff]/.test(nameAr) ||\n        /[A-Za-z]/.test(nameAr)\n    ) {\n        return fail(\n            `Gemini translation for EasySBC id ${id} must be Arabic-only and at most 120 characters`,\n        );\n    }\n    const sourceName = expected.get(id);\n    staged[`${id}\\u0000${sourceName}`] = {\n        sourceName,\n        nameAr,\n    };\n}\nif (seen.size !== expected.size)\n    return fail('Gemini translation response is incomplete');\n\nconst globalData = $getWorkflowStaticData('global');\nconst state = globalData.sbcCatalogV1 ?? {};\nglobalData.sbcCatalogV1 = {\n    ...state,\n    translations: { ...(state.translations ?? {}), ...staged },\n};\n\nreturn result({\n    translationReady: true,\n    failureReason: null,\n    missingTranslations: [],\n});\n"
+        "jsCode": "/* eslint-disable */\n// The LLM is the one genuinely untrusted input in this workflow, so this gate\n// earns its keep. Everything it returns is checked against the exact plan that\n// was requested before any of it reaches the catalog.\n//\n// v3 had a subtler problem here: normalizeTranslatedName started with\n// `structured || value`, so whenever the English name matched one of the\n// titleFromStructuredSource patterns the LLM's answer was thrown away and a\n// template used instead. Most SBC names match those patterns, so the workflow\n// was paying for translations it discarded. The template is now a FALLBACK,\n// used only when the model's own answer fails validation.\n\nconst plan = $('Plan Translations').first().json;\n\nconst MAX_NAME_LENGTH = 40;\nconst TRANSLATION_SCHEMA_VERSION = 4;\nconst LRI = '\\u2066';\nconst PDI = '\\u2069';\nconst BIDI_CONTROL_PATTERN = /[\\u2066\\u2067\\u2068\\u2069]/g;\n\nfunction fail(reason) {\n    throw new Error(`[translations] ${reason}`);\n}\n\nfunction stripBidiControls(value) {\n    return String(value ?? '').replace(BIDI_CONTROL_PATTERN, '');\n}\n\nfunction toEnglishDigits(value) {\n    return String(value ?? '')\n        .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660))\n        .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 0x06f0));\n}\n\nfunction compactEventText(value) {\n    return String(value ?? '')\n        .replace(/مهرجان كرة القدم/gi, 'FOF')\n        .replace(/عظماء اللعبة/gi, 'GOTG')\n        .replace(/فريق الأسبوع/gi, 'TOTW')\n        .replace(/فوتيز/gi, 'FUTTIES')\n        .replace(/آيكون/gi, 'Icon')\n        .replace(/هيرو/gi, 'Hero')\n        .replace(\n            /\\bFUTTIES\\s+Team\\s+(\\d+)\\s*(?:to|[-–])\\s*(\\d+)\\b/gi,\n            'FUTTIES T$1-$2',\n        )\n        .replace(/\\bFUTTIES\\s+T(\\d+)\\s*[-–]\\s*T?(\\d+)\\b/gi, 'FUTTIES T$1-$2')\n        .replace(/\\bFUTTIES\\s+Team\\s+(\\d+)\\s*&\\s*(\\d+)\\b/gi, 'FUTTIES T$1-$2')\n        .replace(/\\bFUTTIES\\s+Team\\s+(\\d+)\\b/gi, 'FUTTIES T$1')\n        .replace(/\\bFOF\\s+(?:or|&)\\s+FUTTIES\\b/gi, 'FOF/FUTTIES')\n        .replace(/\\bGOTG\\s+(?:or|&)\\s+FUTTIES\\b/gi, 'GOTG/FUTTIES')\n        .replace(/\\(?\\bIcons?\\s*(?:or|&)\\s*Heroes?\\b\\)?/gi, 'Icon/Hero')\n        .replace(/\\s+أو\\s+/g, '/')\n        .replace(/\\s+/g, ' ')\n        .trim();\n}\n\n// Used only when the model's own answer cannot be made valid.\nfunction titleFromStructuredSource(sourceName) {\n    const source = String(sourceName ?? '').trim();\n    let match = source.match(/^(\\d+)x\\s+(\\d+)\\+\\s+Upgrade$/i);\n    if (match) return `ترقية ${match[1]} لاعبين +${match[2]}`;\n\n    match = source.match(/^(\\d+)x\\s+(\\d+)-(\\d+)\\s+Upgrade$/i);\n    if (match) return `ترقية ${match[1]} لاعبين ${match[2]}-${match[3]}`;\n\n    match = source.match(/^(\\d+)\\s+of\\s+(\\d+)\\s+(\\d+)\\+\\s+Player Pick$/i);\n    if (match) return `اختيار ${match[1]} من ${match[2]} لاعبين +${match[3]}`;\n\n    match = source.match(\n        /^(\\d+)\\s+of\\s+(\\d+)\\s+(\\d+)\\+\\s+(.+?)\\s+Player Pick$/i,\n    );\n    if (match)\n        return `اختيار ${match[1]} من ${match[2]} +${match[3]} ${compactEventText(match[4])}`.trim();\n\n    match = source.match(/^(\\d+)\\s+of\\s+(\\d+)\\s+(.+?)\\s+Player Pick$/i);\n    if (match)\n        return `اختيار ${match[1]} من ${match[2]} ${compactEventText(match[3])}`.trim();\n\n    match = source.match(/^(\\d+)\\+\\s+(.+?)\\s+Upgrade$/i);\n    if (match) return `ترقية +${match[1]} ${compactEventText(match[2])}`.trim();\n\n    if (/^Gold Upgrade$/i.test(source)) return 'ترقية ذهبية';\n    return null;\n}\n\nfunction compactArabicTitle(value) {\n    return compactEventText(value)\n        .replace(/اختيار\\s+لاعب\\s+(\\d+)\\s+من\\s+(\\d+)/g, 'اختيار $1 من $2')\n        .replace(/بتقييم\\s*/g, '')\n        .replace(/\\bتقييم\\s*/g, '')\n        .replace(/الفرق?\\s*(\\d+)\\s*(?:إلى|الى|[-–])\\s*(\\d+)/g, 'T$1-$2')\n        .replace(/(\\d{2,3})\\s*\\+/g, '+$1')\n        .replace(/\\s*\\/\\s*/g, '/')\n        .replace(/\\s+/g, ' ')\n        .trim();\n}\n\nfunction isolateDirectionalRuns(value) {\n    return stripBidiControls(value).replace(\n        /(?:[A-Za-z]+[A-Za-z0-9+&/.\\-]*|\\+\\d+(?:[-–]\\d+)?|\\d+(?:[-–]\\d+)?)/g,\n        (token) => `${LRI}${token}${PDI}`,\n    );\n}\n\nfunction tidy(value) {\n    return compactArabicTitle(\n        toEnglishDigits(stripBidiControls(value))\n            .replace(/\\bUpgrade\\b/gi, 'ترقية')\n            .replace(/أبجريد/gi, 'ترقية')\n            .replace(/ابجريد/gi, 'ترقية')\n            .replace(/\\s+/g, ' ')\n            .trim(),\n    )\n        .replace(/\\s+([,.;:!?])/g, '$1')\n        .replace(/\\s{2,}/g, ' ')\n        .trim();\n}\n\nfunction isAcceptable(name) {\n    return (\n        name.length >= 2 &&\n        name.length <= MAX_NAME_LENGTH &&\n        /[\\u0600-\\u06ff]/.test(name) &&\n        !/[٠-٩۰-۹]/.test(name) &&\n        !/أبجريد|ابجريد/i.test(name)\n    );\n}\n\nif (plan.translationReady === true) {\n    return [{ json: { ...plan, translationReady: true } }];\n}\nif (\n    !Array.isArray(plan.missingTranslations) ||\n    !plan.missingTranslations.length\n) {\n    fail('translation plan is invalid');\n}\n\nconst response = $input.first().json;\nlet raw = response.text ?? response.output ?? response.response ?? response;\nif (typeof raw === 'object' && raw !== null) raw = JSON.stringify(raw);\nif (typeof raw !== 'string') fail('translation response is missing');\n\nraw = raw\n    .trim()\n    .replace(/^```(?:json)?\\s*/i, '')\n    .replace(/\\s*```$/, '');\n\nlet translated;\ntry {\n    translated = JSON.parse(raw);\n} catch {\n    fail(\n        `translation response is not valid JSON; first 200 chars: ${raw.slice(0, 200)}`,\n    );\n}\nif (!Array.isArray(translated))\n    fail('translation response must be a JSON array');\nif (translated.length !== plan.missingTranslations.length) {\n    fail(\n        `translation count ${translated.length} does not match the ${plan.missingTranslations.length} requested`,\n    );\n}\n\nconst expected = new Map(\n    plan.missingTranslations.map((pair) => [String(pair.id), pair.sourceName]),\n);\nconst staged = {};\nconst seen = new Set();\nconst repairs = [];\nconst templateFallbacks = [];\n\nfor (const entry of translated) {\n    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {\n        fail('translation entry is invalid');\n    }\n    if (\n        !Object.hasOwn(entry, 'id') ||\n        !Object.hasOwn(entry, 'sourceName') ||\n        !Object.hasOwn(entry, 'nameAr')\n    ) {\n        fail('translation entry is missing exact identity fields');\n    }\n\n    const id = String(entry.id);\n    if (!expected.has(id)) fail(`translation returned unexpected SBC id ${id}`);\n    if (seen.has(id)) fail(`translation returned duplicate SBC id ${id}`);\n    seen.add(id);\n\n    const sourceName = expected.get(id);\n    if (entry.sourceName !== sourceName) {\n        fail(`translation source name mismatch for SBC id ${id}`);\n    }\n\n    const original =\n        typeof entry.nameAr === 'string' ? entry.nameAr.trim() : '';\n\n    // The model's own answer first.\n    let name = tidy(original);\n\n    // Only if it is unusable do we fall back to the structured template, and only\n    // then to a hard failure. v3 inverted this and always preferred the template.\n    if (!isAcceptable(name)) {\n        const template = titleFromStructuredSource(sourceName);\n        const templated = template ? tidy(template) : '';\n        if (templated && isAcceptable(templated)) {\n            name = templated;\n            templateFallbacks.push({\n                id,\n                model: original,\n                template: templated,\n            });\n        } else {\n            fail(\n                `translation is unusable for SBC id ${id} and no template applies; model returned: ${original.slice(0, 80)}`,\n            );\n        }\n    }\n\n    if (name !== stripBidiControls(original).trim()) {\n        repairs.push({ id, before: original, after: name });\n    }\n\n    staged[`${id}\\u0000${sourceName}`] = {\n        sourceName,\n        nameAr: isolateDirectionalRuns(name),\n        schemaVersion: TRANSLATION_SCHEMA_VERSION,\n    };\n}\n\nif (seen.size !== expected.size) fail('translation response is incomplete');\n\nconst globalData = $getWorkflowStaticData('global');\nconst state = globalData.sbcCatalog ?? {};\nconst merged = { ...(state.translations ?? {}), ...staged };\n\n// The cache is keyed by id + source name, so every renamed or retired SBC\n// leaves an entry behind forever. v3 never pruned it, and n8n static data is\n// loaded and saved on every single run. Keep only the names this run actually\n// asked about, plus a bounded tail of recent ones so a transient source blip\n// does not force a full re-translation next run.\nconst liveKeys = new Set(\n    (plan.sourceRecords ?? [])\n        .filter((record) => record && record.name)\n        .map((record) => `${record.id}\\u0000${String(record.name).trim()}`),\n);\nconst MAX_STALE_CACHE_ENTRIES = 500;\nconst kept = {};\nconst stale = [];\nfor (const [key, value] of Object.entries(merged)) {\n    if (liveKeys.has(key)) kept[key] = value;\n    else stale.push([key, value]);\n}\nfor (const [key, value] of stale.slice(-MAX_STALE_CACHE_ENTRIES))\n    kept[key] = value;\n\nglobalData.sbcCatalog = {\n    ...state,\n    translations: kept,\n};\n\nreturn [\n    {\n        json: {\n            ...plan,\n            translationReady: true,\n            missingTranslations: [],\n            translationRepairCount: repairs.length,\n            translationRepairs: repairs.slice(0, 25),\n            templateFallbackCount: templateFallbacks.length,\n            templateFallbacks: templateFallbacks.slice(0, 25),\n            translationCacheSize: Object.keys(kept).length,\n            translationCachePruned: Math.max(\n                0,\n                stale.length - MAX_STALE_CACHE_ENTRIES,\n            ),\n        },\n    },\n];\n"
       },
       "id": "validate-translations-sbc-v1",
       "name": "Validate Translations",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3060,
-        320
+        2820,
+        160
       ],
       "notes": "Source: nodes/validate-translations.js"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.translationReady }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        }
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// Builds the catalog snapshot AND prices it, in one pass.\n//\n// v3 split this across \"Prepare SBC Snapshot\" and \"Apply FFT Pricing Policy\".\n// Prepare computed a full legacy price for every tier, then Apply overwrote\n// every one of those totals -- but left the legacy `multiplierBps` in the\n// payload. The store was therefore told, at the 100-completion tier, that it\n// was giving a 24% bulk discount (7600 bps) while the price it actually\n// charged discounted 12.4%. There is now exactly one formula, and multiplierBps\n// is derived from the prices that are really charged.\n//\n// Pricing policy:\n//   1) The FFT coin requirement already contains its provider-side cushion.\n//   2) Add Arab UT's own configurable coin buffer (approved default 5%).\n//   3) Convert buffered coins with the signed retail 1M quote.\n//   4) Add the automation cost for every submitted squad.\n//   5) Add service margin and one fixed order fee.\n//   6) Round up to the next whole SAR.\n// Commercial and platform adjustments scale SERVICE MARGIN only; they can never\n// reduce retail coin value, automation cost, or the fixed order fee.\n\nconst config = $('Config').first().json;\nconst pricingState = $('Evaluate Pricing Read').first().json;\nconst settings = config.settings;\nconst policyInput = settings.pricingPolicy;\n\nconst MAX_ARABIC_TITLE_VISIBLE_LENGTH = 40;\nconst TRANSLATION_SCHEMA_VERSION = 4;\nconst LRI = '\\u2066';\nconst PDI = '\\u2069';\nconst BIDI_CONTROL_PATTERN = /[\\u2066\\u2067\\u2068\\u2069]/g;\n\nfunction fail(reason) {\n    throw new Error(`[snapshot] ${reason}`);\n}\n\nfunction stripBidiControls(value) {\n    return String(value ?? '').replace(BIDI_CONTROL_PATTERN, '');\n}\n\nfunction toEnglishDigits(value) {\n    return String(value ?? '')\n        .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660))\n        .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 0x06f0));\n}\n\nfunction isolateDirectionalRuns(value) {\n    return stripBidiControls(value).replace(\n        /(?:[A-Za-z]+[A-Za-z0-9+&/.\\-]*|\\+\\d+(?:[-–]\\d+)?|\\d+(?:[-–]\\d+)?)/g,\n        (token) => `${LRI}${token}${PDI}`,\n    );\n}\n\nfunction isApprovedEasySbcImage(url) {\n    const prefix = 'https://assets.easysbc.io/';\n    return (\n        typeof url === 'string' &&\n        url.length > prefix.length &&\n        url.length <= 2048 &&\n        url.startsWith(prefix) &&\n        !/[\\s\\\\]/.test(url)\n    );\n}\n\n/* ------------------------------------------------------- policy validation */\n\nfunction integerInRange(value, minimum, maximum, label) {\n    const number = Number(value);\n    if (\n        value == null ||\n        value === '' ||\n        !Number.isInteger(number) ||\n        number < minimum ||\n        number > maximum\n    ) {\n        fail(\n            `policy ${label} must be an integer between ${minimum} and ${maximum}`,\n        );\n    }\n    return number;\n}\n\nfunction numberInRange(value, minimum, maximum, label) {\n    const number = Number(value);\n    if (\n        value == null ||\n        value === '' ||\n        !Number.isFinite(number) ||\n        number < minimum ||\n        number > maximum\n    ) {\n        fail(\n            `policy ${label} must be a number between ${minimum} and ${maximum}`,\n        );\n    }\n    return number;\n}\n\n// v3 passed this table through raw and only validated it lazily, inside the\n// first repeatable tier it happened to price. A malformed table therefore blew\n// up mid-run, after partial work, or never got checked at all.\nfunction validateRepeatTable(raw) {\n    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {\n        fail('policy repeatServiceMarginPerRunMinor is missing');\n    }\n    const table = new Map();\n    for (const [key, value] of Object.entries(raw)) {\n        const threshold = Number(key);\n        if (!Number.isInteger(threshold) || threshold < 1) {\n            fail(\n                `policy repeat margin threshold \"${key}\" is not a positive integer`,\n            );\n        }\n        table.set(\n            threshold,\n            numberInRange(value, 0, 10000, `repeat margin at ${threshold}`),\n        );\n    }\n    if (!table.size) fail('policy repeat service-margin table is empty');\n    // Without a tier 1 the smallest defined tier becomes the fallback, so a\n    // single-run order would silently receive volume pricing.\n    if (!table.has(1))\n        fail('policy repeat service-margin table must define tier 1');\n    return table;\n}\n\n// Each rate is range-checked on its own, but that says nothing about the total.\n// The margin contribution is `completions * rate(completions)`, and because the\n// rate STEPS DOWN at each threshold that product can fall as completions rise --\n// e.g. {1:500, 50:100} gives 40 runs 20000 but 50 runs only 5000. Every rate\n// there is individually valid. Catch it here, against the table alone, rather\n// than discovering it mid-priced-catalog and aborting the run.\nfunction assertMarginLadderIsSane(table, thresholds, ladder) {\n    let previousContribution = -Infinity;\n    let previousCompletions = null;\n    for (const completions of ladder) {\n        let selected = thresholds[0];\n        for (const threshold of thresholds) {\n            if (completions >= threshold) selected = threshold;\n        }\n        const contribution = completions * table.get(selected);\n        if (contribution < previousContribution) {\n            fail(\n                `policy repeatServiceMarginPerRunMinor is not monotonic in total: ${previousCompletions} runs contribute ${previousContribution} but ${completions} runs contribute ${contribution}; a bigger bundle would earn less margin than a smaller one`,\n            );\n        }\n        previousContribution = contribution;\n        previousCompletions = completions;\n    }\n}\n\nconst policy = {\n    formulaVersion:\n        typeof policyInput?.formulaVersion === 'string' &&\n        policyInput.formulaVersion.trim()\n            ? policyInput.formulaVersion.trim()\n            : fail('policy formulaVersion is missing'),\n    ownerCoinBufferBps: integerInRange(\n        policyInput?.ownerCoinBufferBps,\n        0,\n        2000,\n        'ownerCoinBufferBps',\n    ),\n    automationCostPerSquadMinor: numberInRange(\n        policyInput?.automationCostPerSquadMinor,\n        0,\n        10000,\n        'automationCostPerSquadMinor',\n    ),\n    nonRepeatServiceMarginPerSquadMinor: numberInRange(\n        policyInput?.nonRepeatServiceMarginPerSquadMinor,\n        0,\n        10000,\n        'nonRepeatServiceMarginPerSquadMinor',\n    ),\n    fixedOrderFeeMinor: numberInRange(\n        policyInput?.fixedOrderFeeMinor,\n        0,\n        100000,\n        'fixedOrderFeeMinor',\n    ),\n    // Must be a whole number of SAR. Validate Snapshot rejects any tier total\n    // that is not a multiple of 100, so a 250-halalah floor would price fine here\n    // and then fail the run every time the floor actually binds.\n    minimumPriceMinor: (() => {\n        const value = numberInRange(\n            policyInput?.minimumPriceMinor,\n            0,\n            1000000,\n            'minimumPriceMinor',\n        );\n        if (!Number.isInteger(value) || value % 100 !== 0) {\n            fail(\n                `policy minimumPriceMinor must be a whole number of SAR (a multiple of 100); got ${value}`,\n            );\n        }\n        return value;\n    })(),\n    // 10000 bps = 1.0x = neutral. These are multipliers on the service margin,\n    // not surcharges; the 5000-20000 band brackets neutral on both sides. The two\n    // adjustments compound: commercial x platform.\n    commercialAdjustmentBps: integerInRange(\n        policyInput?.commercialAdjustmentBps,\n        5000,\n        20000,\n        'commercialAdjustmentBps',\n    ),\n    platformAdjustmentBps: {\n        playstation: integerInRange(\n            policyInput?.platformAdjustmentBps?.playstation,\n            5000,\n            20000,\n            'platformAdjustmentBps.playstation',\n        ),\n        pc: integerInRange(\n            policyInput?.platformAdjustmentBps?.pc,\n            5000,\n            20000,\n            'platformAdjustmentBps.pc',\n        ),\n    },\n    repeatMargin: validateRepeatTable(\n        policyInput?.repeatServiceMarginPerRunMinor,\n    ),\n};\n\nconst repeatThresholds = [...policy.repeatMargin.keys()].sort((a, b) => a - b);\n\nfunction repeatMarginPerRun(completions) {\n    let selected = repeatThresholds[0];\n    for (const threshold of repeatThresholds) {\n        if (completions >= threshold) selected = threshold;\n    }\n    return policy.repeatMargin.get(selected);\n}\n\n// Read only the field the pricing contract defines. v3's generic probe would\n// fall back to an `amount`/`value`/`price` key, which on a quote object could\n// silently read a display price and undercharge by two orders of magnitude.\nfunction quoteMinor(platform) {\n    const quotes = pricingState.pricing?.quotes;\n    const quote = platform === 'pc' ? quotes?.pc : quotes?.playstation_fast;\n    const total = quote?.totalHalalah;\n    if (!Number.isInteger(total) || total <= 0 || total > 100000) {\n        fail(`signed one-million ${platform} quote is missing or out of band`);\n    }\n    if (Number(quote.quantity) !== 1000000) {\n        fail(`signed ${platform} quote is not the one-million quote`);\n    }\n    return total;\n}\n\nconst quoteByPlatform = {\n    playstation: quoteMinor('playstation'),\n    pc: quoteMinor('pc'),\n};\n\n// The completion counts offered per repeatable bundle.\nconst STANDARD_REPEAT_COMPLETIONS = [5, 10, 15, 20, 30, 40, 50, 75, 100];\n\nassertMarginLadderIsSane(\n    policy.repeatMargin,\n    repeatThresholds,\n    [1, 2, 3, 4].concat(STANDARD_REPEAT_COMPLETIONS),\n);\n\n// The coin term is a float division, so a total that is mathematically an exact\n// whole SAR can land one ulp above it and get ceiled to the next whole riyal --\n// a silent 1 SAR overcharge. Snap to 6 decimal places of a halalah first; that\n// is far finer than any real price and far coarser than the float noise.\nfunction ceilWholeSar(minor) {\n    const snapped = Math.round(minor * 1e6) / 1e6;\n    return Math.ceil(snapped / 100) * 100;\n}\n\nfunction calculatePrice({\n    rawFftCoins,\n    squads,\n    completions,\n    platform,\n    repeatable,\n}) {\n    if (!(rawFftCoins > 0)) fail(`FFT ${platform} coin requirement is missing`);\n    if (!Number.isInteger(squads) || squads < 1) fail('squad count is invalid');\n    if (!Number.isInteger(completions) || completions < 1)\n        fail('completion count is invalid');\n\n    const effectiveCoinsPerCompletion = Math.ceil(\n        rawFftCoins * (1 + policy.ownerCoinBufferBps / 10000),\n    );\n    const retailMillionMinor = quoteByPlatform[platform];\n    const bufferedCoinRetailMinor =\n        (effectiveCoinsPerCompletion * completions * retailMillionMinor) /\n        1000000;\n    const automationMinor =\n        squads * completions * policy.automationCostPerSquadMinor;\n    const baseServiceMarginMinor = repeatable\n        ? completions * repeatMarginPerRun(completions)\n        : squads * policy.nonRepeatServiceMarginPerSquadMinor;\n\n    const protectedBaseMinor =\n        bufferedCoinRetailMinor + automationMinor + policy.fixedOrderFeeMinor;\n    const adjustedServiceMarginMinor =\n        baseServiceMarginMinor *\n        (policy.commercialAdjustmentBps / 10000) *\n        (policy.platformAdjustmentBps[platform] / 10000);\n\n    // The service margin is always >= 0, so protectedBase is always contained in\n    // commercialPrice. v3 also took the max against protectedBase separately,\n    // which could never bind.\n    // The configured floor is applied as configured. v3 ceiled it to the next\n    // whole SAR, silently turning a 2.50 SAR minimum into a 3.00 SAR one.\n    const finalPriceMinor = Math.max(\n        policy.minimumPriceMinor,\n        ceilWholeSar(protectedBaseMinor + adjustedServiceMarginMinor),\n    );\n\n    return {\n        finalPriceMinor,\n        effectiveCoinsPerCompletion,\n        bufferedCoinRetailMinor,\n        automationMinor,\n        adjustedServiceMarginMinor,\n        protectedBaseMinor,\n    };\n}\n\n/* --------------------------------------------------------- source records */\n\nlet records = $input.all().map((item) => item.json);\nif (records.length === 1 && Array.isArray(records[0]?.sourceRecords)) {\n    records = records[0].sourceRecords;\n}\nif (records.length === 1 && Array.isArray(records[0]?.body)) {\n    records = records[0].body;\n}\n\nif (records.length < settings.sourceMinCount) {\n    fail(\n        `merged source holds ${records.length} records; minimum is ${settings.sourceMinCount}`,\n    );\n}\n\nconst allowedCategories = new Set([1, 2, 3, 4, 5, 6]);\nconst allowedModes = new Set(['NON_REPEATABLE', 'UNLIMITED', 'REFRESH']);\n\n// One record-validation pass. v3 ran this same loop twice, in Prepare\n// Translations and again in Prepare SBC Snapshot, and the two copies had already\n// drifted apart on the repeatable check.\n//\n// It SKIPS AND COUNTS rather than throwing on the first offender. Merge Provider\n// Sources only ratio-screens id, price, squad count and expiry; every field\n// below is one this node is the first to look at. Throwing here on a single\n// cosmetic value -- a category id EA has not used before, a new repeatability\n// mode -- would recreate the exact v3.2.6 outage one node further down the line.\nfunction recordRejection(record) {\n    if (!record || typeof record !== 'object' || Array.isArray(record))\n        return 'not_an_object';\n    if (!Number.isInteger(record.id) || record.id <= 0) return 'bad_id';\n    if (\n        typeof record.name !== 'string' ||\n        !record.name.trim() ||\n        record.name.length > 220\n    ) {\n        return 'bad_name';\n    }\n    if (!allowedCategories.has(record.categoryId)) return 'bad_category';\n    if (\n        record.description != null &&\n        (typeof record.description !== 'string' ||\n            record.description.length > 4800)\n    ) {\n        return 'bad_description';\n    }\n    if (!Number.isInteger(record.sbcsCount) || record.sbcsCount <= 0)\n        return 'bad_sbcs_count';\n    if (typeof record.repeatable !== 'boolean') return 'bad_repeatable';\n    if (!allowedModes.has(record.repeatabilityMode))\n        return 'bad_repeatability_mode';\n    if (!Number.isInteger(record.endTime) || record.endTime <= 0)\n        return 'bad_end_time';\n    if (typeof record.active !== 'boolean') return 'bad_active';\n    if (!Number.isFinite(Number(record.psPrice)) || Number(record.psPrice) <= 0)\n        return 'bad_ps_price';\n    if (!Number.isFinite(Number(record.pcPrice)) || Number(record.pcPrice) <= 0)\n        return 'bad_pc_price';\n    if (\n        record.repeats != null &&\n        (!Number.isInteger(record.repeats) || record.repeats <= 0)\n    ) {\n        return 'bad_repeats';\n    }\n    if (record.imageURL != null && !isApprovedEasySbcImage(record.imageURL))\n        return 'bad_image_url';\n    if (record.rewards != null && !Array.isArray(record.rewards))\n        return 'bad_rewards';\n    for (const reward of record.rewards ?? []) {\n        if (\n            reward &&\n            typeof reward === 'object' &&\n            !Array.isArray(reward) &&\n            reward.type === 'player' &&\n            reward.rewardImgURL != null &&\n            !isApprovedEasySbcImage(reward.rewardImgURL)\n        ) {\n            return 'bad_reward_image_url';\n        }\n    }\n    return null;\n}\n\nconst ids = new Set();\nconst rejectedRecords = [];\nconst usableRecords = [];\n\nfor (const record of records) {\n    const rejection = recordRejection(record);\n    if (rejection) {\n        rejectedRecords.push({ id: record?.id ?? null, reason: rejection });\n        continue;\n    }\n    // A duplicate id is a different class of problem: it means the merge produced\n    // two rows for one SBC, which would publish two products for one identity.\n    // That is a real defect upstream, not provider noise, so it still fails.\n    if (ids.has(record.id))\n        fail(`merged source contains duplicate id ${record.id}`);\n    ids.add(record.id);\n    usableRecords.push(record);\n}\n\nconst rejectedRatio = rejectedRecords.length / Math.max(1, records.length);\nif (rejectedRatio > settings.source.maxInvalidMetadataRatio) {\n    const sample = rejectedRecords\n        .slice(0, 10)\n        .map((r) => `${r.id ?? '?'}:${r.reason}`)\n        .join(', ');\n    fail(\n        `${(rejectedRatio * 100).toFixed(1)}% of merged records failed catalog validation (max ${(settings.source.maxInvalidMetadataRatio * 100).toFixed(0)}%); sample: ${sample}`,\n    );\n}\n\nrecords = usableRecords;\n\n/* ------------------------------------------------------------ eligibility */\n\n// config.generatedAt is the ELIGIBILITY CLOCK: the instant the run started, so\n// every expiry decision in this run is made against one consistent moment.\n// Validate the clock BEFORE using it. An unparseable generatedAt makes `now`\n// NaN, and every `endTime <= NaN` comparison is false -- so the expiry filter\n// silently passes everything and the store sells challenges that can no longer\n// be completed. It fails nothing and looks like a normal run.\nconst generatedAtMs = Date.parse(config.generatedAt);\nif (!Number.isFinite(generatedAtMs)) {\n    fail(\n        `config.generatedAt is not a parseable timestamp: ${JSON.stringify(config.generatedAt)}`,\n    );\n}\nif (\n    !Number.isInteger(settings.minimumExpiryLeadSeconds) ||\n    settings.minimumExpiryLeadSeconds < 0\n) {\n    fail(\n        `settings.minimumExpiryLeadSeconds must be a non-negative integer; got ${JSON.stringify(settings.minimumExpiryLeadSeconds)}`,\n    );\n}\n\nconst now = Math.floor(generatedAtMs / 1000);\nconst expiryCutoff = now + settings.minimumExpiryLeadSeconds;\nconst excludedNamePattern = new RegExp(\n    settings.eligibility.excludedNamePattern,\n    'i',\n);\n\n// Canary. This pattern lives in Config as a STRING, so a lost backslash turns\n// \\b into a backspace character and the whole exclusion silently matches\n// nothing -- the filter appears to run and quietly passes every bronze and\n// silver SBC through to the storefront. Prove it works before trusting it.\nif (\n    !excludedNamePattern.test('Bronze Challenge') ||\n    !excludedNamePattern.test('10x Silver Upgrade') ||\n    excludedNamePattern.test('87+ Player Pick')\n) {\n    fail(\n        `eligibility.excludedNamePattern is not behaving as a word-boundary filter (got ${JSON.stringify(settings.eligibility.excludedNamePattern)}); check for a lost backslash in Config`,\n    );\n}\n\nfunction isRepeatableBundle(record) {\n    return (\n        record.repeatable === true &&\n        (record.repeats == null || record.repeats > 1)\n    );\n}\n\nfunction ineligibilityReason(record) {\n    if (!record.active) return 'inactive';\n    if (record.endTime <= expiryCutoff) return 'inside_expiry_lead';\n    if (excludedNamePattern.test(record.name)) return 'excluded_name';\n    if (Number(record.psPrice) < settings.eligibility.minConsoleCoins)\n        return 'ps_below_minimum';\n    if (\n        !isRepeatableBundle(record) &&\n        Number(record.psPrice) <\n            settings.eligibility.minNonRepeatableConsoleCoins\n    ) {\n        return 'nonrepeatable_ps_below_minimum';\n    }\n    if (Number(record.pcPrice) <= 0) return 'pc_not_positive';\n    return null;\n}\n\nconst eligible = records.filter((record) => !ineligibilityReason(record));\nif (eligible.length === 0)\n    fail('merged source produced no eligible challenges');\n\n/* ---------------------------------------------------- safety baseline */\n\nconst globalData = $getWorkflowStaticData('global');\nconst workflowState = globalData.sbcCatalog ?? {};\n\n// The baseline is ADVISORY and must never be load-bearing for liveness. It is\n// written by whichever version of this workflow ran last, so any schema drift\n// would otherwise fail every future run forever, with no way out but manually\n// clearing n8n static data. A baseline that does not parse is treated as no\n// baseline at all: the run drops to bootstrap and says so in the audit.\nfunction readBaseline(raw) {\n    if (!Array.isArray(raw) || raw.length === 0)\n        return { items: [], reason: 'no prior run' };\n    const seen = new Set();\n    for (const entry of raw) {\n        if (\n            !entry ||\n            typeof entry.sourceId !== 'string' ||\n            !entry.sourceId ||\n            typeof entry.sourceName !== 'string' ||\n            !entry.sourceName ||\n            typeof entry.expiresAt !== 'string' ||\n            !entry.expiresAt ||\n            seen.has(entry.sourceId)\n        ) {\n            return {\n                items: [],\n                reason: 'prior baseline was malformed and has been discarded',\n            };\n        }\n        seen.add(entry.sourceId);\n    }\n    return { items: raw, reason: null };\n}\n\nconst baseline = readBaseline(workflowState.lastSuccessfulItems);\nconst hasSuccessfulBaseline = baseline.items.length > 0;\nconst bootstrapMode = !hasSuccessfulBaseline;\nconst baselineDiscardReason = hasSuccessfulBaseline ? null : baseline.reason;\nconst lastCounts = workflowState.lastSuccessfulCounts;\nconst previousItems = baseline.items;\n\nconst priorSourceCount = Number(lastCounts?.sourceCount);\nconst sourceSafetyFloor =\n    hasSuccessfulBaseline &&\n    Number.isFinite(priorSourceCount) &&\n    priorSourceCount > 0\n        ? Math.max(settings.sourceMinCount, Math.floor(priorSourceCount * 0.85))\n        : settings.sourceMinCount;\n\nif (records.length < sourceSafetyFloor) {\n    fail(\n        `merged source count ${records.length} is below the safety floor of ${sourceSafetyFloor}`,\n    );\n}\n\nconst sourceById = new Map(\n    records.map((record) => [String(record.id), record]),\n);\nconst eligibleById = new Map(\n    eligible.map((record) => [String(record.id), record]),\n);\nconst previousIds = new Set();\nconst expectedDepartures = [];\nconst unexpectedMissing = [];\nconst renamedSourceIds = [];\nconst metadataOnlyMissing = [];\n\n// Ids FFT still lists that EasySBC no longer describes. Merge Provider Sources\n// cannot emit these as products, but they are NOT gone from the market, so the\n// departure classifier below must not treat them as such.\nconst mergeAudit = $('Merge Provider Sources').first().json.sourceAudit ?? {};\nconst fftOnlyIds = new Set((mergeAudit.fftOnlyIds ?? []).map(String));\n\nfor (const previous of previousItems) {\n    // Shape was already checked by readBaseline(); a bad baseline never gets here.\n    previousIds.add(previous.sourceId);\n    const eligibleRecord = eligibleById.get(previous.sourceId);\n    if (eligibleRecord) {\n        // v3 failed the whole run when a provider renamed an SBC. Providers fix\n        // typos; the id is the identity, so record the rename and carry on.\n        if (eligibleRecord.name.trim() !== previous.sourceName) {\n            renamedSourceIds.push({\n                sourceId: previous.sourceId,\n                from: previous.sourceName,\n                to: eligibleRecord.name.trim(),\n            });\n        }\n        continue;\n    }\n\n    const sourceRecord = sourceById.get(previous.sourceId);\n    if (sourceRecord) {\n        const reason = ineligibilityReason(sourceRecord);\n        if (!reason) unexpectedMissing.push(previous.sourceId);\n        else expectedDepartures.push({ sourceId: previous.sourceId, reason });\n        continue;\n    }\n\n    // FFT still lists it, only EasySBC lost the metadata. Archiving it would pull\n    // a product we can still sell. The merge cannot emit it (no category, name or\n    // image without metadata), so the honest thing is to flag it rather than\n    // quietly call it a departure.\n    if (fftOnlyIds.has(previous.sourceId)) {\n        metadataOnlyMissing.push(previous.sourceId);\n        continue;\n    }\n\n    // Gone from BOTH providers. EA pulls SBCs early, and Laravel archives anything\n    // absent from a complete snapshot, so this is a real departure and not a\n    // reason to freeze the catalog until the stored expiry passes.\n    expectedDepartures.push({\n        sourceId: previous.sourceId,\n        reason: 'absent_from_both_providers',\n    });\n}\n\nif (unexpectedMissing.length) {\n    fail(\n        `prior IDs vanished from the eligible set while still eligible at source: ${unexpectedMissing.join(', ')}`,\n    );\n}\n\n// A trickle is normal provider lag. A flood means EasySBC is broken and we are\n// about to archive a chunk of the live catalog on the strength of that.\nconst metadataOnlyMissingRatio =\n    metadataOnlyMissing.length / Math.max(1, previousItems.length);\nif (metadataOnlyMissingRatio > settings.source.maxMismatchRatio) {\n    fail(\n        `${(metadataOnlyMissingRatio * 100).toFixed(1)}% of previously published SBCs are still listed by FFT but lost their EasySBC metadata (max ${(settings.source.maxMismatchRatio * 100).toFixed(0)}%); ids: ${metadataOnlyMissing.slice(0, 20).join(', ')}`,\n    );\n}\n\nconst priorEligibleAfterExpectedDepartures = Math.max(\n    0,\n    previousItems.length - expectedDepartures.length,\n);\nconst eligibleSafetyFloor = hasSuccessfulBaseline\n    ? Math.max(1, Math.floor(priorEligibleAfterExpectedDepartures * 0.8))\n    : Math.max(1, Number(settings.bootstrapMinimumEligibleCount) || 20);\n\nif (eligible.length < eligibleSafetyFloor) {\n    fail(\n        `eligible SBC count ${eligible.length} is below the safety floor of ${eligibleSafetyFloor}`,\n    );\n}\n\n// The floor above credits every departure, so it collapses as the catalog does:\n// if EA expired 114 of 120 SBCs overnight, all 114 land in expectedDepartures,\n// the floor drops to ~1, and a six-product catalog publishes with\n// completeSnapshot:true -- telling Laravel to archive the rest. This second\n// floor is deliberately NOT departure-credited, so a catastrophic shrink halts\n// for a human even when every individual departure looks explainable.\nconst absoluteEligibleFloor = hasSuccessfulBaseline\n    ? Math.max(1, Math.floor(previousItems.length * 0.5))\n    : 1;\nif (eligible.length < absoluteEligibleFloor) {\n    fail(\n        `eligible SBC count ${eligible.length} is less than half the ${previousItems.length} previously published; every departure was individually explainable, which is exactly why this needs a human before Laravel archives the difference`,\n    );\n}\n\nconst newSourceIds = eligible\n    .map((record) => String(record.id))\n    .filter((sourceId) => !previousIds.has(sourceId));\n\n/* ------------------------------------------------------------ translation */\n\nconst translationCache = workflowState.translations ?? {};\n\nfunction approvedArabicName(record) {\n    const sourceName = record.name.trim();\n    const cached = translationCache[`${record.id}\\u0000${sourceName}`];\n    if (!cached)\n        fail(`approved Arabic translation is missing for SBC id ${record.id}`);\n    if (cached.sourceName !== sourceName) {\n        fail(\n            `approved Arabic translation source name mismatch for SBC id ${record.id}`,\n        );\n    }\n\n    const visible = toEnglishDigits(stripBidiControls(cached.nameAr))\n        .replace(/\\bUpgrade\\b/gi, 'ترقية')\n        .replace(/\\s+/g, ' ')\n        .trim();\n\n    if (\n        cached.schemaVersion !== TRANSLATION_SCHEMA_VERSION ||\n        visible.length < 2 ||\n        visible.length > MAX_ARABIC_TITLE_VISIBLE_LENGTH ||\n        !/[\\u0600-\\u06ff]/.test(visible) ||\n        /[٠-٩۰-۹]/.test(visible)\n    ) {\n        fail(\n            `approved translation for SBC id ${record.id} must contain Arabic, use English digits, and be at most ${MAX_ARABIC_TITLE_VISIBLE_LENGTH} visible characters`,\n        );\n    }\n    return isolateDirectionalRuns(visible);\n}\n\n/* ---------------------------------------------------------------- catalog */\n\nconst categoryKey = {\n    1: 'players',\n    2: 'upgrades',\n    3: 'upgrades',\n    4: 'icons',\n    5: 'foundations',\n    6: 'upgrades',\n};\nconst categories = [\n    ['players', 'اللاعبون', 'Players', 10],\n    ['upgrades', 'التطويرات', 'Upgrades', 20],\n    ['icons', 'الأيكونز', 'Icons', 30],\n    ['foundations', 'الأساسيات', 'Foundations', 40],\n].map(([key, ar, en, sortOrder]) => ({\n    externalId: `easysbc-category-${key}`,\n    slug: `sbc-${key}`,\n    name: { ar, en },\n    description: {\n        ar: `تحديات بناء التشكيلات: ${ar}`,\n        en: `${en} squad-building challenges`,\n    },\n    sortOrder,\n    visible: true,\n}));\n\nfunction safeSlug(record) {\n    const raw =\n        typeof record.slug === 'string' && record.slug.trim()\n            ? record.slug\n            : record.name;\n    const base =\n        raw\n            .normalize('NFKD')\n            .replace(/[\\u0300-\\u036f]/g, '')\n            .toLowerCase()\n            .replace(/[^a-z0-9]+/g, '-')\n            .replace(/^-+|-+$/g, '')\n            .slice(0, 220) || 'challenge';\n    return `sbc-${base}-${record.id}`;\n}\n\n// multiplierBps is a FIXED POLICY CONSTANT, not a computed discount.\n//\n// Laravel validates it with `!==` against this exact table\n// (app/ValueObjects/Pricing/SbcCompletionPricing.php::expectedTiers), so any\n// other value is rejected outright with \"An SBC completion tier is outside the\n// supported policy\". An earlier v4 build derived these from the real prices;\n// that made the numbers self-consistent and made the publish fail on every\n// repeatable tier. The store owns this table, so the workflow mirrors it.\n//\n// The consequence is worth stating plainly: this percentage does NOT describe\n// the price beside it. The admin price dialog renders it verbatim\n// (admin-variant-price-dialog.tsx:424) while the price comes from the\n// fft-plus-owner-buffer-v2 formula. No customer sees it. Reconciling the two is\n// a store-side decision, not something the workflow can fix by sending\n// different numbers.\nconst STANDARD_REPEAT_TIERS = [\n    [5, 10000],\n    [10, 9500],\n    [15, 9200],\n    [20, 9000],\n    [30, 8700],\n    [40, 8500],\n    [50, 8200],\n    [75, 7800],\n    [100, 7600],\n];\n\n// Mirrors SbcCompletionPricing::expectedTiers() branch for branch.\nfunction repeatTierDefinitions(maximum) {\n    if (maximum == null || maximum >= 100) return STANDARD_REPEAT_TIERS;\n    if (maximum < 5) {\n        return Array.from({ length: maximum }, (_, index) => [\n            index + 1,\n            10000,\n        ]);\n    }\n    const tiers = STANDARD_REPEAT_TIERS.filter(\n        ([completions]) => completions <= maximum,\n    );\n    const last = tiers[tiers.length - 1];\n    if (last[0] !== maximum)\n        tiers.push([maximum, Math.max(7000, last[1] - 200)]);\n    return tiers;\n}\n\nconst audit = {\n    repricedProducts: 0,\n    repricedVariants: 0,\n    repricedTiers: 0,\n    minimumContributionMinor: null,\n    maximumContributionMinor: null,\n    samples: [],\n};\n\nfunction completionPricing(record, rawFftCoins, platform) {\n    const squads = record.sbcsCount;\n    const repeatable = isRepeatableBundle(record);\n    const maximum = repeatable ? (record.repeats ?? null) : 1;\n    const tierDefinitions = repeatable\n        ? repeatTierDefinitions(record.repeats ?? null)\n        : [[1, 10000]];\n\n    const priced = tierDefinitions.map(([completions, multiplierBps]) => ({\n        completions,\n        multiplierBps,\n        result: calculatePrice({\n            rawFftCoins,\n            squads,\n            completions,\n            platform,\n            repeatable,\n        }),\n    }));\n\n    const tiers = priced.map(({ completions, multiplierBps, result }) => {\n        audit.repricedTiers += 1;\n        // Rounded: the coin term is a float, so an unrounded difference publishes\n        // artefacts like 1234.5600000000002 into the audit payload.\n        const contributionMinor = Math.round(\n            result.finalPriceMinor -\n                result.bufferedCoinRetailMinor -\n                result.automationMinor,\n        );\n        audit.minimumContributionMinor =\n            audit.minimumContributionMinor == null\n                ? contributionMinor\n                : Math.min(audit.minimumContributionMinor, contributionMinor);\n        audit.maximumContributionMinor =\n            audit.maximumContributionMinor == null\n                ? contributionMinor\n                : Math.max(audit.maximumContributionMinor, contributionMinor);\n\n        if (audit.samples.length < 12) {\n            audit.samples.push({\n                sourceId: String(record.id),\n                product: record.name,\n                platform,\n                completions,\n                rawFftCoins,\n                effectiveCoins: result.effectiveCoinsPerCompletion,\n                coinRetailMinor: Math.round(result.bufferedCoinRetailMinor),\n                automationMinor: Math.round(result.automationMinor),\n                serviceMarginMinor: Math.round(\n                    result.adjustedServiceMarginMinor,\n                ),\n                fixedOrderFeeMinor: policy.fixedOrderFeeMinor,\n                totalMinor: result.finalPriceMinor,\n            });\n        }\n\n        return {\n            completions,\n            multiplierBps,\n            totalMinor: result.finalPriceMinor,\n        };\n    });\n\n    // Buying more must never cost less in total. This is a genuine commercial\n    // invariant on the prices we charge, and it stays even though multiplierBps\n    // is now a fixed constant rather than something derived from these numbers.\n    for (let index = 1; index < tiers.length; index += 1) {\n        if (tiers[index].totalMinor < tiers[index - 1].totalMinor) {\n            fail(\n                `SBC id ${record.id} ${platform} price is not monotonic: ${tiers[index - 1].completions} runs cost ${tiers[index - 1].totalMinor} but ${tiers[index].completions} runs cost ${tiers[index].totalMinor}`,\n            );\n        }\n    }\n\n    return { version: 1, repeatable, maximum, tiers };\n}\n\nfunction variant(record, platform) {\n    const isPs = platform === 'playstation';\n    const rawFftCoins = Number(isPs ? record.psPrice : record.pcPrice);\n    const pricing = completionPricing(record, rawFftCoins, platform);\n    const effectiveCoins = Math.ceil(\n        rawFftCoins * (1 + policy.ownerCoinBufferBps / 10000),\n    );\n\n    audit.repricedVariants += 1;\n\n    return {\n        externalId: `easysbc-sbc-${record.id}-${isPs ? 'ps' : 'pc'}`,\n        sku: `SBC-EASYSBC-${record.id}-${isPs ? 'PS' : 'PC'}`,\n        platform,\n        market: isPs ? 'console' : 'pc',\n        currency: 'SAR',\n        name: {\n            ar: isPs ? 'سوني / إكس بوكس' : 'بي سي',\n            en: isPs ? 'PlayStation / Xbox' : 'PC',\n        },\n        // The smallest offered bundle is the storefront's headline price; for a\n        // repeatable SBC that is deliberately the 5-run bundle, and\n        // configuration.completionCount records which bundle it is.\n        priceMinor: pricing.tiers[0].totalMinor,\n        salePriceMinor: null,\n        priceVersion: 1,\n        active: true,\n        configuration: {\n            source: 'fft',\n            sourceId: String(record.id),\n            sbcCategory: categoryKey[record.categoryId],\n            sourceCategoryId: record.categoryId,\n            sourceSlug:\n                typeof record.slug === 'string' && record.slug.trim()\n                    ? record.slug\n                    : safeSlug(record),\n            challengeCount: record.sbcsCount,\n            completionCount: pricing.tiers[0].completions,\n            repeatable: pricing.repeatable,\n            repeatabilityMode: record.repeatabilityMode,\n            maxRepeats: pricing.maximum,\n            rawFftCoins: Math.round(rawFftCoins),\n            ownerCoinBufferBps: policy.ownerCoinBufferBps,\n            sourceCoins: effectiveCoins,\n            expiresAt: new Date(record.endTime * 1000).toISOString(),\n            pricingVersion: pricingState.pricing.pricingVersion,\n            pricingBase: isPs ? 'playstation_fast' : 'pc',\n            formulaVersion: policy.formulaVersion,\n            completionPricing: pricing,\n        },\n    };\n}\n\nconst products = eligible.map((record, index) => {\n    const nameAr = approvedArabicName(record);\n    const playerReward = Array.isArray(record.rewards)\n        ? record.rewards.find(\n              (reward) =>\n                  reward &&\n                  typeof reward === 'object' &&\n                  !Array.isArray(reward) &&\n                  reward.type === 'player' &&\n                  typeof reward.rewardImgURL === 'string' &&\n                  reward.rewardImgURL.length > 0,\n          )\n        : null;\n    const imageUrl = playerReward?.rewardImgURL ?? record.imageURL ?? null;\n\n    audit.repricedProducts += 1;\n\n    return {\n        externalId: `easysbc-sbc-${record.id}`,\n        categoryExternalId: `easysbc-category-${categoryKey[record.categoryId]}`,\n        slug: safeSlug(record),\n        serviceType: 'sbc',\n        name: { ar: nameAr, en: record.name.trim() },\n        description: {\n            ar: 'أكمل تحدي بناء التشكيلة واحصل على المكافأة داخل حسابك.',\n            en: record.description?.trim() || `Complete ${record.name}.`,\n        },\n        sortOrder: index + 1,\n        visible: true,\n        variants: [variant(record, 'playstation'), variant(record, 'pc')],\n        media: imageUrl\n            ? [\n                  {\n                      url: imageUrl,\n                      alt: { ar: nameAr, en: record.name.trim() },\n                      sortOrder: 0,\n                  },\n              ]\n            : [],\n    };\n});\n\nif (!products.length) fail('catalog snapshot contains no products');\n\n// Laravel requires microsecond precision; JS gives milliseconds.\nconst snapshotGeneratedAt = new Date()\n    .toISOString()\n    .replace(/\\.(\\d{3})Z$/, '.$1000Z');\n\nreturn [\n    {\n        json: {\n            ...config,\n            sourceCount: records.length,\n            eligibleCount: products.length,\n            sourceSafetyFloor,\n            eligibleSafetyFloor,\n            bootstrapMode,\n            baselineDiscardReason,\n            expectedDepartures,\n            renamedSourceIds,\n            metadataOnlyMissing,\n            rejectedRecordCount: rejectedRecords.length,\n            rejectedRecords: rejectedRecords.slice(0, 50),\n            newSourceIds,\n            sourceAudit:\n                $('Merge Provider Sources').first().json.sourceAudit ?? null,\n            pricingAudit: {\n                ...audit,\n                policy: {\n                    ...policy,\n                    repeatMargin: Object.fromEntries(policy.repeatMargin),\n                },\n                providerPriceAssumption:\n                    'FFT includes its displayed provider cushion; Arab UT adds the configured owner buffer on top',\n            },\n            catalogSnapshot: {\n                schemaVersion: 1,\n                eventId: config.eventId,\n                runId: config.runId,\n                // Stamped HERE, not copied from Config. Laravel rejects a stale\n                // generatedAt at publish time and translation can add minutes before\n                // this node runs. v3 restamped it in a later node for the same reason;\n                // doing it at build time keeps the value honest, because it really is\n                // when this snapshot was built, and validate/sign/publish follow at once.\n                generatedAt: snapshotGeneratedAt,\n                completeSnapshot: true,\n                categories,\n                products,\n            },\n        },\n    },\n];\n"
       },
-      "id": "translation-valid-sbc-v1",
-      "name": "Translation Valid?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
+      "id": "build-and-price-sbc-v1",
+      "name": "Build & Price Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3060,
+        280
+      ],
+      "notes": "Source: nodes/build-and-price.js"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// Independent structural check of the exact payload that is about to be signed.\n// This gate earns its keep: it is the last thing between a Code-node bug and\n// the live storefront.\n//\n// v3's version re-derived the legacy multiplierBps table and demanded the\n// payload match it -- while the pricing node had already replaced every total\n// with a different formula. It was verifying numbers nothing produced. This\n// version checks multiplierBps for INTERNAL CONSISTENCY with the totals that\n// are actually being published, which is the property that matters.\n\nconst item = $input.first().json;\nconst snapshot = item.catalogSnapshot;\n\nconst MAX_ARABIC_TITLE_VISIBLE_LENGTH = 40;\nconst BIDI_CONTROL_PATTERN = /[\\u2066\\u2067\\u2068\\u2069]/g;\n\nfunction fail(reason) {\n    throw new Error(`[validate_snapshot] ${reason}`);\n}\n\nfunction visibleText(value) {\n    return String(value ?? '')\n        .replace(BIDI_CONTROL_PATTERN, '')\n        .trim();\n}\n\nfunction isApprovedEasySbcImage(url) {\n    const prefix = 'https://assets.easysbc.io/';\n    return (\n        typeof url === 'string' &&\n        url.length > prefix.length &&\n        url.length <= 2048 &&\n        url.startsWith(prefix) &&\n        !/[\\s\\\\]/.test(url)\n    );\n}\n\n// Order-insensitive, unlike v3's JSON.stringify(Object.keys(...)) comparison,\n// which failed with a misleading message if a builder ever emitted the same\n// keys in a different order.\nfunction exactKeys(value, expected) {\n    if (!value || typeof value !== 'object' || Array.isArray(value))\n        return false;\n    const actual = Object.keys(value).sort();\n    return JSON.stringify(actual) === JSON.stringify([...expected].sort());\n}\n\nfunction unique(values) {\n    return new Set(values).size === values.length;\n}\n\n// A byte-for-byte mirror of the store's\n// app/ValueObjects/Pricing/SbcCompletionPricing.php::expectedTiers().\n// These are FIXED POLICY CONSTANTS the store compares with !==; they are not\n// derived from the prices. If the store's table changes, change it here too.\nconst STANDARD_REPEAT_TIERS = [\n    [5, 10000],\n    [10, 9500],\n    [15, 9200],\n    [20, 9000],\n    [30, 8700],\n    [40, 8500],\n    [50, 8200],\n    [75, 7800],\n    [100, 7600],\n];\n\nfunction expectedTierPolicy(repeatable, maximum) {\n    if (!repeatable) return [[1, 10000]];\n    if (maximum !== null && maximum < 5) {\n        return Array.from({ length: maximum }, (_, index) => [\n            index + 1,\n            10000,\n        ]);\n    }\n    if (maximum === null || maximum >= 100) return STANDARD_REPEAT_TIERS;\n    const tiers = STANDARD_REPEAT_TIERS.filter(\n        ([completions]) => completions <= maximum,\n    );\n    const last = tiers[tiers.length - 1];\n    if (last[0] !== maximum)\n        tiers.push([maximum, Math.max(7000, last[1] - 200)]);\n    return tiers;\n}\n\nfunction completionPricingFailure(pricing, priceMinor) {\n    if (!exactKeys(pricing, ['version', 'repeatable', 'maximum', 'tiers'])) {\n        return 'variant completion pricing keys are not exact';\n    }\n    if (pricing.version !== 1 || typeof pricing.repeatable !== 'boolean') {\n        return 'variant completion pricing metadata is invalid';\n    }\n    if (\n        (!pricing.repeatable && pricing.maximum !== 1) ||\n        (pricing.repeatable &&\n            pricing.maximum !== null &&\n            (!Number.isInteger(pricing.maximum) || pricing.maximum < 2))\n    ) {\n        return 'variant completion pricing maximum is invalid';\n    }\n    if (!Array.isArray(pricing.tiers) || pricing.tiers.length === 0) {\n        return 'variant completion pricing tiers are invalid';\n    }\n    if (!pricing.repeatable && pricing.tiers.length !== 1) {\n        return 'a non-repeatable SBC must offer exactly one completion tier';\n    }\n\n    // Check the SAME constants Laravel checks, so a rejection surfaces here with\n    // a useful message instead of as a 422 from the store. An earlier v4 build\n    // validated multiplierBps against the tier prices instead; that was internally\n    // tidy and made every publish fail, because the store compares these values\n    // with !== against a fixed table.\n    const expected = expectedTierPolicy(pricing.repeatable, pricing.maximum);\n    if (pricing.tiers.length !== expected.length) {\n        return `variant offers ${pricing.tiers.length} completion tiers but policy defines ${expected.length}`;\n    }\n\n    for (let index = 0; index < pricing.tiers.length; index += 1) {\n        const tier = pricing.tiers[index];\n        const [expectedCompletions, expectedMultiplierBps] = expected[index];\n        if (tier.completions !== expectedCompletions) {\n            return `completion tier ${index} is ${tier.completions}, policy requires ${expectedCompletions}`;\n        }\n        if (tier.multiplierBps !== expectedMultiplierBps) {\n            return `completion tier ${tier.completions} has multiplierBps ${tier.multiplierBps}, policy requires exactly ${expectedMultiplierBps} (the store rejects anything else)`;\n        }\n        if (!exactKeys(tier, ['completions', 'multiplierBps', 'totalMinor'])) {\n            return 'variant completion pricing tier keys are not exact';\n        }\n        if (!Number.isInteger(tier.completions) || tier.completions < 1) {\n            return 'variant completion count is invalid';\n        }\n        if (!pricing.repeatable && tier.completions !== 1) {\n            return 'a non-repeatable SBC cannot offer more than one completion';\n        }\n        if (\n            pricing.maximum !== null &&\n            Number.isInteger(pricing.maximum) &&\n            tier.completions > pricing.maximum\n        ) {\n            return 'a completion tier exceeds the SBC repeat maximum';\n        }\n        if (\n            index > 0 &&\n            tier.completions <= pricing.tiers[index - 1].completions\n        ) {\n            return 'completion tiers are not in ascending order';\n        }\n        if (!Number.isInteger(tier.totalMinor) || tier.totalMinor <= 0) {\n            return 'variant completion tier total is invalid';\n        }\n        if (tier.totalMinor % 100 !== 0) {\n            return 'variant completion tier total is not a whole number of SAR';\n        }\n        // Buying more must never cost less in total.\n        if (\n            index > 0 &&\n            tier.totalMinor < pricing.tiers[index - 1].totalMinor\n        ) {\n            return 'variant completion pricing is not monotonic in completions';\n        }\n    }\n\n    if (pricing.tiers[0].totalMinor !== priceMinor) {\n        return 'variant price must equal the first tier total';\n    }\n    return null;\n}\n\nif (!snapshot) fail('catalog snapshot was not built');\nif (\n    !exactKeys(snapshot, [\n        'schemaVersion',\n        'eventId',\n        'runId',\n        'generatedAt',\n        'completeSnapshot',\n        'categories',\n        'products',\n    ])\n) {\n    fail('catalog snapshot top-level keys are not exact');\n}\nif (\n    snapshot.schemaVersion !== 1 ||\n    snapshot.completeSnapshot !== true ||\n    snapshot.eventId === snapshot.runId\n) {\n    fail('catalog snapshot metadata is invalid');\n}\nif (\n    !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}Z$/.test(snapshot.generatedAt)\n) {\n    fail('catalog snapshot generatedAt is invalid');\n}\nif (!Array.isArray(snapshot.categories) || snapshot.categories.length !== 4) {\n    fail('catalog snapshot must contain exactly four SBC categories');\n}\nif (\n    !Array.isArray(snapshot.products) ||\n    snapshot.products.length < 1 ||\n    snapshot.products.length > 2000\n) {\n    fail('catalog snapshot product count is invalid');\n}\n\nconst categoryIds = [];\nconst categorySlugs = [];\nfor (const category of snapshot.categories) {\n    if (\n        !exactKeys(category, [\n            'externalId',\n            'slug',\n            'name',\n            'description',\n            'sortOrder',\n            'visible',\n        ])\n    ) {\n        fail('category keys are not exact');\n    }\n    if (\n        !exactKeys(category.name, ['ar', 'en']) ||\n        !exactKeys(category.description, ['ar', 'en'])\n    ) {\n        fail('category localization is invalid');\n    }\n    if (\n        !category.externalId ||\n        !category.slug ||\n        !category.name.ar ||\n        !category.name.en ||\n        category.visible !== true\n    ) {\n        fail('category fields are invalid');\n    }\n    categoryIds.push(category.externalId);\n    categorySlugs.push(category.slug);\n}\nif (!unique(categoryIds) || !unique(categorySlugs))\n    fail('category identity is duplicated');\n\nconst productIds = [];\nconst productSlugs = [];\nconst variantIds = [];\nconst skus = [];\n\nfor (const product of snapshot.products) {\n    if (\n        !exactKeys(product, [\n            'externalId',\n            'categoryExternalId',\n            'slug',\n            'serviceType',\n            'name',\n            'description',\n            'sortOrder',\n            'visible',\n            'variants',\n            'media',\n        ])\n    ) {\n        fail('product keys are not exact');\n    }\n    if (product.serviceType !== 'sbc') fail('product serviceType must be sbc');\n    if (!categoryIds.includes(product.categoryExternalId)) {\n        fail('product category relationship is invalid');\n    }\n    if (\n        !exactKeys(product.name, ['ar', 'en']) ||\n        !exactKeys(product.description, ['ar', 'en'])\n    ) {\n        fail('product localization is invalid');\n    }\n    if (\n        !product.externalId ||\n        !product.slug ||\n        !product.name.ar ||\n        !product.name.en ||\n        product.visible !== true\n    ) {\n        fail('product fields are invalid');\n    }\n\n    const visibleArabicTitle = visibleText(product.name.ar);\n    if (\n        visibleArabicTitle.length < 2 ||\n        visibleArabicTitle.length > MAX_ARABIC_TITLE_VISIBLE_LENGTH ||\n        !/[\\u0600-\\u06ff]/.test(visibleArabicTitle) ||\n        /[٠-٩۰-۹]/.test(visibleArabicTitle) ||\n        /أبجريد|ابجريد/i.test(visibleArabicTitle)\n    ) {\n        fail(\n            `product Arabic title must contain Arabic, use English digits, and be at most ${MAX_ARABIC_TITLE_VISIBLE_LENGTH} visible characters: ${product.externalId}`,\n        );\n    }\n    if (!Array.isArray(product.variants) || product.variants.length !== 2) {\n        fail('every SBC product must contain exactly two variants');\n    }\n    if (!Array.isArray(product.media) || product.media.length > 1) {\n        fail('product media is invalid');\n    }\n    productIds.push(product.externalId);\n    productSlugs.push(product.slug);\n\n    const platforms = [];\n    const completionChoices = [];\n    for (const variant of product.variants) {\n        if (\n            !exactKeys(variant, [\n                'externalId',\n                'sku',\n                'platform',\n                'market',\n                'currency',\n                'name',\n                'priceMinor',\n                'salePriceMinor',\n                'priceVersion',\n                'active',\n                'configuration',\n            ])\n        ) {\n            fail('variant keys are not exact');\n        }\n        if (!exactKeys(variant.name, ['ar', 'en']))\n            fail('variant localization is invalid');\n        if (\n            !variant.externalId ||\n            !variant.sku ||\n            !Number.isInteger(variant.priceMinor) ||\n            variant.priceMinor <= 0 ||\n            variant.salePriceMinor !== null ||\n            variant.priceVersion !== 1 ||\n            variant.active !== true\n        ) {\n            fail('variant fields are invalid');\n        }\n        if (\n            (variant.platform === 'playstation' &&\n                variant.market !== 'console') ||\n            (variant.platform === 'pc' && variant.market !== 'pc')\n        ) {\n            fail('variant platform and market do not match');\n        }\n        if (\n            !['playstation', 'pc'].includes(variant.platform) ||\n            variant.currency !== 'SAR'\n        ) {\n            fail('variant platform or currency is invalid');\n        }\n        if (\n            !variant.configuration ||\n            typeof variant.configuration !== 'object' ||\n            Array.isArray(variant.configuration)\n        ) {\n            fail('variant configuration is invalid');\n        }\n        if (variant.configuration.source !== 'fft') {\n            fail(\n                'every published variant must be priced from the FFT authority',\n            );\n        }\n        if (\n            !['players', 'upgrades', 'icons', 'foundations'].includes(\n                variant.configuration.sbcCategory,\n            ) ||\n            product.categoryExternalId !==\n                `easysbc-category-${variant.configuration.sbcCategory}`\n        ) {\n            fail('variant SBC category is invalid');\n        }\n\n        const completionFailure = completionPricingFailure(\n            variant.configuration.completionPricing,\n            variant.priceMinor,\n        );\n        if (completionFailure)\n            fail(`${completionFailure} (${variant.externalId})`);\n\n        platforms.push(variant.platform);\n        completionChoices.push(\n            variant.configuration.completionPricing.tiers.map(\n                ({ completions }) => completions,\n            ),\n        );\n        variantIds.push(variant.externalId);\n        skus.push(variant.sku);\n    }\n\n    if (JSON.stringify(platforms) !== JSON.stringify(['playstation', 'pc'])) {\n        fail('every SBC product must contain ordered PS and PC variants');\n    }\n    if (\n        JSON.stringify(completionChoices[0]) !==\n        JSON.stringify(completionChoices[1])\n    ) {\n        fail('PS and PC completion choices must match');\n    }\n\n    for (const media of product.media) {\n        if (\n            !exactKeys(media, ['url', 'alt', 'sortOrder']) ||\n            !exactKeys(media.alt, ['ar', 'en'])\n        ) {\n            fail('media keys are not exact');\n        }\n        if (!isApprovedEasySbcImage(media.url) || media.sortOrder !== 0) {\n            fail('media URL is not an approved EasySBC asset');\n        }\n    }\n}\n\nif (!unique(productIds)) fail('product externalId is duplicated');\nif (!unique(productSlugs)) fail('product slug is duplicated');\nif (!unique(variantIds)) fail('variant externalId is duplicated');\nif (!unique(skus)) fail('variant SKU is duplicated');\n\nreturn [{ json: { ...item, catalogSnapshot: snapshot } }];\n"
+      },
+      "id": "validate-snapshot-sbc-v1",
+      "name": "Validate Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         3300,
-        320
-      ]
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst config = $('Config').first().json;\nconst pricingState = $('Evaluate Pricing Read').first().json;\n\nfunction fail(reason) {\n    return [{ json: { ...config, valid: false, failureReason: reason } }];\n}\n\nfunction isApprovedEasySbcImage(url) {\n    const prefix = 'https://assets.easysbc.io/';\n\n    return (\n        typeof url === 'string' &&\n        url.length > prefix.length &&\n        url.length <= 2048 &&\n        url.startsWith(prefix) &&\n        !/[\\s\\\\]/.test(url)\n    );\n}\n\nfunction catalogImage(record) {\n    const playerReward = Array.isArray(record.rewards)\n        ? record.rewards.find(\n              (reward) =>\n                  reward &&\n                  typeof reward === 'object' &&\n                  !Array.isArray(reward) &&\n                  reward.type === 'player' &&\n                  typeof reward.rewardImgURL === 'string' &&\n                  reward.rewardImgURL.length > 0,\n          )\n        : null;\n\n    return playerReward?.rewardImgURL ?? record.imageURL ?? null;\n}\n\nif (!pricingState.valid || !pricingState.pricing) {\n    return fail(\n        pricingState.failureReason ||\n            'Authoritative SBC pricing bases are unavailable',\n    );\n}\n\nlet records = $input.all().map((item) => item.json);\nif (records.length === 1 && Array.isArray(records[0]?.sourceRecords))\n    records = records[0].sourceRecords;\nif (records.length === 1 && Array.isArray(records[0]?.body))\n    records = records[0].body;\nif (records.length === 1 && Array.isArray(records[0]?.data))\n    records = records[0].data;\n\nconst settings = config.settings;\nif (records.length < settings.sourceMinCount) {\n    return fail(\n        `EasySBC source is below the minimum complete record count of ${settings.sourceMinCount}`,\n    );\n}\nif (records.length >= settings.sourceLimit) {\n    return fail(\n        `EasySBC pagination is ambiguous at the configured limit of ${settings.sourceLimit}`,\n    );\n}\n\nconst allowedCategories = new Set([1, 2, 3, 4, 5, 6]);\nconst allowedModes = new Set(['NON_REPEATABLE', 'UNLIMITED', 'REFRESH']);\nconst ids = new Set();\n\nfor (let index = 0; index < records.length; index += 1) {\n    const record = records[index];\n    const label = `EasySBC record ${index}`;\n    if (!record || typeof record !== 'object' || Array.isArray(record))\n        return fail(`${label} is not an object`);\n    if (!Number.isInteger(record.id) || record.id <= 0)\n        return fail(`${label} id is invalid`);\n    if (ids.has(record.id))\n        return fail(`EasySBC source contains duplicate id ${record.id}`);\n    ids.add(record.id);\n    if (\n        typeof record.name !== 'string' ||\n        !record.name.trim() ||\n        record.name.length > 220\n    )\n        return fail(`${label} name is invalid`);\n    if (!allowedCategories.has(record.categoryId))\n        return fail(`${label} categoryId is invalid`);\n    if (\n        record.description != null &&\n        (typeof record.description !== 'string' ||\n            record.description.length > 4800)\n    )\n        return fail(`${label} description is invalid`);\n    if (!Number.isInteger(record.sbcsCount) || record.sbcsCount <= 0)\n        return fail(`${label} sbcsCount is invalid`);\n    if (typeof record.repeatable !== 'boolean')\n        return fail(`${label} repeatable is invalid`);\n    if (!allowedModes.has(record.repeatabilityMode))\n        return fail(`${label} repeatabilityMode is invalid`);\n    if (!Number.isInteger(record.endTime) || record.endTime <= 0)\n        return fail(`${label} endTime is invalid`);\n    if (typeof record.active !== 'boolean')\n        return fail(`${label} active is invalid`);\n    if (!Number.isFinite(Number(record.psPrice)) || Number(record.psPrice) <= 0)\n        return fail(`${label} psPrice is invalid`);\n    if (!Number.isFinite(Number(record.pcPrice)) || Number(record.pcPrice) <= 0)\n        return fail(`${label} pcPrice is invalid`);\n    if (\n        record.repeats != null &&\n        (!Number.isInteger(record.repeats) || record.repeats <= 0)\n    )\n        return fail(`${label} repeats is invalid`);\n    if (record.imageURL != null) {\n        if (!isApprovedEasySbcImage(record.imageURL))\n            return fail(`${label} imageURL is not an approved EasySBC asset`);\n    }\n    if (record.rewards != null && !Array.isArray(record.rewards))\n        return fail(`${label} rewards is invalid`);\n    for (const reward of record.rewards ?? []) {\n        if (\n            reward &&\n            typeof reward === 'object' &&\n            !Array.isArray(reward) &&\n            reward.type === 'player' &&\n            reward.rewardImgURL != null &&\n            !isApprovedEasySbcImage(reward.rewardImgURL)\n        ) {\n            return fail(\n                `${label} player rewardImgURL is not an approved EasySBC asset`,\n            );\n        }\n    }\n}\n\nconst now = Math.floor(new Date(config.generatedAt).getTime() / 1000);\nconst expiryCutoff = now + settings.minimumExpiryLeadSeconds;\nfunction ineligibilityReason(record) {\n    if (!record.active) return 'inactive';\n    if (record.endTime <= expiryCutoff) return 'inside_expiry_lead';\n    if (/\\b(?:bronze|silver)\\b/i.test(record.name)) return 'excluded_name';\n    if (Number(record.psPrice) < 1500) return 'ps_below_minimum';\n    if (!isRepeatableBundle(record) && Number(record.psPrice) < 20_000)\n        return 'nonrepeatable_ps_below_minimum';\n    if (Number(record.pcPrice) <= 0) return 'pc_not_positive';\n    return null;\n}\n\nconst eligible = records.filter((record) => !ineligibilityReason(record));\n\nif (eligible.length === 0)\n    return fail('EasySBC source produced no eligible challenges');\n\nconst baseline = settings.approvedBaseline;\nif (\n    !baseline ||\n    !Number.isInteger(baseline.sourceCount) ||\n    baseline.sourceCount <= 0 ||\n    !Number.isInteger(baseline.eligibleCount) ||\n    baseline.eligibleCount <= 0 ||\n    baseline.approvedBy !== 'operator' ||\n    typeof baseline.observedAt !== 'string' ||\n    !baseline.observedAt ||\n    typeof baseline.approvedAt !== 'string' ||\n    !baseline.approvedAt ||\n    !Array.isArray(baseline.eligibleItems) ||\n    baseline.eligibleItems.length !== baseline.eligibleCount\n) {\n    return fail(\n        'A manually approved operator bootstrap baseline is required before SBC catalog apply',\n    );\n}\n\nconst globalData = $getWorkflowStaticData('global');\nconst workflowState = globalData.sbcCatalogV1 ?? {};\nconst lastCounts = workflowState.lastSuccessfulCounts;\nconst previousItems = Array.isArray(workflowState.lastSuccessfulItems)\n    ? workflowState.lastSuccessfulItems\n    : baseline.eligibleItems;\nconst sourceSafetyFloor = Math.max(\n    settings.sourceMinCount,\n    lastCounts?.sourceCount\n        ? Math.floor(Number(lastCounts.sourceCount) * 0.85)\n        : Math.floor(baseline.sourceCount * 0.85),\n);\nif (records.length < sourceSafetyFloor) {\n    return fail(\n        `EasySBC source count ${records.length} is below source safety floor of ${sourceSafetyFloor}`,\n    );\n}\n\nconst sourceById = new Map(\n    records.map((record) => [String(record.id), record]),\n);\nconst eligibleById = new Map(\n    eligible.map((record) => [String(record.id), record]),\n);\nconst previousIds = new Set();\nconst expectedDepartures = [];\nconst unexpectedMissing = [];\nfor (const previous of previousItems) {\n    if (\n        !previous ||\n        typeof previous.sourceId !== 'string' ||\n        !previous.sourceId ||\n        typeof previous.sourceName !== 'string' ||\n        !previous.sourceName ||\n        typeof previous.expiresAt !== 'string' ||\n        !previous.expiresAt ||\n        previousIds.has(previous.sourceId)\n    ) {\n        return fail('SBC safety baseline contains an invalid prior item');\n    }\n    previousIds.add(previous.sourceId);\n    const eligibleRecord = eligibleById.get(previous.sourceId);\n    if (eligibleRecord) {\n        if (eligibleRecord.name.trim() !== previous.sourceName) {\n            return fail(\n                `EasySBC source name changed for prior id ${previous.sourceId}`,\n            );\n        }\n        continue;\n    }\n\n    const sourceRecord = sourceById.get(previous.sourceId);\n    if (sourceRecord) {\n        const reason = ineligibilityReason(sourceRecord);\n        if (!reason) {\n            unexpectedMissing.push(previous.sourceId);\n        } else {\n            expectedDepartures.push({ sourceId: previous.sourceId, reason });\n        }\n        continue;\n    }\n\n    const previousExpiry = Date.parse(previous.expiresAt);\n    if (\n        Number.isFinite(previousExpiry) &&\n        previousExpiry <= expiryCutoff * 1000\n    ) {\n        expectedDepartures.push({\n            sourceId: previous.sourceId,\n            reason: 'expired_or_inside_expiry_lead',\n        });\n    } else {\n        unexpectedMissing.push(previous.sourceId);\n    }\n}\nif (unexpectedMissing.length) {\n    return fail(\n        `EasySBC has unexpected missing prior IDs: ${unexpectedMissing.join(', ')}`,\n    );\n}\n\nconst priorEligibleAfterExpectedDepartures = Math.max(\n    0,\n    previousItems.length - expectedDepartures.length,\n);\nconst eligibleSafetyFloor = Math.max(\n    1,\n    Math.floor(priorEligibleAfterExpectedDepartures * 0.8),\n);\nif (eligible.length < eligibleSafetyFloor) {\n    return fail(\n        `EasySBC eligible count ${eligible.length} is below identity-adjusted safety floor of ${eligibleSafetyFloor}`,\n    );\n}\nconst newSourceIds = eligible\n    .map((record) => String(record.id))\n    .filter((sourceId) => !previousIds.has(sourceId));\n\nconst translationCache = workflowState.translations ?? {};\nfunction approvedArabicName(record) {\n    const sourceName = record.name.trim();\n    const cached = translationCache[`${record.id}\\u0000${sourceName}`];\n    if (!cached)\n        throw new Error(\n            `Approved Arabic translation is missing for EasySBC id ${record.id}`,\n        );\n    if (cached.sourceName !== sourceName)\n        throw new Error(\n            `Approved Arabic translation source name mismatch for EasySBC id ${record.id}`,\n        );\n    if (\n        typeof cached.nameAr !== 'string' ||\n        cached.nameAr.length < 2 ||\n        cached.nameAr.length > 120 ||\n        !/[\\u0600-\\u06ff]/.test(cached.nameAr) ||\n        /[A-Za-z]/.test(cached.nameAr)\n    ) {\n        throw new Error(\n            `Approved translation for EasySBC id ${record.id} must be Arabic-only and at most 120 characters`,\n        );\n    }\n    return cached.nameAr.trim();\n}\n\nfor (const record of eligible) {\n    try {\n        approvedArabicName(record);\n    } catch (error) {\n        return fail(error.message);\n    }\n}\n\nconst categoryKey = {\n    1: 'players',\n    2: 'upgrades',\n    3: 'upgrades',\n    4: 'icons',\n    5: 'foundations',\n    6: 'upgrades',\n};\nconst categories = [\n    ['players', 'اللاعبون', 'Players', 10],\n    ['upgrades', 'التطويرات', 'Upgrades', 20],\n    ['icons', 'الأيكونز', 'Icons', 30],\n    ['foundations', 'الأساسيات', 'Foundations', 40],\n].map(([key, ar, en, sortOrder]) => ({\n    externalId: `easysbc-category-${key}`,\n    slug: `sbc-${key}`,\n    name: { ar, en },\n    description: {\n        ar: `تحديات بناء التشكيلات: ${ar}`,\n        en: `${en} squad-building challenges`,\n    },\n    sortOrder,\n    visible: true,\n}));\n\nfunction safeSlug(record) {\n    const raw =\n        typeof record.slug === 'string' && record.slug.trim()\n            ? record.slug\n            : record.name;\n    const base =\n        raw\n            .normalize('NFKD')\n            .replace(/[\\u0300-\\u036f]/g, '')\n            .toLowerCase()\n            .replace(/[^a-z0-9]+/g, '-')\n            .replace(/^-+|-+$/g, '')\n            .slice(0, 220) || 'challenge';\n    return `sbc-${base}-${record.id}`;\n}\n\nfunction multiplier(coins) {\n    if (coins < 50_000) return 1.15;\n    if (coins < 900_000) return 1.1;\n    if (coins <= 1_000_000) return 1.0;\n    return 1.025;\n}\n\nfunction priceMinor(coins, challengeCount, quote) {\n    const baseSar = quote.totalHalalah / 100;\n    const sar =\n        Math.round(\n            challengeCount * 2 +\n                coins * multiplier(coins) * 1.02 * (baseSar / 1_000_000) +\n                2,\n        ) + 3;\n    return sar * 100;\n}\n\nconst SERVICE_FEE_SAR = 3;\nconst REPEAT_LABOR_PER_RUN_SAR = 1.1;\nconst STANDARD_REPEAT_TIERS = [\n    [5, 10_000],\n    [10, 9_500],\n    [15, 9_200],\n    [20, 9_000],\n    [30, 8_700],\n    [40, 8_500],\n    [50, 8_200],\n    [75, 7_800],\n    [100, 7_600],\n];\n\nfunction isRepeatableBundle(record) {\n    return (\n        record.repeatable === true &&\n        (record.repeats == null || record.repeats > 1)\n    );\n}\n\nfunction repeatTierDefinitions(maximum) {\n    if (maximum == null || maximum >= 100) return STANDARD_REPEAT_TIERS;\n    if (maximum < 5) {\n        return Array.from({ length: maximum }, (_, index) => [\n            index + 1,\n            10_000,\n        ]);\n    }\n\n    const tiers = STANDARD_REPEAT_TIERS.filter(\n        ([completions]) => completions <= maximum,\n    );\n    const previous = tiers.at(-1);\n    if (previous[0] !== maximum) {\n        tiers.push([maximum, Math.max(7_000, previous[1] - 200)]);\n    }\n\n    return tiers;\n}\n\nfunction repeatTotalMinor(coins, quote, completions, multiplierBps) {\n    const sarPerCoin = quote.totalHalalah / 100 / 1_000_000;\n    const perCompletionSar =\n        coins * multiplier(coins) * 1.02 * sarPerCoin +\n        REPEAT_LABOR_PER_RUN_SAR;\n    const bundleSar =\n        Math.round(perCompletionSar * (multiplierBps / 10_000) * completions) +\n        SERVICE_FEE_SAR;\n\n    return bundleSar * 100;\n}\n\nfunction completionPricing(record, coins, quote) {\n    const repeatable = isRepeatableBundle(record);\n    if (!repeatable) {\n        const totalMinor = priceMinor(coins, record.sbcsCount, quote);\n        return {\n            version: 1,\n            repeatable: false,\n            maximum: 1,\n            tiers: [{ completions: 1, multiplierBps: 10_000, totalMinor }],\n        };\n    }\n\n    const maximum = record.repeats ?? null;\n    return {\n        version: 1,\n        repeatable: true,\n        maximum,\n        tiers: repeatTierDefinitions(maximum).map(\n            ([completions, multiplierBps]) => ({\n                completions,\n                multiplierBps,\n                totalMinor: repeatTotalMinor(\n                    coins,\n                    quote,\n                    completions,\n                    multiplierBps,\n                ),\n            }),\n        ),\n    };\n}\n\nfunction variant(record, platform) {\n    const isPs = platform === 'playstation';\n    const quoteKey = isPs ? 'playstation_fast' : 'pc';\n    const coins = Number(isPs ? record.psPrice : record.pcPrice);\n    const pricing = completionPricing(\n        record,\n        coins,\n        pricingState.pricing.quotes[quoteKey],\n    );\n    return {\n        externalId: `easysbc-sbc-${record.id}-${isPs ? 'ps' : 'pc'}`,\n        sku: `SBC-EASYSBC-${record.id}-${isPs ? 'PS' : 'PC'}`,\n        platform,\n        market: isPs ? 'console' : 'pc',\n        currency: 'SAR',\n        name: {\n            ar: isPs ? 'سوني / إكس بوكس' : 'بي سي',\n            en: isPs ? 'PlayStation / Xbox' : 'PC',\n        },\n        priceMinor: pricing.tiers[0].totalMinor,\n        salePriceMinor: null,\n        priceVersion: 1,\n        active: true,\n        configuration: {\n            source: 'easysbc',\n            sourceId: String(record.id),\n            sbcCategory: categoryKey[record.categoryId],\n            sourceCategoryId: record.categoryId,\n            sourceSlug:\n                typeof record.slug === 'string' && record.slug.trim()\n                    ? record.slug\n                    : safeSlug(record),\n            challengeCount: record.sbcsCount,\n            completionCount: pricing.tiers[0].completions,\n            repeatable: pricing.repeatable,\n            repeatabilityMode: record.repeatabilityMode,\n            maxRepeats: pricing.maximum,\n            sourceCoins: coins,\n            expiresAt: new Date(record.endTime * 1000).toISOString(),\n            pricingVersion: pricingState.pricing.pricingVersion,\n            pricingBase: quoteKey,\n            formulaVersion: pricing.repeatable\n                ? 'legacy-sbc-repeat-bundle-v1'\n                : 'legacy-sbc-one-completion-v1',\n            completionPricing: pricing,\n        },\n    };\n}\n\nconst products = eligible.map((record, index) => {\n    const nameAr = approvedArabicName(record);\n    const imageUrl = catalogImage(record);\n    return {\n        externalId: `easysbc-sbc-${record.id}`,\n        categoryExternalId: `easysbc-category-${categoryKey[record.categoryId]}`,\n        slug: safeSlug(record),\n        serviceType: 'sbc',\n        name: { ar: nameAr, en: record.name.trim() },\n        description: {\n            ar: `أكمل تحدي بناء التشكيلة واحصل على المكافأة داخل حسابك.`,\n            en: record.description?.trim() || `Complete ${record.name}.`,\n        },\n        sortOrder: index + 1,\n        visible: true,\n        variants: [variant(record, 'playstation'), variant(record, 'pc')],\n        media: imageUrl\n            ? [\n                  {\n                      url: imageUrl,\n                      alt: { ar: nameAr, en: record.name.trim() },\n                      sortOrder: 0,\n                  },\n              ]\n            : [],\n    };\n});\n\nreturn [\n    {\n        json: {\n            ...config,\n            valid: true,\n            failureReason: null,\n            sourceCount: records.length,\n            eligibleCount: products.length,\n            sourceSafetyFloor,\n            eligibleSafetyFloor,\n            expectedDepartures,\n            unexpectedMissing: [],\n            newSourceIds,\n            snapshot: {\n                schemaVersion: 1,\n                eventId: config.eventId,\n                runId: config.runId,\n                generatedAt: config.generatedAt,\n                completeSnapshot: true,\n                categories,\n                products,\n            },\n        },\n    },\n];\n"
-      },
-      "id": "prepare-sbc-snapshot-v1",
-      "name": "Prepare SBC Snapshot",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3540,
-        200
-      ],
-      "notes": "Source: nodes/prepare-snapshot.js"
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst snapshot = item.snapshot;\n\nfunction fail(reason) {\n    return [{ json: { ...item, valid: false, failureReason: reason } }];\n}\n\nfunction isApprovedEasySbcImage(url) {\n    const prefix = 'https://assets.easysbc.io/';\n\n    return (\n        typeof url === 'string' &&\n        url.length > prefix.length &&\n        url.length <= 2048 &&\n        url.startsWith(prefix) &&\n        !/[\\s\\\\]/.test(url)\n    );\n}\n\nfunction exactKeys(value, expected) {\n    return (\n        value &&\n        typeof value === 'object' &&\n        !Array.isArray(value) &&\n        JSON.stringify(Object.keys(value)) === JSON.stringify(expected)\n    );\n}\n\nfunction unique(values) {\n    return new Set(values).size === values.length;\n}\n\nconst STANDARD_REPEAT_TIERS = [\n    [5, 10_000],\n    [10, 9_500],\n    [15, 9_200],\n    [20, 9_000],\n    [30, 8_700],\n    [40, 8_500],\n    [50, 8_200],\n    [75, 7_800],\n    [100, 7_600],\n];\n\nfunction expectedCompletionTiers(repeatable, maximum) {\n    if (!repeatable) return [[1, 10_000]];\n    if (maximum == null || maximum >= 100) return STANDARD_REPEAT_TIERS;\n    if (maximum < 5) {\n        return Array.from({ length: maximum }, (_, index) => [\n            index + 1,\n            10_000,\n        ]);\n    }\n\n    const tiers = STANDARD_REPEAT_TIERS.filter(\n        ([completions]) => completions <= maximum,\n    );\n    const previous = tiers.at(-1);\n    if (previous[0] !== maximum) {\n        tiers.push([maximum, Math.max(7_000, previous[1] - 200)]);\n    }\n\n    return tiers;\n}\n\nfunction completionPricingFailure(pricing, priceMinor) {\n    if (!exactKeys(pricing, ['version', 'repeatable', 'maximum', 'tiers'])) {\n        return 'Variant completion pricing keys are not exact';\n    }\n    if (pricing.version !== 1 || typeof pricing.repeatable !== 'boolean') {\n        return 'Variant completion pricing metadata is invalid';\n    }\n    if (\n        (!pricing.repeatable && pricing.maximum !== 1) ||\n        (pricing.repeatable &&\n            pricing.maximum !== null &&\n            (!Number.isInteger(pricing.maximum) || pricing.maximum < 2))\n    ) {\n        return 'Variant completion pricing maximum is invalid';\n    }\n    if (!Array.isArray(pricing.tiers) || pricing.tiers.length === 0) {\n        return 'Variant completion pricing tiers are invalid';\n    }\n\n    const expected = expectedCompletionTiers(\n        pricing.repeatable,\n        pricing.maximum,\n    );\n    if (pricing.tiers.length !== expected.length) {\n        return 'Variant completion choices tier count is invalid';\n    }\n\n    for (let index = 0; index < pricing.tiers.length; index += 1) {\n        const tier = pricing.tiers[index];\n        const [expectedCompletions, expectedMultiplier] = expected[index];\n        if (!exactKeys(tier, ['completions', 'multiplierBps', 'totalMinor'])) {\n            return 'Variant completion pricing tier keys are not exact';\n        }\n        if (\n            tier.completions !== expectedCompletions ||\n            !Number.isInteger(tier.completions)\n        ) {\n            return 'Variant completion choices are invalid';\n        }\n        if (\n            tier.multiplierBps !== expectedMultiplier ||\n            !Number.isInteger(tier.multiplierBps)\n        ) {\n            return 'Variant completion multiplier is invalid';\n        }\n        if (!Number.isInteger(tier.totalMinor) || tier.totalMinor <= 0) {\n            return 'Variant completion tier total is invalid';\n        }\n    }\n\n    if (pricing.tiers[0].totalMinor !== priceMinor) {\n        return 'Variant price must equal the first tier total';\n    }\n\n    return null;\n}\n\nif (!item.valid || !snapshot)\n    return fail(item.failureReason || 'Catalog snapshot was not built');\nif (\n    !exactKeys(snapshot, [\n        'schemaVersion',\n        'eventId',\n        'runId',\n        'generatedAt',\n        'completeSnapshot',\n        'categories',\n        'products',\n    ])\n) {\n    return fail('Catalog snapshot top-level keys are not exact');\n}\nif (\n    snapshot.schemaVersion !== 1 ||\n    snapshot.completeSnapshot !== true ||\n    snapshot.eventId === snapshot.runId\n) {\n    return fail('Catalog snapshot metadata is invalid');\n}\nif (\n    !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}Z$/.test(snapshot.generatedAt)\n) {\n    return fail('Catalog snapshot generatedAt is invalid');\n}\nif (!Array.isArray(snapshot.categories) || snapshot.categories.length !== 4) {\n    return fail('Catalog snapshot must contain exactly four SBC categories');\n}\nif (\n    !Array.isArray(snapshot.products) ||\n    snapshot.products.length < 1 ||\n    snapshot.products.length > 2000\n) {\n    return fail('Catalog snapshot product count is invalid');\n}\n\nconst categoryIds = [];\nconst categorySlugs = [];\nfor (const category of snapshot.categories) {\n    if (\n        !exactKeys(category, [\n            'externalId',\n            'slug',\n            'name',\n            'description',\n            'sortOrder',\n            'visible',\n        ])\n    )\n        return fail('Category keys are not exact');\n    if (\n        !exactKeys(category.name, ['ar', 'en']) ||\n        !exactKeys(category.description, ['ar', 'en'])\n    )\n        return fail('Category localization is invalid');\n    if (\n        !category.externalId ||\n        !category.slug ||\n        !category.name.ar ||\n        !category.name.en ||\n        category.visible !== true\n    )\n        return fail('Category fields are invalid');\n    categoryIds.push(category.externalId);\n    categorySlugs.push(category.slug);\n}\nif (!unique(categoryIds) || !unique(categorySlugs))\n    return fail('Category identity is duplicated');\n\nconst productIds = [];\nconst productSlugs = [];\nconst variantIds = [];\nconst skus = [];\nfor (const product of snapshot.products) {\n    if (\n        !exactKeys(product, [\n            'externalId',\n            'categoryExternalId',\n            'slug',\n            'serviceType',\n            'name',\n            'description',\n            'sortOrder',\n            'visible',\n            'variants',\n            'media',\n        ])\n    )\n        return fail('Product keys are not exact');\n    if (product.serviceType !== 'sbc')\n        return fail('Product serviceType must be sbc');\n    if (!categoryIds.includes(product.categoryExternalId))\n        return fail('Product category relationship is invalid');\n    if (\n        !exactKeys(product.name, ['ar', 'en']) ||\n        !exactKeys(product.description, ['ar', 'en'])\n    )\n        return fail('Product localization is invalid');\n    if (\n        !product.externalId ||\n        !product.slug ||\n        !product.name.ar ||\n        !product.name.en ||\n        product.visible !== true\n    )\n        return fail('Product fields are invalid');\n    if (!Array.isArray(product.variants) || product.variants.length !== 2)\n        return fail('Every SBC product must contain exactly two variants');\n    if (!Array.isArray(product.media) || product.media.length > 1)\n        return fail('Product media is invalid');\n    productIds.push(product.externalId);\n    productSlugs.push(product.slug);\n\n    const platforms = [];\n    const completionChoices = [];\n    for (const variant of product.variants) {\n        if (\n            !exactKeys(variant, [\n                'externalId',\n                'sku',\n                'platform',\n                'market',\n                'currency',\n                'name',\n                'priceMinor',\n                'salePriceMinor',\n                'priceVersion',\n                'active',\n                'configuration',\n            ])\n        )\n            return fail('Variant keys are not exact');\n        if (!exactKeys(variant.name, ['ar', 'en']))\n            return fail('Variant localization is invalid');\n        if (\n            !variant.externalId ||\n            !variant.sku ||\n            !Number.isInteger(variant.priceMinor) ||\n            variant.priceMinor <= 0 ||\n            variant.salePriceMinor !== null ||\n            variant.priceVersion !== 1 ||\n            variant.active !== true\n        )\n            return fail('Variant fields are invalid');\n        if (\n            (variant.platform === 'playstation' &&\n                variant.market !== 'console') ||\n            (variant.platform === 'pc' && variant.market !== 'pc')\n        )\n            return fail('Variant platform and market do not match');\n        if (\n            !['playstation', 'pc'].includes(variant.platform) ||\n            variant.currency !== 'SAR'\n        )\n            return fail('Variant platform or currency is invalid');\n        if (\n            !variant.configuration ||\n            typeof variant.configuration !== 'object' ||\n            Array.isArray(variant.configuration)\n        )\n            return fail('Variant configuration is invalid');\n        if (\n            !['players', 'upgrades', 'icons', 'foundations'].includes(\n                variant.configuration.sbcCategory,\n            ) ||\n            product.categoryExternalId !==\n                `easysbc-category-${variant.configuration.sbcCategory}`\n        )\n            return fail('Variant SBC category is invalid');\n        const completionFailure = completionPricingFailure(\n            variant.configuration.completionPricing,\n            variant.priceMinor,\n        );\n        if (completionFailure) return fail(completionFailure);\n        platforms.push(variant.platform);\n        completionChoices.push(\n            variant.configuration.completionPricing.tiers.map(\n                ({ completions }) => completions,\n            ),\n        );\n        variantIds.push(variant.externalId);\n        skus.push(variant.sku);\n    }\n    if (JSON.stringify(platforms) !== JSON.stringify(['playstation', 'pc']))\n        return fail(\n            'Every SBC product must contain ordered PS and PC variants',\n        );\n    if (\n        JSON.stringify(completionChoices[0]) !==\n        JSON.stringify(completionChoices[1])\n    ) {\n        return fail('PS and PC completion choices must match');\n    }\n\n    for (const media of product.media) {\n        if (\n            !exactKeys(media, ['url', 'alt', 'sortOrder']) ||\n            !exactKeys(media.alt, ['ar', 'en'])\n        )\n            return fail('Media keys are not exact');\n        if (!isApprovedEasySbcImage(media.url) || media.sortOrder !== 0)\n            return fail('Media URL is not an approved EasySBC asset');\n    }\n}\n\nif (!unique(productIds)) return fail('Product externalId is duplicated');\nif (!unique(productSlugs)) return fail('Product slug is duplicated');\nif (!unique(variantIds)) return fail('Variant externalId is duplicated');\nif (!unique(skus)) return fail('Variant SKU is duplicated');\n\nreturn [\n    {\n        json: {\n            ...item,\n            valid: true,\n            failureReason: null,\n            catalogSnapshot: snapshot,\n        },\n    },\n];\n"
-      },
-      "id": "validate-sbc-snapshot-v1",
-      "name": "Validate SBC Snapshot",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2340,
-        200
+        280
       ],
       "notes": "Source: nodes/validate-snapshot.js"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.valid }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        }
-      },
-      "id": "snapshot-valid-sbc-v1",
-      "name": "Snapshot Valid?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        2580,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $(\"Config\").first().json.settings.mode }}",
-              "rightValue": "apply",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        }
-      },
-      "id": "apply-mode-sbc-v1",
-      "name": "Apply Mode?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        2820,
-        200
-      ]
-    },
-    {
-      "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst snapshot = item.catalogSnapshot;\n\nreturn [\n    {\n        json: {\n            status: 'dry_run',\n            publishAttempted: false,\n            categories: snapshot.categories.length,\n            products: snapshot.products.length,\n            variants: snapshot.products.reduce(\n                (total, product) => total + product.variants.length,\n                0,\n            ),\n            sourceCount: item.sourceCount,\n            eligibleCount: item.eligibleCount,\n            sourceSafetyFloor: item.sourceSafetyFloor,\n            eligibleSafetyFloor: item.eligibleSafetyFloor,\n            wouldCreate: null,\n            wouldUpdate: null,\n            wouldArchive: null,\n            previewAvailable: false,\n            previewReason:\n                'Laravel has no authenticated n8n-sbc snapshot read endpoint',\n        },\n    },\n];\n"
-      },
-      "id": "dry-run-summary-sbc-v1",
-      "name": "Dry Run Summary",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3060,
-        360
-      ],
-      "notes": "Source: nodes/dry-run-summary.js"
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\n\nif (!item.valid || !item.catalogSnapshot) {\n    return [\n        {\n            json: {\n                ...item,\n                catalogSigned: false,\n                failureReason:\n                    item.failureReason ||\n                    'Cannot sign an invalid catalog snapshot',\n            },\n        },\n    ];\n}\n\nconst secret = $env.N8N_SBC_CATALOG_SECRET;\nif (!secret) {\n    return [\n        {\n            json: {\n                ...item,\n                catalogSigned: false,\n                failureReason:\n                    'N8N_SBC_CATALOG_SECRET is not configured on the n8n host',\n            },\n        },\n    ];\n}\n\nconst crypto = require('crypto');\nconst timestamp = String(Math.floor(Date.now() / 1000));\nconst event = item.catalogSnapshot.eventId;\nconst rawBody = JSON.stringify(item.catalogSnapshot);\nconst canonical = `${timestamp}\\n${event}\\nn8n-sbc\\n${rawBody}`;\nconst signature = crypto\n    .createHmac('sha256', secret)\n    .update(canonical)\n    .digest('hex');\n\nreturn [\n    {\n        json: {\n            ...item,\n            catalogSigned: true,\n            timestamp,\n            event,\n            rawBody,\n            signature,\n        },\n    },\n];\n"
+        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst secret = $env.N8N_SBC_CATALOG_SECRET;\n\nif (!secret) {\n    throw new Error(\n        '[sign] N8N_SBC_CATALOG_SECRET is not configured on the n8n host',\n    );\n}\nif (!item.catalogSnapshot) {\n    throw new Error('[sign] there is no catalog snapshot to sign');\n}\n\nconst crypto = require('crypto');\nconst timestamp = String(Math.floor(Date.now() / 1000));\nconst event = item.catalogSnapshot.eventId;\n\n// rawBody is the exact byte sequence that is HMAC'd AND the exact byte sequence\n// the HTTP node sends, so the signature cannot drift from the payload.\nconst rawBody = JSON.stringify(item.catalogSnapshot);\nconst canonical = `${timestamp}\\n${event}\\nn8n-sbc\\n${rawBody}`;\nconst signature = crypto\n    .createHmac('sha256', secret)\n    .update(canonical)\n    .digest('hex');\n\nreturn [{ json: { ...item, timestamp, event, rawBody, signature } }];\n"
       },
       "id": "sign-catalog-sbc-v1",
       "name": "Sign Catalog Snapshot",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3060,
-        120
+        3540,
+        280
       ],
       "notes": "Source: nodes/sign-catalog.js"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.catalogSigned }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        }
-      },
-      "id": "catalog-signed-sbc-v1",
-      "name": "Catalog Signed?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        3300,
-        120
-      ]
     },
     {
       "parameters": {
@@ -646,26 +422,23 @@
               "value": "application/json"
             },
             {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
               "name": "X-ArabUT-Timestamp",
-              "value": "={{ $(\"Sign Catalog Snapshot\").first().json.timestamp }}"
+              "value": "={{ $json.timestamp }}"
             },
             {
               "name": "X-ArabUT-Event",
-              "value": "={{ $(\"Sign Catalog Snapshot\").first().json.event }}"
+              "value": "={{ $json.event }}"
             },
             {
               "name": "X-ArabUT-Signature",
-              "value": "={{ $(\"Sign Catalog Snapshot\").first().json.signature }}"
+              "value": "={{ $json.signature }}"
             }
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ $(\"Sign Catalog Snapshot\").first().json.rawBody }}",
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.rawBody }}",
         "options": {
           "response": {
             "response": {
@@ -673,7 +446,8 @@
               "neverError": true,
               "responseFormat": "json"
             }
-          }
+          },
+          "timeout": 30000
         }
       },
       "id": "publish-sbc-catalog-v1",
@@ -681,9 +455,12 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        3540,
-        40
+        3780,
+        280
       ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
       "credentials": {
         "httpCustomAuth": {
           "id": "CONFIGURE_ARABUT_SBC_CATALOG_CREDENTIAL_ID",
@@ -695,167 +472,21 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst response = $input.first().json;\nconst signed = $('Sign Catalog Snapshot').first().json;\nconst submitted = signed.catalogSnapshot;\nconst statusCode = Number(response.statusCode || 0);\nlet body = response.body ?? response;\n\nif (typeof body === 'string') {\n    try {\n        body = JSON.parse(body);\n    } catch {}\n}\n\nconst completed =\n    statusCode === 201 &&\n    body?.data?.runId === submitted.runId &&\n    body?.data?.status === 'completed' &&\n    Number.isInteger(body?.data?.applied) &&\n    Number.isInteger(body?.data?.archived);\nconst replayed =\n    statusCode === 409 && body?.error?.code === 'catalog_snapshot_replayed';\nconst publishOk = completed || replayed;\n\nreturn [\n    {\n        json: {\n            publishOk,\n            replayed,\n            failureReason: publishOk\n                ? null\n                : `Laravel did not confirm the SBC catalog snapshot (HTTP ${statusCode || 'unknown'})`,\n            publishResponse: body,\n            catalogSnapshot: submitted,\n            sourceCount: signed.sourceCount,\n            eligibleCount: signed.eligibleCount,\n        },\n    },\n];\n"
+        "jsCode": "/* eslint-disable */\n// Confirms Laravel accepted the snapshot, then commits the safety baseline.\n// v3 split this across \"Evaluate Publish Result\", a \"Publish OK?\" IF, and\n// \"Success Summary\" -- three nodes to decide one boolean and write one object.\n\nconst response = $input.first().json;\nconst signed = $('Sign Catalog Snapshot').first().json;\nconst snapshot = signed.catalogSnapshot;\nconst statusCode = Number(response.statusCode || 0);\n\n// n8n does not always hand back parsed JSON. Depending on the response headers\n// it can return the body as a Buffer, which arrives here as\n// { type: 'Buffer', data: [ ... ] }. That is an object, so a `typeof === string`\n// check skips it -- and then `body.data` reads the BYTE ARRAY rather than the\n// payload, `body.data.runId` is undefined, and a publish that actually\n// succeeded is reported as a failure. Worse, the throw lands before the safety\n// baseline is written, so the run publishes, alerts, and records nothing.\n// Written without depending on the Buffer global, which is not guaranteed to be\n// exposed inside an n8n Code node sandbox.\nfunction bytesToString(bytes) {\n    let out = '';\n    // Chunked so a large body cannot blow the argument limit on String.fromCharCode.\n    for (let index = 0; index < bytes.length; index += 8192) {\n        out += String.fromCharCode.apply(\n            null,\n            bytes.slice(index, index + 8192),\n        );\n    }\n    // The payload is UTF-8; decodeURIComponent/escape turns the raw bytes back\n    // into correct characters so Arabic names survive the round trip.\n    try {\n        return decodeURIComponent(escape(out));\n    } catch {\n        return out;\n    }\n}\n\nfunction decodeHttpBody(raw) {\n    if (raw == null) return raw;\n\n    if (typeof raw === 'object' && !Array.isArray(raw)) {\n        // n8n's serialised Buffer. The `type === 'Buffer'` tag is required, not\n        // optional: a perfectly ordinary JSON response of the form { data: [...] }\n        // would otherwise be mistaken for bytes and destroyed.\n        if (raw.type === 'Buffer' && Array.isArray(raw.data)) {\n            return decodeHttpBody(bytesToString(raw.data));\n        }\n        // A real Buffer instance.\n        if (\n            raw.constructor?.name === 'Buffer' &&\n            typeof raw.toString === 'function'\n        ) {\n            return decodeHttpBody(raw.toString('utf8'));\n        }\n    }\n\n    if (typeof raw === 'string') {\n        const trimmed = raw.trim();\n        if (!trimmed) return raw;\n        try {\n            return JSON.parse(trimmed);\n        } catch {\n            return raw;\n        }\n    }\n    return raw;\n}\n\nconst body = decodeHttpBody(response.body ?? response);\n\nconst completed =\n    statusCode === 201 &&\n    body?.data?.runId === snapshot.runId &&\n    body?.data?.status === 'completed' &&\n    Number.isInteger(body?.data?.applied) &&\n    Number.isInteger(body?.data?.archived);\n\n// A replay means this exact eventId already landed; the catalog is in the state\n// we intended, so it counts as success.\nconst replayed =\n    statusCode === 409 && body?.error?.code === 'catalog_snapshot_replayed';\n\nif (!completed && !replayed) {\n    throw new Error(\n        `[publish] Laravel did not confirm the catalog snapshot (HTTP ${statusCode || 'unknown'}); response: ${JSON.stringify(body).slice(0, 400)}`,\n    );\n}\n\nconst globalData = $getWorkflowStaticData('global');\nconst state = globalData.sbcCatalog ?? {};\n\nconst lastSuccessfulItems = snapshot.products.map((product) => ({\n    sourceId: String(product.variants[0].configuration.sourceId),\n    sourceName: product.name.en,\n    expiresAt: product.variants[0].configuration.expiresAt,\n}));\n\nconst lastPricingVersion = Number(\n    snapshot.products?.[0]?.variants?.[0]?.configuration?.pricingVersion,\n);\n\nglobalData.sbcCatalog = {\n    ...state,\n    lastSuccessfulCounts: {\n        sourceCount: Number(signed.sourceCount),\n        eligibleCount: Number(signed.eligibleCount),\n        completedAt: new Date().toISOString(),\n    },\n    lastSuccessfulItems,\n    lastPricingVersion: Number.isInteger(lastPricingVersion)\n        ? lastPricingVersion\n        : state.lastPricingVersion,\n    lastSuccessfulSourceAudit: signed.sourceAudit ?? null,\n    lastSuccessfulPricingAudit: signed.pricingAudit ?? null,\n    bootstrapCompletedAt:\n        state.bootstrapCompletedAt ?? new Date().toISOString(),\n};\n\nreturn [\n    {\n        json: {\n            status: replayed ? 'replayed' : 'published',\n            triggerSource: signed.triggerSource,\n            runId: snapshot.runId,\n            eventId: snapshot.eventId,\n            products: snapshot.products.length,\n            variants: snapshot.products.reduce(\n                (total, product) => total + product.variants.length,\n                0,\n            ),\n            applied: body?.data?.applied ?? null,\n            archived: body?.data?.archived ?? null,\n            bootstrapMode: signed.bootstrapMode ?? null,\n            expectedDepartures: signed.expectedDepartures ?? [],\n            renamedSourceIds: signed.renamedSourceIds ?? [],\n            newSourceIds: signed.newSourceIds ?? [],\n            sourceAudit: signed.sourceAudit ?? null,\n            pricingAudit: signed.pricingAudit ?? null,\n            publishResponse: body,\n        },\n    },\n];\n"
       },
-      "id": "evaluate-publish-sbc-v1",
-      "name": "Evaluate Publish Result",
+      "id": "finish-run-sbc-v1",
+      "name": "Finish Run",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        3780,
-        40
-      ],
-      "notes": "Source: nodes/evaluate-publish.js"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.publishOk }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        }
-      },
-      "id": "publish-ok-sbc-v1",
-      "name": "Publish OK?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
       "position": [
         4020,
-        40
-      ]
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst snapshot = item.catalogSnapshot;\n\nif (\n    !item.replayed &&\n    item.publishResponse?.data?.runId === snapshot.runId &&\n    item.publishResponse?.data?.status === 'completed'\n) {\n    const globalData = $getWorkflowStaticData('global');\n    const state = globalData.sbcCatalogV1 ?? {};\n    const lastSuccessfulItems = snapshot.products.map((product) => ({\n        sourceId: String(product.variants[0].configuration.sourceId),\n        sourceName: product.name.en,\n        expiresAt: product.variants[0].configuration.expiresAt,\n    }));\n    globalData.sbcCatalogV1 = {\n        ...state,\n        lastSuccessfulCounts: {\n            sourceCount: Number(item.sourceCount),\n            eligibleCount: Number(item.eligibleCount),\n            completedAt: new Date().toISOString(),\n        },\n        lastSuccessfulItems,\n    };\n}\n\nreturn [\n    {\n        json: {\n            status: item.replayed ? 'replayed' : 'published',\n            publishAttempted: true,\n            runId: snapshot.runId,\n            products: snapshot.products.length,\n            variants: snapshot.products.reduce(\n                (total, product) => total + product.variants.length,\n                0,\n            ),\n            publishResponse: item.publishResponse,\n        },\n    },\n];\n"
-      },
-      "id": "success-summary-sbc-v1",
-      "name": "Success Summary",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        4260,
-        -40
+        280
       ],
-      "notes": "Source: nodes/success-summary.js"
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\nconst item = $input.first().json;\nconst reason = item.failureReason || 'SBC catalog workflow failed closed';\nconst to = $env.OPS_WHATSAPP_TARGET || '';\n\nreturn [\n    {\n        json: {\n            alertEnabled: Boolean(to),\n            to,\n            body: `SBC catalog failed closed. The last accepted catalog remains active. Reason: ${reason}`,\n            failureReason: reason,\n        },\n    },\n];\n"
-      },
-      "id": "failure-alert-sbc-v1",
-      "name": "Prepare Failure Alert",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2820,
-        600
-      ],
-      "notes": "Source: nodes/failure-alert.js"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.alertEnabled }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        }
-      },
-      "id": "alert-configured-sbc-v1",
-      "name": "Alert Configured?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        3060,
-        600
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://gate.whapi.cloud/messages/text",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpCustomAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ to: $json.to, body: $json.body }) }}",
-        "options": {
-          "response": {
-            "response": {
-              "neverError": true,
-              "responseFormat": "json"
-            }
-          }
-        }
-      },
-      "id": "whapi-failure-alert-sbc-v1",
-      "name": "Whapi Failure Alert",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        3300,
-        520
-      ],
-      "credentials": {
-        "httpCustomAuth": {
-          "id": "CONFIGURE_WHAPI_CREDENTIAL_ID",
-          "name": "Whapi Alerts"
-        }
-      },
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "errorMessage": "={{ $(\"Prepare Failure Alert\").first().json.failureReason || \"SBC catalog workflow failed closed\" }}"
-      },
-      "id": "stop-workflow-error-sbc-v1",
-      "name": "Stop Workflow With Error",
-      "type": "n8n-nodes-base.stopAndError",
-      "typeVersion": 1,
-      "position": [
-        3540,
-        680
-      ]
+      "notes": "Source: nodes/finish-run.js"
     }
   ],
   "connections": {
     "Run SBC Catalog Now": {
-      "main": [
-        [
-          {
-            "node": "Manual Dry Run Context",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Manual Dry Run Context": {
       "main": [
         [
           {
@@ -867,17 +498,6 @@
       ]
     },
     "Every 2 Hours": {
-      "main": [
-        [
-          {
-            "node": "Scheduled Apply Context",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Scheduled Apply Context": {
       "main": [
         [
           {
@@ -903,25 +523,7 @@
       "main": [
         [
           {
-            "node": "Config Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Config Valid?": {
-      "main": [
-        [
-          {
             "node": "Sign Pricing Read",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Prepare Failure Alert",
             "type": "main",
             "index": 0
           }
@@ -932,25 +534,7 @@
       "main": [
         [
           {
-            "node": "Pricing Read Signed?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Pricing Read Signed?": {
-      "main": [
-        [
-          {
             "node": "Read Coins Bases",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Prepare Failure Alert",
             "type": "main",
             "index": 0
           }
@@ -972,25 +556,18 @@
       "main": [
         [
           {
-            "node": "Pricing Ready?",
+            "node": "Fetch FFT SBCs",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Pricing Ready?": {
+    "Fetch FFT SBCs": {
       "main": [
         [
           {
             "node": "Fetch EasySBC Sets",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Prepare Failure Alert",
             "type": "main",
             "index": 0
           }
@@ -1001,54 +578,47 @@
       "main": [
         [
           {
-            "node": "Prepare Translations",
+            "node": "Merge Provider Sources",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Prepare Translations": {
+    "Merge Provider Sources": {
       "main": [
         [
           {
-            "node": "Translation Plan Valid?",
+            "node": "Plan Translations",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Translation Plan Valid?": {
+    "Plan Translations": {
       "main": [
         [
           {
-            "node": "Translation Ready?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Prepare Failure Alert",
+            "node": "Needs Translation?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Translation Ready?": {
+    "Needs Translation?": {
       "main": [
-        [
-          {
-            "node": "Prepare SBC Snapshot",
-            "type": "main",
-            "index": 0
-          }
-        ],
         [
           {
             "node": "Translate SBC Names",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build & Price Snapshot",
             "type": "main",
             "index": 0
           }
@@ -1066,7 +636,7 @@
         ]
       ]
     },
-    "Gemini Translation Model": {
+    "OpenAI Chat Model": {
       "ai_languageModel": [
         [
           {
@@ -1081,83 +651,29 @@
       "main": [
         [
           {
-            "node": "Translation Valid?",
+            "node": "Build & Price Snapshot",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Translation Valid?": {
+    "Build & Price Snapshot": {
       "main": [
         [
           {
-            "node": "Prepare SBC Snapshot",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Prepare Failure Alert",
+            "node": "Validate Snapshot",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Prepare SBC Snapshot": {
-      "main": [
-        [
-          {
-            "node": "Validate SBC Snapshot",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Validate SBC Snapshot": {
-      "main": [
-        [
-          {
-            "node": "Snapshot Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Snapshot Valid?": {
-      "main": [
-        [
-          {
-            "node": "Apply Mode?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Prepare Failure Alert",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Apply Mode?": {
+    "Validate Snapshot": {
       "main": [
         [
           {
             "node": "Sign Catalog Snapshot",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Dry Run Summary",
             "type": "main",
             "index": 0
           }
@@ -1168,25 +684,7 @@
       "main": [
         [
           {
-            "node": "Catalog Signed?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Catalog Signed?": {
-      "main": [
-        [
-          {
             "node": "Publish SBC Catalog",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Prepare Failure Alert",
             "type": "main",
             "index": 0
           }
@@ -1197,76 +695,7 @@
       "main": [
         [
           {
-            "node": "Evaluate Publish Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Evaluate Publish Result": {
-      "main": [
-        [
-          {
-            "node": "Publish OK?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Publish OK?": {
-      "main": [
-        [
-          {
-            "node": "Success Summary",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Prepare Failure Alert",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Failure Alert": {
-      "main": [
-        [
-          {
-            "node": "Alert Configured?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Alert Configured?": {
-      "main": [
-        [
-          {
-            "node": "Whapi Failure Alert",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Stop Workflow With Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Whapi Failure Alert": {
-      "main": [
-        [
-          {
-            "node": "Stop Workflow With Error",
+            "node": "Finish Run",
             "type": "main",
             "index": 0
           }
@@ -1277,9 +706,13 @@
   "active": false,
   "settings": {
     "executionOrder": "v1",
-    "availableInMCP": false
+    "availableInMCP": false,
+    "executionTimeout": 900,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": false
   },
-  "versionId": "SBC_CATALOG_V1_VERSION",
+  "versionId": "SBC_CATALOG_V4_VERSION",
   "meta": {
     "templateCredsSetupCompleted": false
   },
