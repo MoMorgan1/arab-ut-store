@@ -21,6 +21,14 @@ jobs:
       AI_ASSISTANT_ROLLOUT: public
       AI_MODEL_PROVIDER: fake
       OPENAI_API_KEY: ''
+      # Declared explicitly, like mariadb-schema does below. This job has no
+      # database service, so it must not inherit .env.example's connection --
+      # that flipped from sqlite to mariadb in bb14c4c and `composer setup`
+      # has failed at `artisan migrate` with "Connection refused" ever since,
+      # before a single check ran. phpunit.xml pins tests to sqlite :memory:
+      # anyway; this file-backed database is for the Playwright server.
+      DB_CONNECTION: sqlite
+      DB_DATABASE: database/database.sqlite
 
     steps:
       - name: Checkout code
@@ -47,6 +55,11 @@ jobs:
           path: ~/.cache/composer/files
           key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
           restore-keys: composer-${{ runner.os }}-
+
+      # database/database.sqlite is untracked, so the runner has no database
+      # file at all until one is created here.
+      - name: Create SQLite database
+        run: touch database/database.sqlite
 
       - name: Setup Application
         run: composer setup
@@ -177,6 +190,7 @@ jobs:
           php artisan migrate --force
 
       - name: Run focused domain and cart tests on MariaDB
+        id: mariadb-tests
         run: >-
           php vendor/bin/pest --configuration phpunit.mariadb.xml
           tests/Feature/Database/DomainSchemaTest.php
@@ -195,3 +209,14 @@ jobs:
           tests/Unit/Enums/OrderItemStatusTest.php
           tests/Unit/Enums/PlatformTest.php
           tests/Unit/Support/MoneyTest.php
+
+      # carts.active_owner_key is a STORED generated column on MariaDB and a
+      # trigger on SQLite. When it silently yields NULL every owner lookup
+      # misses, and the failure surfaces far away as a 503 from the cart
+      # controller, which tells you nothing. Dump the real definition rather
+      # than inferring it from the symptom.
+      - name: Dump carts schema on failure
+        if: ${{ failure() && steps.mariadb-tests.outcome == 'failure' }}
+        run: >-
+          php artisan tinker --execute="echo
+          json_encode(DB::select('SHOW CREATE TABLE carts'), JSON_PRETTY_PRINT);"
