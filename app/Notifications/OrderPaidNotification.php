@@ -30,6 +30,18 @@ final class OrderPaidNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * What a mail client will actually draw. Outlook, Yahoo and older Apple
+     * Mail render no WebP at all, and image proxies that do re-encode it
+     * flatten its transparency onto black - which is how the coin reached a
+     * customer as a black tile. MirrorCatalogMedia accepts image/webp, so a
+     * catalogue sync can put one of these in front of a receipt at any time;
+     * a neutral placeholder beats a broken image or a black square.
+     *
+     * @var list<string>
+     */
+    private const MAIL_SAFE_FORMATS = ['png', 'jpg', 'jpeg', 'gif'];
+
     public function __construct(private readonly Order $order)
     {
         $this->afterCommit();
@@ -126,6 +138,10 @@ final class OrderPaidNotification extends Notification implements ShouldQueue
 
         if ($path === '' || str_contains($path, '..')
             || preg_match('/\A[A-Za-z0-9_\/.\-]+\z/D', $path) !== 1) {
+            return null;
+        }
+
+        if (! in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), self::MAIL_SAFE_FORMATS, true)) {
             return null;
         }
 
