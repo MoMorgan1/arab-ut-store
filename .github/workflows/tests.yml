@@ -237,6 +237,14 @@ jobs:
             echo 'PROBE ROW: ', json_encode(
               DB::table('carts')->where('session_key', 'ci-probe-session-key')->first()
             ), PHP_EOL;
+            echo 'LEFTOVERS: ', json_encode([
+              'products_total' => DB::table('products')->count(),
+              'coins_products_visible' => DB::table('products')
+                ->where('service_type', 'coins')->where('is_visible', 1)
+                ->whereNull('archived_at')->count(),
+              'price_rules' => DB::table('price_rules')->count(),
+              'carts' => DB::table('carts')->count(),
+            ]), PHP_EOL;
           "
 
       # CoinsCartController converts every DomainException into a bare 503, so
