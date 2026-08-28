@@ -1,140 +1,62 @@
 /* eslint-disable */
-// SBC Catalog v1 settings. Secrets remain in n8n environment and Credentials.
+// SBC Catalog v4.0 — direct apply.
+// Every failure in this workflow THROWS. The n8n Error Workflow catches it and
+// sends the Telegram alert, so there is no in-flow failure rail to maintain.
 
-const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
 function ulid() {
     let time = Date.now();
     let timestamp = '';
     for (let index = 0; index < 10; index += 1) {
-        timestamp = alphabet[time % 32] + timestamp;
+        timestamp = ALPHABET[time % 32] + timestamp;
         time = Math.floor(time / 32);
     }
-
     let random = '';
     for (let index = 0; index < 16; index += 1) {
-        random += alphabet[Math.floor(Math.random() * alphabet.length)];
+        random += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
     }
-
     return timestamp + random;
 }
 
+// Laravel requires microsecond precision on generatedAt.
 function generatedAt() {
     return new Date().toISOString().replace(/\.(\d{3})Z$/, '.$1000Z');
 }
 
-const approvedEligibleItems = [
-    ['1340', 'Ayden Heaven', '2026-08-18T17:00:00.000Z'],
-    ['1351', '1 of 3 85+ Player Pick', '2026-08-17T17:00:00.000Z'],
-    [
-        '1348',
-        '1 of 4 95+ FOF or FUTTIES T1-T3 Player Pick',
-        '2026-08-18T17:00:00.000Z',
-    ],
-    ['1344', '7x 87+ Upgrade', '2026-08-18T17:00:00.000Z'],
-    ['1339', 'Patrick Kluivert', '2026-08-24T17:00:00.000Z'],
-    ['1337', '4 of 10 84+ Player Pick', '2026-08-17T17:00:00.000Z'],
-    ['1338', 'Marcos Llorente', '2026-08-23T17:00:00.000Z'],
-    [
-        '1328',
-        '94+ GOTG & FUTTIES Team 1 & 2 (Icons & Heroes) Upgrade',
-        '2026-08-23T17:00:00.000Z',
-    ],
-    ['1327', 'Striker Instinct EVO', '2026-08-16T17:00:00.000Z'],
-    ['1335', 'Antonio Rüdiger', '2026-08-22T17:00:00.000Z'],
-    ['1329', 'Debinha', '2026-08-15T17:00:00.000Z'],
-    ['1333', '10x 85+ Upgrade', '2026-08-15T17:00:00.000Z'],
-    ['1325', 'Jérémy Doku', '2026-08-28T17:00:00.000Z'],
-    [
-        '1326',
-        '1 of 3 95+ FOF or FUTTIES T1 & T2 Player Pick',
-        '2026-08-14T17:00:00.000Z',
-    ],
-    ['1332', '2x 85+ Upgrade', '2026-08-21T17:00:00.000Z'],
-    ['1324', 'Saeed Al-Owairan', '2026-08-14T17:00:00.000Z'],
-    ['1334', '2 of 3 86+ Player Pick', '2026-08-14T17:00:00.000Z'],
-    ['1309', 'Moussa Sissoko', '2026-08-13T17:00:00.000Z'],
-    [
-        '1321',
-        'Repeatable FUTTIES Provisions Upgrade',
-        '2026-08-13T17:00:00.000Z',
-    ],
-    ['1320', '3x 87-90 Upgrade', '2026-08-13T17:00:00.000Z'],
-    ['1316', '1 of 3 FUTTIES Team 2 Player Pick', '2026-08-12T17:00:00.000Z'],
-    ['1319', 'Eusébio', '2026-08-23T17:00:00.000Z'],
-    [
-        '1298',
-        '1 of 3 94+ GOTG or FUTTIES Icon or Hero Player Pick',
-        '2026-08-16T17:00:00.000Z',
-    ],
-    ['1302', 'Fernando Torres', '2026-08-21T17:00:00.000Z'],
-    ['1306', 'Frenkie de Jong', '2026-08-21T17:00:00.000Z'],
-    ['1310', '10x 84+ Upgrade', '2026-08-14T17:00:00.000Z'],
-    ['1274', 'Antonio Di Natale', '2026-08-14T17:00:00.000Z'],
-    ['1261', '5x 80+ Upgrade', '2026-08-21T17:00:00.000Z'],
-    ['1248', 'Johan Cruyff', '2026-08-13T17:00:00.000Z'],
-    ['1237', '89 OVR Token Swap', '2026-08-13T17:00:00.000Z'],
-    ['1236', '88 OVR Token Swap', '2026-08-13T17:00:00.000Z'],
-    ['1231', '83 OVR Token Swap', '2026-08-13T17:00:00.000Z'],
-    ['1235', '87 OVR Token Swap', '2026-08-13T17:00:00.000Z'],
-    ['1238', '90 OVR Token Swap', '2026-08-13T17:00:00.000Z'],
-    ['1234', '86 OVR Token Swap', '2026-08-13T17:00:00.000Z'],
-    ['1232', '84 OVR Token Swap', '2026-08-13T17:00:00.000Z'],
-    ['1233', '85 OVR Token Swap', '2026-08-13T17:00:00.000Z'],
-    ['1239', '91 OVR Token Swap', '2026-08-13T17:00:00.000Z'],
-    ['7', 'Gold Upgrade', '2035-07-30T17:00:00.000Z'],
-].map(([sourceId, sourceName, expiresAt]) => ({
-    sourceId,
-    sourceName,
-    expiresAt,
-}));
+// The three triggers are distinguishable by the shape of what they emit, so
+// they wire straight into this node without a Set node each.
+function detectTriggerSource(json) {
+    if (json && (json.headers || json.body || json.query)) return 'webhook';
+    if (json && (json.timestamp || json['Readable date'])) return 'schedule';
+    return 'manual';
+}
 
-const triggerInput = $input.first().json;
-const workflowState = $getWorkflowStaticData('global').sbcCatalogV1 ?? {};
-let configValid = true;
-let failureReason = null;
-let triggerSource = null;
-let mode = 'dry_run';
+const triggerSource = detectTriggerSource($input.first().json ?? {});
 
-if (
-    triggerInput?.triggerSource === 'manual' &&
-    triggerInput?.requestedMode === 'dry_run'
-) {
-    triggerSource = 'manual';
-} else if (
-    triggerInput?.triggerSource === 'schedule' &&
-    triggerInput?.requestedMode === 'apply'
-) {
-    triggerSource = 'schedule';
-    mode = 'apply';
-    if (
-        !Array.isArray(workflowState.lastSuccessfulItems) ||
-        workflowState.lastSuccessfulItems.length === 0
-    ) {
-        configValid = false;
-        failureReason =
-            'Scheduled apply is blocked until a production webhook bootstrap completes with fresh HTTP 201';
-    }
-} else if (
-    triggerInput?.body &&
-    typeof triggerInput.body === 'object' &&
-    !Array.isArray(triggerInput.body) &&
-    Object.keys(triggerInput.body).length === 1 &&
-    ['dry_run', 'apply'].includes(triggerInput.body.mode)
-) {
-    triggerSource = 'webhook';
-    mode = triggerInput.body.mode;
-} else {
-    configValid = false;
-    failureReason =
-        'Trigger contract is invalid; use manual dry-run, scheduled apply, or exact webhook body {"mode":"dry_run|apply"}';
+// Fail at the very first node, with a clear message, rather than letting an
+// HTTP node send empty credentials and reporting it as a provider problem 6
+// nodes later. The v3 export carried the FFT key in plaintext in the request
+// body; it now lives in n8n environment variables.
+const requiredEnv = [
+    'FFT_API_USER',
+    'FFT_API_KEY',
+    'N8N_SBC_PRICING_READ_SECRET',
+    'N8N_SBC_CATALOG_SECRET',
+];
+const missingEnv = requiredEnv.filter((name) => !$env[name]);
+if (missingEnv.length) {
+    throw new Error(
+        `[config] missing n8n environment variable(s): ${missingEnv.join(', ')}`,
+    );
 }
 
 return [
     {
         json: {
             settings: {
-                mode,
+                mode: 'apply',
+
                 pricingEndpoint:
                     'https://store.arab-ut.com/api/automation/v1/pricing/coins/sbc-bases',
                 pricingPath: '/api/automation/v1/pricing/coins/sbc-bases',
@@ -143,23 +65,80 @@ return [
                 catalogEndpoint:
                     'https://store.arab-ut.com/api/automation/v1/catalog/sbc/snapshots',
                 catalogSource: 'n8n-sbc',
+
+                // Every source threshold lives here. v3 scattered these between Config
+                // and hardcoded constants inside three separate Code nodes, where they
+                // drifted out of agreement with each other.
+                source: {
+                    minUniqueFftRecords: 100,
+                    minUniqueMetadataRecords: 20,
+                    minMatchedRecords: 20,
+                    metadataLimit: 200,
+                    // Split from the old single minMatchRate, which asked one number to
+                    // answer two questions and failed a healthy feed at 77.4%.
+                    // Join integrity: of the SBCs BOTH providers list, how many agree on
+                    // name and squad count. This is the safety property -- it verifies the
+                    // two id spaces still mean the same thing. Should be ~100%.
+                    minJoinIntegrity: 0.85,
+                    // FFT coverage: what share of EasySBC's catalog FFT sells at all.
+                    // Structurally well under 100% -- FFT does not sell daily freebies or
+                    // OVR Token Swaps, which are not bought with coins. Loose on purpose:
+                    // it catches FFT's feed collapsing, not the normal overlap gap.
+                    minFftCoverage: 0.5,
+                    // Symmetric tolerances. v3 allowed 10% invalid FFT records but zero
+                    // invalid EasySBC records, so three cosmetic metadata rows took the
+                    // whole catalog down.
+                    maxInvalidFftRatio: 0.1,
+                    maxInvalidMetadataRatio: 0.1,
+                    maxMismatchRatio: 0.1,
+                },
+
                 sourceMinCount: 20,
                 sourceLimit: 200,
+                bootstrapMinimumEligibleCount: 20,
                 minimumExpiryLeadSeconds: 7200,
-                approvedBaseline: {
-                    sourceCount: 56,
-                    eligibleCount: 39,
-                    observedAt: '2026-08-12T05:46:36.701Z',
-                    approvedAt: '2026-08-12T05:46:36.701Z',
-                    approvedBy: 'operator',
-                    eligibleItems: approvedEligibleItems,
+
+                eligibility: {
+                    minConsoleCoins: 1500,
+                    minNonRepeatableConsoleCoins: 20000,
+                    // Double backslash is REQUIRED: this is a JS string that becomes a
+                    // RegExp, so '\b' would be a backspace character (U+0008) and the
+                    // filter would silently match nothing. Build & Price Snapshot
+                    // canary-tests this pattern before using it.
+                    excludedNamePattern: '\\b(?:bronze|silver)\\b',
+                },
+
+                pricingPolicy: {
+                    formulaVersion: 'fft-plus-owner-buffer-v2',
+                    ownerCoinBufferBps: 500,
+                    automationCostPerSquadMinor: 37.5,
+                    nonRepeatServiceMarginPerSquadMinor: 60,
+                    fixedOrderFeeMinor: 300,
+                    minimumPriceMinor: 600,
+                    commercialAdjustmentBps: 10000,
+                    platformAdjustmentBps: {
+                        playstation: 10000,
+                        pc: 10000,
+                    },
+                    repeatServiceMarginPerRunMinor: {
+                        1: 125,
+                        2: 90,
+                        3: 75,
+                        5: 60,
+                        10: 40,
+                        15: 32,
+                        20: 28,
+                        30: 23,
+                        40: 20,
+                        50: 18,
+                        75: 14,
+                        100: 12,
+                    },
                 },
             },
             eventId: ulid(),
             runId: ulid(),
             generatedAt: generatedAt(),
-            configValid,
-            failureReason,
             triggerSource,
         },
     },

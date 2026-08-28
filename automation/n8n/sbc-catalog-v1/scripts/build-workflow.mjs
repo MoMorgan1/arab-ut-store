@@ -4,15 +4,13 @@ import process from 'node:process';
 
 const root = new URL('../', import.meta.url);
 const output = new URL('workflow.json', root);
+const errorOutput = new URL('error-workflow.json', root);
 
-async function codeNode(name, id, sourceFile, position) {
+async function codeNode(name, id, sourceFile, position, extra = {}) {
     return {
         parameters: {
             mode: 'runOnceForAllItems',
-            jsCode: await readFile(
-                new URL(`nodes/${sourceFile}`, root),
-                'utf8',
-            ),
+            jsCode: await readFile(new URL(`nodes/${sourceFile}`, root), 'utf8'),
         },
         id,
         name,
@@ -20,29 +18,7 @@ async function codeNode(name, id, sourceFile, position) {
         typeVersion: 2,
         position,
         notes: `Source: nodes/${sourceFile}`,
-    };
-}
-
-function ifNode(name, id, leftValue, rightValue, type, position) {
-    return {
-        parameters: {
-            conditions: {
-                options: { caseSensitive: true, typeValidation: 'strict' },
-                conditions: [
-                    {
-                        leftValue,
-                        rightValue,
-                        operator: { type, operation: 'equals' },
-                    },
-                ],
-                combinator: 'and',
-            },
-        },
-        id,
-        name,
-        type: 'n8n-nodes-base.if',
-        typeVersion: 2.3,
-        position,
+        ...extra,
     };
 }
 
@@ -50,32 +26,19 @@ function edge(node, index = 0) {
     return { node, type: 'main', index };
 }
 
-function triggerContextNode(name, id, triggerSource, requestedMode, position) {
+// Every fetch runs neverError + fullResponse so the status code reaches the
+// next Code node as data. That node turns a bad status into a thrown error,
+// which the Error Workflow reports. See README "Failure model".
+function httpResponseOptions(timeout) {
     return {
-        parameters: {
-            assignments: {
-                assignments: [
-                    {
-                        id: `${id}-source`,
-                        name: 'triggerSource',
-                        value: triggerSource,
-                        type: 'string',
-                    },
-                    {
-                        id: `${id}-mode`,
-                        name: 'requestedMode',
-                        value: requestedMode,
-                        type: 'string',
-                    },
-                ],
+        response: {
+            response: {
+                fullResponse: true,
+                neverError: true,
+                responseFormat: 'json',
             },
-            options: {},
         },
-        id,
-        name,
-        type: 'n8n-nodes-base.set',
-        typeVersion: 3.4,
-        position,
+        timeout,
     };
 }
 
@@ -86,7 +49,7 @@ const nodes = [
         name: 'Run SBC Catalog Now',
         type: 'n8n-nodes-base.manualTrigger',
         typeVersion: 1,
-        position: [180, 280],
+        position: [180, 120],
     },
     {
         parameters: {
@@ -96,7 +59,7 @@ const nodes = [
         name: 'Every 2 Hours',
         type: 'n8n-nodes-base.scheduleTrigger',
         typeVersion: 1.2,
-        position: [180, 440],
+        position: [180, 280],
     },
     {
         parameters: {
@@ -110,7 +73,7 @@ const nodes = [
         name: 'SBC Catalog Production Trigger',
         type: 'n8n-nodes-base.webhook',
         typeVersion: 2.1,
-        position: [180, 600],
+        position: [180, 440],
         webhookId: '07b2a529-b860-4517-a03c-c72854a423ca',
         credentials: {
             httpHeaderAuth: {
@@ -119,42 +82,14 @@ const nodes = [
             },
         },
     },
-    triggerContextNode(
-        'Manual Dry Run Context',
-        'manual-context-sbc-catalog-v1',
-        'manual',
-        'dry_run',
-        [420, 280],
-    ),
-    triggerContextNode(
-        'Scheduled Apply Context',
-        'schedule-context-sbc-catalog-v1',
-        'schedule',
-        'apply',
-        [420, 440],
-    ),
-    await codeNode('Config', 'config-sbc-catalog-v1', 'config.js', [660, 440]),
-    ifNode(
-        'Config Valid?',
-        'config-valid-sbc-v1',
-        '={{ $json.configValid }}',
-        true,
-        'boolean',
-        [900, 440],
-    ),
+    // v3 needed a Set node per trigger to stamp triggerSource. Config now infers
+    // it from the shape each trigger emits, so those two nodes are gone.
+    await codeNode('Config', 'config-sbc-catalog-v1', 'config.js', [420, 280]),
     await codeNode(
         'Sign Pricing Read',
         'sign-pricing-read-sbc-v1',
         'sign-pricing-read.js',
-        [1140, 360],
-    ),
-    ifNode(
-        'Pricing Read Signed?',
-        'pricing-read-signed-sbc-v1',
-        '={{ $json.pricingReadSigned }}',
-        true,
-        'boolean',
-        [900, 360],
+        [660, 280],
     ),
     {
         parameters: {
@@ -168,29 +103,24 @@ const nodes = [
                     { name: 'Accept', value: 'application/json' },
                     {
                         name: 'X-ArabUT-Timestamp',
-                        value: '={{ $("Sign Pricing Read").first().json.timestamp }}',
+                        value: '={{ $json.timestamp }}',
                     },
                     {
                         name: 'X-ArabUT-Signature',
-                        value: '={{ $("Sign Pricing Read").first().json.signature }}',
+                        value: '={{ $json.signature }}',
                     },
                 ],
             },
-            options: {
-                response: {
-                    response: {
-                        fullResponse: true,
-                        neverError: true,
-                        responseFormat: 'json',
-                    },
-                },
-            },
+            options: httpResponseOptions(15000),
         },
         id: 'read-coins-bases-sbc-v1',
         name: 'Read Coins Bases',
         type: 'n8n-nodes-base.httpRequest',
         typeVersion: 4.4,
-        position: [1140, 280],
+        position: [900, 280],
+        retryOnFail: true,
+        maxTries: 3,
+        waitBetweenTries: 1000,
         credentials: {
             httpCustomAuth: {
                 id: 'CONFIGURE_ARABUT_SBC_PRICING_READ_CREDENTIAL_ID',
@@ -203,16 +133,36 @@ const nodes = [
         'Evaluate Pricing Read',
         'evaluate-pricing-read-sbc-v1',
         'evaluate-pricing-read.js',
-        [1380, 280],
+        [1140, 280],
     ),
-    ifNode(
-        'Pricing Ready?',
-        'pricing-ready-sbc-v1',
-        '={{ $json.valid }}',
-        true,
-        'boolean',
-        [1620, 280],
-    ),
+    {
+        parameters: {
+            method: 'POST',
+            url: 'https://futtransfer.top/availableSBCsAPI',
+            sendBody: true,
+            bodyParameters: {
+                parameters: [
+                    { name: 'apiUser', value: '={{ $env.FFT_API_USER }}' },
+                    { name: 'apiKey', value: '={{ $env.FFT_API_KEY }}' },
+                ],
+            },
+            options: httpResponseOptions(20000),
+        },
+        id: 'fetch-fft-sbcs-sbc-v1',
+        name: 'Fetch FFT SBCs',
+        type: 'n8n-nodes-base.httpRequest',
+        typeVersion: 4.4,
+        position: [1380, 280],
+        executeOnce: true,
+        retryOnFail: true,
+        maxTries: 3,
+        waitBetweenTries: 1500,
+        onError: 'continueRegularOutput',
+        notes:
+            'Credentials come from the FFT_API_USER / FFT_API_KEY environment ' +
+            'variables. Config fails the run at the first node if either is ' +
+            'unset. Never inline the key here: workflow exports get committed.',
+    },
     {
         parameters: {
             method: 'GET',
@@ -221,69 +171,104 @@ const nodes = [
             headerParameters: {
                 parameters: [
                     { name: 'Accept', value: 'application/json' },
-                    { name: 'User-Agent', value: 'ArabUT-SBC-Catalog/1.0' },
+                    { name: 'User-Agent', value: 'ArabUT-SBC-Catalog/4.0' },
                 ],
             },
-            options: {
-                response: {
-                    response: { neverError: true, responseFormat: 'json' },
-                },
-            },
+            options: httpResponseOptions(20000),
         },
         id: 'fetch-easysbc-sets-v1',
         name: 'Fetch EasySBC Sets',
         type: 'n8n-nodes-base.httpRequest',
         typeVersion: 4.4,
-        position: [1860, 200],
+        position: [1620, 280],
+        executeOnce: true,
+        retryOnFail: true,
+        maxTries: 3,
+        waitBetweenTries: 1500,
         onError: 'continueRegularOutput',
     },
     await codeNode(
-        'Prepare Translations',
-        'prepare-translations-sbc-v1',
-        'prepare-translations.js',
-        [2100, 200],
+        'Merge Provider Sources',
+        'merge-sources-sbc-v1',
+        'merge-sources.js',
+        [1860, 280],
     ),
-    ifNode(
-        'Translation Plan Valid?',
-        'translation-plan-valid-sbc-v1',
-        '={{ $json.translationPlanValid }}',
-        true,
-        'boolean',
-        [2340, 200],
+    await codeNode(
+        'Plan Translations',
+        'plan-translations-sbc-v1',
+        'plan-translations.js',
+        [2100, 280],
     ),
-    ifNode(
-        'Translation Ready?',
-        'translation-ready-sbc-v1',
-        '={{ $json.translationReady }}',
-        true,
-        'boolean',
-        [2580, 200],
-    ),
+    {
+        parameters: {
+            conditions: {
+                options: {
+                    caseSensitive: true,
+                    leftValue: '',
+                    typeValidation: 'strict',
+                    version: 2,
+                },
+                conditions: [
+                    {
+                        id: 'needs-translation',
+                        leftValue: '={{ $json.translationReady }}',
+                        rightValue: false,
+                        operator: {
+                            type: 'boolean',
+                            operation: 'false',
+                            singleValue: true,
+                        },
+                    },
+                ],
+                combinator: 'and',
+            },
+            options: {},
+        },
+        id: 'needs-translation-sbc-v1',
+        name: 'Needs Translation?',
+        type: 'n8n-nodes-base.if',
+        typeVersion: 2.2,
+        position: [2340, 280],
+        notes:
+            'The only routing decision left in the workflow. Every other ' +
+            'branch in v3 existed to reach the failure rail; those nodes now ' +
+            'throw instead. True = names are missing, ask the model.',
+    },
     {
         parameters: {
             promptType: 'define',
             text: '={{ $json.prompt }}',
+            options: {},
         },
         id: 'translate-sbc-names-v1',
         name: 'Translate SBC Names',
         type: '@n8n/n8n-nodes-langchain.chainLlm',
         typeVersion: 1.5,
-        position: [2820, 320],
-        onError: 'continueRegularOutput',
+        position: [2580, 160],
+        retryOnFail: true,
+        maxTries: 2,
+        waitBetweenTries: 2000,
     },
     {
         parameters: {
-            options: { temperature: 0, maxOutputTokens: 8192 },
+            model: {
+                __rl: true,
+                value: 'openai/gpt-5.6-luna',
+                mode: 'list',
+                cachedResultName: 'openai/gpt-5.6-luna',
+            },
+            builtInTools: {},
+            options: {},
         },
-        id: 'gemini-translation-model-sbc-v1',
-        name: 'Gemini Translation Model',
-        type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-        typeVersion: 1,
-        position: [2820, 520],
+        id: 'openai-translation-model-sbc-v1',
+        name: 'OpenAI Chat Model',
+        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+        typeVersion: 1.3,
+        position: [2580, 360],
         credentials: {
-            googlePalmApi: {
-                id: 'WgUWtkjmfC1iEIMi',
-                name: 'Google Gemini(PaLM) Api account 2',
+            openAiApi: {
+                id: 'CONFIGURE_ARABUT_OPENAI_CREDENTIAL_ID',
+                name: 'OpenAi account 2',
             },
         },
     },
@@ -291,63 +276,25 @@ const nodes = [
         'Validate Translations',
         'validate-translations-sbc-v1',
         'validate-translations.js',
-        [3060, 320],
-    ),
-    ifNode(
-        'Translation Valid?',
-        'translation-valid-sbc-v1',
-        '={{ $json.translationReady }}',
-        true,
-        'boolean',
-        [3300, 320],
+        [2820, 160],
     ),
     await codeNode(
-        'Prepare SBC Snapshot',
-        'prepare-sbc-snapshot-v1',
-        'prepare-snapshot.js',
-        [3540, 200],
+        'Build & Price Snapshot',
+        'build-and-price-sbc-v1',
+        'build-and-price.js',
+        [3060, 280],
     ),
     await codeNode(
-        'Validate SBC Snapshot',
-        'validate-sbc-snapshot-v1',
+        'Validate Snapshot',
+        'validate-snapshot-sbc-v1',
         'validate-snapshot.js',
-        [2340, 200],
-    ),
-    ifNode(
-        'Snapshot Valid?',
-        'snapshot-valid-sbc-v1',
-        '={{ $json.valid }}',
-        true,
-        'boolean',
-        [2580, 200],
-    ),
-    ifNode(
-        'Apply Mode?',
-        'apply-mode-sbc-v1',
-        '={{ $("Config").first().json.settings.mode }}',
-        'apply',
-        'string',
-        [2820, 200],
-    ),
-    await codeNode(
-        'Dry Run Summary',
-        'dry-run-summary-sbc-v1',
-        'dry-run-summary.js',
-        [3060, 360],
+        [3300, 280],
     ),
     await codeNode(
         'Sign Catalog Snapshot',
         'sign-catalog-sbc-v1',
         'sign-catalog.js',
-        [3060, 120],
-    ),
-    ifNode(
-        'Catalog Signed?',
-        'catalog-signed-sbc-v1',
-        '={{ $json.catalogSigned }}',
-        true,
-        'boolean',
-        [3300, 120],
+        [3540, 280],
     ),
     {
         parameters: {
@@ -359,39 +306,34 @@ const nodes = [
             headerParameters: {
                 parameters: [
                     { name: 'Accept', value: 'application/json' },
-                    { name: 'Content-Type', value: 'application/json' },
                     {
                         name: 'X-ArabUT-Timestamp',
-                        value: '={{ $("Sign Catalog Snapshot").first().json.timestamp }}',
+                        value: '={{ $json.timestamp }}',
                     },
-                    {
-                        name: 'X-ArabUT-Event',
-                        value: '={{ $("Sign Catalog Snapshot").first().json.event }}',
-                    },
+                    { name: 'X-ArabUT-Event', value: '={{ $json.event }}' },
                     {
                         name: 'X-ArabUT-Signature',
-                        value: '={{ $("Sign Catalog Snapshot").first().json.signature }}',
+                        value: '={{ $json.signature }}',
                     },
                 ],
             },
             sendBody: true,
-            specifyBody: 'json',
-            jsonBody: '={{ $("Sign Catalog Snapshot").first().json.rawBody }}',
-            options: {
-                response: {
-                    response: {
-                        fullResponse: true,
-                        neverError: true,
-                        responseFormat: 'json',
-                    },
-                },
-            },
+            contentType: 'raw',
+            rawContentType: 'application/json',
+            // Sent raw so the exact bytes that were HMAC'd are the exact bytes
+            // on the wire. v3 passed this string to jsonBody, where any
+            // re-parse and re-serialise by n8n would break the signature.
+            body: '={{ $json.rawBody }}',
+            options: httpResponseOptions(30000),
         },
         id: 'publish-sbc-catalog-v1',
         name: 'Publish SBC Catalog',
         type: 'n8n-nodes-base.httpRequest',
         typeVersion: 4.4,
-        position: [3540, 40],
+        position: [3780, 280],
+        retryOnFail: true,
+        maxTries: 3,
+        waitBetweenTries: 1500,
         credentials: {
             httpCustomAuth: {
                 id: 'CONFIGURE_ARABUT_SBC_CATALOG_CREDENTIAL_ID',
@@ -400,111 +342,30 @@ const nodes = [
         },
         onError: 'continueRegularOutput',
     },
-    await codeNode(
-        'Evaluate Publish Result',
-        'evaluate-publish-sbc-v1',
-        'evaluate-publish.js',
-        [3780, 40],
-    ),
-    ifNode(
-        'Publish OK?',
-        'publish-ok-sbc-v1',
-        '={{ $json.publishOk }}',
-        true,
-        'boolean',
-        [4020, 40],
-    ),
-    await codeNode(
-        'Success Summary',
-        'success-summary-sbc-v1',
-        'success-summary.js',
-        [4260, -40],
-    ),
-    await codeNode(
-        'Prepare Failure Alert',
-        'failure-alert-sbc-v1',
-        'failure-alert.js',
-        [2820, 600],
-    ),
-    ifNode(
-        'Alert Configured?',
-        'alert-configured-sbc-v1',
-        '={{ $json.alertEnabled }}',
-        true,
-        'boolean',
-        [3060, 600],
-    ),
-    {
-        parameters: {
-            method: 'POST',
-            url: 'https://gate.whapi.cloud/messages/text',
-            authentication: 'genericCredentialType',
-            genericAuthType: 'httpCustomAuth',
-            sendBody: true,
-            specifyBody: 'json',
-            jsonBody:
-                '={{ JSON.stringify({ to: $json.to, body: $json.body }) }}',
-            options: {
-                response: {
-                    response: { neverError: true, responseFormat: 'json' },
-                },
-            },
-        },
-        id: 'whapi-failure-alert-sbc-v1',
-        name: 'Whapi Failure Alert',
-        type: 'n8n-nodes-base.httpRequest',
-        typeVersion: 4.4,
-        position: [3300, 520],
-        credentials: {
-            httpCustomAuth: {
-                id: 'CONFIGURE_WHAPI_CREDENTIAL_ID',
-                name: 'Whapi Alerts',
-            },
-        },
-        onError: 'continueRegularOutput',
-    },
-    {
-        parameters: {
-            errorMessage:
-                '={{ $("Prepare Failure Alert").first().json.failureReason || "SBC catalog workflow failed closed" }}',
-        },
-        id: 'stop-workflow-error-sbc-v1',
-        name: 'Stop Workflow With Error',
-        type: 'n8n-nodes-base.stopAndError',
-        typeVersion: 1,
-        position: [3540, 680],
-    },
+    await codeNode('Finish Run', 'finish-run-sbc-v1', 'finish-run.js', [
+        4020, 280,
+    ]),
 ];
 
 const connections = {
-    'Run SBC Catalog Now': { main: [[edge('Manual Dry Run Context')]] },
-    'Manual Dry Run Context': { main: [[edge('Config')]] },
-    'Every 2 Hours': { main: [[edge('Scheduled Apply Context')]] },
-    'Scheduled Apply Context': { main: [[edge('Config')]] },
+    'Run SBC Catalog Now': { main: [[edge('Config')]] },
+    'Every 2 Hours': { main: [[edge('Config')]] },
     'SBC Catalog Production Trigger': { main: [[edge('Config')]] },
-    Config: { main: [[edge('Config Valid?')]] },
-    'Config Valid?': {
-        main: [[edge('Sign Pricing Read')], [edge('Prepare Failure Alert')]],
-    },
-    'Sign Pricing Read': { main: [[edge('Pricing Read Signed?')]] },
-    'Pricing Read Signed?': {
-        main: [[edge('Read Coins Bases')], [edge('Prepare Failure Alert')]],
-    },
+    Config: { main: [[edge('Sign Pricing Read')]] },
+    'Sign Pricing Read': { main: [[edge('Read Coins Bases')]] },
     'Read Coins Bases': { main: [[edge('Evaluate Pricing Read')]] },
-    'Evaluate Pricing Read': { main: [[edge('Pricing Ready?')]] },
-    'Pricing Ready?': {
-        main: [[edge('Fetch EasySBC Sets')], [edge('Prepare Failure Alert')]],
-    },
-    'Fetch EasySBC Sets': { main: [[edge('Prepare Translations')]] },
-    'Prepare Translations': { main: [[edge('Translation Plan Valid?')]] },
-    'Translation Plan Valid?': {
-        main: [[edge('Translation Ready?')], [edge('Prepare Failure Alert')]],
-    },
-    'Translation Ready?': {
-        main: [[edge('Prepare SBC Snapshot')], [edge('Translate SBC Names')]],
+    'Evaluate Pricing Read': { main: [[edge('Fetch FFT SBCs')]] },
+    'Fetch FFT SBCs': { main: [[edge('Fetch EasySBC Sets')]] },
+    'Fetch EasySBC Sets': { main: [[edge('Merge Provider Sources')]] },
+    'Merge Provider Sources': { main: [[edge('Plan Translations')]] },
+    'Plan Translations': { main: [[edge('Needs Translation?')]] },
+    // true  -> translations are missing, ask the model
+    // false -> every name is cached, go straight to the snapshot
+    'Needs Translation?': {
+        main: [[edge('Translate SBC Names')], [edge('Build & Price Snapshot')]],
     },
     'Translate SBC Names': { main: [[edge('Validate Translations')]] },
-    'Gemini Translation Model': {
+    'OpenAI Chat Model': {
         ai_languageModel: [
             [
                 {
@@ -515,48 +376,99 @@ const connections = {
             ],
         ],
     },
-    'Validate Translations': { main: [[edge('Translation Valid?')]] },
-    'Translation Valid?': {
-        main: [[edge('Prepare SBC Snapshot')], [edge('Prepare Failure Alert')]],
-    },
-    'Prepare SBC Snapshot': { main: [[edge('Validate SBC Snapshot')]] },
-    'Validate SBC Snapshot': { main: [[edge('Snapshot Valid?')]] },
-    'Snapshot Valid?': {
-        main: [[edge('Apply Mode?')], [edge('Prepare Failure Alert')]],
-    },
-    'Apply Mode?': {
-        main: [[edge('Sign Catalog Snapshot')], [edge('Dry Run Summary')]],
-    },
-    'Sign Catalog Snapshot': { main: [[edge('Catalog Signed?')]] },
-    'Catalog Signed?': {
-        main: [[edge('Publish SBC Catalog')], [edge('Prepare Failure Alert')]],
-    },
-    'Publish SBC Catalog': { main: [[edge('Evaluate Publish Result')]] },
-    'Evaluate Publish Result': { main: [[edge('Publish OK?')]] },
-    'Publish OK?': {
-        main: [[edge('Success Summary')], [edge('Prepare Failure Alert')]],
-    },
-    'Prepare Failure Alert': { main: [[edge('Alert Configured?')]] },
-    'Alert Configured?': {
-        main: [
-            [edge('Whapi Failure Alert')],
-            [edge('Stop Workflow With Error')],
-        ],
-    },
-    'Whapi Failure Alert': { main: [[edge('Stop Workflow With Error')]] },
+    'Validate Translations': { main: [[edge('Build & Price Snapshot')]] },
+    'Build & Price Snapshot': { main: [[edge('Validate Snapshot')]] },
+    'Validate Snapshot': { main: [[edge('Sign Catalog Snapshot')]] },
+    'Sign Catalog Snapshot': { main: [[edge('Publish SBC Catalog')]] },
+    'Publish SBC Catalog': { main: [[edge('Finish Run')]] },
 };
 
 const workflow = {
-    name: 'SBC Catalog v1 - Signed Laravel Snapshot',
+    name: 'SBC Catalog v4 - FFT Authority, Signed Laravel Snapshot',
     nodes,
     connections,
     active: false,
-    settings: { executionOrder: 'v1', availableInMCP: false },
-    versionId: 'SBC_CATALOG_V1_VERSION',
+    settings: {
+        executionOrder: 'v1',
+        availableInMCP: false,
+        executionTimeout: 900,
+        saveDataErrorExecution: 'all',
+        saveDataSuccessExecution: 'all',
+        saveExecutionProgress: false,
+        // errorWorkflow is intentionally absent: it holds an n8n-instance
+        // specific id. Set it by hand to the SBC Catalog - Failure Alert
+        // workflow, or nothing alerts. See README "Failure model".
+    },
+    versionId: 'SBC_CATALOG_V4_VERSION',
     meta: { templateCredsSetupCompleted: false },
     tags: [],
 };
+
+// The whole failure rail lives here now: 4 in-flow nodes plus 10 IF gates in v3
+// collapsed into one Error Workflow that catches every throw, including the
+// ones v3 could not see (timeouts, out-of-memory, and the two largest Code
+// nodes, which had no onError and bypassed the rail entirely).
+const errorWorkflow = {
+    name: 'SBC Catalog - Failure Alert',
+    nodes: [
+        {
+            parameters: {},
+            id: 'error-trigger-sbc-v4',
+            name: 'On Workflow Error',
+            type: 'n8n-nodes-base.errorTrigger',
+            typeVersion: 1,
+            position: [180, 280],
+            notes: 'Set Workflow Settings -> Error Workflow to point here.',
+        },
+        {
+            parameters: {
+                mode: 'runOnceForAllItems',
+                jsCode: await readFile(
+                    new URL('nodes/failure-alert.js', root),
+                    'utf8',
+                ),
+            },
+            id: 'build-failure-alert-sbc-v4',
+            name: 'Build Failure Alert',
+            type: 'n8n-nodes-base.code',
+            typeVersion: 2,
+            position: [420, 280],
+            notes: 'Source: nodes/failure-alert.js',
+        },
+        {
+            parameters: {
+                chatId: '={{ $json.to }}',
+                text: '={{ $json.body }}',
+                additionalFields: {},
+            },
+            id: 'telegram-failure-alert-sbc-v4',
+            name: 'Telegram Failure Alert',
+            type: 'n8n-nodes-base.telegram',
+            typeVersion: 1.2,
+            position: [660, 280],
+            webhookId: '81b52ab2-6979-4a02-a05f-8a47b8b67e5d',
+            credentials: {
+                telegramApi: {
+                    id: 'CONFIGURE_TELEGRAM_CREDENTIAL_ID',
+                    name: 'Telegram account',
+                },
+            },
+            notes: 'No onError override: an undelivered alert stays red.',
+        },
+    ],
+    connections: {
+        'On Workflow Error': { main: [[edge('Build Failure Alert')]] },
+        'Build Failure Alert': { main: [[edge('Telegram Failure Alert')]] },
+    },
+    active: false,
+    settings: { executionOrder: 'v1', availableInMCP: false },
+    versionId: 'SBC_CATALOG_FAILURE_ALERT_VERSION',
+    meta: { templateCredsSetupCompleted: false },
+    tags: [],
+};
+
 const serialized = `${JSON.stringify(workflow, null, 2)}\n`;
+const errorSerialized = `${JSON.stringify(errorWorkflow, null, 2)}\n`;
 
 if (process.argv.includes('--check')) {
     assert.equal(
@@ -564,6 +476,12 @@ if (process.argv.includes('--check')) {
         serialized,
         'workflow.json is stale; run npm run build',
     );
+    assert.equal(
+        await readFile(errorOutput, 'utf8'),
+        errorSerialized,
+        'error-workflow.json is stale; run npm run build',
+    );
 } else {
     await writeFile(output, serialized, 'utf8');
+    await writeFile(errorOutput, errorSerialized, 'utf8');
 }

@@ -1,56 +1,147 @@
 /* eslint-disable */
-const plan = $('Prepare Translations').first().json;
+// The LLM is the one genuinely untrusted input in this workflow, so this gate
+// earns its keep. Everything it returns is checked against the exact plan that
+// was requested before any of it reaches the catalog.
+//
+// v3 had a subtler problem here: normalizeTranslatedName started with
+// `structured || value`, so whenever the English name matched one of the
+// titleFromStructuredSource patterns the LLM's answer was thrown away and a
+// template used instead. Most SBC names match those patterns, so the workflow
+// was paying for translations it discarded. The template is now a FALLBACK,
+// used only when the model's own answer fails validation.
 
-function result(fields) {
-    return [{ json: { ...plan, ...fields } }];
-}
+const plan = $('Plan Translations').first().json;
+
+const MAX_NAME_LENGTH = 40;
+const TRANSLATION_SCHEMA_VERSION = 4;
+const LRI = '\u2066';
+const PDI = '\u2069';
+const BIDI_CONTROL_PATTERN = /[\u2066\u2067\u2068\u2069]/g;
 
 function fail(reason) {
-    return result({
-        translationReady: false,
-        failureReason: reason,
-    });
+    throw new Error(`[translations] ${reason}`);
 }
 
-function normalizeApprovedFcTerms(value) {
-    return value
-        .trim()
-        .replace(/\bFUTTIES\b/gi, '\u0641\u0648\u062a\u064a\u0632')
+function stripBidiControls(value) {
+    return String(value ?? '').replace(BIDI_CONTROL_PATTERN, '');
+}
+
+function toEnglishDigits(value) {
+    return String(value ?? '')
+        .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660))
+        .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 0x06f0));
+}
+
+function compactEventText(value) {
+    return String(value ?? '')
+        .replace(/مهرجان كرة القدم/gi, 'FOF')
+        .replace(/عظماء اللعبة/gi, 'GOTG')
+        .replace(/فريق الأسبوع/gi, 'TOTW')
+        .replace(/فوتيز/gi, 'FUTTIES')
+        .replace(/آيكون/gi, 'Icon')
+        .replace(/هيرو/gi, 'Hero')
         .replace(
-            /\bFOF\b/gi,
-            '\u0645\u0647\u0631\u062c\u0627\u0646 \u0643\u0631\u0629 \u0627\u0644\u0642\u062f\u0645',
+            /\bFUTTIES\s+Team\s+(\d+)\s*(?:to|[-–])\s*(\d+)\b/gi,
+            'FUTTIES T$1-$2',
         )
-        .replace(
-            /\bGOTG\b/gi,
-            '\u0639\u0638\u0645\u0627\u0621 \u0627\u0644\u0644\u0639\u0628\u0629',
-        )
-        .replace(
-            /\bTOTW\b/gi,
-            '\u0641\u0631\u064a\u0642 \u0627\u0644\u0623\u0633\u0628\u0648\u0639',
-        )
-        .replace(/\bOVR\b/gi, '\u062a\u0642\u064a\u064a\u0645')
-        .replace(/\bEVO\b/gi, '')
-        .replace(
-            /\bSBCs?\b/gi,
-            '\u062a\u062d\u062f\u064a\u0627\u062a \u0628\u0646\u0627\u0621 \u0627\u0644\u062a\u0634\u0643\u064a\u0644\u0627\u062a',
-        )
-        .replace(/(\d+)\s*x\b/gi, '$1\u00d7')
+        .replace(/\bFUTTIES\s+T(\d+)\s*[-–]\s*T?(\d+)\b/gi, 'FUTTIES T$1-$2')
+        .replace(/\bFUTTIES\s+Team\s+(\d+)\s*&\s*(\d+)\b/gi, 'FUTTIES T$1-$2')
+        .replace(/\bFUTTIES\s+Team\s+(\d+)\b/gi, 'FUTTIES T$1')
+        .replace(/\bFOF\s+(?:or|&)\s+FUTTIES\b/gi, 'FOF/FUTTIES')
+        .replace(/\bGOTG\s+(?:or|&)\s+FUTTIES\b/gi, 'GOTG/FUTTIES')
+        .replace(/\(?\bIcons?\s*(?:or|&)\s*Heroes?\b\)?/gi, 'Icon/Hero')
+        .replace(/\s+أو\s+/g, '/')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+// Used only when the model's own answer cannot be made valid.
+function titleFromStructuredSource(sourceName) {
+    const source = String(sourceName ?? '').trim();
+    let match = source.match(/^(\d+)x\s+(\d+)\+\s+Upgrade$/i);
+    if (match) return `ترقية ${match[1]} لاعبين +${match[2]}`;
+
+    match = source.match(/^(\d+)x\s+(\d+)-(\d+)\s+Upgrade$/i);
+    if (match) return `ترقية ${match[1]} لاعبين ${match[2]}-${match[3]}`;
+
+    match = source.match(/^(\d+)\s+of\s+(\d+)\s+(\d+)\+\s+Player Pick$/i);
+    if (match) return `اختيار ${match[1]} من ${match[2]} لاعبين +${match[3]}`;
+
+    match = source.match(
+        /^(\d+)\s+of\s+(\d+)\s+(\d+)\+\s+(.+?)\s+Player Pick$/i,
+    );
+    if (match)
+        return `اختيار ${match[1]} من ${match[2]} +${match[3]} ${compactEventText(match[4])}`.trim();
+
+    match = source.match(/^(\d+)\s+of\s+(\d+)\s+(.+?)\s+Player Pick$/i);
+    if (match)
+        return `اختيار ${match[1]} من ${match[2]} ${compactEventText(match[3])}`.trim();
+
+    match = source.match(/^(\d+)\+\s+(.+?)\s+Upgrade$/i);
+    if (match) return `ترقية +${match[1]} ${compactEventText(match[2])}`.trim();
+
+    if (/^Gold Upgrade$/i.test(source)) return 'ترقية ذهبية';
+    return null;
+}
+
+function compactArabicTitle(value) {
+    return compactEventText(value)
+        .replace(/اختيار\s+لاعب\s+(\d+)\s+من\s+(\d+)/g, 'اختيار $1 من $2')
+        .replace(/بتقييم\s*/g, '')
+        .replace(/\bتقييم\s*/g, '')
+        .replace(/الفرق?\s*(\d+)\s*(?:إلى|الى|[-–])\s*(\d+)/g, 'T$1-$2')
+        .replace(/(\d{2,3})\s*\+/g, '+$1')
+        .replace(/\s*\/\s*/g, '/')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function isolateDirectionalRuns(value) {
+    return stripBidiControls(value).replace(
+        /(?:[A-Za-z]+[A-Za-z0-9+&/.\-]*|\+\d+(?:[-–]\d+)?|\d+(?:[-–]\d+)?)/g,
+        (token) => `${LRI}${token}${PDI}`,
+    );
+}
+
+function tidy(value) {
+    return compactArabicTitle(
+        toEnglishDigits(stripBidiControls(value))
+            .replace(/\bUpgrade\b/gi, 'ترقية')
+            .replace(/أبجريد/gi, 'ترقية')
+            .replace(/ابجريد/gi, 'ترقية')
+            .replace(/\s+/g, ' ')
+            .trim(),
+    )
+        .replace(/\s+([,.;:!?])/g, '$1')
         .replace(/\s{2,}/g, ' ')
         .trim();
 }
 
-if (!plan.translationPlanValid || !Array.isArray(plan.missingTranslations)) {
-    return fail(plan.failureReason || 'Translation plan is invalid');
+function isAcceptable(name) {
+    return (
+        name.length >= 2 &&
+        name.length <= MAX_NAME_LENGTH &&
+        /[\u0600-\u06ff]/.test(name) &&
+        !/[٠-٩۰-۹]/.test(name) &&
+        !/أبجريد|ابجريد/i.test(name)
+    );
 }
-if (plan.missingTranslations.length === 0) {
-    return result({ translationReady: true, failureReason: null });
+
+if (plan.translationReady === true) {
+    return [{ json: { ...plan, translationReady: true } }];
+}
+if (
+    !Array.isArray(plan.missingTranslations) ||
+    !plan.missingTranslations.length
+) {
+    fail('translation plan is invalid');
 }
 
 const response = $input.first().json;
 let raw = response.text ?? response.output ?? response.response ?? response;
 if (typeof raw === 'object' && raw !== null) raw = JSON.stringify(raw);
-if (typeof raw !== 'string')
-    return fail('Gemini translation response is missing');
+if (typeof raw !== 'string') fail('translation response is missing');
+
 raw = raw
     .trim()
     .replace(/^```(?:json)?\s*/i, '')
@@ -60,13 +151,15 @@ let translated;
 try {
     translated = JSON.parse(raw);
 } catch {
-    return fail('Gemini translation response is not valid JSON');
+    fail(
+        `translation response is not valid JSON; first 200 chars: ${raw.slice(0, 200)}`,
+    );
 }
 if (!Array.isArray(translated))
-    return fail('Gemini translation response must be a JSON array');
+    fail('translation response must be a JSON array');
 if (translated.length !== plan.missingTranslations.length) {
-    return fail(
-        `Gemini translation count ${translated.length} does not match requested count ${plan.missingTranslations.length}`,
+    fail(
+        `translation count ${translated.length} does not match the ${plan.missingTranslations.length} requested`,
     );
 }
 
@@ -75,52 +168,113 @@ const expected = new Map(
 );
 const staged = {};
 const seen = new Set();
+const repairs = [];
+const templateFallbacks = [];
+
 for (const entry of translated) {
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry))
-        return fail('Gemini translation entry is invalid');
-    if (!Object.hasOwn(entry, 'id') || !Object.hasOwn(entry, 'sourceName'))
-        return fail(
-            'Gemini translation entry is missing exact identity fields',
-        );
-    const id = String(entry.id);
-    if (!expected.has(id))
-        return fail(`Gemini returned unexpected EasySBC id ${id}`);
-    if (seen.has(id)) return fail(`Gemini returned duplicate EasySBC id ${id}`);
-    seen.add(id);
-    if (entry.sourceName !== expected.get(id))
-        return fail(`Gemini source name mismatch for EasySBC id ${id}`);
-    const nameAr =
-        typeof entry.nameAr === 'string'
-            ? normalizeApprovedFcTerms(entry.nameAr)
-            : '';
-    if (
-        nameAr.length < 2 ||
-        nameAr.length > 120 ||
-        !/[\u0600-\u06ff]/.test(nameAr) ||
-        /[A-Za-z]/.test(nameAr)
-    ) {
-        return fail(
-            `Gemini translation for EasySBC id ${id} must be Arabic-only and at most 120 characters`,
-        );
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+        fail('translation entry is invalid');
     }
+    if (
+        !Object.hasOwn(entry, 'id') ||
+        !Object.hasOwn(entry, 'sourceName') ||
+        !Object.hasOwn(entry, 'nameAr')
+    ) {
+        fail('translation entry is missing exact identity fields');
+    }
+
+    const id = String(entry.id);
+    if (!expected.has(id)) fail(`translation returned unexpected SBC id ${id}`);
+    if (seen.has(id)) fail(`translation returned duplicate SBC id ${id}`);
+    seen.add(id);
+
     const sourceName = expected.get(id);
+    if (entry.sourceName !== sourceName) {
+        fail(`translation source name mismatch for SBC id ${id}`);
+    }
+
+    const original =
+        typeof entry.nameAr === 'string' ? entry.nameAr.trim() : '';
+
+    // The model's own answer first.
+    let name = tidy(original);
+
+    // Only if it is unusable do we fall back to the structured template, and only
+    // then to a hard failure. v3 inverted this and always preferred the template.
+    if (!isAcceptable(name)) {
+        const template = titleFromStructuredSource(sourceName);
+        const templated = template ? tidy(template) : '';
+        if (templated && isAcceptable(templated)) {
+            name = templated;
+            templateFallbacks.push({
+                id,
+                model: original,
+                template: templated,
+            });
+        } else {
+            fail(
+                `translation is unusable for SBC id ${id} and no template applies; model returned: ${original.slice(0, 80)}`,
+            );
+        }
+    }
+
+    if (name !== stripBidiControls(original).trim()) {
+        repairs.push({ id, before: original, after: name });
+    }
+
     staged[`${id}\u0000${sourceName}`] = {
         sourceName,
-        nameAr,
+        nameAr: isolateDirectionalRuns(name),
+        schemaVersion: TRANSLATION_SCHEMA_VERSION,
     };
 }
-if (seen.size !== expected.size)
-    return fail('Gemini translation response is incomplete');
+
+if (seen.size !== expected.size) fail('translation response is incomplete');
 
 const globalData = $getWorkflowStaticData('global');
-const state = globalData.sbcCatalogV1 ?? {};
-globalData.sbcCatalogV1 = {
+const state = globalData.sbcCatalog ?? {};
+const merged = { ...(state.translations ?? {}), ...staged };
+
+// The cache is keyed by id + source name, so every renamed or retired SBC
+// leaves an entry behind forever. v3 never pruned it, and n8n static data is
+// loaded and saved on every single run. Keep only the names this run actually
+// asked about, plus a bounded tail of recent ones so a transient source blip
+// does not force a full re-translation next run.
+const liveKeys = new Set(
+    (plan.sourceRecords ?? [])
+        .filter((record) => record && record.name)
+        .map((record) => `${record.id}\u0000${String(record.name).trim()}`),
+);
+const MAX_STALE_CACHE_ENTRIES = 500;
+const kept = {};
+const stale = [];
+for (const [key, value] of Object.entries(merged)) {
+    if (liveKeys.has(key)) kept[key] = value;
+    else stale.push([key, value]);
+}
+for (const [key, value] of stale.slice(-MAX_STALE_CACHE_ENTRIES))
+    kept[key] = value;
+
+globalData.sbcCatalog = {
     ...state,
-    translations: { ...(state.translations ?? {}), ...staged },
+    translations: kept,
 };
 
-return result({
-    translationReady: true,
-    failureReason: null,
-    missingTranslations: [],
-});
+return [
+    {
+        json: {
+            ...plan,
+            translationReady: true,
+            missingTranslations: [],
+            translationRepairCount: repairs.length,
+            translationRepairs: repairs.slice(0, 25),
+            templateFallbackCount: templateFallbacks.length,
+            templateFallbacks: templateFallbacks.slice(0, 25),
+            translationCacheSize: Object.keys(kept).length,
+            translationCachePruned: Math.max(
+                0,
+                stale.length - MAX_STALE_CACHE_ENTRIES,
+            ),
+        },
+    },
+];

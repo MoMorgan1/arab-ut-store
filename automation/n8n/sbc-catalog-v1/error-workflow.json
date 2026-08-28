@@ -1,0 +1,89 @@
+{
+  "name": "SBC Catalog - Failure Alert",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "error-trigger-sbc-v4",
+      "name": "On Workflow Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        180,
+        280
+      ],
+      "notes": "Set Workflow Settings -> Error Workflow to point here."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// Runs inside the Error Workflow, not the catalog workflow. It is reached by\n// every failure the catalog run can produce, because v4 fails by throwing\n// rather than routing a failureReason through in-flow IF gates.\nconst event = $input.first().json;\nconst execution = event.execution ?? {};\nconst workflow = event.workflow ?? {};\nconst error = execution.error ?? {};\n\nconst lines = [\n    'كتالوج SBC وقف. ما تغيّر أي سعر.',\n    'آخر كتالوج معتمد لا يزال شغّال.',\n    '',\n    `السبب: ${error.message || 'خطأ غير معروف'}`,\n];\n\nif (execution.lastNodeExecuted) {\n    lines.push(`عند النود: ${execution.lastNodeExecuted}`);\n}\nif (workflow.name) {\n    lines.push(`الوركفلو: ${workflow.name}`);\n}\nif (execution.url) {\n    lines.push('', execution.url);\n}\n\n// Deliberately no throw here. This code runs inside the error execution, so a\n// throw would only bury the original failure. An empty chat id makes the\n// Telegram node itself go red, which stays visible in the executions list.\nreturn [\n    {\n        json: {\n            to: $env.OPS_TELEGRAM_CHAT_ID || '',\n            body: lines.join('\\n'),\n            failureReason: error.message || null,\n        },\n    },\n];\n"
+      },
+      "id": "build-failure-alert-sbc-v4",
+      "name": "Build Failure Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        280
+      ],
+      "notes": "Source: nodes/failure-alert.js"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.to }}",
+        "text": "={{ $json.body }}",
+        "additionalFields": {}
+      },
+      "id": "telegram-failure-alert-sbc-v4",
+      "name": "Telegram Failure Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        280
+      ],
+      "webhookId": "81b52ab2-6979-4a02-a05f-8a47b8b67e5d",
+      "credentials": {
+        "telegramApi": {
+          "id": "CONFIGURE_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram account"
+        }
+      },
+      "notes": "No onError override: an undelivered alert stays red."
+    }
+  ],
+  "connections": {
+    "On Workflow Error": {
+      "main": [
+        [
+          {
+            "node": "Build Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Failure Alert": {
+      "main": [
+        [
+          {
+            "node": "Telegram Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "SBC_CATALOG_FAILURE_ALERT_VERSION",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

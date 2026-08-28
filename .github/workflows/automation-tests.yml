@@ -1,0 +1,47 @@
+name: automation-tests
+
+# The n8n automation packages are not part of the Laravel app and are not
+# covered by `composer ci:check`, so without this job their tests only ever run
+# on someone's laptop. They guard things the app cannot: that workflow.json is
+# rebuilt from nodes/*.js, that no API key or real credential id is committed,
+# and that the SBC tier policy still matches what the store validates.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'automation/n8n/sbc-catalog-v1/**'
+      - '.github/workflows/automation-tests.yml'
+  pull_request:
+    paths:
+      - 'automation/n8n/sbc-catalog-v1/**'
+      - '.github/workflows/automation-tests.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  sbc-catalog:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      # No install step: the package has no dependencies, only node --test and
+      # built-ins. `npm test` runs build:check first, which fails when
+      # workflow.json or error-workflow.json is stale against nodes/*.js.
+      - name: Run SBC catalog workflow tests
+        run: npm --prefix automation/n8n/sbc-catalog-v1 test
