@@ -107,6 +107,7 @@ function pageProps(
                 placedAt: '2026-08-20T10:00:00.000000Z',
             },
         },
+        queueHealth: null,
         rangeOptions: [
             {
                 days: 1,
@@ -386,5 +387,67 @@ describe('Admin operational overview', () => {
         expect(
             screen.getByRole('navigation', { name: 'Date range' }),
         ).toHaveAttribute('aria-busy', 'false');
+    });
+    it('says nothing about background jobs while the queue is healthy', () => {
+        inertia.props = pageProps({
+            queueHealth: {
+                failedJobs: 0,
+                latestFailure: null,
+                stalledJobs: 0,
+                oldestQueuedAt: null,
+            },
+        });
+        render(<AdminOverviewPage />);
+
+        expect(
+            screen.queryByRole('complementary', {
+                name: 'Background jobs need attention',
+            }),
+        ).toBeNull();
+    });
+
+    it('names the failing job and when it failed', () => {
+        inertia.props = pageProps({
+            queueHealth: {
+                failedJobs: 3,
+                latestFailure: {
+                    name: 'App\\Notifications\\OrderPaidNotification',
+                    failedAt: '2026-08-28T01:12:00.000000Z',
+                },
+                stalledJobs: 0,
+                oldestQueuedAt: null,
+            },
+        });
+        render(<AdminOverviewPage />);
+
+        const banner = screen.getByRole('complementary', {
+            name: 'Background jobs need attention',
+        });
+
+        expect(within(banner).getByText('3')).toBeInTheDocument();
+        expect(
+            within(banner).getByText(
+                'App\\Notifications\\OrderPaidNotification',
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('reports a queue nobody is draining, even with no failures', () => {
+        inertia.props = pageProps({
+            queueHealth: {
+                failedJobs: 0,
+                latestFailure: null,
+                stalledJobs: 9,
+                oldestQueuedAt: '2026-08-28T00:40:00.000000Z',
+            },
+        });
+        render(<AdminOverviewPage />);
+
+        const banner = screen.getByRole('complementary', {
+            name: 'Background jobs need attention',
+        });
+
+        expect(within(banner).getByText('9')).toBeInTheDocument();
+        expect(within(banner).getByText(/scheduler cron/)).toBeInTheDocument();
     });
 });

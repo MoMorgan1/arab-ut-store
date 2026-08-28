@@ -109,6 +109,15 @@ export type AdminTranslations = {
         noRecentOrders: string;
         attentionRailTitle: string;
         attentionStripTitle?: string;
+        queueHealth: {
+            title: string;
+            failedJobs: string;
+            latestFailure: string;
+            stalledJobs: string;
+            stalledSince: string;
+            failedHint: string;
+            stalledHint: string;
+        };
         viewAllOrders: string;
         viewUnresolvedOrders: string;
         viewAllReports?: string;
@@ -1574,6 +1583,8 @@ export type AdminOverviewPageProps = {
             placedAt: string;
         };
     };
+    /** Absent for staff without settings.view. */
+    queueHealth: null | AdminQueueHealth;
     rangeOptions: Array<{
         days: 1 | 7 | 30;
         label: string;
@@ -1581,6 +1592,13 @@ export type AdminOverviewPageProps = {
         active: boolean;
     }>;
     logoutUrl: string;
+};
+
+export type AdminQueueHealth = {
+    failedJobs: number;
+    latestFailure: null | { name: string; failedAt: string };
+    stalledJobs: number;
+    oldestQueuedAt: null | string;
 };
 
 export type AdminMfaPageProps = {

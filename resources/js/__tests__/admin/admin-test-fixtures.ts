@@ -489,6 +489,17 @@ export const englishAdminUi: AdminTranslations = {
         orderTotal: 'Total',
         orderPlacedAt: 'Placed at',
         noRecentOrders: 'There are no recent orders in this period.',
+        queueHealth: {
+            title: 'Background jobs need attention',
+            failedJobs: 'Failed jobs',
+            latestFailure: 'Latest',
+            stalledJobs: 'Waiting jobs',
+            stalledSince: 'Oldest since',
+            failedHint:
+                'Email and other background work stopped part-way. Run "php artisan queue:failed" on the server to read the exception.',
+            stalledHint:
+                'Nothing is draining the queue. Check that the scheduler cron is still running on the server.',
+        },
         attentionRailTitle: 'Operational focus',
         attentionStripTitle: 'Needs attention',
         viewAllOrders: 'View all orders',

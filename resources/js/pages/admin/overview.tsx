@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import AdminAttentionStrip from '@/components/admin/admin-attention-strip';
 import AdminKpiStrip from '@/components/admin/admin-kpi-strip';
+import AdminQueueHealthBanner from '@/components/admin/admin-queue-health';
 import AdminRecentOrders from '@/components/admin/admin-recent-orders';
 import AdminRevenueChart from '@/components/admin/admin-revenue-chart';
 import { DATE_LOCALE } from '@/lib/date-locale';
@@ -27,6 +28,14 @@ export default function AdminOverviewPage() {
     return (
         <article className="space-y-6" dir={props.direction}>
             <Head title={copy.headTitle} />
+
+            {/* 0. Background jobs, shown only when they are in trouble */}
+            <AdminQueueHealthBanner
+                dateFormatter={dateFormatter}
+                health={props.queueHealth}
+                locale={props.locale}
+                translations={copy}
+            />
 
             {/* 1. Attention strip */}
             <AdminAttentionStrip
