@@ -131,6 +131,12 @@ jobs:
   mariadb-schema:
     runs-on: ubuntu-latest
     env:
+      # Mirrors the ci job. Without these the provider falls back to openai with
+      # an empty key, and AgentRuntimeConfig refuses to build.
+      AI_ASSISTANT_ENABLED: true
+      AI_ASSISTANT_ROLLOUT: public
+      AI_MODEL_PROVIDER: fake
+      OPENAI_API_KEY: ''
       DB_CONNECTION: mariadb
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
@@ -222,7 +228,16 @@ jobs:
           tests/Unit/Enums/OrderItemStatusTest.php
           tests/Unit/Enums/PlatformTest.php
           tests/Unit/Support/MoneyTest.php
-          tests/Integration
+
+      # A separate step with a clean database in between. These tests commit
+      # real rows by design, so they both leave residue behind AND cannot
+      # tolerate residue in front of them -- running them in the same invocation
+      # as the transactional tests breaks in one direction or the other.
+      - name: Run concurrency and upgrade integration tests on MariaDB
+        id: mariadb-integration
+        run: |
+          php artisan migrate:fresh --force
+          php vendor/bin/pest --configuration phpunit.mariadb.xml tests/Integration
 
       # carts.active_owner_key is a STORED generated column on MariaDB and a
       # trigger on SQLite. When it silently yields NULL every owner lookup
@@ -230,7 +245,7 @@ jobs:
       # controller, which tells you nothing. Dump the real definition rather
       # than inferring it from the symptom.
       - name: Dump carts schema on failure
-        if: ${{ failure() && steps.mariadb-tests.outcome == 'failure' }}
+        if: ${{ failure() && (steps.mariadb-tests.outcome == 'failure' || steps.mariadb-integration.outcome == 'failure') }}
         run: |
           php artisan tinker --execute="
             echo json_encode(DB::select('SHOW CREATE TABLE carts'), JSON_PRETTY_PRINT), PHP_EOL;
@@ -265,7 +280,7 @@ jobs:
       # the assertion only ever reports "expected 201, got 503". It now report()s
       # the cause first, which lands here.
       - name: Show the exceptions behind the 503s
-        if: ${{ failure() && steps.mariadb-tests.outcome == 'failure' }}
+        if: ${{ failure() && (steps.mariadb-tests.outcome == 'failure' || steps.mariadb-integration.outcome == 'failure') }}
         run: |
           test -f storage/logs/laravel.log \
             && grep -oE "(DomainException|ValueError|RuntimeException|ErrorException)[^\"]{0,220}" storage/logs/laravel.log \
