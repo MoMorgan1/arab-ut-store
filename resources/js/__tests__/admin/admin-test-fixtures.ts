@@ -491,6 +491,9 @@ export const englishAdminUi: AdminTranslations = {
         noRecentOrders: 'There are no recent orders in this period.',
         queueHealth: {
             title: 'Background jobs need attention',
+            blindTitle: 'Background jobs are not being monitored',
+            blindHint:
+                'This dashboard can only see the database queue. The queue connection is set to ":connection", so nothing here reports on it.',
             failedJobs: 'Failed jobs',
             latestFailure: 'Latest',
             stalledJobs: 'Waiting jobs',

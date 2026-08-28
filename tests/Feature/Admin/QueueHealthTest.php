@@ -15,6 +15,11 @@ use Illuminate\Support\Str;
  * queue that stops is indistinguishable from a quiet day unless something
  * looks at these two tables.
  */
+beforeEach(function (): void {
+    // The suite runs on the sync queue; these cases are about the database one.
+    config()->set('queue.default', 'database');
+});
+
 afterEach(function (): void {
     Carbon::setTestNow();
 });
@@ -31,13 +36,13 @@ function queueAFailure(string $displayName, CarbonInterface $failedAt, string $e
     ]);
 }
 
-function queueAJob(CarbonInterface $availableAt): void
+function queueAJob(CarbonInterface $availableAt, ?CarbonInterface $reservedAt = null): void
 {
     DB::table('jobs')->insert([
         'queue' => 'default',
         'payload' => json_encode(['displayName' => 'App\Notifications\OrderPaidNotification']),
         'attempts' => 0,
-        'reserved_at' => null,
+        'reserved_at' => $reservedAt?->getTimestamp(),
         'available_at' => $availableAt->getTimestamp(),
         'created_at' => $availableAt->getTimestamp(),
     ]);
@@ -47,6 +52,8 @@ test('a quiet queue reports nothing', function (): void {
     $health = app(ReadQueueHealth::class)->read();
 
     expect($health)->toBe([
+        'monitored' => true,
+        'connection' => 'database',
         'failedJobs' => 0,
         'latestFailure' => null,
         'stalledJobs' => 0,
@@ -130,4 +137,46 @@ test('staff without the settings permission are not shown it', function (): void
     );
 
     expect($props['queueHealth'])->toBeNull();
+});
+
+test('a job being worked on right now is in flight, not stalled', function (): void {
+    // Laravel never moves available_at when it reserves a row, so an old
+    // available_at says nothing about whether anyone is working the job.
+    Carbon::setTestNow('2026-08-28T10:00:00Z');
+    queueAJob(now()->subMinutes(20), reservedAt: now()->subSeconds(10));
+
+    expect(app(ReadQueueHealth::class)->read()['stalledJobs'])->toBe(0);
+});
+
+test('a job whose worker died is stalled again once the queue would retake it', function (): void {
+    // retry_after seconds after reservation the queue itself treats the row as
+    // abandoned and re-reserves it. Past that line it is waiting, not in flight.
+    Carbon::setTestNow('2026-08-28T10:00:00Z');
+    $retryAfter = (int) config('queue.connections.database.retry_after');
+    queueAJob(now()->subMinutes(20), reservedAt: now()->subSeconds($retryAfter + 1));
+
+    expect(app(ReadQueueHealth::class)->read()['stalledJobs'])->toBe(1);
+});
+
+test('a queue this dashboard cannot see reports itself blind, not healthy', function (): void {
+    // MAIL_MAILER=log is why this feature exists. QUEUE_CONNECTION=sync is the
+    // same one-line mistake, and it would leave both tables empty forever.
+    config()->set('queue.default', 'sync');
+
+    $health = app(ReadQueueHealth::class)->read();
+
+    expect($health['monitored'])->toBeFalse()
+        ->and($health['connection'])->toBe('sync');
+});
+
+test('an admin request carries the queue prop without the exception text', function (): void {
+    queueAFailure('App\Notifications\OrderPaidNotification', now());
+
+    $props = app(AdminOverviewPage::class)->for(
+        User::factory()->create(['role' => UserRole::Admin]),
+        'en',
+        7,
+    );
+
+    expect(json_encode($props['queueHealth']))->not->toContain('nothing to see');
 });

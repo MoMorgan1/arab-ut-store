@@ -111,6 +111,8 @@ export type AdminTranslations = {
         attentionStripTitle?: string;
         queueHealth: {
             title: string;
+            blindTitle: string;
+            blindHint: string;
             failedJobs: string;
             latestFailure: string;
             stalledJobs: string;
@@ -1595,6 +1597,9 @@ export type AdminOverviewPageProps = {
 };
 
 export type AdminQueueHealth = {
+    /** False when the queue lives somewhere these tables cannot see. */
+    monitored: boolean;
+    connection: string;
     failedJobs: number;
     latestFailure: null | { name: string; failedAt: string };
     stalledJobs: number;

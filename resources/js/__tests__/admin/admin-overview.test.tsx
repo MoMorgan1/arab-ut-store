@@ -391,6 +391,8 @@ describe('Admin operational overview', () => {
     it('says nothing about background jobs while the queue is healthy', () => {
         inertia.props = pageProps({
             queueHealth: {
+                monitored: true,
+                connection: 'database',
                 failedJobs: 0,
                 latestFailure: null,
                 stalledJobs: 0,
@@ -409,6 +411,8 @@ describe('Admin operational overview', () => {
     it('names the failing job and when it failed', () => {
         inertia.props = pageProps({
             queueHealth: {
+                monitored: true,
+                connection: 'database',
                 failedJobs: 3,
                 latestFailure: {
                     name: 'App\\Notifications\\OrderPaidNotification',
@@ -435,6 +439,8 @@ describe('Admin operational overview', () => {
     it('reports a queue nobody is draining, even with no failures', () => {
         inertia.props = pageProps({
             queueHealth: {
+                monitored: true,
+                connection: 'database',
                 failedJobs: 0,
                 latestFailure: null,
                 stalledJobs: 9,
@@ -449,5 +455,24 @@ describe('Admin operational overview', () => {
 
         expect(within(banner).getByText('9')).toBeInTheDocument();
         expect(within(banner).getByText(/scheduler cron/)).toBeInTheDocument();
+    });
+    it('says the queue is unmonitored rather than healthy when it cannot see it', () => {
+        inertia.props = pageProps({
+            queueHealth: {
+                monitored: false,
+                connection: 'sync',
+                failedJobs: 0,
+                latestFailure: null,
+                stalledJobs: 0,
+                oldestQueuedAt: null,
+            },
+        });
+        render(<AdminOverviewPage />);
+
+        const banner = screen.getByRole('complementary', {
+            name: 'Background jobs are not being monitored',
+        });
+
+        expect(within(banner).getByText(/"sync"/)).toBeInTheDocument();
     });
 });

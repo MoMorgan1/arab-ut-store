@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\OrderItemSecret;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Fortify;
 
@@ -58,12 +59,31 @@ test('Admin overview Inertia props never serialize credentials provider metadata
         'paid_at' => now()->subHour(),
     ]);
 
+    // The overview now reports queue health, and a failed job stores whatever
+    // the failure printed. An SMTP refusal prints the account it authenticated
+    // as, sometimes with the credential attached, so the rendered page is the
+    // place to prove the exception column never travels.
+    config()->set('queue.default', 'database');
+    DB::table('failed_jobs')->insert([
+        'uuid' => (string) Str::uuid(),
+        'connection' => 'database',
+        'queue' => 'default',
+        'payload' => json_encode(['displayName' => 'App\Notifications\OrderPaidNotification']),
+        'exception' => 'Failed to authenticate as info@arab-ut.com with password admin-overview-queue-exception-sentinel',
+        'failed_at' => now(),
+    ]);
+
     $response = $this->actingAs($admin)->get('/admin');
     $content = $response->getContent();
 
     $response->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+
+    // Asserted before the sentinels: without proof that the failed job reached
+    // this response, every "not toContain" below would pass on an empty page.
+    expect($content)->toContain('OrderPaidNotification');
     foreach ([
         'admin-overview-credential-sentinel',
+        'admin-overview-queue-exception-sentinel',
         'must-never-load',
         'encrypted_payload',
         'provider_metadata',

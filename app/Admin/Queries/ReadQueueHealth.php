@@ -28,6 +28,8 @@ final class ReadQueueHealth
 
     /**
      * @return array{
+     *     monitored: bool,
+     *     connection: string,
      *     failedJobs: int,
      *     latestFailure: null|array{name: string, failedAt: string},
      *     stalledJobs: int,
@@ -36,27 +38,84 @@ final class ReadQueueHealth
      */
     public function read(): array
     {
-        $latest = DB::table('failed_jobs')->orderByDesc('failed_at')->orderByDesc('id')->first();
+        $connection = (string) config('queue.default');
 
-        // available_at, not created_at: a deliberately delayed job is waiting,
-        // not stalled, and must not raise an alarm before its time arrives.
-        $stalledBefore = now()->getTimestamp() - self::STALLED_AFTER_SECONDS;
-        $oldestQueuedAt = DB::table('jobs')->where('available_at', '<=', $stalledBefore)->min('available_at');
+        // Only the database queue keeps its work in these tables. On sync,
+        // redis or sqs they stay empty forever, and reporting "nothing failed"
+        // would be the same silent green that hid MAIL_MAILER=log for months.
+        if ($connection !== 'database') {
+            return [
+                'monitored' => false,
+                'connection' => $connection,
+                'failedJobs' => 0,
+                'latestFailure' => null,
+                'stalledJobs' => 0,
+                'oldestQueuedAt' => null,
+            ];
+        }
+
+        // Only payload and failed_at: the exception column carries whatever the
+        // failure printed, and an SMTP refusal prints the account it tried to
+        // authenticate as. It has no reason to enter PHP memory at all.
+        $latest = DB::table('failed_jobs')
+            ->select('payload', 'failed_at')
+            ->orderByDesc('failed_at')
+            ->orderByDesc('id')
+            ->first();
+
+        $waiting = $this->waiting();
 
         return [
+            'monitored' => true,
+            'connection' => $connection,
             'failedJobs' => DB::table('failed_jobs')->count(),
             'latestFailure' => $latest === null ? null : [
-                // The class name only. The stored exception carries whatever
-                // the failure printed - SMTP failures print the account and
-                // sometimes the credential - and none of that belongs in an
-                // Inertia prop.
                 'name' => $this->displayName((string) $latest->payload),
                 'failedAt' => now()->parse($latest->failed_at)->toIso8601String(),
             ],
-            'stalledJobs' => DB::table('jobs')->where('available_at', '<=', $stalledBefore)->count(),
-            'oldestQueuedAt' => $oldestQueuedAt === null
+            'stalledJobs' => $waiting['total'],
+            'oldestQueuedAt' => $waiting['oldest'] === null
                 ? null
-                : now()->setTimestamp((int) $oldestQueuedAt)->toIso8601String(),
+                : now()->setTimestamp($waiting['oldest'])->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Rows the queue would hand to a worker right now, and has not.
+     *
+     * The predicate is Laravel's own definition of a takeable job
+     * (DatabaseQueue::isAvailable and ::isReservedButExpired), because anything
+     * looser lies in both directions: a job being worked on keeps its original
+     * available_at, so counting it would blame a healthy cron, while a job
+     * whose worker died keeps its reserved_at, so ignoring it would hide the
+     * failure entirely. Counted in one pass - two scans of the same rows to
+     * answer two questions about them is a waste on the day it matters.
+     *
+     * @return array{total: int, oldest: int|null}
+     */
+    private function waiting(): array
+    {
+        $now = now()->getTimestamp();
+        $stalledBefore = $now - self::STALLED_AFTER_SECONDS;
+        $abandonedBefore = $now - (int) config('queue.connections.database.retry_after', 90);
+
+        $row = DB::table('jobs')
+            ->selectRaw('count(*) as total, min(available_at) as oldest')
+            // available_at, not created_at: a deliberately delayed job is
+            // waiting for its own time, not stalled, and must not raise an
+            // alarm before it arrives.
+            ->where('available_at', '<=', $stalledBefore)
+            ->where(function ($query) use ($abandonedBefore): void {
+                $query->whereNull('reserved_at')
+                    ->orWhere('reserved_at', '<=', $abandonedBefore);
+            })
+            ->first();
+
+        $oldest = $row->oldest ?? null;
+
+        return [
+            'total' => (int) ($row->total ?? 0),
+            'oldest' => $oldest === null ? null : (int) $oldest,
         ];
     }
 

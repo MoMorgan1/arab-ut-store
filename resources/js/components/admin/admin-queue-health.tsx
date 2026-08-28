@@ -24,6 +24,34 @@ export default function AdminQueueHealthBanner({
         return null;
     }
 
+    const copy = translations.queueHealth;
+    const numberFormatter = new Intl.NumberFormat(locale);
+
+    // A queue this page cannot see is not a healthy queue. Reporting silence
+    // for it would be the same false all-clear that hid MAIL_MAILER=log.
+    if (!health.monitored) {
+        return (
+            <aside
+                aria-label={copy.blindTitle}
+                aria-live="polite"
+                className="flex flex-col gap-2 rounded-xl border border-status-warning/40 bg-status-warning/5 p-3.5 sm:p-4"
+            >
+                <div className="flex items-center gap-2">
+                    <AlertTriangle
+                        aria-hidden="true"
+                        className="h-4 w-4 shrink-0 text-status-warning"
+                    />
+                    <h2 className="text-sm font-semibold text-status-warning">
+                        {copy.blindTitle}
+                    </h2>
+                </div>
+                <p className="max-w-prose text-xs text-muted-foreground">
+                    {copy.blindHint.replace(':connection', health.connection)}
+                </p>
+            </aside>
+        );
+    }
+
     const hasFailures = health.failedJobs > 0;
     const isStalled = health.stalledJobs > 0;
 
@@ -31,12 +59,10 @@ export default function AdminQueueHealthBanner({
         return null;
     }
 
-    const copy = translations.queueHealth;
-    const numberFormatter = new Intl.NumberFormat(locale);
-
     return (
         <aside
             aria-label={copy.title}
+            aria-live="polite"
             className="flex flex-col gap-2.5 rounded-xl border border-status-danger/40 bg-status-danger/5 p-3.5 sm:p-4"
         >
             <div className="flex items-center gap-2">
