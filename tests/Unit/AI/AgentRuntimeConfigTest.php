@@ -184,6 +184,12 @@ test('runtime config rejects invalid timeout and rate-limit relationships', func
 
 function runtimeConfigLoadedFromEnvironment(string $environmentKey, string $rawValue): AgentRuntimeConfig
 {
+    return runtimeConfigLoadedFromEnvironmentValues([$environmentKey => $rawValue]);
+}
+
+/** @param array<string, string> $values */
+function runtimeConfigLoadedFromEnvironmentValues(array $values): AgentRuntimeConfig
+{
     $managedKeys = [
         'AI_ASSISTANT_ENABLED',
         'AI_ASSISTANT_ROLLOUT',
@@ -206,6 +212,10 @@ function runtimeConfigLoadedFromEnvironment(string $environmentKey, string $rawV
         'AI_FAKE_DELTA_DELAY_MS',
     ];
 
+    // Anything the caller sets is restored too, or a stray key would leak into
+    // every later test in the process.
+    $managedKeys = array_values(array_unique([...$managedKeys, ...array_keys($values)]));
+
     $saved = [];
 
     foreach ($managedKeys as $managedKey) {
@@ -217,9 +227,11 @@ function runtimeConfigLoadedFromEnvironment(string $environmentKey, string $rawV
         unset($_ENV[$managedKey], $_SERVER[$managedKey]);
     }
 
-    putenv("{$environmentKey}={$rawValue}");
-    $_ENV[$environmentKey] = $rawValue;
-    $_SERVER[$environmentKey] = $rawValue;
+    foreach ($values as $key => $rawValue) {
+        putenv("{$key}={$rawValue}");
+        $_ENV[$key] = $rawValue;
+        $_SERVER[$key] = $rawValue;
+    }
 
     try {
         config()->set('ai-assistant', require config_path('ai-assistant.php'));
@@ -240,4 +252,50 @@ function runtimeConfigLoadedFromEnvironment(string $environmentKey, string $rawV
     }
 
     return app(AgentRuntimeConfig::class);
+}
+
+test('the .env.example that CI and every new install copy satisfies every runtime pin', function () {
+    // CI has no .env of its own: `composer setup` copies .env.example verbatim.
+    // AgentRuntimeConfig fails closed, so a single rejected value turns every
+    // agent turn into configuration_invalid -- which is exactly how the browser
+    // suite lost its stream while every PHP test still passed.
+    $config = runtimeConfigLoadedFromEnvironmentValues(dotenvExampleAiValues());
+
+    $accessors = [
+        'enabled', 'rollout', 'testUserIds', 'provider', 'model',
+        'promptVersion', 'knowledgeTopicLimit', 'turnDebounceMilliseconds',
+        'maxContextMessages', 'maxOutputTokens', 'maxResponseCharacters',
+        'reasoningEffort', 'connectTimeoutSeconds', 'streamReadTimeoutSeconds',
+        'requestTimeoutSeconds', 'turnRateLimitPerMinute',
+        'turnIpRateLimitPerMinute', 'maxAttempts', 'retryAfterCapMilliseconds',
+        'staleTurnSeconds', 'fakeDeltaDelayMilliseconds', 'pricingVersion',
+        'inputRatePerMillion', 'cachedInputRatePerMillion',
+        'cacheWriteRatePerMillion', 'outputRatePerMillion',
+    ];
+
+    $rejected = [];
+
+    foreach ($accessors as $accessor) {
+        try {
+            $config->{$accessor}();
+        } catch (AgentConfigurationException) {
+            $rejected[] = $accessor;
+        }
+    }
+
+    expect($rejected)->toBe([], '.env.example holds values AgentRuntimeConfig rejects');
+});
+
+/** @return array<string, string> */
+function dotenvExampleAiValues(): array
+{
+    $values = [];
+
+    foreach (file(base_path('.env.example'), FILE_IGNORE_NEW_LINES) as $line) {
+        if (preg_match('/\A(AI_[A-Z0-9_]+)=(.*)\z/', trim($line), $matches) === 1) {
+            $values[$matches[1]] = trim($matches[2], "\"'");
+        }
+    }
+
+    return $values;
 }

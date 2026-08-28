@@ -140,6 +140,10 @@ function loyaltyConcurrentDatabaseEnvironment(): array
     $connection = (string) config('database.default');
     $database = config("database.connections.{$connection}");
 
+    // The parent turns loyalty on with config()->set(), which cannot cross a
+    // process boundary. Without this the worker reads STORE_LOYALTY_ENABLED from
+    // .env -- true on a developer machine, false in the .env.example CI copies --
+    // so it completes the order, accrues nothing, and the wallet never exists.
     return [
         'APP_ENV' => 'testing',
         'DB_URL' => '',
@@ -149,6 +153,7 @@ function loyaltyConcurrentDatabaseEnvironment(): array
         'DB_DATABASE' => (string) $database['database'],
         'DB_USERNAME' => (string) $database['username'],
         'DB_PASSWORD' => (string) $database['password'],
+        'STORE_LOYALTY_ENABLED' => 'true',
     ];
 }
 
