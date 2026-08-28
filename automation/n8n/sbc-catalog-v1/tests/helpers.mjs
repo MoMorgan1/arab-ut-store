@@ -192,15 +192,10 @@ export function httpOk(body) {
 
 /** The shape n8n hands back when it does not parse the body itself. */
 export function asBuffer(value) {
-    const bytes = [];
-
-    for (const character of unescape(
-        encodeURIComponent(JSON.stringify(value)),
-    )) {
-        bytes.push(character.charCodeAt(0));
-    }
-
-    return { type: 'Buffer', data: bytes };
+    return {
+        type: 'Buffer',
+        data: Array.from(new TextEncoder().encode(JSON.stringify(value))),
+    };
 }
 
 export function translationAnswer(plan) {
