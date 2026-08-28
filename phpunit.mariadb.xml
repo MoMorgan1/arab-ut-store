@@ -33,6 +33,43 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
+        <env name="INERTIA_SSR_ENABLED" value="false"/>
+        <!--
+            Pinned for the same reason DB_CONNECTION is: the suite must not
+            depend on whatever .env happens to hold. These are the config
+            defaults from config/ai-assistant.php, and the tests assert against
+            them directly ("drains in chunks of default 24", "capped by
+            retry_after_cap_ms"). CI copies .env.example, which tunes ten of
+            these to production-ish values, so every such assertion failed there
+            while passing on any machine whose .env omits the keys.
+        -->
+        <env name="AI_ASSISTANT_ENABLED" value="(true)"/>
+        <env name="AI_ASSISTANT_ROLLOUT" value="public"/>
+        <env name="AI_ASSISTANT_TEST_USER_IDS" value=""/>
+        <env name="AI_MODEL_PROVIDER" value="fake"/>
+        <env name="AI_MODEL" value="gpt-5.6-luna"/>
+        <env name="AI_REASONING_EFFORT" value="low"/>
+        <env name="AI_TURN_DEBOUNCE_MS" value="1500"/>
+        <env name="AI_MAX_CONTEXT_MESSAGES" value="24"/>
+        <env name="AI_MAX_OUTPUT_TOKENS" value="1000"/>
+        <env name="AI_MAX_RESPONSE_CHARACTERS" value="4000"/>
+        <env name="AI_TURN_RATE_LIMIT_PER_MINUTE" value="6"/>
+        <env name="AI_TURN_IP_RATE_LIMIT_PER_MINUTE" value="20"/>
+        <env name="AI_CONNECT_TIMEOUT_SECONDS" value="5"/>
+        <env name="AI_STREAM_READ_TIMEOUT_SECONDS" value="2"/>
+        <env name="AI_REQUEST_TIMEOUT_SECONDS" value="30"/>
+        <env name="AI_MAX_ATTEMPTS" value="3"/>
+        <env name="AI_RETRY_AFTER_CAP_MS" value="2000"/>
+        <env name="AI_STALE_TURN_SECONDS" value="60"/>
+        <env name="AI_FAKE_DELTA_DELAY_MS" value="350"/>
+        <!-- Same reasoning: .env.example ships a 720-hour guest retention,
+             while these tests age conversations against the 48-hour default. -->
+        <env name="CHAT_ENABLED" value="(true)"/>
+        <env name="CHAT_DEMO_ASSISTANT" value="(false)"/>
+        <env name="CHAT_AUTO_CLOSE_HOURS" value="24"/>
+        <env name="CHAT_REOPEN_WITHIN_DAYS" value="7"/>
+        <env name="CHAT_GUEST_RETENTION_HOURS" value="48"/>
+        <env name="CHAT_USER_RETENTION_DAYS" value="180"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
     </php>
