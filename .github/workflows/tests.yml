@@ -189,12 +189,25 @@ jobs:
           php artisan migrate:rollback --force
           php artisan migrate --force
 
+      # tests/Integration runs LAST, and that ordering is load-bearing.
+      #
+      # Pest applies RefreshDatabase only ->in('Feature') (tests/Pest.php), so
+      # nothing in tests/Integration is wrapped in a transaction. That is
+      # deliberate: most of those files are *ConcurrencyTest and have to commit
+      # real rows to test concurrent behaviour at all. The side effect is that
+      # their rows outlive the test, and on MariaDB they then poison whatever
+      # runs next -- a leftover Coins product makes CoinsCatalogReader::soleOrFail
+      # ambiguous so every cart write answers 503, and a leftover cart makes
+      # value('active_owner_key') read the wrong row. SQLite hid it because those
+      # tests rebuild their tables as they go.
+      #
+      # Running them last is the small fix. The larger one is for those tests to
+      # clean up after themselves, which is a change across ~14 files.
       - name: Run focused domain and cart tests on MariaDB
         id: mariadb-tests
         run: >-
           php vendor/bin/pest --configuration phpunit.mariadb.xml
           tests/Feature/Database/DomainSchemaTest.php
-          tests/Integration
           tests/Feature/Database/CartSecuritySchemaTest.php
           tests/Feature/Database/ActiveCartAcquisitionTest.php
           tests/Feature/Cart/CartOwnerRotationTest.php
@@ -209,6 +222,7 @@ jobs:
           tests/Unit/Enums/OrderItemStatusTest.php
           tests/Unit/Enums/PlatformTest.php
           tests/Unit/Support/MoneyTest.php
+          tests/Integration
 
       # carts.active_owner_key is a STORED generated column on MariaDB and a
       # trigger on SQLite. When it silently yields NULL every owner lookup
