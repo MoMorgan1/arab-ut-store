@@ -164,6 +164,8 @@ export type StoreCartItem = {
         serviceType:
             'coins' | 'sbc' | 'objectives' | 'rivals' | 'fut_champions';
     };
+    previousTotalHalalah: number | null;
+    priceChanged: boolean;
     promotion: {
         badge: string;
         discountHalalah: number;
@@ -171,6 +173,13 @@ export type StoreCartItem = {
     quantity: number;
     requiresCredentials: boolean;
     totalHalalah: number;
+    unavailableReason:
+        | 'variant_inactive'
+        | 'product_hidden'
+        | 'tier_removed'
+        | 'schedule_route_removed'
+        | 'configuration_invalid'
+        | null;
     unitPriceHalalah: number;
 };
 
@@ -235,8 +244,7 @@ export type StoreCartTranslations = {
     credentials_load_error: string;
     credentials_save_error: string;
     remove_item: string;
-    remove_confirm: string;
-    remove_cancel: string;
+    remove_hint: string;
     remove_error: string;
     checkout: string;
     checkout_loading: string;
@@ -244,6 +252,22 @@ export type StoreCartTranslations = {
     checkout_phone: string;
     checkout_error: string;
     checkout_cart_changed: string;
+    checkout_pricing_updating: string;
+    checkout_too_many_requests: string;
+    prices_updated: string;
+    prices_updated_note: string;
+    price_was: string;
+    unavailable: string;
+    unavailable_note: string;
+    confirm_total_title: string;
+    confirm_total_note: string;
+    confirm_order_previous: string;
+    confirm_order_new: string;
+    confirm_total_previous: string;
+    confirm_total_new: string;
+    confirm_coupon_removed: string;
+    confirm_pay: string;
+    confirm_cancel: string;
     phone_country: string;
     phone_number: string;
     phone_code: string;
@@ -257,6 +281,7 @@ export type StoreCartTranslations = {
     phone_delivery_error: string;
     order_total: string;
     coupon_label: string;
+    coupon_prompt: string;
     coupon_placeholder: string;
     coupon_apply: string;
     coupon_applying: string;
@@ -283,6 +308,10 @@ export type StoreCartPageProps = {
     auth: { user: { id: number; name: string } | null };
     cartCount: number;
     cart: {
+        // Lives beside the items rather than in cartPage: partial reloads on the
+        // cart page ask for `cart` only, so eligibility parked in cartPage would
+        // stay stale after an unavailable item is removed.
+        canCheckout: boolean;
         count: number;
         currency: 'SAR';
         items: StoreCartItem[];
@@ -291,7 +320,6 @@ export type StoreCartPageProps = {
     };
     cartPage: {
         checkout: {
-            canCheckout: boolean;
             checkoutUrl: string;
             couponApplyUrl: string;
             couponRemoveUrl: string;

@@ -10,6 +10,8 @@ use App\Exceptions\Checkout\CheckoutUnavailable;
 use App\Models\IntegrationEvent;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\User;
+use App\Notifications\OrderPaidNotification;
 use App\Services\Payments\PaymentManager;
 use App\Support\OrderClosingNote;
 use Illuminate\Support\Facades\DB;
@@ -88,6 +90,14 @@ final readonly class ReconcilePaylinkPayment
                         'attempts' => 0,
                         'available_at' => now(),
                     ]);
+
+                    // Guarded by the PendingPayment check above, so a repeated
+                    // reconciliation cannot send the receipt twice.
+                    $customer = $order->user;
+
+                    if ($customer instanceof User) {
+                        $customer->notify(new OrderPaidNotification($order));
+                    }
                 }
             } elseif ($invoice->status === 'cancelled') {
                 $locked->forceFill([

@@ -115,4 +115,23 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Markdown Mail Settings
+    |--------------------------------------------------------------------------
+    |
+    | The theme every message is inlined with. Pointing it at the Arab UT
+    | stylesheet brands the framework's own mail too - password resets and
+    | email verification included - without touching Fortify.
+    |
+    */
+
+    'markdown' => [
+        'theme' => 'arab-ut',
+
+        'paths' => [
+            resource_path('views/vendor/mail'),
+        ],
+    ],
+
 ];

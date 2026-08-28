@@ -1,3 +1,12 @@
+export type AccountPaymentMethod =
+    | 'wallet'
+    | 'mada'
+    | 'visa'
+    | 'mastercard'
+    | 'apple_pay'
+    | 'stc_pay'
+    | 'card';
+
 import type {
     StoreLocale,
     StoreShellConfig,
@@ -142,6 +151,7 @@ export type AccountTranslations = {
         manual_details: string;
         platform: string;
         platform_playstation: string;
+        platform_xbox: string;
         platform_pc: string;
         launcher: string;
         launcher_ea_app: string;
@@ -177,6 +187,19 @@ export type AccountTranslations = {
         back: string;
         copy: string;
         copied: string;
+    };
+    invoice: {
+        title: string;
+        store_name: string;
+        freelance_label: string;
+        request_title: string;
+        amount_due: string;
+        pay_action: string;
+        subtotal: string;
+        wallet_deduction: string;
+        total_paid: string;
+        payment_method: string;
+        methods: Record<AccountPaymentMethod, string>;
     };
     wallet: {
         title: string;
@@ -404,13 +427,18 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
         statusNote: string | null;
         placedAt: string;
         total: AccountMoney;
+        subtotal: AccountMoney;
         discount: AccountMoney;
+        paymentAmount: AccountMoney;
+        paymentMethod?: AccountPaymentMethod | null;
         walletPayment?: AccountMoney | null;
         refreshable: boolean;
         paymentStartUrl: string | null;
         items: Array<{
             id: string;
             name: string;
+            platform: 'playstation' | 'xbox' | 'pc';
+            imageUrl: string | null;
             status: AccountOrderStatus;
             quantity: number;
             total: AccountMoney;

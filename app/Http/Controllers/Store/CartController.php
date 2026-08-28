@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Store;
 
+use App\Actions\Cart\RepriceCart;
 use App\Actions\Cart\ResolveCartOwner;
 use App\Checkout\DiscountEngine;
 use App\Checkout\DiscountResult;
@@ -22,9 +23,11 @@ use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\WalletAccount;
 use App\Services\Catalog\CoinsCatalogReader;
+use App\ValueObjects\Cart\CartRepricing;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -35,6 +38,7 @@ final class CartController extends Controller
     public function __construct(
         private readonly PromotionPricing $promotionPricing,
         private readonly DiscountEngine $discountEngine,
+        private readonly RepriceCart $repriceCart,
     ) {}
 
     public function __invoke(Request $request, ResolveCartOwner $resolveCartOwner): Response
@@ -46,15 +50,41 @@ final class CartController extends Controller
             ->first();
 
         $user = $request->user();
+        $repricing = $activeCart instanceof Cart ? $this->repriceCart->execute($activeCart) : null;
+        $allItems = $activeCart instanceof Cart ? $activeCart->items : new Collection;
+        $storedTotals = $allItems->mapWithKeys(
+            fn (CartItem $cartItem): array => [(int) $cartItem->id => (int) $cartItem->total_halalah],
+        )->all();
+
+        if ($activeCart instanceof Cart && $repricing instanceof CartRepricing) {
+            $this->applyLivePrices($allItems, $repricing);
+            // An unavailable item has no live price, so it must not reach the
+            // discount engine - a dead line at its stored total could satisfy a
+            // coupon minimum or a bundle tier the cart no longer qualifies for.
+            $activeCart->setRelation(
+                'items',
+                $allItems->filter(fn (CartItem $cartItem): bool => $repricing->for($cartItem)->unavailableReason === null)->values(),
+            );
+        }
+
         $discountResult = $activeCart instanceof Cart
             ? $this->discountEngine->calculateForCart($activeCart, $user instanceof User ? $user : null)
             : null;
 
-        $safeCartItems = $activeCart?->items
-            ->map(fn (CartItem $cartItem): array => $this->safeCartItem($cartItem, $localized, $discountResult))
+        $activeCart?->setRelation('items', $allItems);
+
+        $safeCartItems = $allItems
+            ->map(fn (CartItem $cartItem): array => $this->safeCartItem(
+                $cartItem,
+                $localized,
+                $discountResult,
+                $repricing,
+                $storedTotals[(int) $cartItem->id] ?? null,
+            ))
             ->values()
-            ->all() ?? [];
+            ->all();
         $phoneVerified = $user instanceof User && $user->phone_verified_at !== null;
+        $hasUnavailable = $repricing instanceof CartRepricing && $repricing->hasUnavailable();
         $walletBalance = $user instanceof User
             ? (int) (WalletAccount::query()->where('user_id', $user->id)->value('balance_halalah') ?? 0)
             : 0;
@@ -62,7 +92,6 @@ final class CartController extends Controller
         return Inertia::render('store/cart', [
             'cartPage' => [
                 'checkout' => [
-                    'canCheckout' => $phoneVerified && $safeCartItems !== [],
                     'checkoutUrl' => route(
                         $localized ? 'localized.store.checkout.paylink' : 'store.checkout.paylink',
                         $localized ? ['locale' => 'en'] : [],
@@ -104,6 +133,10 @@ final class CartController extends Controller
                 'translations' => trans('store.cart_page'),
             ],
             'cart' => [
+                // Lives here, not in cartPage: every partial reload on this page
+                // asks for `cart` only, so eligibility parked in cartPage would
+                // stay stale after the customer removes an unavailable item.
+                'canCheckout' => $phoneVerified && $safeCartItems !== [] && ! $hasUnavailable,
                 'count' => count($safeCartItems),
                 'currency' => 'SAR',
                 'items' => $safeCartItems,
@@ -144,9 +177,38 @@ final class CartController extends Controller
         );
     }
 
-    /** @return array<string, mixed> */
-    private function safeCartItem(CartItem $cartItem, bool $localized, ?DiscountResult $discountResult = null): array
+    /**
+     * Adopt the live price on the loaded models so the page renders, and
+     * discounts compute, from what the customer would actually be charged.
+     *
+     * In memory only. This runs on a GET; nothing here may save. An item that
+     * cannot be priced keeps its stored figures and is filtered out by the
+     * caller instead.
+     *
+     * @param  Collection<int, CartItem>  $items
+     */
+    private function applyLivePrices(Collection $items, CartRepricing $repricing): void
     {
+        foreach ($items as $cartItem) {
+            $price = $repricing->for($cartItem);
+
+            if (! $price->isPriced()) {
+                continue;
+            }
+
+            $cartItem->unit_price_halalah = $price->unitPriceHalalah;
+            $cartItem->total_halalah = $price->totalHalalah;
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function safeCartItem(
+        CartItem $cartItem,
+        bool $localized,
+        ?DiscountResult $discountResult = null,
+        ?CartRepricing $repricing = null,
+        ?int $storedTotalHalalah = null,
+    ): array {
         $serviceType = $cartItem->productVariant->service_type;
         $isManualService = in_array($serviceType, [
             ServiceType::FutChampions,
@@ -154,13 +216,24 @@ final class CartController extends Controller
         ], true);
         $credentials = $isManualService ? null : $this->safeCredentials($cartItem->secret);
         $fulfillment = $isManualService ? $this->safeManualFulfillment($cartItem) : null;
-        $promotion = $discountResult?->linePromotion((int) $cartItem->id) ?? $this->itemPromotion($cartItem);
+        $unavailableReason = $repricing?->for($cartItem)->unavailableReason;
+        // No badge on a dead line: the fallback would resolve a promotion from
+        // the stored total of an item that has no live price at all.
+        $promotion = $unavailableReason !== null
+            ? null
+            : ($discountResult?->linePromotion((int) $cartItem->id) ?? $this->itemPromotion($cartItem));
+        $priceChanged = $unavailableReason === null
+            && $storedTotalHalalah !== null
+            && $storedTotalHalalah !== (int) $cartItem->total_halalah;
 
         return [
             'id' => $cartItem->public_id,
             'quantity' => $cartItem->quantity,
             'unitPriceHalalah' => $cartItem->unit_price_halalah,
             'totalHalalah' => $cartItem->total_halalah,
+            'previousTotalHalalah' => $priceChanged ? $storedTotalHalalah : null,
+            'priceChanged' => $priceChanged,
+            'unavailableReason' => $unavailableReason?->value,
             'promotion' => $promotion === null ? null : [
                 'badge' => $this->promotionBadge($promotion),
                 'discountHalalah' => $promotion->discountHalalah,

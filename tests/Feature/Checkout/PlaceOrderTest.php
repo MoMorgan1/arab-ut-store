@@ -7,6 +7,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
+use App\Exceptions\Checkout\CartRepriced;
 use App\Exceptions\Checkout\CheckoutUnavailable;
 use App\Exceptions\IdempotencyConflict;
 use App\Models\Cart;
@@ -212,8 +213,10 @@ test('checkout rejects an SBC bundle whose selected tier is no longer available'
         'price_version' => 5,
     ]);
 
+    // A tier that no longer exists cannot be repriced at all, so the item is
+    // unavailable rather than merely priced differently.
     expect(fn () => app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-removed-tier'))
-        ->toThrow(CheckoutUnavailable::class, 'The cart price has changed.')
+        ->toThrow(CheckoutUnavailable::class, 'A cart item is unavailable.')
         ->and(Order::count())->toBe(0);
 });
 
@@ -250,7 +253,7 @@ test('checkout requires a verified phone and a nonempty active cart', function (
         ->toThrow(CheckoutUnavailable::class, 'The cart is empty.');
 });
 
-test('checkout fails closed when the product price or credential snapshot is stale', function (string $target, array $changes, string $message) {
+test('checkout fails closed when the product or credential snapshot is stale', function (string $target, array $changes, string $message) {
     $state = checkoutSbcCart([$target => $changes]);
 
     expect(fn () => app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-stale-'.$target))
@@ -258,10 +261,45 @@ test('checkout fails closed when the product price or credential snapshot is sta
         ->and(Order::count())->toBe(0)
         ->and($state['cart']->fresh()->status)->toBe('active');
 })->with([
-    'price changed' => ['variant', ['price_halalah' => 1300, 'price_version' => 5], 'The cart price has changed.'],
-    'unit price inconsistent' => ['item', ['unit_price_halalah' => 1200], 'The cart price has changed.'],
     'variant inactive' => ['variant', ['is_active' => false], 'A cart item is unavailable.'],
 ]);
+
+test('a price change is confirmed rather than refused, and the order records the new figure', function () {
+    $state = checkoutSbcCart(['variant' => ['price_halalah' => 1300, 'price_version' => 5]]);
+
+    try {
+        app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-repriced', 1250, 1250);
+        $this->fail('Expected the changed total to stop the charge.');
+    } catch (CartRepriced $repriced) {
+        expect($repriced->orderTotalHalalah)->toBe(1300)
+            ->and($repriced->previousOrderTotalHalalah)->toBe(1250)
+            ->and($repriced->payableHalalah)->toBe(1300)
+            ->and($repriced->couponRemoved)->toBeFalse();
+    }
+
+    expect(Order::count())->toBe(0)
+        ->and($state['cart']->fresh()->status)->toBe('active');
+
+    $checkout = app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-confirmed', 1300, 1300);
+
+    expect($checkout->order->total_halalah)->toBe(1300)
+        ->and($checkout->order->items()->sole()->configuration['price_version'])->toBe(5);
+});
+
+test('a tampered stored line price is ignored, not trusted', function () {
+    // The stored figures are no longer an input to what is charged, so editing
+    // them buys nothing: the live price wins and the customer still has to
+    // confirm it.
+    $state = checkoutSbcCart(['item' => ['unit_price_halalah' => 1200, 'total_halalah' => 1200]]);
+
+    expect(fn () => app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-tampered', 1200, 1200))
+        ->toThrow(CartRepriced::class)
+        ->and(Order::count())->toBe(0);
+
+    $checkout = app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-tampered-live', 1250, 1250);
+
+    expect($checkout->order->total_halalah)->toBe(1250);
+});
 
 test('checkout fails closed when required credentials are missing or deleted', function (bool $deleteRow) {
     $state = checkoutSbcCart();
@@ -401,7 +439,7 @@ test('checkout charges the admin price override, not the automation price', func
         ->and($variant->fresh()->price_halalah)->toBe(1250);
 });
 
-test('a cart quoted before a price override cannot be checked out at the old price', function () {
+test('a cart quoted before a price override cannot be charged at the old price without confirmation', function () {
     $state = checkoutSbcCart();
 
     $state['variant']->forceFill([
@@ -409,8 +447,8 @@ test('a cart quoted before a price override cannot be checked out at the old pri
         'price_version' => 5,
     ])->save();
 
-    expect(fn () => app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-stale-quote'))
-        ->toThrow(CheckoutUnavailable::class, 'The cart price has changed.')
+    expect(fn () => app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-stale-quote', 1250, 1250))
+        ->toThrow(CartRepriced::class)
         ->and(Order::count())->toBe(0);
 });
 

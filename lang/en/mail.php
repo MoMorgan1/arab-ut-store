@@ -1,0 +1,21 @@
+<?php
+
+return [
+    'order_paid_subject' => 'Your Arab UT order :number is confirmed',
+    'order_paid_heading' => 'We have your order',
+    'order_paid_intro' => 'Thank you. Your payment is confirmed and we have started work on your order. Here is what you bought.',
+    'order_paid_number' => 'Order number',
+    'order_paid_date' => 'Order date',
+    'order_paid_quantity' => 'Quantity',
+    'order_paid_subtotal' => 'Subtotal',
+    'order_paid_discount' => 'Discount',
+    'order_paid_wallet' => 'Paid from wallet',
+    'order_paid_total' => 'Total paid',
+    'order_paid_method' => 'Payment method',
+    'order_paid_action' => 'Track your order',
+    'order_paid_help' => 'If you have any question about this order, message us on WhatsApp and we will get back to you.',
+    'footer_freelance' => 'Freelance work number FL-621205220',
+    'footer_support' => 'Message us on WhatsApp',
+    'footer_store' => 'Visit the store',
+    'footer_rights' => 'All rights reserved.',
+];

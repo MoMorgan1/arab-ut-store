@@ -28,7 +28,12 @@ it('posts an empty same-origin checkout request and accepts only a Paylink payme
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(
-        startPaylinkCheckout('/checkout/paylink', 'checkout-browser-key'),
+        startPaylinkCheckout(
+            '/checkout/paylink',
+            'checkout-browser-key',
+            1250,
+            1250,
+        ),
     ).resolves.toEqual({
         orderUrl: '/orders/01K00000000000000000000000',
         paymentUrl: 'https://payment.paylink.sa/pay/info/1710000000099',
@@ -67,7 +72,12 @@ it('accepts an idempotent paid retry and directs the customer to the safe order 
     );
 
     await expect(
-        startPaylinkCheckout('/en/checkout/paylink', 'checkout-browser-key'),
+        startPaylinkCheckout(
+            '/en/checkout/paylink',
+            'checkout-browser-key',
+            1250,
+            1250,
+        ),
     ).resolves.toEqual({
         orderUrl: '/en/orders/01K00000000000000000000000',
         paymentUrl: null,
@@ -116,6 +126,8 @@ it('rejects cross-origin endpoints unsafe responses and stable server errors', a
         startPaylinkCheckout(
             'https://attacker.test/checkout',
             'checkout-browser-key',
+            1250,
+            1250,
         ),
     ).rejects.toMatchObject({ code: 'unsafe_endpoint', conclusive: false });
 
@@ -135,7 +147,12 @@ it('rejects cross-origin endpoints unsafe responses and stable server errors', a
         ),
     );
     await expect(
-        startPaylinkCheckout('/checkout/paylink', 'checkout-browser-key'),
+        startPaylinkCheckout(
+            '/checkout/paylink',
+            'checkout-browser-key',
+            1250,
+            1250,
+        ),
     ).rejects.toMatchObject({ code: 'unsafe_response', conclusive: true });
 
     vi.stubGlobal(
@@ -150,7 +167,12 @@ it('rejects cross-origin endpoints unsafe responses and stable server errors', a
             ),
     );
     await expect(
-        startPaylinkCheckout('/checkout/paylink', 'checkout-browser-key'),
+        startPaylinkCheckout(
+            '/checkout/paylink',
+            'checkout-browser-key',
+            1250,
+            1250,
+        ),
     ).rejects.toEqual(
         expect.objectContaining<Partial<PaylinkCheckoutError>>({
             code: 'cart_changed',
@@ -158,4 +180,88 @@ it('rejects cross-origin endpoints unsafe responses and stable server errors', a
             status: 422,
         }),
     );
+});
+
+it('parses a cart_repriced refusal and rejects one it cannot trust', async () => {
+    const repricing = {
+        couponRemoved: true,
+        orderTotalHalalah: 13_000,
+        payableHalalah: 13_000,
+        previousOrderTotalHalalah: 12_500,
+        previousPayableHalalah: 12_500,
+    };
+
+    vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    error: { code: 'cart_repriced', message: 'changed' },
+                    repricing,
+                }),
+                { status: 422 },
+            ),
+        ),
+    );
+    await expect(
+        startPaylinkCheckout(
+            '/checkout/paylink',
+            'checkout-browser-key',
+            12_500,
+            12_500,
+        ),
+    ).rejects.toMatchObject({ code: 'cart_repriced', repricing });
+
+    // A malformed repricing is not something to ask the customer to confirm.
+    vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    error: { code: 'cart_repriced' },
+                    repricing: { ...repricing, payableHalalah: -1 },
+                }),
+                { status: 422 },
+            ),
+        ),
+    );
+    await expect(
+        startPaylinkCheckout(
+            '/checkout/paylink',
+            'checkout-browser-key',
+            12_500,
+            12_500,
+        ),
+    ).rejects.toMatchObject({ code: 'unsafe_response' });
+});
+
+it('sends both expected totals so a covered wallet cannot hide a price change', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+        new Response(
+            JSON.stringify({
+                data: {
+                    orderUrl: '/orders/01K00000000000000000000000',
+                    paymentUrl: null,
+                    status: 'paid',
+                },
+            }),
+            { status: 201 },
+        ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await startPaylinkCheckout(
+        '/checkout/paylink',
+        'checkout-browser-key',
+        0,
+        12_500,
+    );
+
+    const headers = fetchMock.mock.calls[0][1].headers as Record<
+        string,
+        string
+    >;
+
+    expect(headers['X-Expected-Total-Halalah']).toBe('0');
+    expect(headers['X-Expected-Order-Total-Halalah']).toBe('12500');
 });

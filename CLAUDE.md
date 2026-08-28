@@ -6,8 +6,8 @@ Design context and the UI workflow live in [.impeccable.md](.impeccable.md).
 ## Before you touch anything
 
 - **Discovery, planning and owner approval are hard gates.** See AGENTS.md.
-- **Frontend work has an extra gate**: inspect the WordPress reference and the existing
-  implementation, load the required design skills, reach parity first, then refine.
+- **Frontend work has an extra gate**: inspect the existing implementation, load the
+  required design skills, and extend the established visual language rather than replacing it.
 - **Assistant work**: read `docs/ai-assistant/STATUS.md`, then the canonical document linked
   from `docs/ai-assistant/README.md`. Historical plans never override the newest owner decision.
 

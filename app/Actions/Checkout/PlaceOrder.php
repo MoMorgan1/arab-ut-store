@@ -2,14 +2,13 @@
 
 namespace App\Actions\Checkout;
 
-use App\Actions\Pricing\QuoteCoins;
-use App\Actions\Pricing\ReadManualServicePricing;
+use App\Actions\Cart\RepriceCart;
 use App\Checkout\AppliedCoupon;
 use App\Checkout\CheckoutResult;
 use App\Checkout\DiscountEngine;
 use App\Checkout\DiscountResult;
 use App\Checkout\OrderNumber;
-use App\Enums\DeliveryMode;
+use App\Enums\CouponRejection;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
@@ -17,8 +16,10 @@ use App\Enums\PaymentStatus;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Enums\WalletEntryType;
+use App\Exceptions\Checkout\CartRepriced;
 use App\Exceptions\Checkout\CheckoutUnavailable;
 use App\Exceptions\Checkout\CouponRejected;
+use App\Exceptions\Checkout\PricingRunInProgress;
 use App\Exceptions\Checkout\StaleCartCoupon;
 use App\Exceptions\IdempotencyConflict;
 use App\Loyalty\Support\WalletLedgerWriter;
@@ -39,11 +40,13 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\WalletEntry;
+use App\Notifications\OrderPaidNotification;
 use App\Security\CheckoutFingerprint;
 use App\Support\SafeOrderItemConfiguration;
+use App\ValueObjects\Cart\CartItemPrice;
 use App\ValueObjects\Cart\CartOwner;
+use App\ValueObjects\Cart\CartRepricing;
 use App\ValueObjects\Cart\ManualServiceCredentials;
-use App\ValueObjects\Pricing\SbcCompletionPricing;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -57,27 +60,28 @@ final readonly class PlaceOrder
     private const PAYLINK_MINIMUM_HALALAH = 500;
 
     public function __construct(
-        private QuoteCoins $quoteCoins,
-        private ReadManualServicePricing $readManualServicePricing,
+        private RepriceCart $repriceCart,
         private PromotionPricing $promotionPricing,
         private DiscountEngine $discountEngine,
         private WalletLedgerWriter $walletLedgerWriter,
     ) {}
 
     /**
-     * @param  int|null  $expectedPayableHalalah  the payable total the cart showed
-     *                                            the customer. Discounts are recomputed here from live promotion and coupon
-     *                                            rows, so a promotion ending between preview and pay changes the price. When
-     *                                            this is supplied and no longer matches, the order is refused instead of
-     *                                            charged at the new figure - which matters most on the wallet path, where
-     *                                            the debit happens immediately and there is no invoice for the customer to
-     *                                            check.
+     * @param  int|null  $expectedPayableHalalah  the cash payable the cart showed the
+     *                                            customer, after the wallet deduction.
+     * @param  int|null  $expectedOrderTotalHalalah  the order total the cart showed, before
+     *                                               the wallet. Both are required together: the wallet absorbs
+     *                                               movement in the first, so a fully covered cart computes a
+     *                                               payable of zero whatever the order total does. Pinning only
+     *                                               the payable would let a wallet be debited at a figure the
+     *                                               customer never saw.
      */
     public function execute(
         User $user,
         string $locale,
         string $idempotencyKey,
         ?int $expectedPayableHalalah = null,
+        ?int $expectedOrderTotalHalalah = null,
     ): CheckoutResult {
         if (! in_array($locale, ['ar', 'en'], true)) {
             throw new CheckoutUnavailable('The checkout locale is invalid.');
@@ -91,17 +95,37 @@ final readonly class PlaceOrder
 
         try {
             return DB::transaction(
-                fn (): CheckoutResult => $this->store($user, $locale, $idempotencyKey, $expectedPayableHalalah),
+                fn (): CheckoutResult => $this->store(
+                    $user,
+                    $locale,
+                    $idempotencyKey,
+                    $expectedPayableHalalah,
+                    $expectedOrderTotalHalalah,
+                ),
                 attempts: 3,
             );
         } catch (StaleCartCoupon $stale) {
-            Cart::query()
-                ->whereKey($stale->cartId)
-                ->where('coupon_id', '>', 0)
-                ->update(['coupon_id' => null]);
+            $this->detachCoupon($stale->cartId);
 
             throw new CheckoutUnavailable($stale->failure);
+        } catch (CartRepriced $repriced) {
+            // The coupon no longer qualifies for this cart, so it has to go
+            // whether or not the customer confirms - leaving it attached would
+            // reproduce the same refusal on every retry.
+            if ($repriced->couponRemoved) {
+                $this->detachCoupon($repriced->cartId);
+            }
+
+            throw $repriced;
         }
+    }
+
+    private function detachCoupon(int $cartId): void
+    {
+        Cart::query()
+            ->whereKey($cartId)
+            ->where('coupon_id', '>', 0)
+            ->update(['coupon_id' => null]);
     }
 
     private function store(
@@ -109,6 +133,7 @@ final readonly class PlaceOrder
         string $locale,
         string $idempotencyKey,
         ?int $expectedPayableHalalah = null,
+        ?int $expectedOrderTotalHalalah = null,
     ): CheckoutResult {
         $scope = self::SCOPE.':user:'.$user->id;
         $existing = IdempotencyKey::query()->where('key', $idempotencyKey)->lockForUpdate()->first();
@@ -145,7 +170,10 @@ final readonly class PlaceOrder
             $scope,
             CheckoutFingerprint::generate($cart, $locale, (string) config('app.key')),
         );
-        $snapshots = $cart->items->map(fn (CartItem $item): array => $this->validateItem($item));
+        // One repricing under locks, shared by every item below, so nothing can
+        // read a different price than the total the customer is asked to confirm.
+        $repricing = $this->repriceCart->execute($cart, lock: true);
+        $snapshots = $cart->items->map(fn (CartItem $item): array => $this->validateItem($item, $repricing));
 
         $coupon = null;
         if ($cart->coupon_id !== null) {
@@ -160,22 +188,27 @@ final readonly class PlaceOrder
             }
         }
 
+        $couponRemoved = false;
+
         try {
             $discountResult = $this->discountEngine->calculateForSnapshots($snapshots, $coupon, $user);
         } catch (CouponRejected $exception) {
-            throw new StaleCartCoupon(
-                (int) $cart->id,
-                'The applied coupon is no longer valid.',
-                previous: $exception,
-            );
+            if ($exception->reason !== CouponRejection::Minimum) {
+                throw new StaleCartCoupon(
+                    (int) $cart->id,
+                    'The applied coupon is no longer valid.',
+                    previous: $exception,
+                );
+            }
+
+            // Repricing dropped the cart under the coupon's minimum. The engine
+            // throws before it produces any total, so ask it again without the
+            // coupon - the customer has to see what they would actually pay.
+            $discountResult = $this->discountEngine->calculateForSnapshots($snapshots, null, $user);
+            $couponRemoved = true;
         }
 
         $subtotal = $discountResult->promotedSubtotalHalalah;
-
-        if ($subtotal < self::PAYLINK_MINIMUM_HALALAH) {
-            throw new CheckoutUnavailable('The order total is below the Paylink minimum.');
-        }
-
         $appliedCoupon = $discountResult->appliedCoupon;
         $discountHalalah = $appliedCoupon instanceof AppliedCoupon
             ? $appliedCoupon->discountHalalah
@@ -193,9 +226,29 @@ final readonly class PlaceOrder
 
         $paymentHalalah = $totalHalalah - $walletPart;
 
-        // Refuse before the wallet is debited: everything below this line moves money.
-        if ($expectedPayableHalalah !== null && $expectedPayableHalalah !== $paymentHalalah) {
-            throw new CheckoutUnavailable((string) trans('store.checkout.price_changed', locale: $locale));
+        // Refuse before the wallet is debited: everything below this line moves
+        // money. Both figures are compared - the wallet absorbs movement in the
+        // payable, so the order total is what catches a price change on a fully
+        // covered cart.
+        $totalsMoved = ($expectedOrderTotalHalalah !== null && $expectedOrderTotalHalalah !== $totalHalalah)
+            || ($expectedPayableHalalah !== null && $expectedPayableHalalah !== $paymentHalalah);
+
+        if ($couponRemoved || $totalsMoved) {
+            throw new CartRepriced(
+                (int) $cart->id,
+                $totalHalalah,
+                $expectedOrderTotalHalalah ?? $totalHalalah,
+                $paymentHalalah,
+                $expectedPayableHalalah ?? $paymentHalalah,
+                $couponRemoved,
+            );
+        }
+
+        // Checked after the confirmation gate: a downward reprice can newly trip
+        // these floors, and the customer should meet the new total first rather
+        // than a bare refusal that never mentions the price moved.
+        if ($subtotal < self::PAYLINK_MINIMUM_HALALAH) {
+            throw new CheckoutUnavailable('The order total is below the Paylink minimum.');
         }
 
         if ($paymentHalalah > 0 && $paymentHalalah < self::PAYLINK_MINIMUM_HALALAH) {
@@ -294,6 +347,11 @@ final readonly class PlaceOrder
                 'attempts' => 0,
                 'available_at' => now(),
             ]);
+
+            // A wallet-covered order is paid the moment it is placed, so the
+            // receipt belongs here. Queued after commit: the mail server must
+            // never be able to fail a checkout that already moved money.
+            $user->notify(new OrderPaidNotification($order));
         } else {
             $payment = $order->payments()->create([
                 'provider' => 'paylink',
@@ -361,7 +419,7 @@ final readonly class PlaceOrder
     }
 
     /** @return array<string, mixed> */
-    private function validateItem(CartItem $item): array
+    private function validateItem(CartItem $item, CartRepricing $repricing): array
     {
         $configuration = $item->configuration;
 
@@ -380,45 +438,36 @@ final readonly class PlaceOrder
             throw new CheckoutUnavailable('A cart item is invalid.');
         }
 
-        $variant = ProductVariant::query()
-            ->whereKey($item->product_variant_id)
-            ->where('is_active', true)
-            ->with('product.category')
-            ->lockForUpdate()
-            ->first();
+        $price = $repricing->for($item);
 
-        if (! $variant instanceof ProductVariant
-            || ! $variant->product instanceof Product
-            || ! $variant->product->isStorefrontVisible()
-            || $variant->service_type !== $service
-            || $variant->product->service_type !== $service
-            || $variant->platform !== $platform) {
+        if ($price->pricingRunInProgress) {
+            throw new PricingRunInProgress;
+        }
+
+        if (! $price->isPriced() || ! $price->variant instanceof ProductVariant) {
             throw new CheckoutUnavailable('A cart item is unavailable.');
         }
 
-        [$currentUnit, $currentTotal] = $this->currentPrices(
-            $item,
-            $variant,
-            $service,
-            $platform,
-            $configuration,
-        );
+        $variant = $price->variant;
 
-        $isManualService = $this->isManualService($service);
+        if (! $variant->product instanceof Product) {
+            throw new CheckoutUnavailable('A cart item is unavailable.');
+        }
 
-        if ((! $isManualService && $configuration['price_version'] !== $variant->price_version)
-            || $item->quantity < 1
+        // The stored price is no longer compared against the live one: the live
+        // one is adopted, and the customer confirms the resulting total before
+        // anything is charged. Quantity is still ours to police.
+        if ($item->quantity < 1
             || (in_array($service, [
                 ServiceType::Coins,
                 ServiceType::Sbc,
                 ServiceType::FutChampions,
                 ServiceType::Rivals,
-            ], true) && $item->quantity !== 1)
-            || $item->unit_price_halalah !== $currentUnit
-            || $item->total_halalah !== $currentTotal) {
-            throw new CheckoutUnavailable('The cart price has changed.');
+            ], true) && $item->quantity !== 1)) {
+            throw new CheckoutUnavailable('A cart item is invalid.');
         }
 
+        $isManualService = $this->isManualService($service);
         $secret = match (true) {
             $isManualService => $this->requiredManualSecret($item, $configuration),
             in_array($service, [ServiceType::Coins, ServiceType::Sbc], true) => $this->requiredSecret($item),
@@ -432,171 +481,45 @@ final readonly class PlaceOrder
             'service_type' => $service,
             'platform' => $platform,
             'quantity' => $item->quantity,
-            'unit_price_halalah' => $item->unit_price_halalah,
-            'total_halalah' => $item->total_halalah,
+            'unit_price_halalah' => (int) $price->unitPriceHalalah,
+            'total_halalah' => (int) $price->totalHalalah,
             'promotion' => $this->promotionPricing->resolve(
                 $category?->id,
                 $service,
-                $item->total_halalah,
+                (int) $price->totalHalalah,
                 $variant->product->id,
             ),
-            'configuration' => $this->safeConfiguration($configuration, $service),
+            'configuration' => $this->safeConfiguration(
+                $this->withLiveVersions($configuration, $price, $service),
+                $service,
+            ),
             'secret' => $secret,
             'attachment' => $attachment,
         ];
     }
 
-    /** @param array<string, mixed> $configuration
-     * @return array{int, int}
-     */
-    private function currentPrices(
-        CartItem $item,
-        ProductVariant $variant,
-        ServiceType $service,
-        Platform $platform,
-        array $configuration,
-    ): array {
-        if ($service === ServiceType::Coins) {
-            $quantity = $configuration['coins_quantity'] ?? null;
-            $delivery = $configuration['delivery'] ?? null;
-
-            if (! is_int($quantity)) {
-                throw new CheckoutUnavailable('A cart item is invalid.');
-            }
-
-            $deliveryMode = is_string($delivery) ? DeliveryMode::tryFrom($delivery) : null;
-            $quote = $this->quoteCoins->execute($platform, $deliveryMode, $quantity);
-
-            if ($quote->variantId !== $variant->public_id || $quote->priceVersion !== $variant->price_version) {
-                throw new CheckoutUnavailable('The cart price has changed.');
-            }
-
-            return [$quote->total->halalah(), $quote->total->halalah()];
-        }
-
-        if ($this->isManualService($service)) {
-            return $this->currentManualServicePrices($service, $platform, $configuration);
-        }
-
-        $effective = $variant->effectivePriceHalalah();
-
-        if ($service === ServiceType::Sbc) {
-            $completionCount = $configuration['completion_count'] ?? null;
-
-            if (! is_int($completionCount) || $completionCount < 1 || $completionCount > 100) {
-                throw new CheckoutUnavailable('A cart item is invalid.');
-            }
-
-            try {
-                $pricing = SbcCompletionPricing::fromConfiguration(
-                    $variant->effectivePricingConfiguration(),
-                    $effective,
-                    requireDeclared: false,
-                );
-            } catch (DomainException $exception) {
-                throw new CheckoutUnavailable('A cart item is invalid.', previous: $exception);
-            }
-
-            $tierTotal = $pricing->tierTotal($completionCount);
-
-            if ($tierTotal === null) {
-                throw new CheckoutUnavailable('The cart price has changed.');
-            }
-
-            return [$tierTotal, $tierTotal];
-        }
-
-        return [$effective, $effective * $item->quantity];
-    }
-
     /**
+     * Stamp the order item with the versions it was actually charged at.
+     * Carrying the cart's versions forward would document a price nobody paid.
+     *
      * @param  array<string, mixed>  $configuration
-     * @return array{int, int}
+     * @return array<string, mixed>
      */
-    private function currentManualServicePrices(
-        ServiceType $service,
-        Platform $platform,
-        array $configuration,
-    ): array {
-        if (! in_array($platform, [Platform::PlayStation, Platform::Pc], true)
-            || ! $this->validManualConfiguration($configuration, $service, $platform)) {
-            throw new CheckoutUnavailable('A manual-service cart item is invalid.');
+    private function withLiveVersions(array $configuration, CartItemPrice $price, ServiceType $service): array
+    {
+        $configuration['price_version'] = (int) $price->priceVersion;
+
+        if ($price->quotedAt !== null) {
+            $configuration['quoted_at'] = $price->quotedAt;
         }
 
-        try {
-            if ($service === ServiceType::FutChampions) {
-                $pricing = $this->readManualServicePricing->futChampions(lock: true);
-                $schedule = $pricing['schedule'];
-                $total = $pricing['pricing']->priceForRank($configuration['rank'], $configuration['urgent']);
-            } else {
-                $pricing = $this->readManualServicePricing->rivals(lock: true);
-                $schedule = $pricing['schedule'];
-                $total = $configuration['mode'] === 'weekly_matches'
-                    ? $pricing['pricing']->weeklyMatchesPriceHalalah()
-                    : $pricing['pricing']->priceForRoute(
-                        $configuration['current_division'],
-                        $configuration['target_division'],
-                    );
-            }
-
-            if ($configuration['schedule_version'] !== $schedule->version
-                || $configuration['price_version'] !== $schedule->version) {
-                throw new CheckoutUnavailable('The manual-service price has changed.');
-            }
-        } catch (DomainException $exception) {
-            throw new CheckoutUnavailable('The manual-service price has changed.', previous: $exception);
+        // Only the manual services carry a schedule version; the other
+        // allow-lists would drop the key silently.
+        if ($this->isManualService($service) && $price->scheduleVersion !== null) {
+            $configuration['schedule_version'] = $price->scheduleVersion;
         }
 
-        return [$total, $total];
-    }
-
-    /** @param array<string, mixed> $configuration */
-    private function validManualConfiguration(
-        array $configuration,
-        ServiceType $service,
-        Platform $platform,
-    ): bool {
-        $common = [
-            'service_type', 'platform', 'market', 'pc_store', 'quoted_at', 'price_version', 'schedule_version',
-        ];
-        $expected = $service === ServiceType::FutChampions
-            ? [...$common, 'rank', 'urgent', 'matches_played']
-            : [...$common, 'mode', 'current_division', 'target_division', 'included_wins'];
-        $actual = array_keys($configuration);
-        sort($actual);
-        sort($expected);
-
-        if ($actual !== $expected
-            || $configuration['market'] !== $platform->market()->value
-            || ! is_int($configuration['price_version'])
-            || ! is_int($configuration['schedule_version'])
-            || ! is_string($configuration['quoted_at'])
-            || ($platform === Platform::PlayStation && $configuration['pc_store'] !== null)
-            || ($platform === Platform::Pc && ! in_array($configuration['pc_store'], ['ea_app', 'steam'], true))) {
-            return false;
-        }
-
-        if ($service === ServiceType::FutChampions) {
-            return is_int($configuration['rank'])
-                && $configuration['rank'] >= 1
-                && $configuration['rank'] <= 6
-                && is_bool($configuration['urgent'])
-                && is_int($configuration['matches_played'])
-                && $configuration['matches_played'] >= 0
-                && $configuration['matches_played'] <= 100;
-        }
-
-        if ($configuration['mode'] === 'weekly_matches') {
-            return $configuration['current_division'] === null
-                && $configuration['target_division'] === null
-                && is_int($configuration['included_wins'])
-                && $configuration['included_wins'] > 0;
-        }
-
-        return $configuration['mode'] === 'promotion'
-            && is_string($configuration['current_division'])
-            && is_string($configuration['target_division'])
-            && $configuration['included_wins'] === null;
+        return $configuration;
     }
 
     /** @param array<string, mixed> $configuration */

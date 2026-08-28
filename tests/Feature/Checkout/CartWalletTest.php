@@ -9,6 +9,7 @@ use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Enums\UserRole;
 use App\Enums\WalletEntryType;
+use App\Exceptions\Checkout\CartRepriced;
 use App\Loyalty\Support\WalletLedgerWriter;
 use App\Models\Cart;
 use App\Models\CartItem;
@@ -294,7 +295,11 @@ test('paylink checkout endpoint returns paid status directly when order is fully
     creditUserWallet($user, 2000);
 
     $this->actingAs($user)
-        ->postJson('/checkout/paylink', [], ['Idempotency-Key' => 'api-full-wallet-checkout'])
+        ->postJson('/checkout/paylink', [], [
+            'Idempotency-Key' => 'api-full-wallet-checkout',
+            'X-Expected-Order-Total-Halalah' => '1250',
+            'X-Expected-Total-Halalah' => '0',
+        ])
         ->assertCreated()
         ->assertHeader('Cache-Control', 'no-store, private')
         ->assertJsonPath('data.status', 'paid')
@@ -394,4 +399,68 @@ test('refund returns wallet part to wallet ledger before paylink refund and cash
         ->and($refundEntry->amount_halalah)->toBe(1000)
         ->and($refundEntry->order_id)->toBe($order->id)
         ->and($refundEntry->refund_id)->toBe($refund->id);
+});
+
+test('a fully wallet-covered cart whose price moved is refused before the wallet is debited', function (): void {
+    // The case a partial-coverage test cannot catch. With a balance above both
+    // the old and the new total, the payable is zero either way, so the cash
+    // figure alone proves nothing and the order total is what stops the charge.
+    ['user' => $user, 'cart' => $cart, 'variant' => $variant] = createWalletCartFixture(unitPriceHalalah: 1250);
+    $cart->update(['use_wallet' => true]);
+    creditUserWallet($user, 5000);
+
+    $variant->forceFill(['price_halalah' => 3000, 'price_version' => 2])->save();
+
+    try {
+        app(PlaceOrder::class)->execute($user, 'ar', 'wallet-covered-reprice', 0, 1250);
+        $this->fail('Expected the wallet charge to stop at the changed order total.');
+    } catch (CartRepriced $repriced) {
+        expect($repriced->orderTotalHalalah)->toBe(3000)
+            ->and($repriced->previousOrderTotalHalalah)->toBe(1250)
+            ->and($repriced->payableHalalah)->toBe(0)
+            ->and($repriced->previousPayableHalalah)->toBe(0);
+    }
+
+    expect(Order::query()->count())->toBe(0)
+        ->and((int) WalletAccount::query()->where('user_id', $user->id)->value('balance_halalah'))->toBe(5000)
+        ->and(WalletEntry::query()->where('type', WalletEntryType::Debit)->count())->toBe(0);
+
+    // Confirming the new total debits exactly what was shown.
+    app(PlaceOrder::class)->execute($user, 'ar', 'wallet-covered-confirmed', 0, 3000);
+
+    expect((int) WalletAccount::query()->where('user_id', $user->id)->value('balance_halalah'))->toBe(2000);
+});
+
+test('a wallet balance change alone is confirmed even though the cart did not move', function (): void {
+    ['user' => $user, 'cart' => $cart] = createWalletCartFixture(unitPriceHalalah: 1250);
+    $cart->update(['use_wallet' => true]);
+    creditUserWallet($user, 400);
+
+    // The cart showed a 400 halalah wallet deduction; the balance is spent
+    // elsewhere before the customer presses pay, so the cash owed rises.
+    app(WalletLedgerWriter::class)->append(
+        app(WalletLedgerWriter::class)->lockAccountFor($user->id),
+        [
+            'type' => WalletEntryType::Debit,
+            'amount_halalah' => 400,
+            'balance_delta_halalah' => -400,
+            'order_id' => null,
+            'refund_id' => null,
+            'created_by_user_id' => null,
+            'reference' => 'wallet-drained-elsewhere',
+            'metadata' => [],
+        ],
+    );
+
+    try {
+        app(PlaceOrder::class)->execute($user, 'ar', 'wallet-drained', 850, 1250);
+        $this->fail('Expected the higher cash figure to stop the charge.');
+    } catch (CartRepriced $repriced) {
+        expect($repriced->orderTotalHalalah)->toBe(1250)
+            ->and($repriced->previousOrderTotalHalalah)->toBe(1250)
+            ->and($repriced->payableHalalah)->toBe(1250)
+            ->and($repriced->previousPayableHalalah)->toBe(850);
+    }
+
+    expect(Order::query()->count())->toBe(0);
 });

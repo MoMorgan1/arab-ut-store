@@ -162,9 +162,9 @@ it('refreshes only current safe order data and keeps credentials opaque', () => 
 
     render(<AccountLiveOrder />);
 
-    expect(
-        screen.getByRole('heading', { level: 2, name: 'UT-00000001' }),
-    ).toBeVisible();
+    // The order number lives in the invoice block now; the tracking section
+    // below no longer repeats it.
+    expect(screen.getByText('UT-00000001')).toBeVisible();
     expect(
         screen.getByText('Fulfilment details stored securely'),
     ).toBeVisible();
@@ -301,6 +301,64 @@ it('reveals manual-service credentials and squad image only after the owner asks
     expect(screen.queryByText('owner@example.test')).not.toBeInTheDocument();
 });
 
+it('renders the paid invoice with letterhead, totals, and method, and no payment action', () => {
+    page.url = '/en/my-account/orders/01ORDER1';
+    page.props = {
+        ...shellProps(),
+        order: liveOrder(null),
+    };
+
+    const { container } = render(<AccountLiveOrder />);
+    const invoice = within(
+        container.querySelector('.account-invoice') as HTMLElement,
+    );
+
+    expect(
+        invoice.getByRole('heading', { level: 2, name: 'Arab UT' }),
+    ).toBeVisible();
+    expect(invoice.getByText('Invoice')).toBeVisible();
+    expect(invoice.getByText('Freelance No.')).toBeVisible();
+    expect(invoice.getByText('FL-621205220')).toBeVisible();
+    expect(invoice.getByText('Total paid')).toBeVisible();
+    // The method the customer used, not the gateway that moved the money.
+    expect(invoice.getByText('Payment method: mada')).toBeVisible();
+    expect(invoice.queryByText('Amount due')).not.toBeInTheDocument();
+    expect(container.querySelector('.account-invoice__pay')).toBeNull();
+    expect(container.querySelector('.account-invoice__mark')).toBeNull();
+});
+
+it('renders a payment request, not an invoice, while payment is pending', () => {
+    page.url = '/en/my-account/orders/01ORDER1';
+    page.props = {
+        ...shellProps(),
+        order: {
+            ...liveOrder('/en/orders/01ORDER1/payments/paylink'),
+            status: 'pending_payment',
+            discount: { amountMinor: '500', currency: 'SAR' },
+            walletPayment: { amountMinor: '5000', currency: 'SAR' },
+        },
+    };
+
+    const { container } = render(<AccountLiveOrder />);
+    const invoice = within(
+        container.querySelector('.account-invoice') as HTMLElement,
+    );
+
+    expect(
+        screen.getByRole('heading', { level: 2, name: 'Payment request' }),
+    ).toBeVisible();
+    expect(invoice.getByText('Amount due')).toBeVisible();
+    expect(container.querySelector('.account-invoice__pay')).toBeVisible();
+    expect(invoice.queryByText(/Total paid/)).not.toBeInTheDocument();
+    expect(invoice.queryByText(/Payment method/)).not.toBeInTheDocument();
+    expect(invoice.queryByText(/Paid from wallet/)).not.toBeInTheDocument();
+    expect(invoice.queryByText(/Subtotal/)).not.toBeInTheDocument();
+    expect(invoice.queryByText(/Discount/)).not.toBeInTheDocument();
+    expect(invoice.queryByText('Invoice')).not.toBeInTheDocument();
+    expect(invoice.queryByText('FL-621205220')).not.toBeInTheDocument();
+    expect(container.querySelector('.account-invoice__mark')).toBeNull();
+});
+
 it('offers a browse services CTA from the orders empty state', () => {
     page.props = {
         ...shellProps(),
@@ -355,8 +413,14 @@ it('resumes the existing Paylink payment from the canonical detail', async () =>
         ),
     );
 
-    render(<AccountLiveOrder />);
-    fireEvent.click(screen.getByRole('button', { name: 'Complete payment' }));
+    const { container } = render(<AccountLiveOrder />);
+    fireEvent.click(
+        within(
+            container.querySelector(
+                '.account-live-order__payment',
+            ) as HTMLElement,
+        ).getByRole('button', { name: 'Complete payment' }),
+    );
 
     await waitFor(() =>
         expect(paymentNavigation.hosted).toHaveBeenCalledWith(
@@ -504,10 +568,10 @@ it('renders paid from wallet in order rows, order cards, and live order page whe
             walletPayment: { amountMinor: '5000', currency: 'SAR' },
         },
     };
-    const { container: liveContainer } = render(<AccountLiveOrder />);
-    expect(
-        liveContainer.querySelector('.account-live-order__wallet-paid'),
-    ).toHaveTextContent('Paid from wallet SAR 50.00');
+    // On the live order the wallet deduction is stated once, on the invoice.
+    render(<AccountLiveOrder />);
+    expect(screen.getByText('Paid from wallet')).toBeVisible();
+    expect(screen.getByText('SAR 50.00')).toBeVisible();
 });
 
 function order(id: string, number: string, status: string): AccountOrder {
@@ -534,13 +598,18 @@ function liveOrder(
         statusNote: null,
         placedAt: '2026-08-15T10:00:00+00:00',
         total: { amountMinor: '12999', currency: 'SAR' },
+        subtotal: { amountMinor: '12999', currency: 'SAR' },
         discount: { amountMinor: '0', currency: 'SAR' },
+        paymentAmount: { amountMinor: '12999', currency: 'SAR' },
+        paymentMethod: 'mada',
         refreshable: true,
         paymentStartUrl,
         items: [
             {
                 id: '01ITEM1',
                 name: 'FC 27 Coins service',
+                platform: 'playstation',
+                imageUrl: '/images/store/coins/ut-coin-80.webp',
                 status: 'waiting_for_customer',
                 quantity: 1,
                 total: { amountMinor: '12999', currency: 'SAR' },
@@ -626,6 +695,7 @@ function shellProps() {
                 manual_details: 'Manual service details',
                 platform: 'Platform',
                 platform_playstation: 'PlayStation',
+                platform_xbox: 'Xbox',
                 platform_pc: 'PC',
                 launcher: 'Launcher',
                 rank: 'Target rank',
@@ -656,6 +726,27 @@ function shellProps() {
                 back: 'Back to Orders',
                 copy: 'Copy',
                 copied: 'Copied',
+            },
+            invoice: {
+                title: 'Invoice',
+                store_name: 'Arab UT',
+                freelance_label: 'Freelance No.',
+                request_title: 'Payment request',
+                amount_due: 'Amount due',
+                pay_action: 'Complete payment',
+                subtotal: 'Subtotal',
+                wallet_deduction: 'Paid from wallet',
+                total_paid: 'Total paid',
+                payment_method: 'Payment method',
+                methods: {
+                    wallet: 'Wallet',
+                    mada: 'mada',
+                    visa: 'Visa',
+                    mastercard: 'Mastercard',
+                    apple_pay: 'Apple Pay',
+                    stc_pay: 'STC Pay',
+                    card: 'Card',
+                },
             },
             statuses: {
                 pending_payment: 'Awaiting payment',

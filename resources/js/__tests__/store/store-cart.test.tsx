@@ -1,10 +1,12 @@
 import { router } from '@inertiajs/react';
 import {
+    act,
     cleanup,
     fireEvent,
     render,
     screen,
     waitFor,
+    within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -36,6 +38,7 @@ const mockPage = vi.hoisted(() => ({
     props: {
         auth: { user: null as { id: number; name: string } | null },
         cart: {
+            canCheckout: false,
             count: 1,
             currency: 'SAR',
             items: [
@@ -74,7 +77,6 @@ const mockPage = vi.hoisted(() => ({
         } as StoreCartPageProps['cart'],
         cartPage: {
             checkout: {
-                canCheckout: false,
                 checkoutUrl: '/en/checkout/paylink',
                 couponApplyUrl: '/en/cart/coupon',
                 couponRemoveUrl: '/en/cart/coupon',
@@ -130,8 +132,7 @@ const mockPage = vi.hoisted(() => ({
                 credentials_show: 'Show EA details',
                 credentials_hide: 'Hide EA details',
                 remove_item: 'Remove product',
-                remove_confirm: 'Confirm removal',
-                remove_cancel: 'Keep product',
+                remove_hint: 'Press and hold until the bar fills.',
                 remove_error: 'The product could not be removed.',
                 backup_code: 'Backup code :number',
                 checkout: 'Continue to secure payment',
@@ -140,6 +141,25 @@ const mockPage = vi.hoisted(() => ({
                 checkout_phone: 'Verify your WhatsApp number to continue.',
                 checkout_error: 'Payment could not be opened.',
                 checkout_cart_changed: 'Prices changed. Refresh and try again.',
+                checkout_pricing_updating:
+                    'Prices are updating right now. Try again in a moment.',
+                checkout_too_many_requests:
+                    'Too many attempts. Try again in a minute.',
+                prices_updated: 'Prices updated',
+                prices_updated_note: 'Coins prices change hourly.',
+                price_was: 'Was',
+                unavailable: 'Unavailable',
+                unavailable_note: 'Remove it to continue to checkout.',
+                confirm_total_title: 'Your total changed',
+                confirm_total_note: 'Check the new amount before you pay.',
+                confirm_order_previous: 'Order total before',
+                confirm_order_new: 'Order total now',
+                confirm_total_previous: 'Total shown before',
+                confirm_total_new: 'Total now',
+                confirm_coupon_removed:
+                    'The coupon was removed because the total fell below its minimum.',
+                confirm_pay: 'Confirm and pay',
+                confirm_cancel: 'Back to cart',
                 phone_country: 'Country code',
                 phone_number: 'WhatsApp number',
                 phone_code: '6-digit verification code',
@@ -154,6 +174,7 @@ const mockPage = vi.hoisted(() => ({
                     'The WhatsApp code could not be sent right now.',
                 order_total: 'Order total',
                 coupon_label: 'Discount code',
+                coupon_prompt: 'Have a discount code?',
                 coupon_placeholder: 'Enter coupon code',
                 coupon_apply: 'Apply',
                 coupon_applying: 'Applying…',
@@ -287,7 +308,7 @@ afterEach(cleanup);
 beforeEach(() => {
     document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
     mockPage.props.auth.user = null;
-    mockPage.props.cartPage.checkout.canCheckout = false;
+    mockPage.props.cart.canCheckout = false;
     mockPage.props.cartPage.checkout.phoneVerified = false;
     mockPage.props.cart.count = 1;
     mockPage.props.cart.items = [defaultCartItem];
@@ -393,7 +414,7 @@ it('offers the Coins route from a purposeful empty state without a back link', (
 
 it('locks checkout while Paylink opens and navigates only to the validated hosted URL', async () => {
     mockPage.props.auth.user = { id: 1, name: 'Buyer' };
-    mockPage.props.cartPage.checkout.canCheckout = true;
+    mockPage.props.cart.canCheckout = true;
     mockPage.props.cartPage.checkout.phoneVerified = true;
     const fetchMock = vi.fn().mockImplementation(() =>
         Promise.resolve(
@@ -441,7 +462,7 @@ it('locks checkout while Paylink opens and navigates only to the validated hoste
 
 it('opens the existing order when an idempotent checkout retry is already paid', async () => {
     mockPage.props.auth.user = { id: 1, name: 'Buyer' };
-    mockPage.props.cartPage.checkout.canCheckout = true;
+    mockPage.props.cart.canCheckout = true;
     mockPage.props.cartPage.checkout.phoneVerified = true;
     vi.stubGlobal(
         'fetch',
@@ -663,7 +684,7 @@ it('loads owner-only credentials only after disclosure and edits exactly three c
     expect(localStorageSpy).not.toHaveBeenCalled();
 });
 
-it('removes a cart product only after inline confirmation and updates the cart count', async () => {
+it('removes a product only after a sustained hold', async () => {
     const cartCountEvents: number[] = [];
     window.addEventListener(
         'arabut:cart-count',
@@ -680,24 +701,44 @@ it('removes a cart product only after inline confirmation and updates the cart c
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<StoreCart />);
+    // Drive the hold deterministically: hold the animation frame instead of
+    // running it, so the clock can be moved past the hold duration by hand.
+    let clock = 0;
+    let frame: FrameRequestCallback | null = null;
+    vi.spyOn(performance, 'now').mockImplementation(() => clock);
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+        frame = cb;
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove product' }));
-    expect(screen.getByText('FC 27 Coins')).toBeVisible();
+        return 1;
+    });
+    vi.stubGlobal('cancelAnimationFrame', () => {
+        frame = null;
+    });
+
+    render(<StoreCart />);
+    const remove = screen.getByRole('button', { name: 'Remove product' });
+
+    // A tap that is not held deletes nothing. The hold is the confirmation,
+    // and the delete it commits to is immediate and final.
+    fireEvent.pointerUp(remove);
     expect(fetchMock).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm removal' }));
+
+    fireEvent.pointerDown(remove);
+    expect(frame).not.toBeNull();
+
+    clock = 10_000;
+    act(() => {
+        frame?.(10_000);
+    });
 
     await waitFor(() =>
-        expect(screen.queryByText('FC 27 Coins')).not.toBeInTheDocument(),
+        expect(fetchMock).toHaveBeenCalledWith(
+            '/en/cart/items/01K00000000000000000000000',
+            expect.objectContaining({ method: 'DELETE' }),
+        ),
     );
-    expect(fetchMock).toHaveBeenCalledWith(
-        '/en/cart/items/01K00000000000000000000000',
-        expect.objectContaining({ method: 'DELETE' }),
-    );
+    expect(router.reload).toHaveBeenCalledWith({ only: ['cart'] });
     expect(cartCountEvents).toEqual([0]);
-    expect(
-        screen.getByRole('heading', { name: 'Your cart is empty' }),
-    ).toBeVisible();
 });
 
 it('does not invent cart facts when a safe projected field is absent', () => {
@@ -804,8 +845,16 @@ describe('cart coupon field', () => {
         vi.restoreAllMocks();
     });
 
-    it('renders the discount code field with apply disabled until input', () => {
+    it('reveals the discount code field only when asked, with apply disabled until input', () => {
         render(<StoreCart />);
+
+        // Folded away by default: most orders carry no coupon.
+        expect(
+            screen.queryByLabelText('Discount code'),
+        ).not.toBeInTheDocument();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Have a discount code?' }),
+        );
 
         const codeInput = screen.getByLabelText('Discount code');
         expect(codeInput).toBeVisible();
@@ -833,6 +882,9 @@ describe('cart coupon field', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         render(<StoreCart />);
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Have a discount code?' }),
+        );
 
         fireEvent.change(screen.getByLabelText('Discount code'), {
             target: { value: ' save20 ' },
@@ -868,6 +920,9 @@ describe('cart coupon field', () => {
         );
 
         render(<StoreCart />);
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Have a discount code?' }),
+        );
 
         fireEvent.change(screen.getByLabelText('Discount code'), {
             target: { value: 'BIGSPEND' },
@@ -1057,4 +1112,163 @@ it('keeps the Arabic credential state RTL without an email identity isolate', ()
 
     expect(credentialState?.closest('[dir]')).toHaveAttribute('dir', 'rtl');
     expect(credentialState?.querySelector('[dir="ltr"]')).toBeNull();
+});
+
+describe('cart repricing states', () => {
+    it('shows the live price with what it was, and a notice above the lines', () => {
+        mockPage.props.cart.items[0].priceChanged = true;
+        mockPage.props.cart.items[0].previousTotalHalalah = 11_000;
+
+        render(<StoreCart />);
+
+        expect(screen.getByText('Prices updated')).toBeVisible();
+        expect(screen.getByText('Was')).toBeVisible();
+        expect(screen.getByText('SAR 110.00')).toBeVisible();
+    });
+
+    it('marks an unavailable item in place and keeps checkout disabled', () => {
+        mockPage.props.auth.user = { id: 1, name: 'Buyer' };
+        mockPage.props.cartPage.checkout.phoneVerified = true;
+        mockPage.props.cart.items[0].unavailableReason = 'variant_inactive';
+        mockPage.props.cart.canCheckout = false;
+
+        render(<StoreCart />);
+
+        expect(screen.getByText('Unavailable')).toBeVisible();
+        // Once on the line, once under the dead checkout button.
+        expect(
+            screen.getAllByText('Remove it to continue to checkout.'),
+        ).toHaveLength(2);
+        expect(
+            screen.getByRole('button', { name: 'Continue to secure payment' }),
+        ).toBeDisabled();
+    });
+
+    it('asks for confirmation when the server reprices, and pays the new total', async () => {
+        mockPage.props.auth.user = { id: 1, name: 'Buyer' };
+        mockPage.props.cart.canCheckout = true;
+        mockPage.props.cartPage.checkout.phoneVerified = true;
+
+        const posts: RequestInit[] = [];
+        const fetchMock = vi.fn(
+            (input: RequestInfo | URL, init?: RequestInit) => {
+                if (String(input).endsWith('/credentials')) {
+                    return Promise.resolve(new Response('{}', { status: 404 }));
+                }
+
+                posts.push(init as RequestInit);
+
+                if (posts.length === 1) {
+                    return Promise.resolve(
+                        new Response(
+                            JSON.stringify({
+                                error: { code: 'cart_repriced' },
+                                repricing: {
+                                    couponRemoved: true,
+                                    orderTotalHalalah: 13_000,
+                                    payableHalalah: 13_000,
+                                    previousOrderTotalHalalah: 12_500,
+                                    previousPayableHalalah: 12_500,
+                                },
+                            }),
+                            { status: 422 },
+                        ),
+                    );
+                }
+
+                return Promise.resolve(
+                    new Response(
+                        JSON.stringify({
+                            data: {
+                                orderUrl:
+                                    '/en/orders/01K00000000000000000000000',
+                                paymentUrl: null,
+                                status: 'paid',
+                            },
+                        }),
+                        { status: 201 },
+                    ),
+                );
+            },
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<StoreCart />);
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Continue to secure payment' }),
+        );
+
+        await waitFor(() =>
+            expect(screen.getByText('Your total changed')).toBeVisible(),
+        );
+        // Both pairs are shown now, so the figure appears more than once.
+        expect(
+            within(screen.getByRole('alert')).getAllByText('SAR 130.00'),
+        ).not.toHaveLength(0);
+        expect(
+            screen.getByText(
+                'The coupon was removed because the total fell below its minimum.',
+            ),
+        ).toBeVisible();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Confirm and pay' }),
+        );
+
+        await waitFor(() => expect(posts).toHaveLength(2));
+
+        // The confirmed figures go out, not the stale ones the page still shows.
+        const headers = posts[1].headers as Record<string, string>;
+
+        expect(headers['X-Expected-Order-Total-Halalah']).toBe('13000');
+        expect(headers['X-Expected-Total-Halalah']).toBe('13000');
+    });
+});
+
+it('shows the order total in the confirmation when a wallet hides the change', async () => {
+    mockPage.props.auth.user = { id: 1, name: 'Buyer' };
+    mockPage.props.cart.canCheckout = true;
+    mockPage.props.cartPage.checkout.phoneVerified = true;
+
+    // The case the two-figure check exists for: the price rose, the wallet
+    // absorbed all of it, and the cash payable did not move. Showing only the
+    // payable would print two identical numbers under "your total changed".
+    vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL) => {
+            if (String(input).endsWith('/credentials')) {
+                return Promise.resolve(new Response('{}', { status: 404 }));
+            }
+
+            return Promise.resolve(
+                new Response(
+                    JSON.stringify({
+                        error: { code: 'cart_repriced' },
+                        repricing: {
+                            couponRemoved: false,
+                            orderTotalHalalah: 15_000,
+                            payableHalalah: 0,
+                            previousOrderTotalHalalah: 12_500,
+                            previousPayableHalalah: 0,
+                        },
+                    }),
+                    { status: 422 },
+                ),
+            );
+        }),
+    );
+
+    render(<StoreCart />);
+    fireEvent.click(
+        screen.getByRole('button', { name: 'Continue to secure payment' }),
+    );
+
+    await waitFor(() =>
+        expect(screen.getByText('Your total changed')).toBeVisible(),
+    );
+    const confirm = screen.getByRole('alert');
+
+    expect(within(confirm).getByText('Order total before')).toBeVisible();
+    expect(within(confirm).getByText('SAR 125.00')).toBeVisible();
+    expect(within(confirm).getByText('SAR 150.00')).toBeVisible();
 });

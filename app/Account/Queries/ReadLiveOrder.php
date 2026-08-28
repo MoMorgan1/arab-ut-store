@@ -8,9 +8,15 @@ use App\Enums\ServiceType;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
+use App\Models\Payment;
+use App\Models\Product;
+use App\Models\ProductMedia;
+use App\Models\ProductVariant;
 use App\Models\User;
+use App\Payments\PaymentMethodLabel;
 use BackedEnum;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Storage;
 
 final class ReadLiveOrder
 {
@@ -25,19 +31,25 @@ final class ReadLiveOrder
                 'order_number',
                 'status',
                 'currency',
+                'subtotal_halalah',
                 'discount_halalah',
                 'wallet_halalah',
+                'payment_halalah',
                 'total_halalah',
                 'placed_at',
                 'created_at',
             ])
             ->where('public_id', $publicId)
             ->where('user_id', $user->id)
+            ->with(['payments' => fn ($payments) => $payments
+                ->select(['id', 'order_id', 'provider', 'provider_metadata'])
+                ->orderByDesc('id')])
             ->with(['items' => fn ($items) => $items
                 ->select([
                     'id',
                     'public_id',
                     'order_id',
+                    'product_variant_id',
                     'name_ar',
                     'name_en',
                     'service_type',
@@ -46,6 +58,13 @@ final class ReadLiveOrder
                     'quantity',
                     'total_halalah',
                     'configuration',
+                ])
+                ->with([
+                    'productVariant' => fn ($variants) => $variants
+                        ->select(['id', 'product_id'])
+                        ->with(['product' => fn ($products) => $products
+                            ->select(['id'])
+                            ->with('media')]),
                 ])
                 ->withExists('secret')
                 ->withExists('squadImage')
@@ -69,10 +88,19 @@ final class ReadLiveOrder
                 (int) $order->getAttribute('total_halalah'),
                 (string) $order->getAttribute('currency'),
             ),
+            'subtotal' => AccountMoney::fromMinor(
+                (int) $order->getAttribute('subtotal_halalah'),
+                (string) $order->getAttribute('currency'),
+            ),
             'discount' => AccountMoney::fromMinor(
                 (int) $order->getAttribute('discount_halalah'),
                 (string) $order->getAttribute('currency'),
             ),
+            'paymentAmount' => AccountMoney::fromMinor(
+                (int) $order->getAttribute('payment_halalah'),
+                (string) $order->getAttribute('currency'),
+            ),
+            'paymentMethod' => $this->paymentMethod($order),
             'walletPayment' => $walletHalalah > 0
                 ? AccountMoney::fromMinor(
                     $walletHalalah,
@@ -93,6 +121,8 @@ final class ReadLiveOrder
                 ->map(fn (OrderItem $item): array => [
                     'id' => (string) $item->getAttribute('public_id'),
                     'name' => (string) $item->getAttribute($locale === 'en' ? 'name_en' : 'name_ar'),
+                    'platform' => $item->platform->value,
+                    'imageUrl' => $this->itemImageUrl($item),
                     'status' => $item->status->forCustomer()->value,
                     'quantity' => (int) $item->getAttribute('quantity'),
                     'total' => AccountMoney::fromMinor(
@@ -139,6 +169,59 @@ final class ReadLiveOrder
         $note = $latest->getAttribute($locale === 'en' ? 'note_en' : 'note_ar');
 
         return is_string($note) && trim($note) !== '' ? $note : null;
+    }
+
+    /**
+     * What the customer paid with, from the newest payment row - the method,
+     * never the gateway. A receipt says "mada", not the name of the plumbing.
+     */
+    private function paymentMethod(Order $order): ?string
+    {
+        return PaymentMethodLabel::for($order->payments->first());
+    }
+
+    /**
+     * The product image for an invoice line, resolved like the cart does.
+     *
+     * Coin items have no media row; they use the same storefront coin asset.
+     * Everything else reads the product's first media entry through the same
+     * path checks the cart applies before a URL leaves the server.
+     */
+    private function itemImageUrl(OrderItem $item): ?string
+    {
+        if ($item->service_type === ServiceType::Coins) {
+            return '/images/store/coins/ut-coin-80.webp';
+        }
+
+        $variant = $item->productVariant;
+
+        if (! $variant instanceof ProductVariant) {
+            return null;
+        }
+
+        $product = $variant->product;
+
+        if (! $product instanceof Product) {
+            return null;
+        }
+
+        return $this->safeImageUrl($product->media->first());
+    }
+
+    private function safeImageUrl(?ProductMedia $media): ?string
+    {
+        if (! $media instanceof ProductMedia || $media->disk !== 'public') {
+            return null;
+        }
+
+        $path = (string) $media->path;
+
+        if ($path === '' || str_contains($path, '..')
+            || preg_match('/\A[A-Za-z0-9_\/.\-]+\z/D', $path) !== 1) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($path);
     }
 
     /** @return array<string, mixed>|null */
