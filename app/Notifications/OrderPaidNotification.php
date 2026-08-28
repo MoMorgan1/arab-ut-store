@@ -105,7 +105,9 @@ final class OrderPaidNotification extends Notification implements ShouldQueue
     private function itemImageUrl(OrderItem $item): ?string
     {
         if ($item->service_type === ServiceType::Coins) {
-            return rtrim((string) config('app.url'), '/').'/images/store/coins/ut-coin-80.webp';
+            // PNG rather than the storefront's WebP: image proxies flatten
+            // WebP alpha onto black, which put a black tile behind the coin.
+            return rtrim((string) config('app.url'), '/').'/images/mail/ut-coin-mail.png';
         }
 
         $variant = $item->productVariant;
