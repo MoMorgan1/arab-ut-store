@@ -15,6 +15,47 @@
 <meta name="supported-color-schemes" content="light">
 <meta name="format-detection" content="telephone=no">
 <style>
+/*
+ * Thmanyah, where the client will have it.
+ *
+ * Gmail strips @font-face outright and Outlook's Word engine never supported
+ * it, but Apple Mail on iOS and macOS does - and that is a large share of a
+ * Saudi audience. So this is progressive enhancement, not a dependency: the
+ * stack in the theme falls back to a face the device already has, and the mail
+ * reads correctly either way.
+ *
+ * It lives here rather than in the theme stylesheet because the theme is
+ * inlined onto elements before sending, and an @font-face rule cannot be
+ * inlined - it would simply be dropped.
+ */
+@font-face {
+font-family: 'Thmanyah Sans';
+font-style: normal;
+font-weight: 400;
+src: url('{{ rtrim(config('app.url'), '/') }}/fonts/thmanyah/thmanyahsans-Regular.woff2') format('woff2');
+}
+
+@font-face {
+font-family: 'Thmanyah Sans';
+font-style: normal;
+font-weight: 700;
+src: url('{{ rtrim(config('app.url'), '/') }}/fonts/thmanyah/thmanyahsans-Bold.woff2') format('woff2');
+}
+
+@font-face {
+font-family: 'Thmanyah Sans';
+font-style: normal;
+font-weight: 800;
+src: url('{{ rtrim(config('app.url'), '/') }}/fonts/thmanyah/thmanyahsans-Black.woff2') format('woff2');
+}
+
+@font-face {
+font-family: 'Thmanyah Serif Display';
+font-style: normal;
+font-weight: 700;
+src: url('{{ rtrim(config('app.url'), '/') }}/fonts/thmanyah/thmanyahserifdisplay-Bold.woff2') format('woff2');
+}
+
 @media only screen and (max-width: 600px) {
 .inner-body {
 width: 100% !important;
