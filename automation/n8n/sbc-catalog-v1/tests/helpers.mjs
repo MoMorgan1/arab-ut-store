@@ -1,5 +1,5 @@
-import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 
 const root = new URL('../', import.meta.url);
 const require = createRequire(import.meta.url);
@@ -49,6 +49,7 @@ export function pipeline({ env = {}, staticData = {}, now = NOW } = {}) {
             if (!outputs.has(name)) {
                 throw new Error(`node "${name}" has not executed`);
             }
+
             const produced = outputs.get(name);
 
             return {
@@ -325,12 +326,14 @@ export function laravelExpectedTiers(repeatable, maximum) {
     if (!repeatable) {
         return [[1, 10_000]];
     }
+
     if (maximum !== null && maximum < 5) {
         return Array.from({ length: maximum }, (_, index) => [
             index + 1,
             10_000,
         ]);
     }
+
     if (maximum === null || maximum >= 100) {
         return LARAVEL_STANDARD_TIERS;
     }
@@ -362,15 +365,19 @@ export function laravelWouldReject(configuration, fallbackMinor) {
     if (!pricing) {
         return 'completion pricing must be declared';
     }
+
     if (!exact(pricing, ['version', 'repeatable', 'maximum', 'tiers'])) {
         return 'completion pricing contains unsupported fields';
     }
+
     if (pricing.version !== 1 || typeof pricing.repeatable !== 'boolean') {
         return 'completion pricing identity is malformed';
     }
+
     if (!pricing.repeatable && pricing.maximum !== 1) {
         return 'a nonrepeatable SBC must have a maximum of one';
     }
+
     if (
         pricing.repeatable &&
         pricing.maximum !== null &&
@@ -392,6 +399,7 @@ export function laravelWouldReject(configuration, fallbackMinor) {
         if (!exact(tier, ['completions', 'multiplierBps', 'totalMinor'])) {
             return 'a completion tier contains unsupported fields';
         }
+
         if (
             tier.completions !== expected[index][0] ||
             tier.multiplierBps !== expected[index][1] ||
