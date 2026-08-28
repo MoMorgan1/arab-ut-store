@@ -90,20 +90,20 @@ jobs:
         run: |
           test -f public/build/manifest.json
           tar \
-            --exclude=.git \
-            --exclude=.github \
-            --exclude=.env \
-            --exclude=database/database.sqlite \
-            --exclude=node_modules \
-            --exclude=playwright-report \
-            --exclude=tests \
-            --exclude=test-results \
-            --exclude=vendor \
-            --exclude=public/hot \
-            --exclude=storage/logs \
-            --exclude=storage/framework/cache \
-            --exclude=storage/framework/sessions \
-            --exclude=storage/framework/views \
+            --exclude=./.git \
+            --exclude=./.github \
+            --exclude=./.env \
+            --exclude=./database/database.sqlite \
+            --exclude=./node_modules \
+            --exclude=./playwright-report \
+            --exclude=./tests \
+            --exclude=./test-results \
+            --exclude=./vendor \
+            --exclude=./public/hot \
+            --exclude=./storage/logs \
+            --exclude=./storage/framework/cache \
+            --exclude=./storage/framework/sessions \
+            --exclude=./storage/framework/views \
             -czf "${RUNNER_TEMP}/release.tar.gz" .
 
       - name: Upload verified Hostinger release
