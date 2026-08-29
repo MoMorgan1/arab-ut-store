@@ -923,7 +923,7 @@ function concurrentChatDatabaseEnvironment(): array
         'DB_USERNAME' => (string) $database['username'],
         'DB_PASSWORD' => (string) $database['password'],
         'AI_ASSISTANT_ENABLED' => 'false',
-        'AI_ASSISTANT_ROLLOUT' => 'off',
+        'AI_ASSISTANT_ROLLOUT' => 'disabled',
         'CHAT_DEMO_ASSISTANT' => 'true',
     ];
 }

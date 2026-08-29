@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AI\AgentErrorCode;
+use App\Enums\AI\AgentRollout;
 use App\Exceptions\AI\AgentConfigurationException;
 use App\Support\AI\AgentRuntimeConfig;
 use Tests\TestCase;
@@ -284,6 +285,13 @@ test('the .env.example that CI and every new install copy satisfies every runtim
     }
 
     expect($rejected)->toBe([], '.env.example holds values AgentRuntimeConfig rejects');
+
+    // rollout() coerces an unrecognised token to Disabled instead of throwing,
+    // so the loop above cannot see it. .env.example shipped `off`, which is not
+    // an AgentRollout case at all and only behaved because the fallback caught
+    // it -- asserted here so the template names a value the enum really has.
+    expect(AgentRollout::tryFrom(dotenvExampleAiValues()['AI_ASSISTANT_ROLLOUT']))
+        ->not->toBeNull('.env.example names a rollout AgentRollout does not define');
 });
 
 /** @return array<string, string> */
