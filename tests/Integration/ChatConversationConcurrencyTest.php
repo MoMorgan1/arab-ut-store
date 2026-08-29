@@ -907,6 +907,12 @@ function concurrentChatDatabaseEnvironment(): array
     $connection = (string) config('database.default');
     $database = config("database.connections.{$connection}");
 
+    // Symfony merges this over the parent environment rather than replacing it,
+    // so the child otherwise inherits the AI_* keys phpunit.xml putenv()s and
+    // resolves Agent mode -- and CreateChatMessage writes a demo reply only when
+    // the agent is ineligible. Every worker here exercises the demo lifecycle,
+    // so the assistant is pinned off at the boundary instead of relying on
+    // whatever the suite or a developer .env happens to hold.
     return [
         'APP_ENV' => 'testing',
         'DB_URL' => '',
@@ -916,5 +922,8 @@ function concurrentChatDatabaseEnvironment(): array
         'DB_DATABASE' => (string) $database['database'],
         'DB_USERNAME' => (string) $database['username'],
         'DB_PASSWORD' => (string) $database['password'],
+        'AI_ASSISTANT_ENABLED' => 'false',
+        'AI_ASSISTANT_ROLLOUT' => 'disabled',
+        'CHAT_DEMO_ASSISTANT' => 'true',
     ];
 }

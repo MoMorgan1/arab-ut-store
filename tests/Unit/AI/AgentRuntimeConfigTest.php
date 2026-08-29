@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AI\AgentErrorCode;
+use App\Enums\AI\AgentRollout;
 use App\Exceptions\AI\AgentConfigurationException;
 use App\Support\AI\AgentRuntimeConfig;
 use Tests\TestCase;
@@ -184,6 +185,12 @@ test('runtime config rejects invalid timeout and rate-limit relationships', func
 
 function runtimeConfigLoadedFromEnvironment(string $environmentKey, string $rawValue): AgentRuntimeConfig
 {
+    return runtimeConfigLoadedFromEnvironmentValues([$environmentKey => $rawValue]);
+}
+
+/** @param array<string, string> $values */
+function runtimeConfigLoadedFromEnvironmentValues(array $values): AgentRuntimeConfig
+{
     $managedKeys = [
         'AI_ASSISTANT_ENABLED',
         'AI_ASSISTANT_ROLLOUT',
@@ -206,6 +213,10 @@ function runtimeConfigLoadedFromEnvironment(string $environmentKey, string $rawV
         'AI_FAKE_DELTA_DELAY_MS',
     ];
 
+    // Anything the caller sets is restored too, or a stray key would leak into
+    // every later test in the process.
+    $managedKeys = array_values(array_unique([...$managedKeys, ...array_keys($values)]));
+
     $saved = [];
 
     foreach ($managedKeys as $managedKey) {
@@ -217,9 +228,11 @@ function runtimeConfigLoadedFromEnvironment(string $environmentKey, string $rawV
         unset($_ENV[$managedKey], $_SERVER[$managedKey]);
     }
 
-    putenv("{$environmentKey}={$rawValue}");
-    $_ENV[$environmentKey] = $rawValue;
-    $_SERVER[$environmentKey] = $rawValue;
+    foreach ($values as $key => $rawValue) {
+        putenv("{$key}={$rawValue}");
+        $_ENV[$key] = $rawValue;
+        $_SERVER[$key] = $rawValue;
+    }
 
     try {
         config()->set('ai-assistant', require config_path('ai-assistant.php'));
@@ -240,4 +253,77 @@ function runtimeConfigLoadedFromEnvironment(string $environmentKey, string $rawV
     }
 
     return app(AgentRuntimeConfig::class);
+}
+
+test('the .env.example that CI and every new install copy satisfies every runtime pin', function () {
+    // CI has no .env of its own: `composer setup` copies .env.example verbatim.
+    // AgentRuntimeConfig fails closed, so a single rejected value turns every
+    // agent turn into configuration_invalid -- which is exactly how the browser
+    // suite lost its stream while every PHP test still passed.
+    $config = runtimeConfigLoadedFromEnvironmentValues(dotenvExampleAiValues());
+
+    $accessors = [
+        'enabled', 'rollout', 'testUserIds', 'provider', 'model',
+        'promptVersion', 'knowledgeTopicLimit', 'turnDebounceMilliseconds',
+        'maxContextMessages', 'maxOutputTokens', 'maxResponseCharacters',
+        'reasoningEffort', 'connectTimeoutSeconds', 'streamReadTimeoutSeconds',
+        'requestTimeoutSeconds', 'turnRateLimitPerMinute',
+        'turnIpRateLimitPerMinute', 'maxAttempts', 'retryAfterCapMilliseconds',
+        'staleTurnSeconds', 'fakeDeltaDelayMilliseconds', 'pricingVersion',
+        'inputRatePerMillion', 'cachedInputRatePerMillion',
+        'cacheWriteRatePerMillion', 'outputRatePerMillion',
+    ];
+
+    $rejected = [];
+
+    foreach ($accessors as $accessor) {
+        try {
+            $config->{$accessor}();
+        } catch (AgentConfigurationException) {
+            $rejected[] = $accessor;
+        }
+    }
+
+    expect($rejected)->toBe([], '.env.example holds values AgentRuntimeConfig rejects');
+
+    // rollout() coerces an unrecognised token to Disabled instead of throwing,
+    // so the loop above cannot see it. .env.example shipped `off`, which is not
+    // an AgentRollout case at all and only behaved because the fallback caught
+    // it -- asserted here so the template names a value the enum really has.
+    expect(AgentRollout::tryFrom(dotenvExampleAiValues()['AI_ASSISTANT_ROLLOUT']))
+        ->not->toBeNull('.env.example names a rollout AgentRollout does not define');
+});
+
+/**
+ * Deliberately tolerant of the forms dotenv accepts: an "export" prefix, or
+ * whitespace around the equals sign. A stricter pattern would not fail on
+ * those lines, it would silently skip them, and a skipped key falls back to a
+ * valid config default -- so a bad value would pass this guard unnoticed.
+ * Anything still unparsed is raised rather than dropped, for the same reason.
+ *
+ * @return array<string, string>
+ */
+function dotenvExampleAiValues(): array
+{
+    $values = [];
+
+    foreach (file(base_path('.env.example'), FILE_IGNORE_NEW_LINES) as $line) {
+        $line = trim($line);
+
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
+
+        if (preg_match('/\A(?:export\s+)?(AI_\w+)\s*=\s*(.*)\z/', $line, $matches) === 1) {
+            $values[$matches[1]] = trim($matches[2], "\"'");
+
+            continue;
+        }
+
+        if (str_starts_with($line, 'AI_') || str_contains($line, ' AI_')) {
+            throw new RuntimeException("Unparsed AI_ line in .env.example: {$line}");
+        }
+    }
+
+    return $values;
 }

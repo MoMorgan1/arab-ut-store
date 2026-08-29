@@ -17,9 +17,13 @@ test('purge skips a marker locked by the production owner boundary', function ()
     $guestHmac = hash_hmac('sha256', bin2hex(random_bytes(16)), 'claim-purge-concurrency');
     $owner = CartOwner::guest($guestHmac);
     $cart = app(AcquireActiveCart::class)->execute($owner);
+    // Retention is configurable and derived from SESSION_LIFETIME as well, so a
+    // fixed two days is only stale under the 24-hour default. .env.example ships
+    // 72 hours, which left the marker ineligible and the purge a silent no-op.
+    $retentionHours = (int) config('coins.cart.guest_claim_retention_hours');
     DB::table('guest_cart_claims')
         ->where('guest_session_hmac', $guestHmac)
-        ->update(['updated_at' => now()->subDays(2)]);
+        ->update(['updated_at' => now()->subHours($retentionHours + 1)]);
     $barrierDirectory = storage_path('framework/testing/claim-purge-'.bin2hex(random_bytes(8)));
 
     if (! mkdir($barrierDirectory, 0777, true) && ! is_dir($barrierDirectory)) {
