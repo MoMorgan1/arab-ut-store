@@ -294,14 +294,34 @@ test('the .env.example that CI and every new install copy satisfies every runtim
         ->not->toBeNull('.env.example names a rollout AgentRollout does not define');
 });
 
-/** @return array<string, string> */
+/**
+ * Deliberately tolerant of the forms dotenv accepts: an "export" prefix, or
+ * whitespace around the equals sign. A stricter pattern would not fail on
+ * those lines, it would silently skip them, and a skipped key falls back to a
+ * valid config default -- so a bad value would pass this guard unnoticed.
+ * Anything still unparsed is raised rather than dropped, for the same reason.
+ *
+ * @return array<string, string>
+ */
 function dotenvExampleAiValues(): array
 {
     $values = [];
 
     foreach (file(base_path('.env.example'), FILE_IGNORE_NEW_LINES) as $line) {
-        if (preg_match('/\A(AI_[A-Z0-9_]+)=(.*)\z/', trim($line), $matches) === 1) {
+        $line = trim($line);
+
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
+
+        if (preg_match('/\A(?:export\s+)?(AI_\w+)\s*=\s*(.*)\z/', $line, $matches) === 1) {
             $values[$matches[1]] = trim($matches[2], "\"'");
+
+            continue;
+        }
+
+        if (str_starts_with($line, 'AI_') || str_contains($line, ' AI_')) {
+            throw new RuntimeException("Unparsed AI_ line in .env.example: {$line}");
         }
     }
 
