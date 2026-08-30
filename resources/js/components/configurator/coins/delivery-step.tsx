@@ -55,7 +55,9 @@ export function DeliveryStep({
                             onChange={() => onChoose(delivery.value)}
                             value={delivery.value}
                         >
-                            <span className="coins-delivery-badge">
+                            <span
+                                className={`coins-delivery-badge coins-delivery-badge--${delivery.value}`}
+                            >
                                 {translations.delivery.badges[delivery.value]}
                             </span>
                             <strong>{label}</strong>

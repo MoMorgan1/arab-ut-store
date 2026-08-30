@@ -51,7 +51,25 @@ export function ProgressRail({
                             aria-hidden="true"
                             className="coins-progress__number"
                         >
-                            {formatInteger(index + 1, locale)}
+                            {isComplete ? (
+                                <svg
+                                    className="coins-progress__check"
+                                    fill="none"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    width="14"
+                                >
+                                    <path
+                                        d="m4.5 12.5 5 5L19.5 7"
+                                        stroke="currentColor"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="3"
+                                    />
+                                </svg>
+                            ) : (
+                                formatInteger(index + 1, locale)
+                            )}
                         </span>
                         <span>{step.label}</span>
                     </>
