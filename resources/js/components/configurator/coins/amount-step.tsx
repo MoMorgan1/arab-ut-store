@@ -185,28 +185,36 @@ export function AmountStep({
             </div>
 
             {/*
-             * The slider runs over an index into the buyable quantities rather
-             * than over the quantity itself: the step widens as the amount
-             * climbs, so no single `step` describes the range. Look and layout
-             * are unchanged — only how far one nudge moves.
+             * The thumb sits proportional to the quantity itself — halfway
+             * along the rail is halfway to the maximum — while drags still
+             * snap to the pre-priced schedule stops, so dragging never waits
+             * on the network. A nudge of exactly one rounding unit is a
+             * keyboard arrow, which moves one buyable stop instead.
              */}
             <input
                 aria-label={translations.amount_copy.slider_label}
+                aria-valuetext={`${formatCoins(quantity, locale)} ${translations.units.coins}`}
                 className="coins-amount-slider"
-                max={Math.max(0, sliderQuantities.length - 1)}
-                min={0}
+                max={maximum}
+                min={amount.minimum}
                 onChange={(event) => {
+                    const raw = Number(event.currentTarget.value);
+                    const delta = raw - quantity;
                     const next =
-                        sliderQuantities[Number(event.currentTarget.value)];
+                        Math.abs(delta) === amount.roundingUnit
+                            ? adjacentStop(sliderQuantities, quantity, delta)
+                            : sliderQuantities[
+                                  nearestStopIndex(raw, sliderQuantities)
+                              ];
 
-                    if (next !== undefined) {
+                    if (next !== undefined && next !== quantity) {
                         commitDirectly(next);
                     }
                 }}
-                step={1}
+                step={amount.roundingUnit}
                 style={sliderStyle}
                 type="range"
-                value={nearestStopIndex(quantity, sliderQuantities)}
+                value={quantity}
             />
 
             <div className="coins-slider-labels">
@@ -312,6 +320,24 @@ export function AmountStep({
             ) : null}
         </div>
     );
+}
+
+function adjacentStop(
+    stops: number[],
+    quantity: number,
+    delta: number,
+): number | undefined {
+    if (delta > 0) {
+        return stops.find((stop) => stop > quantity);
+    }
+
+    for (let index = stops.length - 1; index >= 0; index -= 1) {
+        if (stops[index] < quantity) {
+            return stops[index];
+        }
+    }
+
+    return undefined;
 }
 
 function digitsBefore(value: string, position: number | null): number {
