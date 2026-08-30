@@ -2,9 +2,6 @@
 
 use App\Enums\UserRole;
 use App\Models\StaffAuditLog;
-use App\Models\User;
-use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
-use Laravel\Fortify\Fortify;
 
 test('Admin actor can promote Staff member to Admin', function (): void {
     $admin = createStaffTestActor(UserRole::Admin);
@@ -125,19 +122,3 @@ test('unknown extra payload fields are rejected with validation error', function
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['unexpected_fields']);
 });
-
-function createStaffTestActor(UserRole $role): User
-{
-    $secret = app(TwoFactorAuthenticationProvider::class)->generateSecretKey();
-    $user = User::factory()->create([
-        'role' => $role,
-        'password' => 'SecurePassword!12',
-        'is_active' => true,
-    ]);
-    $user->forceFill([
-        'two_factor_secret' => Fortify::currentEncrypter()->encrypt($secret),
-        'two_factor_confirmed_at' => now(),
-    ])->save();
-
-    return $user;
-}
