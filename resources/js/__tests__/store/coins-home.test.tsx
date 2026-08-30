@@ -1061,6 +1061,83 @@ describe('Coins homepage', () => {
         ).not.toBeInTheDocument();
     });
 
+    it('moves one buyable stop per arrow key without a quote request', () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal('fetch', fetchMock);
+        render(<StoreHome />);
+        selectConsoleDelivery('Fast');
+
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
+        });
+        const range = screen.getByRole('slider', {
+            name: store.amount_copy.slider_label,
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: '500K' }));
+        fireEvent.keyDown(range, { key: 'ArrowRight' });
+        expect(amountInput).toHaveValue('550,000');
+        fireEvent.keyDown(range, { key: 'ArrowLeft' });
+        expect(amountInput).toHaveValue('500,000');
+        fireEvent.keyDown(range, { key: 'End' });
+        expect(amountInput).toHaveValue('20,000,000');
+        fireEvent.keyDown(range, { key: 'ArrowRight' });
+        expect(amountInput).toHaveValue('20,000,000');
+        fireEvent.keyDown(range, { key: 'Home' });
+        expect(amountInput).toHaveValue('50,000');
+        fireEvent.keyDown(range, { key: 'ArrowLeft' });
+        expect(amountInput).toHaveValue('50,000');
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('snaps an off-stop drag to the nearest stop without a quote request', () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal('fetch', fetchMock);
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
+        });
+        const range = screen.getByRole('slider', {
+            name: store.amount_copy.slider_label,
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: '500K' }));
+        // 515,000 is on the 5K rounding grid but between the 500,000 and
+        // 550,000 stops; the drag must land on a pre-priced stop.
+        fireEvent.change(range, { target: { value: '515000' } });
+
+        expect(amountInput).toHaveValue('500,000');
+        expect(range).toHaveValue(sliderValue(500000));
+        expect(range).toHaveAttribute('aria-valuetext', '500,000 Coins');
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('arrows from a typed off-stop amount to the adjacent stop', () => {
+        render(<StoreHome />);
+        selectPlatform('PC');
+
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
+        });
+        const range = screen.getByRole('slider', {
+            name: store.amount_copy.slider_label,
+        });
+
+        fireEvent.focus(amountInput);
+        fireEvent.change(amountInput, { target: { value: '55000' } });
+        fireEvent.blur(amountInput);
+        fireEvent.keyDown(range, { key: 'ArrowRight' });
+        expect(amountInput).toHaveValue('60,000');
+
+        fireEvent.focus(amountInput);
+        fireEvent.change(amountInput, { target: { value: '55000' } });
+        fireEvent.blur(amountInput);
+        fireEvent.keyDown(range, { key: 'ArrowLeft' });
+        expect(amountInput).toHaveValue('50,000');
+    });
+
     it('keeps comma-grouped Latin digits while editing from every amount control', () => {
         render(<StoreHome />);
         selectConsoleDelivery('Fast');

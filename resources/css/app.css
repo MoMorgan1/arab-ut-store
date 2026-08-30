@@ -1800,13 +1800,18 @@ html.admin-document {
             box-shadow 160ms ease;
     }
 
-    button.coins-progress__step:hover .coins-progress__number,
     button.coins-progress__step:focus-visible .coins-progress__number {
         border-color: var(--arabut-gold-bright);
-        background:
-            linear-gradient(rgb(212 168 67 / 22%), rgb(212 168 67 / 22%)),
-            var(--arabut-navy-raised);
         box-shadow: 0 0 0 4px rgb(212 168 67 / 10%);
+    }
+
+    /* Hover only where a real pointer exists: on touch, :hover sticks to
+       the last-tapped step until the next tap lands elsewhere. */
+    @media (hover: hover) and (pointer: fine) {
+        button.coins-progress__step:hover .coins-progress__number {
+            border-color: var(--arabut-gold-bright);
+            box-shadow: 0 0 0 4px rgb(212 168 67 / 10%);
+        }
     }
 
     .coins-progress__check {
@@ -1818,7 +1823,10 @@ html.admin-document {
         margin: 0;
         border: 0;
         padding: clamp(1.5rem, 3vw, 2.25rem) 0 0;
-        animation: coins-step-in 280ms var(--store-ease-out) both;
+        /* No fill mode: the resting state already matches the last frame,
+           and a retained transform would make every step a containing
+           block for fixed/sticky descendants. */
+        animation: coins-step-in 280ms var(--store-ease-out);
     }
 
     @keyframes coins-step-in {

@@ -64,14 +64,20 @@ export function AmountStep({
     const pendingSelection = useRef<{ end: number; start: number } | null>(
         null,
     );
-    const fillPercentage =
-        maximum === amount.minimum
-            ? 0
-            : ((quantity - amount.minimum) / (maximum - amount.minimum)) * 100;
     const sliderQuantities = useMemo(
         () => sliderStops(amount.minimum, amount.tiers, maximum),
         [amount.minimum, amount.tiers, maximum],
     );
+    // The rail ends at the highest buyable stop. That is the delivery maximum
+    // whenever the pricing tiers cover it; if an edited schedule stops short,
+    // the rail shrinks with it instead of leaving an unreachable dead zone.
+    const sliderMaximum =
+        sliderQuantities[sliderQuantities.length - 1] ?? maximum;
+    const fillPercentage =
+        sliderMaximum === amount.minimum
+            ? 0
+            : ((quantity - amount.minimum) / (sliderMaximum - amount.minimum)) *
+              100;
     const sliderStyle = {
         '--coins-slider-fill': `${Math.max(0, Math.min(100, fillPercentage)).toFixed(2)}%`,
     } as CSSProperties;
@@ -188,24 +194,40 @@ export function AmountStep({
              * The thumb sits proportional to the quantity itself — halfway
              * along the rail is halfway to the maximum — while drags still
              * snap to the pre-priced schedule stops, so dragging never waits
-             * on the network. A nudge of exactly one rounding unit is a
-             * keyboard arrow, which moves one buyable stop instead.
+             * on the network. Arrow keys are handled directly and move one
+             * buyable stop: the pointer and the keyboard cannot be told
+             * apart from the change delta alone, because on a narrow range
+             * one pixel of drag is smaller than one rounding unit.
              */}
             <input
                 aria-label={translations.amount_copy.slider_label}
                 aria-valuetext={`${formatCoins(quantity, locale)} ${translations.units.coins}`}
                 className="coins-amount-slider"
-                max={maximum}
+                max={sliderMaximum}
                 min={amount.minimum}
                 onChange={(event) => {
                     const raw = Number(event.currentTarget.value);
-                    const delta = raw - quantity;
                     const next =
-                        Math.abs(delta) === amount.roundingUnit
-                            ? adjacentStop(sliderQuantities, quantity, delta)
-                            : sliderQuantities[
-                                  nearestStopIndex(raw, sliderQuantities)
-                              ];
+                        sliderQuantities[
+                            nearestStopIndex(raw, sliderQuantities)
+                        ];
+
+                    if (next !== undefined && next !== quantity) {
+                        commitDirectly(next);
+                    }
+                }}
+                onKeyDown={(event) => {
+                    const next = stopForKey(
+                        event.key,
+                        sliderQuantities,
+                        quantity,
+                    );
+
+                    if (next === null) {
+                        return;
+                    }
+
+                    event.preventDefault();
 
                     if (next !== undefined && next !== quantity) {
                         commitDirectly(next);
@@ -325,9 +347,9 @@ export function AmountStep({
 function adjacentStop(
     stops: number[],
     quantity: number,
-    delta: number,
+    direction: 1 | -1,
 ): number | undefined {
-    if (delta > 0) {
+    if (direction > 0) {
         return stops.find((stop) => stop > quantity);
     }
 
@@ -338,6 +360,32 @@ function adjacentStop(
     }
 
     return undefined;
+}
+
+/**
+ * `null` means the key is not ours and the browser keeps it; `undefined`
+ * means the key is handled but there is no stop to move to (already at an
+ * end of the schedule), which swallows the keystroke as a quiet no-op.
+ */
+function stopForKey(
+    key: string,
+    stops: number[],
+    quantity: number,
+): number | null | undefined {
+    switch (key) {
+        case 'ArrowRight':
+        case 'ArrowUp':
+            return adjacentStop(stops, quantity, 1);
+        case 'ArrowLeft':
+        case 'ArrowDown':
+            return adjacentStop(stops, quantity, -1);
+        case 'Home':
+            return stops[0];
+        case 'End':
+            return stops[stops.length - 1];
+        default:
+            return null;
+    }
 }
 
 function digitsBefore(value: string, position: number | null): number {
