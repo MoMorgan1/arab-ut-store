@@ -64,14 +64,20 @@ export function AmountStep({
     const pendingSelection = useRef<{ end: number; start: number } | null>(
         null,
     );
-    const fillPercentage =
-        maximum === amount.minimum
-            ? 0
-            : ((quantity - amount.minimum) / (maximum - amount.minimum)) * 100;
     const sliderQuantities = useMemo(
         () => sliderStops(amount.minimum, amount.tiers, maximum),
         [amount.minimum, amount.tiers, maximum],
     );
+    // The rail ends at the highest buyable stop. That is the delivery maximum
+    // whenever the pricing tiers cover it; if an edited schedule stops short,
+    // the rail shrinks with it instead of leaving an unreachable dead zone.
+    const sliderMaximum =
+        sliderQuantities[sliderQuantities.length - 1] ?? maximum;
+    const fillPercentage =
+        sliderMaximum === amount.minimum
+            ? 0
+            : ((quantity - amount.minimum) / (sliderMaximum - amount.minimum)) *
+              100;
     const sliderStyle = {
         '--coins-slider-fill': `${Math.max(0, Math.min(100, fillPercentage)).toFixed(2)}%`,
     } as CSSProperties;
@@ -185,28 +191,52 @@ export function AmountStep({
             </div>
 
             {/*
-             * The slider runs over an index into the buyable quantities rather
-             * than over the quantity itself: the step widens as the amount
-             * climbs, so no single `step` describes the range. Look and layout
-             * are unchanged — only how far one nudge moves.
+             * The thumb sits proportional to the quantity itself — halfway
+             * along the rail is halfway to the maximum — while drags still
+             * snap to the pre-priced schedule stops, so dragging never waits
+             * on the network. Arrow keys are handled directly and move one
+             * buyable stop: the pointer and the keyboard cannot be told
+             * apart from the change delta alone, because on a narrow range
+             * one pixel of drag is smaller than one rounding unit.
              */}
             <input
                 aria-label={translations.amount_copy.slider_label}
+                aria-valuetext={`${formatCoins(quantity, locale)} ${translations.units.coins}`}
                 className="coins-amount-slider"
-                max={Math.max(0, sliderQuantities.length - 1)}
-                min={0}
+                max={sliderMaximum}
+                min={amount.minimum}
                 onChange={(event) => {
+                    const raw = Number(event.currentTarget.value);
                     const next =
-                        sliderQuantities[Number(event.currentTarget.value)];
+                        sliderQuantities[
+                            nearestStopIndex(raw, sliderQuantities)
+                        ];
 
-                    if (next !== undefined) {
+                    if (next !== undefined && next !== quantity) {
                         commitDirectly(next);
                     }
                 }}
-                step={1}
+                onKeyDown={(event) => {
+                    const next = stopForKey(
+                        event.key,
+                        sliderQuantities,
+                        quantity,
+                    );
+
+                    if (next === null) {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    if (next !== undefined && next !== quantity) {
+                        commitDirectly(next);
+                    }
+                }}
+                step={amount.roundingUnit}
                 style={sliderStyle}
                 type="range"
-                value={nearestStopIndex(quantity, sliderQuantities)}
+                value={quantity}
             />
 
             <div className="coins-slider-labels">
@@ -312,6 +342,50 @@ export function AmountStep({
             ) : null}
         </div>
     );
+}
+
+function adjacentStop(
+    stops: number[],
+    quantity: number,
+    direction: 1 | -1,
+): number | undefined {
+    if (direction > 0) {
+        return stops.find((stop) => stop > quantity);
+    }
+
+    for (let index = stops.length - 1; index >= 0; index -= 1) {
+        if (stops[index] < quantity) {
+            return stops[index];
+        }
+    }
+
+    return undefined;
+}
+
+/**
+ * `null` means the key is not ours and the browser keeps it; `undefined`
+ * means the key is handled but there is no stop to move to (already at an
+ * end of the schedule), which swallows the keystroke as a quiet no-op.
+ */
+function stopForKey(
+    key: string,
+    stops: number[],
+    quantity: number,
+): number | null | undefined {
+    switch (key) {
+        case 'ArrowRight':
+        case 'ArrowUp':
+            return adjacentStop(stops, quantity, 1);
+        case 'ArrowLeft':
+        case 'ArrowDown':
+            return adjacentStop(stops, quantity, -1);
+        case 'Home':
+            return stops[0];
+        case 'End':
+            return stops[stops.length - 1];
+        default:
+            return null;
+    }
 }
 
 function digitsBefore(value: string, position: number | null): number {
