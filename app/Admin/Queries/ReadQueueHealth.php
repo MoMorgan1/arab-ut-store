@@ -2,6 +2,7 @@
 
 namespace App\Admin\Queries;
 
+use App\Models\IntegrationEvent;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -16,6 +17,11 @@ use Illuminate\Support\Facades\DB;
  * work was tried and refused. Rows sitting in jobs mean nothing tried at all -
  * the scheduler cron is dead, or a stale mutex is holding the worker off - and
  * that one leaves failed_jobs empty while every receipt silently stops.
+ *
+ * A third failure mode lives outside both tables: the order-paid outbox in
+ * integration_events is drained by its own command, not the queue worker, so
+ * an event that exhausted every delivery attempt sits there as failed while
+ * failed_jobs stays empty. The panel counts those rows too.
  */
 final class ReadQueueHealth
 {
@@ -32,12 +38,17 @@ final class ReadQueueHealth
      *     connection: string,
      *     failedJobs: int,
      *     latestFailure: null|array{name: string, failedAt: string},
+     *     failedEvents: int,
      *     stalledJobs: int,
      *     oldestQueuedAt: null|string,
      * }
      */
     public function read(): array
     {
+        // The outbox is the application's own table, read through the model,
+        // so its count is honest no matter which queue driver is configured.
+        $failedEvents = IntegrationEvent::query()->where('status', 'failed')->count();
+
         $connection = (string) config('queue.default');
 
         // Only the database queue keeps its work in these tables. On sync,
@@ -49,6 +60,7 @@ final class ReadQueueHealth
                 'connection' => $connection,
                 'failedJobs' => 0,
                 'latestFailure' => null,
+                'failedEvents' => $failedEvents,
                 'stalledJobs' => 0,
                 'oldestQueuedAt' => null,
             ];
@@ -73,6 +85,7 @@ final class ReadQueueHealth
                 'name' => $this->displayName((string) $latest->payload),
                 'failedAt' => now()->parse($latest->failed_at)->toIso8601String(),
             ],
+            'failedEvents' => $failedEvents,
             'stalledJobs' => $waiting['total'],
             'oldestQueuedAt' => $waiting['oldest'] === null
                 ? null

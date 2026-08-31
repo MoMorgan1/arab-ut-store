@@ -498,10 +498,13 @@ export const englishAdminUi: AdminTranslations = {
             latestFailure: 'Latest',
             stalledJobs: 'Waiting jobs',
             stalledSince: 'Oldest since',
+            failedEvents: 'Failed integration events',
             failedHint:
                 'Email and other background work stopped part-way. Run "php artisan queue:failed" on the server to read the exception.',
             stalledHint:
                 'Nothing is draining the queue. Check that the scheduler cron is still running on the server.',
+            failedEventsHint:
+                'Paid-order events exhausted every delivery attempt, so the fulfilment workflow was never told. Run "php artisan orders:requeue-paid-event" on the server with the event id from the error log.',
         },
         attentionRailTitle: 'Operational focus',
         attentionStripTitle: 'Needs attention',

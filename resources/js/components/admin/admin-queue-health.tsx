@@ -54,8 +54,9 @@ export default function AdminQueueHealthBanner({
 
     const hasFailures = health.failedJobs > 0;
     const isStalled = health.stalledJobs > 0;
+    const hasFailedEvents = health.failedEvents > 0;
 
-    if (!hasFailures && !isStalled) {
+    if (!hasFailures && !isStalled && !hasFailedEvents) {
         return null;
     }
 
@@ -132,6 +133,20 @@ export default function AdminQueueHealthBanner({
                     </p>
                     <p className="max-w-prose text-xs text-muted-foreground">
                         {copy.stalledHint}
+                    </p>
+                </div>
+            ) : null}
+
+            {hasFailedEvents ? (
+                <div className="space-y-1">
+                    <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-foreground">
+                        <span className="font-bold tabular-nums">
+                            {numberFormatter.format(health.failedEvents)}
+                        </span>
+                        <span>{copy.failedEvents}</span>
+                    </p>
+                    <p className="max-w-prose text-xs text-muted-foreground">
+                        {copy.failedEventsHint}
                     </p>
                 </div>
             ) : null}
