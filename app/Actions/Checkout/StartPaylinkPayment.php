@@ -37,6 +37,16 @@ final readonly class StartPaylinkPayment
 
         DB::transaction(function () use ($payment, $invoice): void {
             $locked = Payment::query()->whereKey($payment->id)->lockForUpdate()->sole();
+
+            if (in_array($locked->status, [
+                PaymentStatus::Authorized,
+                PaymentStatus::Paid,
+                PaymentStatus::PartiallyRefunded,
+                PaymentStatus::Refunded,
+            ], true)) {
+                return;
+            }
+
             $locked->forceFill([
                 'provider_payment_id' => $invoice->transactionNo,
                 'status' => PaymentStatus::Pending,
