@@ -2,18 +2,27 @@
 const response = $input.first().json;
 const statusCode = Number(response.statusCode || 200);
 
-// n8n does not always hand back parsed JSON -- depending on the response
-// headers it returns the body as a Buffer, which arrives here as
-// { type: 'Buffer', data: [ ... ] }. That is an object, so a `typeof === string`
-// check silently skips it and every field read below comes back undefined.
+// n8n does not always hand back parsed JSON. One HTTP body has been seen to
+// arrive as a parsed object, a JSON string, a real Buffer, n8n's serialised
+// { type: 'Buffer', data: [ ... ] }, that same shape with `data` flattened to
+// an array-like { '0': 123, ... }, and -- the shape that broke a live run --
+// a BARE array of bytes with the Buffer tag stripped off entirely.
+//
+// The previous guard excluded arrays outright, so the bare form passed straight
+// through: a publish that returned HTTP 201 with status "completed" was
+// reported as a failure, the alert fired, and the safety baseline was never
+// written because the throw lands before the static-data write.
 function bytesToString(bytes) {
     let out = '';
+    // Chunked so a large body cannot blow the argument limit on String.fromCharCode.
     for (let index = 0; index < bytes.length; index += 8192) {
         out += String.fromCharCode.apply(
             null,
             bytes.slice(index, index + 8192),
         );
     }
+    // The payload is UTF-8; decodeURIComponent/escape turns the raw bytes back
+    // into correct characters so Arabic names survive the round trip.
     try {
         return decodeURIComponent(escape(out));
     } catch {
@@ -21,30 +30,82 @@ function bytesToString(bytes) {
     }
 }
 
+// An array that lost its prototype in serialisation arrives as an array-like
+// { '0': 123, '1': 34, ... }, sometimes still carrying a length.
+function toByteArray(value) {
+    if (Array.isArray(value)) return value;
+    if (!value || typeof value !== 'object') return null;
+
+    const keys = Object.keys(value).filter((key) => key !== 'length');
+
+    if (keys.length === 0 || !keys.every((key) => /^\d+$/.test(key))) {
+        return null;
+    }
+
+    return keys
+        .map(Number)
+        .sort((left, right) => left - right)
+        .map((index) => value[index]);
+}
+
+function looksLikeBytes(bytes) {
+    return (
+        Array.isArray(bytes) &&
+        bytes.length > 0 &&
+        bytes.every(
+            (byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255,
+        )
+    );
+}
+
 function decodeHttpBody(raw) {
     if (raw == null) return raw;
-    if (typeof raw === 'object' && !Array.isArray(raw)) {
-        // The `type === 'Buffer'` tag is required: an ordinary { data: [...] }
-        // response must not be mistaken for bytes.
-        if (raw.type === 'Buffer' && Array.isArray(raw.data)) {
-            return decodeHttpBody(bytesToString(raw.data));
-        }
-        if (
-            raw.constructor?.name === 'Buffer' &&
-            typeof raw.toString === 'function'
-        ) {
-            return decodeHttpBody(raw.toString('utf8'));
-        }
-    }
+
     if (typeof raw === 'string') {
         const trimmed = raw.trim();
+
         if (!trimmed) return raw;
+
         try {
             return JSON.parse(trimmed);
         } catch {
             return raw;
         }
     }
+
+    if (typeof raw !== 'object') return raw;
+
+    // A real Buffer instance.
+    if (
+        raw.constructor?.name === 'Buffer' &&
+        typeof raw.toString === 'function'
+    ) {
+        return decodeHttpBody(raw.toString('utf8'));
+    }
+
+    // n8n's serialised Buffer. The tag is required, not optional: an ordinary
+    // { data: [...] } response would otherwise be mistaken for bytes.
+    if (raw.type === 'Buffer') {
+        const tagged = toByteArray(raw.data);
+
+        if (looksLikeBytes(tagged)) {
+            return decodeHttpBody(bytesToString(tagged));
+        }
+    }
+
+    // The untagged form, which is what actually reached production. Accepted
+    // only when the bytes decode to JSON, so a genuine array response -- every
+    // provider list is one -- is handed back untouched rather than destroyed.
+    if (looksLikeBytes(raw)) {
+        try {
+            const parsed = JSON.parse(bytesToString(raw).trim());
+
+            if (parsed && typeof parsed === 'object') return parsed;
+        } catch {
+            // Not bytes after all. Fall through and return it unchanged.
+        }
+    }
+
     return raw;
 }
 

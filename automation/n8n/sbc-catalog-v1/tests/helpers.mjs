@@ -199,6 +199,35 @@ export function asBuffer(value) {
     };
 }
 
+/**
+ * The same body with the Buffer tag stripped off, which is what actually
+ * reached production: a top-level array of bytes and nothing else. The old
+ * decoder excluded arrays outright, so a publish that returned HTTP 201 was
+ * reported as a failure and the safety baseline was never written.
+ */
+export function asBareBytes(value) {
+    return asBuffer(value).data;
+}
+
+/** The tagged shape with `data` flattened to an array-like object. */
+export function asArrayLikeBuffer(value) {
+    return {
+        type: 'Buffer',
+        data: Object.fromEntries(
+            asBuffer(value).data.map((byte, index) => [index, byte]),
+        ),
+    };
+}
+
+/** Every encoding one HTTP body has been observed to arrive in. */
+export const BODY_ENCODINGS = {
+    parsed: (value) => value,
+    string: (value) => JSON.stringify(value),
+    taggedBuffer: asBuffer,
+    arrayLikeBuffer: asArrayLikeBuffer,
+    bareBytes: asBareBytes,
+};
+
 export function translationAnswer(plan) {
     return plan.missingTranslations.map(({ id, sourceName }) => ({
         id,
