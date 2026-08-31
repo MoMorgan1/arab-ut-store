@@ -64,6 +64,44 @@ function looksLikeBytes(bytes) {
     );
 }
 
+// n8n's task runner can hand back the raw Node readable stream instead of a
+// body. It is neither a Buffer nor an array, so every tag-based check misses
+// it, and the payload sits unread in the stream's internal buffer as chunks:
+//   { _readableState: { buffer: [ { type: 'Buffer', data: [ ... ] } ] } }
+// A live run failed exactly this way -- HTTP 201, status "completed", and a
+// body the workflow could not see.
+function bytesFromStream(value) {
+    const chunks = value?._readableState?.buffer;
+
+    if (!chunks) return null;
+
+    // Recent Node exposes a plain array; older releases use a linked BufferList.
+    let list = chunks;
+
+    if (!Array.isArray(list)) {
+        list = [];
+
+        for (let node = chunks.head; node; node = node.next) {
+            list.push(node.data);
+        }
+    }
+
+    const bytes = [];
+
+    for (const chunk of list) {
+        const chunkBytes = toByteArray(
+            chunk && chunk.type === 'Buffer' ? chunk.data : chunk,
+        );
+
+        if (!looksLikeBytes(chunkBytes)) return null;
+
+        // push(...chunkBytes) would blow the argument limit on a large body.
+        for (const byte of chunkBytes) bytes.push(byte);
+    }
+
+    return bytes.length > 0 ? bytes : null;
+}
+
 function decodeHttpBody(raw) {
     if (raw == null) return raw;
 
@@ -109,6 +147,21 @@ function decodeHttpBody(raw) {
             if (parsed && typeof parsed === 'object') return parsed;
         } catch {
             // Not bytes after all. Fall through and return it unchanged.
+        }
+    }
+
+    // The unconsumed stream. Only claimed when the buffered chunks parse as
+    // complete JSON -- a stream holds only what has been read so far, so a body
+    // larger than the buffer would otherwise be silently truncated.
+    const streamed = bytesFromStream(raw);
+
+    if (looksLikeBytes(streamed)) {
+        try {
+            const parsed = JSON.parse(bytesToString(streamed).trim());
+
+            if (parsed && typeof parsed === 'object') return parsed;
+        } catch {
+            // Truncated or not JSON. Fall through and return it unchanged.
         }
     }
 

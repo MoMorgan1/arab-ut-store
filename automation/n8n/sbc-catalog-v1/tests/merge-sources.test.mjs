@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import {
     asBareBytes,
     asBuffer,
+    asStream,
     env,
     fftRecords,
     httpOk,
@@ -237,6 +238,31 @@ test('a provider list is never mistaken for encoded bytes', async () => {
     await flow.run('Config', 'config', [{}]);
     flow.set('Fetch FFT SBCs', { statusCode: 200, body: fftRecords() });
     flow.set('Fetch EasySBC Sets', { statusCode: 200, body: metaRecords() });
+    await flow.run(
+        'Merge Provider Sources',
+        'merge-sources',
+        flow.get('Fetch EasySBC Sets'),
+    );
+
+    assert.ok(
+        flow.json('Merge Provider Sources').sourceAudit.exactMatches > 100,
+    );
+});
+
+test('a provider body delivered as an unread stream is decoded', async () => {
+    // The shape that broke the publish leg. A provider fetch can arrive the
+    // same way, and undecoded the harvester reports "0 unique usable records".
+    const flow = pipeline({ env: env() });
+
+    await flow.run('Config', 'config', [{}]);
+    flow.set('Fetch FFT SBCs', {
+        statusCode: 200,
+        body: asStream(fftRecords()),
+    });
+    flow.set('Fetch EasySBC Sets', {
+        statusCode: 200,
+        body: asStream(metaRecords()),
+    });
     await flow.run(
         'Merge Provider Sources',
         'merge-sources',

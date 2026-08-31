@@ -219,6 +219,28 @@ export function asArrayLikeBuffer(value) {
     };
 }
 
+/**
+ * The raw Node readable stream n8n's task runner hands back instead of a body.
+ * Neither a Buffer nor an array, so every tag-based check misses it and the
+ * payload sits unread in the stream's internal buffer. This is the shape that
+ * failed in production: HTTP 201, status "completed", body invisible.
+ */
+export function asStream(value, chunks = 1) {
+    const bytes = asBuffer(value).data;
+    const size = Math.ceil(bytes.length / chunks);
+    const buffer = [];
+
+    for (let at = 0; at < bytes.length; at += size) {
+        buffer.push({ type: 'Buffer', data: bytes.slice(at, at + size) });
+    }
+
+    return {
+        _writeState: { 0: bytes.length, 1: 0 },
+        _events: { close: [null, null, null] },
+        _readableState: { highWaterMark: 65_536, buffer },
+    };
+}
+
 /** Every encoding one HTTP body has been observed to arrive in. */
 export const BODY_ENCODINGS = {
     parsed: (value) => value,
@@ -226,6 +248,8 @@ export const BODY_ENCODINGS = {
     taggedBuffer: asBuffer,
     arrayLikeBuffer: asArrayLikeBuffer,
     bareBytes: asBareBytes,
+    stream: (value) => asStream(value),
+    multiChunkStream: (value) => asStream(value, 3),
 };
 
 export function translationAnswer(plan) {
