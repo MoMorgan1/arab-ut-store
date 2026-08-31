@@ -149,7 +149,6 @@ final class StoreCatalogReader
             ->get();
     }
 
-    /** @return Builder<Product> */
     /**
      * Slugs of every product a visitor can reach, for the sitemap.
      *
