@@ -434,6 +434,9 @@ function FailureAction({
 
     const english = locale === 'en';
     const settingsUrl = english ? '/en/admin/settings' : '/admin/settings';
+    const reauthenticateUrl = english
+        ? '/en/admin/security/confirm-password'
+        : '/admin/security/confirm-password';
 
     if (failure.recovery === 'wait') {
         return <FailureLink href={settingsUrl} label={copy.retryAfterWait} />;
@@ -442,7 +445,7 @@ function FailureAction({
     const destinations = {
         home: english ? '/en' : '/',
         login: english ? '/en/login' : '/login',
-        reauthenticate: settingsUrl,
+        reauthenticate: reauthenticateUrl,
     };
     const labels = {
         home: copy.returnToStore,

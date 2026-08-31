@@ -455,7 +455,53 @@ describe('AdminSecuritySection', () => {
             screen.getByRole('link', {
                 name: adminUi.mfa.confirmPasswordAgain,
             }),
-        ).toHaveAttribute('href', '/en/admin/settings');
+        ).toHaveAttribute('href', '/en/admin/security/confirm-password');
+    });
+
+    it('handles 423 password confirmation expired in Arabic and routes to canonical confirm-password', async () => {
+        api.forgetAdminMfaTrustedDevices.mockRejectedValue(
+            new AdminMfaApiError(
+                'password_confirmation_required',
+                'Password confirmation is required.',
+                423,
+            ),
+        );
+
+        render(
+            <AdminSecuritySection
+                adminUi={adminUi}
+                direction="rtl"
+                locale="ar"
+                mfa={{
+                    passwordConfigured: true,
+                    routes,
+                    trustedDeviceCount: 2,
+                    trustedDeviceDays: 30,
+                    enabled: true,
+                    confirmed: true,
+                }}
+            />,
+        );
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: adminUi.mfa.forgetTrustedDevices,
+            }),
+        );
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: adminUi.mfa.confirmForgetTrustedDevices,
+            }),
+        );
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            adminUi.mfa.passwordConfirmationExpired,
+        );
+        expect(
+            screen.getByRole('link', {
+                name: adminUi.mfa.confirmPasswordAgain,
+            }),
+        ).toHaveAttribute('href', '/admin/security/confirm-password');
     });
 
     it('handles 429 rate limiting when forgetting trusted devices', async () => {

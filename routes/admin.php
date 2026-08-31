@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\CategoriesController;
 use App\Http\Controllers\Admin\CategoryVisibilityController;
+use App\Http\Controllers\Admin\ConfirmPasswordController;
 use App\Http\Controllers\Admin\ConfirmTwoFactorController;
 use App\Http\Controllers\Admin\ConversationDetailController;
 use App\Http\Controllers\Admin\ConversationNoteController;
@@ -81,6 +82,13 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                     if ($locale !== null) {
                         $mfa->defaults('locale', $locale);
+                    }
+
+                    $confirmPassword = Route::get('/security/confirm-password', ConfirmPasswordController::class)
+                        ->name('security.confirm-password');
+
+                    if ($locale !== null) {
+                        $confirmPassword->defaults('locale', $locale);
                     }
                 });
 
