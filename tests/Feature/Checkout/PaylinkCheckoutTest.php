@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Models\Cart;
@@ -12,6 +14,7 @@ use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /** @return array{user: User, variant: ProductVariant} */
@@ -353,4 +356,54 @@ test('the Paylink webhook rejects missing or invalid authorization without conta
     ])->assertUnauthorized();
 
     Http::assertNothingSent();
+});
+
+test('a payment reconciled against a cancelled order is recorded as an anomaly and does not silently pass', function () {
+    ['user' => $user] = paylinkCheckoutCart();
+    fakePaylinkCheckout(getStatus: 'Paid');
+    $webhookToken = str_repeat('w', 64);
+    config()->set('services.paylink.webhook_token', $webhookToken);
+
+    $this->actingAs($user)->postJson('/checkout/paylink', [], paylinkCheckoutHeaders('checkout-http-anomaly'))->assertCreated();
+
+    $order = Order::sole();
+    $order->update(['status' => OrderStatus::Cancelled, 'cancelled_at' => now()]);
+
+    $loggedWarnings = [];
+    Log::listen(function ($log) use (&$loggedWarnings) {
+        if ($log->level === 'warning') {
+            $loggedWarnings[] = $log->message;
+        }
+    });
+
+    $payload = [
+        'amount' => 12.5,
+        'merchantOrderNumber' => $order->order_number,
+        'orderStatus' => 'Paid',
+        'transactionNo' => '1710000000099',
+        'apiVersion' => 'v2',
+    ];
+
+    $this->postJson('/api/payments/paylink/webhook', $payload, [
+        'Authorization' => 'Bearer '.$webhookToken,
+    ])->assertOk()
+        ->assertExactJson(['data' => ['acknowledged' => true]]);
+
+    expect($order->fresh()->status)->toBe(OrderStatus::Cancelled)
+        ->and(Payment::sole()->status)->toBe(PaymentStatus::Paid)
+        ->and(Payment::sole()->captured_halalah)->toBe(1250);
+
+    // No order.paid integration event is published because the order was cancelled
+    expect(IntegrationEvent::where('event_type', 'order.paid')->count())->toBe(0);
+
+    // Anomaly is visibly recorded in order status history
+    $anomalyHistory = $order->statusHistory()->latest('id')->first();
+    expect($anomalyHistory)->not->toBeNull()
+        ->and($anomalyHistory->metadata['anomaly'])->toBe('payment_on_non_pending_order')
+        ->and($anomalyHistory->metadata['source'])->toBe('paylink')
+        ->and($anomalyHistory->metadata['captured_halalah'])->toBe(1250);
+
+    // Warning is logged
+    expect($loggedWarnings)->not->toBeEmpty()
+        ->and($loggedWarnings[0])->toContain($order->order_number);
 });

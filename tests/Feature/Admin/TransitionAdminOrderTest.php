@@ -3,6 +3,7 @@
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
+use App\Enums\PaymentStatus;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Enums\UserRole;
@@ -10,8 +11,10 @@ use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use App\Models\StaffAuditLog;
 use App\Models\User;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Fortify;
 
@@ -518,4 +521,110 @@ test('cancelling an order that held no wallet money names no figure', function (
         ->latest('id')
         ->sole()
         ->note_en)->toBeNull();
+});
+
+test('cancelling a pending-payment order calls cancelInvoice with the right transaction number', function (): void {
+    config()->set('services.paylink', [
+        'environment' => 'test',
+        'api_id' => 'merchant-id',
+        'secret_key' => 'merchant-secret',
+    ]);
+    Http::fake([
+        'https://restpilot.paylink.sa/api/auth' => Http::response(['id_token' => 'merchant-token']),
+        'https://restpilot.paylink.sa/api/cancelInvoice' => Http::response(['success' => true]),
+    ]);
+
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::PendingPayment);
+    $payment = $order->payments()->create([
+        'provider' => 'paylink',
+        'provider_payment_id' => '1716194603030',
+        'status' => PaymentStatus::Pending,
+        'currency' => 'SAR',
+        'amount_halalah' => 5000,
+        'captured_halalah' => 0,
+        'refunded_halalah' => 0,
+        'idempotency_key' => 'paylink-transition-cancel-test',
+    ]);
+
+    $order->items()->create([
+        'sku' => 'AUT-ITEM-CANCEL',
+        'name_ar' => 'عنصر',
+        'name_en' => 'Item',
+        'service_type' => ServiceType::Coins,
+        'platform' => Platform::PlayStation,
+        'status' => OrderItemStatus::PendingPayment,
+        'quantity' => 1,
+        'unit_price_halalah' => 5000,
+        'subtotal_halalah' => 5000,
+        'discount_halalah' => 0,
+        'total_halalah' => 5000,
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'pending_payment',
+            'target_status' => 'cancelled',
+        ]);
+
+    $response->assertOk();
+
+    expect($order->fresh()->status)->toBe(OrderStatus::Cancelled)
+        ->and($payment->fresh()->status)->toBe(PaymentStatus::Cancelled);
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://restpilot.paylink.sa/api/cancelInvoice'
+        && $request->method() === 'POST'
+        && $request->data() === ['transactionNo' => '1716194603030']);
+});
+
+test('if cancelInvoice throws, the order stays in its original status', function (): void {
+    config()->set('services.paylink', [
+        'environment' => 'test',
+        'api_id' => 'merchant-id',
+        'secret_key' => 'merchant-secret',
+    ]);
+    Http::fake([
+        'https://restpilot.paylink.sa/api/auth' => Http::response(['id_token' => 'merchant-token']),
+        'https://restpilot.paylink.sa/api/cancelInvoice' => Http::response(['success' => false], 500),
+    ]);
+
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $order = createTransitionTestOrder(OrderStatus::PendingPayment);
+    $payment = $order->payments()->create([
+        'provider' => 'paylink',
+        'provider_payment_id' => '1716194603030',
+        'status' => PaymentStatus::Pending,
+        'currency' => 'SAR',
+        'amount_halalah' => 5000,
+        'captured_halalah' => 0,
+        'refunded_halalah' => 0,
+        'idempotency_key' => 'paylink-transition-cancel-fail-test',
+    ]);
+
+    $order->items()->create([
+        'sku' => 'AUT-ITEM-CANCEL-FAIL',
+        'name_ar' => 'عنصر',
+        'name_en' => 'Item',
+        'service_type' => ServiceType::Coins,
+        'platform' => Platform::PlayStation,
+        'status' => OrderItemStatus::PendingPayment,
+        'quantity' => 1,
+        'unit_price_halalah' => 5000,
+        'subtotal_halalah' => 5000,
+        'discount_halalah' => 0,
+        'total_halalah' => 5000,
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'pending_payment',
+            'target_status' => 'cancelled',
+        ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['target_status']);
+
+    expect($order->fresh()->status)->toBe(OrderStatus::PendingPayment)
+        ->and($order->fresh()->cancelled_at)->toBeNull()
+        ->and($payment->fresh()->status)->toBe(PaymentStatus::Pending);
 });
