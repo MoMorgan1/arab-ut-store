@@ -41,6 +41,7 @@ type CoinsConfiguratorProps = {
     platforms: CoinsPlatformOption[];
     quoteSchedules: CoinsQuoteSchedules;
     quoteUrl: string;
+    requiresCurrentBalance: boolean;
     termsUrl: string;
     translations: CoinsStoreTranslations;
     warrantyUrl: string;
@@ -54,6 +55,7 @@ export function CoinsConfigurator({
     platforms,
     quoteSchedules,
     quoteUrl,
+    requiresCurrentBalance,
     termsUrl,
     translations,
     warrantyUrl,
@@ -86,6 +88,7 @@ export function CoinsConfigurator({
     const idempotencyKey = useRef<string | null>(null);
     const pendingSubmission = useRef(false);
     const pendingFocus = useRef<CoinsStep | null>(null);
+    const configuratorRoot = useRef<HTMLDivElement | null>(null);
     const platformHeading = useRef<HTMLLegendElement | null>(null);
     const deliveryHeading = useRef<HTMLLegendElement | null>(null);
     const amountHeading = useRef<HTMLHeadingElement | null>(null);
@@ -191,6 +194,16 @@ export function CoinsConfigurator({
         };
 
         targets[state.step]?.focus({ preventScroll: true });
+        // Steps differ in height, so without re-anchoring, leaving a long
+        // step can strand the customer past the end of a shorter one. The
+        // optional call keeps jsdom (no scrollIntoView) quiet in tests.
+        configuratorRoot.current?.scrollIntoView?.({
+            behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)')
+                .matches
+                ? 'auto'
+                : 'smooth',
+            block: 'start',
+        });
         pendingFocus.current = null;
     }, [state.step]);
 
@@ -464,7 +477,7 @@ export function CoinsConfigurator({
               });
 
     return (
-        <div className="coins-configurator">
+        <div className="coins-configurator" ref={configuratorRoot}>
             <ProgressRail
                 current={state.step}
                 includesDelivery={!isPc}
@@ -541,6 +554,7 @@ export function CoinsConfigurator({
                     }}
                     quoteState={quoteState}
                     rejectedFields={rejectedCredentialFields}
+                    requiresCurrentBalance={requiresCurrentBalance}
                     platform={selectedPlatform.value}
                     termsUrl={termsUrl}
                     translations={translations}

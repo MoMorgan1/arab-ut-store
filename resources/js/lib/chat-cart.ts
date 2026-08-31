@@ -6,6 +6,8 @@ export type ChatCoinsCartOffer = {
     platform: CoinsPlatformValue;
     delivery: CoinsDeliveryValue | null;
     quantity: number;
+    /** Server-resolved: whether this order must state the current balance. */
+    requiresBalance: boolean;
 };
 
 /** Payload shape this client understands. A newer server version is ignored. */
@@ -38,6 +40,7 @@ function coinsSelection(
     }
 
     const { platform, delivery, quantity } = selection;
+    const requiresBalance = selection.requiresBalance === true;
 
     if (
         !Number.isSafeInteger(quantity) ||
@@ -54,6 +57,7 @@ function coinsSelection(
                   platform: 'pc',
                   delivery: null,
                   quantity: Number(quantity),
+                  requiresBalance: false,
               }
             : null;
     }
@@ -70,6 +74,7 @@ function coinsSelection(
         platform: 'playstation',
         delivery,
         quantity: Number(quantity),
+        requiresBalance,
     };
 }
 

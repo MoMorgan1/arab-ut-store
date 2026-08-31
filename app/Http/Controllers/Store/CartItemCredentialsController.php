@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Store\CartItemCredentialsRequest;
 use App\Models\Cart;
 use App\Models\CartItemSecret;
+use App\Services\Catalog\CoinsCatalogReader;
 use App\ValueObjects\Cart\CartOwner;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -172,7 +173,8 @@ final class CartItemCredentialsController extends Controller
         }
 
         $requiresBalance = ($configuration['platform'] ?? null) === 'playstation'
-            && ($configuration['delivery'] ?? null) === 'fast';
+            && ($configuration['delivery'] ?? null) === 'fast'
+            && app(CoinsCatalogReader::class)->requiresCurrentBalance();
         $hasBalance = array_key_exists('current_balance', $validated);
 
         if (($validated['companion_market_open'] ?? null) !== true

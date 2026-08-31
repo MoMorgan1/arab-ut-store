@@ -596,6 +596,8 @@ return [
                 'removeBand' => 'Remove band :index',
                 'dialogTitle' => 'Edit the Coins quantity limits',
                 'dialogDescription' => 'The smallest order a customer can place, the step at each level, and the quick buttons under the slider.',
+                'requireBalance' => 'Ask for the current Coins balance',
+                'requireBalanceHint' => 'When on, fast console orders must state the account\'s current Coins balance on the credentials step. When off, the field is not shown and not accepted.',
             ],
             'weeklyMatches' => [
                 'row' => 'Weekly matches',

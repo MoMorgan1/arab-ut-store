@@ -10,10 +10,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatCartOffer } from '@/components/chat/chat-cart-offer';
 import type { ChatCoinsCartOffer } from '@/lib/chat-cart';
 
+// The live shared prop wins over the flag frozen into the stored offer; tests
+// leave it undefined so the offer's own flag drives, except where stated.
+const mockPageProps = vi.hoisted(() => ({
+    value: {} as { coinsRequiresBalance?: boolean },
+}));
+
 vi.mock('@inertiajs/react', () => ({
     Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
         <a href={href}>{children}</a>
     ),
+    usePage: () => ({ props: mockPageProps.value }),
 }));
 
 const consoleOffer: ChatCoinsCartOffer = {
@@ -21,9 +28,14 @@ const consoleOffer: ChatCoinsCartOffer = {
     platform: 'playstation',
     delivery: 'normal',
     quantity: 1_000_000,
+    requiresBalance: false,
 };
 
-const fastOffer: ChatCoinsCartOffer = { ...consoleOffer, delivery: 'fast' };
+const fastOffer: ChatCoinsCartOffer = {
+    ...consoleOffer,
+    delivery: 'fast',
+    requiresBalance: true,
+};
 
 /** The one cached map the widget fetches for cards, shelf and cart panels. */
 const PRICES = {
@@ -93,6 +105,7 @@ function fillCredentials() {
 
 beforeEach(() => {
     calls = [];
+    mockPageProps.value = {};
     document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
     vi.stubGlobal('crypto', {
         ...globalThis.crypto,
@@ -311,6 +324,41 @@ describe('ChatCartOffer', () => {
         );
         openForm();
 
+        expect(
+            screen.getByLabelText('Current coin balance'),
+        ).toBeInTheDocument();
+    });
+
+    it('lets the live page prop override the flag frozen into the stored offer', () => {
+        vi.stubGlobal('fetch', stubFetch(cartCreatedResponse));
+
+        // The offer was stored while the toggle was on; the admin has since
+        // turned it off, so the panel must not collect a balance.
+        mockPageProps.value = { coinsRequiresBalance: false };
+        render(
+            <ChatCartOffer
+                offer={fastOffer}
+                locale="en"
+                servicePrices={PRICES}
+            />,
+        );
+        openForm();
+        expect(
+            screen.queryByLabelText('Current coin balance'),
+        ).not.toBeInTheDocument();
+        cleanup();
+
+        // The mirror case: a pre-toggle offer replayed after the admin turned
+        // the requirement on.
+        mockPageProps.value = { coinsRequiresBalance: true };
+        render(
+            <ChatCartOffer
+                offer={{ ...fastOffer, requiresBalance: false }}
+                locale="en"
+                servicePrices={PRICES}
+            />,
+        );
+        openForm();
         expect(
             screen.getByLabelText('Current coin balance'),
         ).toBeInTheDocument();

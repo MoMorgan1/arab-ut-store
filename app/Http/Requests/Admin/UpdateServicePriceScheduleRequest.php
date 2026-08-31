@@ -58,6 +58,9 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
             $rules['configuration.tiers.*.step'] = ['required', 'integer', 'min:1'];
             $rules['configuration.presets'] = ['present', 'array'];
             $rules['configuration.presets.*'] = ['required', 'integer', 'min:1'];
+            // Optional flag: absent means the credentials step does not ask
+            // for the account's current Coins balance on fast console orders.
+            $rules['configuration.requiresCurrentBalance'] = ['sometimes', 'boolean'];
         }
 
         return $rules;
@@ -119,7 +122,7 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
                     }
                 }
             } elseif ($serviceType === ServiceType::Coins->value) {
-                $allowedConfigKeys = ['minimum', 'roundingUnit', 'tiers', 'presets'];
+                $allowedConfigKeys = ['minimum', 'roundingUnit', 'tiers', 'presets', 'requiresCurrentBalance'];
                 $extraConfigKeys = array_diff(array_keys($rawConfig), $allowedConfigKeys);
                 if (! empty($extraConfigKeys)) {
                     $validator->errors()->add('unexpected_fields', 'Unknown configuration fields are not allowed.');
@@ -187,6 +190,16 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
                     'includedWins' => (int) ($weeklyMatches['includedWins'] ?? 0),
                 ],
             ];
+        }
+
+        // The reader compares the toggle with === true, so a truthy "1" from
+        // a non-JSON client must not save as a value that silently reads off.
+        if ($serviceType === ServiceType::Coins->value
+            && array_key_exists('requiresCurrentBalance', $config)) {
+            $config['requiresCurrentBalance'] = filter_var(
+                $config['requiresCurrentBalance'],
+                FILTER_VALIDATE_BOOLEAN,
+            );
         }
 
         return $config;

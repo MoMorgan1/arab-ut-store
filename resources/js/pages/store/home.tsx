@@ -27,6 +27,7 @@ type StorePageProps = {
     displayCurrencies: string[];
     locale: 'ar' | 'en';
     status: CoinsAvailability;
+    coinsRequiresBalance?: boolean;
     quoteSchedules?: unknown;
     quoteUrl: string;
     amount: CoinsAmountRules;
@@ -45,6 +46,7 @@ export default function StoreHome() {
         amount,
         cartCount,
         coinsCart,
+        coinsRequiresBalance,
         direction,
         displayCurrencies,
         displayCurrency,
@@ -194,6 +196,9 @@ export default function StoreHome() {
                                 <CoinsConfigurator
                                     amount={amount}
                                     cart={coinsCart}
+                                    requiresCurrentBalance={
+                                        coinsRequiresBalance === true
+                                    }
                                     displayCurrency={displayCurrency}
                                     locale={locale}
                                     platforms={platforms}

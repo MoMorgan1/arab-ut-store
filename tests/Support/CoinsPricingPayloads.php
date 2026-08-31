@@ -1,6 +1,8 @@
 <?php
 
 declare(strict_types=1);
+use App\Enums\ServiceType;
+use App\Models\ServicePriceSchedule;
 
 /**
  * Payload builders for the Coins pricing contract.
@@ -145,4 +147,22 @@ function n8nAnchoredSnapshot(int $declaredMinimum = 50_000, ?array $anchors = nu
     }
 
     return $payload;
+}
+
+/**
+ * Flip the admin toggle that makes fast console orders state their current
+ * Coins balance. The migration seeds the schedule row, so tests flip the
+ * stored configuration exactly the way the admin dashboard does.
+ */
+function enableCoinsCurrentBalanceRequirement(): void
+{
+    $schedule = ServicePriceSchedule::query()
+        ->where('service_type', ServiceType::Coins)
+        ->firstOrFail();
+
+    $schedule->configuration = [
+        ...(array) $schedule->configuration,
+        'requiresCurrentBalance' => true,
+    ];
+    $schedule->save();
 }

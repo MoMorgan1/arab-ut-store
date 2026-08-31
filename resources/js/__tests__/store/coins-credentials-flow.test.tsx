@@ -85,8 +85,6 @@ const store = {
         current_balance: 'Current Coins balance',
         current_balance_help: 'Required for Fast console delivery.',
         companion_market_open: 'Transfer Market is open in EA Companion',
-        companion_help:
-            'Open EA Companion and confirm the Transfer Market is available.',
         market_guide: 'How to check the Transfer Market',
         market_open_label: 'Open Transfer Market example',
         market_closed_label: 'Closed Transfer Market example',
@@ -115,8 +113,9 @@ const store = {
             closed_description: 'Locked market example.',
             note: 'Play for several days if the market is locked.',
         },
-        policy_accepted: 'I confirm the details and accept the policies.',
-        policy_help: 'Review the refund and warranty policies.',
+        policy_agree_prefix: 'I confirm my details and agree to the ',
+        policy_agree_join: ' and the ',
+        policy_agree_suffix: '.',
         terms_link: 'Terms',
         warranty_link: 'Warranty',
         required_email: 'Enter a valid EA email.',
@@ -256,6 +255,9 @@ function quoteSchedules() {
 
 function pageProps(authenticated = true) {
     return {
+        // This file exercises the balance flow, so the admin toggle is on;
+        // the default-off behavior is asserted in its own test below.
+        coinsRequiresBalance: true,
         amount: {
             tiers: [
                 { upTo: 500_000, step: 10_000 },
@@ -412,7 +414,7 @@ function fillCredentials() {
     );
     fireEvent.click(
         screen.getByRole('checkbox', {
-            name: 'I confirm the details and accept the policies.',
+            name: 'I confirm my details and agree to the Terms and the Warranty.',
         }),
     );
 }
@@ -453,7 +455,7 @@ describe('Coins credentials flow', () => {
         ).toBeVisible();
         expect(
             screen.getByRole('checkbox', {
-                name: 'I confirm the details and accept the policies.',
+                name: 'I confirm my details and agree to the Terms and the Warranty.',
             }),
         ).toBeVisible();
         const termsLink = screen.getByRole('link', { name: 'Terms' });
@@ -461,11 +463,52 @@ describe('Coins credentials flow', () => {
 
         expect(termsLink).toHaveAttribute('href', '/en/terms');
         expect(warrantyLink).toHaveAttribute('href', '/en/warranty');
-        expect(termsLink.closest('.coins-policy-links')).toBe(
-            warrantyLink.closest('.coins-policy-links'),
-        );
+        // Both links live inside the consent label so the sentence reads as
+        // one accessible name.
+        expect(termsLink.closest('label')).toBe(warrantyLink.closest('label'));
+        expect(termsLink.closest('label')).not.toBeNull();
         expect(termsLink).toHaveClass('coins-policy-link');
         expect(warrantyLink).toHaveClass('coins-policy-link');
+    });
+
+    it('flags an invalid field when it is left, and stays quiet on empty ones', async () => {
+        render(<StoreHome />);
+        await reachFastConsoleCredentials();
+
+        const email = screen.getByRole('textbox', { name: 'EA email' });
+
+        // Tabbing through an untouched field says nothing.
+        fireEvent.blur(email);
+        expect(
+            screen.queryByText('Enter a valid EA email.'),
+        ).not.toBeInTheDocument();
+
+        // Leaving a half-typed address is flagged immediately...
+        fireEvent.change(email, { target: { value: 'not-an-email' } });
+        fireEvent.blur(email);
+        expect(screen.getByText('Enter a valid EA email.')).toBeVisible();
+
+        // ...and typing again clears it without waiting for another blur.
+        fireEvent.change(email, { target: { value: 'player@example.com' } });
+        expect(
+            screen.queryByText('Enter a valid EA email.'),
+        ).not.toBeInTheDocument();
+
+        const code = screen.getByRole('textbox', { name: 'Backup code 1' });
+
+        fireEvent.change(code, { target: { value: '1234' } });
+        fireEvent.blur(code);
+        expect(screen.getByText('Enter an 8-digit backup code.')).toBeVisible();
+    });
+
+    it('hides the balance field while the admin toggle is off', async () => {
+        mockPage.props = { ...pageProps(), coinsRequiresBalance: false };
+        render(<StoreHome />);
+        await reachFastConsoleCredentials();
+
+        expect(
+            screen.queryByRole('textbox', { name: 'Current Coins balance' }),
+        ).not.toBeInTheDocument();
     });
 
     it('requires balance before reviewing Fast console delivery', async () => {
@@ -603,7 +646,7 @@ describe('Coins credentials flow', () => {
         ).toHaveAttribute('aria-invalid', 'true');
         expect(
             screen.getByRole('checkbox', {
-                name: 'I confirm the details and accept the policies.',
+                name: 'I confirm my details and agree to the Terms and the Warranty.',
             }),
         ).toHaveAttribute('aria-invalid', 'true');
 
@@ -611,7 +654,7 @@ describe('Coins credentials flow', () => {
             name: 'Transfer Market is open in EA Companion',
         });
         const policyCheckbox = screen.getByRole('checkbox', {
-            name: 'I confirm the details and accept the policies.',
+            name: 'I confirm my details and agree to the Terms and the Warranty.',
         });
 
         expect(

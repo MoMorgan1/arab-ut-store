@@ -20,6 +20,7 @@ const consoleOffer = {
         platform: 'playstation',
         delivery: 'fast',
         quantity: 1_000_000,
+        requiresBalance: true,
     },
 };
 
@@ -36,6 +37,7 @@ describe('chatCartOffer', () => {
             platform: 'playstation',
             delivery: 'fast',
             quantity: 1_000_000,
+            requiresBalance: true,
         });
     });
 
@@ -45,6 +47,7 @@ describe('chatCartOffer', () => {
             platform: 'pc',
             delivery: null,
             quantity: 500_000,
+            requiresBalance: false,
         });
     });
 

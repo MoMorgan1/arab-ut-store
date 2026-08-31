@@ -97,7 +97,7 @@ final readonly class BuildAssistantCartOffer
      * the customer meant would put the wrong item in their cart.
      *
      * @param  array<string, mixed>  $options
-     * @return array{platform: string, delivery?: string, quantity: int}|null
+     * @return array{platform: string, delivery?: string, quantity: int, requiresBalance: bool}|null
      */
     private function coinsSelection(array $options): ?array
     {
@@ -110,7 +110,7 @@ final readonly class BuildAssistantCartOffer
 
         if ($platform === Platform::Pc->value) {
             return $this->sellable($quantity, (int) config('coins.platforms.pc.maximum'))
-                ? ['platform' => $platform, 'quantity' => $quantity]
+                ? ['platform' => $platform, 'quantity' => $quantity, 'requiresBalance' => false]
                 : null;
         }
 
@@ -134,6 +134,10 @@ final readonly class BuildAssistantCartOffer
             'platform' => $platform,
             'delivery' => $delivery,
             'quantity' => $quantity,
+            // Resolved when the offer is made: the panel must ask for the
+            // same credentials the cart endpoint will demand.
+            'requiresBalance' => $delivery === 'fast'
+                && $this->catalog->requiresCurrentBalance(),
         ];
     }
 }

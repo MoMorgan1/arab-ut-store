@@ -130,14 +130,36 @@ final class CoinsCatalogReader
 
     private ?CoinsQuantityRules $quantityRules = null;
 
+    /** @var array<string, mixed>|null */
+    private ?array $coinsConfiguration = null;
+
     /**
      * Resolved once per instance: the homepage builds a schedule per platform
      * and delivery speed, and each one asks for the bounds.
      */
     public function quantityRules(): CoinsQuantityRules
     {
-        if ($this->quantityRules !== null) {
-            return $this->quantityRules;
+        return $this->quantityRules ??= CoinsQuantityRules::fromConfiguration(
+            $this->coinsConfiguration(),
+        );
+    }
+
+    /**
+     * Whether fast console orders must state the account's current Coins
+     * balance on the credentials step. Absent means no: the field stays off
+     * until an admin turns it on, and a fresh database fails closed the same
+     * way.
+     */
+    public function requiresCurrentBalance(): bool
+    {
+        return ($this->coinsConfiguration()['requiresCurrentBalance'] ?? null) === true;
+    }
+
+    /** @return array<string, mixed> */
+    private function coinsConfiguration(): array
+    {
+        if ($this->coinsConfiguration !== null) {
+            return $this->coinsConfiguration;
         }
 
         // The admin edits these; config carries the seeded default so a fresh
@@ -147,11 +169,9 @@ final class CoinsCatalogReader
             ->where('is_active', true)
             ->first();
 
-        $configuration = $schedule === null
+        return $this->coinsConfiguration = $schedule === null
             ? (array) Config::array('coins.quantity')
             : (array) $schedule->configuration;
-
-        return $this->quantityRules = CoinsQuantityRules::fromConfiguration($configuration);
     }
 
     /** @param array<string, CoinsPricingRule> $rules */

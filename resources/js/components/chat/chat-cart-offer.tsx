@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { Check, Loader2, ShoppingCart } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useId, useRef, useState } from 'react';
@@ -138,7 +138,17 @@ function CoinsCartPanel({
     const moneyLocale: 'ar' | 'en' = isEn ? 'en' : 'ar';
     const copy = chatCartCopy(moneyLocale);
     const { delivery, platform, quantity } = offer;
-    const requiresBalance = platform === 'playstation' && delivery === 'fast';
+    // The offer's own flag is a snapshot frozen into persisted chat history,
+    // while the cart endpoint checks the admin toggle live — so the shared
+    // page prop wins whenever it is present, and the snapshot only covers a
+    // page that predates the prop.
+    const pageFlag = usePage().props.coinsRequiresBalance;
+    const requiresBalance =
+        platform === 'playstation' &&
+        delivery === 'fast' &&
+        (typeof pageFlag === 'boolean'
+            ? pageFlag
+            : offer.requiresBalance === true);
 
     const [expanded, setExpanded] = useState(false);
     const [credentials, setCredentials] =
@@ -221,7 +231,11 @@ function CoinsCartPanel({
         try {
             const addition = await submitCoinsCart({
                 cartUrl: isEn ? '/en/cart/items/coins' : '/cart/items/coins',
-                credentials,
+                // A balance typed before the requirement switched off must not
+                // ride along — the endpoint prohibits the field when it is off.
+                credentials: requiresBalance
+                    ? credentials
+                    : { ...credentials, currentBalance: '' },
                 delivery,
                 idempotencyKey: idempotencyKey.current,
                 platform,

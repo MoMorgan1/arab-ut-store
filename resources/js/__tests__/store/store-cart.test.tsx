@@ -37,6 +37,9 @@ vi.mock('@/lib/paylink-checkout-api', async (importOriginal) => ({
 const mockPage = vi.hoisted(() => ({
     props: {
         auth: { user: null as { id: number; name: string } | null },
+        // The stored credentials in these tests carry a balance, which the
+        // cart editor only keeps while the admin toggle is on.
+        coinsRequiresBalance: true,
         cart: {
             canCheckout: false,
             count: 1,
@@ -308,6 +311,7 @@ afterEach(cleanup);
 beforeEach(() => {
     document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
     mockPage.props.auth.user = null;
+    mockPage.props.coinsRequiresBalance = true;
     mockPage.props.cart.canCheckout = false;
     mockPage.props.cartPage.checkout.phoneVerified = false;
     mockPage.props.cart.count = 1;
@@ -682,6 +686,53 @@ it('loads owner-only credentials only after disclosure and edits exactly three c
     });
     expect(screen.getByText('EA details saved')).toBeVisible();
     expect(localStorageSpy).not.toHaveBeenCalled();
+});
+
+it('drops a stored balance from the update when the admin toggle is off', async () => {
+    // An item saved while the balance was collected keeps one in its stored
+    // credentials; once the admin turns the requirement off, an edit must not
+    // send it back — the endpoint refuses a field the store no longer asks for.
+    mockPage.props.coinsRequiresBalance = false;
+    const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+            new Response(
+                JSON.stringify({
+                    data: {
+                        backupCodes: ['10000001', '10000002', '10000003'],
+                        eaEmail: 'owner@example.test',
+                        eaPassword: 'opaque EA password',
+                        currentBalance: 500000,
+                        companionMarketOpen: true,
+                        policyAccepted: true,
+                    },
+                }),
+                {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                },
+            ),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<StoreCart />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show EA details' }));
+    expect(await screen.findByText('owner@example.test')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit EA details' }));
+    expect(screen.queryByText('Current Coins balance')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save EA details' }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+        backup_codes: ['10000001', '10000002', '10000003'],
+        companion_market_open: true,
+        ea_email: 'owner@example.test',
+        ea_password: 'opaque EA password',
+        policy_accepted: true,
+    });
 });
 
 it('removes a product only after a sustained hold', async () => {

@@ -554,6 +554,8 @@ export type AdminTranslations = {
                 removeBand: string;
                 dialogTitle: string;
                 dialogDescription: string;
+                requireBalance: string;
+                requireBalanceHint: string;
             };
             weeklyMatches: {
                 row: string;

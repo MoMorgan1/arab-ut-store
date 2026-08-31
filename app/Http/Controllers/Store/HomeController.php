@@ -40,6 +40,7 @@ class HomeController extends Controller
 
         return Inertia::render('store/home', [
             'status' => $status,
+            'coinsRequiresBalance' => $catalog->requiresCurrentBalance(),
             ...($quoteSchedules === null ? [] : ['quoteSchedules' => $quoteSchedules]),
             'quoteUrl' => $request->route('locale') === 'en'
                 ? route('localized.coins.quote', ['locale' => 'en'], absolute: false)

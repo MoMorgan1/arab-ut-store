@@ -307,6 +307,7 @@ export type StoredCartCoupon = {
 export type StoreCartPageProps = {
     auth: { user: { id: number; name: string } | null };
     cartCount: number;
+    coinsRequiresBalance?: boolean;
     cart: {
         // Lives beside the items rather than in cartPage: partial reloads on the
         // cart page ask for `cart` only, so eligibility parked in cartPage would
