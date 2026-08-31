@@ -59,6 +59,16 @@ return [
         ))),
     ],
 
+    'orders' => [
+        // Cancelled orders that never captured money are permanently deleted
+        // this many hours after cancellation - not at the moment of
+        // cancelling, because a customer can still be mid-redirect at Paylink
+        // when a checkout expires, and a late webhook must find the order it
+        // is looking for. A literal rather than an env entry, so .env.example
+        // keeps its one-to-one parity with this file.
+        'purge_cancelled_grace_hours' => 24,
+    ],
+
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),

@@ -4,6 +4,7 @@ use App\Console\Commands\ExpireAbandonedCheckouts;
 use App\Console\Commands\MaintainChatConversations;
 use App\Console\Commands\PrunePricingHistory;
 use App\Console\Commands\PublishOrderPaidEvents;
+use App\Console\Commands\PurgeDeadCancelledOrders;
 use App\Console\Commands\PurgeGuestCartClaims;
 use App\Console\Commands\RecoverStaleAgentTurns;
 use App\Console\Commands\RefreshDisplayExchangeRates;
@@ -21,6 +22,7 @@ Schedule::command(PublishOrderPaidEvents::class)->everyMinute()->withoutOverlapp
 Schedule::command(MaintainChatConversations::class)->hourly()->withoutOverlapping();
 Schedule::command(RecoverStaleAgentTurns::class)->everyMinute()->withoutOverlapping();
 Schedule::command(ExpireAbandonedCheckouts::class)->hourly()->withoutOverlapping();
+Schedule::command(PurgeDeadCancelledOrders::class)->hourly()->withoutOverlapping();
 Schedule::command(PrunePricingHistory::class)->dailyAt('03:20')->withoutOverlapping();
 
 /*
