@@ -19,6 +19,7 @@ test('a fully specified console order earns an add-to-cart offer', function () {
             'platform' => 'playstation',
             'delivery' => 'fast',
             'quantity' => 1_000_000,
+            'requiresBalance' => false,
         ],
     ]);
 });
@@ -30,6 +31,7 @@ test('PC carries no delivery because PC is sold at one speed', function () {
         'selection' => [
             'platform' => 'pc',
             'quantity' => 500_000,
+            'requiresBalance' => false,
         ],
     ]);
 });
@@ -80,6 +82,7 @@ test('an English console order earns the same offer', function () {
             'platform' => 'playstation',
             'delivery' => 'fast',
             'quantity' => 1_000_000,
+            'requiresBalance' => false,
         ],
     ]);
 });
@@ -91,7 +94,15 @@ test('the offer never carries a price', function () {
 
     expect(array_keys($offer ?? []))->toBe(['version', 'service', 'selection'])
         ->and(array_keys($offer['selection'] ?? []))
-        ->toBe(['platform', 'delivery', 'quantity']);
+        ->toBe(['platform', 'delivery', 'quantity', 'requiresBalance']);
+});
+
+test('the offer asks for the balance only when the admin toggle is on', function () {
+    enableCoinsCurrentBalanceRequirement();
+
+    expect(cartOffer('ابي مليون كوينز بلايستيشن سريع')['selection']['requiresBalance'])->toBeTrue()
+        ->and(cartOffer('ابي مليون كوينز بلايستيشن عادي')['selection']['requiresBalance'])->toBeFalse()
+        ->and(cartOffer('ابي نص مليون كوينز بي سي')['selection']['requiresBalance'])->toBeFalse();
 });
 
 test('an amount the route cannot sell earns no button', function () {
@@ -110,6 +121,7 @@ test('the same amount is offered on the route that does sell it', function () {
             'platform' => 'playstation',
             'delivery' => 'normal',
             'quantity' => 2_000_000,
+            'requiresBalance' => false,
         ],
     ]);
 });

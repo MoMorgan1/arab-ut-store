@@ -10,6 +10,7 @@ use App\Models\IdempotencyKey;
 use App\Models\PriceRule;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\ServicePriceSchedule;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -206,6 +207,9 @@ test('non JSON Coins additions are rejected without reflecting credentials', fun
 ]);
 
 test('supported Coins modes create distinct safe lines with encrypted credentials', function (array $selection, int $expectedTotal) {
+    // The fast-console dataset sends the balance, which is accepted only
+    // while the admin toggle is on.
+    enableCoinsCurrentBalanceRequirement();
     $catalog = createCartCatalog();
     $user = User::factory()->create();
     $payload = coinsCartPayload($selection);
@@ -325,6 +329,7 @@ test('email and backup codes normalize without changing the opaque EA password',
 });
 
 test('fast console stores the complete WordPress fulfillment contract only in the encrypted owner boundary', function () {
+    enableCoinsCurrentBalanceRequirement();
     createCartCatalog();
     $rawOwnerToken = str_repeat('9', 64);
     $this->withSession([ResolveCartOwner::SESSION_KEY => $rawOwnerToken]);
@@ -363,7 +368,35 @@ test('fast console stores the complete WordPress fulfillment contract only in th
         ->not->toContain('cart-sentinel@example.test');
 });
 
+test('the current balance stays off until an admin turns it on', function () {
+    createCartCatalog();
+    $withoutBalance = [
+        'delivery' => 'fast',
+        'credentials' => [
+            'companion_market_open' => true,
+            'policy_accepted' => true,
+        ],
+    ];
+
+    // Off (the default): a fast console order needs no balance...
+    addCoinsToCart('/cart/items/coins', coinsCartPayload($withoutBalance), 'balance-toggle-off')
+        ->assertCreated();
+
+    // ...and volunteering one is refused, so a stale client cannot smuggle
+    // a field the store no longer collects.
+    $withBalance = $withoutBalance;
+    $withBalance['credentials']['current_balance'] = 500_000;
+
+    addCoinsToCart('/cart/items/coins', coinsCartPayload($withBalance), 'balance-toggle-off-extra')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['credentials.current_balance']);
+
+    expect(CartItem::count())->toBe(1);
+});
+
 test('Coins fulfillment confirmations and conditional balance fail closed', function (array $changes) {
+    // The balance rules under test only bind while the admin toggle is on.
+    enableCoinsCurrentBalanceRequirement();
     createCartCatalog();
     $payload = coinsCartPayload($changes);
 
@@ -452,6 +485,48 @@ test('the cart exposes encrypted EA credentials only through an owner no-store e
         'ea_password' => 'attacker password',
         'backup_codes' => ['92000001', '92000002', '92000003'],
     ])->assertNotFound();
+});
+
+test('the credentials endpoint follows the balance toggle', function () {
+    enableCoinsCurrentBalanceRequirement();
+    createCartCatalog();
+    $this->withSession([ResolveCartOwner::SESSION_KEY => str_repeat('d', 64)]);
+
+    addCoinsToCart('/cart/items/coins', coinsCartPayload(['delivery' => 'fast']), 'balance-endpoint-key')
+        ->assertCreated();
+    $item = CartItem::sole();
+    $body = [
+        'ea_email' => 'toggle@example.test',
+        'ea_password' => 'toggle password',
+        'backup_codes' => ['93000001', '93000002', '93000003'],
+        'companion_market_open' => true,
+        'policy_accepted' => true,
+    ];
+
+    // On: an update without the balance is refused, one with it lands.
+    $this->patchJson("/cart/items/{$item->public_id}/credentials", $body)
+        ->assertUnprocessable();
+    $this->patchJson("/cart/items/{$item->public_id}/credentials", [
+        ...$body,
+        'current_balance' => 750_000,
+    ])->assertNoContent();
+
+    // Off again: the stored balance no longer binds and volunteering one is refused.
+    $schedule = ServicePriceSchedule::query()
+        ->where('service_type', ServiceType::Coins)
+        ->firstOrFail();
+    $schedule->configuration = [
+        ...(array) $schedule->configuration,
+        'requiresCurrentBalance' => false,
+    ];
+    $schedule->save();
+
+    $this->patchJson("/cart/items/{$item->public_id}/credentials", [
+        ...$body,
+        'current_balance' => 750_000,
+    ])->assertUnprocessable();
+    $this->patchJson("/cart/items/{$item->public_id}/credentials", $body)
+        ->assertNoContent();
 });
 
 test('a cart owner can remove an item and its secret while another owner cannot', function (string $prefix) {

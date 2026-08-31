@@ -1270,6 +1270,8 @@ function CredentialState({
     locale: 'ar' | 'en';
     translations: StoreCartTranslations;
 }) {
+    const coinsRequiresBalance =
+        usePage<StoreCartPageProps>().props.coinsRequiresBalance === true;
     const [credentials, setCredentials] =
         useState<StoredCartCredentials | null>(null);
     const [draft, setDraft] = useState<StoredCartCredentials | null>(null);
@@ -1391,6 +1393,7 @@ function CredentialState({
 
     const isCoins = cartItem.product.serviceType === 'coins';
     const requiresBalance =
+        coinsRequiresBalance &&
         isCoins &&
         cartItem.configuration.platform === 'playstation' &&
         cartItem.configuration.delivery === 'fast';
@@ -1441,8 +1444,15 @@ function CredentialState({
         setSaveState('idle');
 
         try {
-            await updateCartCredentials(cartItem.credentialsUrl, draft);
-            setCredentials(draft);
+            // With the balance requirement off, a stored balance from before
+            // the switch must not ride along — the server refuses a field the
+            // store no longer collects.
+            const outgoing = requiresBalance
+                ? draft
+                : { ...draft, currentBalance: null };
+
+            await updateCartCredentials(cartItem.credentialsUrl, outgoing);
+            setCredentials(outgoing);
             setEditing(false);
             setSaveState('saved');
         } catch {

@@ -138,7 +138,9 @@ function CoinsCartPanel({
     const moneyLocale: 'ar' | 'en' = isEn ? 'en' : 'ar';
     const copy = chatCartCopy(moneyLocale);
     const { delivery, platform, quantity } = offer;
-    const requiresBalance = platform === 'playstation' && delivery === 'fast';
+    // Resolved server-side when the offer was made, so the panel collects
+    // exactly what the cart endpoint will demand.
+    const requiresBalance = offer.requiresBalance;
 
     const [expanded, setExpanded] = useState(false);
     const [credentials, setCredentials] =

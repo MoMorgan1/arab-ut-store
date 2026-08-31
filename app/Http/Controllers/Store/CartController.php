@@ -39,6 +39,7 @@ final class CartController extends Controller
         private readonly PromotionPricing $promotionPricing,
         private readonly DiscountEngine $discountEngine,
         private readonly RepriceCart $repriceCart,
+        private readonly CoinsCatalogReader $coinsCatalog,
     ) {}
 
     public function __invoke(Request $request, ResolveCartOwner $resolveCartOwner): Response
@@ -90,6 +91,7 @@ final class CartController extends Controller
             : 0;
 
         return Inertia::render('store/cart', [
+            'coinsRequiresBalance' => $this->coinsCatalog->requiresCurrentBalance(),
             'cartPage' => [
                 'checkout' => [
                     'checkoutUrl' => route(

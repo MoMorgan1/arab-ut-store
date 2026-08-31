@@ -466,6 +466,40 @@ test('Admin edits the Coins quantity bands and the storefront follows without a 
         ->and($rules->accepts(50_000))->toBeFalse();
 });
 
+test('Admin turns the Coins balance requirement on and off and the storefront follows', function (): void {
+    $admin = createPricingTestAdmin(UserRole::Admin);
+    $schedule = ServicePriceSchedule::query()->where('service_type', ServiceType::Coins)->firstOrFail();
+
+    expect(app(CoinsCatalogReader::class)->requiresCurrentBalance())->toBeFalse();
+
+    $configuration = [
+        ...(array) $schedule->configuration,
+        'requiresCurrentBalance' => true,
+    ];
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->postJson('/admin/api/settings/service-pricing/coins', [
+            'expected_version' => (int) $schedule->version,
+            'configuration' => $configuration,
+        ])
+        ->assertOk();
+
+    expect(app(CoinsCatalogReader::class)->requiresCurrentBalance())->toBeTrue();
+
+    $configuration['requiresCurrentBalance'] = false;
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->postJson('/admin/api/settings/service-pricing/coins', [
+            'expected_version' => (int) $schedule->version + 1,
+            'configuration' => $configuration,
+        ])
+        ->assertOk();
+
+    expect(app(CoinsCatalogReader::class)->requiresCurrentBalance())->toBeFalse();
+});
+
 test('Admin cannot save Coins bands the storefront could not price', function (array $configuration, string $why): void {
     $admin = createPricingTestAdmin(UserRole::Admin);
     $schedule = ServicePriceSchedule::query()->where('service_type', ServiceType::Coins)->firstOrFail();

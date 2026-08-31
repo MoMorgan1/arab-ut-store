@@ -167,6 +167,18 @@ test('configured Coins media URLs resolve to public assets', function () {
     }
 });
 
+test('the homepage exposes the balance requirement only when the admin toggle is on', function () {
+    createHomeCatalog();
+
+    $this->get('/')->assertInertia(fn (Assert $page) => $page
+        ->where('coinsRequiresBalance', false));
+
+    enableCoinsCurrentBalanceRequirement();
+
+    $this->get('/')->assertInertia(fn (Assert $page) => $page
+        ->where('coinsRequiresBalance', true));
+});
+
 test('the homepage remains honest when local catalog or pricing is unavailable', function () {
     $this->get('/')
         ->assertOk()

@@ -256,6 +256,9 @@ function quoteSchedules() {
 
 function pageProps(authenticated = true) {
     return {
+        // This file exercises the balance flow, so the admin toggle is on;
+        // the default-off behavior is asserted in its own test below.
+        coinsRequiresBalance: true,
         amount: {
             tiers: [
                 { upTo: 500_000, step: 10_000 },
@@ -466,6 +469,46 @@ describe('Coins credentials flow', () => {
         );
         expect(termsLink).toHaveClass('coins-policy-link');
         expect(warrantyLink).toHaveClass('coins-policy-link');
+    });
+
+    it('flags an invalid field when it is left, and stays quiet on empty ones', async () => {
+        render(<StoreHome />);
+        await reachFastConsoleCredentials();
+
+        const email = screen.getByRole('textbox', { name: 'EA email' });
+
+        // Tabbing through an untouched field says nothing.
+        fireEvent.blur(email);
+        expect(
+            screen.queryByText('Enter a valid EA email.'),
+        ).not.toBeInTheDocument();
+
+        // Leaving a half-typed address is flagged immediately...
+        fireEvent.change(email, { target: { value: 'not-an-email' } });
+        fireEvent.blur(email);
+        expect(screen.getByText('Enter a valid EA email.')).toBeVisible();
+
+        // ...and typing again clears it without waiting for another blur.
+        fireEvent.change(email, { target: { value: 'player@example.com' } });
+        expect(
+            screen.queryByText('Enter a valid EA email.'),
+        ).not.toBeInTheDocument();
+
+        const code = screen.getByRole('textbox', { name: 'Backup code 1' });
+
+        fireEvent.change(code, { target: { value: '1234' } });
+        fireEvent.blur(code);
+        expect(screen.getByText('Enter an 8-digit backup code.')).toBeVisible();
+    });
+
+    it('hides the balance field while the admin toggle is off', async () => {
+        mockPage.props = { ...pageProps(), coinsRequiresBalance: false };
+        render(<StoreHome />);
+        await reachFastConsoleCredentials();
+
+        expect(
+            screen.queryByRole('textbox', { name: 'Current Coins balance' }),
+        ).not.toBeInTheDocument();
     });
 
     it('requires balance before reviewing Fast console delivery', async () => {

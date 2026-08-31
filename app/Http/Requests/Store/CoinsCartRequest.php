@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Store;
 
+use App\Services\Catalog\CoinsCatalogReader;
 use App\Validation\CoinsSelectionRules;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -85,7 +86,8 @@ final class CoinsCartRequest extends FormRequest
     private function requiresCurrentBalance(): bool
     {
         return $this->input('platform') === 'playstation'
-            && $this->input('delivery') === 'fast';
+            && $this->input('delivery') === 'fast'
+            && app(CoinsCatalogReader::class)->requiresCurrentBalance();
     }
 
     protected function failedValidation(Validator $validator): never

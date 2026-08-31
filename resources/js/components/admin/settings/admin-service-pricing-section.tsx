@@ -108,6 +108,8 @@ export default function AdminServicePricingSection({
     const [coinsUnitDraft, setCoinsUnitDraft] = useState<string>('');
     const [coinsTiers, setCoinsTiers] = useState<CoinsTierDraft[]>([]);
     const [coinsPresets, setCoinsPresets] = useState<string>('');
+    const [coinsRequiresBalance, setCoinsRequiresBalance] =
+        useState<boolean>(false);
     const [editSubmitting, setEditSubmitting] = useState(false);
     const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
@@ -207,6 +209,9 @@ export default function AdminServicePricingSection({
                 })),
             );
             setCoinsPresets(rawPresets.join(', '));
+            setCoinsRequiresBalance(
+                schedule.configuration.requiresCurrentBalance === true,
+            );
         }
 
         setEditDialogOpen(true);
@@ -287,6 +292,7 @@ export default function AdminServicePricingSection({
                     step: Number(tier.step) || 0,
                     upTo: Number(tier.upTo) || 0,
                 })),
+                requiresCurrentBalance: coinsRequiresBalance,
             };
         }
 
@@ -1380,6 +1386,29 @@ export default function AdminServicePricingSection({
                                                 }
                                             </p>
                                         ) : null}
+                                    </div>
+                                    <div className="flex flex-col gap-1.5">
+                                        <label
+                                            className="flex min-h-11 touch-manipulation items-center gap-2 text-sm font-medium"
+                                            htmlFor="input-coins-requires-balance"
+                                        >
+                                            <input
+                                                checked={coinsRequiresBalance}
+                                                className="size-4 accent-primary"
+                                                disabled={editSubmitting}
+                                                id="input-coins-requires-balance"
+                                                onChange={(e) =>
+                                                    setCoinsRequiresBalance(
+                                                        e.target.checked,
+                                                    )
+                                                }
+                                                type="checkbox"
+                                            />
+                                            {coinsCopy.requireBalance}
+                                        </label>
+                                        <p className="text-xs text-muted-foreground">
+                                            {coinsCopy.requireBalanceHint}
+                                        </p>
                                     </div>
                                 </div>
                             ) : editingSchedule.serviceType ===

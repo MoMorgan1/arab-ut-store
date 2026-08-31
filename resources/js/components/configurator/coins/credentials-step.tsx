@@ -28,6 +28,7 @@ type CredentialsStepProps = {
     platform: CoinsPlatformValue;
     quoteState: CoinsQuoteViewState;
     rejectedFields: CoinsCredentialField[];
+    requiresCurrentBalance: boolean;
     termsUrl: string;
     translations: CoinsStoreTranslations;
     warrantyUrl: string;
@@ -113,6 +114,7 @@ export function CredentialsStep({
     platform,
     quoteState,
     rejectedFields,
+    requiresCurrentBalance,
     termsUrl,
     translations,
     warrantyUrl,
@@ -128,7 +130,12 @@ export function CredentialsStep({
         Partial<Record<CoinsCredentialField, HTMLInputElement | null>>
     >({ email: null, password: null });
     const quoteMessage = credentialsQuoteMessage(quoteState, translations);
-    const requiresBalance = platform === 'playstation' && delivery === 'fast';
+    // The admin decides whether fast console orders state their balance;
+    // the platform/delivery pair only says when the policy can apply.
+    const requiresBalance =
+        requiresCurrentBalance &&
+        platform === 'playstation' &&
+        delivery === 'fast';
 
     useEffect(() => {
         return () => {
@@ -216,6 +223,25 @@ export function CredentialsStep({
         onChange({ ...credentials, [key]: checked });
     }
 
+    /**
+     * Blur-time validation for one field. Empty fields stay quiet so
+     * tabbing through the form does not scold before anything was typed;
+     * submit still validates everything.
+     */
+    function validateFieldOnBlur(field: CoinsCredentialField, value: string) {
+        if (value === '') {
+            return;
+        }
+
+        const nextErrors = validateCredentials(
+            credentials,
+            requiresBalance,
+            translations.credentials,
+        );
+
+        setErrors((current) => ({ ...current, [field]: nextErrors[field] }));
+    }
+
     function submitCredentials() {
         const nextErrors = validateCredentials(
             credentials,
@@ -255,6 +281,9 @@ export function CredentialsStep({
                         fieldRefs.current.email = node;
                     }}
                     label={translations.credentials.email}
+                    onBlur={() =>
+                        validateFieldOnBlur('email', credentials.eaEmail)
+                    }
                     onChange={(value) => updateField('eaEmail', value, 'email')}
                     type="email"
                     value={credentials.eaEmail}
@@ -277,6 +306,12 @@ export function CredentialsStep({
                             data-lpignore="true"
                             dir="ltr"
                             id="coins-ea-password"
+                            onBlur={() =>
+                                validateFieldOnBlur(
+                                    'password',
+                                    credentials.eaPassword,
+                                )
+                            }
                             onChange={(event) =>
                                 updateField(
                                     'eaPassword',
@@ -355,6 +390,9 @@ export function CredentialsStep({
                                         id={`coins-backup-${index}`}
                                         inputMode="numeric"
                                         maxLength={8}
+                                        onBlur={() =>
+                                            validateFieldOnBlur(field, code)
+                                        }
                                         onChange={(event) =>
                                             updateCode(
                                                 index,
@@ -402,6 +440,12 @@ export function CredentialsStep({
                             id="coins-current-balance"
                             inputMode="numeric"
                             maxLength={9}
+                            onBlur={() =>
+                                validateFieldOnBlur(
+                                    'current-balance',
+                                    credentials.currentBalance ?? '',
+                                )
+                            }
                             onChange={(event) =>
                                 updateBalance(event.currentTarget.value)
                             }
@@ -771,13 +815,14 @@ type CredentialInputProps = {
     id: string;
     inputRef: (node: HTMLInputElement | null) => void;
     label: string;
+    onBlur: () => void;
     onChange: (value: string) => void;
     type: 'email';
     value: string;
 };
 
 function CredentialInput(props: CredentialInputProps) {
-    const { error, id, inputRef, label, onChange, type, value } = props;
+    const { error, id, inputRef, label, onBlur, onChange, type, value } = props;
 
     return (
         <div className="coins-credential-field">
@@ -792,6 +837,7 @@ function CredentialInput(props: CredentialInputProps) {
                 data-lpignore="true"
                 dir="ltr"
                 id={id}
+                onBlur={onBlur}
                 onChange={(event) => onChange(event.currentTarget.value)}
                 ref={inputRef}
                 spellCheck={false}
