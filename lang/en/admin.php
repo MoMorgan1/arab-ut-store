@@ -1550,5 +1550,19 @@ return [
         'visibleProducts' => 'Storefront-visible products',
         'visibleProductsCount' => 'Visible products',
     ],
+    'confirm2fa' => [
+        'headTitle' => 'Admin Two-Factor Verification',
+        'title' => 'Confirm Authenticator Code',
+        'description' => 'Enter the 6-digit verification code from your authenticator app to access the Admin dashboard.',
+        'code' => 'Authenticator code',
+        'recoveryCode' => 'Recovery code',
+        'useRecoveryCode' => 'Use a recovery code',
+        'useAuthenticatorCode' => 'Use an authenticator code',
+        'invalidCode' => 'The code is invalid or has expired.',
+        'invalidRecoveryCode' => 'The recovery code is invalid or has already been used.',
+        'submit' => 'Verify and continue',
+        'submitting' => 'Verifying…',
+        'logout' => 'Log out',
+    ],
 
 ];

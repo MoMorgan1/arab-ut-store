@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\CategoriesController;
 use App\Http\Controllers\Admin\CategoryVisibilityController;
+use App\Http\Controllers\Admin\ConfirmTwoFactorController;
 use App\Http\Controllers\Admin\ConversationDetailController;
 use App\Http\Controllers\Admin\ConversationNoteController;
 use App\Http\Controllers\Admin\ConversationReplyController;
@@ -82,6 +83,21 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                         $mfa->defaults('locale', $locale);
                     }
                 });
+
+            $confirmCreate = Route::get('/confirm-2fa', [ConfirmTwoFactorController::class, 'create'])
+                ->name('confirm-2fa');
+
+            if ($locale !== null) {
+                $confirmCreate->defaults('locale', $locale);
+            }
+
+            $confirmStore = Route::post('/confirm-2fa', [ConfirmTwoFactorController::class, 'store'])
+                ->middleware('throttle:two-factor-management')
+                ->name('confirm-2fa.store');
+
+            if ($locale !== null) {
+                $confirmStore->defaults('locale', $locale);
+            }
 
             Route::middleware(EnsureAdminMfa::class)->group(function () use ($locale): void {
                 $route = Route::get('/', OverviewController::class)->name('overview');

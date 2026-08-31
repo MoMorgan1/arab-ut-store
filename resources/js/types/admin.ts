@@ -338,6 +338,20 @@ export type AdminTranslations = {
         failed: string;
         invalidCode: string;
     };
+    confirm2fa?: {
+        headTitle: string;
+        title: string;
+        description: string;
+        code: string;
+        recoveryCode: string;
+        useRecoveryCode: string;
+        useAuthenticatorCode: string;
+        invalidCode: string;
+        invalidRecoveryCode: string;
+        submit: string;
+        submitting: string;
+        logout: string;
+    };
     customers: {
         actions: string;
         activeFilters: string;
