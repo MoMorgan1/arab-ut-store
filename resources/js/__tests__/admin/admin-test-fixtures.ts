@@ -1040,6 +1040,9 @@ export const englishAdminUi: AdminTranslations = {
                     'Comma separated. Every number has to be a quantity the slider can land on.',
                 quantityStep: 'Step',
                 removeBand: 'Remove band :index',
+                requireBalance: 'Ask for the current Coins balance',
+                requireBalanceHint:
+                    "When on, fast console orders must state the account's current Coins balance on the credentials step. When off, the field is not shown and not accepted.",
                 automationWarning:
                     '⚠️ Changing the smallest order or the buying unit has to be matched in n8n. If it is not, the pricing run is refused and Coins prices freeze at the last successful update.',
                 roundingUnit: 'Buying unit',

@@ -722,9 +722,7 @@ it('drops a stored balance from the update when the admin toggle is off', async 
     expect(await screen.findByText('owner@example.test')).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit EA details' }));
-    expect(
-        screen.queryByText('Current Coins balance'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Current Coins balance')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Save EA details' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
