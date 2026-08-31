@@ -21,9 +21,14 @@ const consoleOffer: ChatCoinsCartOffer = {
     platform: 'playstation',
     delivery: 'normal',
     quantity: 1_000_000,
+    requiresBalance: false,
 };
 
-const fastOffer: ChatCoinsCartOffer = { ...consoleOffer, delivery: 'fast' };
+const fastOffer: ChatCoinsCartOffer = {
+    ...consoleOffer,
+    delivery: 'fast',
+    requiresBalance: true,
+};
 
 /** The one cached map the widget fetches for cards, shelf and cart panels. */
 const PRICES = {
