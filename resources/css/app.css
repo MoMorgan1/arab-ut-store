@@ -2673,25 +2673,14 @@ html.admin-document {
         letter-spacing: 0.08em;
     }
 
-    .coins-current-balance > p,
-    .coins-confirmation-field > p {
+    .coins-current-balance > p {
         margin: 0;
         color: var(--arabut-muted);
         font-size: 0.85rem;
         line-height: 1.55;
     }
 
-    .coins-confirmation-field > p {
-        font-size: 0.78rem;
-        line-height: 1.45;
-    }
-
     .coins-fulfillment-confirmations {
-        display: grid;
-        gap: 0.625rem;
-    }
-
-    .coins-confirmation-field {
         border: 1px solid rgb(217 171 58 / 20%);
         border-radius: 0.7rem;
         background: linear-gradient(
@@ -2699,27 +2688,25 @@ html.admin-document {
             rgb(217 171 58 / 8%),
             rgb(7 9 12 / 34%)
         );
-        padding: 0.375rem 0.7rem 0.55rem;
-        transition:
-            border-color 160ms ease,
-            background-color 160ms ease,
-            box-shadow 160ms ease;
+        padding: 0.1rem 0.85rem;
     }
 
-    .coins-confirmation-field.is-invalid {
-        border-color: rgb(239 68 68 / 68%);
-        background: linear-gradient(
-            135deg,
-            rgb(239 68 68 / 10%),
-            rgb(7 9 12 / 38%)
-        );
-        border-inline-start: 3px solid rgb(239 68 68 / 78%);
-        box-shadow: 0 0 0 1px rgb(239 68 68 / 10%);
+    .coins-confirmation-field {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        column-gap: 0.75rem;
+        padding-block: 0.2rem;
+    }
+
+    .coins-confirmation-field + .coins-confirmation-field {
+        border-block-start: 1px solid rgb(217 171 58 / 14%);
     }
 
     .market-help-hint {
         min-height: 2.75rem;
-        margin-block-start: 0.35rem;
+        flex: 0 0 auto;
+        margin: 0;
         border: 0;
         background: transparent;
         color: var(--arabut-gold-bright);
@@ -2730,6 +2717,7 @@ html.admin-document {
         text-decoration: underline;
         text-decoration-color: rgb(217 171 58 / 36%);
         text-underline-offset: 3px;
+        white-space: nowrap;
     }
 
     .market-help-hint:hover {
@@ -2995,40 +2983,27 @@ html.admin-document {
     .coins-confirmation-field > label {
         display: flex;
         min-height: 2.75rem;
+        flex: 1 1 14rem;
         align-items: center;
         gap: 0.55rem;
         color: var(--arabut-ink);
         font-size: 0.88rem;
-        font-weight: 750;
-        line-height: 1.35;
+        font-weight: 650;
+        line-height: 1.45;
         cursor: pointer;
     }
 
-    #coins-policy-help {
-        display: grid;
-        gap: 0.55rem;
-    }
-
-    .coins-policy-links {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-
-    .coins-policy-links a {
-        display: inline-flex;
-        min-height: 2.75rem;
-        align-items: center;
-        padding-inline: 0.15rem;
+    .coins-policy-link {
+        padding-inline: 0.1rem;
         color: #f2c95f;
         font-weight: 800;
         text-decoration-line: underline;
         text-decoration-color: rgb(242 201 95 / 78%);
-        text-decoration-thickness: 0.12em;
+        text-decoration-thickness: 0.1em;
         text-underline-offset: 0.22em;
     }
 
-    .coins-policy-links a::after {
+    .coins-policy-link::after {
         content: none;
     }
 
@@ -3067,6 +3042,8 @@ html.admin-document {
     }
 
     .coins-confirmation-field > .coins-field-error {
+        flex-basis: 100%;
+        margin: 0 0 0.5rem;
         color: var(--arabut-danger);
     }
 
