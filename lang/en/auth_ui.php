@@ -98,4 +98,14 @@ return [
         'invalid_recovery_code' => 'The recovery code is invalid or has already been used.',
         'submit' => 'Confirm sign in',
     ],
+    'verify_email' => [
+        'head_title' => 'Email verification',
+        'title' => 'Verify your email address',
+        'description' => 'We sent a verification link to your email. Open the message and press the button to confirm you own the address.',
+        'submit' => 'Resend the link',
+        'resend_in' => 'Resend in :seconds s',
+        'sent' => 'A verification link was sent to your email.',
+        'login_prompt' => 'Need help?',
+        'login_link' => 'Contact support',
+    ],
 ];

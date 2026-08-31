@@ -118,6 +118,28 @@ return [
     'limiters' => [
         'login' => 'login',
         'two-factor' => 'two-factor',
+        'verification' => 'verification-send',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fortify Route Paths
+    |--------------------------------------------------------------------------
+    |
+    | Fortify's email verification routes keep their canonical names
+    | (verification.notice / verification.verify / verification.send) so
+    | Laravel internals such as the signed verification link and the
+    | "verified" middleware keep working, but their public paths are mapped
+    | to the storefront's /verify-email URL instead of /email/verify.
+    |
+    */
+
+    'paths' => [
+        'verification' => [
+            'notice' => 'verify-email',
+            'verify' => 'verify-email/{id}/{hash}',
+            'send' => 'verify-email/send',
+        ],
     ],
 
     /*
@@ -146,6 +168,7 @@ return [
 
     'features' => [
         Features::registration(),
+        Features::emailVerification(),
         Features::resetPasswords(),
         Features::twoFactorAuthentication([
             'confirm' => true,

@@ -235,6 +235,17 @@ const arabicAuthUi = {
         invalid_recovery_code: 'رمز الاسترداد غير صحيح أو تم استخدامه.',
         submit: 'تأكيد الدخول',
     },
+    verify_email: {
+        head_title: 'توثيق البريد الإلكتروني',
+        title: 'وثّق بريدك الإلكتروني',
+        description:
+            'أرسلنا رابط توثيق إلى بريدك. افتح الرسالة واضغط الزر لتأكيد ملكية البريد.',
+        submit: 'إعادة إرسال الرابط',
+        resend_in: 'إعادة الإرسال بعد :seconds ث',
+        sent: 'تم إرسال رابط التوثيق إلى بريدك.',
+        login_prompt: 'تحتاج مساعدة؟',
+        login_link: 'تواصل مع الدعم',
+    },
 } satisfies AuthUiTranslations;
 
 const englishAuthUi = {
@@ -325,6 +336,17 @@ const englishAuthUi = {
         description:
             'This is a secure area. Confirm your password to continue.',
         submit: 'Confirm password',
+    },
+    verify_email: {
+        head_title: 'Email verification',
+        title: 'Verify your email address',
+        description:
+            'We sent a verification link to your email. Open the message and press the button to confirm you own the address.',
+        submit: 'Resend the link',
+        resend_in: 'Resend in :seconds s',
+        sent: 'A verification link was sent to your email.',
+        login_prompt: 'Need help?',
+        login_link: 'Contact support',
     },
 } satisfies AuthUiTranslations;
 

@@ -25,6 +25,8 @@ return [
         'title' => 'Verify your email address',
         'desc' => 'Verification protects your account and lets you reset your password.',
         'action' => 'Send verification link',
+        'sent' => 'We sent a verification link to your email. Check your inbox.',
+        'resend_in' => 'Resend in :seconds s',
     ],
     'overview' => [
         'title' => 'Overview',

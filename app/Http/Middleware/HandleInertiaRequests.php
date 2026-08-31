@@ -90,6 +90,8 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            // Flash feedback for one-shot actions (e.g. verification-link-sent).
+            'status' => $request->session()->get('status'),
             'chat' => [
                 'enabled' => (bool) config('chat.enabled', false),
             ],

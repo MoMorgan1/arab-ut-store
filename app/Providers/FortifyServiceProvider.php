@@ -136,6 +136,11 @@ class FortifyServiceProvider extends ServiceProvider
             $this->authViewProps('confirm_password'),
         ));
 
+        Fortify::verifyEmailView(fn (Request $request) => Inertia::render('auth/verify-email', [
+            ...$this->authViewProps('verify_email'),
+            'status' => $request->session()->get('status'),
+        ]));
+
         Fortify::twoFactorChallengeView(function (Request $request) {
             $challengedUser = User::query()
                 ->whereKey($request->session()->get('login.id'))
@@ -183,6 +188,11 @@ class FortifyServiceProvider extends ServiceProvider
             ->by(hash('sha256', (string) $request->input('phone').'|'.$request->ip())));
         RateLimiter::for('whatsapp-login-verify', fn (Request $request): Limit => Limit::perMinute(10)
             ->by(hash('sha256', (string) $request->input('phone').'|'.$request->ip())));
+
+        RateLimiter::for('verification-send', fn (Request $request): array => [
+            Limit::perMinute(3)->by('verification-send-user:'.($request->user()?->getAuthIdentifier() ?? $request->session()->getId())),
+            Limit::perMinute(10)->by('verification-send-ip:'.$request->ip()),
+        ]);
 
     }
 

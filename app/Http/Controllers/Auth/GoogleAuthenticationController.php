@@ -88,7 +88,20 @@ final class GoogleAuthenticationController extends Controller
                 ]);
                 $user->forceFill(['email_verified_at' => now()])->save();
             } elseif ($user->email_verified_at === null) {
-                $user->forceFill(['email_verified_at' => now()])->save();
+                // Account claim. Google has verified this person controls the
+                // mailbox, which the local account's null email_verified_at can
+                // never prove. Attach the identity and evict every credential
+                // that predates the claim - an attacker who pre-registered this
+                // address loses password (and any TOTP they enabled), while a
+                // legitimate local registrant stays logged in and can set a
+                // fresh password from the account security page.
+                $user->forceFill([
+                    'email_verified_at' => now(),
+                    'password' => null,
+                    'two_factor_secret' => null,
+                    'two_factor_recovery_codes' => null,
+                    'two_factor_confirmed_at' => null,
+                ])->save();
             }
 
             $user->socialAccounts()->create([

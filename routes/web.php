@@ -32,9 +32,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
+use Laravel\Fortify\Http\Controllers\EmailVerificationNotificationController;
+use Laravel\Fortify\Http\Controllers\EmailVerificationPromptController;
 use Laravel\Fortify\Http\Controllers\NewPasswordController;
 use Laravel\Fortify\Http\Controllers\PasswordResetLinkController;
 use Laravel\Fortify\Http\Controllers\RegisteredUserController;
+use Laravel\Fortify\Http\Controllers\VerifyEmailController;
 
 Route::get('/', HomeController::class)->name('home');
 Route::get('/coins/quote', CoinsQuoteController::class)->name('coins.quote');
@@ -250,6 +253,20 @@ Route::prefix('{locale}')
             Route::post('/reset-password', [NewPasswordController::class, 'store'])
                 ->middleware(['guest:'.config('fortify.guard')])
                 ->name('localized.password.update');
+        }
+
+        if (Features::enabled(Features::emailVerification())) {
+            $verificationThrottle = config('fortify.limiters.verification', '6,1');
+
+            Route::get('/verify-email', [EmailVerificationPromptController::class, '__invoke'])
+                ->middleware(['auth:'.config('fortify.guard')])
+                ->name('localized.verification.notice');
+            Route::get('/verify-email/{id}/{hash}', [VerifyEmailController::class, '__invoke'])
+                ->middleware(['auth:'.config('fortify.guard'), 'signed', 'throttle:'.$verificationThrottle])
+                ->name('localized.verification.verify');
+            Route::post('/verify-email/send', [EmailVerificationNotificationController::class, 'store'])
+                ->middleware(['auth:'.config('fortify.guard'), 'throttle:'.$verificationThrottle])
+                ->name('localized.verification.send');
         }
 
         foreach ($simpleStorePages as $page => $uri) {

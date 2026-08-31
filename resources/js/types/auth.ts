@@ -8,7 +8,7 @@ export type User = {
     first_name: string;
     last_name: string;
     name: string;
-    email: string;
+    email: string | null;
     avatar?: string;
     email_verified_at: string | null;
     created_at: string;
@@ -26,7 +26,8 @@ export type AuthPage =
     | 'forgot_password'
     | 'reset_password'
     | 'confirm_password'
-    | 'two_factor_challenge';
+    | 'two_factor_challenge'
+    | 'verify_email';
 
 export type AuthRoutes = {
     homeUrl: string;
@@ -136,6 +137,16 @@ export type AuthUiTranslations = {
         invalid_code: string;
         invalid_recovery_code: string;
         submit: string;
+    };
+    verify_email: {
+        head_title: string;
+        title: string;
+        description: string;
+        submit: string;
+        resend_in: string;
+        sent: string;
+        login_prompt: string;
+        login_link: string;
     };
 };
 

@@ -71,6 +71,79 @@ test('google callback refuses to link an unverified provider email to an existin
     expect(SocialAccount::query()->count())->toBe(0);
 });
 
+test('google sign-in claims an unverified local account and evicts its pre-existing credentials', function () {
+    $existing = User::factory()->unverified()->create([
+        'email' => 'pre-registered@example.test',
+        'password' => 'attacker-known-password',
+    ]);
+    $existing->forceFill([
+        'two_factor_secret' => 'encrypted-totp-secret',
+        'two_factor_recovery_codes' => json_encode(['code-one', 'code-two']),
+        'two_factor_confirmed_at' => now(),
+    ])->save();
+
+    $providerUser = (new SocialiteUser)->map([
+        'id' => 'claimer-google-id',
+        'name' => 'Real Owner',
+        'email' => $existing->email,
+        'email_verified' => true,
+    ])->setRaw([
+        'email_verified' => true,
+    ]);
+    $provider = Mockery::mock(Provider::class);
+    $provider->shouldReceive('user')->once()->andReturn($providerUser);
+    Socialite::shouldReceive('driver')->once()->with('google')->andReturn($provider);
+
+    $this->get('/auth/google/callback')->assertRedirect('/my-account');
+
+    $claimed = $existing->refresh();
+    $this->assertAuthenticatedAs($claimed);
+    expect($claimed->email_verified_at)->not->toBeNull()
+        ->and($claimed->password)->toBeNull()
+        ->and($claimed->two_factor_secret)->toBeNull()
+        ->and($claimed->two_factor_recovery_codes)->toBeNull()
+        ->and($claimed->two_factor_confirmed_at)->toBeNull()
+        ->and(SocialAccount::query()->where([
+            'provider' => 'google',
+            'provider_user_id' => 'claimer-google-id',
+            'user_id' => $existing->id,
+        ])->exists())->toBeTrue();
+
+    $this->post('/logout');
+
+    $this->post('/login', [
+        'email' => $existing->email,
+        'password' => 'attacker-known-password',
+    ])->assertSessionHasErrors('email');
+    $this->assertGuest();
+});
+
+test('a google claim of a passwordless unverified account marks it verified without errors', function () {
+    $existing = User::factory()->unverified()->create([
+        'email' => 'whatsapp-then-email@example.test',
+        'password' => null,
+    ]);
+
+    $providerUser = (new SocialiteUser)->map([
+        'id' => 'claimer-passwordless',
+        'name' => 'Passwordless Owner',
+        'email' => $existing->email,
+        'email_verified' => true,
+    ])->setRaw([
+        'email_verified' => true,
+    ]);
+    $provider = Mockery::mock(Provider::class);
+    $provider->shouldReceive('user')->once()->andReturn($providerUser);
+    Socialite::shouldReceive('driver')->once()->with('google')->andReturn($provider);
+
+    $this->get('/auth/google/callback')->assertRedirect('/my-account');
+
+    $claimed = $existing->refresh();
+    $this->assertAuthenticatedAs($claimed);
+    expect($claimed->email_verified_at)->not->toBeNull()
+        ->and($claimed->password)->toBeNull();
+});
+
 test('google callback signs in privileged accounts without revealing their role', function (UserRole $role) {
     $user = User::factory()->create([
         'email' => 'privileged-google@example.test',
