@@ -533,7 +533,7 @@ final class CartController extends Controller
         // either dropped when it was buyable or echoed when it was not.
         return is_int($quantity)
             && $quantity <= $maximum
-            && app(CoinsCatalogReader::class)->quantityRules()->accepts($quantity)
+            && $this->coinsCatalog->quantityRules()->accepts($quantity)
                 ? ['coins_quantity' => $quantity]
                 : [];
     }

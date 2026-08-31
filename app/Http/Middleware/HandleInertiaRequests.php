@@ -4,13 +4,17 @@ namespace App\Http\Middleware;
 
 use App\Actions\Cart\ResolveCartOwner;
 use App\Models\Cart;
+use App\Services\Catalog\CoinsCatalogReader;
 use App\Support\Seo\StorePageSeo;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
-    public function __construct(private readonly ResolveCartOwner $resolveCartOwner) {}
+    public function __construct(
+        private readonly ResolveCartOwner $resolveCartOwner,
+        private readonly CoinsCatalogReader $coinsCatalog,
+    ) {}
 
     /**
      * The root template that's loaded on the first page visit.
@@ -93,6 +97,10 @@ class HandleInertiaRequests extends Middleware
             'chat' => [
                 'enabled' => (bool) config('chat.enabled', false),
             ],
+            // Shared, not per-page: the chat widget mounts on every storefront
+            // page and must agree with the cart endpoint's live admin toggle,
+            // including for offers stored in chat history before a flip.
+            'coinsRequiresBalance' => $this->coinsCatalog->requiresCurrentBalance(),
             // Storefront defaults, so every page renders valid social metadata
             // server-side. Controllers with richer data override this prop.
             'seo' => StorePageSeo::default()->toArray(),

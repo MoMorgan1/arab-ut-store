@@ -463,9 +463,10 @@ describe('Coins credentials flow', () => {
 
         expect(termsLink).toHaveAttribute('href', '/en/terms');
         expect(warrantyLink).toHaveAttribute('href', '/en/warranty');
-        expect(termsLink.closest('.coins-policy-links')).toBe(
-            warrantyLink.closest('.coins-policy-links'),
-        );
+        // Both links live inside the consent label so the sentence reads as
+        // one accessible name.
+        expect(termsLink.closest('label')).toBe(warrantyLink.closest('label'));
+        expect(termsLink.closest('label')).not.toBeNull();
         expect(termsLink).toHaveClass('coins-policy-link');
         expect(warrantyLink).toHaveClass('coins-policy-link');
     });

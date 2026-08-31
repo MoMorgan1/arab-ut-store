@@ -192,6 +192,16 @@ final class UpdateServicePriceScheduleRequest extends FormRequest
             ];
         }
 
+        // The reader compares the toggle with === true, so a truthy "1" from
+        // a non-JSON client must not save as a value that silently reads off.
+        if ($serviceType === ServiceType::Coins->value
+            && array_key_exists('requiresCurrentBalance', $config)) {
+            $config['requiresCurrentBalance'] = filter_var(
+                $config['requiresCurrentBalance'],
+                FILTER_VALIDATE_BOOLEAN,
+            );
+        }
+
         return $config;
     }
 }

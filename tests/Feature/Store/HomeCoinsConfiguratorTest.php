@@ -235,8 +235,11 @@ test('the foreign-currency homepage builds every schedule from one pricing and r
             ->where('quoteSchedules.playstation:fast.displayCurrency', 'USD')
             ->where('quoteSchedules.pc.displayCurrency', 'USD'));
 
+    // The budget rose from 10 when the shared Inertia props began reading the
+    // Coins balance toggle live on every page — one indexed schedule read, so
+    // chat offers stored in history can never disagree with the cart endpoint.
     expect($durationMilliseconds)->toBeLessThan(1_000)
-        ->and(count($queries))->toBeLessThanOrEqual(10)
+        ->and(count($queries))->toBeLessThanOrEqual(11)
         ->and($queriesFor('price_rules'))->toBe(1)
         ->and($queriesFor('exchange_rates'))->toBe(1);
 });

@@ -2703,6 +2703,15 @@ html.admin-document {
         border-block-start: 1px solid rgb(217 171 58 / 14%);
     }
 
+    /* The checklist flattened the old per-row cards, so the invalid state
+       marks the row itself: a red tint the flat rows cannot mistake for the
+       gold surface, matching the aria-invalid accent on the checkbox. */
+    .coins-confirmation-field.is-invalid {
+        border-radius: 0.45rem;
+        background: rgb(239 68 68 / 10%);
+        box-shadow: inset 0 0 0 1px rgb(239 68 68 / 45%);
+    }
+
     .market-help-hint {
         min-height: 2.75rem;
         flex: 0 0 auto;
@@ -2994,6 +3003,7 @@ html.admin-document {
     }
 
     .coins-policy-link {
+        position: relative;
         padding-inline: 0.1rem;
         color: #f2c95f;
         font-weight: 800;
@@ -3005,6 +3015,18 @@ html.admin-document {
 
     .coins-policy-link::after {
         content: none;
+    }
+
+    /* The links sit inline inside the consent label, so a box-model
+       min-height would break the sentence. The invisible overlay restores
+       the 44px target instead, and a near-miss lands on the anchor rather
+       than toggling the consent checkbox underneath it. */
+    .coins-policy-link::before {
+        content: '';
+        position: absolute;
+        inset-inline: -0.4rem;
+        inset-block: calc(50% - 1.375rem);
+        height: 2.75rem;
     }
 
     .coins-confirmation-field input[type='checkbox'] {
