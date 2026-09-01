@@ -33,19 +33,21 @@ final class PaylinkPaymentGateway implements PaymentGateway
             'isDigital' => true,
         ], static fn (mixed $value): bool => $value !== null), $request->products);
 
-        $response = $this->send(fn (): Response => $this->merchantRequest()->post($this->baseUrl().'/api/addInvoice', array_filter([
-            'orderNumber' => $request->orderNumber,
-            'amount' => $request->amountHalalah / 100,
-            'callBackUrl' => $request->callbackUrl,
-            'cancelUrl' => $request->cancelUrl,
-            'clientName' => $request->clientName,
-            'clientEmail' => $request->clientEmail,
-            'clientMobile' => $request->clientMobile,
-            'currency' => 'SAR',
-            'products' => $products,
-            'displayPending' => true,
-            'note' => 'Arab UT order '.$request->orderNumber,
-        ], static fn (mixed $value): bool => $value !== null)));
+        $response = $this->sendWithMerchantAuth(fn (string $token): Response => $this->request()
+            ->withToken($token)
+            ->post($this->baseUrl().'/api/addInvoice', array_filter([
+                'orderNumber' => $request->orderNumber,
+                'amount' => $request->amountHalalah / 100,
+                'callBackUrl' => $request->callbackUrl,
+                'cancelUrl' => $request->cancelUrl,
+                'clientName' => $request->clientName,
+                'clientEmail' => $request->clientEmail,
+                'clientMobile' => $request->clientMobile,
+                'currency' => 'SAR',
+                'products' => $products,
+                'displayPending' => true,
+                'note' => 'Arab UT order '.$request->orderNumber,
+            ], static fn (mixed $value): bool => $value !== null)));
 
         return $this->parseInvoice($this->json($response));
     }
@@ -53,7 +55,9 @@ final class PaylinkPaymentGateway implements PaymentGateway
     public function getInvoice(string $transactionNo): PaymentInvoice
     {
         $this->assertIdentifier($transactionNo);
-        $response = $this->send(fn (): Response => $this->merchantRequest(retrySafeRead: true)->get($this->baseUrl().'/api/getInvoice/'.$transactionNo));
+        $response = $this->sendWithMerchantAuth(fn (string $token): Response => $this->safeReadRequest()
+            ->withToken($token)
+            ->get($this->baseUrl().'/api/getInvoice/'.$transactionNo));
 
         return $this->parseInvoice($this->json($response));
     }
@@ -61,9 +65,11 @@ final class PaylinkPaymentGateway implements PaymentGateway
     public function cancelInvoice(string $transactionNo): void
     {
         $this->assertIdentifier($transactionNo);
-        $response = $this->send(fn (): Response => $this->merchantRequest()->post($this->baseUrl().'/api/cancelInvoice', [
-            'transactionNo' => $transactionNo,
-        ]));
+        $response = $this->sendWithMerchantAuth(fn (string $token): Response => $this->request()
+            ->withToken($token)
+            ->post($this->baseUrl().'/api/cancelInvoice', [
+                'transactionNo' => $transactionNo,
+            ]));
         $body = $this->json($response);
 
         if (($body['success'] ?? null) !== true) {
@@ -81,11 +87,6 @@ final class PaylinkPaymentGateway implements PaymentGateway
         }
 
         [$profileNo, $apiKey, $lookupKey, $lookupValue] = $this->partnerConfiguration();
-        $token = $this->token(
-            'partner:'.hash('sha256', $profileNo),
-            '/api/partner/auth',
-            ['profileNo' => $profileNo, 'apiKey' => $apiKey, 'persistToken' => true],
-        );
 
         $url = sprintf(
             '%s/rest/partner/v2/merchant/%s/%s/refund',
@@ -93,10 +94,12 @@ final class PaylinkPaymentGateway implements PaymentGateway
             rawurlencode($lookupKey),
             rawurlencode($lookupValue),
         );
-        $response = $this->send(fn (): Response => $this->request()->withToken($token)->post($url, [
-            'orderNumber' => $orderNumber,
-            'refundReason' => $reason,
-        ]));
+        $response = $this->sendWithPartnerAuth(fn (string $token): Response => $this->request()
+            ->withToken($token)
+            ->post($url, [
+                'orderNumber' => $orderNumber,
+                'refundReason' => $reason,
+            ]));
         $body = $this->json($response);
 
         try {
@@ -113,22 +116,77 @@ final class PaylinkPaymentGateway implements PaymentGateway
         }
     }
 
-    private function merchantRequest(bool $retrySafeRead = false): PendingRequest
+    public function clearTokenCache(): void
+    {
+        try {
+            [$apiId] = $this->merchantConfiguration();
+            Cache::forget($this->tokenCacheKey('merchant:'.hash('sha256', $apiId)));
+        } catch (PaymentConfigurationException) {
+            // Intentionally ignored when merchant configuration is missing.
+        }
+
+        try {
+            [$profileNo] = $this->partnerConfiguration();
+            Cache::forget($this->tokenCacheKey('partner:'.hash('sha256', $profileNo)));
+        } catch (PaymentConfigurationException) {
+            // Intentionally ignored when partner configuration is missing.
+        }
+    }
+
+    /** @param callable(string $token): Response $callback */
+    private function sendWithMerchantAuth(callable $callback): Response
     {
         [$apiId, $secretKey] = $this->merchantConfiguration();
-        $token = $this->token(
-            'merchant:'.hash('sha256', $apiId),
-            '/api/auth',
-            ['apiId' => $apiId, 'secretKey' => $secretKey, 'persistToken' => true],
-        );
+        $scope = 'merchant:'.hash('sha256', $apiId);
+        $credentials = ['apiId' => $apiId, 'secretKey' => $secretKey, 'persistToken' => true];
+        $endpoint = '/api/auth';
 
-        return ($retrySafeRead ? $this->safeReadRequest() : $this->request())->withToken($token);
+        $token = $this->token($scope, $endpoint, $credentials);
+        $response = $this->send(fn (): Response => $callback($token));
+
+        if ($response->status() === 401 || $response->status() === 403) {
+            $freshToken = $this->token($scope, $endpoint, $credentials, forceFresh: true);
+            $response = $this->send(fn (): Response => $callback($freshToken));
+
+            if ($response->status() === 401 || $response->status() === 403) {
+                Cache::forget($this->tokenCacheKey($scope));
+            }
+        }
+
+        return $response;
+    }
+
+    /** @param callable(string $token): Response $callback */
+    private function sendWithPartnerAuth(callable $callback): Response
+    {
+        [$profileNo, $apiKey] = [$this->partnerConfiguration()[0], $this->partnerConfiguration()[1]];
+        $scope = 'partner:'.hash('sha256', $profileNo);
+        $credentials = ['profileNo' => $profileNo, 'apiKey' => $apiKey, 'persistToken' => true];
+        $endpoint = '/api/partner/auth';
+
+        $token = $this->token($scope, $endpoint, $credentials);
+        $response = $this->send(fn (): Response => $callback($token));
+
+        if ($response->status() === 401 || $response->status() === 403) {
+            $freshToken = $this->token($scope, $endpoint, $credentials, forceFresh: true);
+            $response = $this->send(fn (): Response => $callback($freshToken));
+
+            if ($response->status() === 401 || $response->status() === 403) {
+                Cache::forget($this->tokenCacheKey($scope));
+            }
+        }
+
+        return $response;
     }
 
     /** @param array<string, string|bool> $credentials */
-    private function token(string $scope, string $endpoint, array $credentials): string
+    private function token(string $scope, string $endpoint, array $credentials, bool $forceFresh = false): string
     {
-        $cacheKey = 'paylink:token:'.$this->environment().':'.$scope;
+        $cacheKey = $this->tokenCacheKey($scope);
+
+        if ($forceFresh) {
+            Cache::forget($cacheKey);
+        }
 
         return Cache::remember($cacheKey, self::MERCHANT_TOKEN_TTL_SECONDS, function () use ($endpoint, $credentials): string {
             $response = $this->send(fn (): Response => $this->request()->post($this->baseUrl().$endpoint, $credentials));
@@ -141,6 +199,11 @@ final class PaylinkPaymentGateway implements PaymentGateway
 
             return $token;
         });
+    }
+
+    private function tokenCacheKey(string $scope): string
+    {
+        return 'paylink:token:'.$this->environment().':'.$scope;
     }
 
     private function request(): PendingRequest

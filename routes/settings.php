@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -22,7 +21,6 @@ Route::middleware(['auth'])->group(function () use ($legacyAccountUrl) {
     Route::get('settings/profile', fn (Request $request) => redirect()->to(
         $legacyAccountUrl($request, 'profile.show'),
     ))->name('profile.edit');
-    Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
 
     Route::get('settings/security', fn (Request $request) => redirect()->to(
         $legacyAccountUrl($request, 'security.show'),

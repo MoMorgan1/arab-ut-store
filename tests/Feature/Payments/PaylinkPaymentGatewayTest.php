@@ -242,6 +242,64 @@ test('refund creation is never retried after an ambiguous upstream failure', fun
         ->toHaveCount(1);
 });
 
+test('a 401 or 403 unauthorized response clears the cached token and retries once with a fresh token', function (int $statusCode) {
+    $tokenCalls = 0;
+    Http::fake([
+        'https://restpilot.paylink.sa/api/auth' => function () use (&$tokenCalls) {
+            $tokenCalls++;
+
+            return Http::response(['id_token' => "merchant-token-{$tokenCalls}"]);
+        },
+        'https://restpilot.paylink.sa/api/getInvoice/*' => Http::sequence()
+            ->push(['error' => 'Unauthorized'], $statusCode)
+            ->push(paylinkInvoiceFixture()),
+    ]);
+
+    $invoice = app(PaylinkPaymentGateway::class)->getInvoice('1716194603030');
+
+    expect($invoice->transactionNo)->toBe('1716194603030')
+        ->and($tokenCalls)->toBe(2);
+
+    $authRequests = Http::recorded(fn (Request $request): bool => $request->url() === 'https://restpilot.paylink.sa/api/auth');
+    expect($authRequests)->toHaveCount(2);
+
+    $getInvoiceRequests = Http::recorded(fn (Request $request): bool => str_contains($request->url(), '/api/getInvoice/'))->values();
+    expect($getInvoiceRequests)->toHaveCount(2)
+        ->and($getInvoiceRequests->get(0)[0]->hasHeader('Authorization', 'Bearer merchant-token-1'))->toBeTrue()
+        ->and($getInvoiceRequests->get(1)[0]->hasHeader('Authorization', 'Bearer merchant-token-2'))->toBeTrue();
+})->with([401, 403]);
+
+test('consecutive 401 unauthorized responses evict the cached token and fail closed', function () {
+    Http::fake([
+        'https://restpilot.paylink.sa/api/auth' => Http::response(['id_token' => 'invalid-token']),
+        'https://restpilot.paylink.sa/api/getInvoice/*' => Http::response(['error' => 'Unauthorized'], 401),
+    ]);
+
+    expect(fn () => app(PaylinkPaymentGateway::class)->getInvoice('1716194603030'))
+        ->toThrow(PaymentGatewayException::class, 'Paylink is temporarily unavailable.');
+
+    $cacheKey = 'paylink:token:test:merchant:'.hash('sha256', 'APP_ID_TEST_ONLY');
+    expect(Cache::has($cacheKey))->toBeFalse();
+});
+
+test('payments:clear-paylink-tokens artisan command clears cached merchant and partner tokens', function () {
+    $merchantKey = 'paylink:token:test:merchant:'.hash('sha256', 'APP_ID_TEST_ONLY');
+    $partnerKey = 'paylink:token:test:partner:'.hash('sha256', '19039481');
+
+    Cache::put($merchantKey, 'cached-merchant-token', 1000);
+    Cache::put($partnerKey, 'cached-partner-token', 1000);
+
+    expect(Cache::has($merchantKey))->toBeTrue()
+        ->and(Cache::has($partnerKey))->toBeTrue();
+
+    $this->artisan('payments:clear-paylink-tokens')
+        ->expectsOutput('Paylink authentication token cache cleared.')
+        ->assertSuccessful();
+
+    expect(Cache::has($merchantKey))->toBeFalse()
+        ->and(Cache::has($partnerKey))->toBeFalse();
+});
+
 function paylinkInvoiceRequest(): PaymentInvoiceRequest
 {
     return new PaymentInvoiceRequest(

@@ -71,7 +71,10 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
         $this->configurePasswordResetUrls();
         $this->revokeTrustedDevicesOnCredentialChange();
-        $this->app->booted(fn () => $this->hardenTwoFactorManagementRoutes());
+        $this->app->booted(function (): void {
+            $this->hardenTwoFactorManagementRoutes();
+            $this->hardenAuthRoutes();
+        });
     }
 
     /**
@@ -194,6 +197,13 @@ class FortifyServiceProvider extends ServiceProvider
             Limit::perMinute(10)->by('verification-send-ip:'.$request->ip()),
         ]);
 
+        RateLimiter::for('register', fn (Request $request): Limit => Limit::perMinute(20)->by($request->ip()));
+
+        RateLimiter::for('password-reset', function (Request $request): Limit {
+            $email = Str::lower(trim((string) $request->input('email')));
+
+            return Limit::perMinute(3)->by(hash('sha256', $email.'|'.$request->ip()));
+        });
     }
 
     /** @return array<string, mixed> */
@@ -319,6 +329,37 @@ class FortifyServiceProvider extends ServiceProvider
                 EnsureActiveUser::class,
                 'throttle:two-factor-management',
             ]);
+        }
+    }
+
+    private function hardenAuthRoutes(): void
+    {
+        if ($this->app->routesAreCached()) {
+            return;
+        }
+
+        Route::getRoutes()->refreshNameLookups();
+
+        if (Features::enabled(Features::registration())) {
+            $registerRoute = Route::getRoutes()->getByName('register.store');
+
+            if ($registerRoute !== null) {
+                $registerRoute->middleware(['throttle:register']);
+            }
+        }
+
+        if (Features::enabled(Features::resetPasswords())) {
+            $passwordEmailRoute = Route::getRoutes()->getByName('password.email');
+
+            if ($passwordEmailRoute !== null) {
+                $passwordEmailRoute->middleware(['throttle:password-reset']);
+            }
+
+            $passwordUpdateRoute = Route::getRoutes()->getByName('password.update');
+
+            if ($passwordUpdateRoute !== null) {
+                $passwordUpdateRoute->middleware(['throttle:password-reset']);
+            }
         }
     }
 }

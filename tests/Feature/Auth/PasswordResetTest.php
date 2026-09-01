@@ -76,3 +76,42 @@ test('password cannot be reset with invalid token', function () {
 
     $response->assertSessionHasErrors('email');
 });
+
+test('password reset link requests are rate limited per email and ip', function (string $url) {
+    Notification::fake();
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 3; $i++) {
+        $this->post($url, ['email' => $user->email])
+            ->assertRedirect();
+    }
+
+    $this->post($url, ['email' => $user->email])
+        ->assertTooManyRequests();
+})->with([
+    'Fortify default route' => '/forgot-password',
+    'Localized English route' => '/en/forgot-password',
+]);
+
+test('password update requests are rate limited per email and ip', function (string $url) {
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 3; $i++) {
+        $this->post($url, [
+            'token' => 'some-token',
+            'email' => $user->email,
+            'password' => 'newpassword123',
+            'password_confirmation' => 'newpassword123',
+        ]);
+    }
+
+    $this->post($url, [
+        'token' => 'some-token',
+        'email' => $user->email,
+        'password' => 'newpassword123',
+        'password_confirmation' => 'newpassword123',
+    ])->assertTooManyRequests();
+})->with([
+    'Fortify default route' => '/reset-password',
+    'Localized English route' => '/en/reset-password',
+]);
