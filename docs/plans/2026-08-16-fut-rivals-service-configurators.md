@@ -1,5 +1,7 @@
 # FUT Champions and Rivals Service Configurators Implementation Plan
 
+**Status:** Shipped (2026-08-16)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship live Arabic/English FUT Champions and Division Rivals configurators with server-authoritative pricing, conditional encrypted account data, a private squad screenshot, cart/checkout integration, and owner-only post-order viewing.

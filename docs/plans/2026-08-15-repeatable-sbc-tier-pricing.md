@@ -1,5 +1,7 @@
 # Repeatable SBC Tier Pricing Implementation Plan
 
+**Status:** Shipped (2026-08-15)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add authoritative repeatable-SBC bundle pricing from the signed n8n snapshot through product selection, cart, checkout, and order storage, while enlarging the existing add-to-cart notice.

@@ -10,7 +10,7 @@ return [
 
     // Number of approved knowledge topics injected per turn. 0 disables
     // grounding and returns the assistant to prompt-only answers.
-    'knowledge_max_topics' => 3,
+    'knowledge_max_topics' => (int) env('AI_ASSISTANT_KNOWLEDGE_MAX_TOPICS', 3),
     'turn_debounce_ms' => env('AI_TURN_DEBOUNCE_MS', 1500),
     'max_context_messages' => env('AI_MAX_CONTEXT_MESSAGES', 24),
     'max_output_tokens' => env('AI_MAX_OUTPUT_TOKENS', 1000),

@@ -1,5 +1,7 @@
 # Instant Coins, Guest Cart, and Storefront Implementation Plan
 
+**Status:** Shipped (2026-08-10)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make every legal Coins amount show its exact price immediately, let guests securely complete the configurator and add to cart, claim that cart after authentication, and finish the approved WordPress-faithful storefront polish.

@@ -9,34 +9,19 @@ Provider secrets stay in n8n environment variables (`FFT_API_USER`,
 `FFT_API_KEY`, `UTT_API_KEY`, `N8N_PRICING_SECRET`, `OPS_WHATSAPP_TARGET`);
 this file contains none.
 
-## Superseded: 0.1-SAR display grain (2026-08-21)
+## Superseded: 0.1-SAR display grain and deleted exports (2026-08-21)
 
 Laravel rounds coins prices at a **0.1-SAR grain** instead of whole riyals
-(`CoinsPriceCalculator::DISPLAY_GRAIN_HALALAH = 10`). The original export in
-`workflow.json` carries the old whole-riyal math and must not be imported onto
-the new backend.
+(`CoinsPriceCalculator::DISPLAY_GRAIN_HALALAH = 10`). The original export
+`workflow.json` carried the old whole-riyal math, and `workflow-v2.3.json` carried
+pre-expanded quantities that fail on lower coin minimums. Both superseded exports
+have been deleted from this directory to prevent accidental imports.
 
-`workflow-v2.3.json` was the ready-to-import artifact at the time. **It is
-superseded by `workflow-v2.4.json`; do not import it.** Importing it now
-reverts both the live improvements and the anchors change. It is
-byte-identical to the production export except the pricing math inside the
-"Prepare Coins Snapshot" and "Validate Snapshot" code nodes:
+All exports in this directory use placeholder credential identifiers
+(`CONFIGURE_ARABUT_PRICING_API_CREDENTIAL_ID`, `CONFIGURE_TELEGRAM_CREDENTIAL_ID`)
+and environment expressions (`$env.OPS_TELEGRAM_CHAT_ID`).
 
-- All internal price computation moved to **halalah integers**, rounded
-  half-up to the 10-halalah display grid (`roundToDisplayGrain`), floored at
-  100 halalah.
-- Fast-delivery floors mirror Laravel exactly: percentage floor ×105%, the
-  per-million guarantee (`quantity * 500` term), and the visible gap
-  (`normal + 100`).
-- Exact overrides are now stored/validated as halalah multiples of 10
-  (matching Laravel's `>= 10 && % 10 !== 0` contract), so the override-grid
-  asymmetry noted below disappears once v2.3 is imported.
-
-Its import checklist has been removed. Following it today re-imports the
-expansion workflow, whose `increment` is 10,000 against a live rounding unit of
-5,000 - Laravel compares that strictly for both shapes, so every hourly run
-would 422 again and the 10,000-45,000 band would stay unpriced. Import
-`workflow-v2.4.json` instead; its steps are at the end of this file.
+Import `workflow-v2.4.json` instead; its steps are at the end of this file.
 
 Ordering rule: patched-n8n against old Laravel is safe; new-Laravel against
 the unpatched workflow is the only unsafe combination.
