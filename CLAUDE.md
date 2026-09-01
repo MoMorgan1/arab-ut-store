@@ -5,9 +5,15 @@ Design context and the UI workflow live in [.impeccable.md](.impeccable.md).
 
 ## Before you touch anything
 
-- **Discovery, planning and owner approval are hard gates.** See AGENTS.md.
-- **Frontend work has an extra gate**: inspect the existing implementation, load the
-  required design skills, and extend the established visual language rather than replacing it.
+- **New features go through Discovery, a plan, and owner approval.** See AGENTS.md.
+  Bug fixes and small changes skip those gates: state the root cause, fix it on a branch,
+  open the pull request.
+- **New or redesigned interfaces have an extra gate**: inspect the existing implementation,
+  load the required design skills, and extend the established visual language rather than
+  replacing it. Layout fixes and copy corrections keep the existing language and verify the
+  affected viewport only.
+- **Stop and ask only for consequential decisions**: money, permissions, data deletion or
+  migration, external service contracts, or customer-visible behavior. Decide the rest and say so.
 - **Assistant work**: read `docs/ai-assistant/STATUS.md`, then the canonical document linked
   from `docs/ai-assistant/README.md`. Historical plans never override the newest owner decision.
 
@@ -27,11 +33,11 @@ Worker-reported results are claims; run the checks yourself.
 
 ## Where things are
 
-| Looking for | Read |
-| --- | --- |
-| What the store sells, and its rules | `docs/product/` |
-| n8n and Paylink contracts | `docs/api/` |
-| Deploy, rollback, runbooks | `docs/operations/` |
-| The AI assistant | `docs/ai-assistant/` (start at `STATUS.md`) |
-| Why a past decision was made | `docs/decisions/` |
-| Admin dashboard conventions | `.agents/skills/arab-ut-admin/` |
+| Looking for                         | Read                                        |
+| ----------------------------------- | ------------------------------------------- |
+| What the store sells, and its rules | `docs/product/`                             |
+| n8n and Paylink contracts           | `docs/api/`                                 |
+| Deploy, rollback, runbooks          | `docs/operations/`                          |
+| The AI assistant                    | `docs/ai-assistant/` (start at `STATUS.md`) |
+| Why a past decision was made        | `docs/decisions/`                           |
+| Admin dashboard conventions         | `.agents/skills/arab-ut-admin/`             |

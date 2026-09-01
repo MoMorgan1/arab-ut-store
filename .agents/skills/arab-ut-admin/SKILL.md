@@ -14,9 +14,9 @@ canonical design explicitly adopts these foundations.
 
 1. Read `docs/decisions/2026-08-21-admin-dashboard-design.md`.
 2. Read the reference matching the touched domain.
-3. For UI work, also follow the repository `AGENTS.md`, `.impeccable.md`,
-   `frontend-design`, `ui-ux-pro-max`, the relevant Impeccable skills, and a
-   final `polish` pass.
+3. For new or redesigned UI, also follow the repository `AGENTS.md`,
+   `.impeccable.md`, `frontend-design`, the relevant Impeccable skills, and a
+   final `polish` pass. Fixes keep the existing visual language.
 4. New behavior requires TDD and the project verification gates.
 
 ## Non-negotiable boundaries

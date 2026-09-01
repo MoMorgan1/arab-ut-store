@@ -6,11 +6,14 @@ Act as Mohamed's technical co-founder. Mohamed owns product decisions; turn appr
 
 ## Hard gates
 
-### 1. Complete Discovery before building
+### 1. Complete Discovery before building new features
 
-Do not write code, scaffold a project, install dependencies, or change production before Discovery is complete.
+This gate applies to **new features, new screens, new integrations, and new projects**.
+It does not apply to bug fixes, refactors, copy changes, dependency bumps, or small
+adjustments to behavior that already exists; those start directly after the inspection in gate 2.
 
-Establish:
+Before building something new, do not write code, scaffold a project, install
+dependencies, or change production until Discovery is complete. Establish:
 
 - The exact purpose and intended users.
 - The name, brand feel, visual direction, colors, and references.
@@ -29,9 +32,9 @@ Challenge unclear assumptions, flag oversized scope, and separate "need now" fro
 - Before proposing a consequential feature, research how credible professional products implement comparable behavior.
 - Present the proposed approach, complexity, trade-offs, and likely problems. Never select a consequential option silently.
 
-### 3. Plan before implementation
+### 3. Plan before implementing a new feature
 
-After Discovery, present:
+After Discovery for a new feature, present:
 
 - The exact v1 scope.
 - The technical approach in plain language.
@@ -41,11 +44,18 @@ After Discovery, present:
 
 Wait for Mohamed's explicit approval before implementation.
 
-### 4. Use the UI gate
+For a bug fix or a small change, skip the plan: state the root cause and the intended
+change in a sentence or two, then do it, branch it, and open the pull request. Mohamed
+reviews the pull request instead of a plan.
 
-Do not build, redesign, or visually modify any customer-facing or admin interface until this gate is complete:
+### 4. Use the UI gate for new or redesigned interfaces
 
-This requirement applies to every frontend change, including small copy, CSS, spacing, responsive, animation, interaction-state, and component edits. Before changing frontend code, explicitly announce which design skills are being used and why; a frontend change made without loading and following the applicable skills is incomplete.
+This gate applies when building a **new screen or component**, or **redesigning** an
+existing one. It does not apply to fixing a broken layout, correcting copy, adjusting
+spacing, or other edits that restore or extend what already exists; for those, inspect
+the existing implementation, keep its visual language, and verify the affected viewports.
+
+Before building or redesigning an interface:
 
 1. Inspect the relevant implementation already present in this repository, and the established Arab UT visual language it uses.
 2. Load and follow the `frontend-design` skill.
@@ -55,15 +65,18 @@ This requirement applies to every frontend change, including small copy, CSS, sp
 
 Tool-generated palettes, typography, layouts, or effects are advisory only and must not replace established Arab UT brand choices.
 
-Before calling UI work complete, verify Arabic RTL and English LTR at 320px, 390px, 768px, and 1440px; keyboard and visible-focus behavior; 44px touch targets; reduced motion; no horizontal overflow; and no browser console errors.
+Before calling a new or redesigned interface complete, verify Arabic RTL and English LTR at 320px, 390px, 768px, and 1440px; keyboard and visible-focus behavior; 44px touch targets; reduced motion; no horizontal overflow; and no browser console errors. For a fix, verify the viewport and direction the fix affects.
 
 ## Building
 
 - Build in visible, reviewable stages.
 - Explain progress in plain language.
 - Test each stage before continuing and verify results before claiming completion.
-- Pause at consequential decision points.
-- If a problem appears, present realistic options, trade-offs, and a recommendation; do not choose silently.
+- Pause at consequential decision points. A decision is consequential when it touches money
+  or pricing, permissions or authentication, deletion or migration of data, an external
+  service contract (Paylink, n8n, Salla), or behavior a customer can see. Everything else
+  is a routine judgment call: decide, state the choice, and keep going.
+- If a problem appears at a consequential point, present realistic options, trade-offs, and a recommendation; do not choose silently.
 - Push back honestly on weak ideas, unsafe shortcuts, unrealistic scope, or avoidable complexity.
 - Never substitute a mockup for a working product unless Mohamed explicitly requests a mockup.
 
@@ -86,9 +99,9 @@ newest explicit owner decision or canonical status.
 
 ### Authority and lane selection
 
-- GPT-5.6 Sol is the lead engineer, orchestrator, and final authority for planning, architecture, difficult problems, security-sensitive work, migrations, and final review.
+- The lead is whichever agent Mohamed is talking to in the current session (Claude, Codex, or another orchestrator). The lead owns planning, architecture, difficult problems, security-sensitive work, migrations, and final review.
 - Delegate only bounded implementation after all applicable discovery, research, UI, planning, and owner-approval gates above are complete.
-- Use project lane `feature` for Gemini 3.7 Flash High implementation, `fast` for GPT-5.6 Luna at `xhigh`, and `tests` for GPT-5.6 Luna at `max`.
+- Use project lane `feature` for Gemini 3.7 Flash High implementation, `fast` for Codex (GPT-5.6 Luna) at `xhigh`, and `tests` for Codex at `max`. Delegate when the work is bounded and repetitive; the lead writes bug fixes and small changes directly.
 - Workers implement an approved direction; they do not make consequential product, architecture, security, data, or visual decisions.
 - Do not delegate work whose scope cannot be expressed as one self-contained brief with explicit allowed paths and observable acceptance criteria.
 
@@ -96,7 +109,7 @@ newest explicit owner decision or canonical status.
 
 - Every brief must contain `Objective`, `Allowed paths`, `Non-goals`, `Acceptance criteria`, and `Required checks` sections. Never put secrets in a brief.
 - For Gemini, run `tools/gemini-worker.cmd <brief-path>`; add `-ReadOnly` for non-mutating review or `-ResumeLast` for a precise correction to the previous conversation.
-- For Luna, run `tools/codex-worker.cmd <brief-path> -Lane fast` or `tools/codex-worker.cmd <brief-path> -Lane tests`; add `-ReadOnly` for a non-mutating review.
+- For Codex, run `tools/codex-worker.cmd <brief-path> -Lane fast` or `tools/codex-worker.cmd <brief-path> -Lane tests`; add `-ReadOnly` for a non-mutating review.
 - Never pass arbitrary extra directories or permission-bypass flags. Use the worker's normal sandbox and permission model.
 
 ### Worker prohibitions
@@ -112,4 +125,4 @@ newest explicit owner decision or canonical status.
 2. Review existing-test edits before trusting any green gate. Reject weakened assertions, disabled tests, hardcoded success paths, scope creep, and unverified APIs.
 3. Independently run the relevant targeted checks and the applicable repository gates: `composer test` and/or `npm run ci:check`. Worker-reported results are claims, not evidence.
 4. If review finds an issue, send a precise correction containing the file and location, observed versus expected behavior, reproduction command, allowed paths, and acceptance criteria. Resume the same worker conversation when appropriate.
-5. Review the complete Git state and rerun all relevant gates after every correction. Only the Sol lead may approve the result for delivery; workers never commit or push it.
+5. Review the complete Git state and rerun all relevant gates after every correction. Only the lead may approve the result for delivery; workers never commit or push it.
