@@ -11102,7 +11102,7 @@ html.admin-document {
 
 .account-alert-banner__action {
     display: inline-flex;
-    min-height: 2.25rem;
+    min-height: 2.75rem;
     align-items: center;
     justify-content: center;
     border-radius: 0.5rem;
@@ -11112,11 +11112,43 @@ html.admin-document {
     font-size: 0.82rem;
     font-weight: 800;
     text-decoration: none;
+    cursor: pointer;
     transition: background-color 160ms ease;
 }
 
 .account-alert-banner__action:hover {
     background: #facc15;
+}
+
+.account-alert-banner__action:focus-visible {
+    outline: 2px solid #eab308;
+    outline-offset: 2px;
+}
+
+.account-alert-banner__action:disabled {
+    opacity: 0.7;
+    cursor: default;
+}
+
+.account-alert-banner__resend {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    margin: 0;
+    color: var(--arabut-muted);
+    font-size: 0.82rem;
+}
+
+.account-alert-banner__sent {
+    margin: 0.35rem 0 0;
+    color: #eab308;
+    font-size: 0.82rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .account-alert-banner__action {
+        transition: none;
+    }
 }
 
 .account-overview__section-heading {

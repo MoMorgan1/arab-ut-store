@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Customers\CustomerNumber;
 use App\Enums\UserRole;
 use App\Models\Concerns\HasPublicUlid;
+use App\Notifications\VerifyEmailNotification;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Appends;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -43,7 +44,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 #[Appends(['name'])]
 #[Fillable(['first_name', 'last_name', 'email', 'phone', 'password', 'preferred_locale', 'display_currency'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasPublicUlid, Notifiable, TwoFactorAuthenticatable;
@@ -60,6 +61,22 @@ class User extends Authenticatable
                 $user->customer_number = CustomerNumber::generate();
             }
         });
+    }
+
+    /**
+     * Verification mail follows the account holder's preferred locale, and
+     * WhatsApp-first customers without an email address have nothing to
+     * verify, so the send is a silent no-op for them.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        if ($this->email === null) {
+            return;
+        }
+
+        $this->notify(new VerifyEmailNotification(
+            $this->preferred_locale === 'en' ? 'en' : 'ar',
+        ));
     }
 
     /** @return Attribute<string, never> */

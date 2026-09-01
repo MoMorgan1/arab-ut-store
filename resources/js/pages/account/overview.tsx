@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     ArrowRight,
@@ -6,11 +6,13 @@ import {
     Sparkles,
     Trophy,
 } from 'lucide-react';
+import { useState } from 'react';
 
 import AccountMetric from '@/components/account/account-metric';
 import AccountOrderCard from '@/components/account/account-order-card';
 import AccountOrderList from '@/components/account/account-order-list';
 import AccountOrderRow from '@/components/account/account-order-row';
+import { useResendCountdown } from '@/hooks/use-resend-countdown';
 import MyAccountLayout from '@/layouts/my-account-layout';
 import { formatAccountMoney } from '@/lib/account-money';
 import type { AccountOverviewPageProps } from '@/types/account';
@@ -21,6 +23,30 @@ export default function AccountOverview() {
     const Arrow = props.locale === 'ar' ? ArrowLeft : ArrowRight;
     const numberFormatter = new Intl.NumberFormat(props.locale);
     const hasOrders = props.summary.orderCount > 0;
+
+    const user = props.auth?.user;
+    // WhatsApp-first customers may have no email at all: the banner must only
+    // target someone who has an address that is still unverified.
+    const hasEmail = Boolean(user?.email);
+    const isEmailUnverified = hasEmail && user?.email_verified_at === null;
+    const emailAlert = props.accountUi.email_alert;
+    const verificationSendUrl =
+        props.locale === 'en' ? '/en/verify-email/send' : '/verify-email/send';
+    const [isSendingVerification, setIsSendingVerification] = useState(false);
+    const countdown = useResendCountdown(60);
+
+    function sendVerificationEmail() {
+        setIsSendingVerification(true);
+        router.post(
+            verificationSendUrl,
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () => countdown.start(60),
+                onFinish: () => setIsSendingVerification(false),
+            },
+        );
+    }
 
     // Filter recent orders to ensure activeOrder is never duplicated
     const visibleRecentOrders = props.recentOrders
@@ -46,15 +72,13 @@ export default function AccountOverview() {
         : (props.accountUi.overview.current_order ??
           props.accountUi.overview.active_order);
 
-    const isEmailUnverified = props.auth?.user?.email_verified_at === null;
-
     return (
         <MyAccountLayout {...props} current="overview" currentUrl={inertia.url}>
             <Head title={props.accountUi.page_title} />
             <div className="account-overview">
-                {isEmailUnverified && props.accountUi.email_alert ? (
+                {isEmailUnverified && emailAlert ? (
                     <aside
-                        aria-label={props.accountUi.email_alert.title}
+                        aria-label={emailAlert.title}
                         className="account-alert-banner"
                     >
                         <div className="account-alert-banner__content">
@@ -65,22 +89,48 @@ export default function AccountOverview() {
                                 <ShieldAlert />
                             </span>
                             <div>
-                                <strong>
-                                    {props.accountUi.email_alert.title}
-                                </strong>
-                                <p>{props.accountUi.email_alert.desc}</p>
+                                <strong>{emailAlert.title}</strong>
+                                <p>{emailAlert.desc}</p>
+                                {props.status ===
+                                'verification-link-sent' ? (
+                                    <p
+                                        className="account-alert-banner__sent"
+                                        role="status"
+                                    >
+                                        {emailAlert.sent ??
+                                            (props.locale === 'en'
+                                                ? 'We sent a verification link to your email.'
+                                                : 'أرسلنا رابط التوثيق إلى بريدك.')}
+                                    </p>
+                                ) : null}
                             </div>
                         </div>
-                        <Link
-                            className="account-alert-banner__action"
-                            href={
-                                props.locale === 'en'
-                                    ? '/en/verify-email'
-                                    : '/verify-email'
-                            }
-                        >
-                            {props.accountUi.email_alert.action}
-                        </Link>
+                        {countdown.isActive ? (
+                            <p
+                                className="account-alert-banner__resend"
+                                role="status"
+                            >
+                                {(
+                                    emailAlert.resend_in ??
+                                    (props.locale === 'en'
+                                        ? 'Resend in :seconds s'
+                                        : 'إعادة الإرسال بعد :seconds ث')
+                                ).replace(
+                                    ':seconds',
+                                    String(countdown.countdown),
+                                )}
+                            </p>
+                        ) : (
+                            <button
+                                className="account-alert-banner__action"
+                                data-testid="send-verification-email"
+                                disabled={isSendingVerification}
+                                onClick={sendVerificationEmail}
+                                type="button"
+                            >
+                                {emailAlert.action}
+                            </button>
+                        )}
                     </aside>
                 ) : null}
 

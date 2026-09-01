@@ -16,6 +16,7 @@ declare module '@inertiajs/core' {
             locale?: string;
             chat?: ChatSharedProps;
             sidebarOpen: boolean;
+            status?: string | null;
             [key: string]: unknown;
         };
     }

@@ -77,6 +77,8 @@ export type AccountTranslations = {
         title: string;
         desc: string;
         action: string;
+        sent?: string;
+        resend_in?: string;
     };
     navigation: {
         label: string;

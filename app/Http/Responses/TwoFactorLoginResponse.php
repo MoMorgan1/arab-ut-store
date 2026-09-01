@@ -22,6 +22,10 @@ final class TwoFactorLoginResponse implements TwoFactorLoginResponseContract
         /** @var User|null $user */
         $user = $request->user();
 
+        if ($request->hasSession()) {
+            $request->session()->put('auth.two_factor_confirmed_at', now()->timestamp);
+        }
+
         $target = $user !== null && in_array($user->role, [UserRole::Admin, UserRole::Staff], true)
             ? route('admin.overview')
             : ($user !== null ? $this->accountOverviewUrl->for($user) : '/');

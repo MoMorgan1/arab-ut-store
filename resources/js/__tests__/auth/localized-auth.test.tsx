@@ -183,6 +183,17 @@ const arabicUi = {
         invalid_recovery_code: 'رمز الاسترداد غير صحيح أو تم استخدامه.',
         submit: 'تأكيد الدخول',
     },
+    verify_email: {
+        head_title: 'توثيق البريد الإلكتروني',
+        title: 'وثّق بريدك الإلكتروني',
+        description:
+            'أرسلنا رابط توثيق إلى بريدك. افتح الرسالة واضغط الزر لتأكيد ملكية البريد.',
+        submit: 'إعادة إرسال الرابط',
+        resend_in: 'إعادة الإرسال بعد :seconds ث',
+        sent: 'تم إرسال رابط التوثيق إلى بريدك.',
+        login_prompt: 'تحتاج مساعدة؟',
+        login_link: 'تواصل مع الدعم',
+    },
 } satisfies AuthUiTranslations;
 
 const englishUi = {
