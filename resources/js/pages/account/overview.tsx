@@ -91,8 +91,7 @@ export default function AccountOverview() {
                             <div>
                                 <strong>{emailAlert.title}</strong>
                                 <p>{emailAlert.desc}</p>
-                                {props.status ===
-                                'verification-link-sent' ? (
+                                {props.status === 'verification-link-sent' ? (
                                     <p
                                         className="account-alert-banner__sent"
                                         role="status"

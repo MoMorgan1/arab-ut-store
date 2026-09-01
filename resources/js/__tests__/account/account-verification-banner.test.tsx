@@ -44,7 +44,8 @@ const mockPage = vi.hoisted(() => ({
                 browse_services: 'تصفح الخدمات',
                 loyalty_remaining: 'تبقى :amount للوصول إلى فئة :tier.',
                 loyalty_complete: 'وصلت إلى أعلى فئة ولاء متاحة.',
-                attention_description: 'نحتاج بيانات دخول الحساب لإكمال التنفيذ.',
+                attention_description:
+                    'نحتاج بيانات دخول الحساب لإكمال التنفيذ.',
             },
             actions: {
                 view_order: 'عرض الطلب',
@@ -178,9 +179,7 @@ it('never shows the banner for a customer without an email address', () => {
     expect(
         screen.queryByRole('button', { name: 'إرسال رابط التوثيق' }),
     ).not.toBeInTheDocument();
-    expect(
-        screen.queryByText('وثّق بريدك الإلكتروني'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('وثّق بريدك الإلكتروني')).not.toBeInTheDocument();
 });
 
 it('never shows the banner once the email is verified', () => {

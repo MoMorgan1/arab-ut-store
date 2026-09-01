@@ -59,8 +59,14 @@ export default function VerifyEmail({ authUi, status }: Props) {
             </Button>
 
             {countdown.isActive ? (
-                <p role="status" className="text-center text-sm text-muted-foreground">
-                    {copy.resend_in.replace(':seconds', String(countdown.countdown))}
+                <p
+                    role="status"
+                    className="text-center text-sm text-muted-foreground"
+                >
+                    {copy.resend_in.replace(
+                        ':seconds',
+                        String(countdown.countdown),
+                    )}
                 </p>
             ) : null}
 

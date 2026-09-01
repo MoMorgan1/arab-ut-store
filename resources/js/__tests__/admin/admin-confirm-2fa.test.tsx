@@ -32,13 +32,15 @@ const mockAdminUi: AdminTranslations = {
     confirm2fa: {
         headTitle: 'Admin Two-Factor Verification',
         title: 'Confirm Authenticator Code',
-        description: 'Enter the 6-digit verification code from your authenticator app.',
+        description:
+            'Enter the 6-digit verification code from your authenticator app.',
         code: 'Authenticator code',
         recoveryCode: 'Recovery code',
         useRecoveryCode: 'Use a recovery code',
         useAuthenticatorCode: 'Use an authenticator code',
         invalidCode: 'The code is invalid or has expired.',
-        invalidRecoveryCode: 'The recovery code is invalid or has already been used.',
+        invalidRecoveryCode:
+            'The recovery code is invalid or has already been used.',
         submit: 'Verify and continue',
         submitting: 'Verifying…',
         logout: 'Log out',
@@ -65,14 +67,24 @@ describe('AdminConfirmTwoFactor', () => {
             />,
         );
 
-        expect(screen.getByText('Confirm Authenticator Code')).toBeInTheDocument();
         expect(
-            screen.getByText('Enter the 6-digit verification code from your authenticator app.'),
+            screen.getByText('Confirm Authenticator Code'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'Enter the 6-digit verification code from your authenticator app.',
+            ),
         ).toBeInTheDocument();
         expect(screen.getByLabelText('Authenticator code')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Use a recovery code' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Verify and continue' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Use a recovery code' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Verify and continue' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Log out' }),
+        ).toBeInTheDocument();
     });
 
     it('toggles between authenticator code and recovery code mode', () => {
@@ -86,16 +98,22 @@ describe('AdminConfirmTwoFactor', () => {
             />,
         );
 
-        const toggleButton = screen.getByRole('button', { name: 'Use a recovery code' });
+        const toggleButton = screen.getByRole('button', {
+            name: 'Use a recovery code',
+        });
         fireEvent.click(toggleButton);
 
         expect(screen.getByLabelText('Recovery code')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Use an authenticator code' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Use an authenticator code' }),
+        ).toBeInTheDocument();
         expect(mockReset).toHaveBeenCalled();
         expect(mockClearErrors).toHaveBeenCalled();
 
         // Toggle back
-        fireEvent.click(screen.getByRole('button', { name: 'Use an authenticator code' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Use an authenticator code' }),
+        );
         expect(screen.getByLabelText('Authenticator code')).toBeInTheDocument();
     });
 
@@ -110,7 +128,9 @@ describe('AdminConfirmTwoFactor', () => {
             />,
         );
 
-        const submitButton = screen.getByRole('button', { name: 'Verify and continue' });
+        const submitButton = screen.getByRole('button', {
+            name: 'Verify and continue',
+        });
         fireEvent.submit(submitButton.closest('form')!);
 
         expect(mockPost).toHaveBeenCalledWith(
