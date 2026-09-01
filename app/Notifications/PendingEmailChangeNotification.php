@@ -25,7 +25,7 @@ final class PendingEmailChangeNotification extends Notification
     {
         if ($this->messageLocale === 'ar') {
             return (new MailMessage)
-                ->subject('تأكيد بريدك الجديد في عرب ألتميت')
+                ->subject('تأكيد بريدك الجديد في عرب التيميت')
                 ->line('استخدم الزر التالي لتأكيد بريدك الإلكتروني الجديد. سيظل بريدك الحالي فعالًا حتى يتم التأكيد.')
                 ->action('تأكيد البريد الجديد', $this->verificationUrl)
                 ->line('إذا لم تطلب هذا التغيير، تجاهل الرسالة وتواصل مع الدعم.');

@@ -22,7 +22,7 @@ final class EmailChangedNotification extends Notification
     {
         if ($this->messageLocale === 'ar') {
             return (new MailMessage)
-                ->subject('تم تغيير بريد حسابك في عرب ألتميت')
+                ->subject('تم تغيير بريد حسابك في عرب التيميت')
                 ->line('تم تأكيد بريد إلكتروني جديد لحسابك.')
                 ->line('إذا لم تقم بهذا التغيير، تواصل مع الدعم فورًا.');
         }

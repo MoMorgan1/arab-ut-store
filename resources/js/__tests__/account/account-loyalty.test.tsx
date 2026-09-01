@@ -180,7 +180,7 @@ function loyaltyProps(): AccountLoyaltyPageProps {
             payments: [],
         },
         ui: {
-            brand: 'عرب ألتميت',
+            brand: 'عرب التيميت',
             home_title: 'Home',
             cart_added: {
                 title: 'تمت الإضافة',
