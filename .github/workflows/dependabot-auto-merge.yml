@@ -1,0 +1,37 @@
+name: dependabot-auto-merge
+
+# Merges a Dependabot GitHub Actions bump once the tests workflow has passed
+# on that exact head commit. It never merges on a red or cancelled run, and it
+# only touches the github_actions group: application dependency bumps still
+# need a human.
+on:
+  workflow_run:
+    workflows: [tests]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.actor.login == 'dependabot[bot]' &&
+      startsWith(github.event.workflow_run.head_branch, 'dependabot/github_actions/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge the pull request for this head commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          number=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$HEAD_BRANCH" --state open --json number,headRefOid \
+            --jq ".[] | select(.headRefOid == \"$HEAD_SHA\") | .number")
+          if [ -z "$number" ]; then
+            echo "No open PR whose head is $HEAD_SHA on $HEAD_BRANCH; nothing to merge."
+            exit 0
+          fi
+          gh pr merge "$number" --repo "$GITHUB_REPOSITORY" --merge --delete-branch

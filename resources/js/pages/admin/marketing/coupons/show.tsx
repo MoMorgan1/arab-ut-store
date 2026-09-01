@@ -19,9 +19,7 @@ import { useMemo, useState } from 'react';
 
 import AdminBadge from '@/components/admin/admin-badge';
 import type { AdminBadgeVariant } from '@/components/admin/admin-badge';
-import AdminMobileTabBar from '@/components/admin/admin-mobile-tabbar';
 import { formatAdminMoney } from '@/components/admin/admin-money';
-import AdminSidebar from '@/components/admin/admin-sidebar';
 import AdminCouponDrawer from '@/components/admin/coupons/admin-coupon-drawer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -216,469 +214,435 @@ export default function AdminCouponDetailPage() {
     };
 
     return (
-        <div className="admin-document-layout" dir="ltr">
+        <>
             <Head title={`${coupon.code} — ${copy.headTitle}`} />
-            <AdminSidebar
-                adminIdentity={props.adminIdentity}
-                adminUi={props.adminUi}
-                current="marketingCoupons"
-                direction={props.direction}
-                logoutUrl={props.logoutUrl}
-                navigation={props.adminNavigation}
-            />
 
-            <main className="admin-main">
-                <article className="space-y-6" dir={props.direction}>
-                    {/* Header */}
-                    <header className="flex flex-col gap-4 border-b border-border pb-5">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Link
-                                className="inline-flex min-h-11 items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-                                href={props.listUrl}
-                            >
-                                <ArrowLeft
-                                    aria-hidden="true"
-                                    className="size-4"
-                                />
-                                <span>{copy.backToCoupons}</span>
-                            </Link>
-                        </div>
+            <article className="space-y-6" dir={props.direction}>
+                {/* Header */}
+                <header className="flex flex-col gap-4 border-b border-border pb-5">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Link
+                            className="inline-flex min-h-11 items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                            href={props.listUrl}
+                        >
+                            <ArrowLeft aria-hidden="true" className="size-4" />
+                            <span>{copy.backToCoupons}</span>
+                        </Link>
+                    </div>
 
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex flex-col gap-1.5">
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <h1 className="font-mono text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-                                        {coupon.code}
-                                    </h1>
-                                    <AdminBadge
-                                        icon={badge.icon}
-                                        variant={badge.variant}
-                                    >
-                                        {badge.label}
-                                    </AdminBadge>
-                                </div>
-                                {coupon.descriptionEn ||
-                                coupon.descriptionAr ? (
-                                    <p className="text-sm text-muted-foreground">
-                                        {coupon.descriptionEn ||
-                                            coupon.descriptionAr}
-                                    </p>
-                                ) : null}
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-1.5">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <h1 className="font-mono text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+                                    {coupon.code}
+                                </h1>
+                                <AdminBadge
+                                    icon={badge.icon}
+                                    variant={badge.variant}
+                                >
+                                    {badge.label}
+                                </AdminBadge>
                             </div>
-
-                            {/* Header Actions */}
-                            {canManage ? (
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Button
-                                        className="min-h-11 gap-1.5 text-xs"
-                                        onClick={requestDuplicate}
-                                        type="button"
-                                        variant="outline"
-                                    >
-                                        <Copy
-                                            aria-hidden="true"
-                                            className="size-4"
-                                        />
-                                        <span>{copy.duplicateButton}</span>
-                                    </Button>
-
-                                    <Button
-                                        className={`min-h-11 gap-1.5 text-xs ${
-                                            coupon.isActive
-                                                ? 'border-status-warning/40 text-status-warning hover:bg-status-warning/10'
-                                                : 'border-status-success/40 text-status-success hover:bg-status-success/10'
-                                        }`}
-                                        onClick={requestToggle}
-                                        type="button"
-                                        variant="outline"
-                                    >
-                                        {coupon.isActive ? (
-                                            <>
-                                                <Pause
-                                                    aria-hidden="true"
-                                                    className="size-4"
-                                                />
-                                                <span>{copy.pauseButton}</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Play
-                                                    aria-hidden="true"
-                                                    className="size-4"
-                                                />
-                                                <span>{copy.resumeButton}</span>
-                                            </>
-                                        )}
-                                    </Button>
-
-                                    <Button
-                                        className="min-h-11 gap-1.5 text-xs"
-                                        onClick={() => setEditDrawerOpen(true)}
-                                        type="button"
-                                    >
-                                        <Edit
-                                            aria-hidden="true"
-                                            className="size-4"
-                                        />
-                                        <span>{copy.editButton}</span>
-                                    </Button>
-                                </div>
+                            {coupon.descriptionEn || coupon.descriptionAr ? (
+                                <p className="text-sm text-muted-foreground">
+                                    {coupon.descriptionEn ||
+                                        coupon.descriptionAr}
+                                </p>
                             ) : null}
                         </div>
-                    </header>
 
-                    {actionMessage ? (
-                        <Alert
-                            variant={
-                                actionMessage.type === 'error'
-                                    ? 'destructive'
-                                    : 'default'
-                            }
-                        >
-                            <AlertDescription>
-                                {actionMessage.text}
-                            </AlertDescription>
-                        </Alert>
-                    ) : null}
-
-                    {/* KPI Strip */}
-                    <section aria-label={copy.performanceTitle}>
-                        <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-                            {/* KPI 1: Redemptions */}
-                            <div className="flex flex-col justify-between gap-1.5 rounded-xl border border-border bg-card p-4">
-                                <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
-                                    <ShoppingBag
+                        {/* Header Actions */}
+                        {canManage ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                    className="min-h-11 gap-1.5 text-xs"
+                                    onClick={requestDuplicate}
+                                    type="button"
+                                    variant="outline"
+                                >
+                                    <Copy
                                         aria-hidden="true"
-                                        className="size-4 shrink-0 text-primary"
+                                        className="size-4"
                                     />
-                                    <span className="truncate">
-                                        {copy.kpiRedemptions}
-                                    </span>
-                                </dt>
-                                <dd className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl lg:text-3xl">
-                                    {kpis.usageLimit !== null
-                                        ? `${kpis.usedCount} / ${kpis.usageLimit}`
-                                        : `${kpis.usedCount} / ∞`}
-                                </dd>
-                                {kpis.usageLimit !== null ? (
-                                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                                        <div
-                                            className={`h-full ${
-                                                usagePercent >= 100
-                                                    ? 'bg-status-danger'
-                                                    : usagePercent >= 80
-                                                      ? 'bg-status-warning'
-                                                      : 'bg-primary'
-                                            }`}
-                                            style={{
-                                                width: `${usagePercent}%`,
-                                            }}
-                                        />
-                                    </div>
-                                ) : (
-                                    <span className="text-[11px] text-muted-foreground">
-                                        {copy.unlimited}
-                                    </span>
-                                )}
-                            </div>
+                                    <span>{copy.duplicateButton}</span>
+                                </Button>
 
-                            {/* KPI 2: Unique Customers */}
-                            <div className="flex flex-col justify-between gap-1.5 rounded-xl border border-border bg-card p-4">
-                                <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
-                                    <Users
-                                        aria-hidden="true"
-                                        className="size-4 shrink-0 text-primary"
-                                    />
-                                    <span className="truncate">
-                                        {copy.kpiUniqueCustomers}
-                                    </span>
-                                </dt>
-                                <dd className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl lg:text-3xl">
-                                    {kpis.uniqueCustomers}
-                                </dd>
-                                <span className="text-[11px] text-muted-foreground">
-                                    {copy.kpiPaidOrdersNote}
-                                </span>
-                            </div>
-
-                            {/* KPI 3: Revenue Attributed */}
-                            <div className="flex flex-col justify-between gap-1.5 rounded-xl border border-border bg-card p-4">
-                                <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
-                                    <CircleDollarSign
-                                        aria-hidden="true"
-                                        className="size-4 shrink-0 text-primary"
-                                    />
-                                    <span className="truncate">
-                                        {copy.kpiRevenueAttributed}
-                                    </span>
-                                </dt>
-                                <dd className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl lg:text-3xl">
-                                    {formatAdminMoney(
-                                        kpis.revenueAttributed,
-                                        props.locale,
+                                <Button
+                                    className={`min-h-11 gap-1.5 text-xs ${
+                                        coupon.isActive
+                                            ? 'border-status-warning/40 text-status-warning hover:bg-status-warning/10'
+                                            : 'border-status-success/40 text-status-success hover:bg-status-success/10'
+                                    }`}
+                                    onClick={requestToggle}
+                                    type="button"
+                                    variant="outline"
+                                >
+                                    {coupon.isActive ? (
+                                        <>
+                                            <Pause
+                                                aria-hidden="true"
+                                                className="size-4"
+                                            />
+                                            <span>{copy.pauseButton}</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Play
+                                                aria-hidden="true"
+                                                className="size-4"
+                                            />
+                                            <span>{copy.resumeButton}</span>
+                                        </>
                                     )}
-                                </dd>
-                                <span className="text-[11px] text-muted-foreground">
-                                    {copy.kpiPaidOrdersNote}
-                                </span>
-                            </div>
+                                </Button>
 
-                            {/* KPI 4: Total Discount Given */}
-                            <div className="flex flex-col justify-between gap-1.5 rounded-xl border border-border bg-card p-4">
-                                <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
-                                    <CircleDollarSign
+                                <Button
+                                    className="min-h-11 gap-1.5 text-xs"
+                                    onClick={() => setEditDrawerOpen(true)}
+                                    type="button"
+                                >
+                                    <Edit
                                         aria-hidden="true"
-                                        className="size-4 shrink-0 text-primary"
+                                        className="size-4"
                                     />
-                                    <span className="truncate">
-                                        {copy.kpiTotalDiscount}
-                                    </span>
-                                </dt>
-                                <dd className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl lg:text-3xl">
-                                    {formatAdminMoney(
-                                        kpis.totalDiscountGiven,
-                                        props.locale,
-                                    )}
-                                </dd>
-                                <span className="text-[11px] text-muted-foreground">
-                                    {copy.kpiPaidOrdersNote}
+                                    <span>{copy.editButton}</span>
+                                </Button>
+                            </div>
+                        ) : null}
+                    </div>
+                </header>
+
+                {actionMessage ? (
+                    <Alert
+                        variant={
+                            actionMessage.type === 'error'
+                                ? 'destructive'
+                                : 'default'
+                        }
+                    >
+                        <AlertDescription>
+                            {actionMessage.text}
+                        </AlertDescription>
+                    </Alert>
+                ) : null}
+
+                {/* KPI Strip */}
+                <section aria-label={copy.performanceTitle}>
+                    <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                        {/* KPI 1: Redemptions */}
+                        <div className="flex flex-col justify-between gap-1.5 rounded-xl border border-border bg-card p-4">
+                            <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
+                                <ShoppingBag
+                                    aria-hidden="true"
+                                    className="size-4 shrink-0 text-primary"
+                                />
+                                <span className="truncate">
+                                    {copy.kpiRedemptions}
                                 </span>
-                            </div>
-                        </dl>
-                    </section>
-
-                    {/* Released Redemptions Notice */}
-                    {kpis.releasedRedemptionsCount > 0 ? (
-                        <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/10 p-4 text-xs leading-relaxed text-foreground">
-                            <Info
-                                aria-hidden="true"
-                                className="mt-0.5 size-4 shrink-0 text-primary"
-                            />
-                            <div className="flex flex-col gap-0.5">
-                                <p className="font-semibold text-primary">
-                                    {copy.releasedNotice.replace(
-                                        ':count',
-                                        String(kpis.releasedRedemptionsCount),
-                                    )}
-                                </p>
-                                <p className="text-muted-foreground">
-                                    {copy.cancelledReleasesRedemptionHelp}
-                                </p>
-                            </div>
-                        </div>
-                    ) : null}
-
-                    {/* Grid: Daily Chart + Rules Summary */}
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-                        {/* Redemptions over time chart */}
-                        <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 lg:col-span-7">
-                            <h2 className="text-base font-bold tracking-tight text-foreground">
-                                {copy.chartTitle}
-                            </h2>
-
-                            {props.chart && props.chart.length > 0 ? (
-                                <div className="flex flex-col gap-3">
+                            </dt>
+                            <dd className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl lg:text-3xl">
+                                {kpis.usageLimit !== null
+                                    ? `${kpis.usedCount} / ${kpis.usageLimit}`
+                                    : `${kpis.usedCount} / ∞`}
+                            </dd>
+                            {kpis.usageLimit !== null ? (
+                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                                     <div
-                                        aria-label={copy.chartTitle}
-                                        className="flex h-48 items-end gap-2 overflow-x-auto pt-6 pb-2"
-                                        role="img"
-                                    >
-                                        {props.chart.map((point) => {
-                                            const barHeightPercent = Math.max(
-                                                12,
-                                                Math.round(
-                                                    (point.redemptions /
-                                                        maxDailyRedemptions) *
-                                                        100,
-                                                ),
-                                            );
-
-                                            return (
-                                                <div
-                                                    className="group relative flex min-w-[28px] flex-1 flex-col items-center gap-1"
-                                                    key={point.date}
-                                                >
-                                                    {/* Tooltip */}
-                                                    <div className="pointer-events-none absolute -top-10 z-10 hidden rounded-md border border-border bg-popover px-2 py-1 text-[11px] font-medium whitespace-nowrap text-popover-foreground shadow-md group-hover:block">
-                                                        {point.date}:{' '}
-                                                        {point.redemptions}{' '}
-                                                        {copy.kpiRedemptions}
-                                                    </div>
-                                                    <div
-                                                        className="w-full rounded-t-sm bg-primary/80 transition-all hover:bg-primary"
-                                                        style={{
-                                                            height: `${barHeightPercent}%`,
-                                                        }}
-                                                    />
-                                                    <span className="text-[10px] text-muted-foreground tabular-nums">
-                                                        {point.date.slice(5)}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                        className={`h-full ${
+                                            usagePercent >= 100
+                                                ? 'bg-status-danger'
+                                                : usagePercent >= 80
+                                                  ? 'bg-status-warning'
+                                                  : 'bg-primary'
+                                        }`}
+                                        style={{
+                                            width: `${usagePercent}%`,
+                                        }}
+                                    />
                                 </div>
                             ) : (
-                                <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-border text-center text-xs text-muted-foreground">
-                                    {copy.noChartData}
-                                </div>
+                                <span className="text-[11px] text-muted-foreground">
+                                    {copy.unlimited}
+                                </span>
                             )}
                         </div>
 
-                        {/* Rules in force summary list */}
-                        <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 lg:col-span-5">
-                            <h2 className="text-base font-bold tracking-tight text-foreground">
-                                {copy.rulesTitle}
-                            </h2>
-                            <dl className="divide-y divide-border/60 text-xs">
-                                {props.rules.map((rule) => (
-                                    <div
-                                        className="flex flex-col gap-0.5 py-2.5 first:pt-0 last:pb-0"
-                                        key={rule.key}
-                                    >
-                                        <dt className="font-medium text-muted-foreground">
-                                            {rule.label}
-                                        </dt>
-                                        <dd className="font-semibold text-foreground">
-                                            {rule.value}
-                                        </dd>
-                                        {rule.description ? (
-                                            <p className="text-[11px] text-muted-foreground">
-                                                {rule.description}
-                                            </p>
-                                        ) : null}
-                                    </div>
-                                ))}
-                            </dl>
+                        {/* KPI 2: Unique Customers */}
+                        <div className="flex flex-col justify-between gap-1.5 rounded-xl border border-border bg-card p-4">
+                            <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
+                                <Users
+                                    aria-hidden="true"
+                                    className="size-4 shrink-0 text-primary"
+                                />
+                                <span className="truncate">
+                                    {copy.kpiUniqueCustomers}
+                                </span>
+                            </dt>
+                            <dd className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl lg:text-3xl">
+                                {kpis.uniqueCustomers}
+                            </dd>
+                            <span className="text-[11px] text-muted-foreground">
+                                {copy.kpiPaidOrdersNote}
+                            </span>
+                        </div>
+
+                        {/* KPI 3: Revenue Attributed */}
+                        <div className="flex flex-col justify-between gap-1.5 rounded-xl border border-border bg-card p-4">
+                            <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
+                                <CircleDollarSign
+                                    aria-hidden="true"
+                                    className="size-4 shrink-0 text-primary"
+                                />
+                                <span className="truncate">
+                                    {copy.kpiRevenueAttributed}
+                                </span>
+                            </dt>
+                            <dd className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl lg:text-3xl">
+                                {formatAdminMoney(
+                                    kpis.revenueAttributed,
+                                    props.locale,
+                                )}
+                            </dd>
+                            <span className="text-[11px] text-muted-foreground">
+                                {copy.kpiPaidOrdersNote}
+                            </span>
+                        </div>
+
+                        {/* KPI 4: Total Discount Given */}
+                        <div className="flex flex-col justify-between gap-1.5 rounded-xl border border-border bg-card p-4">
+                            <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
+                                <CircleDollarSign
+                                    aria-hidden="true"
+                                    className="size-4 shrink-0 text-primary"
+                                />
+                                <span className="truncate">
+                                    {copy.kpiTotalDiscount}
+                                </span>
+                            </dt>
+                            <dd className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl lg:text-3xl">
+                                {formatAdminMoney(
+                                    kpis.totalDiscountGiven,
+                                    props.locale,
+                                )}
+                            </dd>
+                            <span className="text-[11px] text-muted-foreground">
+                                {copy.kpiPaidOrdersNote}
+                            </span>
+                        </div>
+                    </dl>
+                </section>
+
+                {/* Released Redemptions Notice */}
+                {kpis.releasedRedemptionsCount > 0 ? (
+                    <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/10 p-4 text-xs leading-relaxed text-foreground">
+                        <Info
+                            aria-hidden="true"
+                            className="mt-0.5 size-4 shrink-0 text-primary"
+                        />
+                        <div className="flex flex-col gap-0.5">
+                            <p className="font-semibold text-primary">
+                                {copy.releasedNotice.replace(
+                                    ':count',
+                                    String(kpis.releasedRedemptionsCount),
+                                )}
+                            </p>
+                            <p className="text-muted-foreground">
+                                {copy.cancelledReleasesRedemptionHelp}
+                            </p>
                         </div>
                     </div>
+                ) : null}
 
-                    {/* Recent Redemptions Table */}
-                    <section
-                        aria-label={copy.recentRedemptionsTitle}
-                        className="space-y-3"
-                    >
+                {/* Grid: Daily Chart + Rules Summary */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                    {/* Redemptions over time chart */}
+                    <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 lg:col-span-7">
                         <h2 className="text-base font-bold tracking-tight text-foreground">
-                            {copy.recentRedemptionsTitle}
+                            {copy.chartTitle}
                         </h2>
 
-                        <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>
-                                            {copy.orderColumn}
-                                        </TableHead>
-                                        <TableHead>
-                                            {copy.customerColumn}
-                                        </TableHead>
-                                        <TableHead>
-                                            {copy.totalColumn}
-                                        </TableHead>
-                                        <TableHead>
-                                            {copy.discountColumn}
-                                        </TableHead>
-                                        <TableHead>
-                                            {copy.statusColumn}
-                                        </TableHead>
-                                        <TableHead>{copy.dateColumn}</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {props.recentRedemptions &&
-                                    props.recentRedemptions.length > 0 ? (
-                                        props.recentRedemptions.map(
-                                            (redemption) => (
-                                                <TableRow key={redemption.id}>
-                                                    <TableCell>
+                        {props.chart && props.chart.length > 0 ? (
+                            <div className="flex flex-col gap-3">
+                                <div
+                                    aria-label={copy.chartTitle}
+                                    className="flex h-48 items-end gap-2 overflow-x-auto pt-6 pb-2"
+                                    role="img"
+                                >
+                                    {props.chart.map((point) => {
+                                        const barHeightPercent = Math.max(
+                                            12,
+                                            Math.round(
+                                                (point.redemptions /
+                                                    maxDailyRedemptions) *
+                                                    100,
+                                            ),
+                                        );
+
+                                        return (
+                                            <div
+                                                className="group relative flex min-w-[28px] flex-1 flex-col items-center gap-1"
+                                                key={point.date}
+                                            >
+                                                {/* Tooltip */}
+                                                <div className="pointer-events-none absolute -top-10 z-10 hidden rounded-md border border-border bg-popover px-2 py-1 text-[11px] font-medium whitespace-nowrap text-popover-foreground shadow-md group-hover:block">
+                                                    {point.date}:{' '}
+                                                    {point.redemptions}{' '}
+                                                    {copy.kpiRedemptions}
+                                                </div>
+                                                <div
+                                                    className="w-full rounded-t-sm bg-primary/80 transition-all hover:bg-primary"
+                                                    style={{
+                                                        height: `${barHeightPercent}%`,
+                                                    }}
+                                                />
+                                                <span className="text-[10px] text-muted-foreground tabular-nums">
+                                                    {point.date.slice(5)}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-border text-center text-xs text-muted-foreground">
+                                {copy.noChartData}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Rules in force summary list */}
+                    <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 lg:col-span-5">
+                        <h2 className="text-base font-bold tracking-tight text-foreground">
+                            {copy.rulesTitle}
+                        </h2>
+                        <dl className="divide-y divide-border/60 text-xs">
+                            {props.rules.map((rule) => (
+                                <div
+                                    className="flex flex-col gap-0.5 py-2.5 first:pt-0 last:pb-0"
+                                    key={rule.key}
+                                >
+                                    <dt className="font-medium text-muted-foreground">
+                                        {rule.label}
+                                    </dt>
+                                    <dd className="font-semibold text-foreground">
+                                        {rule.value}
+                                    </dd>
+                                    {rule.description ? (
+                                        <p className="text-[11px] text-muted-foreground">
+                                            {rule.description}
+                                        </p>
+                                    ) : null}
+                                </div>
+                            ))}
+                        </dl>
+                    </div>
+                </div>
+
+                {/* Recent Redemptions Table */}
+                <section
+                    aria-label={copy.recentRedemptionsTitle}
+                    className="space-y-3"
+                >
+                    <h2 className="text-base font-bold tracking-tight text-foreground">
+                        {copy.recentRedemptionsTitle}
+                    </h2>
+
+                    <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>{copy.orderColumn}</TableHead>
+                                    <TableHead>{copy.customerColumn}</TableHead>
+                                    <TableHead>{copy.totalColumn}</TableHead>
+                                    <TableHead>{copy.discountColumn}</TableHead>
+                                    <TableHead>{copy.statusColumn}</TableHead>
+                                    <TableHead>{copy.dateColumn}</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {props.recentRedemptions &&
+                                props.recentRedemptions.length > 0 ? (
+                                    props.recentRedemptions.map(
+                                        (redemption) => (
+                                            <TableRow key={redemption.id}>
+                                                <TableCell>
+                                                    <Link
+                                                        className="font-mono text-xs font-semibold text-foreground underline decoration-border underline-offset-4 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
+                                                        href={`${orderBasePath}/${redemption.orderId}`}
+                                                    >
+                                                        {redemption.orderNumber}
+                                                    </Link>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col">
                                                         <Link
-                                                            className="font-mono text-xs font-semibold text-foreground underline decoration-border underline-offset-4 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
-                                                            href={`${orderBasePath}/${redemption.orderId}`}
+                                                            className="text-xs font-medium text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                                                            href={`${customerBasePath}/${redemption.customer.id}`}
                                                         >
                                                             {
-                                                                redemption.orderNumber
+                                                                redemption
+                                                                    .customer
+                                                                    .name
                                                             }
                                                         </Link>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex flex-col">
-                                                            <Link
-                                                                className="text-xs font-medium text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-                                                                href={`${customerBasePath}/${redemption.customer.id}`}
-                                                            >
-                                                                {
-                                                                    redemption
-                                                                        .customer
-                                                                        .name
-                                                                }
-                                                            </Link>
-                                                            <span className="text-[11px] text-muted-foreground">
-                                                                {
-                                                                    redemption
-                                                                        .customer
-                                                                        .email
-                                                                }
-                                                            </span>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-xs font-semibold text-foreground tabular-nums">
-                                                        {formatAdminMoney(
-                                                            redemption.orderTotal,
-                                                            props.locale,
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-xs font-semibold text-status-success tabular-nums">
-                                                        {formatAdminMoney(
-                                                            redemption.discount,
-                                                            props.locale,
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <AdminBadge
-                                                            variant={
-                                                                redemption.isPaid
-                                                                    ? 'success'
-                                                                    : redemption.orderStatus ===
-                                                                        'cancelled'
-                                                                      ? 'danger'
-                                                                      : 'neutral'
-                                                            }
-                                                        >
+                                                        <span className="text-[11px] text-muted-foreground">
                                                             {
-                                                                redemption.orderStatus
+                                                                redemption
+                                                                    .customer
+                                                                    .email
                                                             }
-                                                        </AdminBadge>
-                                                    </TableCell>
-                                                    <TableCell className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">
-                                                        {redemption.redeemedAt
-                                                            .slice(0, 16)
-                                                            .replace('T', ' ')}
-                                                    </TableCell>
-                                                </TableRow>
-                                            ),
-                                        )
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell
-                                                className="h-24 text-center text-xs text-muted-foreground"
-                                                colSpan={6}
-                                            >
-                                                {copy.noRecentRedemptions}
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </section>
-                </article>
-            </main>
-
-            <AdminMobileTabBar
-                adminUi={props.adminUi}
-                current="marketingCoupons"
-                navigation={props.adminNavigation}
-            />
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-xs font-semibold text-foreground tabular-nums">
+                                                    {formatAdminMoney(
+                                                        redemption.orderTotal,
+                                                        props.locale,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-xs font-semibold text-status-success tabular-nums">
+                                                    {formatAdminMoney(
+                                                        redemption.discount,
+                                                        props.locale,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <AdminBadge
+                                                        variant={
+                                                            redemption.isPaid
+                                                                ? 'success'
+                                                                : redemption.orderStatus ===
+                                                                    'cancelled'
+                                                                  ? 'danger'
+                                                                  : 'neutral'
+                                                        }
+                                                    >
+                                                        {redemption.orderStatus}
+                                                    </AdminBadge>
+                                                </TableCell>
+                                                <TableCell className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+                                                    {redemption.redeemedAt
+                                                        .slice(0, 16)
+                                                        .replace('T', ' ')}
+                                                </TableCell>
+                                            </TableRow>
+                                        ),
+                                    )
+                                ) : (
+                                    <TableRow>
+                                        <TableCell
+                                            className="h-24 text-center text-xs text-muted-foreground"
+                                            colSpan={6}
+                                        >
+                                            {copy.noRecentRedemptions}
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </section>
+            </article>
 
             {/* Create / Edit Drawer */}
             <AdminCouponDrawer
@@ -796,7 +760,7 @@ export default function AdminCouponDetailPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </>
     );
 }
 

@@ -6,8 +6,6 @@ import type { VisibilityState } from '@tanstack/react-table';
 import { Copy } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
-import AdminMobileTabBar from '@/components/admin/admin-mobile-tabbar';
-import AdminSidebar from '@/components/admin/admin-sidebar';
 import AdminCouponDrawer from '@/components/admin/coupons/admin-coupon-drawer';
 import { getAdminCouponColumns } from '@/components/admin/coupons/admin-coupons-columns';
 import type { CouponSortKey } from '@/components/admin/coupons/admin-coupons-columns';
@@ -283,86 +281,70 @@ export default function AdminCouponsPage() {
     });
 
     return (
-        <div className="admin-document-layout" dir="ltr">
+        <>
             <Head title={copy.headTitle} />
-            <AdminSidebar
-                adminIdentity={props.adminIdentity}
-                adminUi={props.adminUi}
-                current="marketingCoupons"
-                direction={props.direction}
-                logoutUrl={props.logoutUrl}
-                navigation={props.adminNavigation}
-            />
 
-            <main className="admin-main">
-                <article className="space-y-6" dir={props.direction}>
-                    {/* Header */}
-                    <header className="flex flex-col gap-1 border-b border-border pb-5">
-                        <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
-                            {copy.title}
-                        </h1>
-                        <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
-                            {copy.description}
-                        </p>
-                    </header>
+            <article className="space-y-6" dir={props.direction}>
+                {/* Header */}
+                <header className="flex flex-col gap-1 border-b border-border pb-5">
+                    <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
+                        {copy.title}
+                    </h1>
+                    <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
+                        {copy.description}
+                    </p>
+                </header>
 
-                    {actionMessage ? (
-                        <Alert
-                            variant={
-                                actionMessage.type === 'error'
-                                    ? 'destructive'
-                                    : 'default'
-                            }
-                        >
-                            <AlertDescription>
-                                {actionMessage.text}
-                            </AlertDescription>
-                        </Alert>
-                    ) : null}
+                {actionMessage ? (
+                    <Alert
+                        variant={
+                            actionMessage.type === 'error'
+                                ? 'destructive'
+                                : 'default'
+                        }
+                    >
+                        <AlertDescription>
+                            {actionMessage.text}
+                        </AlertDescription>
+                    </Alert>
+                ) : null}
 
-                    {/* Toolbar with tabs, search, filters & create button */}
-                    <AdminCouponsToolbar
-                        adminUi={props.adminUi}
-                        counts={props.counts}
-                        filterOptions={props.filterOptions}
-                        filters={props.filters}
-                        isNavigating={false}
-                        onCreateClick={openCreateDrawer}
-                        onFilterChange={visitCoupons}
-                        onResetFilters={handleResetFilters}
-                        permissions={props.permissions}
-                        table={table}
-                    />
+                {/* Toolbar with tabs, search, filters & create button */}
+                <AdminCouponsToolbar
+                    adminUi={props.adminUi}
+                    counts={props.counts}
+                    filterOptions={props.filterOptions}
+                    filters={props.filters}
+                    isNavigating={false}
+                    onCreateClick={openCreateDrawer}
+                    onFilterChange={visitCoupons}
+                    onResetFilters={handleResetFilters}
+                    permissions={props.permissions}
+                    table={table}
+                />
 
-                    {/* Table (Desktop) / Mobile Cards (Mobile) */}
-                    <AdminCouponsTable
-                        adminUi={props.adminUi}
-                        isFiltered={isFiltered}
-                        isNavigating={false}
-                        locale={props.locale}
-                        onDuplicate={openDuplicateDialog}
-                        onEdit={openEditDrawer}
-                        onResetFilters={handleResetFilters}
-                        onToggle={openToggleDialog}
-                        permissions={props.permissions}
-                        showUrlTemplate={props.showUrlTemplate}
-                        table={table}
-                    />
+                {/* Table (Desktop) / Mobile Cards (Mobile) */}
+                <AdminCouponsTable
+                    adminUi={props.adminUi}
+                    isFiltered={isFiltered}
+                    isNavigating={false}
+                    locale={props.locale}
+                    onDuplicate={openDuplicateDialog}
+                    onEdit={openEditDrawer}
+                    onResetFilters={handleResetFilters}
+                    onToggle={openToggleDialog}
+                    permissions={props.permissions}
+                    showUrlTemplate={props.showUrlTemplate}
+                    table={table}
+                />
 
-                    {/* Pagination */}
-                    <CouponsPagination
-                        adminUi={props.adminUi}
-                        onPageChange={(page) => visitCoupons({ page })}
-                        pagination={props.pagination}
-                    />
-                </article>
-            </main>
-
-            <AdminMobileTabBar
-                adminUi={props.adminUi}
-                current="marketingCoupons"
-                navigation={props.adminNavigation}
-            />
+                {/* Pagination */}
+                <CouponsPagination
+                    adminUi={props.adminUi}
+                    onPageChange={(page) => visitCoupons({ page })}
+                    pagination={props.pagination}
+                />
+            </article>
 
             {/* Create / Edit Drawer */}
             <AdminCouponDrawer
@@ -495,7 +477,7 @@ export default function AdminCouponsPage() {
                     </DialogContent>
                 </Dialog>
             ) : null}
-        </div>
+        </>
     );
 }
 
