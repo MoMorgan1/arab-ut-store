@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\ResetPasswordNotification;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rules\Password;
@@ -104,7 +104,7 @@ test('standard email recovery stays generic but sends only to a verified active 
     $verified = User::factory()->create();
     $this->post($path, ['email' => $verified->email])
         ->assertRedirect();
-    Notification::assertSentTo($verified, ResetPassword::class);
+    Notification::assertSentTo($verified, ResetPasswordNotification::class);
 })->with([
     'Arabic recovery' => '/forgot-password',
     'English recovery' => '/en/forgot-password',
@@ -123,7 +123,7 @@ test('verified customers can request a password reset link from the account secu
     $this->actingAs($user)->post($path)
         ->assertRedirect($target);
 
-    Notification::assertSentTo($user, ResetPassword::class);
+    Notification::assertSentTo($user, ResetPasswordNotification::class);
 })->with([
     'Arabic password link' => ['/my-account/security/password-link', '/my-account/profile'],
     'English password link' => ['/en/my-account/security/password-link', '/en/my-account/profile'],
