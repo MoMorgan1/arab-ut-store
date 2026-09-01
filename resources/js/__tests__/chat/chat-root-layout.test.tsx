@@ -100,6 +100,24 @@ describe('ChatRootLayout & Inertia Context', () => {
         ).toBeInTheDocument();
     });
 
+    it('returns only children and no chat launcher when chat is disabled', () => {
+        pageState.props = {
+            locale: 'en',
+            chat: { enabled: false, demoAssistant: false },
+        };
+
+        render(
+            <ChatRootLayout>
+                <div data-testid="page-content">Storefront Page Content</div>
+            </ChatRootLayout>,
+        );
+
+        expect(screen.getByTestId('page-content')).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /Open chat/i }),
+        ).not.toBeInTheDocument();
+    });
+
     it('fails if rendered outside Inertia PageContext', () => {
         pageState.inContext = false;
 
