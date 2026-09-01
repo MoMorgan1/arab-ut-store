@@ -18,4 +18,10 @@ return [
     'footer_support' => 'تواصل معنا على واتساب',
     'footer_store' => 'المتجر',
     'footer_rights' => 'جميع الحقوق محفوظة.',
+    'reset_password_subject' => 'إعادة تعيين كلمة المرور لحسابك في عرب ألتميت',
+    'reset_password_intro' => 'تلقينا طلبًا لإعادة تعيين كلمة المرور الخاصة بحسابك في عرب ألتميت.',
+    'reset_password_action' => 'إعادة تعيين كلمة المرور',
+    'reset_password_expire' => 'تنتهي صلاحية رابط إعادة التعيين هذا خلال :count دقيقة.',
+    'reset_password_no_action' => 'إذا لم تطلب إعادة تعيين كلمة المرور، فلا يلزمك اتخاذ أي إجراء.',
+    'reset_password_salutation' => "تحياتنا،\nفريق عرب ألتميت",
 ];

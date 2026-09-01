@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Customers\CustomerNumber;
 use App\Enums\UserRole;
 use App\Models\Concerns\HasPublicUlid;
+use App\Notifications\ResetPasswordNotification;
 use App\Notifications\VerifyEmailNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -75,6 +76,20 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         $this->notify(new VerifyEmailNotification(
+            $this->preferred_locale === 'en' ? 'en' : 'ar',
+        ));
+    }
+
+    /**
+     * Password reset mail follows the account holder's preferred locale,
+     * falling back to the Arabic default.
+     *
+     * @param  string  $token
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification(
+            $token,
             $this->preferred_locale === 'en' ? 'en' : 'ar',
         ));
     }

@@ -18,4 +18,10 @@ return [
     'footer_support' => 'Message us on WhatsApp',
     'footer_store' => 'Visit the store',
     'footer_rights' => 'All rights reserved.',
+    'reset_password_subject' => 'Reset your Arab UT account password',
+    'reset_password_intro' => 'You are receiving this email because we received a password reset request for your account.',
+    'reset_password_action' => 'Reset password',
+    'reset_password_expire' => 'This password reset link will expire in :count minutes.',
+    'reset_password_no_action' => 'If you did not request a password reset, no further action is required.',
+    'reset_password_salutation' => "Regards,\nArab UT team",
 ];

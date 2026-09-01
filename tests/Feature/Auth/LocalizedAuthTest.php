@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\ResetPasswordNotification;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -102,7 +102,7 @@ test('password reset email and completion preserve the originating English local
         ->post('/en/forgot-password', ['email' => $user->email])
         ->assertRedirect('/en/forgot-password');
 
-    Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user): bool {
+    Notification::assertSentTo($user, ResetPasswordNotification::class, function (ResetPasswordNotification $notification) use ($user): bool {
         $mail = $notification->toMail($user);
 
         expect($mail->actionUrl)->toContain('/en/reset-password/')
