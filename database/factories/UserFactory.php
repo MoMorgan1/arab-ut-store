@@ -27,7 +27,13 @@ class UserFactory extends Factory
         return [
             'first_name' => fake()->firstName(),
             'last_name' => fake()->lastName(),
-            'email' => fake()->unique()->safeEmail(),
+            // The MariaDB integration suite runs without RefreshDatabase and
+            // spawns extra PHP processes, so Faker's per-process unique() cannot
+            // prevent a safeEmail() collision with a row left by another test.
+            // The random token keeps every generated address globally unique.
+            'email' => Str::before(fake()->safeEmail(), '@')
+                .'.'.Str::lower(Str::random(8))
+                .'@'.Str::after(fake()->safeEmail(), '@'),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'preferred_locale' => 'ar',
