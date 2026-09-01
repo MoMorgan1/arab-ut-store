@@ -64,17 +64,6 @@ export function RankPicker({
     const stopLabels = pricing.rankOptions.map((entry) =>
         formatInteger(entry.rank, locale),
     );
-    const tickSublabels = pricing.rankOptions.map((entry) => {
-        const formatted = formatMinorUnits(
-            entry.price.amountMinor,
-            entry.price.currency,
-            locale,
-        );
-
-        return entry.price.amountMinor % 100 === 0
-            ? formatted.replace('.00', '').replace(',00', '')
-            : formatted;
-    });
 
     return (
         <div className="manual-rank-picker">
@@ -88,7 +77,6 @@ export function RankPicker({
                 price={rankPrice}
                 selectedValue={rank}
                 stopLabels={stopLabels}
-                tickSublabels={tickSublabels}
                 valueLabel={rankLabel}
             />
 

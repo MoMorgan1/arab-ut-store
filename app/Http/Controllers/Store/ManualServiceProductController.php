@@ -79,6 +79,11 @@ final class ManualServiceProductController extends Controller
                     'eyebrow' => trans('store.services_section.eyebrow'),
                     'title' => trans('store.services_section.title'),
                     'open' => trans('store.product.sbc.related_link'),
+                    'sbc' => [
+                        'included' => trans('store.product.sbc.included_compact'),
+                        'platform_prices' => trans('store.product.sbc.platform_prices'),
+                        'unavailable_price' => trans('store.product.unavailable_price'),
+                    ],
                 ],
                 'service' => trans("store.manual_services.{$service->value}"),
             ],
@@ -240,21 +245,10 @@ final class ManualServiceProductController extends Controller
     }
 
     /**
-     * @return array{
-     *     products: list<array{
-     *         id: string,
-     *         name: string,
-     *         description: string,
-     *         url: string,
-     *         image: array{url: string, alt: string}|null,
-     *         price: array{amountMinor: int, currency: string}|null,
-     *         compareAtPrice: array{amountMinor: int, currency: string}|null,
-     *         promotionBadge: string|null,
-     *         platforms: list<string>
-     *     }>,
-     *     sbcUrl: string,
-     *     service: array{key: string, title: string, description: string, href: string, imageUrl: string}
-     * }
+     * Up to eight public SBC products in the reader's public catalog shape
+     * (the same one the SBC product page renders), plus the other manual service.
+     *
+     * @return array{products: list<array<string, mixed>>, sbcUrl: string, service: array{key: string, title: string, description: string, href: string, imageUrl: string}}
      */
     private function relatedServices(Request $request, ServiceType $service, StoreCatalogReader $catalogReader): array
     {
@@ -272,26 +266,7 @@ final class ManualServiceProductController extends Controller
                 1,
             );
 
-            $sbcProducts = array_map(fn (array $product): array => [
-                'id' => (string) $product['id'],
-                'name' => (string) $product['name'],
-                'description' => (string) $product['description'],
-                'url' => (string) $product['url'],
-                'image' => is_array($product['image']) ? [
-                    'url' => (string) $product['image']['url'],
-                    'alt' => (string) $product['image']['alt'],
-                ] : null,
-                'price' => is_array($product['price']) ? [
-                    'amountMinor' => (int) $product['price']['amountMinor'],
-                    'currency' => (string) $product['price']['currency'],
-                ] : null,
-                'compareAtPrice' => is_array($product['compareAtPrice']) ? [
-                    'amountMinor' => (int) $product['compareAtPrice']['amountMinor'],
-                    'currency' => (string) $product['compareAtPrice']['currency'],
-                ] : null,
-                'promotionBadge' => isset($product['promotionBadge']) ? (string) $product['promotionBadge'] : null,
-                'platforms' => array_values(array_map('strval', (array) ($product['platforms'] ?? []))),
-            ], array_slice($catalog['products'], 0, 4));
+            $sbcProducts = array_slice($catalog['products'], 0, 8);
         } catch (DomainException) {
             $sbcProducts = [];
         }

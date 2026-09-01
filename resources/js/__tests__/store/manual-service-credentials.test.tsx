@@ -210,4 +210,6 @@ const translations: ManualServiceCommonTranslations = {
     eta_label: 'Estimated delivery',
     squad_image_choose: 'Choose image',
     see_all_sbc: 'All SBC challenges',
+    tab_options: 'Options',
+    tab_guide: 'How it works',
 };

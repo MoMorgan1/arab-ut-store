@@ -111,7 +111,7 @@ it('exposes the exact public Rivals service contract in both locales', function 
     'English' => ['/en/rivals', 'en', '/en/cart/items/rivals'],
 ]);
 
-it('exposes up to 4 real public SBC products in relatedServices and keeps internal fields hidden', function () {
+it('exposes up to 8 real public SBC products in relatedServices and keeps internal fields hidden', function () {
     for ($i = 1; $i <= 5; $i++) {
         $product = Product::factory()->create([
             'service_type' => ServiceType::Sbc,
@@ -136,14 +136,16 @@ it('exposes up to 4 real public SBC products in relatedServices and keeps intern
     $response = $this->get('/fut-champions')
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('manualServicePage.relatedServices.products', 4)
+            ->has('manualServicePage.relatedServices.products', 5)
             ->where('manualServicePage.relatedServices.sbcUrl', '/sbc')
             ->where('manualServicePage.relatedServices.service.key', 'rivals')
             ->where('manualServicePage.relatedServices.products.0.name', 'تحدي 1')
             ->where('manualServicePage.relatedServices.products.0.url', '/sbc/sbc-product-1')
             ->where('manualServicePage.relatedServices.products.0.price.amountMinor', 10_000)
             ->where('manualServicePage.relatedServices.products.0.price.currency', 'SAR')
-            ->where('manualServicePage.relatedServices.products.3.name', 'تحدي 4')
+            ->has('manualServicePage.relatedServices.products.0.variants', 1)
+            ->where('manualServicePage.relatedServices.products.0.slug', 'sbc-product-1')
+            ->where('manualServicePage.relatedServices.products.4.name', 'تحدي 5')
         );
 
     $relatedProducts = $response->viewData('page')['props']['manualServicePage']['relatedServices']['products'];

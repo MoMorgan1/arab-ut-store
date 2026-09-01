@@ -2,116 +2,69 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, expect, it } from 'vitest';
 
 import { ManualServiceSuggestions } from '@/components/configurator/manual-services/manual-service-suggestions';
-import type { ManualServiceCommonTranslations } from '@/types/manual-services';
+import type {
+    ManualServiceCommonTranslations,
+    ManualServiceSuggestionTranslations,
+} from '@/types/manual-services';
+import type { CatalogProduct } from '@/types/store-content';
 
 afterEach(cleanup);
 
-const mockCommon: ManualServiceCommonTranslations = {
-    step_platform: 'Platform',
-    step_options: 'Service details',
-    step_account: 'Account details',
-    step_image: 'Squad image',
-    panel_title: 'Your order',
-    eta_label: 'Delivery time',
-    squad_image_choose: 'Choose image',
-    back: 'Back to services',
-    platform_legend: 'Choose platform',
-    platforms: {
-        playstation: 'PlayStation',
-        pc: 'PC',
-    },
-    platform_captions: {
-        playstation: 'PS4 and PS5',
-        pc: 'EA app or Steam',
-    },
-    pc_store_legend: 'Choose game launcher',
-    pc_stores: {
-        ea_app: 'EA app',
-        steam: 'Steam',
-    },
-    account_details_title: 'Account details',
-    ea_email: 'EA email',
-    ea_password: 'EA password',
-    steam_username: 'Steam username',
-    steam_password: 'Steam password',
-    playstation_email: 'PlayStation email',
-    playstation_password: 'PlayStation password',
-    show_password: 'Show password',
-    hide_password: 'Hide password',
-    ea_codes: '3 EA backup codes',
-    ea_codes_help: 'Each code must be eight digits.',
-    playstation_codes: '3 PlayStation backup codes',
-    playstation_codes_help: 'Each code must be six characters.',
-    backup_code: 'Backup code :number',
-    squad_image: 'Squad image',
-    squad_image_help: 'Upload one image.',
-    squad_image_remove: 'Remove image',
-    ea_tutorial: 'EA backup code guide',
-    playstation_tutorial: 'PlayStation backup code guide',
-    notes_title: 'Important notes',
-    add_to_cart: 'Add to cart',
-    adding: 'Adding…',
-    added: 'Added',
-    add_error: 'Could not add service.',
-    unavailable_title: 'Unavailable',
-    unavailable_body: 'Pricing is being updated.',
-    review_title: 'Review',
-    review_service: 'Service',
-    review_platform: 'Platform',
-    review_launcher: 'Launcher',
-    review_total: 'Total',
-    review_credentials: 'Credentials',
-    review_credentials_ready: 'Credentials ready',
-    review_image_ready: 'Image ready',
-    required_field: 'Required',
-    invalid_email: 'Invalid email',
-    invalid_ea_code: 'Invalid EA code',
-    invalid_playstation_code: 'Invalid PS code',
-    duplicate_codes: 'Duplicate code',
-    image_required: 'Image required',
-    image_invalid: 'Image invalid',
-    image_too_large: 'Image too large',
+const mockCommon = {
     see_all_sbc: 'All SBC challenges',
-};
+    platforms: { playstation: 'PlayStation', pc: 'PC' },
+} as unknown as ManualServiceCommonTranslations;
 
-const mockTranslations = {
+const mockTranslations: ManualServiceSuggestionTranslations = {
     eyebrow: 'More services',
     title: 'Continue with Arab UT',
     open: 'Open service',
+    sbc: {
+        included: 'Coins and completion included',
+        platform_prices: 'Platform prices',
+        unavailable_price: 'Price unavailable',
+    },
 };
 
-it('renders the SBC product rail with links, prices, and the other service card', () => {
+function sbcProduct(
+    id: string,
+    name: string,
+    priceMinor: number,
+): CatalogProduct {
+    return {
+        id,
+        slug: id,
+        url: `/en/sbc/${id}`,
+        name,
+        description: `${name} description`,
+        image: null,
+        price: { amountMinor: priceMinor, currency: 'SAR' },
+        compareAtPrice: null,
+        promotionBadge: null,
+        platforms: ['playstation'],
+        variants: [
+            {
+                id: `${id}-ps`,
+                name: 'PlayStation',
+                platform: 'playstation',
+                price: { amountMinor: priceMinor, currency: 'SAR' },
+                compareAtPrice: null,
+                promotionBadge: null,
+                completionTiers: [],
+            },
+        ],
+    };
+}
+
+it('renders the SBC catalog cards the product page uses, a see-all link, and the other service card', () => {
     render(
         <ManualServiceSuggestions
             common={mockCommon}
             locale="en"
             relatedServices={{
                 products: [
-                    {
-                        id: 'sbc-1',
-                        name: 'Player Moments SBC',
-                        description: 'Complete the player moments challenge.',
-                        url: '/en/sbc/player-moments',
-                        image: {
-                            url: '/images/store/sbc/player-moments.webp',
-                            alt: 'Player Moments',
-                        },
-                        price: { amountMinor: 15000, currency: 'SAR' },
-                        compareAtPrice: { amountMinor: 20000, currency: 'SAR' },
-                        promotionBadge: '25% OFF',
-                        platforms: ['playstation', 'pc'],
-                    },
-                    {
-                        id: 'sbc-2',
-                        name: 'Icon SBC',
-                        description: 'Unlock an elite icon for your club.',
-                        url: '/en/sbc/icon-challenge',
-                        image: null,
-                        price: { amountMinor: 35000, currency: 'SAR' },
-                        compareAtPrice: null,
-                        promotionBadge: null,
-                        platforms: ['playstation'],
-                    },
+                    sbcProduct('player-moments', 'Player Moments SBC', 15000),
+                    sbcProduct('icon-challenge', 'Icon SBC', 35000),
                 ],
                 sbcUrl: '/en/sbc',
                 service: {
@@ -130,29 +83,22 @@ it('renders the SBC product rail with links, prices, and the other service card'
         screen.getByRole('heading', { name: 'Continue with Arab UT' }),
     ).toBeVisible();
 
-    // Check SBC products
-    const sbc1Link = screen.getByRole('link', { name: /Player Moments SBC/i });
-    expect(sbc1Link).toHaveAttribute('href', '/en/sbc/player-moments');
-    expect(sbc1Link).toHaveTextContent('SAR 150.00');
-    expect(sbc1Link).toHaveTextContent('SAR 200.00');
-    expect(sbc1Link).toHaveTextContent('25% OFF');
-
-    const sbc2Link = screen.getByRole('link', { name: /Icon SBC/i });
-    expect(sbc2Link).toHaveAttribute('href', '/en/sbc/icon-challenge');
-    expect(sbc2Link).toHaveTextContent('SAR 350.00');
-
-    // Check "See all" link
+    const firstCard = screen.getByRole('link', { name: 'Player Moments SBC' });
+    expect(firstCard).toHaveAttribute('href', '/en/sbc/player-moments');
+    expect(firstCard).toHaveTextContent('SAR 150.00');
+    expect(firstCard).toHaveTextContent('Coins and completion included');
+    expect(screen.getByRole('link', { name: 'Icon SBC' })).toHaveTextContent(
+        'SAR 350.00',
+    );
     expect(
-        screen.getByRole('link', { name: /All SBC challenges/i }),
+        screen.getByRole('link', { name: /All SBC challenges/ }),
     ).toHaveAttribute('href', '/en/sbc');
-
-    // Check other manual service card
     expect(
-        screen.getByRole('link', { name: /Division Rivals/i }),
+        screen.getByRole('link', { name: /Division Rivals/ }),
     ).toHaveAttribute('href', '/en/rivals');
 });
 
-it('renders gracefully when SBC products are empty', () => {
+it('keeps the other service card when no SBC product is public', () => {
     render(
         <ManualServiceSuggestions
             common={mockCommon}
@@ -173,12 +119,10 @@ it('renders gracefully when SBC products are empty', () => {
     );
 
     expect(
-        screen.getByRole('heading', { name: 'Continue with Arab UT' }),
-    ).toBeVisible();
-    expect(
-        screen.queryByRole('link', { name: /All SBC challenges/i }),
+        screen.queryByRole('link', { name: /All SBC challenges/ }),
     ).not.toBeInTheDocument();
-    expect(
-        screen.getByRole('link', { name: /FUT Champions/i }),
-    ).toHaveAttribute('href', '/en/fut-champions');
+    expect(screen.getByRole('link', { name: /FUT Champions/ })).toHaveAttribute(
+        'href',
+        '/en/fut-champions',
+    );
 });

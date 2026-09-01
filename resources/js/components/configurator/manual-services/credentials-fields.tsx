@@ -381,7 +381,6 @@ export function CredentialsFields({
                 codes={credentials.eaCodes}
                 errors={errors}
                 fieldPrefix="eaCode"
-                help={translations.ea_codes_help}
                 label={translations.ea_codes}
                 namePrefix="ea-code"
                 numeric
@@ -398,7 +397,6 @@ export function CredentialsFields({
                     codes={credentials.playstationCodes}
                     errors={errors}
                     fieldPrefix="playstationCode"
-                    help={translations.playstation_codes_help}
                     label={translations.playstation_codes}
                     namePrefix="playstation-code"
                     onBlurField={onBlurField}
@@ -417,7 +415,6 @@ function CodeFields({
     codes,
     errors = {},
     fieldPrefix,
-    help,
     label,
     namePrefix,
     numeric = false,
@@ -431,7 +428,6 @@ function CodeFields({
     codes: [string, string, string];
     errors?: ManualFormErrors;
     fieldPrefix: 'eaCode' | 'playstationCode';
-    help: string;
     label: string;
     namePrefix: string;
     numeric?: boolean;
@@ -444,9 +440,11 @@ function CodeFields({
 }) {
     return (
         <fieldset className="coins-backup-codes manual-backup-codes">
-            <legend>{label}</legend>
+            <legend className="sr-only">{label}</legend>
             <div className="manual-backup-codes__header">
-                <p>{help}</p>
+                <span aria-hidden="true" className="manual-backup-codes__label">
+                    {label}
+                </span>
                 <a
                     className="manual-backup-codes__tutorial"
                     href={tutorialHref}
