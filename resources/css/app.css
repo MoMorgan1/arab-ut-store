@@ -7105,6 +7105,14 @@ html.admin-document {
     }
 }
 
+/* Tablets get the wide crop so the artwork does not fill the whole screen. */
+@media (min-width: 48rem) and (max-width: 63.99rem) {
+    .manual-service-hero__media,
+    .manual-service-hero__media img {
+        aspect-ratio: 16 / 9;
+    }
+}
+
 /* Configurator 2-column Grid */
 .manual-configurator {
     display: grid;
