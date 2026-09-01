@@ -273,3 +273,26 @@ test('a provider body delivered as an unread stream is decoded', async () => {
         flow.json('Merge Provider Sources').sourceAudit.exactMatches > 100,
     );
 });
+
+test('a provider failure reports the body as text, not as raw bytes', async () => {
+    // The FFT outage message read "body starts: null" while the real body sat
+    // undecoded. A wall of integers is what cost two debugging rounds here.
+    const flow = pipeline({ env: env() });
+
+    await flow.run('Config', 'config', [{}]);
+    flow.set('Fetch FFT SBCs', {
+        statusCode: 500,
+        body: asBareBytes({ error: 'Internal Server Error' }),
+    });
+    flow.set('Fetch EasySBC Sets', { statusCode: 200, body: metaRecords() });
+
+    await assert.rejects(
+        () =>
+            flow.run(
+                'Merge Provider Sources',
+                'merge-sources',
+                flow.get('Fetch EasySBC Sets'),
+            ),
+        /returned HTTP 500[\s\S]*Internal Server Error/,
+    );
+});

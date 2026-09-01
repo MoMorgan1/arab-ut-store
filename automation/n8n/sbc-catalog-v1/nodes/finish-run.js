@@ -170,6 +170,23 @@ function decodeHttpBody(raw) {
 
 const body = decodeHttpBody(response.body ?? response);
 
+// Decode before previewing, and never let the preview itself throw. An
+// undecoded body prints as a 200-character wall of integers, which is the
+// noise this workflow already lost two debugging rounds to; a body that is
+// still a live stream carries circular references, and a bare
+// JSON.stringify on it throws and masks the status being reported.
+function previewBody(raw) {
+    const decoded = decodeHttpBody(raw ?? null);
+
+    if (typeof decoded === 'string') return decoded.slice(0, 200);
+
+    try {
+        return JSON.stringify(decoded ?? null).slice(0, 200);
+    } catch {
+        return `[unserialisable ${typeof decoded}]`;
+    }
+}
+
 const completed =
     statusCode === 201 &&
     body?.data?.runId === snapshot.runId &&
@@ -196,7 +213,7 @@ if (!completed && !replayed) {
     };
 
     throw new Error(
-        `[publish] Laravel did not confirm the catalog snapshot (HTTP ${statusCode || 'unknown'}); expected HTTP 201 for runId ${snapshot.runId}; observed ${JSON.stringify(observed)}; body: ${JSON.stringify(body).slice(0, 300)}`,
+        `[publish] Laravel did not confirm the catalog snapshot (HTTP ${statusCode || 'unknown'}); expected HTTP 201 for runId ${snapshot.runId}; observed ${JSON.stringify(observed)}; body: ${previewBody(body)}`,
     );
 }
 

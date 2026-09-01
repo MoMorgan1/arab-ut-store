@@ -341,6 +341,23 @@ function firstItemShape(nodeItems) {
     return String(typeof firstJson);
 }
 
+// Decode before previewing, and never let the preview itself throw. An
+// undecoded body prints as a 200-character wall of integers, which is the
+// noise this workflow already lost two debugging rounds to; a body that is
+// still a live stream carries circular references, and a bare
+// JSON.stringify on it throws and masks the status being reported.
+function previewBody(raw) {
+    const decoded = decodeHttpBody(raw ?? null);
+
+    if (typeof decoded === 'string') return decoded.slice(0, 200);
+
+    try {
+        return JSON.stringify(decoded ?? null).slice(0, 200);
+    } catch {
+        return `[unserialisable ${typeof decoded}]`;
+    }
+}
+
 // Both fetches run with neverError + fullResponse so a bad status reaches here
 // as data instead of killing the node with n8n's own message. Check it FIRST:
 // without this a provider 500 surfaces further down as "0 unique usable
@@ -351,10 +368,7 @@ function assertHttpOk(nodeName) {
         if (json.statusCode === undefined) continue;
         const status = Number(json.statusCode);
         if (!Number.isFinite(status) || status < 200 || status >= 300) {
-            const body =
-                typeof json.body === 'string'
-                    ? json.body.slice(0, 200)
-                    : JSON.stringify(json.body ?? null).slice(0, 200);
+            const body = previewBody(json.body);
             fail(
                 `${nodeName} returned HTTP ${json.statusCode}; body starts: ${body}`,
             );
