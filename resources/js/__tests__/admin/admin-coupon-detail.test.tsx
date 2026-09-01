@@ -185,6 +185,17 @@ describe('AdminCouponDetailPage', () => {
         vi.unstubAllGlobals();
     });
 
+    it('leaves the sidebar, main landmark and tab bar to the shared admin shell', () => {
+        const { container } = render(<AdminCouponDetailPage />);
+
+        // AdminLayout already renders <aside>, <main> and the mobile tab bar
+        // around every admin/* page. Rendering them again here stacked a
+        // second sidebar inside the content column on desktop.
+        expect(container.querySelector('aside')).toBeNull();
+        expect(container.querySelector('main')).toBeNull();
+        expect(container.querySelector('.admin-document-layout')).toBeNull();
+    });
+
     it('renders the coupon detail with KPIs, released notice, rules, and redemptions', () => {
         render(<AdminCouponDetailPage />);
 

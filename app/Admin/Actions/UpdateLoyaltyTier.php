@@ -32,7 +32,7 @@ final readonly class UpdateLoyaltyTier
             throw new AuthorizationException('This action requires loyalty.manage permission.');
         }
 
-        return DB::transaction(function () use (
+        $tier = DB::transaction(function () use (
             $actor,
             $publicId,
             $nameAr,
@@ -112,9 +112,14 @@ final readonly class UpdateLoyaltyTier
                 ),
             );
 
-            Cache::forget(CountCustomersPerTier::CACHE_KEY);
-
             return $tier;
         });
+
+        // After the commit, not inside it: a dashboard load racing this update
+        // could otherwise repopulate the five-minute tile cache from the
+        // pre-commit rows and keep the old counts until it expires.
+        Cache::forget(CountCustomersPerTier::CACHE_KEY);
+
+        return $tier;
     }
 }

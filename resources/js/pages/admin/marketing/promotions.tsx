@@ -14,12 +14,10 @@ import {
 import { useCallback, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 
-import AdminMobileTabBar from '@/components/admin/admin-mobile-tabbar';
 import {
     formatHalalahToSar,
     parseSarToHalalah,
 } from '@/components/admin/admin-money';
-import AdminSidebar from '@/components/admin/admin-sidebar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -355,154 +353,131 @@ export default function AdminPromotionsPage() {
     };
 
     return (
-        <div className="admin-document-layout" dir="ltr">
+        <>
             <Head title={copy.headTitle} />
-            <AdminSidebar
-                adminIdentity={props.adminIdentity}
-                adminUi={props.adminUi}
-                current="marketingPromotions"
-                direction={props.direction}
-                logoutUrl={props.logoutUrl}
-                navigation={props.adminNavigation}
-            />
-            <main className="admin-main">
-                <article className="space-y-6" dir={props.direction}>
-                    <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="flex flex-col gap-1">
-                            <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
-                                {copy.title}
-                            </h1>
-                            <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
-                                {copy.description}
-                            </p>
-                        </div>
-                        {props.permissions.includes('marketing.manage') ? (
-                            <Button
-                                className="min-h-11 shrink-0 px-4 text-sm font-semibold"
-                                onClick={openCreate}
+            <article className="space-y-6" dir={props.direction}>
+                <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex flex-col gap-1">
+                        <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
+                            {copy.title}
+                        </h1>
+                        <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
+                            {copy.description}
+                        </p>
+                    </div>
+                    {props.permissions.includes('marketing.manage') ? (
+                        <Button
+                            className="min-h-11 shrink-0 px-4 text-sm font-semibold"
+                            onClick={openCreate}
+                            type="button"
+                        >
+                            <Plus aria-hidden="true" className="me-2 size-4" />
+                            <span>{copy.createButton}</span>
+                        </Button>
+                    ) : null}
+                </header>
+
+                {pageMessage ? (
+                    <Alert
+                        variant={
+                            pageMessage.type === 'error'
+                                ? 'destructive'
+                                : 'default'
+                        }
+                    >
+                        <AlertTitle>{pageMessage.text}</AlertTitle>
+                    </Alert>
+                ) : null}
+
+                {/* Status Tabs */}
+                <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border pb-2">
+                    {statusTabs.map((tab) => {
+                        const isSelected = currentStatus === tab.key;
+
+                        return (
+                            <button
+                                key={tab.key}
+                                className={`inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none ${
+                                    isSelected
+                                        ? 'border border-primary/30 bg-primary/15 text-primary'
+                                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                }`}
+                                onClick={() =>
+                                    visitPromotions({
+                                        status:
+                                            tab.key === 'all' ? null : tab.key,
+                                        page: 1,
+                                    })
+                                }
                                 type="button"
                             >
-                                <Plus
-                                    aria-hidden="true"
-                                    className="me-2 size-4"
-                                />
-                                <span>{copy.createButton}</span>
-                            </Button>
-                        ) : null}
-                    </header>
-
-                    {pageMessage ? (
-                        <Alert
-                            variant={
-                                pageMessage.type === 'error'
-                                    ? 'destructive'
-                                    : 'default'
-                            }
-                        >
-                            <AlertTitle>{pageMessage.text}</AlertTitle>
-                        </Alert>
-                    ) : null}
-
-                    {/* Status Tabs */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border pb-2">
-                        {statusTabs.map((tab) => {
-                            const isSelected = currentStatus === tab.key;
-
-                            return (
-                                <button
-                                    key={tab.key}
-                                    className={`inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none ${
+                                <span>{tab.label}</span>
+                                <span
+                                    className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${
                                         isSelected
-                                            ? 'border border-primary/30 bg-primary/15 text-primary'
-                                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'bg-muted text-muted-foreground'
                                     }`}
-                                    onClick={() =>
-                                        visitPromotions({
-                                            status:
-                                                tab.key === 'all'
-                                                    ? null
-                                                    : tab.key,
-                                            page: 1,
-                                        })
-                                    }
+                                >
+                                    {tab.count}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Search Toolbar */}
+                <div className="flex flex-col gap-2 min-[480px]:flex-row min-[480px]:items-center">
+                    <form
+                        className="flex min-w-[240px] flex-1 items-center gap-2"
+                        onSubmit={handleSearchSubmit}
+                        role="search"
+                    >
+                        <div className="relative min-w-0 flex-1">
+                            <Input
+                                aria-label={copy.columns.name}
+                                className="min-h-11 pe-10 text-sm"
+                                maxLength={100}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder={copy.nameEnPlaceholder}
+                                type="search"
+                                value={search}
+                            />
+                            {search ? (
+                                <button
+                                    aria-label={props.adminUi.common.cancel}
+                                    className="absolute end-0 top-0 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
+                                    onClick={clearSearch}
                                     type="button"
                                 >
-                                    <span>{tab.label}</span>
-                                    <span
-                                        className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${
-                                            isSelected
-                                                ? 'bg-primary text-primary-foreground'
-                                                : 'bg-muted text-muted-foreground'
-                                        }`}
-                                    >
-                                        {tab.count}
-                                    </span>
+                                    <X aria-hidden="true" className="size-4" />
                                 </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* Search Toolbar */}
-                    <div className="flex flex-col gap-2 min-[480px]:flex-row min-[480px]:items-center">
-                        <form
-                            className="flex min-w-[240px] flex-1 items-center gap-2"
-                            onSubmit={handleSearchSubmit}
-                            role="search"
+                            ) : null}
+                        </div>
+                        <Button
+                            className="min-h-11 shrink-0 px-4 text-sm"
+                            type="submit"
+                            variant="secondary"
                         >
-                            <div className="relative min-w-0 flex-1">
-                                <Input
-                                    aria-label={copy.columns.name}
-                                    className="min-h-11 pe-10 text-sm"
-                                    maxLength={100}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder={copy.nameEnPlaceholder}
-                                    type="search"
-                                    value={search}
-                                />
-                                {search ? (
-                                    <button
-                                        aria-label={props.adminUi.common.cancel}
-                                        className="absolute end-0 top-0 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
-                                        onClick={clearSearch}
-                                        type="button"
-                                    >
-                                        <X
-                                            aria-hidden="true"
-                                            className="size-4"
-                                        />
-                                    </button>
-                                ) : null}
-                            </div>
-                            <Button
-                                className="min-h-11 shrink-0 px-4 text-sm"
-                                type="submit"
-                                variant="secondary"
-                            >
-                                {props.adminUi.orders.searchButton}
-                            </Button>
-                        </form>
-                    </div>
+                            {props.adminUi.orders.searchButton}
+                        </Button>
+                    </form>
+                </div>
 
-                    <PromotionsTable
-                        copy={copy}
-                        onEdit={openEdit}
-                        onToggle={requestToggle}
-                        permissions={props.permissions}
-                        promotions={props.promotions}
-                    />
+                <PromotionsTable
+                    copy={copy}
+                    onEdit={openEdit}
+                    onToggle={requestToggle}
+                    permissions={props.permissions}
+                    promotions={props.promotions}
+                />
 
-                    <PromotionsPagination
-                        copy={props.adminUi.orders}
-                        onPageChange={(page) => visitPromotions({ page })}
-                        pagination={props.pagination}
-                    />
-                </article>
-            </main>
-            <AdminMobileTabBar
-                adminUi={props.adminUi}
-                current="marketingPromotions"
-                navigation={props.adminNavigation}
-            />
+                <PromotionsPagination
+                    copy={props.adminUi.orders}
+                    onPageChange={(page) => visitPromotions({ page })}
+                    pagination={props.pagination}
+                />
+            </article>
 
             {/* Create / Edit Drawer */}
             <Sheet
@@ -590,7 +565,7 @@ export default function AdminPromotionsPage() {
                     </DialogContent>
                 </Dialog>
             ) : null}
-        </div>
+        </>
     );
 }
 
