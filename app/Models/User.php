@@ -81,17 +81,31 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Password reset mail follows the account holder's preferred locale,
-     * falling back to the Arabic default.
+     * Password reset mail follows the locale the request was made in, falling
+     * back to the account holder's preference and then the Arabic default: a
+     * customer who asks for a reset from the English storefront gets English,
+     * whatever their stored preference says.
+     *
+     * The locale is resolved here, inside the request, and carried into the
+     * queued notification. Resolving it later would read the worker's
+     * APP_LOCALE instead of the customer's.
      *
      * @param  string  $token
      */
     public function sendPasswordResetNotification($token): void
     {
-        $this->notify(new ResetPasswordNotification(
-            $token,
-            $this->preferred_locale === 'en' ? 'en' : 'ar',
-        ));
+        $this->notify(new ResetPasswordNotification($token, $this->resetMailLocale()));
+    }
+
+    private function resetMailLocale(): string
+    {
+        $routeLocale = request()->route('locale');
+
+        if (is_string($routeLocale) && in_array($routeLocale, (array) config('store.locales'), true)) {
+            return $routeLocale === 'en' ? 'en' : 'ar';
+        }
+
+        return $this->preferred_locale === 'en' ? 'en' : 'ar';
     }
 
     /** @return Attribute<string, never> */

@@ -183,3 +183,57 @@ test('a customer with no preferred locale defaults to Arabic reset email', funct
         return true;
     });
 });
+
+test('the reset link keeps the request locale when the worker locale differs', function () {
+    Notification::fake();
+
+    $user = User::factory()->create(['preferred_locale' => 'en']);
+
+    $this->post('/en/forgot-password', ['email' => $user->email]);
+
+    Notification::assertSentTo($user, ResetPasswordNotification::class, function (ResetPasswordNotification $notification) use ($user): bool {
+        // A queue worker runs under APP_LOCALE, not the customer's locale. The
+        // mail is built here the way the worker builds it -- outside any request
+        // that would have set the locale for us.
+        app()->setLocale('ar');
+
+        $mail = $notification->toMail($user);
+
+        expect($mail->actionUrl)->toStartWith(url('/en/reset-password/'));
+
+        return true;
+    });
+});
+
+test('an Arabic request keeps the unprefixed reset link when the worker locale is English', function () {
+    Notification::fake();
+
+    $user = User::factory()->create(['preferred_locale' => 'ar']);
+
+    $this->post('/forgot-password', ['email' => $user->email]);
+
+    Notification::assertSentTo($user, ResetPasswordNotification::class, function (ResetPasswordNotification $notification) use ($user): bool {
+        app()->setLocale('en');
+
+        $mail = $notification->toMail($user);
+
+        expect($mail->actionUrl)->toStartWith(url('/reset-password/'))
+            ->and($mail->actionUrl)->not->toContain('/en/reset-password/');
+
+        return true;
+    });
+});
+
+test('password reset requests are capped per ip across distinct addresses', function () {
+    Notification::fake();
+
+    // Ten distinct addresses from one host exhaust the per-IP limit, even though
+    // the per-address limit is never reached for any single one of them.
+    foreach (range(1, 10) as $i) {
+        $this->post('/forgot-password', ['email' => "victim{$i}@example.com"])
+            ->assertStatus(302);
+    }
+
+    $this->post('/forgot-password', ['email' => 'victim11@example.com'])
+        ->assertStatus(429);
+});
