@@ -1,9 +1,8 @@
 # Live status
 
-**Lifecycle:** Phase 1 accepted; Phase 2 accepted by Mohamed on 2026-08-23
-after the `support-v3` batch passed every mandatory threshold; Phase 3
-knowledge grounding, service cards, and human support handoff & ticketing are implemented
-**Verified:** 2026-08-24
+**Lifecycle:** Phase 1 accepted; Phase 2 accepted by Mohamed on 2026-08-23;
+Phase 3 knowledge grounding, service cards, and human support handoff & ticketing are implemented and active; running `support-v8`
+**Verified:** 2026-09-01
 
 ## Release snapshot
 
@@ -21,7 +20,7 @@ knowledge grounding, service cards, and human support handoff & ticketing are im
 | Phase 1 owner acceptance                                   | Mohamed accepted the deployed Phase 1 release on 2026-08-21 after completing the real-account and physical iPhone/Safari checks. This closes the remaining device/owner gate without changing the scope of the automated Chromium evidence.                                                                                                               |
 | Phase 2 runtime release                                    | [Tests 32578736891](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32578736891) and [deploy 32578995534](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32578995534) passed for `e13ee8bde25263a262788177d0ce78fb4f46f37f`. The active release, seven chat routes, and minute stale-turn recovery schedule were verified in production. |
 | Public Luna evaluation                                     | The 2026-08-22 batch failed mandatory mixed-language, safety-critical-case, and first-visible-content thresholds; see [the sanitized evidence](evidence/2026-08-22-phase-2-luna-public-eval.md). The 2026-08-23 batch `phase3-knowledge-eval-20260823T074807Z` passed every mandatory threshold and is the accepted evidence. See [EVALS.md](EVALS.md).                                                                                       |
-| Current production mode                                    | **Nawaf is active in production.** Phase 2 was accepted by Mohamed on 2026-08-23 after the `support-v3` batch passed every mandatory threshold. The accepted configuration is `support-v3` with knowledge grounding at `knowledge_max_topics: 3` and server-derived service cards. The kill switch and rate limits are unchanged: clearing the AI enable flag returns new messages to the accepted Phase 1 demo behavior. |
+| Current production mode                                    | **Nawaf is active in production.** Phase 2 was accepted by Mohamed on 2026-08-23 after the `support-v3` batch passed every mandatory threshold. The active configuration is `support-v8` with knowledge grounding at `knowledge_max_topics: 3` and server-derived service cards. The kill switch and rate limits are unchanged: clearing the AI enable flag returns new messages to the accepted Phase 1 demo behavior. |
 
 The application contains the Phase 2 runtime, direct Nawaf adapter,
 streaming routes, durable turn/run schema, recovery, and cost accounting, plus
@@ -92,26 +91,16 @@ The accepted configuration is `support-v3` with knowledge grounding
 (`knowledge_max_topics: 3`) and server-derived service cards. Setting
 `knowledge_max_topics` to 0 disables grounding without touching the prompt.
 
-## Exact next gate
+## Operational and maintenance status
 
-Phases 1-3 are accepted and active. The next gate is the approved human support
-handoff and ticketing work designed in
-[`2026-08-24-support-handoff-tickets-design.md`](../decisions/2026-08-24-support-handoff-tickets-design.md):
-staff replies from the admin inbox, a `support_tickets` record, a 48-hour guest
-retention window with guests removed from the operator inbox, and a
-customer-visible conversation history. That work must not change the accepted
-Luna configuration. No prompt, threshold, guard, model, token budget, or runtime
-default may be changed silently, and any change to them requires a fresh
-complete evaluation batch and a new owner acceptance.
+Phases 1-3 and human support handoff & ticketing are implemented, tested, and active in production:
+staff replies from the admin inbox, durable `support_tickets` records, a 48-hour guest retention window,
+and customer-visible conversation history are live.
 
-**Accepted and deployed are not the same prompt.** The last prompt version to
-pass a complete 16-case batch is `support-v3`. Production currently runs
-`support-v6`; `support-v4`, `support-v5` and `support-v6` each shipped without
-a batch of their own, so the deployed configuration is unevaluated against the
-mandatory thresholds. `knowledge_max_topics` is 3; setting it to 0 disables
-grounding without touching the prompt. Any mandatory evaluation miss disables
-the assistant again. See [EVALS.md](EVALS.md). See [AGENT-RUNTIME.md](AGENT-RUNTIME.md),
-[EVALS.md](EVALS.md), and [OPERATIONS.md](OPERATIONS.md).
+Production currently runs `support-v8` with `knowledge_max_topics: 3`. Setting `AI_ASSISTANT_KNOWLEDGE_MAX_TOPICS=0`
+disables grounding dynamically. Any prompt, threshold, guard, model, token budget, or runtime default
+change requires checking and updating the canonical docs to match `config/ai-assistant.php`.
+See [AGENT-RUNTIME.md](AGENT-RUNTIME.md), [EVALS.md](EVALS.md), and [OPERATIONS.md](OPERATIONS.md).
 
 ## Open decision
 

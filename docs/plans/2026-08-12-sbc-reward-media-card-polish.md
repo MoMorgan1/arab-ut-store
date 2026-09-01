@@ -1,5 +1,7 @@
 # SBC Reward Media and Card Polish Implementation Plan
 
+**Status:** Shipped (2026-08-12)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Publish reward-player art for player SBCs and compact the SBC listing cards to the approved WordPress-refined behavior.

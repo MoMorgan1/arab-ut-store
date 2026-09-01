@@ -1,5 +1,7 @@
 # AI Assistant Widget — Home + Light Chat + Motion Implementation Plan
 
+**Status:** Shipped (2026-08-22)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Turn the storefront chat widget into a help-center style assistant: a Home screen (greeting, continue/start cards, topic grid) that leads into the existing chat view, restyled on a light warm surface with gold accents and a CSS-only motion system.

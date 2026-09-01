@@ -14,7 +14,7 @@ Major planned areas still include the remaining service workflows, the broader o
 | --- | --- | --- |
 | `product/` | What the store is and what v1 must contain | Mohamed makes a product decision |
 | `decisions/` | Why each feature was built the way it was | A feature is designed |
-| `plans/` | The execution sequence for work still in flight | A feature is planned; deleted once shipped and superseded by the code |
+| `plans/` | The execution sequence and historical plans for features | A feature is planned; preserved as immutable implementation history |
 | `api/` | Signed contracts with n8n and Paylink | A contract version changes |
 | `operations/` | Deploy, rollback, and runbooks | Infrastructure changes |
 | `architecture/` | Cross-cutting system findings | A system-wide audit lands |

@@ -1,5 +1,7 @@
 # Coins Multiplier Anchors Implementation Plan
 
+**Status:** Shipped (2026-08-27)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let the n8n pricing run publish the eleven commercial anchors instead of a pre-expanded curve, so changing the Coins quantity settings in the admin no longer requires editing the n8n workflow.
