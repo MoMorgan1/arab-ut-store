@@ -3,10 +3,12 @@
 namespace App\Admin\Actions;
 
 use App\Admin\Audit\StaffAuditEvent;
+use App\Admin\Queries\CountCustomersPerTier;
 use App\Enums\AdminPermission;
 use App\Models\LoyaltyTier;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -109,6 +111,8 @@ final readonly class UpdateLoyaltyTier
                     ipAddress: $ipAddress,
                 ),
             );
+
+            Cache::forget(CountCustomersPerTier::CACHE_KEY);
 
             return $tier;
         });

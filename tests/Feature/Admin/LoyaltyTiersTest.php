@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\StaffAuditLog;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia;
 use Laravel\Fortify\Fortify;
@@ -284,6 +285,36 @@ test('CountCustomersPerTier counts customers correctly based on completed eligib
         ->and($counts['silver'])->toBe(1)
         ->and($counts['gold'])->toBe(1)
         ->and($counts['platinum'])->toBe(0);
+});
+
+test('CountCustomersPerTier caches customer counts and invalidates when a tier is updated', function (): void {
+    $admin = createLoyaltyAdminActor(UserRole::Admin);
+    $tiers = seedLoyaltyTiersFixture();
+    Cache::flush();
+
+    User::factory()->create(['role' => UserRole::Customer]);
+    $counts = app(CountCustomersPerTier::class)->execute();
+    expect($counts['bronze'])->toBe(1);
+
+    // Creating another customer without flushing cache should return cached count
+    User::factory()->create(['role' => UserRole::Customer]);
+    $cached = app(CountCustomersPerTier::class)->execute();
+    expect($cached['bronze'])->toBe(1);
+
+    // Updating a tier clears the cache
+    $tier = $tiers['silver'];
+    $this->actingAs($admin)
+        ->putJson("/admin/api/marketing/loyalty/tiers/{$tier->public_id}", [
+            'name_ar' => 'فضي محدث',
+            'name_en' => 'Silver Updated',
+            'minimum_lifetime_spend_halalah' => 60000,
+            'cashback_basis_points' => 350,
+            'is_active' => true,
+        ])
+        ->assertOk();
+
+    $freshCounts = app(CountCustomersPerTier::class)->execute();
+    expect($freshCounts['bronze'])->toBe(2);
 });
 
 /** @return array<string, LoyaltyTier> */

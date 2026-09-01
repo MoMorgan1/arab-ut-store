@@ -272,6 +272,9 @@ final class SyncCatalogSnapshot
                 'sale_price_halalah' => $salePriceMinor,
                 'price_version' => $priceVersion,
                 'configuration' => $variantPayload['configuration'],
+                'sbc_category' => is_array($variantPayload['configuration'])
+                    ? ($variantPayload['configuration']['sbcCategory'] ?? null)
+                    : null,
                 'is_active' => $variantPayload['active'],
             ])->save();
         }
