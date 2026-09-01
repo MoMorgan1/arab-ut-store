@@ -1,5 +1,7 @@
 # AI Assistant Phase 2 Runtime Implementation Plan
 
+**Status:** Shipped (2026-08-21)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a provider-neutral, durable, streamed `gpt-5.6-luna` support runtime to the accepted Phase 1 chat and release it only to authenticated testers with measured safety, latency, usage, and cost evidence.

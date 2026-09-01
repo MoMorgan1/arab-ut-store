@@ -83,3 +83,26 @@ test('users without local passwords can be persisted for imported identities', f
             'name' => 'Imported Customer',
         ]);
 });
+
+test('registration requests are rate limited by ip', function (string $url) {
+    for ($i = 0; $i < 20; $i++) {
+        $this->post($url, [
+            'first_name' => 'Test',
+            'last_name' => 'User',
+            'email' => "user{$i}@example.com",
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+    }
+
+    $this->post($url, [
+        'first_name' => 'Test',
+        'last_name' => 'User',
+        'email' => 'blocked@example.com',
+        'password' => 'password123',
+        'password_confirmation' => 'password123',
+    ])->assertTooManyRequests();
+})->with([
+    'Fortify default route' => '/register',
+    'Localized English route' => '/en/register',
+]);

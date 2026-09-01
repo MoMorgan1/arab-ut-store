@@ -42,7 +42,7 @@ final class OrderPaidNotification extends Notification implements ShouldQueue
      */
     private const MAIL_SAFE_FORMATS = ['png', 'jpg', 'jpeg', 'gif'];
 
-    public function __construct(private readonly Order $order)
+    public function __construct(public readonly Order $order)
     {
         $this->afterCommit();
     }

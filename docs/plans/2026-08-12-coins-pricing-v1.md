@@ -1,5 +1,7 @@
 # Coins Pricing v1 Implementation Plan
 
+**Status:** Shipped (2026-08-12)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the Salla-bound Coins price updater with a signed, tier-driven pricing snapshot that Laravel can evaluate for every legal quantity, including PC quantities up to 20M.

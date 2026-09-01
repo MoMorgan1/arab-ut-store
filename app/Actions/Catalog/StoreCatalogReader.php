@@ -53,7 +53,9 @@ final class StoreCatalogReader
         }
 
         $perPage = 12;
-        $total = (clone $query)->count();
+        $total = $filter === 'all'
+            ? $filterCounts['all']
+            : ($filterCounts[$filter] ?? (clone $query)->count());
         $lastPage = max(1, (int) ceil($total / $perPage));
         $page = min($page, $lastPage);
         $this->applySort($query, $sort);
@@ -118,35 +120,6 @@ final class StoreCatalogReader
                 ->map(fn (array $suggestion): array => $this->withoutInternalFields($suggestion))
                 ->all()),
         ];
-    }
-
-    /** @return array{service: string, product: array<string, mixed>} */
-    public function featuredProduct(
-        ServiceType $service,
-        string $locale,
-        string $displayCurrency,
-    ): array {
-        $product = $this->publicProducts($service)->first();
-
-        abort_unless($product instanceof Product, 404);
-
-        $presented = $this->presentSafely($product, $locale, $this->converter($displayCurrency));
-
-        abort_unless(is_array($presented), 404);
-
-        return [
-            'service' => $service->value,
-            'product' => $this->withoutInternalFields($presented),
-        ];
-    }
-
-    /** @return Collection<int, Product> */
-    private function publicProducts(ServiceType $service): Collection
-    {
-        return $this->withCatalogRelations($this->publicProductsQuery($service))
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
     }
 
     /**
@@ -411,11 +384,7 @@ final class StoreCatalogReader
 
         $query->whereHas('variants', function (Builder $variants) use ($categories): void {
             $variants->where('is_active', true)
-                ->where(function (Builder $categoryQuery) use ($categories): void {
-                    foreach ($categories as $category) {
-                        $categoryQuery->orWhere('configuration->sbcCategory', $category);
-                    }
-                });
+                ->whereIn('sbc_category', $categories);
         });
     }
 

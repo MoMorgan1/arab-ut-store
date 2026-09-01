@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AdminPermission;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
@@ -7,6 +8,7 @@ use App\Enums\PaymentStatus;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Enums\UserRole;
+use App\Http\Middleware\EnsureAdminMfa;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use App\Models\StaffAuditLog;
@@ -14,7 +16,9 @@ use App\Models\User;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Fortify;
 
@@ -293,6 +297,58 @@ test('transition permissions gate actions per transition type', function (): voi
             'target_status' => 'in_progress',
         ])
         ->assertForbidden();
+
+    // Staff without orders.cancel permission cannot cancel order but can move to in_progress
+    $staff = createTransitionTestActor(UserRole::Staff);
+    Gate::define(AdminPermission::OrdersCancel->value, fn (): bool => false);
+
+    $this->actingAs($staff)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'received',
+            'target_status' => 'cancelled',
+        ])
+        ->assertForbidden();
+
+    $this->actingAs($staff)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'received',
+            'target_status' => 'in_progress',
+        ])
+        ->assertOk()
+        ->assertJson([
+            'status' => 'in_progress',
+        ]);
+
+    // Staff without orders.update cannot make any transition
+    $orderInProgress = createTransitionTestOrder(OrderStatus::Received);
+    Gate::define(AdminPermission::OrdersUpdate->value, fn (): bool => false);
+
+    $this->actingAs($staff)
+        ->postJson("/admin/orders/{$orderInProgress->public_id}/transitions", [
+            'expected_status' => 'received',
+            'target_status' => 'in_progress',
+        ])
+        ->assertForbidden();
+});
+
+test('unconfirmed MFA admin actors are redirected to MFA setup when transitioning order', function (): void {
+    $admin = createTransitionTestActor(UserRole::Admin);
+    $admin->forceFill(['two_factor_confirmed_at' => null])->save();
+    $order = createTransitionTestOrder(OrderStatus::Received);
+
+    $this->actingAs($admin)
+        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+            'expected_status' => 'received',
+            'target_status' => 'in_progress',
+        ])
+        ->assertRedirect('/admin/settings');
+});
+
+test('the order transitions route requires EnsureAdminMfa middleware', function (): void {
+    $route = Route::getRoutes()->getByName('admin.orders.transitions.store');
+
+    expect($route)->not->toBeNull()
+        ->and($route?->gatherMiddleware())->toContain(EnsureAdminMfa::class);
 });
 
 test('localized transition alias routes execute successfully', function (): void {

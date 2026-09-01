@@ -111,4 +111,65 @@ describe('AdminUnreadBadge', () => {
         // Immediately resumes fetch
         expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
+
+    it('does not start duplicate fetches or extra polling loops when visibility changes while a fetch is in flight', async () => {
+        let resolveFirstFetch!: (value: unknown) => void;
+        const firstFetchPromise = new Promise((resolve) => {
+            resolveFirstFetch = resolve;
+        });
+
+        const fetchSpy = vi
+            .fn()
+            .mockImplementationOnce(() => firstFetchPromise)
+            .mockImplementation(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ count: 1 }),
+                }),
+            );
+        global.fetch = fetchSpy;
+
+        render(<AdminUnreadBadge />);
+
+        // First fetch is in flight
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+        // Fire visibility change while in flight
+        Object.defineProperty(document, 'hidden', {
+            configurable: true,
+            get: () => false,
+        });
+        await act(async () => {
+            document.dispatchEvent(new Event('visibilitychange'));
+            await Promise.resolve();
+        });
+
+        // Still only 1 call because first is in flight
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+        // Resolve first fetch
+        await act(async () => {
+            resolveFirstFetch({
+                ok: true,
+                json: () => Promise.resolve({ count: 1 }),
+            });
+            await Promise.resolve();
+        });
+
+        // Advance 30s
+        await act(async () => {
+            vi.advanceTimersByTime(30_000);
+            await Promise.resolve();
+        });
+
+        // Next poll occurred: exactly 2 total fetches
+        expect(fetchSpy).toHaveBeenCalledTimes(2);
+
+        // Advance another 30s: exactly 3 total fetches (single loop maintained)
+        await act(async () => {
+            vi.advanceTimersByTime(30_000);
+            await Promise.resolve();
+        });
+        expect(fetchSpy).toHaveBeenCalledTimes(3);
+    });
 });

@@ -43,7 +43,7 @@ final class VerifyEmailNotification extends VerifyEmail implements ShouldQueue
     private function buildArabicMessage(string $verificationUrl): MailMessage
     {
         return (new MailMessage)
-            ->subject('وثّق بريد حسابك في عرب ألتميت')
+            ->subject('وثّق بريد حسابك في عرب التيميت')
             ->line('استخدم الزر التالي لتوثيق بريدك الإلكتروني.')
             ->action('توثيق البريد الإلكتروني', $verificationUrl)
             ->line('إذا لم تنشئ هذا الحساب، تجاهل هذه الرسالة.');

@@ -72,7 +72,7 @@ Never lock a ticket or turn before the parent conversation.
 
 ## Grounding and derived surfaces
 
-`SelectSupportKnowledge` picks topics lexically from `resources/ai-assistant/knowledge/arab-ut.json`, and `support-v6` injects them as a `<store_knowledge>` block, alongside a `<live_prices>` block built from the store catalogue in the viewer's own display currency.
+`SelectSupportKnowledge` picks topics lexically from `resources/ai-assistant/knowledge/arab-ut.json`, and `support-v8` injects them as a `<store_knowledge>` block, alongside a `<live_prices>` block built from the store catalogue in the viewer's own display currency.
 
 Customer-visible service cards and add-to-cart offers are derived server-side from customer message intent, never authored by the model.
 

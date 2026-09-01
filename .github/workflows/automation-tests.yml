@@ -11,11 +11,11 @@ on:
     branches:
       - main
     paths:
-      - 'automation/n8n/sbc-catalog-v1/**'
+      - 'automation/n8n/**'
       - '.github/workflows/automation-tests.yml'
   pull_request:
     paths:
-      - 'automation/n8n/sbc-catalog-v1/**'
+      - 'automation/n8n/**'
       - '.github/workflows/automation-tests.yml'
 
 concurrency:

@@ -183,7 +183,7 @@
       "waitBetweenTries": 1000,
       "credentials": {
         "httpCustomAuth": {
-          "id": "ArabUTPricing01",
+          "id": "CONFIGURE_ARABUT_PRICING_API_CREDENTIAL_ID",
           "name": "ArabUT Pricing API"
         }
       },
@@ -265,7 +265,7 @@
     {
       "parameters": {
         "operation": "sendAndWait",
-        "chatId": "-5354975804",
+        "chatId": "={{ $env.OPS_TELEGRAM_CHAT_ID }}",
         "message": "={{ $json.telegramMessage }}",
         "approvalOptions": {
           "values": {
@@ -287,7 +287,7 @@
       "webhookId": "5df39642-a706-42cd-a8f6-63bf263253f9",
       "credentials": {
         "telegramApi": {
-          "id": "VZru5V1gjvu78cH5",
+          "id": "CONFIGURE_TELEGRAM_CREDENTIAL_ID",
           "name": "Telegram account"
         }
       },
@@ -320,7 +320,7 @@
     },
     {
       "parameters": {
-        "chatId": "-5354975804",
+        "chatId": "={{ $json.to || $env.OPS_TELEGRAM_CHAT_ID }}",
         "text": "={{ $json.body }}",
         "additionalFields": {}
       },
@@ -335,7 +335,7 @@
       "webhookId": "81b52ab2-6979-4a02-a05f-8a47b8b67e5d",
       "credentials": {
         "telegramApi": {
-          "id": "VZru5V1gjvu78cH5",
+          "id": "CONFIGURE_TELEGRAM_CREDENTIAL_ID",
           "name": "Telegram account"
         }
       },

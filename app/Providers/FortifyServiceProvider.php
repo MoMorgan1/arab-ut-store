@@ -17,7 +17,6 @@ use App\Http\Responses\RegisterResponse;
 use App\Http\Responses\TwoFactorLoginResponse;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
-use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -69,9 +68,11 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureAuthentication();
         $this->configureViews();
         $this->configureRateLimiting();
-        $this->configurePasswordResetUrls();
         $this->revokeTrustedDevicesOnCredentialChange();
-        $this->app->booted(fn () => $this->hardenTwoFactorManagementRoutes());
+        $this->app->booted(function (): void {
+            $this->hardenTwoFactorManagementRoutes();
+            $this->hardenAuthRoutes();
+        });
     }
 
     /**
@@ -194,6 +195,19 @@ class FortifyServiceProvider extends ServiceProvider
             Limit::perMinute(10)->by('verification-send-ip:'.$request->ip()),
         ]);
 
+        RateLimiter::for('register', fn (Request $request): Limit => Limit::perMinute(20)->by($request->ip()));
+
+        // Per-address, then per-IP: without the second limit one host can walk a
+        // harvested address list and mail-bomb every customer on it, because the
+        // first key changes with every distinct email.
+        RateLimiter::for('password-reset', function (Request $request): array {
+            $email = Str::lower(trim((string) $request->input('email')));
+
+            return [
+                Limit::perMinute(3)->by(hash('sha256', $email.'|'.$request->ip())),
+                Limit::perMinute(10)->by('password-reset-ip:'.$request->ip()),
+            ];
+        });
     }
 
     /** @return array<string, mixed> */
@@ -245,21 +259,6 @@ class FortifyServiceProvider extends ServiceProvider
         return filled(config('services.google.client_id'))
             && filled(config('services.google.client_secret'))
             && filled(config('services.google.redirect'));
-    }
-
-    private function configurePasswordResetUrls(): void
-    {
-        ResetPasswordNotification::createUrlUsing(function (User $user, string $token): string {
-            $localized = app()->getLocale() === 'en';
-            $routeName = $localized ? 'localized.password.reset' : 'password.reset';
-            $parameters = [
-                ...($localized ? ['locale' => 'en'] : []),
-                'token' => $token,
-                'email' => $user->getEmailForPasswordReset(),
-            ];
-
-            return url(route($routeName, $parameters, absolute: false));
-        });
     }
 
     /**
@@ -319,6 +318,37 @@ class FortifyServiceProvider extends ServiceProvider
                 EnsureActiveUser::class,
                 'throttle:two-factor-management',
             ]);
+        }
+    }
+
+    private function hardenAuthRoutes(): void
+    {
+        if ($this->app->routesAreCached()) {
+            return;
+        }
+
+        Route::getRoutes()->refreshNameLookups();
+
+        if (Features::enabled(Features::registration())) {
+            $registerRoute = Route::getRoutes()->getByName('register.store');
+
+            if ($registerRoute !== null) {
+                $registerRoute->middleware(['throttle:register']);
+            }
+        }
+
+        if (Features::enabled(Features::resetPasswords())) {
+            $passwordEmailRoute = Route::getRoutes()->getByName('password.email');
+
+            if ($passwordEmailRoute !== null) {
+                $passwordEmailRoute->middleware(['throttle:password-reset']);
+            }
+
+            $passwordUpdateRoute = Route::getRoutes()->getByName('password.update');
+
+            if ($passwordUpdateRoute !== null) {
+                $passwordUpdateRoute->middleware(['throttle:password-reset']);
+            }
         }
     }
 }

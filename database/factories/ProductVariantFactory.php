@@ -33,4 +33,24 @@ class ProductVariantFactory extends Factory
             'is_active' => true,
         ];
     }
+
+    /**
+     * Keep the denormalised sbc_category column in step with the configuration
+     * a test hands in. The catalog filter reads the column and no longer falls
+     * back to the JSON, so a variant built with an sbcCategory in its
+     * configuration but a null column is invisible to the SBC page -- a test
+     * written that way would fail for a reason that has nothing to do with what
+     * it is testing.
+     */
+    public function configure(): static
+    {
+        return $this->afterMaking(function (ProductVariant $variant): void {
+            $configuration = $variant->configuration;
+
+            if ($variant->sbc_category === null && is_array($configuration)
+                && is_string($configuration['sbcCategory'] ?? null)) {
+                $variant->sbc_category = $configuration['sbcCategory'];
+            }
+        });
+    }
 }

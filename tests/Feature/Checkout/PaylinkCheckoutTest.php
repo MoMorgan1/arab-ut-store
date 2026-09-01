@@ -1,9 +1,15 @@
 <?php
 
+use App\Actions\Checkout\ReconcilePaylinkPayment;
+use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
+use App\Enums\WalletEntryType;
+use App\Exceptions\Checkout\CheckoutUnavailable;
+use App\Exceptions\Payments\PaymentGatewayException;
+use App\Loyalty\Support\WalletLedgerWriter;
 use App\Models\Cart;
 use App\Models\CartItemSecret;
 use App\Models\IntegrationEvent;
@@ -12,9 +18,12 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Models\WalletEntry;
+use App\Notifications\OrderPaidNotification;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /** @return array{user: User, variant: ProductVariant} */
@@ -291,7 +300,30 @@ test('the Paylink return verifies the invoice before marking the owner order rec
             ->missing('order.payments'));
 });
 
+test('a customer cannot reconcile another customer Paylink payment through the return callback', function () {
+    ['user' => $owner] = paylinkCheckoutCart();
+    $otherUser = User::factory()->create();
+    fakePaylinkCheckout();
+
+    $this->actingAs($owner)->postJson('/checkout/paylink', [], paylinkCheckoutHeaders('checkout-owner-paylink'))->assertCreated();
+
+    $order = Order::sole();
+    $payment = Payment::sole();
+
+    Http::fake();
+
+    $this->actingAs($otherUser)
+        ->get('/payments/paylink/callback?TransactionNo='.$payment->provider_payment_id.'&OrderNumber='.$order->order_number)
+        ->assertRedirect('/cart');
+
+    expect($order->fresh()->status)->toBe(OrderStatus::PendingPayment)
+        ->and($payment->fresh()->status)->toBe(PaymentStatus::Pending);
+
+    Http::assertNothingSent();
+});
+
 test('the authenticated Paylink webhook verifies the invoice before acknowledging payment', function () {
+    Notification::fake();
     ['user' => $user] = paylinkCheckoutCart();
     fakePaylinkCheckout(getStatus: 'Paid');
     $webhookToken = str_repeat('w', 64);
@@ -299,9 +331,11 @@ test('the authenticated Paylink webhook verifies the invoice before acknowledgin
 
     $this->actingAs($user)->postJson('/checkout/paylink', [], paylinkCheckoutHeaders('checkout-http-webhook'))->assertCreated();
 
+    $order = Order::sole();
+
     $payload = [
         'amount' => 12.5,
-        'merchantOrderNumber' => Order::sole()->order_number,
+        'merchantOrderNumber' => $order->order_number,
         'orderStatus' => 'Paid',
         'transactionNo' => '1710000000099',
         'apiVersion' => 'v2',
@@ -312,6 +346,11 @@ test('the authenticated Paylink webhook verifies the invoice before acknowledgin
     ])->assertOk()
         ->assertHeader('Cache-Control', 'no-store, private')
         ->assertExactJson(['data' => ['acknowledged' => true]]);
+
+    Notification::assertSentTo($user, OrderPaidNotification::class, function (OrderPaidNotification $notification) use ($order): bool {
+        return $notification->order->id === $order->id;
+    });
+    Notification::assertSentTimes(OrderPaidNotification::class, 1);
 
     expect(Order::sole()->status->value)->toBe('received')
         ->and(Payment::sole()->status->value)->toBe('paid')
@@ -327,6 +366,8 @@ test('the authenticated Paylink webhook verifies the invoice before acknowledgin
     $this->postJson('/api/payments/paylink/webhook', $payload, [
         'Authorization' => 'Bearer '.$webhookToken,
     ])->assertOk();
+
+    Notification::assertSentTimes(OrderPaidNotification::class, 1);
 
     expect(Order::sole()->statusHistory()->where('status', 'received')->count())->toBe(1)
         ->and(IntegrationEvent::where('event_type', 'order.paid')->count())->toBe(1)
@@ -407,3 +448,146 @@ test('a payment reconciled against a cancelled order is recorded as an anomaly a
     expect($loggedWarnings)->not->toBeEmpty()
         ->and($loggedWarnings[0])->toContain($order->order_number);
 });
+
+test('a cancelled Paylink invoice releases order wallet funds and cancels the order', function () {
+    ['user' => $user] = paylinkCheckoutCart();
+    $cart = Cart::where('user_id', $user->id)->firstOrFail();
+    $cart->update(['use_wallet' => true]);
+
+    $writer = app(WalletLedgerWriter::class);
+    $account = $writer->lockAccountFor($user->id);
+    $writer->append($account, [
+        'type' => WalletEntryType::Credit,
+        'amount_halalah' => 500,
+        'balance_delta_halalah' => 500,
+        'order_id' => null,
+        'refund_id' => null,
+        'created_by_user_id' => null,
+        'reference' => 'test-credit-fixture:'.uniqid('', true),
+        'metadata' => ['reason' => 'test fixture'],
+    ]);
+
+    fakePaylinkCheckout(getStatus: 'Cancelled', amount: 7.50);
+    $webhookToken = str_repeat('w', 64);
+    config()->set('services.paylink.webhook_token', $webhookToken);
+
+    $this->actingAs($user)->postJson('/checkout/paylink', [], paylinkCheckoutHeaders('checkout-wallet-cancel', 1250, 750))->assertCreated();
+
+    $order = Order::sole();
+    $payment = Payment::sole();
+    expect($order->status)->toBe(OrderStatus::PendingPayment)
+        ->and($order->wallet_halalah)->toBe(500)
+        ->and($order->payment_halalah)->toBe(750)
+        ->and($payment->amount_halalah)->toBe(750)
+        ->and((int) $user->fresh()->walletAccount->balance_halalah)->toBe(0);
+
+    $payload = [
+        'amount' => 7.5,
+        'merchantOrderNumber' => $order->order_number,
+        'orderStatus' => 'Cancelled',
+        'transactionNo' => '1710000000099',
+        'apiVersion' => 'v2',
+    ];
+
+    $this->postJson('/api/payments/paylink/webhook', $payload, [
+        'Authorization' => 'Bearer '.$webhookToken,
+    ])->assertOk()
+        ->assertExactJson(['data' => ['acknowledged' => true]]);
+
+    expect($order->fresh()->status)->toBe(OrderStatus::Cancelled)
+        ->and($order->fresh()->cancelled_at)->not->toBeNull()
+        ->and($order->items()->sole()->status)->toBe(OrderItemStatus::Cancelled)
+        ->and($payment->fresh()->status)->toBe(PaymentStatus::Cancelled)
+        ->and((int) $user->fresh()->walletAccount->balance_halalah)->toBe(500);
+
+    $refundEntry = WalletEntry::where('wallet_account_id', $user->walletAccount->id)
+        ->where('reference', "order-wallet-released:{$order->id}")
+        ->first();
+    expect($refundEntry)->not->toBeNull()
+        ->and($refundEntry->type)->toBe(WalletEntryType::Refund)
+        ->and($refundEntry->amount_halalah)->toBe(500);
+
+    // Replaying the webhook must not credit the wallet a second time
+    $this->postJson('/api/payments/paylink/webhook', $payload, [
+        'Authorization' => 'Bearer '.$webhookToken,
+    ])->assertOk();
+
+    expect((int) $user->fresh()->walletAccount->balance_halalah)->toBe(500)
+        ->and(WalletEntry::where('wallet_account_id', $user->walletAccount->id)->where('reference', "order-wallet-released:{$order->id}")->count())->toBe(1);
+});
+
+test('reconciliation rejects mismatched invoice fields and leaves order pending', function (
+    string $field,
+    mixed $overrideValue,
+    string $expectedException,
+) {
+    ['user' => $user] = paylinkCheckoutCart();
+
+    config()->set('services.paylink.environment', 'test');
+    config()->set('services.paylink.api_id', 'merchant-id');
+    config()->set('services.paylink.secret_key', 'merchant-secret');
+    Cache::flush();
+
+    Http::fake(function ($request) use ($field, $overrideValue) {
+        if (str_ends_with($request->url(), '/api/auth')) {
+            return Http::response(['id_token' => 'merchant-token']);
+        }
+
+        $order = Order::first();
+        $resolvedOrder = $order?->order_number ?? 'AUT-1000';
+
+        if (str_contains($request->url(), '/api/addInvoice')) {
+            return Http::response([
+                'success' => true,
+                'transactionNo' => '1710000000099',
+                'orderStatus' => 'Pending',
+                'amount' => 12.50,
+                'url' => 'https://payment.paylink.sa/pay/info/1710000000099',
+                'gatewayOrderRequest' => ['orderNumber' => $resolvedOrder, 'currency' => 'SAR'],
+                'paymentReceipt' => null,
+            ]);
+        }
+
+        $invoiceData = [
+            'success' => true,
+            'transactionNo' => '1710000000099',
+            'orderStatus' => 'Paid',
+            'amount' => 12.50,
+            'url' => null,
+            'gatewayOrderRequest' => [
+                'orderNumber' => $resolvedOrder,
+                'currency' => 'SAR',
+            ],
+            'paymentReceipt' => ['paymentMethod' => 'mada'],
+        ];
+
+        if ($field === 'transactionNo') {
+            $invoiceData['transactionNo'] = $overrideValue;
+        } elseif ($field === 'orderNumber') {
+            $invoiceData['gatewayOrderRequest']['orderNumber'] = $overrideValue;
+        } elseif ($field === 'amount') {
+            $invoiceData['amount'] = $overrideValue;
+        } elseif ($field === 'currency') {
+            $invoiceData['gatewayOrderRequest']['currency'] = $overrideValue;
+        }
+
+        return Http::response($invoiceData);
+    });
+
+    $this->actingAs($user)->postJson('/checkout/paylink', [], paylinkCheckoutHeaders('checkout-mismatch'))->assertCreated();
+
+    $order = Order::sole();
+    $payment = Payment::sole();
+
+    expect(fn () => app(ReconcilePaylinkPayment::class)->execute($payment))
+        ->toThrow($expectedException);
+
+    expect($order->fresh()->status)->toBe(OrderStatus::PendingPayment)
+        ->and($payment->fresh()->status)->toBe(PaymentStatus::Pending)
+        ->and(IntegrationEvent::where('event_type', 'order.paid')->count())->toBe(0);
+})->with([
+    'wrong transaction number' => ['transactionNo', '9999999999999', CheckoutUnavailable::class],
+    'wrong order number' => ['orderNumber', 'AUT-WRONG-999', CheckoutUnavailable::class],
+    'wrong amount' => ['amount', 99.00, CheckoutUnavailable::class],
+    'wrong currency' => ['currency', 'USD', PaymentGatewayException::class],
+]);

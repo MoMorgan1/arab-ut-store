@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $sale_price_halalah
  * @property int|null $admin_price_halalah
  * @property array<string, mixed>|null $admin_completion_pricing
+ * @property string|null $sbc_category
  * @property ServiceType $service_type
  * @property ProductAuthority $authority
  */
@@ -60,6 +61,9 @@ class ProductVariant extends DomainModel
     {
         static::saving(function (ProductVariant $variant): void {
             $variant->market = $variant->platform->market();
+            if (is_array($variant->configuration) && isset($variant->configuration['sbcCategory'])) {
+                $variant->sbc_category = (string) $variant->configuration['sbcCategory'];
+            }
         });
     }
 

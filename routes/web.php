@@ -236,7 +236,7 @@ Route::prefix('{locale}')
                 ->middleware(['guest:'.config('fortify.guard')])
                 ->name('localized.register');
             Route::post('/register', [RegisteredUserController::class, 'store'])
-                ->middleware(['guest:'.config('fortify.guard')])
+                ->middleware(['guest:'.config('fortify.guard'), 'throttle:register'])
                 ->name('localized.register.store');
         }
 
@@ -245,13 +245,13 @@ Route::prefix('{locale}')
                 ->middleware(['guest:'.config('fortify.guard')])
                 ->name('localized.password.request');
             Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
-                ->middleware(['guest:'.config('fortify.guard')])
+                ->middleware(['guest:'.config('fortify.guard'), 'throttle:password-reset'])
                 ->name('localized.password.email');
             Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])
                 ->middleware(['guest:'.config('fortify.guard')])
                 ->name('localized.password.reset');
             Route::post('/reset-password', [NewPasswordController::class, 'store'])
-                ->middleware(['guest:'.config('fortify.guard')])
+                ->middleware(['guest:'.config('fortify.guard'), 'throttle:password-reset'])
                 ->name('localized.password.update');
         }
 

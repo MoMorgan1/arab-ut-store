@@ -213,6 +213,7 @@ export default function AdminOrdersPage() {
 
             <AdminOrdersPagination
                 adminUi={props.adminUi}
+                direction={props.direction}
                 isNavigating={isNavigating}
                 onPageChange={(page) => applyQuery({ page }, false)}
                 onPerPageChange={(per_page) => applyQuery({ per_page })}

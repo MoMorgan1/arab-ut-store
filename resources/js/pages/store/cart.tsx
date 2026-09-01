@@ -15,6 +15,7 @@ import PhoneNumberField from '@/components/phone-number-field';
 import { StoreSeoHead } from '@/components/store/store-seo-head';
 import { Label } from '@/components/ui/label';
 import StoreLayout from '@/layouts/store-layout';
+import { newAttemptKey } from '@/lib/attempt-key';
 import {
     applyCartCoupon,
     CartCouponError,
@@ -284,7 +285,7 @@ function CheckoutPanel({
     translations: StoreCartTranslations;
     useWallet: boolean;
 }) {
-    const idempotencyKey = useRef(crypto.randomUUID());
+    const idempotencyKey = useRef(newAttemptKey('checkout'));
     const [state, setState] = useState<
         'idle' | 'loading' | 'confirming' | 'error'
     >('idle');
@@ -351,7 +352,7 @@ function CheckoutPanel({
         } catch (error) {
             if (error instanceof PaylinkCheckoutError) {
                 if (error.conclusive) {
-                    idempotencyKey.current = crypto.randomUUID();
+                    idempotencyKey.current = newAttemptKey('checkout');
                 }
 
                 // Not an error the customer has to read and recover from: the

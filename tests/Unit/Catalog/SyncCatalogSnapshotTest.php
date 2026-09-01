@@ -319,3 +319,67 @@ it('rejects a replay before issuing another media request', function () {
         ->toThrow(CatalogSnapshotReplay::class);
     Http::assertSentCount(1);
 });
+
+it('reuses cached mirrored media path on 304 not modified response with etag', function () {
+    Storage::fake('public');
+    config()->set('services.n8n.catalog_media_hosts', ['media.example.test']);
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+
+    Http::fake([
+        'https://media.example.test/image.png' => Http::response($png, 200, [
+            'Content-Type' => 'image/png',
+            'ETag' => '"abc123etag"',
+        ]),
+    ]);
+
+    $snapshot1 = catalogUnitSnapshot(['media' => [[
+        'url' => 'https://media.example.test/image.png',
+        'alt' => ['ar' => null, 'en' => null],
+        'sortOrder' => 0,
+    ]]]);
+
+    $sync = app(SyncCatalogSnapshot::class);
+    $sync->execute($snapshot1, str_repeat('3', 64));
+
+    expect(ProductMedia::count())->toBe(1);
+    $path = ProductMedia::sole()->path;
+    Storage::disk('public')->assertExists($path);
+
+    // Second snapshot run with 304 response
+    Http::fake([
+        'https://media.example.test/image.png' => Http::response('', 304, [
+            'ETag' => '"abc123etag"',
+        ]),
+    ]);
+
+    $snapshot2 = catalogUnitSnapshot([
+        'externalId' => 'second-product',
+        'slug' => 'second-product',
+        'media' => [[
+            'url' => 'https://media.example.test/image.png',
+            'alt' => ['ar' => null, 'en' => null],
+            'sortOrder' => 0,
+        ]],
+        'variants' => [[
+            'externalId' => 'second-variant',
+            'sku' => 'SECOND_VARIANT',
+            'platform' => 'playstation',
+            'market' => 'console',
+            'currency' => 'SAR',
+            'name' => ['ar' => 'بلايستيشن', 'en' => 'PlayStation'],
+            'priceMinor' => 10_000,
+            'salePriceMinor' => null,
+            'priceVersion' => 1,
+            'active' => true,
+            'configuration' => [],
+        ]],
+    ]);
+    $snapshot2['eventId'] = (string) Str::ulid();
+    $snapshot2['runId'] = (string) Str::ulid();
+
+    $sync->execute($snapshot2, str_repeat('4', 64));
+
+    expect(ProductMedia::count())->toBe(2);
+    expect(ProductMedia::where('product_id', Product::where('external_id', 'second-product')->value('id'))->value('path'))->toBe($path);
+    Http::assertSent(fn ($request): bool => $request->hasHeader('If-None-Match', '"abc123etag"'));
+});

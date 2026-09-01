@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
+import { newAttemptKey } from '@/lib/attempt-key';
 import { announceCartAddition } from '@/lib/cart-added-event';
 import { CoinsCartRequestError, submitCoinsCart } from '@/lib/coins-cart-api';
 import { acceptsQuantity } from '@/lib/coins-quantity';
@@ -419,7 +420,7 @@ export function CoinsConfigurator({
         pendingSubmission.current = true;
         setPending(true);
         setSubmitError(null);
-        idempotencyKey.current ??= crypto.randomUUID();
+        idempotencyKey.current ??= newAttemptKey('coins');
 
         try {
             const addition = await submitCoinsCart({

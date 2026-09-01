@@ -108,7 +108,7 @@ const mockPage = vi.hoisted(() => ({
             payments: [],
         },
         ui: {
-            brand: 'عرب ألتميت',
+            brand: 'عرب التيميت',
             header: { account: 'حسابي' },
             footer: { copyright: 'الحقوق محفوظة.' },
         },

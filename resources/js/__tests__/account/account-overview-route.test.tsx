@@ -164,7 +164,7 @@ const mockPage = vi.hoisted(() => ({
             payments: [],
         },
         ui: {
-            brand: 'عرب ألتميت',
+            brand: 'عرب التيميت',
             cart_added: {
                 title: 'تمت الإضافة',
                 message: 'أضيفت الخدمة.',
