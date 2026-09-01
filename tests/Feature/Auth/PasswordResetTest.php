@@ -126,12 +126,12 @@ test('an Arabic customer receives the password reset email in Arabic with config
     Notification::assertSentTo($user, ResetPasswordNotification::class, function (ResetPasswordNotification $notification) use ($user): bool {
         $mail = $notification->toMail($user);
 
-        expect($mail->subject)->toBe('إعادة تعيين كلمة المرور لحسابك في عرب ألتميت')
-            ->and($mail->introLines)->toContain('تلقينا طلبًا لإعادة تعيين كلمة المرور الخاصة بحسابك في عرب ألتميت.')
+        expect($mail->subject)->toBe('إعادة تعيين كلمة المرور لحسابك في عرب التيميت')
+            ->and($mail->introLines)->toContain('تلقينا طلبًا لإعادة تعيين كلمة المرور الخاصة بحسابك في عرب التيميت.')
             ->and($mail->actionText)->toBe('إعادة تعيين كلمة المرور')
             ->and($mail->outroLines)->toContain('تنتهي صلاحية رابط إعادة التعيين هذا خلال 45 دقيقة.')
             ->and($mail->outroLines)->toContain('إذا لم تطلب إعادة تعيين كلمة المرور، فلا يلزمك اتخاذ أي إجراء.')
-            ->and($mail->salutation)->toBe("تحياتنا،\nفريق عرب ألتميت")
+            ->and($mail->salutation)->toBe("تحياتنا،\nفريق عرب التيميت")
             ->and($mail->actionUrl)->toStartWith(url('/reset-password/'))
             ->and($mail->actionUrl)->not->toContain('/en/reset-password/');
 
@@ -174,8 +174,8 @@ test('a customer with no preferred locale defaults to Arabic reset email', funct
     Notification::assertSentTo($user, ResetPasswordNotification::class, function (ResetPasswordNotification $notification) use ($user): bool {
         $mail = $notification->toMail($user);
 
-        expect($mail->subject)->toBe('إعادة تعيين كلمة المرور لحسابك في عرب ألتميت')
-            ->and($mail->introLines)->toContain('تلقينا طلبًا لإعادة تعيين كلمة المرور الخاصة بحسابك في عرب ألتميت.')
+        expect($mail->subject)->toBe('إعادة تعيين كلمة المرور لحسابك في عرب التيميت')
+            ->and($mail->introLines)->toContain('تلقينا طلبًا لإعادة تعيين كلمة المرور الخاصة بحسابك في عرب التيميت.')
             ->and($mail->actionText)->toBe('إعادة تعيين كلمة المرور')
             ->and($mail->actionUrl)->toStartWith(url('/reset-password/'))
             ->and($mail->actionUrl)->not->toContain('/en/reset-password/');

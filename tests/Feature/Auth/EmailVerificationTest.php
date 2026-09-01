@@ -53,7 +53,7 @@ test('resending dispatches an Arabic verification email and is rate limited', fu
         $mail = $notification->toMail($user);
         $path = (string) parse_url((string) $mail->actionUrl, PHP_URL_PATH);
 
-        expect($mail->subject)->toBe('وثّق بريد حسابك في عرب ألتميت')
+        expect($mail->subject)->toBe('وثّق بريد حسابك في عرب التيميت')
             ->and($path)->toStartWith('/verify-email/');
 
         return true;
