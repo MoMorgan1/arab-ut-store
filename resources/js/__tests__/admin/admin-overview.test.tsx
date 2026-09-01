@@ -395,6 +395,7 @@ describe('Admin operational overview', () => {
                 connection: 'database',
                 failedJobs: 0,
                 latestFailure: null,
+                failedEvents: 0,
                 stalledJobs: 0,
                 oldestQueuedAt: null,
             },
@@ -418,6 +419,7 @@ describe('Admin operational overview', () => {
                     name: 'App\\Notifications\\OrderPaidNotification',
                     failedAt: '2026-08-28T01:12:00.000000Z',
                 },
+                failedEvents: 0,
                 stalledJobs: 0,
                 oldestQueuedAt: null,
             },
@@ -443,6 +445,7 @@ describe('Admin operational overview', () => {
                 connection: 'database',
                 failedJobs: 0,
                 latestFailure: null,
+                failedEvents: 0,
                 stalledJobs: 9,
                 oldestQueuedAt: '2026-08-28T00:40:00.000000Z',
             },
@@ -456,6 +459,34 @@ describe('Admin operational overview', () => {
         expect(within(banner).getByText('9')).toBeInTheDocument();
         expect(within(banner).getByText(/scheduler cron/)).toBeInTheDocument();
     });
+
+    it('counts paid-order events the publisher gave up on', () => {
+        inertia.props = pageProps({
+            queueHealth: {
+                monitored: true,
+                connection: 'database',
+                failedJobs: 0,
+                latestFailure: null,
+                failedEvents: 2,
+                stalledJobs: 0,
+                oldestQueuedAt: null,
+            },
+        });
+        render(<AdminOverviewPage />);
+
+        const banner = screen.getByRole('complementary', {
+            name: 'Background jobs need attention',
+        });
+
+        expect(within(banner).getByText('2')).toBeInTheDocument();
+        expect(
+            within(banner).getByText('Failed integration events'),
+        ).toBeInTheDocument();
+        expect(
+            within(banner).getByText(/requeue-paid-event/),
+        ).toBeInTheDocument();
+    });
+
     it('says the queue is unmonitored rather than healthy when it cannot see it', () => {
         inertia.props = pageProps({
             queueHealth: {
@@ -463,6 +494,7 @@ describe('Admin operational overview', () => {
                 connection: 'sync',
                 failedJobs: 0,
                 latestFailure: null,
+                failedEvents: 0,
                 stalledJobs: 0,
                 oldestQueuedAt: null,
             },

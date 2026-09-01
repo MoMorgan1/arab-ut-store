@@ -117,8 +117,10 @@ export type AdminTranslations = {
             latestFailure: string;
             stalledJobs: string;
             stalledSince: string;
+            failedEvents: string;
             failedHint: string;
             stalledHint: string;
+            failedEventsHint: string;
         };
         viewAllOrders: string;
         viewUnresolvedOrders: string;
@@ -1604,6 +1606,8 @@ export type AdminQueueHealth = {
     connection: string;
     failedJobs: number;
     latestFailure: null | { name: string; failedAt: string };
+    /** Order-paid outbox rows that gave up after exhausting every attempt. */
+    failedEvents: number;
     stalledJobs: number;
     oldestQueuedAt: null | string;
 };
