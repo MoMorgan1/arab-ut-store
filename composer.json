@@ -43,6 +43,8 @@
             "Tests\\": "tests/"
         },
         "files": [
+            "tests/Feature/Admin/StaffFixtures.php",
+            "tests/Feature/Checkout/CouponFixtures.php",
             "tests/Support/CoinsPricingPayloads.php"
         ]
     },
