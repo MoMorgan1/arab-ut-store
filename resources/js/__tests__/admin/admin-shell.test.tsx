@@ -272,6 +272,99 @@ describe('Admin shell', () => {
         ).not.toBeInTheDocument();
     });
 
+    it('marks a nested child link current when the page is a group child', () => {
+        pageState.url = '/en/admin/marketing/promotions?page=2';
+        pageState.props = {
+            locale: 'en',
+            direction: 'ltr',
+            adminUi,
+            adminIdentity: { name: 'Operations Owner', role: 'admin' },
+            adminNavigation: [
+                { key: 'overview', label: 'Overview', url: '/en/admin' },
+                {
+                    key: 'marketing',
+                    label: 'Marketing',
+                    url: '/en/admin/marketing/coupons',
+                    children: [
+                        {
+                            key: 'marketingCoupons',
+                            label: 'Coupons',
+                            url: '/en/admin/marketing/coupons',
+                        },
+                        {
+                            key: 'marketingPromotions',
+                            label: 'Promotions',
+                            url: '/en/admin/marketing/promotions',
+                        },
+                    ],
+                },
+                { key: 'more', label: 'More', url: '/en/admin/more' },
+            ],
+            permissions: ['dashboard.view'],
+            logoutUrl: '/logout',
+        };
+
+        render(
+            <AdminLayout>
+                <h1>Promotions</h1>
+            </AdminLayout>,
+        );
+
+        const sidebar = within(screen.getByRole('complementary'));
+        expect(
+            sidebar.getByRole('link', { name: 'Promotions' }),
+        ).toHaveAttribute('aria-current', 'page');
+        expect(
+            sidebar.getByRole('link', { name: 'Coupons' }),
+        ).not.toHaveAttribute('aria-current');
+        expect(
+            sidebar.getByRole('link', { name: 'Overview' }),
+        ).not.toHaveAttribute('aria-current');
+    });
+
+    it('keeps the list link current on a detail page under it', () => {
+        pageState.url = '/en/admin/marketing/coupons/01KCOUPON0000000000000001';
+        pageState.props = {
+            locale: 'en',
+            direction: 'ltr',
+            adminUi,
+            adminIdentity: { name: 'Operations Owner', role: 'admin' },
+            adminNavigation: [
+                { key: 'overview', label: 'Overview', url: '/en/admin' },
+                {
+                    key: 'marketing',
+                    label: 'Marketing',
+                    url: '/en/admin/marketing/coupons',
+                    children: [
+                        {
+                            key: 'marketingCoupons',
+                            label: 'Coupons',
+                            url: '/en/admin/marketing/coupons',
+                        },
+                    ],
+                },
+                { key: 'more', label: 'More', url: '/en/admin/more' },
+            ],
+            permissions: ['dashboard.view'],
+            logoutUrl: '/logout',
+        };
+
+        render(
+            <AdminLayout>
+                <h1>WELCOME10</h1>
+            </AdminLayout>,
+        );
+
+        const sidebar = within(screen.getByRole('complementary'));
+        expect(sidebar.getByRole('link', { name: 'Coupons' })).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+        expect(
+            sidebar.getByRole('link', { name: 'Overview' }),
+        ).not.toHaveAttribute('aria-current');
+    });
+
     it('renders five tabs for an Admin in the mobile bottom quick navigation tab bar', () => {
         pageState.props = {
             locale: 'en',
