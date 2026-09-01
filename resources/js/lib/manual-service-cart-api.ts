@@ -10,6 +10,7 @@ export class ManualServiceCartError extends Error {
     constructor(
         readonly code: string,
         readonly status: number,
+        readonly conclusive: boolean,
     ) {
         super('Manual service cart request failed.');
         this.name = 'ManualServiceCartError';
@@ -27,11 +28,11 @@ export async function submitManualServiceCart(
     )?.content;
 
     if (url === null) {
-        throw new ManualServiceCartError('unsafe_endpoint', 0);
+        throw new ManualServiceCartError('unsafe_endpoint', 0, false);
     }
 
     if (token === undefined || token === '') {
-        throw new ManualServiceCartError('csrf_missing', 0);
+        throw new ManualServiceCartError('csrf_missing', 0, false);
     }
 
     let response: Response;
@@ -50,7 +51,7 @@ export async function submitManualServiceCart(
         });
     } catch (error) {
         if (error instanceof TypeError) {
-            throw new ManualServiceCartError('transport_error', 0);
+            throw new ManualServiceCartError('transport_error', 0, false);
         }
 
         throw error;
@@ -59,13 +60,17 @@ export async function submitManualServiceCart(
     const body = await response.json().catch(() => null);
 
     if (response.status !== 201) {
-        throw new ManualServiceCartError(errorCode(body), response.status);
+        throw new ManualServiceCartError(
+            errorCode(body),
+            response.status,
+            true,
+        );
     }
 
     const success = safeSuccess(body);
 
     if (success === null) {
-        throw new ManualServiceCartError('unsafe_response', 201);
+        throw new ManualServiceCartError('unsafe_response', 201, true);
     }
 
     return success;

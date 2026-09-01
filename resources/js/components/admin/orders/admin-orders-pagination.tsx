@@ -23,6 +23,7 @@ import type {
 
 export type AdminOrdersPaginationProps = {
     adminUi: AdminTranslations;
+    direction: 'rtl' | 'ltr';
     isNavigating: boolean;
     onPageChange: (page: number) => void;
     onPerPageChange: (perPage: 15 | 25 | 50 | 100) => void;
@@ -33,6 +34,7 @@ export type AdminOrdersPaginationProps = {
 
 export default function AdminOrdersPagination({
     adminUi,
+    direction,
     isNavigating,
     onPageChange,
     onPerPageChange,
@@ -48,6 +50,12 @@ export default function AdminOrdersPagination({
 
     const canPreviousPage = currentPage > 1;
     const canNextPage = currentPage < lastPage;
+
+    const isRtl = direction === 'rtl';
+    const FirstIcon = isRtl ? ChevronsRight : ChevronsLeft;
+    const PreviousIcon = isRtl ? ChevronRight : ChevronLeft;
+    const NextIcon = isRtl ? ChevronLeft : ChevronRight;
+    const LastIcon = isRtl ? ChevronsLeft : ChevronsRight;
 
     return (
         <div className="flex flex-wrap items-center justify-between gap-4 px-2 py-3 text-sm text-muted-foreground">
@@ -143,7 +151,7 @@ export default function AdminOrdersPagination({
                         type="button"
                         variant="outline"
                     >
-                        <ChevronsLeft aria-hidden="true" className="h-4 w-4" />
+                        <FirstIcon aria-hidden="true" className="h-4 w-4" />
                     </Button>
                     <Button
                         aria-label={copy.previous}
@@ -153,7 +161,7 @@ export default function AdminOrdersPagination({
                         type="button"
                         variant="outline"
                     >
-                        <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+                        <PreviousIcon aria-hidden="true" className="h-4 w-4" />
                     </Button>
                     <Button
                         aria-label={copy.next}
@@ -163,7 +171,7 @@ export default function AdminOrdersPagination({
                         type="button"
                         variant="outline"
                     >
-                        <ChevronRight aria-hidden="true" className="h-4 w-4" />
+                        <NextIcon aria-hidden="true" className="h-4 w-4" />
                     </Button>
                     <Button
                         aria-label={copy.lastPage}
@@ -173,7 +181,7 @@ export default function AdminOrdersPagination({
                         type="button"
                         variant="outline"
                     >
-                        <ChevronsRight aria-hidden="true" className="h-4 w-4" />
+                        <LastIcon aria-hidden="true" className="h-4 w-4" />
                     </Button>
                 </div>
             </div>

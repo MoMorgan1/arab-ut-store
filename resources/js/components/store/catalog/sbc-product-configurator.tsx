@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 
+import { newAttemptKey } from '@/lib/attempt-key';
 import { announceCartAddition } from '@/lib/cart-added-event';
 import { catalogPlatformName } from '@/lib/catalog-platform-name';
 import { formatMinorUnits } from '@/lib/money';
@@ -18,12 +19,6 @@ const EMPTY_CREDENTIALS: CoinsCredentials = {
     eaPassword: '',
     backupCodes: ['', '', ''],
 };
-
-function newAttemptKey(): string {
-    return typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `sbc-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
 
 function initialVariant(product: CatalogProduct, currentUrl: string): string {
     const requested = new URL(

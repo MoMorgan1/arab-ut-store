@@ -3,6 +3,7 @@ import { Check, Loader2, ShoppingCart } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useId, useRef, useState } from 'react';
 
+import { newAttemptKey } from '@/lib/attempt-key';
 import { announceCartAddition } from '@/lib/cart-added-event';
 import type { ChatCoinsCartOffer } from '@/lib/chat-cart';
 import { CoinsCartRequestError, submitCoinsCart } from '@/lib/coins-cart-api';
@@ -224,7 +225,7 @@ function CoinsCartPanel({
             return;
         }
 
-        idempotencyKey.current ??= crypto.randomUUID();
+        idempotencyKey.current ??= newAttemptKey('coins');
         setPending(true);
         setErrorMessage(null);
 

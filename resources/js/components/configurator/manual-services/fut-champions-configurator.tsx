@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react';
 
 import { announceCartAddition } from '@/lib/cart-added-event';
-import { submitManualServiceCart } from '@/lib/manual-service-cart-api';
+import {
+    ManualServiceCartError,
+    submitManualServiceCart,
+} from '@/lib/manual-service-cart-api';
 import { formatInteger, formatMinorUnits } from '@/lib/money';
 import { getInitialFutChampionsConfig } from '@/lib/query-params';
 import type {
@@ -169,8 +172,14 @@ export function FutChampionsConfigurator({
                     detail: result.cartCount,
                 }),
             );
-        } catch {
-            keyRef.current = newManualAttemptKey();
+        } catch (failure) {
+            if (
+                failure instanceof ManualServiceCartError &&
+                failure.conclusive
+            ) {
+                keyRef.current = newManualAttemptKey();
+            }
+
             setStatus('error');
         }
     }
