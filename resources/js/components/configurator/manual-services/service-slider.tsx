@@ -10,6 +10,7 @@ export function ServiceSlider({
     price,
     selectedValue,
     stopLabels,
+    tickSublabels,
     valueLabel,
 }: {
     direction: 'ltr' | 'rtl';
@@ -21,6 +22,7 @@ export function ServiceSlider({
     price?: string;
     selectedValue: number;
     stopLabels: string[];
+    tickSublabels?: string[];
     valueLabel: string;
 }) {
     const progress =
@@ -32,7 +34,7 @@ export function ServiceSlider({
 
     return (
         <fieldset className="manual-service-slider">
-            <legend>{legend}</legend>
+            <legend className="manual-service-slider__legend">{legend}</legend>
             <div className="manual-service-slider__surface">
                 <div className="manual-service-slider__header">
                     <div className="manual-service-slider__cluster">
@@ -44,6 +46,7 @@ export function ServiceSlider({
                         </span>
                         {price === undefined ? null : (
                             <strong
+                                aria-live="polite"
                                 className="manual-service-slider__price manual-service-slider__value"
                                 key={`price-${selectedValue}-${price}`}
                             >
@@ -84,12 +87,15 @@ export function ServiceSlider({
                     {stopLabels.map((label, index) => {
                         const stopVal = minValue + index;
                         const isSelected = selectedValue === stopVal;
+                        const isPassed = stopVal <= selectedValue;
+                        const sublabel = tickSublabels?.[index];
 
                         return (
                             <button
                                 aria-label={`${legend}: ${label}`}
                                 className="manual-service-slider__tick-btn"
                                 data-active={isSelected}
+                                data-passed={isPassed}
                                 key={`${index}-${label}`}
                                 onClick={() => onValueChange(stopVal)}
                                 type="button"
@@ -101,6 +107,11 @@ export function ServiceSlider({
                                 <span className="manual-service-slider__tick-label">
                                     {label}
                                 </span>
+                                {sublabel ? (
+                                    <span className="manual-service-slider__tick-sublabel">
+                                        {sublabel}
+                                    </span>
+                                ) : null}
                             </button>
                         );
                     })}

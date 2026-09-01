@@ -257,11 +257,22 @@ return [
     ],
     'manual_services' => [
         'common' => [
+            'step_platform' => 'Platform',
+            'step_options' => 'Service details',
+            'step_account' => 'Account details',
+            'step_image' => 'Squad image',
+            'panel_title' => 'Your order',
+            'eta_label' => 'Delivery time',
+            'squad_image_choose' => 'Choose image',
             'back' => 'Back to services',
             'platform_legend' => 'Choose platform',
             'platforms' => [
                 'playstation' => 'PlayStation',
                 'pc' => 'PC',
+            ],
+            'platform_captions' => [
+                'playstation' => 'PS4 and PS5',
+                'pc' => 'EA app or Steam',
             ],
             'pc_store_legend' => 'Choose game launcher',
             'pc_stores' => [
@@ -310,6 +321,7 @@ return [
             'image_required' => 'Add your squad image.',
             'image_invalid' => 'Use a JPG, PNG, or WebP image.',
             'image_too_large' => 'The squad image must be 5MB or smaller.',
+            'see_all_sbc' => 'All SBC challenges',
         ],
         'fut_champions' => [
             'eyebrow' => 'Competitive services',
@@ -341,6 +353,8 @@ return [
             'target_legend' => 'Target division',
             'division' => 'Division :division',
             'elite' => 'Elite',
+            'route_summary' => 'From :from to :to',
+            'steps_count' => ':count promotions',
             // The two ways to buy Rivals. Both play the same account with the
             // same data; only what we do with the week differs.
             'mode_legend' => 'What would you like us to play?',

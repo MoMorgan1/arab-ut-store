@@ -1,9 +1,16 @@
 import { newAttemptKey } from '@/lib/attempt-key';
 import type {
     ManualCredentialsDraft,
+    ManualServiceCommonTranslations,
     ManualServicePlatform,
     PcLauncher,
 } from '@/types/manual-services';
+
+export type ManualFormErrors = Partial<Record<string, string>>;
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EA_CODE_PATTERN = /^[0-9]{8}$/;
+const PS_CODE_PATTERN = /^[A-Za-z0-9]{6}$/;
 
 export function appendCredentials(
     form: FormData,
@@ -59,14 +66,14 @@ export function validManualCredentials(
     launcher: PcLauncher | null,
     credentials: ManualCredentialsDraft,
 ): boolean {
-    const eaCodesValid = validCodes(credentials.eaCodes, /^[0-9]{8}$/);
+    const eaCodesValid = validCodes(credentials.eaCodes, EA_CODE_PATTERN);
 
     if (platform === 'playstation') {
         return (
             validEmail(credentials.playstationEmail) &&
             credentials.playstationPassword !== '' &&
             eaCodesValid &&
-            validCodes(credentials.playstationCodes, /^[A-Za-z0-9]{6}$/)
+            validCodes(credentials.playstationCodes, PS_CODE_PATTERN)
         );
     }
 
@@ -79,6 +86,145 @@ export function validManualCredentials(
             (credentials.steamUsername.trim() !== '' &&
                 credentials.steamPassword !== ''))
     );
+}
+
+export function manualCredentialErrors(
+    platform: ManualServicePlatform,
+    launcher: PcLauncher | null,
+    credentials: ManualCredentialsDraft,
+    translations: ManualServiceCommonTranslations,
+): ManualFormErrors {
+    const errors: ManualFormErrors = {};
+
+    if (platform === 'playstation') {
+        if (!credentials.playstationEmail.trim()) {
+            errors.playstationEmail = translations.required_field;
+        } else if (!validEmail(credentials.playstationEmail)) {
+            errors.playstationEmail = translations.invalid_email;
+        }
+
+        if (!credentials.playstationPassword) {
+            errors.playstationPassword = translations.required_field;
+        }
+
+        credentials.playstationCodes.forEach((code, index) => {
+            const key = `playstationCode-${index}`;
+
+            if (!code.trim()) {
+                errors[key] = translations.required_field;
+            } else if (!PS_CODE_PATTERN.test(code)) {
+                errors[key] = translations.invalid_playstation_code;
+            } else if (
+                credentials.playstationCodes.filter((c) => c === code).length >
+                1
+            ) {
+                errors[key] = translations.duplicate_codes;
+            }
+        });
+    } else {
+        if (launcher === null) {
+            errors.launcher = translations.required_field;
+        }
+
+        if (!credentials.eaEmail.trim()) {
+            errors.eaEmail = translations.required_field;
+        } else if (!validEmail(credentials.eaEmail)) {
+            errors.eaEmail = translations.invalid_email;
+        }
+
+        if (!credentials.eaPassword) {
+            errors.eaPassword = translations.required_field;
+        }
+
+        if (launcher === 'steam') {
+            if (!credentials.steamUsername.trim()) {
+                errors.steamUsername = translations.required_field;
+            }
+
+            if (!credentials.steamPassword) {
+                errors.steamPassword = translations.required_field;
+            }
+        }
+    }
+
+    credentials.eaCodes.forEach((code, index) => {
+        const key = `eaCode-${index}`;
+
+        if (!code.trim()) {
+            errors[key] = translations.required_field;
+        } else if (!EA_CODE_PATTERN.test(code)) {
+            errors[key] = translations.invalid_ea_code;
+        } else if (credentials.eaCodes.filter((c) => c === code).length > 1) {
+            errors[key] = translations.duplicate_codes;
+        }
+    });
+
+    return errors;
+}
+
+export function validateManualFieldOnBlur(
+    field: string,
+    value: string,
+    platform: ManualServicePlatform,
+    launcher: PcLauncher | null,
+    credentials: ManualCredentialsDraft,
+    translations: ManualServiceCommonTranslations,
+): string | undefined {
+    if (value.trim() === '') {
+        return undefined;
+    }
+
+    if (field === 'playstationEmail' || field === 'eaEmail') {
+        if (!validEmail(value)) {
+            return translations.invalid_email;
+        }
+
+        return undefined;
+    }
+
+    if (field.startsWith('eaCode-')) {
+        const index = Number(field.replace('eaCode-', ''));
+
+        if (!EA_CODE_PATTERN.test(value)) {
+            return translations.invalid_ea_code;
+        }
+
+        const updatedCodes = [...credentials.eaCodes] as [
+            string,
+            string,
+            string,
+        ];
+        updatedCodes[index] = value;
+
+        if (updatedCodes.filter((c) => c === value && c !== '').length > 1) {
+            return translations.duplicate_codes;
+        }
+
+        return undefined;
+    }
+
+    if (field.startsWith('playstationCode-')) {
+        const index = Number(field.replace('playstationCode-', ''));
+
+        if (!PS_CODE_PATTERN.test(value)) {
+            return translations.invalid_playstation_code;
+        }
+
+        const updatedCodes = [...credentials.playstationCodes] as [
+            string,
+            string,
+            string,
+        ];
+        updatedCodes[index] = value;
+
+        if (updatedCodes.filter((c) => c === value && c !== '').length > 1) {
+            return translations.duplicate_codes;
+        }
+
+        return undefined;
+    }
+
+    return undefined;
 }
 
 export function newManualAttemptKey(): string {
@@ -96,7 +242,7 @@ function appendCodes(
 }
 
 function validEmail(value: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    return EMAIL_PATTERN.test(value);
 }
 
 function validCodes(

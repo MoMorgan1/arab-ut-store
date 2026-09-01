@@ -59,10 +59,9 @@ it('exposes the exact public FUT Champions service contract in both locales', fu
             ->where('manualServicePage.service.urgent_eta', $locale === 'ar'
                 ? 'المستعجل خلال 24–36 ساعة من استلام البيانات الصحيحة.'
                 : 'Urgent orders take 24–36 hours from receiving the correct details.')
-            ->where('manualServicePage.relatedServices.0.key', 'sbc')
-            ->where('manualServicePage.relatedServices.0.href', $locale === 'ar' ? '/sbc' : '/en/sbc')
-            ->where('manualServicePage.relatedServices.1.key', 'rivals')
-            ->where('manualServicePage.relatedServices.1.href', $locale === 'ar' ? '/rivals' : '/en/rivals'));
+            ->where('manualServicePage.relatedServices.sbcUrl', $locale === 'ar' ? '/sbc' : '/en/sbc')
+            ->where('manualServicePage.relatedServices.service.key', 'rivals')
+            ->where('manualServicePage.relatedServices.service.href', $locale === 'ar' ? '/rivals' : '/en/rivals'));
 
     /** @var array<string, mixed> $props */
     $props = $response->viewData('page')['props']['manualService'];
@@ -104,14 +103,66 @@ it('exposes the exact public Rivals service contract in both locales', function 
             ->where('manualServicePage.service.standard_eta', $locale === 'ar'
                 ? 'يستغرق الطلب عادةً من يوم إلى 3 أيام حسب ضغط الطلبات وعدد الديفجنات المطلوبة.'
                 : 'Orders usually take 1–3 days, depending on demand and the number of divisions requested.')
-            ->where('manualServicePage.relatedServices.0.key', 'sbc')
-            ->where('manualServicePage.relatedServices.0.href', $locale === 'ar' ? '/sbc' : '/en/sbc')
-            ->where('manualServicePage.relatedServices.1.key', 'fut_champions')
-            ->where('manualServicePage.relatedServices.1.href', $locale === 'ar' ? '/fut-champions' : '/en/fut-champions'));
+            ->where('manualServicePage.relatedServices.sbcUrl', $locale === 'ar' ? '/sbc' : '/en/sbc')
+            ->where('manualServicePage.relatedServices.service.key', 'fut_champions')
+            ->where('manualServicePage.relatedServices.service.href', $locale === 'ar' ? '/fut-champions' : '/en/fut-champions'));
 })->with([
     'Arabic' => ['/rivals', 'ar', '/cart/items/rivals'],
     'English' => ['/en/rivals', 'en', '/en/cart/items/rivals'],
 ]);
+
+it('exposes up to 4 real public SBC products in relatedServices and keeps internal fields hidden', function () {
+    for ($i = 1; $i <= 5; $i++) {
+        $product = Product::factory()->create([
+            'service_type' => ServiceType::Sbc,
+            'slug' => "sbc-product-{$i}",
+            'name_ar' => "تحدي {$i}",
+            'name_en' => "SBC Challenge {$i}",
+            'description_ar' => "وصف تحدي {$i}",
+            'description_en' => "Description for challenge {$i}",
+            'is_visible' => true,
+            'archived_at' => null,
+            'sort_order' => $i,
+        ]);
+
+        ProductVariant::factory()->for($product)->create([
+            'service_type' => ServiceType::Sbc,
+            'platform' => Platform::PlayStation,
+            'price_halalah' => 10_000 * $i,
+            'is_active' => true,
+        ]);
+    }
+
+    $response = $this->get('/fut-champions')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('manualServicePage.relatedServices.products', 4)
+            ->where('manualServicePage.relatedServices.sbcUrl', '/sbc')
+            ->where('manualServicePage.relatedServices.service.key', 'rivals')
+            ->where('manualServicePage.relatedServices.products.0.name', 'تحدي 1')
+            ->where('manualServicePage.relatedServices.products.0.url', '/sbc/sbc-product-1')
+            ->where('manualServicePage.relatedServices.products.0.price.amountMinor', 10_000)
+            ->where('manualServicePage.relatedServices.products.0.price.currency', 'SAR')
+            ->where('manualServicePage.relatedServices.products.3.name', 'تحدي 4')
+        );
+
+    $relatedProducts = $response->viewData('page')['props']['manualServicePage']['relatedServices']['products'];
+    $keys = nestedManualServiceKeys($relatedProducts);
+
+    expect($keys)->not->toContain('cost', 'internal', 'supplier', 'margin', 'profit', 'stock');
+});
+
+it('returns an empty products list when no SBC product is public', function () {
+    Product::query()->where('service_type', ServiceType::Sbc)->delete();
+
+    $this->get('/fut-champions')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('manualServicePage.relatedServices.products', [])
+            ->where('manualServicePage.relatedServices.sbcUrl', '/sbc')
+            ->where('manualServicePage.relatedServices.service.key', 'rivals')
+        );
+});
 
 it('renders an unavailable state instead of publishing stale manual-service prices', function (ServiceType $service, string $uri) {
     ServicePriceSchedule::query()->where('service_type', $service)->update(['is_active' => false]);

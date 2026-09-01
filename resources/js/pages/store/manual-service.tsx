@@ -49,14 +49,15 @@ export default function StoreManualService() {
                             {manual.product.description}
                         </div>
                     </div>
-                    <div className="manual-service-hero__media">
-                        <img
-                            alt={manual.product.image.alt}
-                            height="360"
-                            src={manual.product.image.url}
-                            width="480"
-                        />
-                    </div>
+                    {manual.product.image.url ? (
+                        <div className="manual-service-hero__media">
+                            <img
+                                alt={manual.product.image.alt}
+                                loading="lazy"
+                                src={manual.product.image.url}
+                            />
+                        </div>
+                    ) : null}
                 </header>
                 {!ready ? (
                     <section
@@ -102,8 +103,10 @@ export default function StoreManualService() {
                     />
                 ) : null}
                 <section className="manual-service-notes">
-                    <h2>{common.notes_title}</h2>
-                    <ul>
+                    <h2 className="manual-service-notes__title">
+                        {common.notes_title}
+                    </h2>
+                    <ul className="manual-service-notes__list">
                         {Object.values(
                             props.manualServicePage.service.notes,
                         ).map((note) => (
@@ -112,7 +115,9 @@ export default function StoreManualService() {
                     </ul>
                 </section>
                 <ManualServiceSuggestions
-                    services={props.manualServicePage.relatedServices}
+                    common={common}
+                    locale={props.locale}
+                    relatedServices={props.manualServicePage.relatedServices}
                     translations={props.manualServicePage.relatedTranslations}
                 />
             </main>

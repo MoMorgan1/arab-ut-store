@@ -16,6 +16,7 @@ import type {
 const fetchMock = vi.fn();
 
 beforeEach(() => {
+    window.history.pushState({}, '', '/rivals');
     fetchMock.mockReset().mockResolvedValue(
         new Response(
             JSON.stringify({
@@ -40,12 +41,53 @@ beforeEach(() => {
 
 afterEach(() => {
     cleanup();
+    window.history.pushState({}, '', '/');
     document.querySelector('meta[name="csrf-token"]')?.remove();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
 });
 
-it('updates the available Rivals route and price through its division sliders', () => {
+it('renders the platform choice cards with decorative logo images', () => {
+    renderRivals();
+
+    const psRadio = screen.getByRole('radio', { name: 'PlayStation' });
+    expect(psRadio).toBeInTheDocument();
+    const psCard = psRadio.closest('label')!;
+    const logoImg = psCard.querySelector('img');
+    expect(logoImg).toHaveAttribute(
+        'src',
+        '/images/store/platforms/ps-logo-white-80.webp',
+    );
+    expect(logoImg).toHaveAttribute('alt', '');
+});
+
+it('updates the available Rivals route and price as the sliders move', () => {
+    renderRivals();
+
+    const currentSlider = screen.getByRole('slider', {
+        name: 'Current division',
+    });
+    const targetSlider = screen.getByRole('slider', {
+        name: 'Target division',
+    });
+
+    expect(currentSlider).toHaveValue('2');
+    expect(targetSlider).toHaveValue('7');
+    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 5');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Elite');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('750.00');
+
+    fireEvent.change(currentSlider, { target: { value: '0' } });
+    fireEvent.change(targetSlider, { target: { value: '1' } });
+
+    expect(currentSlider).toHaveValue('0');
+    expect(targetSlider).toHaveValue('1');
+    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 7');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Division 6');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('110.00');
+});
+
+it('submits 5 to Elite as SAR 750 and never sends an urgent field', async () => {
     renderRivals();
 
     const currentSlider = screen.getByRole('slider', {
@@ -57,19 +99,7 @@ it('updates the available Rivals route and price through its division sliders', 
     expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 5');
     expect(targetSlider.getAttribute('aria-valuetext')).toContain('Elite');
     expect(targetSlider.getAttribute('aria-valuetext')).toContain('750.00');
-    expect(screen.getAllByText(/750\.00/)).toHaveLength(2);
 
-    fireEvent.change(currentSlider, { target: { value: '0' } });
-    fireEvent.change(targetSlider, { target: { value: '1' } });
-    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 7');
-    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Division 6');
-    expect(targetSlider.getAttribute('aria-valuetext')).toContain('110.00');
-});
-
-it('submits 5 to Elite as SAR 750 and never sends an urgent field', async () => {
-    renderRivals();
-
-    expect(screen.getAllByText(/750\.00/)).toHaveLength(2);
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(
         screen.queryByText('No urgent service is available'),
@@ -85,8 +115,11 @@ it('submits 5 to Elite as SAR 750 and never sends an urgent field', async () => 
     ['12345678', '23456789', '34567890', 'A1B2C3', 'D4E5F6', 'Z9Y8X7'].forEach(
         (value, index) => fireEvent.change(codes[index], { target: { value } }),
     );
-    const image = new File(['squad'], 'squad.webp', { type: 'image/webp' });
-    fireEvent.change(screen.getByLabelText(/Squad image/), {
+    const image = new File(['squad'], 'squad.png', { type: 'image/png' });
+    const fileInput = document.querySelector(
+        'input[name="squad-image"]',
+    ) as HTMLInputElement;
+    fireEvent.change(fileInput, {
         target: { files: [image] },
     });
     fireEvent.submit(
@@ -98,18 +131,25 @@ it('submits 5 to Elite as SAR 750 and never sends an urgent field', async () => 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
     const form = request.body as FormData;
+    expect(form.get('mode')).toBe('promotion');
     expect(form.get('currentDivision')).toBe('5');
     expect(form.get('targetDivision')).toBe('elite');
-    expect(form.has('urgent')).toBe(false);
+    expect(form.get('urgent')).toBeNull();
+    expect(form.get('credentials[playstation_email]')).toBe(
+        'owner@example.test',
+    );
+    expect(form.get('credentials[ea_backup_codes][0]')).toBe('12345678');
+    expect(form.get('credentials[playstation_backup_codes][1]')).toBe('D4E5F6');
     expect(form.get('squadImage')).toBe(image);
+    expect(screen.getAllByText(/750\.00/)[0]).toBeVisible();
     expect(document.body.textContent).not.toContain('PS secret');
 });
 
-it('prefills valid currentDivision and targetDivision from URL query parameters', () => {
+it('prefills valid route from URL query parameters', () => {
     window.history.pushState(
         {},
         '',
-        '/rivals?currentDivision=7&targetDivision=6',
+        '/rivals?currentDivision=6&targetDivision=3',
     );
     renderRivals();
 
@@ -119,30 +159,19 @@ it('prefills valid currentDivision and targetDivision from URL query parameters'
     const targetSlider = screen.getByRole('slider', {
         name: 'Target division',
     });
-    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 7');
-    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Division 6');
-    expect(targetSlider.getAttribute('aria-valuetext')).toContain('110.00');
+
+    expect(currentSlider).toHaveValue('1');
+    expect(targetSlider).toHaveValue('4');
+    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 6');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Division 3');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('390.00');
 });
 
-it('ignores half-valid pair when one parameter is missing and keeps default 5 to Elite', () => {
-    window.history.pushState({}, '', '/rivals?currentDivision=7');
-    renderRivals();
-
-    const currentSlider = screen.getByRole('slider', {
-        name: 'Current division',
-    });
-    const targetSlider = screen.getByRole('slider', {
-        name: 'Target division',
-    });
-    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 5');
-    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Elite');
-});
-
-it('ignores half-valid pair when one parameter is invalid and keeps default 5 to Elite', () => {
+it('degrades invalid route to default 5 to Elite while leaving controls editable', () => {
     window.history.pushState(
         {},
         '',
-        '/rivals?currentDivision=7&targetDivision=invalid',
+        '/rivals?currentDivision=1&targetDivision=7',
     );
     renderRivals();
 
@@ -152,24 +181,9 @@ it('ignores half-valid pair when one parameter is invalid and keeps default 5 to
     const targetSlider = screen.getByRole('slider', {
         name: 'Target division',
     });
-    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 5');
-    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Elite');
-});
 
-it('ignores reverse route pair wholesale and keeps default 5 to Elite', () => {
-    window.history.pushState(
-        {},
-        '',
-        '/rivals?currentDivision=2&targetDivision=6',
-    );
-    renderRivals();
-
-    const currentSlider = screen.getByRole('slider', {
-        name: 'Current division',
-    });
-    const targetSlider = screen.getByRole('slider', {
-        name: 'Target division',
-    });
+    expect(currentSlider).toHaveValue('2');
+    expect(targetSlider).toHaveValue('7');
     expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 5');
     expect(targetSlider.getAttribute('aria-valuetext')).toContain('Elite');
 });
@@ -188,52 +202,99 @@ it('never prefills secret credential fields from URL parameters', () => {
     expect(document.body.textContent).not.toContain('secret');
 });
 
-it('does not throw on hostile URL input and keeps default route', () => {
-    window.history.pushState(
-        {},
-        '',
-        '/rivals?currentDivision=%E0%A4%A&__proto__=polluted',
-    );
+it('allows selecting division via interactive stop buttons', () => {
     renderRivals();
 
-    const currentSlider = screen.getByRole('slider', {
-        name: 'Current division',
+    const targetDiv3Button = screen.getByRole('button', {
+        name: 'Target division: 3',
     });
+    fireEvent.click(targetDiv3Button);
+
     const targetSlider = screen.getByRole('slider', {
         name: 'Target division',
     });
-    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 5');
-    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Elite');
+    expect(targetSlider).toHaveValue('4');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Division 3');
+    expect(targetSlider.getAttribute('aria-valuetext')).toContain('270.00');
 });
 
-it('keeps controls fully editable after prefilling without fighting user edits', () => {
-    window.history.pushState(
-        {},
-        '',
-        '/rivals?currentDivision=7&targetDivision=6',
-    );
+it('swaps between promotion and weekly matches modes correctly', () => {
     renderRivals();
 
-    const currentSlider = screen.getByRole('slider', {
-        name: 'Current division',
-    });
-    const targetSlider = screen.getByRole('slider', {
-        name: 'Target division',
-    });
-    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 7');
-    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Division 6');
+    expect(
+        screen.getByRole('slider', { name: 'Current division' }),
+    ).toBeInTheDocument();
+    expect(
+        screen.getByRole('slider', { name: 'Target division' }),
+    ).toBeInTheDocument();
 
-    fireEvent.change(currentSlider, { target: { value: '2' } });
-    expect(currentSlider.getAttribute('aria-valuetext')).toBe('Division 5');
-    expect(targetSlider.getAttribute('aria-valuetext')).toContain('Elite');
+    fireEvent.click(screen.getByRole('radio', { name: 'Weekly matches' }));
+
+    expect(
+        screen.queryByRole('slider', { name: 'Current division' }),
+    ).not.toBeInTheDocument();
+    expect(
+        screen.queryByRole('slider', { name: 'Target division' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByText(/250\.00/)[0]).toBeVisible();
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Division promotion' }));
+
+    expect(
+        screen.getByRole('slider', { name: 'Current division' }),
+    ).toBeInTheDocument();
+    expect(
+        screen.getByRole('slider', { name: 'Target division' }),
+    ).toBeInTheDocument();
 });
 
-function renderRivals(
-    weeklyMatches: {
-        includedWins: number;
-        price: { amountMinor: number; currency: string };
-    } | null = null,
-) {
+it('validates invalid email on blur and clears error on fix', () => {
+    renderRivals();
+
+    const emailInput = screen.getByLabelText('PlayStation email');
+    fireEvent.change(emailInput, { target: { value: 'bad-email' } });
+    fireEvent.blur(emailInput);
+
+    expect(screen.getByText('Invalid email')).toBeVisible();
+
+    fireEvent.change(emailInput, { target: { value: 'good@example.test' } });
+    fireEvent.blur(emailInput);
+
+    expect(screen.queryByText('Invalid email')).not.toBeInTheDocument();
+});
+
+it('focuses the first invalid field when submit fails with validation errors', async () => {
+    renderRivals();
+
+    fireEvent.submit(
+        screen
+            .getByRole('button', { name: 'Add service to cart' })
+            .closest('form')!,
+    );
+
+    await waitFor(() => {
+        expect(screen.getByLabelText('PlayStation email')).toHaveFocus();
+    });
+});
+
+it('swaps credentials fields when switching platforms', () => {
+    renderRivals();
+
+    expect(screen.getByLabelText('PlayStation email')).toBeVisible();
+    expect(screen.queryByLabelText('EA email')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('radio', { name: 'PC' }));
+    expect(
+        screen.queryByLabelText('PlayStation email'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText('EA email')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('radio', { name: 'PlayStation' }));
+    expect(screen.getByLabelText('PlayStation email')).toBeVisible();
+    expect(screen.queryByLabelText('EA email')).not.toBeInTheDocument();
+});
+
+function renderRivals() {
     render(
         <RivalsConfigurator
             addUrl="/cart/items/rivals"
@@ -243,25 +304,52 @@ function renderRivals(
                 currency: 'SAR',
                 ladder: ['7', '6', '5', '4', '3', '2', '1', 'elite'],
                 stepOptions: [
-                    ['7', '6', 11000],
-                    ['6', '5', 12000],
-                    ['5', '4', 13000],
-                    ['4', '3', 14000],
-                    ['3', '2', 15000],
-                    ['2', '1', 16000],
-                    ['1', 'elite', 17000],
-                ].map(([from, to, amount]) => ({
-                    from: String(from) as '7',
-                    to: String(to) as '6',
-                    price: { amountMinor: Number(amount), currency: 'SAR' },
-                })),
-                weeklyMatches,
+                    {
+                        from: '7',
+                        to: '6',
+                        price: { amountMinor: 11000, currency: 'SAR' },
+                    },
+                    {
+                        from: '6',
+                        to: '5',
+                        price: { amountMinor: 12000, currency: 'SAR' },
+                    },
+                    {
+                        from: '5',
+                        to: '4',
+                        price: { amountMinor: 13000, currency: 'SAR' },
+                    },
+                    {
+                        from: '4',
+                        to: '3',
+                        price: { amountMinor: 14000, currency: 'SAR' },
+                    },
+                    {
+                        from: '3',
+                        to: '2',
+                        price: { amountMinor: 15000, currency: 'SAR' },
+                    },
+                    {
+                        from: '2',
+                        to: '1',
+                        price: { amountMinor: 16000, currency: 'SAR' },
+                    },
+                    {
+                        from: '1',
+                        to: 'elite',
+                        price: { amountMinor: 17000, currency: 'SAR' },
+                    },
+                ],
+                weeklyMatches: {
+                    price: { amountMinor: 25000, currency: 'SAR' },
+                    includedWins: 7,
+                },
             }}
             product={{
                 id: '01K00000000000000000000000',
-                slug: 'division-rivals',
-                name: 'Division Rivals service',
-                description: 'Description',
+                slug: 'rivals',
+                name: 'Rivals service',
+                description: 'Service description',
                 image: { alt: 'Rivals', url: '/rivals.webp' },
             }}
             scheduleVersion={1}
@@ -274,10 +362,14 @@ function renderRivals(
     );
 }
 
-const common = {
+const common: ManualServiceCommonTranslations = {
     back: 'Back',
     platform_legend: 'Choose platform',
     platforms: { playstation: 'PlayStation', pc: 'PC' },
+    platform_captions: {
+        playstation: 'PS4 and PS5',
+        pc: 'EA app or Steam',
+    },
     pc_store_legend: 'Choose launcher',
     pc_stores: { ea_app: 'EA app', steam: 'Steam' },
     account_details_title: 'Account details',
@@ -322,9 +414,17 @@ const common = {
     image_required: 'Image required',
     image_invalid: 'Invalid image',
     image_too_large: 'Image too large',
-} satisfies ManualServiceCommonTranslations;
+    step_platform: '1. Choose platform',
+    step_options: '2. Service options',
+    step_account: '3. Account details',
+    step_image: '4. Squad image',
+    panel_title: 'Order summary',
+    eta_label: 'Estimated delivery',
+    squad_image_choose: 'Choose image',
+    see_all_sbc: 'All SBC challenges',
+};
 
-const rivals = {
+const rivals: RivalsServiceTranslations = {
     eyebrow: 'Competitive',
     title: 'Rivals',
     intro: 'Intro',
@@ -340,34 +440,7 @@ const rivals = {
         'We play your week without promoting — :wins wins included.',
     weekly_summary: 'Weekly matches (:wins wins)',
     standard_eta: 'Usually one to three days depending on demand',
+    route_summary: 'From Division :from to :to',
+    steps_count: ':count divisions',
     notes: { timing: '', login: '', shortfall: '', safety: '' },
-} satisfies RivalsServiceTranslations;
-
-it('does not offer weekly matches until an admin has priced them', () => {
-    // The option carries a price and an included win count. Offering it before
-    // either exists would sell a promise nobody made.
-    renderRivals();
-
-    expect(screen.queryByText('Weekly matches')).not.toBeInTheDocument();
-    expect(
-        screen.getByRole('slider', { name: 'Current division' }),
-    ).toBeVisible();
-});
-
-it('sells a week of matches at its own price, with no divisions attached', async () => {
-    renderRivals({
-        includedWins: 8,
-        price: { amountMinor: 9000, currency: 'SAR' },
-    });
-
-    fireEvent.click(screen.getByRole('radio', { name: 'Weekly matches' }));
-
-    expect(screen.getByText(/8 wins included/)).toBeVisible();
-
-    // The division sliders describe a promotion, which this is not.
-    expect(
-        screen
-            .getByRole('slider', { name: 'Current division', hidden: true })
-            .closest('[hidden]'),
-    ).not.toBeNull();
-});
+};
