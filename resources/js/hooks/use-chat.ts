@@ -23,7 +23,6 @@ import type {
 export type UseChatOptions = {
     enabled?: boolean;
     locale?: string;
-    defaultOpen?: boolean;
 };
 
 type QueueItem = {
@@ -119,7 +118,7 @@ export function useChat(options: UseChatOptions = {}) {
     const isChatEnabled = options.enabled === true;
     const pageLocale = options.locale || 'ar';
 
-    const [isOpen, setIsOpen] = useState(options.defaultOpen ?? false);
+    const [isOpen, setIsOpen] = useState(false);
     const [conversation, setConversation] = useState<ChatConversation | null>(
         null,
     );
@@ -928,16 +927,6 @@ export function useChat(options: UseChatOptions = {}) {
             void initializeChat();
         }
     }, [initializeChat]);
-
-    useEffect(() => {
-        if (
-            options.defaultOpen &&
-            conversationRef.current === null &&
-            isChatEnabled
-        ) {
-            void initializeChat();
-        }
-    }, [options.defaultOpen, isChatEnabled, initializeChat]);
 
     const closeChat = useCallback(() => {
         setIsOpen(false);

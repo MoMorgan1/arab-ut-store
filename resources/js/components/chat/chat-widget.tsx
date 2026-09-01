@@ -26,7 +26,6 @@ export type ChatWidgetProps = {
     /** Which view the widget shows when opened. Defaults to the Home screen. */
     initialView?: ChatWidgetView;
     isAuthenticated?: boolean;
-    initialOpen?: boolean;
 };
 
 const CLOSE_TRANSITION_MS = 180;
@@ -91,7 +90,6 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
     surface = 'store',
     initialView = 'home',
     isAuthenticated = false,
-    initialOpen = false,
 }) => {
     const {
         isChatEnabled,
@@ -123,14 +121,14 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
         openPastConversation,
         leaveReadOnlyConversation,
         requestTicket,
-    } = useChat({ enabled, locale, defaultOpen: initialOpen });
+    } = useChat({ enabled, locale });
 
     const launcherRef = useRef<HTMLButtonElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const wasOpenRef = useRef(isOpen);
 
-    const [isVisible, setIsVisible] = useState(isOpen || initialOpen);
+    const [isVisible, setIsVisible] = useState(isOpen);
     const isMounted = isOpen || isVisible;
     const [isMobileDialog, setIsMobileDialog] = useState(() =>
         matchesMobileDialog(surface),
