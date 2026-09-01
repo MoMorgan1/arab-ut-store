@@ -163,7 +163,7 @@ final readonly class RefundPaylinkOrder
             throw new CheckoutUnavailable('The refund requires manual review before retrying.');
         }
 
-        if (in_array($lockedOrder->status, [OrderStatus::Cancelled, OrderStatus::Refunded], true)) {
+        if ($lockedOrder->status === OrderStatus::Refunded) {
             throw new CheckoutUnavailable('The Paylink payment is not refundable.');
         }
 
@@ -227,12 +227,14 @@ final readonly class RefundPaylinkOrder
         if ((int) $order->wallet_halalah > 0) {
             $walletRefundReference = "order-wallet-refund:{$locked->id}";
             $existingWalletRefund = $this->walletLedgerWriter->lockedEntryByReference($walletRefundReference);
+            $releasedWalletEntry = $this->walletLedgerWriter->lockedEntryByReference("order-wallet-released:{$order->id}");
 
-            if (! $existingWalletRefund instanceof WalletEntry) {
+            if (! $existingWalletRefund instanceof WalletEntry && ! $releasedWalletEntry instanceof WalletEntry) {
                 $walletAccount = $this->walletLedgerWriter->lockAccountFor((int) $order->user_id);
                 $racingWalletRefund = $this->walletLedgerWriter->lockedEntryByReference($walletRefundReference);
+                $racingReleasedEntry = $this->walletLedgerWriter->lockedEntryByReference("order-wallet-released:{$order->id}");
 
-                if (! $racingWalletRefund instanceof WalletEntry) {
+                if (! $racingWalletRefund instanceof WalletEntry && ! $racingReleasedEntry instanceof WalletEntry) {
                     $this->walletLedgerWriter->append($walletAccount, [
                         'type' => WalletEntryType::Refund,
                         'amount_halalah' => (int) $order->wallet_halalah,

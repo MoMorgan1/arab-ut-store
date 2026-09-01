@@ -307,3 +307,30 @@ test('the admin refund endpoint completes one provider verified refund', functio
 
     expect($order->fresh()->status)->toBe(OrderStatus::Refunded);
 });
+
+test('a cancelled order with a captured payment can be refunded', function () {
+    ['admin' => $admin, 'order' => $order] = refundablePaylinkOrder();
+    $order->update(['status' => OrderStatus::Cancelled, 'cancelled_at' => now()]);
+
+    Http::fake([
+        'https://restpilot.paylink.sa/api/partner/auth' => Http::response(['id_token' => 'partner-token']),
+        'https://restpilot.paylink.sa/rest/partner/v2/merchant/accountNo/123456/refund' => Http::response([
+            'id' => 240,
+            'orderNumber' => 'AUT-REFUND-1001',
+            'amount' => 12.50,
+            'currency' => 'SAR',
+            'refundReason' => 'Refund cancelled order.',
+            'createDatetime' => 1716194603030,
+        ]),
+    ]);
+
+    $refund = app(RefundPaylinkOrder::class)->execute($order, 'Refund cancelled order.', $admin);
+
+    expect($refund->status)->toBe('completed')
+        ->and($refund->provider_refund_id)->toBe('240')
+        ->and($refund->amount_halalah)->toBe(1250)
+        ->and($order->fresh()->status)->toBe(OrderStatus::Refunded)
+        ->and($order->items()->sole()->status)->toBe(OrderItemStatus::Refunded)
+        ->and($order->payments()->sole()->status)->toBe(PaymentStatus::Refunded)
+        ->and($order->payments()->sole()->refunded_halalah)->toBe(1250);
+});

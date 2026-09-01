@@ -320,7 +320,7 @@ test('order detail presenter rejects non-refundable order and payment states', f
         'currency' => 'SAR',
     ]);
 })->with([
-    'cancelled order' => [['status' => OrderStatus::Cancelled], [], '2500'],
+    'refunded order' => [['status' => OrderStatus::Refunded], [], '2500'],
     'pending payment' => [[], ['status' => PaymentStatus::Pending], '2500'],
     'captured amount mismatch' => [[], ['captured_halalah' => 2000], '2000'],
     'already refunded payment' => [[], ['refunded_halalah' => 2500], '2500'],
@@ -353,6 +353,19 @@ test('order detail presenter uses a safe zero amount when no Paylink payment exi
     expect($props['refund'])->toBe([
         'eligible' => false,
         'amountMinor' => '0',
+        'currency' => 'SAR',
+    ]);
+});
+
+test('order detail presenter allows refund for a cancelled order with a captured payment', function (): void {
+    ['admin' => $admin, 'order' => $order, 'payment' => $payment] = createRefundablePaylinkOrderFixture(2500);
+    $order->update(['status' => OrderStatus::Cancelled, 'cancelled_at' => now()]);
+
+    $props = app(AdminOrderDetailPage::class)->for($admin, 'en', $order->fresh(), null);
+
+    expect($props['refund'])->toBe([
+        'eligible' => true,
+        'amountMinor' => '2500',
         'currency' => 'SAR',
     ]);
 });

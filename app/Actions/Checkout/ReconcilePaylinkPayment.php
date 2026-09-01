@@ -15,6 +15,7 @@ use App\Notifications\OrderPaidNotification;
 use App\Services\Payments\PaymentManager;
 use App\Support\OrderClosingNote;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final readonly class ReconcilePaylinkPayment
@@ -57,6 +58,8 @@ final readonly class ReconcilePaylinkPayment
             }
 
             if ($invoice->status === 'paid') {
+                $wasPaid = $locked->status === PaymentStatus::Paid;
+
                 $locked->forceFill([
                     'status' => PaymentStatus::Paid,
                     'captured_halalah' => $invoice->amountHalalah,
@@ -98,6 +101,29 @@ final readonly class ReconcilePaylinkPayment
                     if ($customer instanceof User) {
                         $customer->notify(new OrderPaidNotification($order));
                     }
+                } elseif (! $wasPaid) {
+                    Log::warning("Paylink payment [{$locked->provider_payment_id}] reconciled as paid for order [{$order->order_number}] with status [{$order->status->value}].", [
+                        'order_public_id' => (string) $order->public_id,
+                        'order_number' => (string) $order->order_number,
+                        'order_status' => $order->status->value,
+                        'payment_public_id' => (string) $locked->public_id,
+                        'provider_payment_id' => $locked->provider_payment_id,
+                        'amount_halalah' => $invoice->amountHalalah,
+                    ]);
+
+                    $order->statusHistory()->create([
+                        'status' => OrderStatusHistoryStatus::from($order->status->value),
+                        'note_ar' => 'تم استلام دفعة لطلب في حالة: '.$order->status->value,
+                        'note_en' => 'Payment was captured for an order in '.$order->status->value.' status.',
+                        'metadata' => [
+                            'source' => 'paylink',
+                            'anomaly' => 'payment_on_non_pending_order',
+                            'order_status' => $order->status->value,
+                            'payment_id' => $locked->public_id,
+                            'amount_halalah' => $invoice->amountHalalah,
+                            'captured_halalah' => $invoice->amountHalalah,
+                        ],
+                    ]);
                 }
             } elseif ($invoice->status === 'cancelled') {
                 $locked->forceFill([

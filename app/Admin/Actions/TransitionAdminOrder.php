@@ -10,17 +10,21 @@ use App\Enums\OrderHoldReason;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
+use App\Enums\PaymentStatus;
 use App\Exceptions\AdminOrderStatusConflict;
 use App\Loyalty\Actions\AccrueOrderCashback;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
+use App\Models\Payment;
 use App\Models\User;
+use App\Services\Payments\PaymentManager;
 use App\Support\OrderClosingNote;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 final class TransitionAdminOrder
 {
@@ -29,6 +33,7 @@ final class TransitionAdminOrder
         private readonly RecordStaffAudit $recordStaffAudit,
         private readonly AccrueOrderCashback $accrueOrderCashback,
         private readonly ReleaseOrderWalletFunds $releaseOrderWalletFunds,
+        private readonly PaymentManager $payments,
     ) {}
 
     public function execute(
@@ -92,6 +97,27 @@ final class TransitionAdminOrder
             if ($targetStatus === OrderStatus::Completed) {
                 $order->completed_at = now();
             } elseif ($targetStatus === OrderStatus::Cancelled) {
+                /** @var Collection<int, Payment> $pendingPayments */
+                $pendingPayments = Payment::query()
+                    ->where('order_id', $order->id)
+                    ->where('status', PaymentStatus::Pending)
+                    ->whereNotNull('provider_payment_id')
+                    ->where('provider_payment_id', '!=', '')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($pendingPayments as $pendingPayment) {
+                    try {
+                        $this->payments->gateway()->cancelInvoice((string) $pendingPayment->provider_payment_id);
+                    } catch (Throwable) {
+                        throw ValidationException::withMessages([
+                            'target_status' => ['The payment invoice could not be cancelled with the provider.'],
+                        ]);
+                    }
+
+                    $pendingPayment->forceFill(['status' => PaymentStatus::Cancelled])->save();
+                }
+
                 $order->cancelled_at = now();
 
                 // The wallet is debited at placement, and a fully wallet-paid

@@ -48,12 +48,12 @@ final readonly class AdminOrderDetailPage
         $currency = $payment instanceof Payment ? (string) $payment->currency : (string) $order->currency;
 
         $eligible = $payment instanceof Payment
-            && ! in_array($order->status, [OrderStatus::Cancelled, OrderStatus::Refunded], true)
+            && $order->status !== OrderStatus::Refunded
             && $payment->status === PaymentStatus::Paid
             && $payment->currency === 'SAR'
             && $payment->captured_halalah > 0
             && $payment->refunded_halalah === 0
-            && $payment->captured_halalah === $order->total_halalah
+            && $payment->captured_halalah === (int) $order->payment_halalah
             && $this->hasNoRefundsForPayment($order, $payment);
 
         return [
