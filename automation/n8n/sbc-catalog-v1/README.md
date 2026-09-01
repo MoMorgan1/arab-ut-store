@@ -75,6 +75,21 @@ EasySBC prices are **not** required for an SBC that FFT lists, because FFT is th
 price authority. Requiring them discarded sellable ~1M-coin player SBCs whose
 EasySBC `pcPrice` happened to be blank.
 
+### Why FFT lists far more SBCs than EasySBC
+
+**FFT never deletes an SBC after it ends; EasySBC does.** So FFT's feed is a
+running history — 943 records against EasySBC's 58 in a typical run, with ~835
+FFT-only ids. That gap is the normal state, not a fault, and `fftOnlyIds` in the
+audit is there for inspection rather than as a warning.
+
+It is also why **the join, not FFT alone, decides what is sellable.** FFT
+answers "can this be delivered", but its list on its own cannot answer "is this
+challenge still live in the game" — an ended SBC stays in it forever. An SBC
+reaches the storefront only when both providers list it, so anything EasySBC has
+dropped is excluded before pricing ever runs. Where the two disagree on the end
+date the merge keeps the **earlier** one (`Math.min`), so a stale FFT expiry can
+never extend the life of a challenge that has already closed.
+
 ## Pricing
 
 One formula, in `build-and-price.js`. v3 computed a full legacy price in
