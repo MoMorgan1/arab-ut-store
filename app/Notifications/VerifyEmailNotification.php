@@ -4,6 +4,8 @@ namespace App\Notifications;
 
 use App\Models\User;
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\URL;
@@ -12,9 +14,16 @@ use Illuminate\Support\Facades\URL;
  * Localized replacement for Laravel's English-only verification mail. The
  * signed link targets the storefront's verify-email routes, using the
  * locale-prefixed variant for English recipients.
+ *
+ * Queued, like the order receipt. Registration fires this, and sending it
+ * inside the request holds the response open for an SMTP round trip before the
+ * customer ever reaches their account -- long enough to time out entirely when
+ * the mail host is unreachable.
  */
-final class VerifyEmailNotification extends VerifyEmail
+final class VerifyEmailNotification extends VerifyEmail implements ShouldQueue
 {
+    use Queueable;
+
     public function __construct(private readonly string $messageLocale) {}
 
     /**
