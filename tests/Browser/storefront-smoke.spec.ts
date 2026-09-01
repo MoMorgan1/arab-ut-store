@@ -110,7 +110,11 @@ async function confirmAdminTwoFactor(page: Page) {
 
     await expect(codeInput).toBeVisible();
 
-    const maxAttempts = 2;
+    // The wait has to cover an Inertia POST plus the redirect target's first
+    // render, and the admin overview draws charts at desktop widths. Five
+    // seconds is comfortable locally and too tight on a loaded CI runner,
+    // where losing the race fires a second submit that then races the first.
+    const maxAttempts = 3;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         const code = generateTotp(TEST_ADMIN_TOTP_SECRET);
@@ -120,7 +124,7 @@ async function confirmAdminTwoFactor(page: Page) {
         try {
             await page.waitForURL(
                 (url) => !url.pathname.includes('/admin/confirm-2fa'),
-                { timeout: 5_000 },
+                { timeout: 20_000 },
             );
             break;
         } catch (error) {
