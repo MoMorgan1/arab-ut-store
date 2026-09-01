@@ -20,9 +20,11 @@ use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\WalletAccount;
 use App\Models\WalletEntry;
+use App\Notifications\OrderPaidNotification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Fortify;
 
 beforeEach(function (): void {
@@ -218,12 +220,18 @@ test('place order with partial wallet debits ledger, sets order wallet_halalah a
 });
 
 test('place order with full wallet payment settles order as received without paylink payment', function (): void {
+    Notification::fake();
     ['user' => $user, 'cart' => $cart] = createWalletCartFixture(unitPriceHalalah: 1250);
     $cart->update(['use_wallet' => true]);
     creditUserWallet($user, 2000);
 
     $result = app(PlaceOrder::class)->execute($user, 'ar', 'full-wallet-test');
     $order = $result->order->fresh(['items', 'payments', 'statusHistory']);
+
+    Notification::assertSentTo($user, OrderPaidNotification::class, function (OrderPaidNotification $notification) use ($order): bool {
+        return $notification->order->id === $order->id;
+    });
+    Notification::assertSentTimes(OrderPaidNotification::class, 1);
 
     expect($result->replayed)->toBeFalse()
         ->and($order->subtotal_halalah)->toBe(1250)

@@ -2,11 +2,13 @@
 
 use App\Enums\UserRole;
 use App\Enums\WalletEntryType;
+use App\Http\Middleware\EnsureAdminMfa;
 use App\Models\StaffAuditLog;
 use App\Models\User;
 use App\Models\WalletAccount;
 use App\Models\WalletEntry;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Fortify;
 
 afterEach(function (): void {
@@ -43,6 +45,28 @@ test('staff users are forbidden from adjusting customer wallet', function (): vo
             'reason' => 'Goodwill compensation for delay',
         ])
         ->assertForbidden();
+});
+
+test('unconfirmed MFA admin actors are redirected to MFA setup when adjusting wallet', function (): void {
+    $admin = createWalletTestAdmin(UserRole::Admin);
+    $admin->forceFill(['two_factor_confirmed_at' => null])->save();
+    $customer = createWalletTestCustomer(5000);
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->postJson("/admin/api/customers/{$customer->public_id}/wallet/adjust", [
+            'amount_halalah' => 2000,
+            'reason' => 'Goodwill compensation for delay',
+        ])
+        ->assertRedirect('/admin/settings');
+});
+
+test('the customer wallet adjust route requires EnsureAdminMfa and can:wallet.adjust middleware', function (): void {
+    $route = Route::getRoutes()->getByName('admin.customers.wallet.adjust');
+
+    expect($route)->not->toBeNull()
+        ->and($route?->gatherMiddleware())->toContain(EnsureAdminMfa::class)
+        ->and($route?->gatherMiddleware())->toContain('can:wallet.adjust');
 });
 
 test('confirmed admin can credit customer wallet and write staff audit log', function (): void {
