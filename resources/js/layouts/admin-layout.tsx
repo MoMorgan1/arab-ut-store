@@ -5,6 +5,7 @@ import AdminMobileTabBar from '@/components/admin/admin-mobile-tabbar';
 import AdminSidebar from '@/components/admin/admin-sidebar';
 import type {
     AdminIdentity,
+    AdminNavigationChild,
     AdminNavigationItem,
     AdminOverviewPageProps,
     AdminTranslations,
@@ -40,16 +41,39 @@ function hasShellProps(props: AdminShellProps): props is {
     );
 }
 
+function normalizePath(url: string): string {
+    return url.split('?')[0].replace(/\/$/, '');
+}
+
 function currentDestination(
     url: string,
     navigation: AdminNavigationItem[],
-): AdminNavigationItem['key'] {
-    const pathname = url.split('?')[0].replace(/\/$/, '');
-    const match = navigation.find(
-        (item) => item.url.split('?')[0].replace(/\/$/, '') === pathname,
+): AdminNavigationItem['key'] | AdminNavigationChild['key'] {
+    const pathname = normalizePath(url);
+
+    // Children first: a group parent shares its URL with its first child, and
+    // the sidebar highlights the child link for that URL.
+    const destinations = navigation.flatMap((item) => [
+        ...(item.children ?? []),
+        item,
+    ]);
+
+    const exact = destinations.find(
+        (destination) => normalizePath(destination.url) === pathname,
     );
 
-    return match?.key ?? 'overview';
+    if (exact) {
+        return exact.key;
+    }
+
+    // Detail pages (for example a coupon) live under their list URL.
+    const ancestor = destinations
+        .filter((destination) =>
+            pathname.startsWith(`${normalizePath(destination.url)}/`),
+        )
+        .sort((a, b) => b.url.length - a.url.length)[0];
+
+    return ancestor?.key ?? 'overview';
 }
 
 export default function AdminLayout({ children }: PropsWithChildren) {
