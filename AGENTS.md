@@ -58,8 +58,8 @@ the existing implementation, keep its visual language, and verify the affected v
 Before building or redesigning an interface:
 
 1. Inspect the relevant implementation already present in this repository, and the established Arab UT visual language it uses.
-2. Load and follow the `frontend-design` skill.
-3. Load the relevant Impeccable design skills for the work, such as `arrange`, `typeset`, `clarify`, `adapt`, and `polish`. A final `polish` pass is required before delivery.
+2. Show the design before writing code: use the `/design` skill to put the proposed screens on a canvas (the affected viewports, Arabic first) built from the repository's real tokens, fonts and assets, and wait for Mohamed's approval of the canvas. Edits he makes on the canvas are part of the approved design.
+3. When implementing, load and follow the `frontend-design` skill, then the relevant Impeccable design skills for the work, such as `arrange`, `typeset`, `clarify`, `adapt`, and `polish`. A final `polish` pass is required before delivery.
 4. Extend the existing Arab UT identity rather than replacing it with a generic redesign: warm black and gold surfaces, Thmanyah Arabic typography, compact gaming-service cards, and the interaction patterns already in the codebase.
 5. Present any consequential visual or behavioral departure from what the storefront already does to Mohamed as an option and wait for approval. Never choose one silently.
 

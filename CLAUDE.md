@@ -9,8 +9,8 @@ Design context and the UI workflow live in [.impeccable.md](.impeccable.md).
   Bug fixes and small changes skip those gates: state the root cause, fix it on a branch,
   open the pull request.
 - **New or redesigned interfaces have an extra gate**: inspect the existing implementation,
-  load the required design skills, and extend the established visual language rather than
-  replacing it. Layout fixes and copy corrections keep the existing language and verify the
+  show the screens on a `/design` canvas and get approval there, then load the required design
+  skills and extend the established visual language rather than replacing it. Layout fixes and copy corrections keep the existing language and verify the
   affected viewport only.
 - **Stop and ask only for consequential decisions**: money, permissions, data deletion or
   migration, external service contracts, or customer-visible behavior. Decide the rest and say so.
