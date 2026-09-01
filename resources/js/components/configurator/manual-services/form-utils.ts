@@ -1,3 +1,4 @@
+import { newAttemptKey } from '@/lib/attempt-key';
 import type {
     ManualCredentialsDraft,
     ManualServicePlatform,
@@ -81,9 +82,7 @@ export function validManualCredentials(
 }
 
 export function newManualAttemptKey(): string {
-    return typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `manual-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return newAttemptKey('manual');
 }
 
 function appendCodes(

@@ -44,15 +44,18 @@ export const AdminUnreadBadge: React.FC = () => {
     const previousCountRef = useRef<number | null>(null);
     const isMountedRef = useRef<boolean>(true);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const inFlightRef = useRef<boolean>(false);
 
     const fetchCount = async () => {
-        if (!isMountedRef.current) {
+        if (!isMountedRef.current || inFlightRef.current) {
             return;
         }
 
         if (typeof document !== 'undefined' && document.hidden) {
             return;
         }
+
+        inFlightRef.current = true;
 
         try {
             const response = await fetch('/admin/support/unread-count', {
@@ -82,6 +85,8 @@ export const AdminUnreadBadge: React.FC = () => {
         } catch {
             // Ignore transient network errors
         } finally {
+            inFlightRef.current = false;
+
             if (isMountedRef.current) {
                 timerRef.current = setTimeout(fetchCount, 30_000);
             }

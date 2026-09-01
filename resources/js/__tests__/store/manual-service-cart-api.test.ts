@@ -62,7 +62,7 @@ it('rejects cross-origin endpoints and unsafe success bodies', async () => {
 
     await expect(
         submitManualServiceCart('https://evil.example/cart', form, 'request-2'),
-    ).rejects.toMatchObject({ code: 'unsafe_endpoint' });
+    ).rejects.toMatchObject({ code: 'unsafe_endpoint', conclusive: false });
 
     vi.stubGlobal(
         'fetch',
@@ -77,5 +77,51 @@ it('rejects cross-origin endpoints and unsafe success bodies', async () => {
     );
     await expect(
         submitManualServiceCart('/cart/items/rivals', form, 'request-3'),
-    ).rejects.toBeInstanceOf(ManualServiceCartError);
+    ).rejects.toMatchObject({
+        code: 'unsafe_response',
+        conclusive: true,
+    });
+});
+
+it.each([400, 409, 422, 500, 503])(
+    'fails conclusively for HTTP %s',
+    async (status) => {
+        const form = new FormData();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue(
+                new Response(
+                    JSON.stringify({
+                        error: { code: `error_${status}` },
+                    }),
+                    { status },
+                ),
+            ),
+        );
+
+        await expect(
+            submitManualServiceCart('/cart/items/rivals', form, 'request-err'),
+        ).rejects.toMatchObject({
+            code: `error_${status}`,
+            conclusive: true,
+            status,
+        });
+    },
+);
+
+it('keeps a transport failure retryable with conclusive: false', async () => {
+    const form = new FormData();
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
+
+    const error = await submitManualServiceCart(
+        '/cart/items/rivals',
+        form,
+        'request-transport',
+    ).catch((failure: unknown) => failure);
+
+    expect(error).toBeInstanceOf(ManualServiceCartError);
+    expect(error).toMatchObject({
+        code: 'transport_error',
+        conclusive: false,
+    });
 });

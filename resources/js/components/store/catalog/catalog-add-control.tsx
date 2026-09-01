@@ -1,16 +1,11 @@
 import { useRef, useState } from 'react';
 
+import { newAttemptKey } from '@/lib/attempt-key';
 import { announceCartAddition } from '@/lib/cart-added-event';
 import {
     CatalogCartRequestError,
     submitCatalogCart,
 } from '@/lib/catalog-cart-api';
-
-function newAttemptKey(): string {
-    return typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `catalog-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
 
 export function CatalogAddControl({
     addUrl,
