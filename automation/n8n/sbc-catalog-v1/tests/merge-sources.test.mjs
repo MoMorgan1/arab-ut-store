@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+    asBareBytes,
     asBuffer,
+    asStream,
     env,
     fftRecords,
     httpOk,
@@ -200,4 +202,97 @@ test('an SBC absent from FFT is archived, not priced', async () => {
 
     assert.equal(archived.source, 'fft_missing');
     assert.equal(archived.active, false);
+});
+
+test('an untagged byte-array provider body is decoded, not walked as bytes', async () => {
+    // Same defect as the publish response: undecoded, the harvester walks a
+    // numeric array, finds no records, and blames the provider for "0 unique
+    // usable records" while it was answering perfectly.
+    const flow = pipeline({ env: env() });
+
+    await flow.run('Config', 'config', [{}]);
+    flow.set('Fetch FFT SBCs', {
+        statusCode: 200,
+        body: asBareBytes(fftRecords()),
+    });
+    flow.set('Fetch EasySBC Sets', {
+        statusCode: 200,
+        body: asBareBytes(metaRecords()),
+    });
+    await flow.run(
+        'Merge Provider Sources',
+        'merge-sources',
+        flow.get('Fetch EasySBC Sets'),
+    );
+
+    assert.ok(
+        flow.json('Merge Provider Sources').sourceAudit.exactMatches > 100,
+    );
+});
+
+test('a provider list is never mistaken for encoded bytes', async () => {
+    // The decoder must only claim an array when the bytes really decode to
+    // JSON, or a legitimate provider response would be destroyed by the fix.
+    const flow = pipeline({ env: env() });
+
+    await flow.run('Config', 'config', [{}]);
+    flow.set('Fetch FFT SBCs', { statusCode: 200, body: fftRecords() });
+    flow.set('Fetch EasySBC Sets', { statusCode: 200, body: metaRecords() });
+    await flow.run(
+        'Merge Provider Sources',
+        'merge-sources',
+        flow.get('Fetch EasySBC Sets'),
+    );
+
+    assert.ok(
+        flow.json('Merge Provider Sources').sourceAudit.exactMatches > 100,
+    );
+});
+
+test('a provider body delivered as an unread stream is decoded', async () => {
+    // The shape that broke the publish leg. A provider fetch can arrive the
+    // same way, and undecoded the harvester reports "0 unique usable records".
+    const flow = pipeline({ env: env() });
+
+    await flow.run('Config', 'config', [{}]);
+    flow.set('Fetch FFT SBCs', {
+        statusCode: 200,
+        body: asStream(fftRecords()),
+    });
+    flow.set('Fetch EasySBC Sets', {
+        statusCode: 200,
+        body: asStream(metaRecords()),
+    });
+    await flow.run(
+        'Merge Provider Sources',
+        'merge-sources',
+        flow.get('Fetch EasySBC Sets'),
+    );
+
+    assert.ok(
+        flow.json('Merge Provider Sources').sourceAudit.exactMatches > 100,
+    );
+});
+
+test('a provider failure reports the body as text, not as raw bytes', async () => {
+    // The FFT outage message read "body starts: null" while the real body sat
+    // undecoded. A wall of integers is what cost two debugging rounds here.
+    const flow = pipeline({ env: env() });
+
+    await flow.run('Config', 'config', [{}]);
+    flow.set('Fetch FFT SBCs', {
+        statusCode: 500,
+        body: asBareBytes({ error: 'Internal Server Error' }),
+    });
+    flow.set('Fetch EasySBC Sets', { statusCode: 200, body: metaRecords() });
+
+    await assert.rejects(
+        () =>
+            flow.run(
+                'Merge Provider Sources',
+                'merge-sources',
+                flow.get('Fetch EasySBC Sets'),
+            ),
+        /returned HTTP 500[\s\S]*Internal Server Error/,
+    );
 });

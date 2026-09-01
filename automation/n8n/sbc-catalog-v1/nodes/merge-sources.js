@@ -79,23 +79,160 @@ function canonicalId(record) {
     return '';
 }
 
-// n8n sometimes returns an HTTP body as a Buffer rather than parsed JSON, which
-// arrives as { type: 'Buffer', data: [ ... ] }. Left undecoded the harvester
-// would walk a byte array, find nothing, and report "0 unique usable records"
-// while the provider was in fact answering perfectly.
+// The provider bodies arrive through the same set of shapes the publish
+// response does; left undecoded the harvester walks a byte array, finds
+// nothing, and reports "0 unique usable records" while the provider was in
+// fact answering perfectly. Applied once to the body in recordsFromNode
+// rather than inside the recursive walk, so a nested numeric array deep in a
+// provider record can never be mistaken for an encoded document.
 function bytesToString(bytes) {
     let out = '';
+    // Chunked so a large body cannot blow the argument limit on String.fromCharCode.
     for (let index = 0; index < bytes.length; index += 8192) {
         out += String.fromCharCode.apply(
             null,
             bytes.slice(index, index + 8192),
         );
     }
+    // The payload is UTF-8; decodeURIComponent/escape turns the raw bytes back
+    // into correct characters so Arabic names survive the round trip.
     try {
         return decodeURIComponent(escape(out));
     } catch {
         return out;
     }
+}
+
+// An array that lost its prototype in serialisation arrives as an array-like
+// { '0': 123, '1': 34, ... }, sometimes still carrying a length.
+function toByteArray(value) {
+    if (Array.isArray(value)) return value;
+    if (!value || typeof value !== 'object') return null;
+
+    const keys = Object.keys(value).filter((key) => key !== 'length');
+
+    if (keys.length === 0 || !keys.every((key) => /^\d+$/.test(key))) {
+        return null;
+    }
+
+    return keys
+        .map(Number)
+        .sort((left, right) => left - right)
+        .map((index) => value[index]);
+}
+
+function looksLikeBytes(bytes) {
+    return (
+        Array.isArray(bytes) &&
+        bytes.length > 0 &&
+        bytes.every(
+            (byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255,
+        )
+    );
+}
+
+// n8n's task runner can hand back the raw Node readable stream instead of a
+// body. It is neither a Buffer nor an array, so every tag-based check misses
+// it, and the payload sits unread in the stream's internal buffer as chunks:
+//   { _readableState: { buffer: [ { type: 'Buffer', data: [ ... ] } ] } }
+// A live run failed exactly this way -- HTTP 201, status "completed", and a
+// body the workflow could not see.
+function bytesFromStream(value) {
+    const chunks = value?._readableState?.buffer;
+
+    if (!chunks) return null;
+
+    // Recent Node exposes a plain array; older releases use a linked BufferList.
+    let list = chunks;
+
+    if (!Array.isArray(list)) {
+        list = [];
+
+        for (let node = chunks.head; node; node = node.next) {
+            list.push(node.data);
+        }
+    }
+
+    const bytes = [];
+
+    for (const chunk of list) {
+        const chunkBytes = toByteArray(
+            chunk && chunk.type === 'Buffer' ? chunk.data : chunk,
+        );
+
+        if (!looksLikeBytes(chunkBytes)) return null;
+
+        // push(...chunkBytes) would blow the argument limit on a large body.
+        for (const byte of chunkBytes) bytes.push(byte);
+    }
+
+    return bytes.length > 0 ? bytes : null;
+}
+
+function decodeHttpBody(raw) {
+    if (raw == null) return raw;
+
+    if (typeof raw === 'string') {
+        const trimmed = raw.trim();
+
+        if (!trimmed) return raw;
+
+        try {
+            return JSON.parse(trimmed);
+        } catch {
+            return raw;
+        }
+    }
+
+    if (typeof raw !== 'object') return raw;
+
+    // A real Buffer instance.
+    if (
+        raw.constructor?.name === 'Buffer' &&
+        typeof raw.toString === 'function'
+    ) {
+        return decodeHttpBody(raw.toString('utf8'));
+    }
+
+    // n8n's serialised Buffer. The tag is required, not optional: an ordinary
+    // { data: [...] } response would otherwise be mistaken for bytes.
+    if (raw.type === 'Buffer') {
+        const tagged = toByteArray(raw.data);
+
+        if (looksLikeBytes(tagged)) {
+            return decodeHttpBody(bytesToString(tagged));
+        }
+    }
+
+    // The untagged form, which is what actually reached production. Accepted
+    // only when the bytes decode to JSON, so a genuine array response -- every
+    // provider list is one -- is handed back untouched rather than destroyed.
+    if (looksLikeBytes(raw)) {
+        try {
+            const parsed = JSON.parse(bytesToString(raw).trim());
+
+            if (parsed && typeof parsed === 'object') return parsed;
+        } catch {
+            // Not bytes after all. Fall through and return it unchanged.
+        }
+    }
+
+    // The unconsumed stream. Only claimed when the buffered chunks parse as
+    // complete JSON -- a stream holds only what has been read so far, so a body
+    // larger than the buffer would otherwise be silently truncated.
+    const streamed = bytesFromStream(raw);
+
+    if (looksLikeBytes(streamed)) {
+        try {
+            const parsed = JSON.parse(bytesToString(streamed).trim());
+
+            if (parsed && typeof parsed === 'object') return parsed;
+        } catch {
+            // Truncated or not JSON. Fall through and return it unchanged.
+        }
+    }
+
+    return raw;
 }
 
 function parseJsonString(value) {
@@ -183,7 +320,14 @@ function recordsFromNode(nodeName, priceKeys) {
     const records = [];
     const seen = new Set();
     for (const item of nodeItems) {
-        collectMatchingRecords(item.json, priceKeys, records, seen, 0);
+        const json = item.json ?? {};
+        // Decode the body itself before harvesting, never the nested values.
+        const source =
+            json.body === undefined
+                ? json
+                : { ...json, body: decodeHttpBody(json.body) };
+
+        collectMatchingRecords(source, priceKeys, records, seen, 0);
     }
     return { records, nodeItems };
 }
@@ -197,6 +341,23 @@ function firstItemShape(nodeItems) {
     return String(typeof firstJson);
 }
 
+// Decode before previewing, and never let the preview itself throw. An
+// undecoded body prints as a 200-character wall of integers, which is the
+// noise this workflow already lost two debugging rounds to; a body that is
+// still a live stream carries circular references, and a bare
+// JSON.stringify on it throws and masks the status being reported.
+function previewBody(raw) {
+    const decoded = decodeHttpBody(raw ?? null);
+
+    if (typeof decoded === 'string') return decoded.slice(0, 200);
+
+    try {
+        return JSON.stringify(decoded ?? null).slice(0, 200);
+    } catch {
+        return `[unserialisable ${typeof decoded}]`;
+    }
+}
+
 // Both fetches run with neverError + fullResponse so a bad status reaches here
 // as data instead of killing the node with n8n's own message. Check it FIRST:
 // without this a provider 500 surfaces further down as "0 unique usable
@@ -207,10 +368,7 @@ function assertHttpOk(nodeName) {
         if (json.statusCode === undefined) continue;
         const status = Number(json.statusCode);
         if (!Number.isFinite(status) || status < 200 || status >= 300) {
-            const body =
-                typeof json.body === 'string'
-                    ? json.body.slice(0, 200)
-                    : JSON.stringify(json.body ?? null).slice(0, 200);
+            const body = previewBody(json.body);
             fail(
                 `${nodeName} returned HTTP ${json.statusCode}; body starts: ${body}`,
             );
