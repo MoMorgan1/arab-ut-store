@@ -1,7 +1,56 @@
 import { execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
+
+const TEST_ADMIN_TOTP_SECRET = 'NBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+
+function base32Decode(base32: string): Buffer {
+    const cleaned = base32
+        .toUpperCase()
+        .replace(/=+$/, '')
+        .replace(/[\s-]/g, '');
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let bits = 0;
+    let value = 0;
+    const bytes: number[] = [];
+
+    for (let i = 0; i < cleaned.length; i++) {
+        const index = alphabet.indexOf(cleaned[i]);
+
+        if (index === -1) {
+            throw new Error(`Invalid base32 character: ${cleaned[i]}`);
+        }
+
+        value = (value << 5) | index;
+        bits += 5;
+
+        if (bits >= 8) {
+            bytes.push((value >>> (bits - 8)) & 0xff);
+            bits -= 8;
+        }
+    }
+
+    return Buffer.from(bytes);
+}
+
+function generateTotp(secret: string, timestampMs = Date.now()): string {
+    const epochSeconds = Math.floor(timestampMs / 1000);
+    const counter = Math.floor(epochSeconds / 30);
+    const counterBuffer = Buffer.alloc(8);
+    counterBuffer.writeBigUInt64BE(BigInt(counter));
+    const hmac = createHmac('sha1', base32Decode(secret))
+        .update(counterBuffer)
+        .digest();
+    const offset = hmac[hmac.length - 1] & 0x0f;
+    const binary =
+        ((hmac[offset] & 0x7f) << 24) |
+        ((hmac[offset + 1] & 0xff) << 16) |
+        ((hmac[offset + 2] & 0xff) << 8) |
+        (hmac[offset + 3] & 0xff);
+
+    return (binary % 1_000_000).toString().padStart(6, '0');
+}
 
 function observeRuntime(page: Page) {
     const failures: string[] = [];
@@ -40,13 +89,46 @@ function mutateLocalBrowserUser(email: string, action: 'promote' | 'delete') {
     const guard = `if (!app()->environment(['local', 'testing']) || config('database.default') !== 'sqlite') { throw new \\RuntimeException('Browser Admin fixtures require a local SQLite environment.'); } `;
     const mutation =
         action === 'promote'
-            ? `${guard}$user = \\App\\Models\\User::where('email', ${lookup})->firstOrFail(); $user->forceFill(['role' => \\App\\Enums\\UserRole::Admin, 'two_factor_secret' => \\Laravel\\Fortify\\Fortify::currentEncrypter()->encrypt(\\Illuminate\\Support\\Str::random(32)), 'two_factor_confirmed_at' => now()])->save();`
+            ? `${guard}$user = \\App\\Models\\User::where('email', ${lookup})->firstOrFail(); $user->forceFill(['role' => \\App\\Enums\\UserRole::Admin, 'two_factor_secret' => \\Laravel\\Fortify\\Fortify::currentEncrypter()->encrypt('${TEST_ADMIN_TOTP_SECRET}'), 'two_factor_confirmed_at' => now()])->save();`
             : `${guard}$user = \\App\\Models\\User::where('email', ${lookup})->firstOrFail(); $user->orders()->each(function ($order) { $order->payments()->delete(); $order->items()->delete(); $order->delete(); }); $user->delete();`;
 
     execFileSync('php', ['artisan', 'tinker', '--execute', mutation], {
         cwd: process.cwd(),
         stdio: 'pipe',
     });
+}
+
+async function confirmAdminTwoFactor(page: Page) {
+    if (!page.url().includes('/admin/confirm-2fa')) {
+        await page.goto('/admin');
+    }
+
+    await page.waitForURL((url) => url.pathname.includes('/admin/confirm-2fa'));
+
+    const codeInput = page.locator('[data-test="admin-2fa-code-input"]');
+    const submitButton = page.locator('[data-test="admin-2fa-submit-button"]');
+
+    await expect(codeInput).toBeVisible();
+
+    const maxAttempts = 2;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const code = generateTotp(TEST_ADMIN_TOTP_SECRET);
+        await codeInput.fill(code);
+        await submitButton.click();
+
+        try {
+            await page.waitForURL(
+                (url) => !url.pathname.includes('/admin/confirm-2fa'),
+                { timeout: 5_000 },
+            );
+            break;
+        } catch (error) {
+            if (attempt === maxAttempts) {
+                throw error;
+            }
+        }
+    }
 }
 
 function seedLocalBrowserOrder(email: string) {
@@ -767,6 +849,8 @@ test('authenticated Admin overview and orders are operable across required width
         mutateLocalBrowserUser(email, 'promote');
         const orderNumber = seedLocalBrowserOrder(email);
 
+        await confirmAdminTwoFactor(page);
+
         const cdpSession = await context.newCDPSession(page);
         await cdpSession.send('Emulation.setSafeAreaInsetsOverride', {
             insets: {
@@ -1130,6 +1214,8 @@ test('reaching the dashboard by a client-side visit still applies the admin pale
 
         mutateLocalBrowserUser(email, 'promote');
 
+        await confirmAdminTwoFactor(page);
+
         // A full load of the account page: Blade stamps the non-admin shell.
         await page.goto('/my-account');
         await expect(page.locator('html')).not.toHaveClass(/admin-document/);
@@ -1195,6 +1281,8 @@ test('authenticated Admin more page renders permission-filtered tiles, meets min
         ]);
 
         mutateLocalBrowserUser(email, 'promote');
+
+        await confirmAdminTwoFactor(page);
 
         const response = await page.goto('/admin/more');
         expect(response?.ok()).toBe(true);

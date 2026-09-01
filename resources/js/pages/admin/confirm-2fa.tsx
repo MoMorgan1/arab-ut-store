@@ -130,6 +130,11 @@ export default function AdminConfirmTwoFactor({
                                         id={fieldName}
                                         key={fieldName}
                                         name={fieldName}
+                                        data-test={
+                                            usingRecoveryCode
+                                                ? 'admin-2fa-recovery-code-input'
+                                                : 'admin-2fa-code-input'
+                                        }
                                         type="text"
                                         inputMode={
                                             usingRecoveryCode
@@ -201,6 +206,7 @@ export default function AdminConfirmTwoFactor({
 
                                 <Button
                                     type="submit"
+                                    data-test="admin-2fa-submit-button"
                                     className="auth-form__submit h-11 w-full font-bold"
                                     disabled={form.processing}
                                 >
