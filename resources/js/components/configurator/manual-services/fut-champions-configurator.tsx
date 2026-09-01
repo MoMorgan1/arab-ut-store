@@ -5,10 +5,11 @@ import {
     ManualServiceCartError,
     submitManualServiceCart,
 } from '@/lib/manual-service-cart-api';
-import { formatInteger, formatMinorUnits } from '@/lib/money';
+import { formatInteger } from '@/lib/money';
 import { getInitialFutChampionsConfig } from '@/lib/query-params';
 import type {
     FutServiceTranslations,
+    ManualCredentialsDraft,
     ManualServiceCommonTranslations,
     ManualServicePageProps,
     ManualServicePlatform,
@@ -17,15 +18,21 @@ import type {
 import { emptyManualCredentials } from '@/types/manual-services';
 
 import { CredentialsFields } from './credentials-fields';
+import { FieldError } from './field-error';
 import {
     appendCredentials,
+    manualCredentialErrors,
     newManualAttemptKey,
+    validateManualFieldOnBlur,
     validManualCredentials,
     validSquadImage,
 } from './form-utils';
-import { ManualOrderSummary } from './order-summary';
+import type { ManualFormErrors } from './form-utils';
+import { MANUAL_PLATFORM_ARTWORK } from './platform-artwork';
+import { RankPicker } from './rank-picker';
+import { ManualSection } from './section';
 import { SelectionCard } from './selection-card';
-import { ServiceSlider } from './service-slider';
+import { ManualServicePanel } from './service-panel';
 import { SquadUpload } from './squad-upload';
 
 type FutPricing = Extract<
@@ -54,6 +61,10 @@ export function FutChampionsConfigurator({
 }) {
     const formRef = useRef<HTMLFormElement>(null);
     const keyRef = useRef(newManualAttemptKey());
+    const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({});
+    const squadInputRef = useRef<HTMLInputElement | null>(null);
+    const matchesInputRef = useRef<HTMLInputElement | null>(null);
+
     const [platform, setPlatform] =
         useState<ManualServicePlatform>('playstation');
     const [launcher, setLauncher] = useState<PcLauncher | null>(null);
@@ -73,7 +84,7 @@ export function FutChampionsConfigurator({
     const [matchesPlayed, setMatchesPlayed] = useState(0);
     const [credentials, setCredentials] = useState(emptyManualCredentials);
     const [image, setImage] = useState<File | null>(null);
-    const [imageError, setImageError] = useState<string>();
+    const [errors, setErrors] = useState<ManualFormErrors>({});
     const [status, setStatus] = useState<
         'idle' | 'loading' | 'success' | 'error'
     >('idle');
@@ -82,14 +93,6 @@ export function FutChampionsConfigurator({
         ':rank',
         formatInteger(rank, locale),
     );
-    const rankPrice =
-        option === undefined
-            ? ''
-            : formatMinorUnits(
-                  option.price.amountMinor,
-                  option.price.currency,
-                  locale,
-              );
     const price =
         option === undefined
             ? null
@@ -104,6 +107,51 @@ export function FutChampionsConfigurator({
         setPlatform(value);
         setLauncher(null);
         setCredentials(emptyManualCredentials());
+        setErrors({});
+    }
+
+    function handleBlurField(field: string, value: string) {
+        const error = validateManualFieldOnBlur(
+            field,
+            value,
+            platform,
+            launcher,
+            credentials,
+            common,
+        );
+
+        setErrors((prev) => {
+            if (error) {
+                return { ...prev, [field]: error };
+            }
+
+            const next = { ...prev };
+
+            delete next[field];
+
+            return next;
+        });
+    }
+
+    function handleBlurMatches() {
+        if (hasPlayed && (!matchesPlayed || matchesPlayed < 1)) {
+            setErrors((prev) => ({
+                ...prev,
+                matchesPlayed: common.required_field,
+            }));
+        } else {
+            setErrors((prev) => {
+                const next = { ...prev };
+
+                delete next.matchesPlayed;
+
+                return next;
+            });
+        }
+    }
+
+    function handleCredentialsChange(nextCreds: ManualCredentialsDraft) {
+        setCredentials(nextCreds);
     }
 
     async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -113,27 +161,77 @@ export function FutChampionsConfigurator({
             return;
         }
 
-        if (!validManualCredentials(platform, launcher, credentials)) {
-            setStatus('error');
-            queueMicrotask(() =>
-                formRef.current
-                    ?.querySelector<HTMLInputElement>('input:invalid')
-                    ?.focus(),
-            );
+        const credErrors = manualCredentialErrors(
+            platform,
+            launcher,
+            credentials,
+            common,
+        );
+        const imageIssue = validSquadImage(image);
+        const imageErrorMessage =
+            imageIssue === 'size'
+                ? common.image_too_large
+                : imageIssue === 'type'
+                  ? common.image_invalid
+                  : imageIssue === 'required'
+                    ? common.image_required
+                    : undefined;
 
-            return;
+        const nextErrors: ManualFormErrors = { ...credErrors };
+
+        if (imageErrorMessage) {
+            nextErrors.squadImage = imageErrorMessage;
         }
 
-        const imageIssue = validSquadImage(image);
+        if (hasPlayed && (!matchesPlayed || matchesPlayed < 1)) {
+            nextErrors.matchesPlayed = common.required_field;
+        }
 
-        if (imageIssue !== null || image === null) {
-            setImageError(
-                imageIssue === 'size'
-                    ? common.image_too_large
-                    : imageIssue === 'type'
-                      ? common.image_invalid
-                      : common.image_required,
-            );
+        const hasErrors =
+            Object.keys(nextErrors).length > 0 ||
+            !validManualCredentials(platform, launcher, credentials) ||
+            imageIssue !== null ||
+            (hasPlayed && matchesPlayed < 1);
+
+        if (hasErrors) {
+            setErrors(nextErrors);
+            setStatus('error');
+
+            queueMicrotask(() => {
+                if (platform === 'pc' && launcher === null) {
+                    formRef.current
+                        ?.querySelector<HTMLInputElement>(
+                            'input[name="pc-store"]',
+                        )
+                        ?.focus();
+
+                    return;
+                }
+
+                if (hasPlayed && (!matchesPlayed || matchesPlayed < 1)) {
+                    matchesInputRef.current?.focus();
+
+                    return;
+                }
+
+                const firstCredKey = Object.keys(credErrors)[0];
+
+                if (firstCredKey && fieldRefs.current[firstCredKey]) {
+                    fieldRefs.current[firstCredKey]?.focus();
+
+                    return;
+                }
+
+                if (imageErrorMessage) {
+                    squadInputRef.current?.focus();
+
+                    return;
+                }
+
+                formRef.current
+                    ?.querySelector<HTMLInputElement>('input:invalid')
+                    ?.focus();
+            });
 
             return;
         }
@@ -144,7 +242,10 @@ export function FutChampionsConfigurator({
         form.set('rank', String(rank));
         form.set('urgent', urgent ? '1' : '0');
         form.set('matchesPlayed', String(matchesPlayed));
-        form.set('squadImage', image);
+
+        if (image !== null) {
+            form.set('squadImage', image);
+        }
 
         if (platform === 'pc' && launcher !== null) {
             form.set('pcStore', launcher);
@@ -184,236 +285,233 @@ export function FutChampionsConfigurator({
         }
     }
 
-    return (
-        <form className="manual-configurator" onSubmit={submit} ref={formRef}>
-            <fieldset>
-                <legend>{common.platform_legend}</legend>
-                <div className="manual-selection-grid">
-                    {(['playstation', 'pc'] as const).map((value) => (
-                        <SelectionCard
-                            checked={platform === value}
-                            key={value}
-                            name="platform"
-                            onChange={() => choosePlatform(value)}
-                            value={value}
-                        >
-                            {common.platforms[value]}
-                        </SelectionCard>
-                    ))}
-                </div>
-            </fieldset>
-            {platform === 'pc' ? (
-                <fieldset>
-                    <legend>{common.pc_store_legend}</legend>
-                    <div className="manual-selection-grid">
-                        {(['ea_app', 'steam'] as const).map((value) => (
-                            <SelectionCard
-                                checked={launcher === value}
-                                key={value}
-                                name="launcher"
-                                onChange={() => {
-                                    setLauncher(value);
+    const facts = [
+        { label: common.review_service, value: product.name },
+        {
+            label: common.review_platform,
+            value: common.platforms[platform],
+        },
+        ...(platform === 'pc' && launcher !== null
+            ? [
+                  {
+                      label: common.review_launcher,
+                      value: common.pc_stores[launcher],
+                  },
+              ]
+            : []),
+        { label: service.target_legend, value: rankLabel },
+        ...(urgent
+            ? [
+                  {
+                      label: service.urgent,
+                      value: service.urgent_eta,
+                  },
+              ]
+            : []),
+    ];
 
-                                    if (value === 'ea_app') {
-                                        setCredentials((current) => ({
-                                            ...current,
-                                            steamUsername: '',
-                                            steamPassword: '',
-                                        }));
-                                    }
-                                }}
-                                value={value}
-                            >
-                                {common.pc_stores[value]}
-                            </SelectionCard>
-                        ))}
-                    </div>
-                </fieldset>
-            ) : null}
-            <ServiceSlider
-                direction={locale === 'ar' ? 'rtl' : 'ltr'}
-                inputName="rank"
-                legend={service.target_legend}
-                maxValue={pricing.rankOptions.at(-1)?.rank ?? 6}
-                minValue={pricing.rankOptions[0]?.rank ?? 1}
-                onValueChange={setRank}
-                price={rankPrice}
-                selectedValue={rank}
-                stopLabels={pricing.rankOptions.map((entry) =>
-                    formatInteger(entry.rank, locale),
-                )}
-                valueLabel={rankLabel}
-            />
-            <div className="manual-fut-options">
-                <label
-                    className="manual-fut-urgent-card"
-                    data-selected={urgent}
+    return (
+        <form
+            className="manual-configurator"
+            noValidate
+            onSubmit={submit}
+            ref={formRef}
+        >
+            <div className="manual-configurator__main">
+                {/* Step 1: Platform */}
+                <ManualSection
+                    id="fut-step-platform"
+                    locale={locale}
+                    number={1}
+                    title={common.step_platform}
                 >
-                    <div className="manual-fut-urgent-card__header">
-                        <div className="manual-fut-urgent-card__control">
-                            <input
-                                checked={urgent}
-                                name="urgent"
-                                onChange={(event) =>
-                                    setUrgent(event.currentTarget.checked)
-                                }
-                                type="checkbox"
-                            />
-                            <strong>{service.urgent}</strong>
+                    <fieldset className="manual-fieldset">
+                        <legend className="sr-only">
+                            {common.platform_legend}
+                        </legend>
+                        <div
+                            aria-label={common.platform_legend}
+                            className="coins-choice-grid coins-choice-grid--platforms"
+                            role="radiogroup"
+                        >
+                            {(['playstation', 'pc'] as const).map((value) => (
+                                <SelectionCard
+                                    caption={common.platform_captions[value]}
+                                    checked={platform === value}
+                                    iconUrls={MANUAL_PLATFORM_ARTWORK[value]}
+                                    key={value}
+                                    label={common.platforms[value]}
+                                    name="platform"
+                                    onChange={() => choosePlatform(value)}
+                                    value={value}
+                                    variant="platform"
+                                >
+                                    {common.platforms[value]}
+                                </SelectionCard>
+                            ))}
                         </div>
-                        <span className="manual-fut-urgent-card__chip">
-                            <small>{service.urgent_price}</small>
-                        </span>
-                    </div>
-                    <small className="manual-service-eta--urgent-option">
-                        {urgent ? service.urgent_eta : service.standard_eta}
-                    </small>
-                </label>
-                <fieldset className="manual-played-matches">
-                    <legend>{service.matches_question}</legend>
-                    <div className="manual-played-matches__choices">
-                        <label>
-                            <input
-                                checked={!hasPlayed}
-                                name="matches-played-choice"
-                                onChange={() => {
-                                    setHasPlayed(false);
-                                    setMatchesPlayed(0);
-                                }}
-                                type="radio"
-                                value="no"
+                    </fieldset>
+
+                    {platform === 'pc' ? (
+                        <div className="manual-pc-launcher">
+                            <p className="manual-pc-launcher__label">
+                                {common.pc_store_legend}
+                            </p>
+                            <div
+                                aria-label={common.pc_store_legend}
+                                className="manual-segmented"
+                                role="radiogroup"
+                            >
+                                {(['ea_app', 'steam'] as const).map((value) => (
+                                    <SelectionCard
+                                        checked={launcher === value}
+                                        key={value}
+                                        name="pc-store"
+                                        onChange={() => {
+                                            setLauncher(value);
+                                            setErrors((prev) => {
+                                                const next = { ...prev };
+                                                delete next.launcher;
+
+                                                return next;
+                                            });
+
+                                            if (value === 'ea_app') {
+                                                setCredentials((current) => ({
+                                                    ...current,
+                                                    steamUsername: '',
+                                                    steamPassword: '',
+                                                }));
+                                            }
+                                        }}
+                                        value={value}
+                                        variant="segment"
+                                    >
+                                        {common.pc_stores[value]}
+                                    </SelectionCard>
+                                ))}
+                            </div>
+                            <FieldError
+                                error={errors.launcher}
+                                id="manual-pc-launcher-error"
                             />
-                            <span>{service.matches_no}</span>
-                        </label>
-                        <label>
-                            <input
-                                checked={hasPlayed}
-                                name="matches-played-choice"
-                                onChange={() => {
-                                    setHasPlayed(true);
-                                    setMatchesPlayed((current) =>
-                                        Math.max(1, current),
-                                    );
-                                }}
-                                type="radio"
-                                value="yes"
-                            />
-                            <span>{service.matches_yes}</span>
-                        </label>
-                    </div>
-                    {hasPlayed ? (
-                        <label className="manual-played-matches__count">
-                            <span>{service.matches_played}</span>
-                            <input
-                                max="100"
-                                min="1"
-                                name="matches-played"
-                                onChange={(event) =>
-                                    setMatchesPlayed(
-                                        Number(event.currentTarget.value),
-                                    )
-                                }
-                                required
-                                type="number"
-                                value={matchesPlayed}
-                            />
-                        </label>
+                        </div>
                     ) : null}
-                </fieldset>
+                </ManualSection>
+
+                {/* Step 2: Options */}
+                <ManualSection
+                    id="fut-step-options"
+                    locale={locale}
+                    number={2}
+                    title={common.step_options}
+                >
+                    <RankPicker
+                        hasPlayed={hasPlayed}
+                        locale={locale}
+                        matchesError={errors.matchesPlayed}
+                        matchesInputRef={(node) => {
+                            matchesInputRef.current = node;
+                        }}
+                        matchesPlayed={matchesPlayed}
+                        onBlurMatches={handleBlurMatches}
+                        onHasPlayedChange={(played) => {
+                            setHasPlayed(played);
+                            setMatchesPlayed(
+                                played ? Math.max(1, matchesPlayed) : 0,
+                            );
+
+                            if (!played) {
+                                setErrors((prev) => {
+                                    const next = { ...prev };
+                                    delete next.matchesPlayed;
+
+                                    return next;
+                                });
+                            }
+                        }}
+                        onMatchesPlayedChange={(matches) => {
+                            setMatchesPlayed(matches);
+
+                            if (matches >= 1) {
+                                setErrors((prev) => {
+                                    const next = { ...prev };
+                                    delete next.matchesPlayed;
+
+                                    return next;
+                                });
+                            }
+                        }}
+                        onRankChange={setRank}
+                        onUrgentChange={setUrgent}
+                        pricing={pricing}
+                        rank={rank}
+                        service={service}
+                        urgent={urgent}
+                    />
+                </ManualSection>
+
+                {/* Step 3: Account */}
+                <ManualSection
+                    id="fut-step-account"
+                    locale={locale}
+                    number={3}
+                    title={common.step_account}
+                >
+                    <CredentialsFields
+                        credentials={credentials}
+                        errors={errors}
+                        launcher={launcher}
+                        onBlurField={handleBlurField}
+                        onChange={handleCredentialsChange}
+                        platform={platform}
+                        registerFieldRef={(field, node) => {
+                            fieldRefs.current[field] = node;
+                        }}
+                        translations={common}
+                        tutorials={tutorials}
+                    />
+                </ManualSection>
+
+                {/* Step 4: Squad Image */}
+                <ManualSection
+                    id="fut-step-image"
+                    locale={locale}
+                    number={4}
+                    title={common.step_image}
+                >
+                    <SquadUpload
+                        error={errors.squadImage}
+                        file={image}
+                        inputRef={(node) => {
+                            squadInputRef.current = node;
+                        }}
+                        onChange={(file) => {
+                            setImage(file);
+                            setErrors((prev) => {
+                                const next = { ...prev };
+                                delete next.squadImage;
+
+                                return next;
+                            });
+                        }}
+                        translations={common}
+                    />
+                </ManualSection>
             </div>
-            <CredentialsFields
-                credentials={credentials}
-                launcher={launcher}
-                onChange={setCredentials}
-                platform={platform}
-                translations={common}
-                tutorials={tutorials}
-            />
-            <SquadUpload
-                error={imageError}
-                file={image}
-                onChange={(file) => {
-                    setImage(file);
-                    setImageError(undefined);
-                }}
-                translations={common}
-            />
-            <ManualOrderSummary
-                facts={[
-                    { label: common.review_service, value: product.name },
-                    {
-                        label: common.review_platform,
-                        value: common.platforms[platform],
-                    },
-                    ...(platform === 'pc' && launcher !== null
-                        ? [
-                              {
-                                  label: common.review_launcher,
-                                  value: common.pc_stores[launcher],
-                              },
-                          ]
-                        : []),
-                    {
-                        label: service.target_legend,
-                        value: service.rank.replace(
-                            ':rank',
-                            formatInteger(rank, locale),
-                        ),
-                    },
-                ]}
+
+            {/* Sticky Order Panel (Desktop) / Glassmorphic Action Bar (Mobile) */}
+            <ManualServicePanel
+                eta={urgent ? service.urgent_eta : service.standard_eta}
+                facts={facts}
+                image={product.image}
                 locale={locale}
                 price={price}
+                status={status}
+                submitDisabled={platform === 'pc' && launcher === null}
+                title={product.name}
                 translations={common}
             />
-            <div className="manual-configurator__action-bar">
-                <div className="manual-configurator__live-summary">
-                    <div className="manual-configurator__summary-pills">
-                        <span className="manual-configurator__summary-pill">
-                            {rankLabel}
-                        </span>
-                        <span className="manual-configurator__summary-pill">
-                            {platform === 'pc' && launcher !== null
-                                ? `${common.platforms.pc} (${common.pc_stores[launcher]})`
-                                : common.platforms[platform]}
-                        </span>
-                        {urgent ? (
-                            <span className="manual-configurator__summary-pill manual-configurator__summary-pill--urgent">
-                                {service.urgent}
-                            </span>
-                        ) : null}
-                    </div>
-                    <div className="manual-configurator__summary-total">
-                        <span className="manual-configurator__summary-total-label">
-                            {common.review_total}
-                        </span>
-                        <strong className="manual-configurator__summary-total-amount">
-                            {price === null
-                                ? '—'
-                                : formatMinorUnits(
-                                      price.amountMinor,
-                                      price.currency,
-                                      locale,
-                                  )}
-                        </strong>
-                    </div>
-                </div>
-                <button
-                    className="manual-configurator__submit"
-                    disabled={
-                        status === 'loading' ||
-                        (platform === 'pc' && launcher === null)
-                    }
-                    type="submit"
-                >
-                    {status === 'loading' ? common.adding : common.add_to_cart}
-                </button>
-                {status === 'success' ? (
-                    <p role="status">{common.added}</p>
-                ) : null}
-                {status === 'error' ? (
-                    <p role="alert">{common.add_error}</p>
-                ) : null}
-            </div>
         </form>
     );
 }

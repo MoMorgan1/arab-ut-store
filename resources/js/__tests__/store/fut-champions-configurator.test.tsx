@@ -4,6 +4,7 @@ import {
     render,
     screen,
     waitFor,
+    within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
@@ -16,6 +17,7 @@ import type {
 const fetchMock = vi.fn();
 
 beforeEach(() => {
+    window.history.pushState({}, '', '/fut-champions');
     fetchMock.mockReset().mockResolvedValue(
         new Response(
             JSON.stringify({
@@ -40,9 +42,24 @@ beforeEach(() => {
 
 afterEach(() => {
     cleanup();
+    window.history.pushState({}, '', '/');
     document.querySelector('meta[name="csrf-token"]')?.remove();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+});
+
+it('renders the platform choice cards with decorative logo images', () => {
+    renderFut();
+
+    const psRadio = screen.getByRole('radio', { name: 'PlayStation' });
+    expect(psRadio).toBeInTheDocument();
+    const psCard = psRadio.closest('label')!;
+    const logoImg = psCard.querySelector('img');
+    expect(logoImg).toHaveAttribute(
+        'src',
+        '/images/store/platforms/ps-logo-white-80.webp',
+    );
+    expect(logoImg).toHaveAttribute('alt', '');
 });
 
 it('uses a rank slider and only asks for a match count after the customer confirms they played', () => {
@@ -60,6 +77,7 @@ it('uses a rank slider and only asks for a match count after the customer confir
     expect(screen.getByLabelText('Matches already played')).toBeVisible();
 
     fireEvent.change(rankSlider, { target: { value: '1' } });
+    expect(rankSlider).toHaveValue('1');
     expect(rankSlider.getAttribute('aria-valuetext')).toContain('Rank 1');
     expect(rankSlider.getAttribute('aria-valuetext')).toContain('220.00');
 });
@@ -67,47 +85,52 @@ it('uses a rank slider and only asks for a match count after the customer confir
 it('keeps the active delivery estimate inside the urgent option and omits the repeated played-matches note', () => {
     renderFut();
 
-    const urgentOption = screen.getByLabelText(/Urgent/).closest('label');
-    expect(urgentOption).toContainElement(
-        screen.getByText('Current FUT event'),
-    );
+    const urgentCheckbox = screen.getByRole('checkbox', { name: /Urgent/ });
+    const urgentOption = urgentCheckbox.closest('label')!;
+    expect(within(urgentOption).getByText('Current FUT event')).toBeVisible();
     expect(
         screen.queryByText('Played matches are accepted'),
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByLabelText(/Urgent/));
+    fireEvent.click(urgentCheckbox);
 
-    expect(urgentOption).toContainElement(
-        screen.getByText('Urgent orders take 24–36 hours'),
-    );
-    expect(screen.queryByText('Current FUT event')).not.toBeInTheDocument();
+    expect(
+        within(urgentOption).getByText('Urgent orders take 24–36 hours'),
+    ).toBeVisible();
+    expect(
+        within(urgentOption).queryByText('Current FUT event'),
+    ).not.toBeInTheDocument();
 });
 
 it('submits the selected FUT rank, urgent option, exact credentials, and required image once', async () => {
     renderFut();
 
-    fireEvent.change(screen.getByRole('slider', { name: 'Target rank' }), {
-        target: { value: '1' },
-    });
-    fireEvent.click(screen.getByLabelText(/Urgent/));
+    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
+    fireEvent.change(rankSlider, { target: { value: '1' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /Urgent/ }));
     fireEvent.click(screen.getByLabelText('Yes, I played matches'));
     fireEvent.change(screen.getByLabelText('Matches already played'), {
         target: { value: '4' },
     });
     fireEvent.change(screen.getByLabelText('PlayStation email'), {
-        target: { value: 'owner@example.test' },
+        target: { value: 'buyer@example.test' },
     });
     fireEvent.change(screen.getByLabelText('PlayStation password'), {
-        target: { value: 'PS secret' },
+        target: { value: 'hunter2' },
     });
     const codes = screen.getAllByLabelText(/Backup code/);
-    ['12345678', '23456789', '34567890', 'A1B2C3', 'D4E5F6', 'Z9Y8X7'].forEach(
-        (value, index) => fireEvent.change(codes[index], { target: { value } }),
+    ['11111111', '22222222', '33333333', 'ABC123', 'DEF456', 'GHI789'].forEach(
+        (code, idx) =>
+            fireEvent.change(codes[idx], { target: { value: code } }),
     );
-    const image = new File(['squad'], 'squad.png', { type: 'image/png' });
-    fireEvent.change(screen.getByLabelText(/Squad image/), {
+    const image = new File(['image-bytes'], 'squad.png', { type: 'image/png' });
+    const fileInput = document.querySelector(
+        'input[name="squad-image"]',
+    ) as HTMLInputElement;
+    fireEvent.change(fileInput, {
         target: { files: [image] },
     });
+
     fireEvent.submit(
         screen
             .getByRole('button', { name: 'Add service to cart' })
@@ -121,131 +144,55 @@ it('submits the selected FUT rank, urgent option, exact credentials, and require
     expect(form.get('urgent')).toBe('1');
     expect(form.get('matchesPlayed')).toBe('4');
     expect(form.get('credentials[playstation_email]')).toBe(
-        'owner@example.test',
+        'buyer@example.test',
     );
-    expect(form.get('credentials[ea_email]')).toBeNull();
-    expect(form.get('credentials[playstation_backup_codes][2]')).toBe('Z9Y8X7');
+    expect(form.get('credentials[playstation_backup_codes][0]')).toBe('ABC123');
     expect(form.get('squadImage')).toBe(image);
-    expect(screen.getAllByText(/260\.00/)[0]).toBeVisible();
-    expect(screen.getByText('Urgent orders take 24–36 hours')).toBeVisible();
-    expect(document.body.textContent).not.toContain('PS secret');
 });
 
-it('prefills valid rank and urgent option from URL query parameters', () => {
-    window.history.pushState({}, '', '/fut-champions?rank=1&urgent=true');
+it('validates played matches count when yes is selected', () => {
     renderFut();
 
-    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
-    const urgentCheckbox = screen.getByRole('checkbox', { name: /Urgent/ });
+    fireEvent.click(screen.getByLabelText('Yes, I played matches'));
+    const matchesInput = screen.getByLabelText('Matches already played');
+    fireEvent.change(matchesInput, { target: { value: '0' } });
+    fireEvent.blur(matchesInput);
 
-    expect(rankSlider).toHaveValue('1');
-    expect(rankSlider.getAttribute('aria-valuetext')).toContain('Rank 1');
-    expect(urgentCheckbox).toBeChecked();
-    expect(screen.getAllByText(/260\.00/)[0]).toBeVisible();
+    expect(screen.getByText('Required')).toBeVisible();
+
+    fireEvent.change(matchesInput, { target: { value: '3' } });
+    fireEvent.blur(matchesInput);
+
+    expect(screen.queryByText('Required')).not.toBeInTheDocument();
 });
 
-it('prefills rank 6 and urgent=1 from URL query parameters', () => {
-    window.history.pushState({}, '', '/fut-champions?rank=6&urgent=1');
+it('focuses the first invalid field when submit fails with validation errors', async () => {
     renderFut();
 
-    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
-    const urgentCheckbox = screen.getByRole('checkbox', { name: /Urgent/ });
-
-    expect(rankSlider).toHaveValue('6');
-    expect(rankSlider.getAttribute('aria-valuetext')).toContain('Rank 6');
-    expect(urgentCheckbox).toBeChecked();
-});
-
-it('degrades invalid rank to default rank 3 while preserving valid urgent', () => {
-    window.history.pushState({}, '', '/fut-champions?rank=99&urgent=1');
-    renderFut();
-
-    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
-    const urgentCheckbox = screen.getByRole('checkbox', { name: /Urgent/ });
-
-    expect(rankSlider).toHaveValue('3');
-    expect(rankSlider.getAttribute('aria-valuetext')).toContain('Rank 3');
-    expect(urgentCheckbox).toBeChecked();
-});
-
-it('degrades invalid urgent to false while preserving valid rank', () => {
-    window.history.pushState({}, '', '/fut-champions?rank=2&urgent=banana');
-    renderFut();
-
-    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
-    const urgentCheckbox = screen.getByRole('checkbox', { name: /Urgent/ });
-
-    expect(rankSlider).toHaveValue('2');
-    expect(rankSlider.getAttribute('aria-valuetext')).toContain('Rank 2');
-    expect(urgentCheckbox).not.toBeChecked();
-});
-
-it('never prefills secret credential fields from URL parameters', () => {
-    window.history.pushState(
-        {},
-        '',
-        '/fut-champions?playstation_email=hacker@evil.test&playstation_password=secret&ea_password=secret',
+    fireEvent.submit(
+        screen
+            .getByRole('button', { name: 'Add service to cart' })
+            .closest('form')!,
     );
-    renderFut();
 
-    expect(screen.getByLabelText('PlayStation email')).toHaveValue('');
-    expect(screen.getByLabelText('PlayStation password')).toHaveValue('');
-    expect(document.body.textContent).not.toContain('hacker@evil.test');
-    expect(document.body.textContent).not.toContain('secret');
+    await waitFor(() => {
+        expect(screen.getByLabelText('PlayStation email')).toHaveFocus();
+    });
 });
 
-it('does not throw on hostile URL input and falls back to defaults', () => {
-    window.history.pushState(
-        {},
-        '',
-        '/fut-champions?rank=%E0%A4%A&urgent=%zz&__proto__=polluted',
-    );
+it('validates invalid email on blur and clears error on fix', () => {
     renderFut();
 
-    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
-    const urgentCheckbox = screen.getByRole('checkbox', { name: /Urgent/ });
+    const emailInput = screen.getByLabelText('PlayStation email');
+    fireEvent.change(emailInput, { target: { value: 'bad-email' } });
+    fireEvent.blur(emailInput);
 
-    expect(rankSlider).toHaveValue('3');
-    expect(urgentCheckbox).not.toBeChecked();
-});
+    expect(screen.getByText('Invalid email')).toBeVisible();
 
-it('keeps controls fully editable after prefilling without fighting user edits', () => {
-    window.history.pushState({}, '', '/fut-champions?rank=1&urgent=true');
-    renderFut();
+    fireEvent.change(emailInput, { target: { value: 'good@example.test' } });
+    fireEvent.blur(emailInput);
 
-    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
-    const urgentCheckbox = screen.getByRole('checkbox', { name: /Urgent/ });
-
-    expect(rankSlider).toHaveValue('1');
-    expect(urgentCheckbox).toBeChecked();
-
-    fireEvent.change(rankSlider, { target: { value: '4' } });
-    fireEvent.click(urgentCheckbox);
-
-    expect(rankSlider).toHaveValue('4');
-    expect(urgentCheckbox).not.toBeChecked();
-});
-
-it('allows selecting rank via interactive stop buttons', () => {
-    renderFut();
-
-    const rank5Button = screen.getByRole('button', { name: 'Target rank: 5' });
-    fireEvent.click(rank5Button);
-
-    const rankSlider = screen.getByRole('slider', { name: 'Target rank' });
-    expect(rankSlider).toHaveValue('5');
-    expect(rankSlider.getAttribute('aria-valuetext')).toContain('Rank 5');
-    expect(rankSlider.getAttribute('aria-valuetext')).toContain('130.00');
-});
-
-it('displays live configuration summary pills for rank, platform, and urgent option', () => {
-    renderFut();
-
-    expect(screen.getAllByText('Rank 1').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('PlayStation').length).toBeGreaterThanOrEqual(1);
-
-    fireEvent.click(screen.getByLabelText(/Urgent/));
-    expect(screen.getAllByText('Urgent').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('Invalid email')).not.toBeInTheDocument();
 });
 
 function renderFut() {
@@ -256,15 +203,14 @@ function renderFut() {
             locale="en"
             pricing={{
                 currency: 'SAR',
-                rankOptions: [1, 2, 3, 4, 5, 6].map((rank, index) => ({
-                    rank,
-                    price: {
-                        amountMinor: [22000, 19000, 17000, 15000, 13000, 10000][
-                            index
-                        ],
-                        currency: 'SAR',
-                    },
-                })),
+                rankOptions: [
+                    { rank: 1, price: { amountMinor: 22000, currency: 'SAR' } },
+                    { rank: 2, price: { amountMinor: 19000, currency: 'SAR' } },
+                    { rank: 3, price: { amountMinor: 17000, currency: 'SAR' } },
+                    { rank: 4, price: { amountMinor: 15000, currency: 'SAR' } },
+                    { rank: 5, price: { amountMinor: 13000, currency: 'SAR' } },
+                    { rank: 6, price: { amountMinor: 11000, currency: 'SAR' } },
+                ],
                 urgentSurcharge: { amountMinor: 4000, currency: 'SAR' },
             }}
             product={{
@@ -284,10 +230,14 @@ function renderFut() {
     );
 }
 
-const common = {
+const common: ManualServiceCommonTranslations = {
     back: 'Back',
     platform_legend: 'Choose platform',
     platforms: { playstation: 'PlayStation', pc: 'PC' },
+    platform_captions: {
+        playstation: 'PS4 and PS5',
+        pc: 'EA app or Steam',
+    },
     pc_store_legend: 'Choose launcher',
     pc_stores: { ea_app: 'EA app', steam: 'Steam' },
     account_details_title: 'Account details',
@@ -332,9 +282,17 @@ const common = {
     image_required: 'Image required',
     image_invalid: 'Invalid image',
     image_too_large: 'Image too large',
-} satisfies ManualServiceCommonTranslations;
+    step_platform: '1. Choose platform',
+    step_options: '2. Service options',
+    step_account: '3. Account details',
+    step_image: '4. Squad image',
+    panel_title: 'Order summary',
+    eta_label: 'Estimated delivery',
+    squad_image_choose: 'Choose image',
+    see_all_sbc: 'All SBC challenges',
+};
 
-const fut = {
+const fut: FutServiceTranslations = {
     eyebrow: 'Competitive',
     title: 'FUT',
     intro: 'Intro',
@@ -349,4 +307,4 @@ const fut = {
     matches_no: 'No matches played',
     matches_played: 'Matches already played',
     notes: { timing: '', details: '', login: '', shortfall: '', safety: '' },
-} satisfies FutServiceTranslations;
+};

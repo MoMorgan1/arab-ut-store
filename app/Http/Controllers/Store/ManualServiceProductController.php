@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Store;
 
+use App\Actions\Catalog\StoreCatalogReader;
 use App\Actions\Pricing\ConvertDisplayMoney;
 use App\Actions\Pricing\ReadManualServicePricing;
 use App\Enums\Platform;
@@ -32,6 +33,7 @@ final class ManualServiceProductController extends Controller
         Request $request,
         ReadManualServicePricing $readPricing,
         ConvertDisplayMoney $convertDisplayMoney,
+        StoreCatalogReader $catalogReader,
     ): Response {
         $service = ServiceType::from((string) $request->route('service'));
         abort_unless(in_array($service, [ServiceType::FutChampions, ServiceType::Rivals], true), 404);
@@ -72,7 +74,7 @@ final class ManualServiceProductController extends Controller
             )->toArray(),
             'manualServicePage' => [
                 'common' => trans('store.manual_services.common'),
-                'relatedServices' => $this->relatedServices($request, $service),
+                'relatedServices' => $this->relatedServices($request, $service, $catalogReader),
                 'relatedTranslations' => [
                     'eyebrow' => trans('store.services_section.eyebrow'),
                     'title' => trans('store.services_section.title'),
@@ -237,23 +239,80 @@ final class ManualServiceProductController extends Controller
         return $this->route($request, $name);
     }
 
-    /** @return list<array{key: string, title: string, description: string, href: string, imageUrl: string}> */
-    private function relatedServices(Request $request, ServiceType $service): array
+    /**
+     * @return array{
+     *     products: list<array{
+     *         id: string,
+     *         name: string,
+     *         description: string,
+     *         url: string,
+     *         image: array{url: string, alt: string}|null,
+     *         price: array{amountMinor: int, currency: string}|null,
+     *         compareAtPrice: array{amountMinor: int, currency: string}|null,
+     *         promotionBadge: string|null,
+     *         platforms: list<string>
+     *     }>,
+     *     sbcUrl: string,
+     *     service: array{key: string, title: string, description: string, href: string, imageUrl: string}
+     * }
+     */
+    private function relatedServices(Request $request, ServiceType $service, StoreCatalogReader $catalogReader): array
     {
-        $related = [
-            ['sbc', 'store.sbc', '/images/store/services/sbc.webp'],
-            $service === ServiceType::FutChampions
-                ? ['rivals', 'store.rivals', '/images/store/services/rivals.webp']
-                : ['fut_champions', 'store.fut_champions', '/images/store/services/fut-champions.webp'],
-        ];
+        $displayCurrency = (string) ($request->session()->get('display_currency') ?? config('store.default_display_currency'));
+        $sbcProducts = [];
 
-        return array_map(fn (array $serviceCard): array => [
-            'key' => $serviceCard[0],
-            'title' => trans("store.services.{$serviceCard[0]}.title"),
-            'description' => trans("store.services.{$serviceCard[0]}.card_description"),
-            'href' => $this->route($request, $serviceCard[1]),
-            'imageUrl' => $serviceCard[2],
-        ], $related);
+        try {
+            $catalog = $catalogReader->category(
+                ServiceType::Sbc,
+                app()->getLocale(),
+                $displayCurrency,
+                'all',
+                'recommended',
+                '',
+                1,
+            );
+
+            $sbcProducts = array_map(fn (array $product): array => [
+                'id' => (string) $product['id'],
+                'name' => (string) $product['name'],
+                'description' => (string) $product['description'],
+                'url' => (string) $product['url'],
+                'image' => is_array($product['image']) ? [
+                    'url' => (string) $product['image']['url'],
+                    'alt' => (string) $product['image']['alt'],
+                ] : null,
+                'price' => is_array($product['price']) ? [
+                    'amountMinor' => (int) $product['price']['amountMinor'],
+                    'currency' => (string) $product['price']['currency'],
+                ] : null,
+                'compareAtPrice' => is_array($product['compareAtPrice']) ? [
+                    'amountMinor' => (int) $product['compareAtPrice']['amountMinor'],
+                    'currency' => (string) $product['compareAtPrice']['currency'],
+                ] : null,
+                'promotionBadge' => isset($product['promotionBadge']) ? (string) $product['promotionBadge'] : null,
+                'platforms' => array_values(array_map('strval', (array) ($product['platforms'] ?? []))),
+            ], array_slice($catalog['products'], 0, 4));
+        } catch (DomainException) {
+            $sbcProducts = [];
+        }
+
+        $otherServiceKey = $service === ServiceType::FutChampions ? 'rivals' : 'fut_champions';
+        $otherServiceRoute = $service === ServiceType::FutChampions ? 'store.rivals' : 'store.fut_champions';
+        $otherServiceImage = $service === ServiceType::FutChampions
+            ? '/images/store/services/rivals.webp'
+            : '/images/store/services/fut-champions.webp';
+
+        return [
+            'products' => $sbcProducts,
+            'sbcUrl' => $this->route($request, 'store.sbc'),
+            'service' => [
+                'key' => $otherServiceKey,
+                'title' => trans("store.services.{$otherServiceKey}.title"),
+                'description' => trans("store.services.{$otherServiceKey}.card_description"),
+                'href' => $this->route($request, $otherServiceRoute),
+                'imageUrl' => $otherServiceImage,
+            ],
+        ];
     }
 
     private function route(Request $request, string $name): string

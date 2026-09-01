@@ -254,11 +254,22 @@ return [
     ],
     'manual_services' => [
         'common' => [
+            'step_platform' => 'المنصة',
+            'step_options' => 'تفاصيل الخدمة',
+            'step_account' => 'بيانات الحساب',
+            'step_image' => 'صورة التشكيلة',
+            'panel_title' => 'ملخص طلبك',
+            'eta_label' => 'مدة التنفيذ',
+            'squad_image_choose' => 'اختر صورة',
             'back' => 'العودة للخدمات',
             'platform_legend' => 'اختر المنصة',
             'platforms' => [
                 'playstation' => 'بلايستيشن',
                 'pc' => 'بي سي',
+            ],
+            'platform_captions' => [
+                'playstation' => 'بلايستيشن ٤ و ٥',
+                'pc' => 'EA app أو Steam',
             ],
             'pc_store_legend' => 'اختر مشغّل اللعبة',
             'pc_stores' => [
@@ -307,6 +318,7 @@ return [
             'image_required' => 'أضف صورة تشكيلتك.',
             'image_invalid' => 'استخدم صورة JPG أو PNG أو WebP.',
             'image_too_large' => 'حجم صورة التشكيلة لازم يكون ٥ ميجابايت أو أقل.',
+            'see_all_sbc' => 'كل تحديات SBC',
         ],
         'fut_champions' => [
             'eyebrow' => 'الخدمات التنافسية',
@@ -338,6 +350,8 @@ return [
             'target_legend' => 'الديفجن المطلوب',
             'division' => 'ديفجن :division',
             'elite' => 'إيليت',
+            'route_summary' => 'من :from إلى :to',
+            'steps_count' => ':count ترقيات',
             // The two ways to buy Rivals. Both play the same account with the
             // same data; only what we do with the week differs.
             'mode_legend' => 'إيش تبي نلعبه؟',

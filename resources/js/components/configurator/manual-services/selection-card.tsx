@@ -2,21 +2,74 @@ import type { ReactNode } from 'react';
 
 export function SelectionCard({
     badge,
+    caption,
     checked,
     children,
+    iconUrls,
+    label,
     name,
     onChange,
     value,
+    variant = 'card',
 }: {
     badge?: ReactNode;
+    caption?: string;
     checked: boolean;
     children: ReactNode;
+    iconUrls?: string[];
+    label?: string;
     name: string;
     onChange: () => void;
     value: string;
+    variant?: 'card' | 'segment' | 'platform';
 }) {
+    if (variant === 'platform') {
+        const ariaLabel =
+            label ?? (typeof children === 'string' ? children : value);
+
+        return (
+            <label className="coins-choice">
+                <input
+                    aria-label={ariaLabel}
+                    checked={checked}
+                    className="sr-only"
+                    name={name}
+                    onChange={onChange}
+                    type="radio"
+                    value={value}
+                />
+                <span aria-hidden="true" className="coins-choice__mark" />
+                {iconUrls !== undefined ? (
+                    <span aria-hidden="true" className="coins-choice__icons">
+                        {iconUrls.map((iconUrl) => (
+                            <img
+                                alt=""
+                                className="coins-choice__icon"
+                                height="42"
+                                key={iconUrl}
+                                src={iconUrl}
+                                width="42"
+                            />
+                        ))}
+                    </span>
+                ) : null}
+                <span className="coins-choice__body">
+                    <strong>{children}</strong>
+                    {caption ? <small>{caption}</small> : null}
+                </span>
+            </label>
+        );
+    }
+
+    const isSegment = variant === 'segment';
+
     return (
-        <label className="manual-selection-card" data-selected={checked}>
+        <label
+            className={
+                isSegment ? 'manual-segmented__item' : 'manual-selection-card'
+            }
+            data-selected={checked}
+        >
             <input
                 checked={checked}
                 name={name}

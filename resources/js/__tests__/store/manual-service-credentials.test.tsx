@@ -9,6 +9,8 @@ import { useState } from 'react';
 import { afterEach, expect, it } from 'vitest';
 
 import { CredentialsFields } from '@/components/configurator/manual-services/credentials-fields';
+import { validateManualFieldOnBlur } from '@/components/configurator/manual-services/form-utils';
+import type { ManualFormErrors } from '@/components/configurator/manual-services/form-utils';
 import type {
     ManualCredentialsDraft,
     ManualServiceCommonTranslations,
@@ -21,11 +23,35 @@ function Harness({ platform }: { platform: 'pc' | 'playstation' }) {
     const [credentials, setCredentials] = useState<ManualCredentialsDraft>(
         emptyManualCredentials,
     );
+    const [errors, setErrors] = useState<ManualFormErrors>({});
+
+    function handleBlur(field: string, value: string) {
+        const error = validateManualFieldOnBlur(
+            field,
+            value,
+            platform,
+            platform === 'pc' ? 'steam' : null,
+            credentials,
+            translations,
+        );
+        setErrors((prev) => {
+            if (error) {
+                return { ...prev, [field]: error };
+            }
+
+            const next = { ...prev };
+            delete next[field];
+
+            return next;
+        });
+    }
 
     return (
         <CredentialsFields
             credentials={credentials}
+            errors={errors}
             launcher={platform === 'pc' ? 'steam' : null}
+            onBlurField={handleBlur}
             onChange={setCredentials}
             platform={platform}
             translations={translations}
@@ -96,10 +122,42 @@ it('shows EA and Steam credentials on PC without Sony fields or codes', () => {
     ).not.toBeInTheDocument();
 });
 
+it('validates invalid email on blur and clears it when fixed', () => {
+    render(<Harness platform="playstation" />);
+
+    const emailInput = screen.getByLabelText('PlayStation email');
+    fireEvent.change(emailInput, { target: { value: 'not-an-email' } });
+    fireEvent.blur(emailInput);
+
+    expect(screen.getByText('Invalid email')).toBeVisible();
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true');
+
+    fireEvent.change(emailInput, { target: { value: 'user@example.test' } });
+    fireEvent.blur(emailInput);
+
+    expect(screen.queryByText('Invalid email')).not.toBeInTheDocument();
+    expect(emailInput).toHaveAttribute('aria-invalid', 'false');
+});
+
+it('flags duplicate backup codes on blur', () => {
+    render(<Harness platform="playstation" />);
+
+    const codes = screen.getAllByLabelText(/Backup code/);
+    fireEvent.change(codes[0], { target: { value: '12345678' } });
+    fireEvent.change(codes[1], { target: { value: '12345678' } });
+    fireEvent.blur(codes[1]);
+
+    expect(screen.getByText('Duplicate codes')).toBeVisible();
+});
+
 const translations: ManualServiceCommonTranslations = {
     back: 'Back',
     platform_legend: 'Choose platform',
     platforms: { playstation: 'PlayStation', pc: 'PC' },
+    platform_captions: {
+        playstation: 'PS4 and PS5',
+        pc: 'EA app or Steam',
+    },
     pc_store_legend: 'Choose launcher',
     pc_stores: { ea_app: 'EA app', steam: 'Steam' },
     account_details_title: 'Account details',
@@ -144,4 +202,12 @@ const translations: ManualServiceCommonTranslations = {
     image_required: 'Image required',
     image_invalid: 'Invalid image',
     image_too_large: 'Image too large',
+    step_platform: '1. Platform',
+    step_options: '2. Options',
+    step_account: '3. Account',
+    step_image: '4. Squad image',
+    panel_title: 'Order summary',
+    eta_label: 'Estimated delivery',
+    squad_image_choose: 'Choose image',
+    see_all_sbc: 'All SBC challenges',
 };

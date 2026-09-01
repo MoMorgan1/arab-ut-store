@@ -9,12 +9,30 @@ export type PcLauncher = 'ea_app' | 'steam';
 export type Division = '7' | '6' | '5' | '4' | '3' | '2' | '1' | 'elite';
 export type ManualServiceMoney = { amountMinor: number; currency: string };
 
+export type RelatedSbcProduct = {
+    id: string;
+    name: string;
+    description: string;
+    url: string;
+    image: { url: string; alt: string } | null;
+    price: ManualServiceMoney | null;
+    compareAtPrice: ManualServiceMoney | null;
+    promotionBadge: string | null;
+    platforms: string[];
+};
+
 export type ManualServiceSuggestion = {
     key: 'sbc' | 'fut_champions' | 'rivals';
     title: string;
     description: string;
     href: string;
     imageUrl: string;
+};
+
+export type ManualServiceRelatedServices = {
+    products: RelatedSbcProduct[];
+    sbcUrl: string;
+    service: ManualServiceSuggestion;
 };
 
 export type ManualServiceSuggestionTranslations = {
@@ -35,9 +53,17 @@ export type ManualCredentialsDraft = {
 };
 
 export type ManualServiceCommonTranslations = {
+    step_platform: string;
+    step_options: string;
+    step_account: string;
+    step_image: string;
+    panel_title: string;
+    eta_label: string;
+    squad_image_choose: string;
     back: string;
     platform_legend: string;
     platforms: Record<ManualServicePlatform, string>;
+    platform_captions: Record<ManualServicePlatform, string>;
     pc_store_legend: string;
     pc_stores: Record<PcLauncher, string>;
     account_details_title: string;
@@ -82,6 +108,7 @@ export type ManualServiceCommonTranslations = {
     image_required: string;
     image_invalid: string;
     image_too_large: string;
+    see_all_sbc: string;
 };
 
 export type FutServiceTranslations = {
@@ -117,6 +144,8 @@ export type RivalsServiceTranslations = {
     mode_promotion_hint: string;
     mode_weekly: string;
     mode_weekly_hint: string;
+    route_summary: string;
+    steps_count: string;
     weekly_summary: string;
     standard_eta: string;
     notes: Record<'timing' | 'login' | 'shortfall' | 'safety', string>;
@@ -133,7 +162,7 @@ export type ManualServicePageProps = {
     ui: StoreShellTranslations;
     manualServicePage: {
         common: ManualServiceCommonTranslations;
-        relatedServices: ManualServiceSuggestion[];
+        relatedServices: ManualServiceRelatedServices;
         relatedTranslations: ManualServiceSuggestionTranslations;
         service: FutServiceTranslations | RivalsServiceTranslations;
     };
