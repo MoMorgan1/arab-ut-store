@@ -1,7 +1,7 @@
 # Customer reviews after a completed order
 
 Date: 2026-09-02
-Status: approved by Mohamed on 2026-09-02 (all six decisions confirmed). Reviewed once (Opus, read-only) and revised.
+Status: approved by Mohamed on 2026-09-02 (all six decisions confirmed; screens approved on the canvas the same day; invitation delayed one hour at his request). Reviewed once (Opus, read-only) and revised.
 Supersedes the deferral in `2026-08-12-salla-review-archive-design.md` ("future reviews will be
 collected by a separate local post-order review system when the local order lifecycle is ready").
 
@@ -44,7 +44,8 @@ In:
   wait for admin review. The storefront reader already shows only `rating >= 4`, so nothing low
   can leak even by mistake.
 - The existing "verified order" badge (`طلب موثّق`) applies to every customer review.
-- An email invitation when an order becomes `Completed`, sent once per order, linking to the
+- An email invitation **one hour after** an order becomes `Completed` (owner decision,
+  2026-09-02: the customer has had time to see the result), sent once per order, linking to the
   order page.
 - An admin page `/admin/reviews`: newest first, filter by visible / hidden, hide and re-show,
   the order number as a link to the order. Uses the existing `marketing.view` /
@@ -124,7 +125,8 @@ Later, not in v1:
 
 ### Invitation
 
-- `ReviewInviteNotification` (queued, `afterCommit`, mail only, locale from the order),
+- `ReviewInviteNotification` (queued with a one-hour delay, `afterCommit`, mail only, locale
+  from the order; the queue worker that already delivers `OrderPaidNotification` handles it),
   markdown view `mail.review-invite`: one line of thanks, the order number, one button to the
   order page. Sent from `TransitionAdminOrder` right after the cashback accrual when the target
   is `Completed`, the order is not `salla_import`, and `review_invited_at` is null; the timestamp
