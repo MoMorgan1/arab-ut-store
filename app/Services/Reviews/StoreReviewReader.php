@@ -74,16 +74,32 @@ final class StoreReviewReader
      */
     private function summary(Builder $query): array
     {
-        $count = (clone $query)->count();
-        $average = $count > 0 ? round((float) (clone $query)->avg('rating'), 1) : null;
-        /** @var array<int, int> $byRating */
-        $byRating = (clone $query)
+        // One grouped query feeds the whole summary; the homepage has a
+        // query budget and every extra round trip here is paid on every visit.
+        /** @var list<object{rating: int|string, aggregate: int|string, verified: int|string|null}> $rows */
+        $rows = (clone $query)
             ->reorder()
-            ->selectRaw('rating, COUNT(*) AS aggregate')
+            ->selectRaw(
+                'rating, COUNT(*) AS aggregate, '
+                .'SUM(CASE WHEN order_id IS NOT NULL OR order_item_id IS NOT NULL THEN 1 ELSE 0 END) AS verified',
+            )
             ->groupBy('rating')
-            ->pluck('aggregate', 'rating')
-            ->map(fn ($value): int => (int) $value)
+            ->get()
             ->all();
+        $byRating = [];
+        $count = 0;
+        $weighted = 0;
+        $verifiedCount = 0;
+
+        foreach ($rows as $row) {
+            $rating = (int) $row->rating;
+            $aggregate = (int) $row->aggregate;
+            $byRating[$rating] = $aggregate;
+            $count += $aggregate;
+            $weighted += $rating * $aggregate;
+            $verifiedCount += (int) ($row->verified ?? 0);
+        }
+
         $distribution = [];
 
         foreach ([5, 4, 3, 2, 1] as $rating) {
@@ -95,15 +111,8 @@ final class StoreReviewReader
             ];
         }
 
-        $verifiedCount = (clone $query)
-            ->reorder()
-            ->where(fn (Builder $verified) => $verified
-                ->whereNotNull('order_id')
-                ->orWhereNotNull('order_item_id'))
-            ->count();
-
         return [
-            'average' => $average,
+            'average' => $count > 0 ? round($weighted / $count, 1) : null,
             'count' => $count,
             'distribution' => $distribution,
             'verifiedCount' => $verifiedCount,
