@@ -190,6 +190,37 @@ html.admin-document {
     --color-status-neutral: var(--status-neutral);
 }
 
+/* Atmosphere images: AVIF where the browser can decode it, WebP otherwise.
+   The four backdrops are the largest bytes on the storefront, and AVIF
+   halves each of them. */
+:root {
+    --store-image-hero: url('/images/store/hero/background.webp');
+    --store-image-hero-mobile: url('/images/store/hero/background-mobile.webp');
+    --store-image-stadium: url('/images/store/stadium.webp');
+    --store-image-stadium-mobile: url('/images/store/stadium-mobile.webp');
+}
+
+@supports (background-image: image-set(url('/a.avif') type('image/avif'))) {
+    :root {
+        --store-image-hero: image-set(
+            url('/images/store/hero/background.avif') type('image/avif'),
+            url('/images/store/hero/background.webp') type('image/webp')
+        );
+        --store-image-hero-mobile: image-set(
+            url('/images/store/hero/background-mobile.avif') type('image/avif'),
+            url('/images/store/hero/background-mobile.webp') type('image/webp')
+        );
+        --store-image-stadium: image-set(
+            url('/images/store/stadium.avif') type('image/avif'),
+            url('/images/store/stadium.webp') type('image/webp')
+        );
+        --store-image-stadium-mobile: image-set(
+            url('/images/store/stadium-mobile.avif') type('image/avif'),
+            url('/images/store/stadium-mobile.webp') type('image/webp')
+        );
+    }
+}
+
 :root {
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
@@ -322,7 +353,7 @@ html.admin-document {
         background-color: var(--arabut-navy);
         background-image:
             linear-gradient(rgb(8 7 5 / 80%), rgb(13 11 8 / 94%)),
-            url('/images/store/stadium-mobile.webp');
+            var(--store-image-stadium-mobile);
         background-position: center;
         background-size: cover;
         padding: clamp(2.5rem, 7vw, 5.5rem) clamp(1rem, 4vw, 2rem);
@@ -833,7 +864,7 @@ html.admin-document {
         .auth-shell {
             background-image:
                 linear-gradient(rgb(8 7 5 / 82%), rgb(13 11 8 / 95%)),
-                url('/images/store/stadium.webp');
+                var(--store-image-stadium);
         }
     }
 
@@ -1307,8 +1338,7 @@ html.admin-document {
                 rgb(18 14 8 / 72%) 50%,
                 rgb(13 11 8 / 96%) 100%
             ),
-            url('/images/store/hero/background.webp') center top / cover
-                no-repeat,
+            var(--store-image-hero) center top / cover no-repeat,
             var(--arabut-navy);
         text-align: center;
     }
@@ -1613,7 +1643,7 @@ html.admin-document {
                 rgb(212 168 67 / 12%) 0%,
                 transparent 65%
             ),
-            url('/images/store/stadium.webp') center / cover no-repeat,
+            var(--store-image-stadium) center / cover no-repeat,
             var(--arabut-navy);
         padding: clamp(4rem, 8vw, 6rem) 1rem clamp(4.5rem, 9vw, 6.75rem);
     }
@@ -5558,8 +5588,7 @@ html.admin-document {
                 rgb(18 14 8 / 72%) 50%,
                 rgb(13 11 8 / 96%) 100%
             ),
-            url('/images/store/hero/background-mobile.webp') center top / cover
-                no-repeat,
+            var(--store-image-hero-mobile) center top / cover no-repeat,
             var(--arabut-navy);
     }
 
@@ -5597,7 +5626,7 @@ html.admin-document {
                 rgb(212 168 67 / 11%) 0%,
                 transparent 68%
             ),
-            url('/images/store/stadium-mobile.webp') center / cover no-repeat,
+            var(--store-image-stadium-mobile) center / cover no-repeat,
             var(--arabut-navy);
     }
 
@@ -7015,7 +7044,7 @@ html.admin-document {
                 rgb(212 168 67 / 4%),
                 transparent 60%
             ),
-            url('/images/store/stadium.webp') center 10% / cover no-repeat;
+            var(--store-image-stadium) center 10% / cover no-repeat;
         opacity: 0.12;
         filter: saturate(0.8);
     }
@@ -7034,7 +7063,7 @@ html.admin-document {
                 rgb(212 168 67 / 5%),
                 transparent 60%
             ),
-            url('/images/store/stadium-mobile.webp') center 5% / cover no-repeat;
+            var(--store-image-stadium-mobile) center 5% / cover no-repeat;
         opacity: 0.1;
     }
 }
@@ -11289,7 +11318,7 @@ html.admin-document {
     border-block-end: 1px solid var(--arabut-line);
     background:
         linear-gradient(112deg, rgb(28 24 20 / 88%), rgb(13 11 8 / 96%)),
-        url('/images/store/stadium-mobile.webp') center / cover;
+        var(--store-image-stadium-mobile) center / cover;
 }
 .account-shell__header {
     border-block-end: 1px solid var(--arabut-line);
@@ -13375,7 +13404,7 @@ html.admin-document {
     .account-shell__hero {
         background-image:
             linear-gradient(112deg, rgb(28 24 20 / 84%), rgb(13 11 8 / 94%)),
-            url('/images/store/stadium.webp');
+            var(--store-image-stadium);
     }
 
     .account-shell__hero-inner {

@@ -113,7 +113,7 @@ function NavigationIcon({ item }: { item: NavigationKey }) {
 
     const source = {
         coins: '/images/store/coins/ut-coin-80.webp',
-        sbc: '/images/store/navigation/logo-sbc-96.webp',
+        sbc: '/images/store/navigation/logo-sbc-256.webp',
         fut_champions: '/images/store/navigation/logo-champions-80.webp',
     }[item];
 

@@ -87,7 +87,7 @@ export default function StoreCategory() {
                             <img
                                 alt=""
                                 height="96"
-                                src="/images/store/navigation/logo-sbc-96.webp"
+                                src="/images/store/navigation/logo-sbc-256.webp"
                                 width="96"
                             />
                         </span>
@@ -346,7 +346,7 @@ function CatalogCard({
                         imageAlt={product.image?.alt || product.name}
                         imageUrl={
                             product.image?.url ??
-                            '/images/store/navigation/logo-sbc-96.webp'
+                            '/images/store/navigation/logo-sbc-256.webp'
                         }
                         itemLabel={product.name}
                         loadingLabel={translations.adding}
