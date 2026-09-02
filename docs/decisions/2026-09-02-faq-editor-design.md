@@ -2,8 +2,8 @@
 
 Date: 2026-09-02
 Status: approved by Mohamed on 2026-09-02 with one change: **the policy pages are in v1 too**
-("do it all at once"). Decisions 2, 3 and 4 confirmed as written. Reviewed once (Opus,
-read-only) before the policies were added; the "Policy pages" section below extends the plan.
+("do it all at once"). Decisions 2, 3 and 4 confirmed as written. Reviewed twice (Opus,
+read-only): once for the FAQ, once for the "Policy pages" section below, both folded in.
 
 ## Discovery
 
@@ -170,6 +170,8 @@ Medium. One seed migration, one reader, five admin endpoints, one admin screen.
 6. The language-file entries are removed once the table is the source, so there is one truth.
 7. The AI assistant's FAQ knowledge stays separate for now (drift accepted; revisit later).
 8. No `/admin/more` tile for the FAQ.
+9. The public "last updated" text on a policy page is a field Mohamed sets, not the save time.
+10. Two pull requests: FAQ first, then the policy pages.
 
 ## Policy pages
 
@@ -187,11 +189,18 @@ allow-listed link targets (approved external hosts and root-relative store paths
 ### Data
 
 - Table `store_pages`: `id`, `public_id`, `key` (unique, one of the five), `title_ar`,
-  `title_en`, `subtitle_ar` / `subtitle_en` (nullable), `blocks_ar`, `blocks_en` (JSON, the
-  existing block shape), `updated_at`, `created_at`. A migration seeds the five rows from
-  literal copies kept in `database/seeders/data/store_pages/{ar,en}.php` (committed files, not
-  `trans()`), only when the table is empty; `down()` is a no-op. The `meta` labels stay in the
-  language files; `updated_value` is replaced by the row's `updated_at` formatted per locale.
+  `title_en`, `subtitle_ar` / `subtitle_en` (nullable), `updated_label_ar`,
+  `updated_label_en` (the public "last updated" text, free text Mohamed sets, seeded with
+  today's values so the format he chose stays; it does not move on its own when a typo is
+  fixed on a legal page), `blocks_ar`, `blocks_en` (JSON, the existing block shape),
+  `updated_at`, `created_at`. A migration seeds the five rows from literal copies kept in
+  `database/seeders/data/store_pages/{ar,en}.php` (committed files, not `trans()`), only when
+  the table is empty; `down()` is a no-op. The `meta` labels stay in the language files;
+  `updated_value` leaves the language files and `ValidateStoreInformationPage`'s `META_KEYS`
+  and its test are adjusted. `tests/Unit/Store/StoreInformationContentParityTest.php`, which
+  `require`s the language files today, is pointed at the seed data files. The one-off `\n`
+  literal in the Arabic warranty notice is fixed explicitly in the seed (a real line break)
+  before any parity snapshot is taken.
 - The same seed-file approach is used for the FAQ (`database/seeders/data/faq_entries.php`)
   so both migrations are independent of the language files.
 
@@ -202,6 +211,21 @@ exactly two markers, `**bold**` and `[label](url)`, which the server converts to
 parts the pages already use (`strong`, `url`). Everything else is literal text. Links go
 through the existing allow-list, so an editor cannot point a policy at an unapproved host.
 The reverse conversion (parts to markers) fills the editor when a page is opened.
+
+Rules that make the round trip exact, tested both ways on every seeded page:
+
+- Whitespace is preserved character for character, including leading and trailing spaces
+  inside a part (the validator deliberately does not trim); nothing is trimmed on save except
+  a wholly blank block, which is rejected.
+- Adjacent plain parts are merged into one; a bold part and a link part are always their own
+  part; a part that is both bold and a link is not supported (none exists today) and is
+  rejected on save.
+- A literal `*` or `[` is written as `\*` and `\[`; the converter unescapes them and the
+  reverse conversion escapes them, so copy that contains those characters survives.
+- Block-level fields the validator requires are real controls: a heading has a level select
+  (2 or 3), a list has an "ordered" checkbox, a notice has its tone select, a divider has no
+  text. A blank subtitle is omitted (never sent as an empty string), and a paragraph, list or
+  notice with no text cannot be saved.
 
 ### Storefront
 
@@ -214,16 +238,18 @@ The reverse conversion (parts to markers) fills the editor when a page is opened
 - `GET /marketing/pages` (`can:marketing.view`, key `marketingPages`, appended after the FAQ
   under Marketing): the five pages with title, last update, and an edit link.
 - `GET /marketing/pages/{key}` (`can:marketing.view`): the editor. Arabic and English as two
-  tabs; per tab: title, subtitle, and an ordered list of blocks. Each block row has a type
-  selector (heading, paragraph, list, notice, divider), the text (a textarea; list items one
-  per line; notice tone select), and move up / down / remove controls; an "add block" button
-  at the end. One save button per page writes both locales.
+  tabs; per tab: title, subtitle, the "last updated" text, and an ordered list of blocks. Each
+  block row has a type selector (heading, paragraph, list, notice, divider), the controls the
+  type needs (heading level, ordered checkbox, notice tone), the text (a textarea; list items
+  one per line; a list item cannot contain a line break), and move up / down / remove
+  controls; an "add block" button at the end. One save button per page writes both locales.
 - `PUT /api/marketing/pages/{key}` (`can:marketing.manage`, four authorization layers as for
   the FAQ): form request validates the block structure and lengths (titles 120, block text
   4000, at most 60 blocks per locale), the action converts markers, runs
   `ValidateStoreInformationPage` and rejects with the validator's message when a link target
   is not allowed, saves inside a transaction, and records `store_pages.updated` with the
-  previous content in the audit metadata (so a bad save is recoverable).
+  previous content in the audit metadata (so a bad save is recoverable; the metadata is capped
+  at the two locales' previous blocks, nothing else). The page's SEO title comes from the row.
 - No delete, no create: the five keys are fixed.
 
 ### Testing additions
@@ -235,9 +261,15 @@ The reverse conversion (parts to markers) fills the editor when a page is opened
 - Vitest: the editor renders tabs and blocks, moves and removes a block, disables save while
   submitting.
 
+### Delivery
+
+Two pull requests from one approved design, so each stays reviewable: **PR 1** the FAQ
+(migration, reader, admin list + dialog), **PR 2** the policy pages (migration, converter,
+reader, pages list + editor). Both screens sets sit on one `/design` canvas approved before
+code.
+
 ### Complexity, revised
 
 Medium to Ambitious: the FAQ part is Medium; the block editor is the larger screen. Two
 seed migrations, two readers, one shared marker converter, seven admin endpoints, three admin
-screens (FAQ list + dialog, pages list, page editor). All three screens go on the `/design`
-canvas before code.
+screens (FAQ list + dialog, pages list, page editor).
