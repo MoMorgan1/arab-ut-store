@@ -12,6 +12,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ServicePriceSchedule;
+use App\Services\Reviews\StoreReviewReader;
 use App\Support\Money;
 use App\Support\Seo\StorePageSeo;
 use App\ValueObjects\Pricing\FutChampionsPricing;
@@ -34,6 +35,7 @@ final class ManualServiceProductController extends Controller
         ReadManualServicePricing $readPricing,
         ConvertDisplayMoney $convertDisplayMoney,
         StoreCatalogReader $catalogReader,
+        StoreReviewReader $reviewReader,
     ): Response {
         $service = ServiceType::from((string) $request->route('service'));
         abort_unless(in_array($service, [ServiceType::FutChampions, ServiceType::Rivals], true), 404);
@@ -67,11 +69,25 @@ final class ManualServiceProductController extends Controller
             $pricingPayload = null;
         }
 
+        $locale = app()->getLocale();
+        $reviewsData = $reviewReader->service($service, $locale);
+        $serviceName = (string) trans("store.reviews.service_names.{$service->value}");
+        $serviceReviews = $reviewsData !== null ? [
+            'service' => $service->value,
+            'title' => (string) trans('store.reviews.service_title', ['service' => $serviceName]),
+            'hint' => (string) trans('store.reviews.service_hint', ['service' => $serviceName]),
+            'readAll' => (string) trans('store.reviews.service_read_all', ['service' => $serviceName]),
+            'readAllUrl' => $this->route($request, 'store.reviews', ['service' => $service->value]),
+            'reviews' => $reviewsData,
+            'translations' => (array) trans('store.reviews'),
+        ] : null;
+
         return Inertia::render('store/manual-service', [
             'backUrl' => $this->route($request, 'home').'#services',
             'seo' => StorePageSeo::default(
                 trans("store.manual_services.{$service->value}.title"),
             )->toArray(),
+            'serviceReviews' => $serviceReviews,
             'manualServicePage' => [
                 'common' => trans('store.manual_services.common'),
                 'relatedServices' => $this->relatedServices($request, $service, $catalogReader),
@@ -290,10 +306,15 @@ final class ManualServiceProductController extends Controller
         ];
     }
 
-    private function route(Request $request, string $name): string
+    /** @param array<string, mixed> $parameters */
+    private function route(Request $request, string $name, array $parameters = []): string
     {
         $localized = $request->route('locale') === 'en';
 
-        return route($localized ? "localized.{$name}" : $name, $localized ? ['locale' => 'en'] : [], absolute: false);
+        return route(
+            $localized ? "localized.{$name}" : $name,
+            ($localized ? ['locale' => 'en'] : []) + $parameters,
+            absolute: false,
+        );
     }
 }

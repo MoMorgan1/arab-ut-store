@@ -408,6 +408,17 @@ return [
         'sort_newest' => 'Newest first',
         'sort_highest' => 'Highest rated',
         'page_of' => 'Page :page of :last',
+        'service_eyebrow' => 'Customer reviews',
+        'service_title' => 'What :service customers say',
+        'service_hint' => 'Verified reviews from completed :service orders on the store',
+        'service_read_all' => 'Read all :service reviews',
+        'service_all' => 'All services',
+        'service_names' => [
+            'rivals' => 'Rivals',
+            'fut_champions' => 'FUT Champions',
+            'sbc' => 'SBC',
+            'objectives' => 'Objectives',
+        ],
     ],
     'faq' => [
         'eyebrow' => 'Frequently asked questions',

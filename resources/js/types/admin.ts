@@ -1515,6 +1515,8 @@ export type AdminTranslations = {
         errorTitle: string;
         filterRating: string;
         filterRatingAll: string;
+        filterService: string;
+        filterServiceAll: string;
         filterSource: string;
         filterSourceAll: string;
         filterStatus: string;
@@ -1551,6 +1553,7 @@ export type AdminTranslations = {
         showInStore: string;
         showing: string;
         showingInStore: string;
+        service: string;
         source: string;
         sourceArchive: string;
         sourceCustomer: string;
@@ -2697,6 +2700,8 @@ export type AdminReviewRow = {
     bodyLocale: 'ar' | 'en';
     order: { number: string; publicId: string } | null;
     source: 'customer' | 'archive';
+    serviceType: string | null;
+    serviceLabel: string;
     isVisible: boolean;
     publishedAt: string | null;
     createdAt: string;
@@ -2707,6 +2712,8 @@ export type AdminReviewsQueryState = {
     status?: 'all' | 'visible' | 'hidden';
     rating?: 'all' | '5' | '4' | '3' | '2' | '1';
     source?: 'all' | 'customer' | 'archive';
+    service?:
+        'all' | 'rivals' | 'fut_champions' | 'sbc' | 'objectives' | string;
     per_page?: 15 | 25 | 50 | 100;
     page?: number;
 };
@@ -2725,6 +2732,7 @@ export type AdminReviewsPageProps = {
         statuses: AdminFilterOption[];
         ratings: AdminFilterOption[];
         sources: AdminFilterOption[];
+        services: AdminFilterOption[];
         perPageOptions: number[];
     };
     orderUrlTemplate: string;

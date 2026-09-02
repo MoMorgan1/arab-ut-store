@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ServiceType;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Review;
@@ -170,4 +171,92 @@ test('the reviews page accepts only the allow-listed filters and exposes them', 
 
     $this->get('/reviews?rating=3')->assertSessionHasErrors('rating');
     $this->get('/en/reviews?sort=oldest')->assertSessionHasErrors('sort');
+});
+
+test('StoreReviewReader::service returns null below 3 commented reviews and returns items when at threshold', function () {
+    $reader = app(StoreReviewReader::class);
+
+    // No reviews -> null
+    expect($reader->service(ServiceType::Rivals, 'ar'))->toBeNull();
+
+    // 2 commented reviews + 2 rating-only reviews for rivals -> still null because commented < 3
+    foreach (range(1, 2) as $i) {
+        Review::create([
+            'reviewer_name' => "Rivals Commented {$i}",
+            'rating' => 5,
+            'body_ar' => "تعليق رايفلز {$i}",
+            'source' => 'customer',
+            'is_visible' => true,
+            'service_type' => ServiceType::Rivals->value,
+            'published_at' => now()->subMinutes($i),
+        ]);
+    }
+    foreach (range(1, 2) as $i) {
+        Review::create([
+            'reviewer_name' => "Rivals Rating Only {$i}",
+            'rating' => 5,
+            'body_ar' => trans('store.reviews.rating_without_comment', locale: 'ar'),
+            'source' => 'customer',
+            'is_visible' => true,
+            'service_type' => ServiceType::Rivals->value,
+            'published_at' => now()->subSeconds($i),
+        ]);
+    }
+
+    expect($reader->service(ServiceType::Rivals, 'ar'))->toBeNull();
+
+    // Add 3rd commented review -> meets threshold!
+    Review::create([
+        'reviewer_name' => 'Rivals Commented 3',
+        'rating' => 4,
+        'body_ar' => 'تعليق رايفلز ثالث',
+        'source' => 'customer',
+        'is_visible' => true,
+        'service_type' => ServiceType::Rivals->value,
+        'published_at' => now()->subMinutes(10),
+    ]);
+
+    $result = $reader->service(ServiceType::Rivals, 'ar');
+    expect($result)->not->toBeNull()
+        ->and($result['count'])->toBe(5)
+        ->and($result['average'])->toBe(4.8)
+        ->and(count($result['items']))->toBe(5);
+
+    // Written comments sort before rating-only
+    $firstThreeBodies = array_slice(array_column($result['items'], 'body'), 0, 3);
+    expect($firstThreeBodies)->not->toContain(trans('store.reviews.rating_without_comment', locale: 'ar'));
+});
+
+test('the reviews page accepts valid service filter and rejects invalid service', function () {
+    $this->get('/reviews?service=coins')->assertSessionHasErrors('service');
+    $this->get('/reviews?service=invalid')->assertSessionHasErrors('service');
+
+    Review::create([
+        'reviewer_name' => 'Rivals Customer',
+        'rating' => 5,
+        'body_ar' => 'رايفلز رائع',
+        'source' => 'customer',
+        'is_visible' => true,
+        'service_type' => ServiceType::Rivals->value,
+        'published_at' => now(),
+    ]);
+
+    Review::create([
+        'reviewer_name' => 'Fut Customer',
+        'rating' => 4,
+        'body_ar' => 'فوت تشامبيونز ممتاز',
+        'source' => 'customer',
+        'is_visible' => true,
+        'service_type' => ServiceType::FutChampions->value,
+        'published_at' => now(),
+    ]);
+
+    $this->get('/reviews?service=rivals')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.service', 'rivals')
+            ->where('reviews.count', 1)
+            ->where('reviews.average', 5)
+            ->has('reviews.items', 1)
+            ->where('reviews.items.0.reviewerName', 'Rivals Customer'));
 });

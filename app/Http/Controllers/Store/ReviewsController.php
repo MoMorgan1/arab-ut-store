@@ -17,6 +17,7 @@ final class ReviewsController extends Controller
     {
         $query = Validator::make($request->query(), [
             'page' => ['sometimes', 'integer', 'min:1'],
+            'service' => ['sometimes', Rule::in(['rivals', 'fut_champions', 'sbc', 'objectives'])],
             'rating' => ['sometimes', Rule::in(StoreReviewReader::RATING_FILTERS)],
             'verified' => ['sometimes', Rule::in(['1'])],
             'comment' => ['sometimes', Rule::in(['1'])],
@@ -24,6 +25,7 @@ final class ReviewsController extends Controller
         ])->validate();
 
         $filters = [
+            'service' => $query['service'] ?? null,
             'rating' => $query['rating'] ?? null,
             'verified' => ($query['verified'] ?? null) === '1',
             'withComment' => ($query['comment'] ?? null) === '1',

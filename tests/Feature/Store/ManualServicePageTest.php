@@ -5,6 +5,7 @@ use App\Enums\ProductAuthority;
 use App\Enums\ServiceType;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Review;
 use App\Models\ServicePriceSchedule;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -240,4 +241,32 @@ it('rolls back only catalog rows created by the manual-service migration', funct
         ->and($existing->fresh()->variants)->toHaveCount(0);
 
     $migration->up();
+});
+
+it('passes serviceReviews prop to manual service page when reviews meet threshold', function () {
+    $this->get('/rivals')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('serviceReviews', null));
+
+    foreach (range(1, 3) as $i) {
+        Review::create([
+            'reviewer_name' => "Rivals User {$i}",
+            'rating' => 5,
+            'body_ar' => "خدمة رايفلز ممتازة {$i}",
+            'source' => 'customer',
+            'is_visible' => true,
+            'service_type' => ServiceType::Rivals->value,
+            'published_at' => now()->subMinutes($i),
+        ]);
+    }
+
+    $this->get('/rivals')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('serviceReviews.service', 'rivals')
+            ->where('serviceReviews.title', 'ماذا يقول عملاء الرايفلز')
+            ->where('serviceReviews.readAllUrl', '/reviews?service=rivals')
+            ->where('serviceReviews.reviews.count', 3)
+            ->has('serviceReviews.reviews.items', 3));
 });

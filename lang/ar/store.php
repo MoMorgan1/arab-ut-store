@@ -405,6 +405,17 @@ return [
         'sort_newest' => 'الأحدث أولاً',
         'sort_highest' => 'الأعلى تقييماً',
         'page_of' => 'صفحة :page من :last',
+        'service_eyebrow' => 'تقييمات العملاء',
+        'service_title' => 'ماذا يقول عملاء :service',
+        'service_hint' => 'تقييمات موثّقة من طلبات :service اكتملت عبر المتجر',
+        'service_read_all' => 'اقرأ كل تقييمات :service',
+        'service_all' => 'كل الخدمات',
+        'service_names' => [
+            'rivals' => 'الرايفلز',
+            'fut_champions' => 'فوت تشامبيونز',
+            'sbc' => 'التحديات',
+            'objectives' => 'المهام',
+        ],
     ],
     'faq' => [
         'eyebrow' => 'الأسئلة الشائعة',

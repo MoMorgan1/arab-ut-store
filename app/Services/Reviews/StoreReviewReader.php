@@ -2,6 +2,7 @@
 
 namespace App\Services\Reviews;
 
+use App\Enums\ServiceType;
 use App\Models\Review;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Lang;
  * the home page and on /reviews alike; the summary (average, star
  * distribution, verified count) is computed over that same set, so the
  * numbers a visitor reads always describe the cards they can scroll to.
+ * With a service filter, the summary is scoped to that service; it stays
+ * unscoped by the rating / verified / comment filters.
  */
 final class StoreReviewReader
 {
@@ -35,18 +38,43 @@ final class StoreReviewReader
         $items = array_values($this->homepageItems($query, $locale)
             ->map(fn (Review $review) => $this->project($review, $locale))
             ->all());
+        $summary = $this->summary($query);
+        unset($summary['commentedCount']);
 
-        return [...$this->summary($query), 'items' => $items];
+        return [...$summary, 'items' => $items];
     }
 
     /**
-     * @param  array{rating?: string|null, verified?: bool, withComment?: bool, sort?: string|null}  $filters
+     * @return array{average: float|null, count: int, distribution: list<array{rating: int, count: int, percent: int}>, verifiedCount: int, items: list<array<string, mixed>>}|null
+     */
+    public function service(ServiceType $service, string $locale): ?array
+    {
+        $query = $this->visible($service->value);
+        $summary = $this->summary($query);
+        $commentedCount = $summary['commentedCount'];
+        unset($summary['commentedCount']);
+
+        if ($commentedCount < 3) {
+            return null;
+        }
+
+        $items = array_values($this->homepageItems($query, $locale)
+            ->map(fn (Review $review) => $this->project($review, $locale))
+            ->all());
+
+        return [...$summary, 'items' => $items];
+    }
+
+    /**
+     * @param  array{rating?: string|null, verified?: bool, withComment?: bool, sort?: string|null, service?: string|null}  $filters
      * @return array{average: float|null, count: int, distribution: list<array{rating: int, count: int, percent: int}>, verifiedCount: int, items: list<array<string, mixed>>, pagination: array<string, int>}
      */
     public function paginate(string $locale, int $page, array $filters = []): array
     {
-        $summary = $this->summary($this->visible());
-        $query = $this->filtered($this->visible(), $filters, $locale);
+        $service = $filters['service'] ?? null;
+        $summary = $this->summary($this->visible($service));
+        unset($summary['commentedCount']);
+        $query = $this->filtered($this->visible($service), $filters, $locale);
 
         if (($filters['sort'] ?? 'newest') === 'highest') {
             $query->reorder()->orderByDesc('rating')->latest('published_at')->latest('id');
@@ -70,18 +98,20 @@ final class StoreReviewReader
 
     /**
      * @param  Builder<Review>  $query
-     * @return array{average: float|null, count: int, distribution: list<array{rating: int, count: int, percent: int}>, verifiedCount: int}
+     * @return array{average: float|null, count: int, distribution: list<array{rating: int, count: int, percent: int}>, verifiedCount: int, commentedCount: int}
      */
     private function summary(Builder $query): array
     {
         // One grouped query feeds the whole summary; the homepage has a
         // query budget and every extra round trip here is paid on every visit.
-        /** @var list<object{rating: int|string, aggregate: int|string, verified: int|string|null}> $rows */
+        /** @var list<object{rating: int|string, aggregate: int|string, verified: int|string|null, commented: int|string|null}> $rows */
         $rows = (clone $query)
             ->reorder()
             ->selectRaw(
                 'rating, COUNT(*) AS aggregate, '
-                .'SUM(CASE WHEN order_id IS NOT NULL OR order_item_id IS NOT NULL THEN 1 ELSE 0 END) AS verified',
+                .'SUM(CASE WHEN order_id IS NOT NULL OR order_item_id IS NOT NULL THEN 1 ELSE 0 END) AS verified, '
+                .'SUM(CASE WHEN COALESCE(body_ar, body_en) NOT IN (?, ?) THEN 1 ELSE 0 END) AS commented',
+                $this->ratingOnlyBodies(),
             )
             ->groupBy('rating')
             ->get()
@@ -90,6 +120,7 @@ final class StoreReviewReader
         $count = 0;
         $weighted = 0;
         $verifiedCount = 0;
+        $commentedCount = 0;
 
         foreach ($rows as $row) {
             $rating = (int) $row->rating;
@@ -98,6 +129,7 @@ final class StoreReviewReader
             $count += $aggregate;
             $weighted += $rating * $aggregate;
             $verifiedCount += (int) ($row->verified ?? 0);
+            $commentedCount += (int) ($row->commented ?? 0);
         }
 
         $distribution = [];
@@ -116,6 +148,7 @@ final class StoreReviewReader
             'count' => $count,
             'distribution' => $distribution,
             'verifiedCount' => $verifiedCount,
+            'commentedCount' => $commentedCount,
         ];
     }
 
@@ -150,12 +183,18 @@ final class StoreReviewReader
     }
 
     /** @return Builder<Review> */
-    private function visible(): Builder
+    private function visible(?string $service = null): Builder
     {
-        return Review::query()
+        $query = Review::query()
             ->where('is_visible', true)
             ->where('rating', '>=', 4)
-            ->whereNotNull('published_at')
+            ->whereNotNull('published_at');
+
+        if ($service !== null) {
+            $query->where('service_type', $service);
+        }
+
+        return $query
             ->latest('published_at')
             ->latest('id');
     }

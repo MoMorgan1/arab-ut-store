@@ -70,6 +70,43 @@ it('renders the filter chips as links that toggle the query string', () => {
     ).toHaveAttribute('href', '/en/my-account/orders');
 });
 
+it('renders service filter chips and preserves service across other filters', () => {
+    page.props = {
+        ...props(),
+        filters: {
+            rating: null,
+            service: 'rivals',
+            sort: 'newest',
+            verified: false,
+            withComment: false,
+        },
+    };
+    render(<StoreReviews />);
+
+    const filters = screen.getByRole('navigation', { name: 'Filter reviews' });
+
+    expect(
+        within(filters).getByRole('link', { name: 'Rivals' }),
+    ).toHaveAttribute('aria-current', 'true');
+    expect(
+        within(filters).getByRole('link', { name: 'All services' }),
+    ).toHaveAttribute('href', '?');
+
+    expect(
+        within(filters).getByRole('link', { name: '5 stars' }),
+    ).toHaveAttribute('href', '?service=rivals&rating=5');
+    expect(
+        within(filters).getByRole('link', { name: 'Verified orders' }),
+    ).toHaveAttribute('href', '?service=rivals&verified=1');
+    expect(
+        within(filters).getByRole('link', { name: 'Highest rated' }),
+    ).toHaveAttribute('href', '?service=rivals&sort=highest');
+    expect(within(filters).getByRole('link', { name: 'All' })).toHaveAttribute(
+        'href',
+        '?service=rivals',
+    );
+});
+
 function props() {
     return {
         cartCount: 0,
@@ -120,9 +157,17 @@ function props() {
             sort_highest: 'Highest rated',
             page_of: 'Page :page of :last',
             rate_your_order: 'Rate your order',
+            service_all: 'All services',
+            service_names: {
+                rivals: 'Rivals',
+                fut_champions: 'FUT Champions',
+                sbc: 'SBC',
+                objectives: 'Objectives',
+            },
         },
         filters: {
             rating: null,
+            service: null,
             sort: 'newest',
             verified: false,
             withComment: false,

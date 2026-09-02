@@ -18,6 +18,7 @@ final readonly class AdminReviewsPage
      *     status: 'all'|'visible'|'hidden',
      *     rating: 'all'|'5'|'4'|'3'|'2'|'1',
      *     source: 'all'|'customer'|'archive',
+     *     service?: 'all'|'rivals'|'fut_champions'|'sbc'|'objectives'|string,
      *     per_page: int,
      *     page: int
      * } $filters
@@ -30,6 +31,7 @@ final readonly class AdminReviewsPage
             'status' => $filters['status'] === 'all' ? null : $filters['status'],
             'rating' => $filters['rating'] === 'all' ? null : (int) $filters['rating'],
             'source' => $filters['source'] === 'all' ? null : $filters['source'],
+            'service' => ($filters['service'] ?? 'all') === 'all' ? null : $filters['service'],
             'per_page' => $filters['per_page'],
             'page' => $filters['page'],
         ], $locale);
@@ -64,6 +66,13 @@ final readonly class AdminReviewsPage
                     ['value' => 'all', 'label' => (string) trans('admin.reviews.filterSourceAll', locale: $locale)],
                     ['value' => 'customer', 'label' => (string) trans('admin.reviews.sourceCustomer', locale: $locale)],
                     ['value' => 'archive', 'label' => (string) trans('admin.reviews.sourceArchive', locale: $locale)],
+                ],
+                'services' => [
+                    ['value' => 'all', 'label' => (string) trans('admin.reviews.filterServiceAll', locale: $locale)],
+                    ['value' => 'rivals', 'label' => (string) trans('store.reviews.service_names.rivals', locale: $locale)],
+                    ['value' => 'fut_champions', 'label' => (string) trans('store.reviews.service_names.fut_champions', locale: $locale)],
+                    ['value' => 'sbc', 'label' => (string) trans('store.reviews.service_names.sbc', locale: $locale)],
+                    ['value' => 'objectives', 'label' => (string) trans('store.reviews.service_names.objectives', locale: $locale)],
                 ],
                 'perPageOptions' => [15, 25, 50, 100],
             ],

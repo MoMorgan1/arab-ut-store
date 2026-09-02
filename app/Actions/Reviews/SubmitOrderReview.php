@@ -5,6 +5,7 @@ namespace App\Actions\Reviews;
 use App\Models\Order;
 use App\Models\Review;
 use App\Models\User;
+use App\Services\Reviews\ResolveReviewService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -69,6 +70,7 @@ final class SubmitOrderReview
             'rating' => $rating,
             'body_ar' => $locale === 'ar' ? $text : null,
             'body_en' => $locale === 'en' ? $text : null,
+            'service_type' => ResolveReviewService::forOrder($order),
             'source' => 'customer',
             'is_visible' => $visible,
             'published_at' => $visible ? now() : null,

@@ -83,6 +83,14 @@ export default function AdminReviewsMobileCard({
                 </div>
                 <div>
                     <span className="text-muted-foreground">
+                        {copy.service}:{' '}
+                    </span>
+                    <span className="font-semibold text-foreground">
+                        <bdi>{review.serviceLabel}</bdi>
+                    </span>
+                </div>
+                <div>
+                    <span className="text-muted-foreground">
                         {copy.createdAt}:{' '}
                     </span>
                     <span className="font-semibold text-foreground tabular-nums">

@@ -73,7 +73,9 @@ and show them where the decision is made.
    like any unknown value). The "read all" link on each block points there. The page's
    `query()` helper emits `service`, `DEFAULT_FILTERS` / `filterUrl('all')` keep it, so the
    rating chips, sort links and pagination stay inside the service; only the "all services"
-   chip clears it. A chip row above the existing filters shows the four services plus "all".
+   chip clears it. As shipped, the service chip row appears only while a service filter is
+   active ("all services" + the active service): with a handful of reviews per service, four
+   always-visible chips would mostly lead to empty lists.
    **Behaviour change, stated on purpose:** with a service filter the summary (average,
    distribution, verified count) is scoped to that service; it stays unscoped by the rating /
    verified / comment filters as today. The reader's class docblock and the pinned test in

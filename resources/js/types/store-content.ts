@@ -54,6 +54,7 @@ export type ReviewCollection = {
 
 export type ReviewFilterState = {
     rating: string | null;
+    service?: string | null;
     sort: string | null;
     verified: boolean;
     withComment: boolean;
@@ -79,6 +80,12 @@ export type ReviewTranslations = {
     rail_label?: string;
     rate_your_order?: string;
     read_all?: string;
+    service_all?: string;
+    service_eyebrow?: string;
+    service_hint?: string;
+    service_names?: Record<string, string>;
+    service_read_all?: string;
+    service_title?: string;
     sort_highest?: string;
     sort_label?: string;
     sort_newest?: string;
@@ -240,6 +247,22 @@ export type StoreCategoryPageProps = StoreBasePageProps & {
     };
 };
 
+export type ServiceReviewsData = {
+    hint: string;
+    readAll: string;
+    readAllUrl: string;
+    reviews: ReviewCollection;
+    service: string;
+    title: string;
+    translations: ReviewTranslations;
+};
+
+export type ServiceReviewsProps = {
+    direction: 'rtl' | 'ltr';
+    locale: 'ar' | 'en';
+    serviceReviews: ServiceReviewsData | null;
+};
+
 export type StoreCatalogProductPageProps = StoreBasePageProps & {
     backUrl: string;
     catalog: {
@@ -250,6 +273,7 @@ export type StoreCatalogProductPageProps = StoreBasePageProps & {
     catalogCartUrl: string;
     productPage: ProductTranslations;
     sbcCartUrl: string;
+    serviceReviews?: ServiceReviewsData | null;
 };
 
 export type StoreReviewsPageProps = StoreBasePageProps & {

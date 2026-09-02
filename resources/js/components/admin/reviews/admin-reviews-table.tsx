@@ -76,6 +76,7 @@ export default function AdminReviewsTable({
                             <TableHead>{copy.rating}</TableHead>
                             <TableHead>{copy.comment}</TableHead>
                             <TableHead>{copy.order}</TableHead>
+                            <TableHead>{copy.service}</TableHead>
                             <TableHead>{copy.source}</TableHead>
                             <TableHead>{copy.status}</TableHead>
                             <TableHead>{copy.createdAt}</TableHead>
@@ -139,6 +140,11 @@ export default function AdminReviewsTable({
                                         )}
                                     </TableCell>
                                     <TableCell>
+                                        <span className="text-sm text-muted-foreground">
+                                            <bdi>{review.serviceLabel}</bdi>
+                                        </span>
+                                    </TableCell>
+                                    <TableCell>
                                         <SourceBadge
                                             copy={copy}
                                             review={review}
@@ -179,7 +185,7 @@ export default function AdminReviewsTable({
                             <TableRow>
                                 <TableCell
                                     className="h-32 text-center"
-                                    colSpan={8}
+                                    colSpan={9}
                                 >
                                     <p className="text-sm text-muted-foreground">
                                         {isFiltered

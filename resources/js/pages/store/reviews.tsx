@@ -12,6 +12,7 @@ type FilterKey = 'all' | 'five' | 'four' | 'verified' | 'comment';
 
 const DEFAULT_FILTERS: ReviewFilterState = {
     rating: null,
+    service: null,
     sort: 'newest',
     verified: false,
     withComment: false,
@@ -88,6 +89,28 @@ export default function StoreReviews() {
                     aria-label={copy.filters_label}
                     className="store-reviews-filters"
                 >
+                    {filters.service ? (
+                        <ul className="store-reviews-filters__chips store-reviews-filters__chips--service">
+                            <li>
+                                <a
+                                    className="store-reviews-chip"
+                                    href={query({ ...filters, service: null })}
+                                >
+                                    {copy.service_all}
+                                </a>
+                            </li>
+                            <li>
+                                <a
+                                    aria-current="true"
+                                    className="store-reviews-chip is-active"
+                                    href={query(filters)}
+                                >
+                                    {copy.service_names?.[filters.service] ??
+                                        filters.service}
+                                </a>
+                            </li>
+                        </ul>
+                    ) : null}
                     <ul className="store-reviews-filters__chips">
                         {chips.map((chip) => (
                             <li key={chip.key}>
@@ -197,6 +220,10 @@ export default function StoreReviews() {
 function query(filters: ReviewFilterState, page?: number): string {
     const params = new URLSearchParams();
 
+    if (filters.service) {
+        params.set('service', filters.service);
+    }
+
     if (filters.rating) {
         params.set('rating', filters.rating);
     }
@@ -225,7 +252,11 @@ function query(filters: ReviewFilterState, page?: number): string {
 function filterUrl(filters: ReviewFilterState, key: FilterKey): string {
     switch (key) {
         case 'all':
-            return query({ ...DEFAULT_FILTERS, sort: filters.sort });
+            return query({
+                ...DEFAULT_FILTERS,
+                service: filters.service,
+                sort: filters.sort,
+            });
         case 'five':
             return query({
                 ...filters,
