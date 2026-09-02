@@ -136,7 +136,6 @@ export function useBouncingHorizontalRail({
 
         const logicalDirection = direction === 'rtl' ? -1 : 1;
         let animationFrame = 0;
-        let pendingDistance = 0;
         let previousTimestamp: number | null = null;
 
         const advance = (timestamp: number) => {
@@ -157,18 +156,20 @@ export function useBouncingHorizontalRail({
                     autoTravelDirectionRef.current = 1;
                 }
 
+                // Fractional deltas on purpose: browsers keep scroll offsets
+                // as floats, so 0.8px a frame renders as one even glide. Rounding
+                // to whole pixels made the rail step 1px, 0px, 1px and look like
+                // it stuttered, most visibly on phones.
                 const elapsed = Math.min(timestamp - previousTimestamp, 50);
-                pendingDistance += pixelsPerSecond * (elapsed / 1_000);
-                const wholePixels = Math.floor(pendingDistance);
+                const distance = pixelsPerSecond * (elapsed / 1_000);
 
-                if (wholePixels > 0) {
-                    pendingDistance -= wholePixels;
+                if (distance > 0) {
                     track.scrollBy({
                         behavior: 'auto',
                         left:
                             logicalDirection *
                             autoTravelDirectionRef.current *
-                            wholePixels,
+                            distance,
                     });
                 }
             }

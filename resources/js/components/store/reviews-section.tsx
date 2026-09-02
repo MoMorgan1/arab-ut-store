@@ -39,7 +39,12 @@ export function ReviewsSection({
             return;
         }
 
-        const update = () => {
+        let frame = 0;
+        let current = -1;
+
+        const measure = () => {
+            frame = 0;
+
             const cards = Array.from(track.children) as HTMLElement[];
 
             if (cards.length === 0) {
@@ -64,12 +69,30 @@ export function ReviewsSection({
                 }
             });
 
-            setActiveIndex(nearest);
+            if (nearest !== current) {
+                current = nearest;
+                setActiveIndex(nearest);
+            }
+        };
+
+        // The auto-scroll fires a scroll event every frame; measuring once per
+        // frame and rendering only when the nearest card changes keeps React
+        // out of the way of the animation.
+        const update = () => {
+            if (frame === 0) {
+                frame = window.requestAnimationFrame(measure);
+            }
         };
 
         track.addEventListener('scroll', update, { passive: true });
 
-        return () => track.removeEventListener('scroll', update);
+        return () => {
+            track.removeEventListener('scroll', update);
+
+            if (frame !== 0) {
+                window.cancelAnimationFrame(frame);
+            }
+        };
     }, [direction, items.length, trackProps.ref]);
 
     function scrollCards(step: 1 | -1) {
