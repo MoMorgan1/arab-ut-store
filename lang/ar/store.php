@@ -254,6 +254,8 @@ return [
     ],
     'manual_services' => [
         'common' => [
+            'tab_options' => 'الخيارات',
+            'tab_guide' => 'الشرح',
             'step_platform' => 'المنصة',
             'step_options' => 'تفاصيل الخدمة',
             'step_account' => 'بيانات الحساب',
@@ -285,9 +287,9 @@ return [
             'playstation_password' => 'كلمة مرور بلايستيشن',
             'show_password' => 'إظهار كلمة المرور',
             'hide_password' => 'إخفاء كلمة المرور',
-            'ea_codes' => '3 أكواد احتياطية من EA',
+            'ea_codes' => 'أكواد EA الاحتياطية',
             'ea_codes_help' => 'كل كود 8 أرقام، ويجب أن تكون الأكواد مختلفة.',
-            'playstation_codes' => '3 أكواد احتياطية من بلايستيشن',
+            'playstation_codes' => 'أكواد السوني الاحتياطية',
             'playstation_codes_help' => 'كل كود 6 حروف أو أرقام إنجليزية، ويجب أن تكون الأكواد مختلفة.',
             'backup_code' => 'الكود الاحتياطي :number',
             'squad_image' => 'صورة التشكيلة',

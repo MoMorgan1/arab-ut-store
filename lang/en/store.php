@@ -257,6 +257,8 @@ return [
     ],
     'manual_services' => [
         'common' => [
+            'tab_options' => 'Options',
+            'tab_guide' => 'How it works',
             'step_platform' => 'Platform',
             'step_options' => 'Service details',
             'step_account' => 'Account details',

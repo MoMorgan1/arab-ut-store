@@ -1,9 +1,8 @@
 import { ArrowUpRight } from 'lucide-react';
 
-import { formatMinorUnits } from '@/lib/money';
+import { SbcCatalogCard } from '@/components/store/catalog/sbc-catalog-card';
 import type {
     ManualServiceCommonTranslations,
-    ManualServicePlatform,
     ManualServiceRelatedServices,
     ManualServiceSuggestionTranslations,
 } from '@/types/manual-services';
@@ -39,115 +38,21 @@ export function ManualServiceSuggestions({
             </header>
 
             {products.length > 0 ? (
-                <div className="manual-sbc-section">
-                    <div className="manual-sbc-rail">
-                        <ul className="manual-sbc-grid" role="list">
-                            {products.map((product) => {
-                                const formattedPrice = product.price
-                                    ? formatMinorUnits(
-                                          product.price.amountMinor,
-                                          product.price.currency,
-                                          locale,
-                                      )
-                                    : null;
-                                const formattedCompareAt =
-                                    product.compareAtPrice
-                                        ? formatMinorUnits(
-                                              product.compareAtPrice
-                                                  .amountMinor,
-                                              product.compareAtPrice.currency,
-                                              locale,
-                                          )
-                                        : null;
-
-                                return (
-                                    <li
-                                        className="manual-sbc-card"
-                                        key={product.id}
-                                    >
-                                        <a
-                                            aria-label={product.name}
-                                            className="manual-sbc-card__link"
-                                            href={product.url}
-                                        >
-                                            <div className="manual-sbc-card__media">
-                                                <img
-                                                    alt={
-                                                        product.image?.alt ||
-                                                        product.name
-                                                    }
-                                                    draggable={false}
-                                                    height="240"
-                                                    loading="lazy"
-                                                    src={
-                                                        product.image?.url ||
-                                                        '/images/store/hero/arabut-logo-hero.webp'
-                                                    }
-                                                    width="320"
-                                                />
-                                                {product.promotionBadge ? (
-                                                    <span className="store-promo-badge">
-                                                        {product.promotionBadge}
-                                                    </span>
-                                                ) : null}
-                                            </div>
-                                            <div className="manual-sbc-card__body">
-                                                <h3 className="manual-sbc-card__title">
-                                                    {product.name}
-                                                </h3>
-                                                <p className="manual-sbc-card__description">
-                                                    {product.description}
-                                                </p>
-                                                {product.platforms.length >
-                                                0 ? (
-                                                    <div className="manual-sbc-card__platforms">
-                                                        {product.platforms.map(
-                                                            (platform) => (
-                                                                <span
-                                                                    className="manual-sbc-card__platform"
-                                                                    key={
-                                                                        platform
-                                                                    }
-                                                                >
-                                                                    {common
-                                                                        .platforms[
-                                                                        platform as ManualServicePlatform
-                                                                    ] ??
-                                                                        platform}
-                                                                </span>
-                                                            ),
-                                                        )}
-                                                    </div>
-                                                ) : null}
-                                                <div className="manual-sbc-card__pricing">
-                                                    {formattedPrice ? (
-                                                        <strong className="manual-sbc-card__price">
-                                                            {formattedPrice}
-                                                        </strong>
-                                                    ) : null}
-                                                    {formattedCompareAt ? (
-                                                        <del className="store-price-compare">
-                                                            {formattedCompareAt}
-                                                        </del>
-                                                    ) : null}
-                                                </div>
-                                            </div>
-                                        </a>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    </div>
-
-                    <div className="manual-sbc-footer">
-                        <a
-                            className="manual-service-related__cta manual-sbc-see-all"
-                            href={sbcUrl}
-                        >
-                            {common.see_all_sbc}
-                            <ArrowUpRight aria-hidden="true" />
-                        </a>
-                    </div>
+                <div className="store-catalog-related store-catalog-related--embedded">
+                    <ul className="store-catalog-related__rail">
+                        {products.map((product) => (
+                            <SbcCatalogCard
+                                key={product.id}
+                                locale={locale}
+                                product={product}
+                                translations={translations.sbc}
+                            />
+                        ))}
+                    </ul>
+                    <a className="manual-service-related__cta" href={sbcUrl}>
+                        {common.see_all_sbc}
+                        <ArrowUpRight aria-hidden="true" />
+                    </a>
                 </div>
             ) : null}
 

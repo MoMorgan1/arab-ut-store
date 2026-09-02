@@ -10,7 +10,6 @@ export function ServiceSlider({
     price,
     selectedValue,
     stopLabels,
-    tickSublabels,
     valueLabel,
 }: {
     direction: 'ltr' | 'rtl';
@@ -22,7 +21,6 @@ export function ServiceSlider({
     price?: string;
     selectedValue: number;
     stopLabels: string[];
-    tickSublabels?: string[];
     valueLabel: string;
 }) {
     const progress =
@@ -88,7 +86,6 @@ export function ServiceSlider({
                         const stopVal = minValue + index;
                         const isSelected = selectedValue === stopVal;
                         const isPassed = stopVal <= selectedValue;
-                        const sublabel = tickSublabels?.[index];
 
                         return (
                             <button
@@ -107,11 +104,6 @@ export function ServiceSlider({
                                 <span className="manual-service-slider__tick-label">
                                     {label}
                                 </span>
-                                {sublabel ? (
-                                    <span className="manual-service-slider__tick-sublabel">
-                                        {sublabel}
-                                    </span>
-                                ) : null}
                             </button>
                         );
                     })}

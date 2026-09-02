@@ -1,4 +1,8 @@
 import type {
+    CatalogProduct,
+    CatalogTranslations,
+} from '@/types/store-content';
+import type {
     StoreLocale,
     StoreShellConfig,
     StoreShellTranslations,
@@ -9,18 +13,6 @@ export type PcLauncher = 'ea_app' | 'steam';
 export type Division = '7' | '6' | '5' | '4' | '3' | '2' | '1' | 'elite';
 export type ManualServiceMoney = { amountMinor: number; currency: string };
 
-export type RelatedSbcProduct = {
-    id: string;
-    name: string;
-    description: string;
-    url: string;
-    image: { url: string; alt: string } | null;
-    price: ManualServiceMoney | null;
-    compareAtPrice: ManualServiceMoney | null;
-    promotionBadge: string | null;
-    platforms: string[];
-};
-
 export type ManualServiceSuggestion = {
     key: 'sbc' | 'fut_champions' | 'rivals';
     title: string;
@@ -30,7 +22,7 @@ export type ManualServiceSuggestion = {
 };
 
 export type ManualServiceRelatedServices = {
-    products: RelatedSbcProduct[];
+    products: CatalogProduct[];
     sbcUrl: string;
     service: ManualServiceSuggestion;
 };
@@ -39,6 +31,10 @@ export type ManualServiceSuggestionTranslations = {
     eyebrow: string;
     title: string;
     open: string;
+    sbc: Pick<
+        CatalogTranslations,
+        'included' | 'platform_prices' | 'unavailable_price'
+    >;
 };
 
 export type ManualCredentialsDraft = {
@@ -53,6 +49,8 @@ export type ManualCredentialsDraft = {
 };
 
 export type ManualServiceCommonTranslations = {
+    tab_options: string;
+    tab_guide: string;
     step_platform: string;
     step_options: string;
     step_account: string;
