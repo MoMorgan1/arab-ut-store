@@ -21,3 +21,20 @@ declare module '@inertiajs/core' {
         };
     }
 }
+
+declare global {
+    interface Window {
+        /** Vendor ids injected by app.blade.php; absent when analytics is off. */
+        __arabutAnalytics?: { ga4?: string; meta?: string; tiktok?: string };
+        dataLayer?: unknown[];
+        gtag?: (...args: unknown[]) => void;
+        fbq?: ((...args: unknown[]) => void) & { queue?: unknown[] };
+        ttq?: {
+            load: (id: string) => void;
+            page: () => void;
+            track: (event: string, params?: Record<string, unknown>) => void;
+        };
+    }
+}
+
+export {};

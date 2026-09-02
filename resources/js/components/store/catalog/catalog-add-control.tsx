@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 
 import { newAttemptKey } from '@/lib/attempt-key';
 import { announceCartAddition } from '@/lib/cart-added-event';
+import type { CartAddedAnalytics } from '@/lib/cart-added-event';
 import {
     CatalogCartRequestError,
     submitCatalogCart,
@@ -9,6 +10,7 @@ import {
 
 export function CatalogAddControl({
     addUrl,
+    analytics,
     errorLabel,
     idleLabel,
     loadingLabel,
@@ -19,6 +21,7 @@ export function CatalogAddControl({
     variantId,
 }: {
     addUrl: string;
+    analytics?: CartAddedAnalytics;
     errorLabel: string;
     idleLabel: string;
     loadingLabel: string;
@@ -48,6 +51,7 @@ export function CatalogAddControl({
             keyRef.current = newAttemptKey();
             setSuccess(true);
             announceCartAddition({
+                analytics,
                 cartUrl: result.cartUrl,
                 imageAlt,
                 imageUrl,

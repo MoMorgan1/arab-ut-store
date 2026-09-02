@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 
 import MyAccountLayout from '@/layouts/my-account-layout';
 import { formatAccountMoney } from '@/lib/account-money';
+import { trackBeginCheckout, trackPurchase } from '@/lib/analytics';
 import { DATE_LOCALE } from '@/lib/date-locale';
 import { formatInteger } from '@/lib/money';
 import { loadOrderCredentials } from '@/lib/order-fulfillment-api';
@@ -41,6 +42,14 @@ export default function AccountLiveOrder() {
         timeStyle: 'short',
     }).format(new Date(props.order.placedAt));
 
+    // Fired once per order per browser; the module keeps the id set that
+    // stops a reload from counting a second sale.
+    useEffect(() => {
+        if (props.order.analytics !== null) {
+            trackPurchase(props.order.analytics);
+        }
+    }, [props.order.analytics]);
+
     function refreshStatus() {
         if (refreshing) {
             return;
@@ -66,6 +75,16 @@ export default function AccountLiveOrder() {
         try {
             const checkout = await resumePaylinkCheckout(
                 props.order.paymentStartUrl,
+            );
+
+            trackBeginCheckout(
+                props.order.items.map((item) => ({
+                    id: item.id,
+                    name: item.name,
+                    price: Number(item.total.amountMinor) / 100 / item.quantity,
+                    quantity: item.quantity,
+                })),
+                Number(props.order.paymentAmount.amountMinor) / 100,
             );
 
             if (checkout.paymentUrl === null) {

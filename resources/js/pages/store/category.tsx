@@ -332,6 +332,15 @@ function CatalogCard({
                 product.url !== null ? (
                     <CatalogAddControl
                         addUrl={addUrl}
+                        analytics={{
+                            id: product.id,
+                            name: product.name,
+                            ...(selected.price.currency === 'SAR'
+                                ? { priceMinorSar: selected.price.amountMinor }
+                                : {}),
+                            quantity: 1,
+                            serviceType: 'catalog',
+                        }}
                         errorLabel={translations.add_error}
                         idleLabel={translations.add_to_cart}
                         imageAlt={product.image?.alt || product.name}

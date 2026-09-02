@@ -250,6 +250,17 @@ function CoinsCartPanel({
             setAddedCartUrl(addition.cartUrl);
             setExpanded(false);
             announceCartAddition({
+                analytics: {
+                    id: `coins:${platform}`,
+                    name: selectionLabel,
+                    ...(price !== undefined &&
+                    price.currency === 'SAR' &&
+                    typeof price.amountMinor === 'number'
+                        ? { priceMinorSar: price.amountMinor }
+                        : {}),
+                    quantity: 1,
+                    serviceType: 'coins',
+                },
                 cartUrl: addition.cartUrl,
                 imageAlt: selectionLabel,
                 imageUrl: COIN_IMAGE,

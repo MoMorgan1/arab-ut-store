@@ -435,6 +435,17 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
         paymentMethod?: AccountPaymentMethod | null;
         walletPayment?: AccountMoney | null;
         refreshable: boolean;
+        analytics: {
+            orderId: string;
+            value: number;
+            currency: string;
+            items: Array<{
+                id: string;
+                name: string;
+                quantity: number;
+                price: number;
+            }>;
+        } | null;
         paymentStartUrl: string | null;
         items: Array<{
             id: string;
