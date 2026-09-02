@@ -61,6 +61,7 @@ class HomeController extends Controller
                 'servicesTranslations' => trans('store.services_section'),
                 'reviews' => $reviews->homepage(app()->getLocale()),
                 'reviewsUrl' => $this->storeRoute($request, 'store.reviews'),
+                'reviewsRateUrl' => $this->storeRoute($request, 'account.orders'),
                 'reviewsTranslations' => trans('store.reviews'),
                 'faq' => trans('store.faq.entries'),
                 'faqTranslations' => [

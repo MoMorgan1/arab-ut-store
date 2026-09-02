@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 
 import StoreReviews from '@/pages/store/reviews';
@@ -26,8 +26,48 @@ it('renders the complete paginated safe review list', () => {
     expect(screen.getByText('Cairo')).toBeInTheDocument();
     expect(
         screen.getByRole('navigation', { name: 'Reviews pages' }),
-    ).toBeInTheDocument();
+    ).toHaveTextContent('Page 1 of 2');
+    expect(screen.getByRole('link', { name: 'Next' })).toHaveAttribute(
+        'href',
+        '?page=2',
+    );
     expect(screen.queryByText(/email|phone/i)).toBeNull();
+});
+
+it('renders the filter chips as links that toggle the query string', () => {
+    page.props = {
+        ...props(),
+        filters: {
+            rating: '5',
+            sort: 'highest',
+            verified: true,
+            withComment: false,
+        },
+    };
+    render(<StoreReviews />);
+
+    const filters = screen.getByRole('navigation', { name: 'Filter reviews' });
+
+    expect(
+        within(filters).getByRole('link', { name: '5 stars' }),
+    ).toHaveAttribute('aria-current', 'true');
+    // Clicking the active rating chip clears it and keeps the rest.
+    expect(
+        within(filters).getByRole('link', { name: '5 stars' }),
+    ).toHaveAttribute('href', '?verified=1&sort=highest');
+    expect(
+        within(filters).getByRole('link', { name: '4 stars' }),
+    ).toHaveAttribute('href', '?rating=4&verified=1&sort=highest');
+    expect(within(filters).getByRole('link', { name: 'All' })).toHaveAttribute(
+        'href',
+        '?sort=highest',
+    );
+    expect(
+        within(filters).getByRole('link', { name: 'Newest first' }),
+    ).toHaveAttribute('href', '?rating=5&verified=1');
+    expect(
+        screen.getByRole('link', { name: 'Rate your order' }),
+    ).toHaveAttribute('href', '/en/my-account/orders');
 });
 
 function props() {
@@ -65,7 +105,29 @@ function props() {
             pages: 'Reviews pages',
             previous: 'Previous',
             next: 'Next',
+            intro: 'Verified reviews from real orders.',
+            of_count: 'from :count reviews',
+            verified_count: ':count verified orders',
+            distribution_label: 'Star distribution',
+            filters_label: 'Filter reviews',
+            filter_all: 'All',
+            filter_five: '5 stars',
+            filter_four: '4 stars',
+            filter_verified: 'Verified orders',
+            filter_with_comment: 'With a comment',
+            sort_label: 'Sort',
+            sort_newest: 'Newest first',
+            sort_highest: 'Highest rated',
+            page_of: 'Page :page of :last',
+            rate_your_order: 'Rate your order',
         },
+        filters: {
+            rating: null,
+            sort: 'newest',
+            verified: false,
+            withComment: false,
+        },
+        rateUrl: '/en/my-account/orders',
         storeShell: {
             homeUrl: '/en',
             coinsUrl: '/en#coins',
