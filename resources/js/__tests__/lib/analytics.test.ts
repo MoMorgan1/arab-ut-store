@@ -1,6 +1,6 @@
+import { router } from '@inertiajs/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { router } from '@inertiajs/react';
 
 import {
     CONSENT_COOKIE,
