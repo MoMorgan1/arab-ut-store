@@ -242,10 +242,12 @@ export default function StoreHome() {
                                 reviewsUrl={homeContent.reviewsUrl}
                                 translations={homeContent.reviewsTranslations}
                             />
-                            <FaqSection
-                                entries={homeContent.faq}
-                                translations={homeContent.faqTranslations}
-                            />
+                            {homeContent.faq.length > 0 ? (
+                                <FaqSection
+                                    entries={homeContent.faq}
+                                    translations={homeContent.faqTranslations}
+                                />
+                            ) : null}
                         </>
                     )}
                 </>

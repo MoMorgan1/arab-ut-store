@@ -107,6 +107,14 @@ final class AdminShell
             ];
         }
 
+        if ($actor->can(AdminPermission::MarketingView->value)) {
+            $marketingChildren[] = [
+                'key' => 'marketingFaq',
+                'label' => (string) trans('admin.navigation.marketingFaq', locale: $locale),
+                'url' => route($prefix.'marketing.faq', absolute: false),
+            ];
+        }
+
         if ($marketingChildren !== []) {
             $navigation[] = [
                 'key' => 'marketing',

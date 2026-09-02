@@ -2,12 +2,13 @@ import { Link, router } from '@inertiajs/react';
 import {
     Award,
     BadgePercent,
+    CircleHelp,
     Ellipsis,
     FolderTree,
     LayoutDashboard,
     LogOut,
-    MessageSquare,
     Megaphone,
+    MessageSquare,
     Package,
     Settings,
     ShoppingBag,
@@ -38,6 +39,7 @@ const navigationIcons: Record<string, LucideIcon> = {
     marketingPromotions: BadgePercent,
     marketingReviews: Star,
     marketingLoyalty: Award,
+    marketingFaq: CircleHelp,
     settings: Settings,
     more: Ellipsis,
 };

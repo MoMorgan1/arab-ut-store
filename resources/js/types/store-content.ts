@@ -95,7 +95,7 @@ export type ReviewTranslations = {
     view_all: string;
 };
 
-export type FaqEntry = { answer: string; question: string };
+export type FaqEntry = { answer: string; id: string; question: string };
 export type FaqTranslations = { eyebrow: string; title: string };
 
 export type CatalogMoney = { amountMinor: number; currency: string };

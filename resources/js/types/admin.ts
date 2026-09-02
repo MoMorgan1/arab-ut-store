@@ -41,6 +41,8 @@ export type AdminTranslations = {
         marketing: string;
         marketingCoupons: string;
         marketingPromotions: string;
+        marketingReviews?: string;
+        marketingFaq?: string;
         more?: string;
         open: string;
         close: string;
@@ -1563,6 +1565,52 @@ export type AdminTranslations = {
         visibilityShownMessage: string;
         visibilityUpdateFailed: string;
     };
+    faq?: {
+        actions: string;
+        answerArLabel: string;
+        answerEnLabel: string;
+        cancelButton: string;
+        charLimit: string;
+        confirmDelete: string;
+        createDialogDescription: string;
+        createDialogTitle: string;
+        createdMessage: string;
+        delete: string;
+        deleteDialogDescription: string;
+        deleteDialogTitle: string;
+        deletedMessage: string;
+        deleting: string;
+        description: string;
+        edit: string;
+        editDialogDescription: string;
+        editDialogTitle: string;
+        errorTitle: string;
+        headTitle: string;
+        hideFromStore: string;
+        moveDown: string;
+        moveFailed: string;
+        moveUp: string;
+        newQuestion: string;
+        noEntries: string;
+        position: string;
+        question: string;
+        questionArLabel: string;
+        questionEnLabel: string;
+        saveButton: string;
+        savingButton: string;
+        showInStore: string;
+        stateHidden: string;
+        stateVisible: string;
+        status: string;
+        tableLabel: string;
+        title: string;
+        updatedAt: string;
+        updatedMessage: string;
+        visibilityConflictError: string;
+        visibilityHiddenMessage: string;
+        visibilityShownMessage: string;
+        visibilityUpdateFailed: string;
+    };
 };
 
 export type AdminNavigationChild = {
@@ -1572,7 +1620,8 @@ export type AdminNavigationChild = {
         | 'marketingCoupons'
         | 'marketingPromotions'
         | 'marketingReviews'
-        | 'marketingLoyalty';
+        | 'marketingLoyalty'
+        | 'marketingFaq';
     label: string;
     url: string;
 };
@@ -2692,5 +2741,33 @@ export type AdminMorePageProps = {
     adminNavigation: AdminNavigationItem[];
     permissions: string[];
     groups: AdminMoreGroup[];
+    logoutUrl: string;
+};
+
+export type AdminFaqRow = {
+    id: string;
+    questionAr: string;
+    questionEn: string;
+    answerAr: string;
+    answerEn: string;
+    sortOrder: number;
+    isVisible: boolean;
+    updatedAt: string;
+};
+
+export type AdminFaqPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    entries: AdminFaqRow[];
+    createUrl: string;
+    updateUrlTemplate: string;
+    visibilityUrlTemplate: string;
+    moveUrlTemplate: string;
+    deleteUrlTemplate: string;
+    canManage: boolean;
     logoutUrl: string;
 };

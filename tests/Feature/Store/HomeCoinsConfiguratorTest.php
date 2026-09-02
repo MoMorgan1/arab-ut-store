@@ -238,8 +238,10 @@ test('the foreign-currency homepage builds every schedule from one pricing and r
     // The budget rose from 10 when the shared Inertia props began reading the
     // Coins balance toggle live on every page — one indexed schedule read, so
     // chat offers stored in history can never disagree with the cart endpoint.
+    // It rose again to 12 when the FAQ moved from the language files to the
+    // faq_entries table (one ordered read of a handful of rows).
     expect($durationMilliseconds)->toBeLessThan(1_000)
-        ->and(count($queries))->toBeLessThanOrEqual(11)
+        ->and(count($queries))->toBeLessThanOrEqual(12)
         ->and($queriesFor('price_rules'))->toBe(1)
         ->and($queriesFor('exchange_rates'))->toBe(1);
 });

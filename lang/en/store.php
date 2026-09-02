@@ -412,12 +412,6 @@ return [
     'faq' => [
         'eyebrow' => 'Frequently asked questions',
         'title' => 'Everything you need before ordering',
-        'entries' => [
-            ['question' => 'What are the store hours?', 'answer' => 'We are available to serve you 24 hours a day, seven days a week.'],
-            ['question' => 'How long will my order take?', 'answer' => 'It depends on the amount and current demand, but one million Coins usually takes between 5 and 90 minutes.'],
-            ['question' => 'How safe is my account?', 'answer' => 'We use an automated transfer method designed to keep your account safe from bans, with full coverage throughout delivery.'],
-            ['question' => 'How are the Coins delivered after purchase?', 'answer' => 'We deliver the Coins through your account in the Companion app and provide an order tracking link.'],
-        ],
     ],
     'progress' => [
         'platform' => 'Platform',
