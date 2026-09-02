@@ -2,7 +2,9 @@
 
 Date: 2026-09-02
 Status: approved by Mohamed on 2026-09-02 with the wallet amendment below. Reviewed once (Opus,
-read-only) and revised.
+read-only) and revised. Amended the same day: **no consent banner** (owner decision), tracking is
+on by default with an opt-out link on the privacy page; the sections below that describe the
+banner are superseded by "Consent, amended" at the end.
 Owner decisions referenced: discovery record decisions 34 and 38
 
 ## Purpose
@@ -208,3 +210,18 @@ Medium. Around fifteen files, no schema change, no new dependency.
 3. Refunds are not reversed in v1.
 4. `view_item` is in v1; `remove_from_cart` and `add_payment_info` are not.
 5. Direct vendor scripts rather than GTM; server-side events deferred with `eventID` ready.
+
+## Consent, amended (2026-09-02)
+
+Mohamed decided against a consent banner: Saudi PDPL has no explicit cookie-banner requirement,
+most Saudi stores show none, and a banner costs a share of the data the ads platforms need.
+What ships instead:
+
+- Tracking is on by default for every visitor once a vendor id is configured. The head still
+  declares Google's consent default as denied; the module updates it to granted immediately,
+  before it injects any vendor script, so the documented ordering holds.
+- The privacy page gains a paragraph naming Google Analytics, Meta and TikTok and offering two
+  links: `?tracking=off` stores the opt-out cookie (`arabut_consent`, twelve months) and
+  `?tracking=on` clears it. After an opt-out nothing is loaded and nothing is sent.
+- No banner component, no canvas, no banner lang keys. `grantConsent` / `declineConsent` stay in
+  the module for the links and for any future banner.

@@ -5,10 +5,11 @@ import type { CartAddedDetail } from '@/lib/cart-added-event';
 
 /**
  * First-party analytics: one normalised event feeds GA4, Meta Pixel and
- * TikTok Pixel. Nothing is loaded until the visitor accepts the consent
- * banner, and a refusal sends nothing to anybody. Vendor ids come from
- * `window.__arabutAnalytics`, written by app.blade.php only on pages that
- * may track. See docs/decisions/2026-09-02-analytics-tracking-design.md.
+ * TikTok Pixel. Tracking is on by default (owner decision, 2026-09-02: no
+ * consent banner); the privacy page links to `?tracking=off`, which stores
+ * an opt-out cookie, and after that nothing is sent to anybody. Vendor ids
+ * come from `window.__arabutAnalytics`, written by app.blade.php only on
+ * pages that may track. See docs/decisions/2026-09-02-analytics-tracking-design.md.
  */
 
 export const CONSENT_COOKIE = 'arabut_consent';
@@ -89,8 +90,27 @@ function writeConsent(choice: ConsentChoice) {
     )}; Max-Age=${maxAge}; Path=/; SameSite=Lax${secure}`;
 }
 
-export function shouldShowConsentBanner(): boolean {
-    return analyticsEnabled() && readConsent() === null;
+/** Opted out explicitly; everything else counts as tracking allowed. */
+export function trackingAllowed(): boolean {
+    return readConsent() !== 'denied';
+}
+
+export const TRACKING_QUERY = 'tracking';
+
+/**
+ * The privacy page offers `?tracking=off` and `?tracking=on` links. Applied
+ * before anything loads so an opt-out visit never fires a page view.
+ */
+function applyTrackingQuery() {
+    const choice = new URLSearchParams(window.location.search).get(
+        TRACKING_QUERY,
+    );
+
+    if (choice === 'off') {
+        writeConsent('denied');
+    } else if (choice === 'on') {
+        writeConsent('granted');
+    }
 }
 
 function eventId(): string {
@@ -175,7 +195,7 @@ function loadTikTok(id: string) {
 }
 
 function loadVendors() {
-    if (vendorsLoaded || readConsent() !== 'granted') {
+    if (vendorsLoaded || !trackingAllowed()) {
         return;
     }
 
@@ -197,7 +217,7 @@ function loadVendors() {
 }
 
 function tracking(): boolean {
-    return vendorsLoaded && readConsent() === 'granted';
+    return vendorsLoaded && trackingAllowed();
 }
 
 function metaContents(items: AnalyticsItem[]) {
@@ -399,6 +419,7 @@ export function initAnalytics() {
     }
 
     initialised = true;
+    applyTrackingQuery();
     loadVendors();
     trackPageView();
     router.on('navigate', (event) => {

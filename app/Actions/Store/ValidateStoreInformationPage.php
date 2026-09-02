@@ -166,9 +166,25 @@ class ValidateStoreInformationPage
             }
 
             if (array_key_exists('url', $part)) {
-                $this->approvedUrl($part['url'], ['help.ea.com']);
+                $this->approvedInlineUrl($part['url']);
             }
         }
+    }
+
+    /**
+     * Inline links may point at an approved external host or at a page of
+     * this store (a root-relative path, optionally with a query string, so
+     * the privacy page can link the tracking opt-out).
+     */
+    private function approvedInlineUrl(mixed $url): string
+    {
+        $this->nonEmptyString($url, 'inline URL');
+
+        if (is_string($url) && preg_match('#^/[A-Za-z0-9/_-]*(\?[A-Za-z0-9_=&-]+)?$#', $url) === 1) {
+            return $url;
+        }
+
+        return $this->approvedUrl($url, ['help.ea.com']);
     }
 
     /** @param list<string> $allowedHosts */

@@ -9,7 +9,7 @@ import {
     readConsent,
     resetAnalyticsForTests,
     riyals,
-    shouldShowConsentBanner,
+    trackingAllowed,
     trackAddToCart,
     trackBeginCheckout,
     trackPurchase,
@@ -54,12 +54,11 @@ describe('riyals', () => {
 });
 
 describe('without vendor ids', () => {
-    it('is a no-op and never shows the banner', () => {
+    it('is a no-op', () => {
         initAnalytics();
         grantConsent();
         trackAddToCart({ id: 'x', name: 'X', quantity: 1, price: 1 });
 
-        expect(shouldShowConsentBanner()).toBe(false);
         expect(injectedScripts()).toEqual([]);
         expect(router.on).not.toHaveBeenCalled();
     });
@@ -74,36 +73,51 @@ describe('with vendor ids', () => {
         };
     });
 
-    it('shows the banner and loads nothing until a choice is made', () => {
+    it('tracks by default: no banner, vendors load on init', () => {
         initAnalytics();
 
-        expect(shouldShowConsentBanner()).toBe(true);
-        expect(injectedScripts()).toEqual([]);
-        expect(window.gtag).toBeUndefined();
-        expect(window.fbq).toBeUndefined();
-        expect(window.ttq).toBeUndefined();
+        expect(trackingAllowed()).toBe(true);
+        expect(readConsent()).toBeNull();
+        expect(injectedScripts()).toHaveLength(3);
         expect(router.on).toHaveBeenCalledWith(
             'navigate',
             expect.any(Function),
         );
     });
 
-    it('declining stores the choice and still sends nothing', () => {
-        initAnalytics();
+    it('an opt-out cookie keeps every vendor off', () => {
         declineConsent();
+        initAnalytics();
         trackAddToCart({ id: 'x', name: 'X', quantity: 1, price: 1 });
 
         expect(readConsent()).toBe('denied');
-        expect(shouldShowConsentBanner()).toBe(false);
+        expect(trackingAllowed()).toBe(false);
         expect(injectedScripts()).toEqual([]);
+        expect(window.gtag).toBeUndefined();
         expect(window.fbq).toBeUndefined();
+        expect(window.ttq).toBeUndefined();
     });
 
-    it('accepting loads the three vendors in the documented order and sends a page view', () => {
+    it('the privacy page links opt out and back in through the query string', () => {
+        window.history.replaceState(null, '', '/privacy?tracking=off');
         initAnalytics();
-        grantConsent();
+
+        expect(readConsent()).toBe('denied');
+        expect(injectedScripts()).toEqual([]);
+
+        resetAnalyticsForTests();
+        window.history.replaceState(null, '', '/privacy?tracking=on');
+        initAnalytics();
 
         expect(readConsent()).toBe('granted');
+        expect(injectedScripts()).toHaveLength(3);
+        window.history.replaceState(null, '', '/');
+    });
+
+    it('loads the three vendors in the documented order and sends a page view', () => {
+        initAnalytics();
+
+        expect(trackingAllowed()).toBe(true);
         expect(injectedScripts()).toEqual([
             'https://www.googletagmanager.com/gtag/js?id=G-TEST',
             'https://connect.facebook.net/en_US/fbevents.js',
@@ -279,9 +293,8 @@ describe('with vendor ids', () => {
         ).toBeDefined();
     });
 
-    it('sends nothing while consent is denied even after vendors exist', () => {
+    it('sends nothing after an opt-out even when vendors are already loaded', () => {
         initAnalytics();
-        grantConsent();
         (window.dataLayer as unknown[]).length = 0;
 
         declineConsent();

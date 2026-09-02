@@ -106,3 +106,18 @@ test('the analytics env keys mirror the services config one to one', function ()
         ->toContain('ANALYTICS_TIKTOK_PIXEL_ID=')
         ->and(config('services.analytics'))->toHaveKeys(['ga4_measurement_id', 'meta_pixel_id', 'tiktok_pixel_id']);
 });
+
+test('the privacy page names the vendors and links the tracking opt-out in both locales', function (string $uri, string $off, string $on) {
+    $this->get($uri)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('page.blocks', fn ($blocks) => collect($blocks)
+                ->flatMap(fn (array $block) => $block['type'] === 'paragraph' ? $block['content'] : [])
+                ->pluck('url')
+                ->filter()
+                ->values()
+                ->all() === [$off, $on]));
+})->with([
+    'Arabic' => ['/privacy', '/privacy?tracking=off', '/privacy?tracking=on'],
+    'English' => ['/en/privacy', '/en/privacy?tracking=off', '/en/privacy?tracking=on'],
+]);
