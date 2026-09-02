@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Catalog\CoinsCatalogReader;
 use App\Services\Content\StoreFaqReader;
 use App\Services\Reviews\StoreReviewReader;
+use App\Services\Store\StoreProofReader;
 use App\Validation\CoinsSelectionRules;
 use DomainException;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ class HomeController extends Controller
         StoreReviewReader $reviews,
         CoinsCatalogReader $catalog,
         StoreFaqReader $faqReader,
+        StoreProofReader $proof,
     ): Response {
         $status = 'unavailable';
         $quoteSchedules = null;
@@ -70,8 +72,26 @@ class HomeController extends Controller
                     'title' => trans('store.faq.title'),
                 ],
             ],
-            'store' => trans('store'),
+            'store' => $this->storeTranslations($proof),
         ]);
+    }
+
+    /**
+     * The store copy, with the counted hero proof filled from the database.
+     *
+     * @return array<string, mixed>
+     */
+    private function storeTranslations(StoreProofReader $proof): array
+    {
+        $store = trans('store');
+
+        if (! is_array($store) || ! is_array($store['hero'] ?? null) || ! is_array($store['hero']['stats'] ?? null)) {
+            throw new LogicException('The store translations must define hero stats.');
+        }
+
+        $store['hero']['stats'] = $proof->heroStats(array_values($store['hero']['stats']));
+
+        return $store;
     }
 
     /** @return list<array<string, mixed>> */

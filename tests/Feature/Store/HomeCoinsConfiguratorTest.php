@@ -239,9 +239,11 @@ test('the foreign-currency homepage builds every schedule from one pricing and r
     // Coins balance toggle live on every page — one indexed schedule read, so
     // chat offers stored in history can never disagree with the cart endpoint.
     // It rose again to 12 when the FAQ moved from the language files to the
-    // faq_entries table (one ordered read of a handful of rows).
+    // faq_entries table (one ordered read of a handful of rows), and to 13
+    // when the hero proof started counting completed orders and served
+    // customers from the orders table (one aggregate, cached for 15 minutes).
     expect($durationMilliseconds)->toBeLessThan(1_000)
-        ->and(count($queries))->toBeLessThanOrEqual(12)
+        ->and(count($queries))->toBeLessThanOrEqual(13)
         ->and($queriesFor('price_rules'))->toBe(1)
         ->and($queriesFor('exchange_rates'))->toBe(1);
 });
