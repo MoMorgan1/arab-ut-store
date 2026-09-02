@@ -1,7 +1,7 @@
 # Customer reviews after a completed order
 
 Date: 2026-09-02
-Status: proposed, awaiting Mohamed's approval. Reviewed once (Opus, read-only) and revised.
+Status: approved by Mohamed on 2026-09-02 (all six decisions confirmed). Reviewed once (Opus, read-only) and revised.
 Supersedes the deferral in `2026-08-12-salla-review-archive-design.md` ("future reviews will be
 collected by a separate local post-order review system when the local order lifecycle is ready").
 
@@ -190,7 +190,7 @@ Medium. One migration, one notification, one action, two controllers, two screen
 - Approval of the two screens on the canvas.
 - Confirmation of the decisions below.
 
-## Decisions taken in this design, for Mohamed to confirm
+## Decisions taken in this design (confirmed 2026-09-02)
 
 1. One review per order, not per item.
 2. 4 and 5 stars publish automatically; 1 to 3 stars are stored for staff to read but never
