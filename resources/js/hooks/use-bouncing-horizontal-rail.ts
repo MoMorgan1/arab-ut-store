@@ -119,11 +119,14 @@ export function useBouncingHorizontalRail({
     );
 
     useEffect(() => {
+        // Touch screens scroll the rail themselves; a script nudging it every
+        // frame fights the native scroller and reads as lag on phones.
         if (
             !overflows ||
             paused ||
             !pageVisible ||
-            window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+            window.matchMedia('(pointer: coarse)').matches
         ) {
             return;
         }
@@ -136,6 +139,7 @@ export function useBouncingHorizontalRail({
 
         const logicalDirection = direction === 'rtl' ? -1 : 1;
         let animationFrame = 0;
+        let pendingDistance = 0;
         let previousTimestamp: number | null = null;
 
         const advance = (timestamp: number) => {
@@ -156,20 +160,22 @@ export function useBouncingHorizontalRail({
                     autoTravelDirectionRef.current = 1;
                 }
 
-                // Fractional deltas on purpose: browsers keep scroll offsets
-                // as floats, so 0.8px a frame renders as one even glide. Rounding
-                // to whole pixels made the rail step 1px, 0px, 1px and look like
-                // it stuttered, most visibly on phones.
+                // Whole pixels only: iOS Safari rounds fractional scrollBy
+                // deltas, so sub-pixel steps every frame crawled and dropped
+                // frames on phones. Desktop pointers get the gentle glide; touch
+                // screens get no auto-motion at all (see the effect guard).
                 const elapsed = Math.min(timestamp - previousTimestamp, 50);
-                const distance = pixelsPerSecond * (elapsed / 1_000);
+                pendingDistance += pixelsPerSecond * (elapsed / 1_000);
+                const wholePixels = Math.floor(pendingDistance);
 
-                if (distance > 0) {
+                if (wholePixels > 0) {
+                    pendingDistance -= wholePixels;
                     track.scrollBy({
                         behavior: 'auto',
                         left:
                             logicalDirection *
                             autoTravelDirectionRef.current *
-                            distance,
+                            wholePixels,
                     });
                 }
             }
