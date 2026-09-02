@@ -122,7 +122,7 @@ export function SbcCatalogCard({
                             loading="lazy"
                             src={
                                 product.image?.url ??
-                                '/images/store/navigation/logo-sbc-96.webp'
+                                '/images/store/navigation/logo-sbc-256.webp'
                             }
                             width="384"
                         />

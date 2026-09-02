@@ -162,7 +162,7 @@ export default function StoreCatalogProduct() {
                                         }
                                         imageUrl={
                                             product.image?.url ??
-                                            '/images/store/navigation/logo-sbc-96.webp'
+                                            '/images/store/navigation/logo-sbc-256.webp'
                                         }
                                         loadingLabel={props.productPage.adding}
                                         itemLabel={product.name}
