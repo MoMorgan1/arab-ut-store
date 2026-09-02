@@ -1,3 +1,4 @@
+import type { MetaPixel, TikTokPixel } from '@/lib/analytics';
 import type { Auth } from '@/types/auth';
 import type { ChatSharedProps } from '@/types/chat';
 
@@ -28,9 +29,9 @@ declare global {
         __arabutAnalytics?: { ga4?: string; meta?: string; tiktok?: string };
         dataLayer?: unknown[];
         gtag?: (...args: unknown[]) => void;
-        fbq?: import('@/lib/analytics').MetaPixel;
-        _fbq?: import('@/lib/analytics').MetaPixel;
-        ttq?: import('@/lib/analytics').TikTokPixel;
+        fbq?: MetaPixel;
+        _fbq?: MetaPixel;
+        ttq?: TikTokPixel;
         TiktokAnalyticsObject?: string;
     }
 }
