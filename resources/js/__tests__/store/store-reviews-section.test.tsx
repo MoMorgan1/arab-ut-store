@@ -100,12 +100,11 @@ function translations(): ReviewTranslations {
 }
 
 describe('ReviewsSection', () => {
-    it('renders the trust summary, the cards, and both calls to action', () => {
+    it('renders the trust summary, the cards, and the link to every review', () => {
         vi.useFakeTimers();
         const { container } = render(
             <ReviewsSection
                 locale="en"
-                rateUrl="/en/my-account/orders"
                 reviews={reviews()}
                 reviewsUrl="/en/reviews"
                 translations={translations()}
@@ -137,8 +136,11 @@ describe('ReviewsSection', () => {
             screen.getByRole('link', { name: 'Read all reviews' }),
         ).toHaveAttribute('href', '/en/reviews');
         expect(
-            screen.getByRole('link', { name: 'Rate your order' }),
-        ).toHaveAttribute('href', '/en/my-account/orders');
+            screen.queryByRole('link', { name: 'Rate your order' }),
+        ).toBeNull();
+        expect(
+            screen.queryByText('Verified reviews from real orders.'),
+        ).toBeNull();
     });
 
     it('keeps the gentle auto-scroll and pauses it while the visitor drags', () => {

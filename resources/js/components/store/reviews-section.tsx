@@ -16,13 +16,11 @@ import type {
  */
 export function ReviewsSection({
     locale,
-    rateUrl,
     reviews,
     reviewsUrl,
     translations,
 }: {
     locale: 'ar' | 'en';
-    rateUrl?: string;
     reviews: ReviewCollection;
     reviewsUrl: string;
     translations: ReviewTranslations;
@@ -114,11 +112,6 @@ export function ReviewsSection({
                     <header className="store-section-heading store-reviews__heading">
                         <p>{translations.eyebrow}</p>
                         <h2 id="store-reviews-title">{translations.title}</h2>
-                        {translations.intro ? (
-                            <span className="store-reviews__intro">
-                                {translations.intro}
-                            </span>
-                        ) : null}
                     </header>
                     {reviews.average === null ? null : (
                         <ReviewSummary
@@ -191,16 +184,10 @@ export function ReviewsSection({
                     </div>
                 )}
 
-                <div className="store-reviews__actions">
-                    <a className="store-reviews__all" href={reviewsUrl}>
-                        {translations.read_all ?? translations.view_all}
-                    </a>
-                    {rateUrl && translations.rate_your_order ? (
-                        <a className="store-reviews__rate" href={rateUrl}>
-                            {translations.rate_your_order}
-                        </a>
-                    ) : null}
-                </div>
+                <a className="store-reviews__more" href={reviewsUrl}>
+                    {translations.read_all ?? translations.view_all}
+                    <ArrowIcon direction="forward" />
+                </a>
             </div>
         </section>
     );
