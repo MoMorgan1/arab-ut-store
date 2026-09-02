@@ -1,3 +1,10 @@
+<IfModule mod_mime.c>
+    # LiteSpeed on the production host serves these as text/plain otherwise,
+    # which breaks the installable manifest and mislabels the AVIF backdrops.
+    AddType image/avif .avif
+    AddType application/manifest+json .webmanifest
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
