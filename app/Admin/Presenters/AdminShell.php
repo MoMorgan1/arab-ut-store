@@ -92,6 +92,11 @@ final class AdminShell
                 'label' => (string) trans('admin.navigation.marketingPromotions', locale: $locale),
                 'url' => route($prefix.'marketing.promotions', absolute: false),
             ];
+            $marketingChildren[] = [
+                'key' => 'marketingReviews',
+                'label' => (string) trans('admin.navigation.marketingReviews', locale: $locale),
+                'url' => route($prefix.'reviews', absolute: false),
+            ];
         }
 
         if ($actor->can(AdminPermission::LoyaltyView->value)) {

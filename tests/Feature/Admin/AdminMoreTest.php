@@ -46,18 +46,20 @@ test('AdminShell emits the grouped navigation tree with catalog, marketing, and 
         ->and(array_column($catalogEntry['children'], 'key'))->toBe(['products', 'categories'])
         ->and(array_column($catalogEntry['children'], 'url'))->toBe(['/admin/products', '/admin/categories']);
 
-    // Marketing has coupons, promotions, and loyalty as children
+    // Marketing has coupons, promotions, reviews, and loyalty as children
     $marketingEntry = collect($shell['adminNavigation'])->firstWhere('key', 'marketing');
     expect($marketingEntry)->not->toBeNull()
         ->and($marketingEntry['children'])->toBeArray()
         ->and(array_column($marketingEntry['children'], 'key'))->toBe([
             'marketingCoupons',
             'marketingPromotions',
+            'marketingReviews',
             'marketingLoyalty',
         ])
         ->and(array_column($marketingEntry['children'], 'url'))->toBe([
             '/admin/marketing/coupons',
             '/admin/marketing/promotions',
+            '/admin/reviews',
             '/admin/marketing/loyalty',
         ]);
 

@@ -12,9 +12,11 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
+use App\Models\Review;
 use App\Models\User;
 use App\Payments\PaymentMethodLabel;
 use BackedEnum;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Storage;
 
@@ -30,6 +32,9 @@ final class ReadLiveOrder
                 'user_id',
                 'order_number',
                 'status',
+                'locale',
+                'channel',
+                'completed_at',
                 'currency',
                 'subtotal_halalah',
                 'discount_halalah',
@@ -108,6 +113,7 @@ final class ReadLiveOrder
                 )
                 : null,
             'refreshable' => ! $terminal,
+            'review' => $this->review($order, $publicId, $locale),
             'paymentStartUrl' => $order->status === OrderStatus::PendingPayment
                 ? route(
                     $locale === 'en'
@@ -134,6 +140,51 @@ final class ReadLiveOrder
                 ])
                 ->values()
                 ->all(),
+        ];
+    }
+
+    /**
+     * The review slot on the order page.
+     *
+     * `null` means the order cannot be reviewed at all, which is a different
+     * thing from "not reviewed yet": a Salla-imported order arrives already
+     * completed and stays read-only, and an order still in progress has nothing
+     * to judge. Both hide the card entirely.
+     *
+     * @return array{url: string, submitted: array{rating: int, body: ?string, publishedAt: ?string, visible: bool}|null}|null
+     */
+    private function review(Order $order, string $publicId, string $locale): ?array
+    {
+        if ($order->completed_at === null || $order->channel === 'salla_import') {
+            return null;
+        }
+
+        $review = Review::query()
+            ->select(['id', 'order_id', 'rating', 'body_ar', 'body_en', 'is_visible', 'published_at'])
+            ->where('order_id', $order->id)
+            ->first();
+        $publishedAt = $review instanceof Review
+            ? CarbonImmutable::make($review->getRawOriginal('published_at'))
+            : null;
+
+        return [
+            'url' => route(
+                $locale === 'en'
+                    ? 'localized.account.orders.review.store'
+                    : 'account.orders.review.store',
+                ['order' => $publicId],
+                absolute: false,
+            ),
+            'submitted' => $review instanceof Review
+                ? [
+                    'rating' => (int) $review->rating,
+                    'body' => $locale === 'en'
+                        ? ($review->body_en ?? $review->body_ar)
+                        : ($review->body_ar ?? $review->body_en),
+                    'publishedAt' => $publishedAt?->toIso8601String(),
+                    'visible' => (bool) $review->is_visible,
+                ]
+                : null,
         ];
     }
 

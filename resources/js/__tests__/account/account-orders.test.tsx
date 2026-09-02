@@ -604,6 +604,7 @@ function liveOrder(
         paymentMethod: 'mada',
         refreshable: true,
         paymentStartUrl,
+        review: null,
         items: [
             {
                 id: '01ITEM1',

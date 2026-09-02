@@ -11,6 +11,7 @@ import {
     Package,
     Settings,
     ShoppingBag,
+    Star,
     Ticket,
     Users,
 } from 'lucide-react';
@@ -35,6 +36,7 @@ const navigationIcons: Record<string, LucideIcon> = {
     marketing: Megaphone,
     marketingCoupons: Ticket,
     marketingPromotions: BadgePercent,
+    marketingReviews: Star,
     marketingLoyalty: Award,
     settings: Settings,
     more: Ellipsis,

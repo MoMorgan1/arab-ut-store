@@ -38,6 +38,7 @@ class Order extends DomainModel
             'paid_at' => 'immutable_datetime',
             'completed_at' => 'immutable_datetime',
             'cancelled_at' => 'immutable_datetime',
+            'review_invited_at' => 'immutable_datetime',
         ];
     }
 
@@ -81,6 +82,12 @@ class Order extends DomainModel
     public function statusHistory(): HasMany
     {
         return $this->hasMany(OrderStatusHistory::class);
+    }
+
+    /** @return HasOne<Review, $this> */
+    public function review(): HasOne
+    {
+        return $this->hasOne(Review::class);
     }
 
     /** @return HasOne<Receipt, $this> */

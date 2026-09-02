@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import OrderReviewCard from '@/components/account/order-review-card';
 import MyAccountLayout from '@/layouts/my-account-layout';
 import { formatAccountMoney } from '@/lib/account-money';
 import { DATE_LOCALE } from '@/lib/date-locale';
@@ -352,6 +353,15 @@ export default function AccountLiveOrder() {
                         </button>
                     ) : null}
                 </div>
+
+                {props.order.review !== null ? (
+                    <OrderReviewCard
+                        customerName={props.accountIdentity.name}
+                        locale={props.locale === 'en' ? 'en' : 'ar'}
+                        review={props.order.review}
+                        translations={props.accountUi.orders.review}
+                    />
+                ) : null}
 
                 {props.order.statusNote ? (
                     <aside

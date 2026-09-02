@@ -1502,6 +1502,67 @@ export type AdminTranslations = {
         visibleProducts: string;
         visibleProductsCount: string;
     };
+    reviews: {
+        actions: string;
+        cancelButton: string;
+        clearSearch: string;
+        comment: string;
+        createdAt: string;
+        description: string;
+        errorTitle: string;
+        filterRating: string;
+        filterRatingAll: string;
+        filterSource: string;
+        filterSourceAll: string;
+        filterStatus: string;
+        filterStatusAll: string;
+        firstPage: string;
+        headTitle: string;
+        hideDialogDescription: string;
+        hideDialogTitle: string;
+        hideFromStore: string;
+        hidingFromStore: string;
+        lastPage: string;
+        loadFailed: string;
+        loading: string;
+        location: string;
+        next: string;
+        noReviews: string;
+        noReviewsMatching: string;
+        of: string;
+        order: string;
+        page: string;
+        perPage: string;
+        previous: string;
+        publishedAt: string;
+        rating: string;
+        ratingValue: string;
+        resetFilters: string;
+        results: string;
+        reviewer: string;
+        searchButton: string;
+        searchLabel: string;
+        searchPlaceholder: string;
+        showDialogDescription: string;
+        showDialogTitle: string;
+        showInStore: string;
+        showing: string;
+        showingInStore: string;
+        source: string;
+        sourceArchive: string;
+        sourceCustomer: string;
+        stateBelowThreshold: string;
+        stateHidden: string;
+        stateVisible: string;
+        status: string;
+        tableLabel: string;
+        title: string;
+        to: string;
+        visibilityConflictError: string;
+        visibilityHiddenMessage: string;
+        visibilityShownMessage: string;
+        visibilityUpdateFailed: string;
+    };
 };
 
 export type AdminNavigationChild = {
@@ -1510,6 +1571,7 @@ export type AdminNavigationChild = {
         | 'categories'
         | 'marketingCoupons'
         | 'marketingPromotions'
+        | 'marketingReviews'
         | 'marketingLoyalty';
     label: string;
     url: string;
@@ -2527,6 +2589,50 @@ export type AdminCategoryRow = {
     visibleProductsCount: number;
     createdAt: string;
     updatedAt: string;
+};
+
+export type AdminReviewRow = {
+    id: string;
+    reviewerName: string;
+    reviewerLocation: string | null;
+    rating: number;
+    excerpt: string;
+    bodyLocale: 'ar' | 'en';
+    order: { number: string; publicId: string } | null;
+    source: 'customer' | 'archive';
+    isVisible: boolean;
+    publishedAt: string | null;
+    createdAt: string;
+};
+
+export type AdminReviewsQueryState = {
+    search?: string | null;
+    status?: 'all' | 'visible' | 'hidden';
+    rating?: 'all' | '5' | '4' | '3' | '2' | '1';
+    source?: 'all' | 'customer' | 'archive';
+    per_page?: 15 | 25 | 50 | 100;
+    page?: number;
+};
+
+export type AdminReviewsPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    reviews: AdminReviewRow[];
+    pagination: AdminPagination;
+    filters: AdminReviewsQueryState;
+    filterOptions: {
+        statuses: AdminFilterOption[];
+        ratings: AdminFilterOption[];
+        sources: AdminFilterOption[];
+        perPageOptions: number[];
+    };
+    orderUrlTemplate: string;
+    visibilityUrlTemplate: string;
+    logoutUrl: string;
 };
 
 export type AdminCategoriesQueryState = {
