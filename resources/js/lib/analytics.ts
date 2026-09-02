@@ -30,6 +30,29 @@ export type AnalyticsItem = {
 
 type Vendors = { ga4?: string; meta?: string; tiktok?: string };
 
+export type MetaPixel = {
+    (...args: unknown[]): void;
+    callMethod?: (...args: unknown[]) => void;
+    push: MetaPixel;
+    loaded: boolean;
+    version: string;
+    queue: unknown[][];
+};
+
+export type TikTokPixel = unknown[][] & {
+    methods: string[];
+    setAndDefer: (target: TikTokPixel, method: string) => void;
+    instance: (pixelId: string) => TikTokPixel;
+    load: (pixelId: string, options?: Record<string, unknown>) => void;
+    page: () => void;
+    track: (event: string, params?: Record<string, unknown>) => void;
+    _i?: Record<string, TikTokPixel>;
+    _t?: Record<string, number>;
+    _o?: Record<string, Record<string, unknown>>;
+    _u?: string;
+    [method: string]: unknown;
+};
+
 let initialised = false;
 let vendorsLoaded = false;
 
@@ -131,10 +154,13 @@ function injectScript(src: string): void {
 
 function loadGa4(id: string) {
     window.dataLayer = window.dataLayer ?? [];
+    // Mirrors Google's stub exactly: gtag.js reads `arguments` objects off
+    // the dataLayer, not arrays, so the rest parameter form would be ignored.
     window.gtag =
         window.gtag ??
-        function gtag(...args: unknown[]) {
-            window.dataLayer?.push(args);
+        function gtag() {
+            // eslint-disable-next-line prefer-rest-params
+            window.dataLayer?.push(arguments);
         };
     window.gtag('consent', 'update', {
         ad_storage: 'granted',
@@ -149,15 +175,22 @@ function loadGa4(id: string) {
 
 function loadMeta(id: string) {
     if (window.fbq === undefined) {
-        // The official base snippet, expressed without the minified IIFE: a
-        // queueing stub until fbevents.js takes over.
-        const queue: unknown[] = [];
-        const stub = ((...args: unknown[]) => {
-            queue.push(args);
-        }) as NonNullable<Window['fbq']>;
+        // Meta's base snippet, un-minified: calls queue until fbevents.js
+        // arrives, which then installs `callMethod` and drains the queue.
+        const stub = function fbq(...args: unknown[]) {
+            if (stub.callMethod !== undefined) {
+                stub.callMethod(...args);
+            } else {
+                stub.queue.push(args);
+            }
+        } as MetaPixel;
 
-        stub.queue = queue;
+        stub.push = stub;
+        stub.loaded = true;
+        stub.version = '2.0';
+        stub.queue = [];
         window.fbq = stub;
+        window._fbq = window._fbq ?? stub;
         injectScript('https://connect.facebook.net/en_US/fbevents.js');
     }
 
@@ -166,32 +199,71 @@ function loadMeta(id: string) {
     window.fbq('consent', 'grant');
 }
 
+const TIKTOK_METHODS = [
+    'page',
+    'track',
+    'identify',
+    'instances',
+    'debug',
+    'on',
+    'off',
+    'once',
+    'ready',
+    'alias',
+    'group',
+    'enableCookie',
+    'disableCookie',
+    'holdConsent',
+    'revokeConsent',
+    'grantConsent',
+] as const;
+
 function loadTikTok(id: string) {
     if (window.ttq !== undefined) {
         return;
     }
 
-    // Queueing stub mirroring TikTok's base code: calls made before
-    // events.js arrives are replayed by the library from `ttq._q`.
-    const queue: unknown[][] = [];
-    const stub = {
-        _q: queue,
-        load(pixelId: string) {
-            queue.push(['load', pixelId]);
-        },
-        page() {
-            queue.push(['page']);
-        },
-        track(event: string, params?: Record<string, unknown>) {
-            queue.push(['track', event, params]);
-        },
+    // TikTok's base snippet, un-minified: `ttq` is an array that records
+    // calls until events.js arrives; the library expects `_i`, `_t` and `_o`
+    // per pixel id and the global object name. Confirm against the snippet
+    // in Events Manager when the real pixel id is configured.
+    const library = 'https://analytics.tiktok.com/i18n/pixel/events.js';
+    const ttq = [] as unknown as TikTokPixel;
+
+    window.TiktokAnalyticsObject = 'ttq';
+    ttq.methods = [...TIKTOK_METHODS];
+    ttq.setAndDefer = (target, method) => {
+        target[method] = (...args: unknown[]) => {
+            target.push([method, ...args]);
+        };
     };
 
-    window.ttq = stub;
-    injectScript(
-        `https://analytics.tiktok.com/i18n/pixel/events.js?sdkid=${id}&lib=ttq`,
-    );
-    stub.load(id);
+    for (const method of ttq.methods) {
+        ttq.setAndDefer(ttq, method);
+    }
+
+    ttq.instance = (pixelId) => {
+        const instance = ttq._i?.[pixelId] ?? ([] as unknown as TikTokPixel);
+
+        for (const method of ttq.methods) {
+            ttq.setAndDefer(instance, method);
+        }
+
+        return instance;
+    };
+    ttq.load = (pixelId, options) => {
+        ttq._i = ttq._i ?? {};
+        ttq._i[pixelId] = [] as unknown as TikTokPixel;
+        ttq._i[pixelId]._u = library;
+        ttq._t = ttq._t ?? {};
+        ttq._t[pixelId] = Date.now();
+        ttq._o = ttq._o ?? {};
+        ttq._o[pixelId] = options ?? {};
+        injectScript(`${library}?sdkid=${pixelId}&lib=ttq`);
+    };
+
+    window.ttq = ttq;
+    ttq.load(id);
 }
 
 function loadVendors() {
@@ -386,7 +458,6 @@ export function trackPurchase(order: {
 export function grantConsent() {
     writeConsent('granted');
     loadVendors();
-    trackPageView();
 }
 
 export function declineConsent() {
@@ -421,7 +492,8 @@ export function initAnalytics() {
     initialised = true;
     applyTrackingQuery();
     loadVendors();
-    trackPageView();
+    // Inertia fires `navigate` for the first page as well, so this single
+    // listener covers the initial load and every client-side visit.
     router.on('navigate', (event) => {
         trackPageView(
             new URL(event.detail.page.url, window.location.origin).pathname,

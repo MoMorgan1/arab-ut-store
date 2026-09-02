@@ -28,12 +28,10 @@ declare global {
         __arabutAnalytics?: { ga4?: string; meta?: string; tiktok?: string };
         dataLayer?: unknown[];
         gtag?: (...args: unknown[]) => void;
-        fbq?: ((...args: unknown[]) => void) & { queue?: unknown[] };
-        ttq?: {
-            load: (id: string) => void;
-            page: () => void;
-            track: (event: string, params?: Record<string, unknown>) => void;
-        };
+        fbq?: import('@/lib/analytics').MetaPixel;
+        _fbq?: import('@/lib/analytics').MetaPixel;
+        ttq?: import('@/lib/analytics').TikTokPixel;
+        TiktokAnalyticsObject?: string;
     }
 }
 

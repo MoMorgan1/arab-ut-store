@@ -20,6 +20,24 @@ vi.mock('@inertiajs/react', () => ({
     router: { on: vi.fn(() => () => undefined) },
 }));
 
+type NavigateHandler = (event: { detail: { page: { url: string } } }) => void;
+
+/** Inertia fires `navigate` for the first page too; replay it here. */
+function navigate(url = '/') {
+    const call = vi
+        .mocked(router.on)
+        .mock.calls.find(([name]) => name === 'navigate');
+    const handler = call?.[1] as unknown as NavigateHandler | undefined;
+
+    handler?.({ detail: { page: { url } } });
+}
+
+function tiktokCalls(): unknown[][] {
+    return (window.ttq as unknown as unknown[][]).map((call) =>
+        call.slice(0, 2),
+    );
+}
+
 function clearCookie() {
     document.cookie = `${CONSENT_COOKIE}=; Max-Age=0; Path=/`;
 }
@@ -114,8 +132,9 @@ describe('with vendor ids', () => {
         window.history.replaceState(null, '', '/');
     });
 
-    it('loads the three vendors in the documented order and sends a page view', () => {
+    it('loads the three vendors in the documented order and sends one page view per navigation', () => {
         initAnalytics();
+        navigate('/');
 
         expect(trackingAllowed()).toBe(true);
         expect(injectedScripts()).toEqual([
@@ -125,7 +144,9 @@ describe('with vendor ids', () => {
         ]);
 
         // Google: consent update before config, no automatic page view.
-        const layer = window.dataLayer as unknown[][];
+        const layer = (window.dataLayer as ArrayLike<unknown>[]).map((call) =>
+            Array.from(call),
+        );
         expect(layer[0]).toEqual([
             'consent',
             'update',
@@ -137,10 +158,14 @@ describe('with vendor ids', () => {
             { send_page_view: false },
         ]);
         expect(
-            layer.find(
+            layer.filter(
                 (call) => call[0] === 'event' && call[1] === 'page_view',
             ),
-        ).toBeDefined();
+        ).toHaveLength(1);
+        expect(window.TiktokAnalyticsObject).toBe('ttq');
+        expect(window.ttq?._i?.TT1?._u).toBe(
+            'https://analytics.tiktok.com/i18n/pixel/events.js',
+        );
 
         // Meta: revoke before init, grant after.
         const fbq = window.fbq as NonNullable<Window['fbq']>;
@@ -151,9 +176,8 @@ describe('with vendor ids', () => {
         ]);
         expect(fbq.queue).toContainEqual(['track', 'PageView']);
 
-        // TikTok: load then page.
-        const ttq = window.ttq as unknown as { _q: unknown[][] };
-        expect(ttq._q).toEqual([['load', 'TT1'], ['page']]);
+        // TikTok: page view recorded on the queue array.
+        expect(tiktokCalls()).toEqual([['page']]);
     });
 
     it('fans an add-to-cart out in each vendor shape with SAR money', () => {
@@ -175,22 +199,24 @@ describe('with vendor ids', () => {
             itemLabel: 'Rivals',
         });
 
-        expect(window.dataLayer?.[0]).toEqual([
-            'event',
-            'add_to_cart',
-            {
-                value: 750,
-                currency: 'SAR',
-                items: [
-                    {
-                        item_id: 'division-rivals',
-                        item_name: 'Rivals',
-                        quantity: 1,
-                        price: 750,
-                    },
-                ],
-            },
-        ]);
+        expect(Array.from(window.dataLayer?.[0] as ArrayLike<unknown>)).toEqual(
+            [
+                'event',
+                'add_to_cart',
+                {
+                    value: 750,
+                    currency: 'SAR',
+                    items: [
+                        {
+                            item_id: 'division-rivals',
+                            item_name: 'Rivals',
+                            quantity: 1,
+                            price: 750,
+                        },
+                    ],
+                },
+            ],
+        );
 
         const fbq = window.fbq as NonNullable<Window['fbq']>;
         const meta = fbq.queue?.find(
@@ -206,8 +232,7 @@ describe('with vendor ids', () => {
         });
         expect(meta[3]).toEqual({ eventID: expect.any(String) });
 
-        const ttq = window.ttq as unknown as { _q: unknown[][] };
-        expect(ttq._q.at(-1)).toEqual([
+        expect((window.ttq as unknown as unknown[][]).at(-1)).toEqual([
             'track',
             'AddToCart',
             expect.objectContaining({
@@ -230,13 +255,17 @@ describe('with vendor ids', () => {
 
         trackAddToCart({ id: 'sbc-1', name: 'SBC', quantity: 1 });
 
-        expect(window.dataLayer?.[0]).toEqual([
-            'event',
-            'add_to_cart',
-            {
-                items: [{ item_id: 'sbc-1', item_name: 'SBC', quantity: 1 }],
-            },
-        ]);
+        expect(Array.from(window.dataLayer?.[0] as ArrayLike<unknown>)).toEqual(
+            [
+                'event',
+                'add_to_cart',
+                {
+                    items: [
+                        { item_id: 'sbc-1', item_name: 'SBC', quantity: 1 },
+                    ],
+                },
+            ],
+        );
     });
 
     it('sends begin_checkout with the payable amount', () => {
@@ -249,11 +278,13 @@ describe('with vendor ids', () => {
             20,
         );
 
-        expect(window.dataLayer?.[0]).toEqual([
-            'event',
-            'begin_checkout',
-            expect.objectContaining({ value: 20, currency: 'SAR' }),
-        ]);
+        expect(Array.from(window.dataLayer?.[0] as ArrayLike<unknown>)).toEqual(
+            [
+                'event',
+                'begin_checkout',
+                expect.objectContaining({ value: 20, currency: 'SAR' }),
+            ],
+        );
     });
 
     it('sends purchase once per order across reloads', () => {
@@ -275,9 +306,9 @@ describe('with vendor ids', () => {
         initAnalytics();
         expect(trackPurchase(order)).toBe(false);
 
-        const purchases = (window.dataLayer as unknown[][]).filter(
-            (call) => call[0] === 'event' && call[1] === 'purchase',
-        );
+        const purchases = (window.dataLayer as ArrayLike<unknown>[])
+            .map((call) => Array.from(call))
+            .filter((call) => call[0] === 'event' && call[1] === 'purchase');
         expect(purchases).toHaveLength(1);
         expect(purchases[0][2]).toEqual(
             expect.objectContaining({
@@ -287,9 +318,8 @@ describe('with vendor ids', () => {
             }),
         );
 
-        const ttq = window.ttq as unknown as { _q: unknown[][] };
         expect(
-            ttq._q.find((call) => call[1] === 'CompletePayment'),
+            tiktokCalls().find((call) => call[1] === 'CompletePayment'),
         ).toBeDefined();
     });
 
