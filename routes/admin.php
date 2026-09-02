@@ -44,6 +44,8 @@ use App\Http\Controllers\Admin\ReviewVisibilityController;
 use App\Http\Controllers\Admin\ServicePricingController;
 use App\Http\Controllers\Admin\ServicePricingStatusController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\StorePageEditorController;
+use App\Http\Controllers\Admin\StorePagesController;
 use App\Http\Controllers\Admin\SupportUnreadCountController;
 use App\Http\Controllers\Admin\TeamGrantController;
 use App\Http\Controllers\Admin\TeamRoleController;
@@ -54,6 +56,7 @@ use App\Http\Controllers\Admin\TrustedDeviceController;
 use App\Http\Controllers\Admin\UpdateCouponController;
 use App\Http\Controllers\Admin\UpdateFaqEntryController;
 use App\Http\Controllers\Admin\UpdatePromotionController;
+use App\Http\Controllers\Admin\UpdateStorePageController;
 use App\Http\Controllers\Admin\VariantPriceController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureAdminAccess;
@@ -469,6 +472,30 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $deleteFaq->defaults('locale', $locale);
+                }
+
+                $storePages = Route::get('/marketing/pages', StorePagesController::class)
+                    ->middleware('can:marketing.view')
+                    ->name('marketing.pages');
+
+                if ($locale !== null) {
+                    $storePages->defaults('locale', $locale);
+                }
+
+                $editStorePage = Route::get('/marketing/pages/{key}', StorePageEditorController::class)
+                    ->middleware('can:marketing.view')
+                    ->name('marketing.pages.edit');
+
+                if ($locale !== null) {
+                    $editStorePage->defaults('locale', $locale);
+                }
+
+                $updateStorePage = Route::put('/api/marketing/pages/{key}', UpdateStorePageController::class)
+                    ->middleware('can:marketing.manage')
+                    ->name('marketing.pages.update');
+
+                if ($locale !== null) {
+                    $updateStorePage->defaults('locale', $locale);
                 }
 
                 $promotions = Route::get('/marketing/promotions', PromotionsController::class)

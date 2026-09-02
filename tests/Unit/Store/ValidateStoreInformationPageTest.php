@@ -7,6 +7,7 @@ function validInformationPageTranslation(): array
     return [
         'title' => 'Privacy Policy',
         'subtitle' => 'How we handle information.',
+        'updated_label' => '12 August 2026',
         'blocks' => [
             ['type' => 'paragraph', 'content' => [['text' => 'Introduction.']]],
             ['type' => 'heading', 'level' => 2, 'text' => 'Details'],
@@ -23,7 +24,6 @@ function validInformationPageMeta(): array
         'home' => 'Home',
         'breadcrumb_label' => 'Breadcrumb',
         'updated_label' => 'Last updated',
-        'updated_value' => '12 August 2026',
         'support_title' => 'Have a question?',
         'support_subtitle' => 'Our team is ready to help',
         'support_action' => 'Contact us',
@@ -89,17 +89,19 @@ test('it rejects malformed information page contracts', function (Closure $mutat
         $meta,
         $url,
     ],
-    'missing metadata' => fn ($page, $meta, $url) => [$page, array_diff_key($meta, ['updated_value' => true]), $url],
+    'missing metadata' => fn ($page, $meta, $url) => [$page, array_diff_key($meta, ['updated_label' => true]), $url],
+    'missing updated label' => fn ($page, $meta, $url) => [array_diff_key($page, ['updated_label' => true]), array_diff_key($meta, ['updated_value' => true]), $url],
     'unapproved support host' => fn ($page, $meta, $url) => [$page, $meta, 'https://example.com/contact'],
 ]);
 
 test('all ten localized information page contracts pass the server validator', function (string $locale, string $key) {
-    $translations = require dirname(__DIR__, 3)."/lang/{$locale}/store_pages.php";
+    $seedData = require dirname(__DIR__, 3)."/database/seeders/data/store_pages/{$locale}.php";
+    $metaTranslations = require dirname(__DIR__, 3)."/lang/{$locale}/store_pages.php";
 
     $page = (new ValidateStoreInformationPage)->validate(
         $key,
-        $translations['pages'][$key],
-        $translations['meta'],
+        $seedData[$key],
+        $metaTranslations['meta'],
         'https://wa.me/966537998099',
     );
 

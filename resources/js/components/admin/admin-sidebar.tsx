@@ -4,6 +4,7 @@ import {
     BadgePercent,
     CircleHelp,
     Ellipsis,
+    FileText,
     FolderTree,
     LayoutDashboard,
     LogOut,
@@ -40,6 +41,7 @@ const navigationIcons: Record<string, LucideIcon> = {
     marketingReviews: Star,
     marketingLoyalty: Award,
     marketingFaq: CircleHelp,
+    marketingPages: FileText,
     settings: Settings,
     more: Ellipsis,
 };

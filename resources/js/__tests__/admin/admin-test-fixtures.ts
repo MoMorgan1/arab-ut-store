@@ -6,6 +6,9 @@ import type {
     AdminLoyaltyTier,
     AdminServicePricingData,
     AdminServicePricingUrls,
+    AdminStorePageEditorPageProps,
+    AdminStorePageRow,
+    AdminStorePagesPageProps,
     AdminTeamData,
     AdminTeamUrls,
     AdminTranslations,
@@ -2741,3 +2744,122 @@ export const sampleAdminCategoriesPageProps: AdminCategoriesPageProps = {
     visibilityUrlTemplate: '/admin/api/categories/__ID__/visibility',
     logoutUrl: '/logout',
 };
+
+export const sampleAdminStorePageRows: AdminStorePageRow[] = [
+    {
+        key: 'privacy',
+        titleAr: 'سياسة الخصوصية',
+        titleEn: 'Privacy Policy',
+        blockCount: 4,
+        address: '/privacy',
+        updatedLabel: '٢ سبتمبر ٢٠٢٦',
+        editUrl: '/admin/marketing/pages/privacy',
+    },
+    {
+        key: 'returns',
+        titleAr: 'الاسترجاع والإلغاء',
+        titleEn: 'Refunds and Cancellations',
+        blockCount: 3,
+        address: '/returns',
+        updatedLabel: '٢ سبتمبر ٢٠٢٦',
+        editUrl: '/admin/marketing/pages/returns',
+    },
+    {
+        key: 'warranty',
+        titleAr: 'الضمان والتعويض',
+        titleEn: 'Warranty and Compensation',
+        blockCount: 3,
+        address: '/warranty',
+        updatedLabel: '٢ سبتمبر ٢٠٢٦',
+        editUrl: '/admin/marketing/pages/warranty',
+    },
+    {
+        key: 'ea_backup_codes',
+        titleAr: 'الأكواد الاحتياطية لحساب EA',
+        titleEn: 'EA Account Backup Codes',
+        blockCount: 4,
+        address: '/ea-backup-codes',
+        updatedLabel: '٢ سبتمبر ٢٠٢٦',
+        editUrl: '/admin/marketing/pages/ea_backup_codes',
+    },
+    {
+        key: 'terms',
+        titleAr: 'الشروط والأحكام',
+        titleEn: 'Terms and Conditions',
+        blockCount: 5,
+        address: '/terms',
+        updatedLabel: '٢ سبتمبر ٢٠٢٦',
+        editUrl: '/admin/marketing/pages/terms',
+    },
+];
+
+export const sampleAdminStorePagesPageProps: AdminStorePagesPageProps = {
+    locale: 'en',
+    direction: 'ltr',
+    adminUi: englishAdminUi,
+    adminIdentity: sampleAdminCategoriesPageProps.adminIdentity,
+    adminNavigation: sampleAdminCategoriesPageProps.adminNavigation,
+    permissions: ['marketing.view', 'marketing.manage'],
+    pages: sampleAdminStorePageRows,
+    canManage: true,
+    logoutUrl: '/logout',
+};
+
+export const sampleAdminStorePageEditorPageProps: AdminStorePageEditorPageProps =
+    {
+        locale: 'en',
+        direction: 'ltr',
+        adminUi: englishAdminUi,
+        adminIdentity: sampleAdminCategoriesPageProps.adminIdentity,
+        adminNavigation: sampleAdminCategoriesPageProps.adminNavigation,
+        permissions: ['marketing.view', 'marketing.manage'],
+        pageKey: 'privacy',
+        storeUrl: '/privacy',
+        saveUrl: '/admin/api/marketing/pages/privacy',
+        content: {
+            ar: {
+                title: 'سياسة الخصوصية',
+                subtitle: 'وصف فرعي توضيحي',
+                updatedLabel: '٢ سبتمبر ٢٠٢٦',
+                blocks: [
+                    { type: 'heading', level: 2, text: 'مقدمة رئيسية' },
+                    {
+                        type: 'paragraph',
+                        text: 'نص تجريبي مع **كلمات عريضة** ورابط [الدعم](https://help.ea.com).',
+                    },
+                    {
+                        type: 'list',
+                        ordered: false,
+                        text: 'عنصر أول\nعنصر ثانٍ',
+                    },
+                    { type: 'notice', tone: 'info', text: 'تنبيه معلوماتي' },
+                    { type: 'divider' },
+                ],
+            },
+            en: {
+                title: 'Privacy Policy',
+                subtitle: 'Explanatory subtitle',
+                updatedLabel: '2 September 2026',
+                blocks: [
+                    { type: 'heading', level: 2, text: 'Main Introduction' },
+                    {
+                        type: 'paragraph',
+                        text: 'Sample paragraph with **bold text** and [support link](https://help.ea.com).',
+                    },
+                    {
+                        type: 'list',
+                        ordered: false,
+                        text: 'First item\nSecond item',
+                    },
+                    {
+                        type: 'notice',
+                        tone: 'info',
+                        text: 'Informational notice',
+                    },
+                    { type: 'divider' },
+                ],
+            },
+        },
+        canManage: true,
+        logoutUrl: '/logout',
+    };

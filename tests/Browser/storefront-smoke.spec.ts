@@ -968,9 +968,9 @@ test('authenticated Admin overview and orders are operable across required width
                     const sidebar = page.locator('.admin-sidebar');
                     await expect(sidebar).toBeVisible();
                     // The sidebar lists every destination (including inline group children,
-                    // Reviews and FAQ under Marketing since 2026-09);
+                    // Reviews, FAQ, and Pages under Marketing since 2026-09);
                     // the tab bar caps at its five primary ones.
-                    await expect(sidebar.getByRole('link')).toHaveCount(12);
+                    await expect(sidebar.getByRole('link')).toHaveCount(13);
                     await expect(
                         sidebar.getByRole('link', { name: locale.overview }),
                     ).toHaveAttribute('aria-current', 'page');
