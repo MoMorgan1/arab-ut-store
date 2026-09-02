@@ -55,12 +55,14 @@ test('AdminShell emits the grouped navigation tree with catalog, marketing, and 
             'marketingPromotions',
             'marketingReviews',
             'marketingLoyalty',
+            'marketingFaq',
         ])
         ->and(array_column($marketingEntry['children'], 'url'))->toBe([
             '/admin/marketing/coupons',
             '/admin/marketing/promotions',
             '/admin/reviews',
             '/admin/marketing/loyalty',
+            '/admin/marketing/faq',
         ]);
 
     // Loyalty is NOT a top-level sibling

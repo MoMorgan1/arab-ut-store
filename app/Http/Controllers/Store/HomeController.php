@@ -6,6 +6,7 @@ use App\Actions\Pricing\BuildCoinsQuoteSchedule;
 use App\Enums\Platform;
 use App\Http\Controllers\Controller;
 use App\Services\Catalog\CoinsCatalogReader;
+use App\Services\Content\StoreFaqReader;
 use App\Services\Reviews\StoreReviewReader;
 use App\Validation\CoinsSelectionRules;
 use DomainException;
@@ -25,6 +26,7 @@ class HomeController extends Controller
         BuildCoinsQuoteSchedule $buildCoinsQuoteSchedule,
         StoreReviewReader $reviews,
         CoinsCatalogReader $catalog,
+        StoreFaqReader $faqReader,
     ): Response {
         $status = 'unavailable';
         $quoteSchedules = null;
@@ -62,7 +64,7 @@ class HomeController extends Controller
                 'reviews' => $reviews->homepage(app()->getLocale()),
                 'reviewsUrl' => $this->storeRoute($request, 'store.reviews'),
                 'reviewsTranslations' => trans('store.reviews'),
-                'faq' => trans('store.faq.entries'),
+                'faq' => $faqReader->entries(app()->getLocale()),
                 'faqTranslations' => [
                     'eyebrow' => trans('store.faq.eyebrow'),
                     'title' => trans('store.faq.title'),

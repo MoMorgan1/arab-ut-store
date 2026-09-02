@@ -20,7 +20,7 @@ export function FaqSection({
                 </header>
                 <div className="store-faq__list">
                     {entries.map((entry) => (
-                        <details key={entry.question}>
+                        <details key={entry.id}>
                             <summary>
                                 <span>{entry.question}</span>
                                 <svg

@@ -10,26 +10,29 @@ it('renders the unchanged four FAQs as native disclosures', () => {
         <FaqSection
             entries={[
                 {
-                    question: 'Ù…Ø§ Ø£ÙˆÙ‚Ø§Øª Ø¹Ù…Ù„ Ø§Ù„Ù…ØªØ¬Ø±ØŸ',
-                    answer: 'Ù…ØªÙˆØ§Ø¬Ø¯ÙŠÙ† Ø¨Ø®Ø¯Ù…ØªÙƒÙ… Ù¢Ù¤ Ø³Ø§Ø¹Ø© Ø¹Ù„Ù‰ Ù…Ø¯Ø§Ø± Ø§Ù„Ø£Ø³Ø¨ÙˆØ¹',
+                    answer: 'متواجدين بخدمتكم ٢٤ ساعة على مدار الأسبوع',
+                    id: 'faq-1',
+                    question: 'ما أوقات عمل المتجر؟',
                 },
                 {
-                    question: 'ÙƒÙ… ÙŠØ³ØªØºØ±Ù‚ ÙˆÙ‚Øª Ø·Ù„Ø¨ÙŠØŸ',
-                    answer: 'Ø¹Ù„Ù‰ Ø­Ø³Ø¨ Ø§Ù„ÙƒÙ…ÙŠØ© ÙˆØ§Ù„Ø¶ØºØ·.',
+                    answer: 'على حسب الكمية والضغط.',
+                    id: 'faq-2',
+                    question: 'كم يستغرق وقت طلبي؟',
                 },
                 {
-                    question: 'Ù†Ø³Ø¨Ø© Ø§Ù„Ø£Ù…Ø§Ù† Ø¹Ù„Ù‰ Ø­Ø³Ø§Ø¨ÙƒØŸ',
-                    answer: 'Ø·Ø±ÙŠÙ‚Ø© Ù†Ù‚Ù„ Ø¢Ù„ÙŠØ© Ø¢Ù…Ù†Ø©.',
+                    answer: 'طريقة نقل آلية آمنة.',
+                    id: 'faq-3',
+                    question: 'نسبة الأمان على حسابك؟',
                 },
                 {
-                    question:
-                        'ÙƒÙŠÙ ÙŠØªÙ… ØªØ³Ù„ÙŠÙ… Ø§Ù„ÙƒÙˆÙŠÙ†Ø² Ø¨Ø¹Ø¯ Ø§Ù„Ø´Ø±Ø§Ø¡ØŸ',
-                    answer: 'Ø¹Ù† Ø·Ø±ÙŠÙ‚ ØªØ·Ø¨ÙŠÙ‚ Companion.',
+                    answer: 'عن طريق تطبيق Companion.',
+                    id: 'faq-4',
+                    question: 'كيف يتم تسليم الكوينز بعد الشراء؟',
                 },
             ]}
             translations={{
-                eyebrow: 'Ø§Ù„Ø£Ø³Ø¦Ù„Ø© Ø§Ù„Ø´Ø§Ø¦Ø¹Ø©',
-                title: 'ÙƒÙ„ Ù…Ø§ ØªØ­ØªØ§Ø¬ Ù…Ø¹Ø±ÙØªÙ‡',
+                eyebrow: 'الأسئلة الشائعة',
+                title: 'كل ما تحتاج معرفته',
             }}
         />,
     );
@@ -42,8 +45,6 @@ it('renders the unchanged four FAQs as native disclosures', () => {
         ),
     ).toHaveLength(4);
     expect(
-        screen
-            .getByText('Ù…Ø§ Ø£ÙˆÙ‚Ø§Øª Ø¹Ù…Ù„ Ø§Ù„Ù…ØªØ¬Ø±ØŸ')
-            .closest('details'),
+        screen.getByText('ما أوقات عمل المتجر؟').closest('details'),
     ).toBeTruthy();
 });

@@ -11045,6 +11045,7 @@ html.admin-document {
     padding: 0 1.1rem 1.2rem;
     color: var(--arabut-muted);
     line-height: 1.8;
+    white-space: pre-line;
 }
 
 /* Reviews: trust summary, cards, rail, page filters */

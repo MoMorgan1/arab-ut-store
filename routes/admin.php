@@ -12,16 +12,21 @@ use App\Http\Controllers\Admin\ConversationTakeOverController;
 use App\Http\Controllers\Admin\CouponDetailController;
 use App\Http\Controllers\Admin\CouponsController;
 use App\Http\Controllers\Admin\CreateCouponController;
+use App\Http\Controllers\Admin\CreateFaqEntryController;
 use App\Http\Controllers\Admin\CreatePromotionController;
 use App\Http\Controllers\Admin\CustomerContactController;
 use App\Http\Controllers\Admin\CustomerDetailController;
 use App\Http\Controllers\Admin\CustomersController;
 use App\Http\Controllers\Admin\CustomerStatusController;
 use App\Http\Controllers\Admin\CustomerWalletAdjustController;
+use App\Http\Controllers\Admin\DeleteFaqEntryController;
 use App\Http\Controllers\Admin\DuplicateCouponController;
+use App\Http\Controllers\Admin\FaqController;
+use App\Http\Controllers\Admin\FaqEntryVisibilityController;
 use App\Http\Controllers\Admin\LoyaltyController;
 use App\Http\Controllers\Admin\LoyaltyTierController;
 use App\Http\Controllers\Admin\MoreController;
+use App\Http\Controllers\Admin\MoveFaqEntryController;
 use App\Http\Controllers\Admin\OrderDetailController;
 use App\Http\Controllers\Admin\OrderItemSecretRevealController;
 use App\Http\Controllers\Admin\OrdersController;
@@ -47,6 +52,7 @@ use App\Http\Controllers\Admin\ToggleCouponStatusController;
 use App\Http\Controllers\Admin\TogglePromotionStatusController;
 use App\Http\Controllers\Admin\TrustedDeviceController;
 use App\Http\Controllers\Admin\UpdateCouponController;
+use App\Http\Controllers\Admin\UpdateFaqEntryController;
 use App\Http\Controllers\Admin\UpdatePromotionController;
 use App\Http\Controllers\Admin\VariantPriceController;
 use App\Http\Middleware\EnsureActiveUser;
@@ -415,6 +421,54 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $reviewVisibility->defaults('locale', $locale);
+                }
+
+                $faq = Route::get('/marketing/faq', FaqController::class)
+                    ->middleware('can:marketing.view')
+                    ->name('marketing.faq');
+
+                if ($locale !== null) {
+                    $faq->defaults('locale', $locale);
+                }
+
+                $createFaq = Route::post('/api/marketing/faq', CreateFaqEntryController::class)
+                    ->middleware('can:marketing.manage')
+                    ->name('marketing.faq.store');
+
+                if ($locale !== null) {
+                    $createFaq->defaults('locale', $locale);
+                }
+
+                $updateFaq = Route::put('/api/marketing/faq/{publicId}', UpdateFaqEntryController::class)
+                    ->middleware('can:marketing.manage')
+                    ->name('marketing.faq.update');
+
+                if ($locale !== null) {
+                    $updateFaq->defaults('locale', $locale);
+                }
+
+                $faqVisibility = Route::post('/api/marketing/faq/{publicId}/visibility', FaqEntryVisibilityController::class)
+                    ->middleware('can:marketing.manage')
+                    ->name('marketing.faq.visibility.store');
+
+                if ($locale !== null) {
+                    $faqVisibility->defaults('locale', $locale);
+                }
+
+                $moveFaq = Route::post('/api/marketing/faq/{publicId}/move', MoveFaqEntryController::class)
+                    ->middleware('can:marketing.manage')
+                    ->name('marketing.faq.move');
+
+                if ($locale !== null) {
+                    $moveFaq->defaults('locale', $locale);
+                }
+
+                $deleteFaq = Route::delete('/api/marketing/faq/{publicId}', DeleteFaqEntryController::class)
+                    ->middleware('can:marketing.manage')
+                    ->name('marketing.faq.destroy');
+
+                if ($locale !== null) {
+                    $deleteFaq->defaults('locale', $locale);
                 }
 
                 $promotions = Route::get('/marketing/promotions', PromotionsController::class)

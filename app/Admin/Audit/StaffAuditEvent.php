@@ -25,7 +25,7 @@ final readonly class StaffAuditEvent
         public array $metadata,
         public ?string $ipAddress,
     ) {
-        if (preg_match('/\A[a-z][a-z0-9]*(?:\.[a-z0-9_]+)+\z/', $action) !== 1) {
+        if (preg_match('/\A[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+\z/', $action) !== 1) {
             throw new InvalidArgumentException('Audit action names must be stable dotted identifiers.');
         }
 
