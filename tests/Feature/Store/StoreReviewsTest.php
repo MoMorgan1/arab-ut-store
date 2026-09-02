@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Review;
 use App\Services\Reviews\StoreReviewReader;
 use Illuminate\Support\Facades\Http;
@@ -96,4 +98,76 @@ test('the homepage prioritizes written reviews over newer rating-only entries', 
 
     expect(array_slice(array_column($homepage['items'], 'body'), 0, 2))
         ->toBe(['تفاصيل تجربة أولى', 'تفاصيل تجربة ثانية']);
+});
+
+function storeReviewsFixture(): void
+{
+    foreach ([
+        ['a', 5, 'خدمة ممتازة', 'Excellent service', false, 3],
+        ['b', 5, trans('store.reviews.rating_without_comment', locale: 'ar'), null, false, 2],
+        ['c', 4, 'جيد جداً', 'Very good', true, 1],
+        ['d', 4, 'سريع', 'Fast', false, 0],
+    ] as [$key, $rating, $bodyAr, $bodyEn, $verified, $daysAgo]) {
+        $review = Review::create([
+            'reviewer_name' => "Reviewer {$key}",
+            'rating' => $rating,
+            'body_ar' => $bodyAr,
+            'body_en' => $bodyEn,
+            'source' => 'salla-import',
+            'source_key' => 'salla-import',
+            'external_id' => "fixture-{$key}",
+            'content_hash' => hash('sha256', "fixture-{$key}"),
+            'is_visible' => true,
+            'published_at' => now()->subDays($daysAgo),
+        ]);
+
+        if ($verified) {
+            $order = Order::factory()->create();
+            $item = OrderItem::factory()->for($order)->create();
+            $review->forceFill(['order_item_id' => $item->id])->save();
+        }
+    }
+}
+
+test('the summary carries the star distribution and the verified count', function () {
+    storeReviewsFixture();
+
+    $summary = app(StoreReviewReader::class)->homepage('ar');
+
+    expect($summary['count'])->toBe(4)
+        ->and($summary['average'])->toBe(4.5)
+        ->and($summary['verifiedCount'])->toBe(1)
+        ->and(array_column($summary['distribution'], 'percent', 'rating'))->toBe([5 => 50, 4 => 50, 3 => 0, 2 => 0, 1 => 0])
+        ->and($summary['items'][0]['hasComment'])->toBeTrue();
+});
+
+test('the reviews page filters by rating, verified orders and comments, and sorts by rating', function () {
+    storeReviewsFixture();
+
+    $reader = app(StoreReviewReader::class);
+    $names = fn (array $result): array => array_column($result['items'], 'reviewerName');
+
+    expect($names($reader->paginate('ar', 1, ['rating' => '4'])))->toBe(['Reviewer d', 'Reviewer c'])
+        ->and($names($reader->paginate('ar', 1, ['verified' => true])))->toBe(['Reviewer c'])
+        ->and($names($reader->paginate('ar', 1, ['withComment' => true])))->toBe(['Reviewer d', 'Reviewer c', 'Reviewer a'])
+        ->and($names($reader->paginate('ar', 1, ['sort' => 'highest'])))->toBe(['Reviewer b', 'Reviewer a', 'Reviewer d', 'Reviewer c'])
+        ->and($reader->paginate('ar', 1, ['rating' => '4'])['count'])->toBe(4);
+});
+
+test('the reviews page accepts only the allow-listed filters and exposes them', function () {
+    storeReviewsFixture();
+
+    $this->get('/reviews?rating=4&verified=1&sort=highest')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.rating', '4')
+            ->where('filters.verified', true)
+            ->where('filters.withComment', false)
+            ->where('filters.sort', 'highest')
+            ->where('rateUrl', '/my-account/orders')
+            ->has('reviews.items', 1)
+            ->has('reviews.distribution', 5));
+
+    $this->get('/reviews?rating=3')->assertSessionHasErrors('rating');
+    $this->get('/en/reviews?sort=oldest')->assertSessionHasErrors('sort');
 });

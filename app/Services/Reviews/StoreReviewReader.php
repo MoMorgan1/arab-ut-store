@@ -8,32 +8,54 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Lang;
 
+/**
+ * What the storefront may say about its reviews.
+ *
+ * Only visible, published rows rated four or above ever leave this class, on
+ * the home page and on /reviews alike; the summary (average, star
+ * distribution, verified count) is computed over that same set, so the
+ * numbers a visitor reads always describe the cards they can scroll to.
+ */
 final class StoreReviewReader
 {
-    /** @return array{average: float|null, count: int, items: list<array<string, mixed>>} */
+    public const PER_PAGE = 12;
+
+    /** @var list<string> */
+    public const RATING_FILTERS = ['5', '4'];
+
+    /** @var list<string> */
+    public const SORTS = ['newest', 'highest'];
+
+    /**
+     * @return array{average: float|null, count: int, distribution: list<array{rating: int, count: int, percent: int}>, verifiedCount: int, items: list<array<string, mixed>>}
+     */
     public function homepage(string $locale): array
     {
         $query = $this->visible();
-        $count = (clone $query)->count();
-        $average = $count > 0 ? round((float) (clone $query)->avg('rating'), 1) : null;
         $items = array_values($this->homepageItems($query, $locale)
             ->map(fn (Review $review) => $this->project($review, $locale))
             ->all());
 
-        return ['average' => $average, 'count' => $count, 'items' => $items];
+        return [...$this->summary($query), 'items' => $items];
     }
 
-    /** @return array{average: float|null, count: int, items: list<array<string, mixed>>, pagination: array<string, int>} */
-    public function paginate(string $locale, int $page): array
+    /**
+     * @param  array{rating?: string|null, verified?: bool, withComment?: bool, sort?: string|null}  $filters
+     * @return array{average: float|null, count: int, distribution: list<array{rating: int, count: int, percent: int}>, verifiedCount: int, items: list<array<string, mixed>>, pagination: array<string, int>}
+     */
+    public function paginate(string $locale, int $page, array $filters = []): array
     {
-        $base = $this->visible();
-        $count = (clone $base)->count();
-        $average = $count > 0 ? round((float) (clone $base)->avg('rating'), 1) : null;
-        $paginator = $base->paginate(12, ['*'], 'page', $page);
+        $summary = $this->summary($this->visible());
+        $query = $this->filtered($this->visible(), $filters, $locale);
+
+        if (($filters['sort'] ?? 'newest') === 'highest') {
+            $query->reorder()->orderByDesc('rating')->latest('published_at')->latest('id');
+        }
+
+        $paginator = $query->paginate(self::PER_PAGE, ['*'], 'page', $page);
 
         return [
-            'average' => $average,
-            'count' => $count,
+            ...$summary,
             'items' => array_values(collect($paginator->items())
                 ->map(fn (Review $review) => $this->project($review, $locale))
                 ->all()),
@@ -44,6 +66,87 @@ final class StoreReviewReader
                 'total' => $paginator->total(),
             ],
         ];
+    }
+
+    /**
+     * @param  Builder<Review>  $query
+     * @return array{average: float|null, count: int, distribution: list<array{rating: int, count: int, percent: int}>, verifiedCount: int}
+     */
+    private function summary(Builder $query): array
+    {
+        // One grouped query feeds the whole summary; the homepage has a
+        // query budget and every extra round trip here is paid on every visit.
+        /** @var list<object{rating: int|string, aggregate: int|string, verified: int|string|null}> $rows */
+        $rows = (clone $query)
+            ->reorder()
+            ->selectRaw(
+                'rating, COUNT(*) AS aggregate, '
+                .'SUM(CASE WHEN order_id IS NOT NULL OR order_item_id IS NOT NULL THEN 1 ELSE 0 END) AS verified',
+            )
+            ->groupBy('rating')
+            ->get()
+            ->all();
+        $byRating = [];
+        $count = 0;
+        $weighted = 0;
+        $verifiedCount = 0;
+
+        foreach ($rows as $row) {
+            $rating = (int) $row->rating;
+            $aggregate = (int) $row->aggregate;
+            $byRating[$rating] = $aggregate;
+            $count += $aggregate;
+            $weighted += $rating * $aggregate;
+            $verifiedCount += (int) ($row->verified ?? 0);
+        }
+
+        $distribution = [];
+
+        foreach ([5, 4, 3, 2, 1] as $rating) {
+            $ratingCount = $byRating[$rating] ?? 0;
+            $distribution[] = [
+                'rating' => $rating,
+                'count' => $ratingCount,
+                'percent' => $count > 0 ? (int) round($ratingCount * 100 / $count) : 0,
+            ];
+        }
+
+        return [
+            'average' => $count > 0 ? round($weighted / $count, 1) : null,
+            'count' => $count,
+            'distribution' => $distribution,
+            'verifiedCount' => $verifiedCount,
+        ];
+    }
+
+    /**
+     * @param  Builder<Review>  $query
+     * @param  array{rating?: string|null, verified?: bool, withComment?: bool, sort?: string|null}  $filters
+     * @return Builder<Review>
+     */
+    private function filtered(Builder $query, array $filters, string $locale): Builder
+    {
+        $rating = $filters['rating'] ?? null;
+
+        if (is_string($rating) && in_array($rating, self::RATING_FILTERS, true)) {
+            $query->where('rating', (int) $rating);
+        }
+
+        if (($filters['verified'] ?? false) === true) {
+            $query->where(fn (Builder $verified) => $verified
+                ->whereNotNull('order_id')
+                ->orWhereNotNull('order_item_id'));
+        }
+
+        if (($filters['withComment'] ?? false) === true) {
+            [$preferredBody, $fallbackBody] = $this->bodyColumns($locale);
+            $query->whereRaw(
+                "COALESCE({$preferredBody}, {$fallbackBody}) NOT IN (?, ?)",
+                $this->ratingOnlyBodies(),
+            )->whereNotNull($locale === 'ar' ? 'body_ar' : 'body_en');
+        }
+
+        return $query;
     }
 
     /** @return Builder<Review> */
@@ -63,24 +166,33 @@ final class StoreReviewReader
      */
     private function homepageItems(Builder $query, string $locale): Collection
     {
-        [$preferredBody, $fallbackBody] = $locale === 'ar'
-            ? ['body_ar', 'body_en']
-            : ['body_en', 'body_ar'];
-        $ratingOnlyBodies = [
-            Lang::get('store.reviews.rating_without_comment', [], 'ar'),
-            Lang::get('store.reviews.rating_without_comment', [], 'en'),
-        ];
+        [$preferredBody, $fallbackBody] = $this->bodyColumns($locale);
 
         return (clone $query)
             ->reorder()
             ->orderByRaw(
                 "CASE WHEN COALESCE({$preferredBody}, {$fallbackBody}) IN (?, ?) THEN 1 ELSE 0 END",
-                $ratingOnlyBodies,
+                $this->ratingOnlyBodies(),
             )
             ->latest('published_at')
             ->latest('id')
             ->limit(6)
             ->get();
+    }
+
+    /** @return array{0: literal-string, 1: literal-string} */
+    private function bodyColumns(string $locale): array
+    {
+        return $locale === 'ar' ? ['body_ar', 'body_en'] : ['body_en', 'body_ar'];
+    }
+
+    /** @return array{0: string, 1: string} */
+    private function ratingOnlyBodies(): array
+    {
+        return [
+            (string) Lang::get('store.reviews.rating_without_comment', [], 'ar'),
+            (string) Lang::get('store.reviews.rating_without_comment', [], 'en'),
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -94,15 +206,17 @@ final class StoreReviewReader
             ? Lang::get('store.reviews.anonymous_customer', [], $locale)
             : $review->reviewer_name;
         $publishedAt = CarbonImmutable::make($review->getRawOriginal('published_at'));
+        $body = $locale === 'ar'
+            ? ($review->body_ar ?? $review->body_en)
+            : ($review->body_en ?? $review->body_ar);
 
         return [
             'id' => $review->public_id,
             'reviewerName' => $name,
             'reviewerLocation' => $review->reviewer_location,
             'rating' => $review->rating,
-            'body' => $locale === 'ar'
-                ? ($review->body_ar ?? $review->body_en)
-                : ($review->body_en ?? $review->body_ar),
+            'body' => $body,
+            'hasComment' => $body !== null && ! in_array($body, $this->ratingOnlyBodies(), true),
             'verified' => $review->order_id !== null || $review->order_item_id !== null,
             'publishedAt' => $publishedAt?->toAtomString(),
         ];

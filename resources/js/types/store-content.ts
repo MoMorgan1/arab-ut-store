@@ -21,6 +21,7 @@ export type StoreHomeContent = {
     faq: FaqEntry[];
     faqTranslations: FaqTranslations;
     reviews: ReviewCollection;
+    reviewsRateUrl?: string;
     reviewsTranslations: ReviewTranslations;
     reviewsUrl: string;
     services: HomeServiceCard[];
@@ -29,6 +30,7 @@ export type StoreHomeContent = {
 
 export type ReviewItem = {
     body: string | null;
+    hasComment?: boolean;
     id: string;
     publishedAt: string | null;
     rating: number;
@@ -37,16 +39,52 @@ export type ReviewItem = {
     verified: boolean;
 };
 
+export type ReviewDistributionEntry = {
+    count: number;
+    percent: number;
+    rating: number;
+};
+
 export type ReviewCollection = {
     average: number | null;
     count: number;
+    distribution?: ReviewDistributionEntry[];
     items: ReviewItem[];
+    verifiedCount?: number;
+};
+
+export type ReviewFilterState = {
+    rating: string | null;
+    sort: string | null;
+    verified: boolean;
+    withComment: boolean;
 };
 
 export type ReviewTranslations = {
     anonymous_customer: string;
+    average_label?: string;
+    distribution_label?: string;
     empty: string;
     eyebrow: string;
+    filter_all?: string;
+    filter_five?: string;
+    filter_four?: string;
+    filter_verified?: string;
+    filter_with_comment?: string;
+    filters_label?: string;
+    intro?: string;
+    next_cards?: string;
+    of_count?: string;
+    page_of?: string;
+    previous_cards?: string;
+    rail_label?: string;
+    rate_your_order?: string;
+    read_all?: string;
+    sort_highest?: string;
+    sort_label?: string;
+    sort_newest?: string;
+    trust_badge?: string;
+    verified_count?: string;
     next?: string;
     pages?: string;
     previous?: string;
@@ -225,4 +263,6 @@ export type StoreReviewsPageProps = StoreBasePageProps & {
         };
     };
     reviewsPage: ReviewTranslations;
+    filters?: ReviewFilterState;
+    rateUrl?: string;
 };
