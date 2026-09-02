@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { FutChampionsConfigurator } from '@/components/configurator/manual-services/fut-champions-configurator';
 import { ManualServiceSuggestions } from '@/components/configurator/manual-services/manual-service-suggestions';
 import { RivalsConfigurator } from '@/components/configurator/manual-services/rivals-configurator';
+import { ServiceReviewsSection } from '@/components/store/service-reviews-section';
 import { StoreSeoHead } from '@/components/store/store-seo-head';
 import StoreLayout from '@/layouts/store-layout';
 import { riyals, trackViewItem } from '@/lib/analytics';
@@ -13,11 +14,16 @@ import type {
     ManualServicePageProps,
     RivalsServiceTranslations,
 } from '@/types/manual-services';
+import type { ServiceReviewsData } from '@/types/store-content';
 
 type ManualServiceTab = 'options' | 'guide';
 
 export default function StoreManualService() {
-    const page = usePage<ManualServicePageProps>();
+    const page = usePage<
+        ManualServicePageProps & {
+            serviceReviews?: ServiceReviewsData | null;
+        }
+    >();
     const props = page.props;
     const manual = props.manualService;
     const common = props.manualServicePage.common;
@@ -201,6 +207,11 @@ export default function StoreManualService() {
                         </div>
                     </section>
                 </div>
+                <ServiceReviewsSection
+                    direction={props.direction}
+                    locale={props.locale}
+                    serviceReviews={props.serviceReviews ?? null}
+                />
                 <ManualServiceSuggestions
                     common={common}
                     locale={props.locale}

@@ -14,6 +14,7 @@ use stdClass;
  *     status?: ?string,
  *     rating?: ?int,
  *     source?: ?string,
+ *     service?: ?string,
  *     per_page?: int,
  *     page?: int
  * }
@@ -26,6 +27,8 @@ use stdClass;
  *     bodyLocale: 'ar'|'en',
  *     order: array{number: string, publicId: string}|null,
  *     source: 'customer'|'archive',
+ *     serviceType: ?string,
+ *     serviceLabel: string,
  *     isVisible: bool,
  *     publishedAt: ?string,
  *     createdAt: string
@@ -61,6 +64,7 @@ final class ListAdminReviews
                 'reviews.body_ar',
                 'reviews.body_en',
                 'reviews.source',
+                'reviews.service_type',
                 'reviews.order_id',
                 'reviews.is_visible',
                 'reviews.published_at',
@@ -117,6 +121,12 @@ final class ListAdminReviews
             });
         }
 
+        $service = $filters['service'] ?? null;
+
+        if (is_string($service) && in_array($service, ['rivals', 'fut_champions', 'sbc', 'objectives'], true)) {
+            $query->where('reviews.service_type', $service);
+        }
+
         return $query;
     }
 
@@ -156,6 +166,14 @@ final class ListAdminReviews
                 ? $locale
                 : ($review->body_ar !== null && trim((string) $review->body_ar) !== '' ? 'ar' : 'en');
 
+            $serviceType = isset($review->service_type) && trim((string) $review->service_type) !== ''
+                ? (string) $review->service_type
+                : null;
+            $serviceLabel = '—';
+            if ($serviceType !== null && in_array($serviceType, ['rivals', 'fut_champions', 'sbc', 'objectives'], true)) {
+                $serviceLabel = (string) trans("store.reviews.service_names.{$serviceType}", [], $locale);
+            }
+
             return [
                 'id' => (string) $review->public_id,
                 'reviewerName' => (string) $review->reviewer_name,
@@ -174,6 +192,8 @@ final class ListAdminReviews
                     ]
                     : null,
                 'source' => $review->source === 'customer' ? 'customer' : 'archive',
+                'serviceType' => $serviceType,
+                'serviceLabel' => $serviceLabel,
                 'isVisible' => (bool) $review->is_visible,
                 'publishedAt' => $review->published_at !== null
                     ? Carbon::parse($review->published_at, 'UTC')->utc()->toIso8601String()

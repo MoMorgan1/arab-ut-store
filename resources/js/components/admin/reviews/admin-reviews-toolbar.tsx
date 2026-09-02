@@ -21,6 +21,7 @@ export type AdminReviewsToolbarProps = {
     adminUi: AdminTranslations;
     filterOptions: {
         ratings: AdminFilterOption[];
+        services: AdminFilterOption[];
         sources: AdminFilterOption[];
         statuses: AdminFilterOption[];
     };
@@ -55,7 +56,8 @@ export default function AdminReviewsToolbar({
         (filters.search ?? '') !== '' ||
         (filters.status ?? 'all') !== 'all' ||
         (filters.rating ?? 'all') !== 'all' ||
-        (filters.source ?? 'all') !== 'all';
+        (filters.source ?? 'all') !== 'all' ||
+        (filters.service ?? 'all') !== 'all';
 
     return (
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -138,6 +140,18 @@ export default function AdminReviewsToolbar({
                     }
                     options={filterOptions.sources}
                     value={filters.source ?? 'all'}
+                />
+                <ToolbarSelect
+                    disabled={isNavigating}
+                    label={copy.filterService}
+                    name="admin-reviews-service"
+                    onChange={(value) =>
+                        onFilterChange({
+                            service: value as AdminReviewsQueryState['service'],
+                        })
+                    }
+                    options={filterOptions.services}
+                    value={filters.service ?? 'all'}
                 />
                 {hasActiveFilters ? (
                     <Button

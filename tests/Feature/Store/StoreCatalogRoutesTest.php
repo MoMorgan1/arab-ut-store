@@ -5,6 +5,7 @@ use App\Enums\ServiceType;
 use App\Models\ExchangeRate;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Review;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -392,4 +393,54 @@ test('homepage service rail contract has equal ordered internal routes and the e
             ->where('homeContent.services.4.href', 'https://sell.arab-ut.com/')
             ->where('homeContent.services.4.imageUrl', '/images/store/services/sell-coins.webp')
             ->where('homeContent.services.4.external', true));
+});
+
+test('category product pages expose serviceReviews prop when threshold is met', function () {
+    createStoreCatalogProduct(ServiceType::Sbc, [
+        'slug' => 'sbc-test-product',
+    ]);
+
+    $this->get('/sbc/sbc-test-product')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('serviceReviews', null));
+
+    // Coins reviews never leak into the SBC block, however many there are.
+    foreach (range(1, 4) as $i) {
+        Review::create([
+            'reviewer_name' => "Coins Customer {$i}",
+            'rating' => 5,
+            'body_ar' => "كوينز وصلت بسرعة {$i}",
+            'source' => 'customer',
+            'is_visible' => true,
+            'service_type' => ServiceType::Coins->value,
+            'published_at' => now()->subMinutes($i),
+        ]);
+    }
+
+    $this->get('/sbc/sbc-test-product')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('serviceReviews', null));
+
+    foreach (range(1, 3) as $i) {
+        Review::create([
+            'reviewer_name' => "SBC Customer {$i}",
+            'rating' => 5,
+            'body_ar' => "خدمة تحديات رائعة {$i}",
+            'source' => 'customer',
+            'is_visible' => true,
+            'service_type' => ServiceType::Sbc->value,
+            'published_at' => now()->subMinutes($i),
+        ]);
+    }
+
+    $this->get('/sbc/sbc-test-product')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('serviceReviews.service', 'sbc')
+            ->where('serviceReviews.title', 'ماذا يقول عملاء التحديات')
+            ->where('serviceReviews.readAllUrl', '/reviews?service=sbc')
+            ->where('serviceReviews.reviews.count', 3)
+            ->has('serviceReviews.reviews.items', 3));
 });

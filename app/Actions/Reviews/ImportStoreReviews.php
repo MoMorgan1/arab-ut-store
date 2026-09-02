@@ -4,6 +4,7 @@ namespace App\Actions\Reviews;
 
 use App\Models\OrderItem;
 use App\Models\Review;
+use App\Services\Reviews\ResolveReviewService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -389,8 +390,12 @@ final class ImportStoreReviews
         }
 
         $locale = (string) ($validated['locale'] ?? 'ar');
-        $orderItemId = isset($validated['order_item_public_id'])
-            ? OrderItem::query()->where('public_id', $validated['order_item_public_id'])->value('id')
+        $orderItem = isset($validated['order_item_public_id'])
+            ? OrderItem::query()->where('public_id', $validated['order_item_public_id'])->first()
+            : null;
+        $orderItemId = $orderItem?->id;
+        $serviceType = $orderItem instanceof OrderItem
+            ? ResolveReviewService::forOrderItem($orderItem)
             : null;
         $hashInput = [
             'body' => $body,
@@ -411,6 +416,7 @@ final class ImportStoreReviews
             'rating' => (int) $validated['rating'],
             'body_ar' => $locale === 'ar' ? $body : null,
             'body_en' => $locale === 'en' ? $body : null,
+            'service_type' => $serviceType,
             'source' => 'n8n',
             'source_key' => self::SOURCE_KEY,
             'external_id' => (string) $validated['id'],
@@ -531,6 +537,7 @@ final class ImportStoreReviews
             'rating' => (int) $validated['rating'],
             'body_ar' => $locale === 'ar' ? $body : null,
             'body_en' => $locale === 'en' ? $body : null,
+            'service_type' => null,
             'source' => self::SALLA_ARCHIVE_SOURCE_KEY,
             'source_key' => self::SALLA_ARCHIVE_SOURCE_KEY,
             'external_id' => (string) $validated['id'],

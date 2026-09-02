@@ -16,6 +16,7 @@ final class ListAdminReviews extends FormRequest
         'status',
         'rating',
         'source',
+        'service',
         'per_page',
         'page',
     ];
@@ -35,6 +36,7 @@ final class ListAdminReviews extends FormRequest
             'status' => ['sometimes', 'nullable', 'string', Rule::in(['all', 'visible', 'hidden'])],
             'rating' => ['sometimes', 'nullable', 'string', Rule::in(['all', '5', '4', '3', '2', '1'])],
             'source' => ['sometimes', 'nullable', 'string', Rule::in(['all', 'customer', 'archive'])],
+            'service' => ['sometimes', 'nullable', 'string', Rule::in(['all', 'rivals', 'fut_champions', 'sbc', 'objectives'])],
             'per_page' => ['sometimes', 'integer', Rule::in([15, 25, 50, 100])],
             'page' => ['sometimes', 'integer', 'min:1'],
         ];
@@ -61,6 +63,7 @@ final class ListAdminReviews extends FormRequest
      *     status: 'all'|'visible'|'hidden',
      *     rating: 'all'|'5'|'4'|'3'|'2'|'1',
      *     source: 'all'|'customer'|'archive',
+     *     service: 'all'|'rivals'|'fut_champions'|'sbc'|'objectives',
      *     per_page: 15|25|50|100,
      *     page: int
      * }
@@ -89,6 +92,11 @@ final class ListAdminReviews extends FormRequest
             $source = 'all';
         }
 
+        $service = (string) ($validated['service'] ?? 'all');
+        if (! in_array($service, ['all', 'rivals', 'fut_champions', 'sbc', 'objectives'], true)) {
+            $service = 'all';
+        }
+
         $perPage = (int) ($validated['per_page'] ?? 15);
         if (! in_array($perPage, [15, 25, 50, 100], true)) {
             $perPage = 15;
@@ -99,6 +107,7 @@ final class ListAdminReviews extends FormRequest
             'status' => $status,
             'rating' => $rating,
             'source' => $source,
+            'service' => $service,
             'per_page' => $perPage,
             'page' => max(1, (int) ($validated['page'] ?? 1)),
         ];

@@ -7438,6 +7438,16 @@ html.admin-document {
     animation: manual-section-in 320ms var(--store-ease-out) both;
 }
 
+.service-reviews-section {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.service-reviews-section__header {
+    display: grid;
+    gap: 0.25rem;
+}
+
 .manual-section .coins-choice {
     background: var(--manual-glass-bg);
     border: var(--manual-glass-border);

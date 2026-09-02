@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { CatalogAddControl } from '@/components/store/catalog/catalog-add-control';
 import { SbcCatalogCard } from '@/components/store/catalog/sbc-catalog-card';
 import { SbcProductConfigurator } from '@/components/store/catalog/sbc-product-configurator';
+import { ServiceReviewsSection } from '@/components/store/service-reviews-section';
 import { StoreSeoHead } from '@/components/store/store-seo-head';
 import StoreLayout from '@/layouts/store-layout';
 import { riyals, trackViewItem } from '@/lib/analytics';
@@ -201,6 +202,11 @@ export default function StoreCatalogProduct() {
                         )}
                     </section>
                 </div>
+                <ServiceReviewsSection
+                    direction={props.direction}
+                    locale={props.locale}
+                    serviceReviews={props.serviceReviews ?? null}
+                />
                 {isSbc && props.catalog.suggestions.length > 0 ? (
                     <section
                         aria-labelledby="sbc-related-title"

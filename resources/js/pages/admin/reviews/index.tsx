@@ -49,7 +49,13 @@ export default function AdminReviewsIndex(props: AdminReviewsPageProps) {
         setFeedbackMessage(null);
         setConflictAlert(null);
 
-        router.get(window.location.pathname, buildReviewsQuery(merged), {
+        const queryParams = buildReviewsQuery(merged);
+
+        if (merged.service && merged.service !== 'all') {
+            queryParams.service = merged.service;
+        }
+
+        router.get(window.location.pathname, queryParams, {
             preserveScroll: true,
             preserveState: true,
             onError: () => {
@@ -76,6 +82,7 @@ export default function AdminReviewsIndex(props: AdminReviewsPageProps) {
                 status: 'all',
                 rating: 'all',
                 source: 'all',
+                service: 'all',
                 per_page: 15,
                 page: 1,
             },
@@ -165,7 +172,10 @@ export default function AdminReviewsIndex(props: AdminReviewsPageProps) {
             <AdminReviewsTable
                 adminUi={props.adminUi}
                 canManage={canManage}
-                isFiltered={hasActiveReviewFilters(props.filters)}
+                isFiltered={
+                    hasActiveReviewFilters(props.filters) ||
+                    (props.filters.service ?? 'all') !== 'all'
+                }
                 isNavigating={isNavigating}
                 onToggleVisibility={handleToggleVisibility}
                 orderUrlTemplate={props.orderUrlTemplate}

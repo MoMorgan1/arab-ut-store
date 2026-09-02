@@ -2,6 +2,7 @@
 
 use App\Enums\AdminPermission;
 use App\Enums\OrderStatus;
+use App\Enums\ServiceType;
 use App\Enums\UserRole;
 use App\Models\Order;
 use App\Models\Review;
@@ -71,7 +72,11 @@ it('lists reviews newest first with the order number and source', function (): v
         'source' => 'salla-import',
         'rating' => 4,
     ]);
-    adminTestReview(['reviewer_name' => 'مرتبط', 'created_at' => now()->subDay()], $order);
+    adminTestReview([
+        'reviewer_name' => 'مرتبط',
+        'created_at' => now()->subDay(),
+        'service_type' => ServiceType::Rivals->value,
+    ], $order);
 
     test()->actingAs($actor)
         ->get('/admin/reviews')
@@ -82,15 +87,19 @@ it('lists reviews newest first with the order number and source', function (): v
             ->has('reviews', 3)
             ->where('reviews.0.reviewerName', 'جديد')
             ->where('reviews.0.source', 'archive')
+            ->where('reviews.0.serviceType', null)
+            ->where('reviews.0.serviceLabel', '—')
             ->where('reviews.1.reviewerName', 'مرتبط')
             ->where('reviews.1.order.number', 'AUT-REVIEW-01')
             ->where('reviews.1.source', 'customer')
+            ->where('reviews.1.serviceType', 'rivals')
+            ->where('reviews.1.serviceLabel', 'Rivals')
             ->where('reviews.2.reviewerName', 'قديم')
             ->where('reviews.2.order', null)
             ->where('visibilityUrlTemplate', '/admin/api/reviews/__ID__/visibility'));
 });
 
-it('filters the list by storefront state, rating, source and search', function (): void {
+it('filters the list by storefront state, rating, source, service and search', function (): void {
     $actor = adminReviewsActor();
     $order = adminCompletedOrder();
     adminTestReview(['reviewer_name' => 'ظاهر', 'rating' => 5], $order);
@@ -101,22 +110,26 @@ it('filters the list by storefront state, rating, source and search', function (
         'published_at' => null,
         'source' => 'salla-import',
     ]);
+    adminTestReview(['reviewer_name' => 'رايفلز', 'rating' => 5, 'service_type' => ServiceType::Rivals->value]);
+    adminTestReview(['reviewer_name' => 'فوت', 'rating' => 5, 'service_type' => ServiceType::FutChampions->value]);
 
     test()->actingAs($actor)->get('/admin/reviews?status=hidden')->assertOk()
         ->assertInertia(fn ($page) => $page->has('reviews', 1)
             ->where('reviews.0.reviewerName', 'مخفي'));
 
     test()->actingAs($actor)->get('/admin/reviews?status=visible')->assertOk()
-        ->assertInertia(fn ($page) => $page->has('reviews', 1)
-            ->where('reviews.0.reviewerName', 'ظاهر'));
+        ->assertInertia(fn ($page) => $page->has('reviews', 3));
 
     test()->actingAs($actor)->get('/admin/reviews?rating=2')->assertOk()
         ->assertInertia(fn ($page) => $page->has('reviews', 1)
             ->where('reviews.0.rating', 2));
 
     test()->actingAs($actor)->get('/admin/reviews?source=customer')->assertOk()
+        ->assertInertia(fn ($page) => $page->has('reviews', 3));
+
+    test()->actingAs($actor)->get('/admin/reviews?service=rivals')->assertOk()
         ->assertInertia(fn ($page) => $page->has('reviews', 1)
-            ->where('reviews.0.source', 'customer'));
+            ->where('reviews.0.reviewerName', 'رايفلز'));
 
     test()->actingAs($actor)->get('/admin/reviews?search=AUT-REVIEW-01')->assertOk()
         ->assertInertia(fn ($page) => $page->has('reviews', 1)
@@ -125,6 +138,10 @@ it('filters the list by storefront state, rating, source and search', function (
     test()->actingAs($actor)->get('/admin/reviews?search=مخفي')->assertOk()
         ->assertInertia(fn ($page) => $page->has('reviews', 1)
             ->where('reviews.0.reviewerName', 'مخفي'));
+
+    test()->actingAs($actor)->get('/admin/reviews?service=coins')
+        ->assertRedirect()
+        ->assertSessionHasErrors('service');
 
     test()->actingAs($actor)->get('/admin/reviews?unknown=1')
         ->assertRedirect()
