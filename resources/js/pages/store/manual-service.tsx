@@ -1,12 +1,13 @@
 import { usePage } from '@inertiajs/react';
 import { ExternalLink } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { FutChampionsConfigurator } from '@/components/configurator/manual-services/fut-champions-configurator';
 import { ManualServiceSuggestions } from '@/components/configurator/manual-services/manual-service-suggestions';
 import { RivalsConfigurator } from '@/components/configurator/manual-services/rivals-configurator';
 import { StoreSeoHead } from '@/components/store/store-seo-head';
 import StoreLayout from '@/layouts/store-layout';
+import { riyals, trackViewItem } from '@/lib/analytics';
 import type {
     FutServiceTranslations,
     ManualServicePageProps,
@@ -25,6 +26,28 @@ export default function StoreManualService() {
         manual.active &&
         manual.scheduleVersion !== null &&
         manual.pricing !== null;
+    const baseAmount =
+        manual.pricing === null
+            ? null
+            : 'rankOptions' in manual.pricing
+              ? manual.pricing.rankOptions.at(-1)?.price
+              : manual.pricing.stepOptions[0]?.price;
+
+    useEffect(() => {
+        trackViewItem({
+            id: manual.product.slug,
+            name: manual.product.name,
+            quantity: 1,
+            ...(baseAmount !== undefined &&
+            baseAmount !== null &&
+            baseAmount.currency === 'SAR'
+                ? { price: riyals(baseAmount.amountMinor) }
+                : {}),
+        });
+        // Once per page load: the page is one product.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [manual.product.slug]);
+
     const tabs: Array<{ key: ManualServiceTab; label: string }> = [
         { key: 'options', label: common.tab_options },
         { key: 'guide', label: common.tab_guide },

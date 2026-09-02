@@ -239,11 +239,23 @@ export function SbcProductConfigurator({
             setCredentials(EMPTY_CREDENTIALS);
             setState('idle');
             announceCartAddition({
+                analytics: {
+                    id: product.id,
+                    name: product.name,
+                    ...(selectedCompletionTier?.price.currency === 'SAR'
+                        ? {
+                              priceMinorSar:
+                                  selectedCompletionTier.price.amountMinor,
+                          }
+                        : {}),
+                    quantity: 1,
+                    serviceType: 'sbc',
+                },
                 cartUrl: result.cartUrl,
                 imageAlt: product.image?.alt || product.name,
                 imageUrl:
                     product.image?.url ??
-                    '/images/store/navigation/logo-sbc-96.webp',
+                    '/images/store/navigation/logo-sbc-256.webp',
                 itemLabel: product.name,
                 selectionLabel: `${completionLabel(
                     translations.sbc.completion_option,

@@ -15,6 +15,7 @@ import PhoneNumberField from '@/components/phone-number-field';
 import { StoreSeoHead } from '@/components/store/store-seo-head';
 import { Label } from '@/components/ui/label';
 import StoreLayout from '@/layouts/store-layout';
+import { riyals, trackBeginCheckout } from '@/lib/analytics';
 import { newAttemptKey } from '@/lib/attempt-key';
 import {
     applyCartCoupon,
@@ -165,6 +166,7 @@ export default function StoreCart() {
                                 )}
                                 checkout={cartPage.checkout}
                                 coupon={cart.coupon}
+                                items={items}
                                 locale={locale}
                                 policyLinks={{
                                     terms: {
@@ -265,6 +267,7 @@ function CheckoutPanel({
     canCheckout,
     checkout,
     coupon,
+    items,
     locale,
     policyLinks,
     totalHalalah,
@@ -276,6 +279,7 @@ function CheckoutPanel({
     canCheckout: boolean;
     checkout: StoreCartPageProps['cartPage']['checkout'];
     coupon: StoredCartCoupon | null;
+    items: StoreCartItem[];
     locale: 'ar' | 'en';
     policyLinks: {
         terms: { label: string; url: string };
@@ -342,6 +346,18 @@ function CheckoutPanel({
                 idempotencyKey.current,
                 confirmed?.payableHalalah ?? payableHalalah,
                 confirmed?.orderTotalHalalah ?? totalAfterDiscount,
+            );
+
+            // After the server accepted the checkout, so a re-priced retry
+            // reports one begin_checkout, not two.
+            trackBeginCheckout(
+                items.map((item) => ({
+                    id: item.id,
+                    name: item.product.name,
+                    price: riyals(item.unitPriceHalalah),
+                    quantity: item.quantity,
+                })),
+                riyals(confirmed?.payableHalalah ?? payableHalalah),
             );
 
             if (result.paymentUrl === null) {

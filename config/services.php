@@ -69,6 +69,16 @@ return [
         'purge_cancelled_grace_hours' => 24,
     ],
 
+    // Analytics vendor ids. All three are public by nature (they ship in
+    // page source); an empty value switches that vendor off entirely, and
+    // nothing loads in the browser until the visitor accepts the consent
+    // banner. See docs/decisions/2026-09-02-analytics-tracking-design.md.
+    'analytics' => [
+        'ga4_measurement_id' => env('ANALYTICS_GA4_MEASUREMENT_ID'),
+        'meta_pixel_id' => env('ANALYTICS_META_PIXEL_ID'),
+        'tiktok_pixel_id' => env('ANALYTICS_TIKTOK_PIXEL_ID'),
+    ],
+
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),

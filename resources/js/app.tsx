@@ -2,6 +2,7 @@ import { createInertiaApp } from '@inertiajs/react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
+import { initAnalytics } from '@/lib/analytics';
 import {
     DEFAULT_APPLICATION_NAME,
     formatDocumentTitle,
@@ -29,3 +30,6 @@ createInertiaApp({
 
 // This will set light / dark mode on load...
 initializeTheme();
+
+// Loads nothing until the visitor has accepted the consent banner.
+initAnalytics();
