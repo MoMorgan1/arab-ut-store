@@ -165,7 +165,7 @@ describe('StoreHeader', () => {
         ).toHaveAttribute('src', '/images/store/coins/ut-coin-80.webp');
         expect(
             screen.getByRole('link', { name: /SBC/ }).querySelector('img'),
-        ).toHaveAttribute('src', '/images/store/navigation/logo-sbc-96.webp');
+        ).toHaveAttribute('src', '/images/store/navigation/logo-sbc-256.webp');
         expect(
             screen
                 .getByRole('link', { name: /FUT Champions/ })
