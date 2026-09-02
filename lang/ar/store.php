@@ -154,8 +154,8 @@ return [
         'services_cta' => 'استكشف خدماتنا',
         'proof_label' => 'إحصاءات المتجر',
         'stats' => [
-            ['value' => '+8,877', 'unit' => '', 'label' => 'عميل خدمناهم'],
-            ['value' => '+29,161', 'unit' => '', 'label' => 'طلب مكتمل'],
+            ['metric' => 'customers_served', 'unit' => '', 'label' => 'عميل خدمناهم'],
+            ['metric' => 'completed_orders', 'unit' => '', 'label' => 'طلب مكتمل'],
             ['value' => '+30', 'unit' => 'مليار', 'label' => 'كوينز تم توصيلها'],
             ['value' => '99.9%', 'unit' => '', 'label' => 'نسبة الأمان'],
         ],

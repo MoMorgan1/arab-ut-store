@@ -157,8 +157,8 @@ return [
         'services_cta' => 'Explore other services',
         'proof_label' => 'Store proof',
         'stats' => [
-            ['value' => '+8,877', 'unit' => '', 'label' => 'Customers served'],
-            ['value' => '+29,161', 'unit' => '', 'label' => 'Completed orders'],
+            ['metric' => 'customers_served', 'unit' => '', 'label' => 'Customers served'],
+            ['metric' => 'completed_orders', 'unit' => '', 'label' => 'Completed orders'],
             ['value' => '30B+', 'unit' => '', 'label' => 'Coins delivered'],
             ['value' => '99.9%', 'unit' => '', 'label' => 'Security rate'],
         ],

@@ -16,6 +16,16 @@ return [
         'source' => 'exchange-rate-api-open-access',
         'max_age_hours' => 30,
     ],
+    'proof' => [
+        // Shown on the homepage only while the orders table holds no completed
+        // order at all. They are the audited figures from the Salla export
+        // (docs/decisions/2026-08-09-salla-history-import-design.md); once the
+        // import has run, the database counts are authoritative.
+        'fallback' => [
+            'customers_served' => 8877,
+            'completed_orders' => 29161,
+        ],
+    ],
     'support' => [
         'whatsapp_url' => 'https://wa.me/966537998099',
         'email' => 'info@arab-ut.com',
