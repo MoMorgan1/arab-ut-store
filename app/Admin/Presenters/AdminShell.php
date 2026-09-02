@@ -113,6 +113,11 @@ final class AdminShell
                 'label' => (string) trans('admin.navigation.marketingFaq', locale: $locale),
                 'url' => route($prefix.'marketing.faq', absolute: false),
             ];
+            $marketingChildren[] = [
+                'key' => 'marketingPages',
+                'label' => (string) trans('admin.navigation.marketingPages', locale: $locale),
+                'url' => route($prefix.'marketing.pages', absolute: false),
+            ];
         }
 
         if ($marketingChildren !== []) {

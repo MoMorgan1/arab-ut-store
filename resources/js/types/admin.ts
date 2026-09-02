@@ -43,6 +43,7 @@ export type AdminTranslations = {
         marketingPromotions: string;
         marketingReviews?: string;
         marketingFaq?: string;
+        marketingPages?: string;
         more?: string;
         open: string;
         close: string;
@@ -1611,6 +1612,52 @@ export type AdminTranslations = {
         visibilityShownMessage: string;
         visibilityUpdateFailed: string;
     };
+    pages?: {
+        actions: string;
+        addBlock: string;
+        address: string;
+        blockContentPlaceholder: string;
+        blockCount: string;
+        blockType: string;
+        blocksTitle: string;
+        description: string;
+        edit: string;
+        headingLevel: string;
+        headingLevel2: string;
+        headingLevel3: string;
+        headingTextPlaceholder: string;
+        headTitle: string;
+        helperText: string;
+        listContentPlaceholder: string;
+        listOrdered: string;
+        moveDown: string;
+        moveUp: string;
+        noticeTone: string;
+        noticeToneInfo: string;
+        noticeToneShield: string;
+        noticeToneWarning: string;
+        openInStore: string;
+        page: string;
+        removeBlock: string;
+        savedSuccess: string;
+        saveError: string;
+        savePage: string;
+        saving: string;
+        subtitleLabel: string;
+        tabArabic: string;
+        tabEnglish: string;
+        tableLabel: string;
+        title: string;
+        titleLabel: string;
+        typeDivider: string;
+        typeHeading: string;
+        typeList: string;
+        typeNotice: string;
+        typeParagraph: string;
+        unsavedChangesWarning: string;
+        updatedLabel: string;
+        updatedLabelLabel: string;
+    };
 };
 
 export type AdminNavigationChild = {
@@ -1621,7 +1668,8 @@ export type AdminNavigationChild = {
         | 'marketingPromotions'
         | 'marketingReviews'
         | 'marketingLoyalty'
-        | 'marketingFaq';
+        | 'marketingFaq'
+        | 'marketingPages';
     label: string;
     url: string;
 };
@@ -2768,6 +2816,61 @@ export type AdminFaqPageProps = {
     visibilityUrlTemplate: string;
     moveUrlTemplate: string;
     deleteUrlTemplate: string;
+    canManage: boolean;
+    logoutUrl: string;
+};
+
+export type AdminStorePageRow = {
+    key: string;
+    titleAr: string;
+    titleEn: string;
+    blockCount: number;
+    address: string;
+    updatedLabel: string;
+    editUrl: string;
+};
+
+export type AdminStorePagesPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    pages: AdminStorePageRow[];
+    canManage: boolean;
+    logoutUrl: string;
+};
+
+export type AdminEditorBlock = {
+    type: 'paragraph' | 'heading' | 'list' | 'notice' | 'divider';
+    level?: 2 | 3;
+    ordered?: boolean;
+    tone?: 'info' | 'shield' | 'warning';
+    text?: string;
+};
+
+export type AdminStorePageLocaleContent = {
+    title: string;
+    subtitle?: string | null;
+    updatedLabel: string;
+    blocks: AdminEditorBlock[];
+};
+
+export type AdminStorePageEditorPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    pageKey: string;
+    storeUrl: string;
+    saveUrl: string;
+    content: {
+        ar: AdminStorePageLocaleContent;
+        en: AdminStorePageLocaleContent;
+    };
     canManage: boolean;
     logoutUrl: string;
 };

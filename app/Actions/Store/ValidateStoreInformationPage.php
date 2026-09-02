@@ -15,7 +15,6 @@ class ValidateStoreInformationPage
         'support_subtitle',
         'support_title',
         'updated_label',
-        'updated_value',
     ];
 
     private const NOTICE_TONES = ['info', 'shield', 'warning'];
@@ -29,6 +28,11 @@ class ValidateStoreInformationPage
         $meta = $this->meta($meta);
         $supportUrl = $this->approvedUrl($supportUrl, ['wa.me']);
 
+        $updatedValue = $page['updated_label'] ?? ($meta['updated_value'] ?? null);
+        if ($updatedValue === null) {
+            throw new LogicException('The information page requires an updated label.');
+        }
+
         return [
             'key' => $key,
             'title' => $page['title'],
@@ -40,7 +44,7 @@ class ValidateStoreInformationPage
             ],
             'updated' => [
                 'label' => $meta['updated_label'],
-                'value' => $meta['updated_value'],
+                'value' => $updatedValue,
             ],
             'blocks' => $page['blocks'],
             'support' => [
@@ -52,29 +56,34 @@ class ValidateStoreInformationPage
         ];
     }
 
-    /** @return array{title: string, subtitle: ?string, blocks: list<array<string, mixed>>} */
+    /** @return array{title: string, subtitle: ?string, updated_label: ?string, blocks: list<array<string, mixed>>} */
     private function page(mixed $translation): array
     {
         $translation = $this->requireArray($translation, 'page');
-        $this->requireExactKeys($translation, ['blocks', 'title'], ['subtitle']);
+        $this->requireExactKeys($translation, ['blocks', 'title'], ['subtitle', 'updated_label', 'updated_value']);
         $title = $this->nonEmptyString($translation['title'], 'page title');
-        $subtitle = array_key_exists('subtitle', $translation)
+        $subtitle = array_key_exists('subtitle', $translation) && $translation['subtitle'] !== null
             ? $this->nonEmptyString($translation['subtitle'], 'page subtitle')
             : null;
+        $updatedLabel = array_key_exists('updated_label', $translation) && $translation['updated_label'] !== null
+            ? $this->nonEmptyString($translation['updated_label'], 'page updated label')
+            : (array_key_exists('updated_value', $translation) && $translation['updated_value'] !== null
+                ? $this->nonEmptyString($translation['updated_value'], 'page updated label')
+                : null);
         $blocks = [];
 
         foreach ($this->nonEmptyList($translation['blocks'], 'page blocks') as $block) {
             $blocks[] = $this->block($block);
         }
 
-        return ['title' => $title, 'subtitle' => $subtitle, 'blocks' => $blocks];
+        return ['title' => $title, 'subtitle' => $subtitle, 'updated_label' => $updatedLabel, 'blocks' => $blocks];
     }
 
     /** @return array<string, string> */
     private function meta(mixed $metadata): array
     {
         $metadata = $this->requireArray($metadata, 'metadata');
-        $this->requireExactKeys($metadata, self::META_KEYS);
+        $this->requireExactKeys($metadata, self::META_KEYS, ['updated_value']);
 
         foreach (self::META_KEYS as $key) {
             $this->nonEmptyString($metadata[$key], "metadata {$key}");

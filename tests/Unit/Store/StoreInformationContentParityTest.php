@@ -2,7 +2,12 @@
 
 function informationPages(string $locale): array
 {
-    return require dirname(__DIR__, 3)."/lang/{$locale}/store_pages.php";
+    $data = require dirname(__DIR__, 3)."/database/seeders/data/store_pages/{$locale}.php";
+
+    return [
+        'pages' => $data,
+        ...$data,
+    ];
 }
 
 function informationPageText(array $page): string
