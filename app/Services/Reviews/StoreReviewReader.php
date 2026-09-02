@@ -103,7 +103,7 @@ final class StoreReviewReader
             'body' => $locale === 'ar'
                 ? ($review->body_ar ?? $review->body_en)
                 : ($review->body_en ?? $review->body_ar),
-            'verified' => $review->order_item_id !== null,
+            'verified' => $review->order_id !== null || $review->order_item_id !== null,
             'publishedAt' => $publishedAt?->toAtomString(),
         ];
     }

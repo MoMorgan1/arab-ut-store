@@ -605,6 +605,7 @@ function liveOrder(
         refreshable: true,
         analytics: null,
         paymentStartUrl,
+        review: null,
         items: [
             {
                 id: '01ITEM1',

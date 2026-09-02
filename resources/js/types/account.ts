@@ -189,6 +189,25 @@ export type AccountTranslations = {
         back: string;
         copy: string;
         copied: string;
+        review: {
+            title: string;
+            helper: string;
+            rating_label: string;
+            rating_value: string;
+            star_label: string;
+            comment_label: string;
+            comment_placeholder: string;
+            counter: string;
+            submit: string;
+            submitting: string;
+            submitted_title: string;
+            verified_badge: string;
+            thanks_visible: string;
+            thanks_hidden: string;
+            submitted_toast: string;
+            not_eligible: string;
+            already_reviewed: string;
+        };
     };
     invoice: {
         title: string;
@@ -447,6 +466,15 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
             }>;
         } | null;
         paymentStartUrl: string | null;
+        review: {
+            url: string;
+            submitted: {
+                rating: number;
+                body: string | null;
+                publishedAt: string | null;
+                visible: boolean;
+            } | null;
+        } | null;
         items: Array<{
             id: string;
             name: string;

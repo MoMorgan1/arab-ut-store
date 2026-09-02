@@ -4,6 +4,7 @@ use App\Http\Controllers\Account\LiveOrderController;
 use App\Http\Controllers\Account\LoyaltyController;
 use App\Http\Controllers\Account\OrderItemCredentialsController;
 use App\Http\Controllers\Account\OrderItemSquadImageController;
+use App\Http\Controllers\Account\OrderReviewController;
 use App\Http\Controllers\Account\OrdersController;
 use App\Http\Controllers\Account\OverviewController;
 use App\Http\Controllers\Account\ProfileController;
@@ -37,6 +38,10 @@ Route::middleware($accountMiddleware)->group(function (): void {
     Route::get('/my-account/orders/{order}', LiveOrderController::class)
         ->whereUlid('order')
         ->name('account.orders.show');
+    Route::post('/my-account/orders/{order}/review', [OrderReviewController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->whereUlid('order')
+        ->name('account.orders.review.store');
     Route::get('/my-account/wallet', WalletController::class)->name('account.wallet');
     Route::get('/my-account/loyalty', LoyaltyController::class)->name('account.loyalty.show');
     Route::get('/my-account/profile', [ProfileController::class, 'show'])->name('account.profile.show');
@@ -89,6 +94,11 @@ Route::prefix('en')
             ->whereUlid('order')
             ->defaults('locale', 'en')
             ->name('account.orders.show');
+        Route::post('/my-account/orders/{order}/review', [OrderReviewController::class, 'store'])
+            ->middleware('throttle:6,1')
+            ->whereUlid('order')
+            ->defaults('locale', 'en')
+            ->name('account.orders.review.store');
         Route::get('/my-account/wallet', WalletController::class)
             ->defaults('locale', 'en')
             ->name('account.wallet');

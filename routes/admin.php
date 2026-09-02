@@ -34,6 +34,8 @@ use App\Http\Controllers\Admin\ProductsController;
 use App\Http\Controllers\Admin\ProductVisibilityController;
 use App\Http\Controllers\Admin\PromotionsController;
 use App\Http\Controllers\Admin\ResolveTicketController;
+use App\Http\Controllers\Admin\ReviewsController;
+use App\Http\Controllers\Admin\ReviewVisibilityController;
 use App\Http\Controllers\Admin\ServicePricingController;
 use App\Http\Controllers\Admin\ServicePricingStatusController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -397,6 +399,22 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $duplicateCoupon->defaults('locale', $locale);
+                }
+
+                $reviews = Route::get('/reviews', ReviewsController::class)
+                    ->middleware('can:marketing.view')
+                    ->name('reviews');
+
+                if ($locale !== null) {
+                    $reviews->defaults('locale', $locale);
+                }
+
+                $reviewVisibility = Route::post('/api/reviews/{publicId}/visibility', ReviewVisibilityController::class)
+                    ->middleware('can:marketing.manage')
+                    ->name('reviews.visibility.store');
+
+                if ($locale !== null) {
+                    $reviewVisibility->defaults('locale', $locale);
                 }
 
                 $promotions = Route::get('/marketing/promotions', PromotionsController::class)
