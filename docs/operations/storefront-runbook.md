@@ -16,6 +16,8 @@ Run the production GitHub workflow `archive-salla-reviews` in this order:
 6. Search the rendered Inertia payload and application logs for known test-only private sentinels. Do not print or export real customer values during verification.
 7. Confirm `reviews:refresh` is not scheduled. The archived rows remain local and stable; a future post-order review system must be implemented as a separate source rather than re-enabling the retired recurring importer.
 
+Since 2026-09-03 the projection also reads the Salla **product name** of a product review and maps it to a store service (`SallaProductServiceMap`: coins, SBC, objectives, Rivals, FUT Champions); store-level reviews and unrecognised products stay unattributed. Re-running `apply` refreshes `service_type` on every archived row, which is how the per-service review blocks got their history. A re-run never un-hides a row the admin hid.
+
 The equivalent server commands are:
 
 ```bash
