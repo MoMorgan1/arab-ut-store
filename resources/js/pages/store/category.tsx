@@ -87,7 +87,7 @@ export default function StoreCategory() {
                             <img
                                 alt=""
                                 height="96"
-                                src="/images/store/navigation/logo-sbc-96.webp"
+                                src="/images/store/navigation/logo-sbc-256.webp"
                                 width="96"
                             />
                         </span>
@@ -332,12 +332,21 @@ function CatalogCard({
                 product.url !== null ? (
                     <CatalogAddControl
                         addUrl={addUrl}
+                        analytics={{
+                            id: product.id,
+                            name: product.name,
+                            ...(selected.price.currency === 'SAR'
+                                ? { priceMinorSar: selected.price.amountMinor }
+                                : {}),
+                            quantity: 1,
+                            serviceType: 'catalog',
+                        }}
                         errorLabel={translations.add_error}
                         idleLabel={translations.add_to_cart}
                         imageAlt={product.image?.alt || product.name}
                         imageUrl={
                             product.image?.url ??
-                            '/images/store/navigation/logo-sbc-96.webp'
+                            '/images/store/navigation/logo-sbc-256.webp'
                         }
                         itemLabel={product.name}
                         loadingLabel={translations.adding}

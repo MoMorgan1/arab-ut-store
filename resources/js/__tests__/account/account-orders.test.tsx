@@ -603,6 +603,7 @@ function liveOrder(
         paymentAmount: { amountMinor: '12999', currency: 'SAR' },
         paymentMethod: 'mada',
         refreshable: true,
+        analytics: null,
         paymentStartUrl,
         review: null,
         items: [

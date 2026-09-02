@@ -1,0 +1,335 @@
+import { router } from '@inertiajs/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+    CONSENT_COOKIE,
+    declineConsent,
+    grantConsent,
+    initAnalytics,
+    readConsent,
+    resetAnalyticsForTests,
+    riyals,
+    trackingAllowed,
+    trackAddToCart,
+    trackBeginCheckout,
+    trackPurchase,
+} from '@/lib/analytics';
+import { announceCartAddition } from '@/lib/cart-added-event';
+
+vi.mock('@inertiajs/react', () => ({
+    router: { on: vi.fn(() => () => undefined) },
+}));
+
+type NavigateHandler = (event: { detail: { page: { url: string } } }) => void;
+
+/** Inertia fires `navigate` for the first page too; replay it here. */
+function navigate(url = '/') {
+    const call = vi
+        .mocked(router.on)
+        .mock.calls.find(([name]) => name === 'navigate');
+    const handler = call?.[1] as unknown as NavigateHandler | undefined;
+
+    handler?.({ detail: { page: { url } } });
+}
+
+function tiktokCalls(): unknown[][] {
+    return (window.ttq as unknown as unknown[][]).map((call) =>
+        call.slice(0, 2),
+    );
+}
+
+function clearCookie() {
+    document.cookie = `${CONSENT_COOKIE}=; Max-Age=0; Path=/`;
+}
+
+function injectedScripts(): string[] {
+    return Array.from(document.head.querySelectorAll('script[src]')).map(
+        (script) => script.getAttribute('src') ?? '',
+    );
+}
+
+beforeEach(() => {
+    resetAnalyticsForTests();
+    clearCookie();
+    window.localStorage.clear();
+    document.head.querySelectorAll('script[src]').forEach((s) => s.remove());
+    delete window.__arabutAnalytics;
+    delete window.gtag;
+    delete window.fbq;
+    delete window.ttq;
+    delete window.dataLayer;
+});
+
+afterEach(() => {
+    vi.restoreAllMocks();
+});
+
+describe('riyals', () => {
+    it('converts halalah to riyals', () => {
+        expect(riyals(75_000)).toBe(750);
+        expect(riyals(1)).toBe(0.01);
+    });
+});
+
+describe('without vendor ids', () => {
+    it('is a no-op', () => {
+        initAnalytics();
+        grantConsent();
+        trackAddToCart({ id: 'x', name: 'X', quantity: 1, price: 1 });
+
+        expect(injectedScripts()).toEqual([]);
+        expect(router.on).not.toHaveBeenCalled();
+    });
+});
+
+describe('with vendor ids', () => {
+    beforeEach(() => {
+        window.__arabutAnalytics = {
+            ga4: 'G-TEST',
+            meta: '123',
+            tiktok: 'TT1',
+        };
+    });
+
+    it('tracks by default: no banner, vendors load on init', () => {
+        initAnalytics();
+
+        expect(trackingAllowed()).toBe(true);
+        expect(readConsent()).toBeNull();
+        expect(injectedScripts()).toHaveLength(3);
+        expect(router.on).toHaveBeenCalledWith(
+            'navigate',
+            expect.any(Function),
+        );
+    });
+
+    it('an opt-out cookie keeps every vendor off', () => {
+        declineConsent();
+        initAnalytics();
+        trackAddToCart({ id: 'x', name: 'X', quantity: 1, price: 1 });
+
+        expect(readConsent()).toBe('denied');
+        expect(trackingAllowed()).toBe(false);
+        expect(injectedScripts()).toEqual([]);
+        expect(window.gtag).toBeUndefined();
+        expect(window.fbq).toBeUndefined();
+        expect(window.ttq).toBeUndefined();
+    });
+
+    it('the privacy page links opt out and back in through the query string', () => {
+        window.history.replaceState(null, '', '/privacy?tracking=off');
+        initAnalytics();
+
+        expect(readConsent()).toBe('denied');
+        expect(injectedScripts()).toEqual([]);
+
+        resetAnalyticsForTests();
+        window.history.replaceState(null, '', '/privacy?tracking=on');
+        initAnalytics();
+
+        expect(readConsent()).toBe('granted');
+        expect(injectedScripts()).toHaveLength(3);
+        window.history.replaceState(null, '', '/');
+    });
+
+    it('loads the three vendors in the documented order and sends one page view per navigation', () => {
+        initAnalytics();
+        navigate('/');
+
+        expect(trackingAllowed()).toBe(true);
+        expect(injectedScripts()).toEqual([
+            'https://www.googletagmanager.com/gtag/js?id=G-TEST',
+            'https://connect.facebook.net/en_US/fbevents.js',
+            'https://analytics.tiktok.com/i18n/pixel/events.js?sdkid=TT1&lib=ttq',
+        ]);
+
+        // Google: consent update before config, no automatic page view.
+        const layer = (window.dataLayer as ArrayLike<unknown>[]).map((call) =>
+            Array.from(call),
+        );
+        expect(layer[0]).toEqual([
+            'consent',
+            'update',
+            expect.objectContaining({ analytics_storage: 'granted' }),
+        ]);
+        expect(layer.find((call) => call[0] === 'config')).toEqual([
+            'config',
+            'G-TEST',
+            { send_page_view: false },
+        ]);
+        expect(
+            layer.filter(
+                (call) => call[0] === 'event' && call[1] === 'page_view',
+            ),
+        ).toHaveLength(1);
+        expect(window.TiktokAnalyticsObject).toBe('ttq');
+        expect(window.ttq?._i?.TT1?._u).toBe(
+            'https://analytics.tiktok.com/i18n/pixel/events.js',
+        );
+
+        // Meta: revoke before init, grant after.
+        const fbq = window.fbq as NonNullable<Window['fbq']>;
+        expect(fbq.queue?.slice(0, 3)).toEqual([
+            ['consent', 'revoke'],
+            ['init', '123'],
+            ['consent', 'grant'],
+        ]);
+        expect(fbq.queue).toContainEqual(['track', 'PageView']);
+
+        // TikTok: page view recorded on the queue array.
+        expect(tiktokCalls()).toEqual([['page']]);
+    });
+
+    it('fans an add-to-cart out in each vendor shape with SAR money', () => {
+        initAnalytics();
+        grantConsent();
+        (window.dataLayer as unknown[]).length = 0;
+
+        announceCartAddition({
+            analytics: {
+                id: 'division-rivals',
+                name: 'Rivals',
+                priceMinorSar: 75_000,
+                quantity: 1,
+                serviceType: 'rivals',
+            },
+            cartUrl: '/cart',
+            imageAlt: '',
+            imageUrl: '',
+            itemLabel: 'Rivals',
+        });
+
+        expect(Array.from(window.dataLayer?.[0] as ArrayLike<unknown>)).toEqual(
+            [
+                'event',
+                'add_to_cart',
+                {
+                    value: 750,
+                    currency: 'SAR',
+                    items: [
+                        {
+                            item_id: 'division-rivals',
+                            item_name: 'Rivals',
+                            quantity: 1,
+                            price: 750,
+                        },
+                    ],
+                },
+            ],
+        );
+
+        const fbq = window.fbq as NonNullable<Window['fbq']>;
+        const meta = fbq.queue?.find(
+            (call) => Array.isArray(call) && call[1] === 'AddToCart',
+        ) as unknown[];
+        expect(meta[2]).toEqual({
+            value: 750,
+            currency: 'SAR',
+            content_type: 'product',
+            content_ids: ['division-rivals'],
+            contents: [{ id: 'division-rivals', quantity: 1, item_price: 750 }],
+            num_items: 1,
+        });
+        expect(meta[3]).toEqual({ eventID: expect.any(String) });
+
+        expect((window.ttq as unknown as unknown[][]).at(-1)).toEqual([
+            'track',
+            'AddToCart',
+            expect.objectContaining({
+                value: 750,
+                currency: 'SAR',
+                contents: [
+                    expect.objectContaining({
+                        content_id: 'division-rivals',
+                        price: 750,
+                    }),
+                ],
+            }),
+        ]);
+    });
+
+    it('omits money when the emitter had no SAR price', () => {
+        initAnalytics();
+        grantConsent();
+        (window.dataLayer as unknown[]).length = 0;
+
+        trackAddToCart({ id: 'sbc-1', name: 'SBC', quantity: 1 });
+
+        expect(Array.from(window.dataLayer?.[0] as ArrayLike<unknown>)).toEqual(
+            [
+                'event',
+                'add_to_cart',
+                {
+                    items: [
+                        { item_id: 'sbc-1', item_name: 'SBC', quantity: 1 },
+                    ],
+                },
+            ],
+        );
+    });
+
+    it('sends begin_checkout with the payable amount', () => {
+        initAnalytics();
+        grantConsent();
+        (window.dataLayer as unknown[]).length = 0;
+
+        trackBeginCheckout(
+            [{ id: 'a', name: 'A', quantity: 2, price: 10 }],
+            20,
+        );
+
+        expect(Array.from(window.dataLayer?.[0] as ArrayLike<unknown>)).toEqual(
+            [
+                'event',
+                'begin_checkout',
+                expect.objectContaining({ value: 20, currency: 'SAR' }),
+            ],
+        );
+    });
+
+    it('sends purchase once per order across reloads', () => {
+        initAnalytics();
+        grantConsent();
+        (window.dataLayer as unknown[]).length = 0;
+
+        const order = {
+            orderId: 'ord-1',
+            value: 75,
+            currency: 'SAR',
+            items: [{ id: 'COINS', name: 'Coins', quantity: 2, price: 50 }],
+        };
+
+        expect(trackPurchase(order)).toBe(true);
+        expect(trackPurchase(order)).toBe(false);
+
+        resetAnalyticsForTests();
+        initAnalytics();
+        expect(trackPurchase(order)).toBe(false);
+
+        const purchases = (window.dataLayer as ArrayLike<unknown>[])
+            .map((call) => Array.from(call))
+            .filter((call) => call[0] === 'event' && call[1] === 'purchase');
+        expect(purchases).toHaveLength(1);
+        expect(purchases[0][2]).toEqual(
+            expect.objectContaining({
+                transaction_id: 'ord-1',
+                value: 75,
+                currency: 'SAR',
+            }),
+        );
+
+        expect(
+            tiktokCalls().find((call) => call[1] === 'CompletePayment'),
+        ).toBeDefined();
+    });
+
+    it('sends nothing after an opt-out even when vendors are already loaded', () => {
+        initAnalytics();
+        (window.dataLayer as unknown[]).length = 0;
+
+        declineConsent();
+        trackAddToCart({ id: 'x', name: 'X', quantity: 1, price: 1 });
+
+        expect(window.dataLayer).toEqual([]);
+    });
+});

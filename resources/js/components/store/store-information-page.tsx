@@ -18,12 +18,16 @@ function renderInline(content: StorePageInlineContent[]): ReactNode {
         const text = part.strong ? <strong>{part.text}</strong> : part.text;
 
         if (part.url) {
+            // Store-internal links (the tracking opt-out on the privacy
+            // page) stay in this tab; external help links open a new one.
+            const external = !part.url.startsWith('/');
+
             return (
                 <a
                     href={part.url}
                     key={key}
-                    rel="noopener noreferrer"
-                    target="_blank"
+                    rel={external ? 'noopener noreferrer' : undefined}
+                    target={external ? '_blank' : undefined}
                 >
                     {text}
                 </a>

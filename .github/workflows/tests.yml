@@ -84,6 +84,7 @@ jobs:
           tests/Browser/storefront-smoke.spec.ts
           tests/Browser/agent-stream.spec.ts
           tests/Browser/agent-restart.spec.ts
+          tests/Browser/manual-services-cart.spec.ts
           --project=chromium
 
       - name: Upload Playwright report on smoke failure

@@ -1,11 +1,12 @@
 import { usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { CatalogAddControl } from '@/components/store/catalog/catalog-add-control';
 import { SbcCatalogCard } from '@/components/store/catalog/sbc-catalog-card';
 import { SbcProductConfigurator } from '@/components/store/catalog/sbc-product-configurator';
 import { StoreSeoHead } from '@/components/store/store-seo-head';
 import StoreLayout from '@/layouts/store-layout';
+import { riyals, trackViewItem } from '@/lib/analytics';
 import { formatMinorUnits } from '@/lib/money';
 import type { StoreCatalogProductPageProps } from '@/types/store-content';
 
@@ -16,6 +17,19 @@ export default function StoreCatalogProduct() {
     const isSbc = props.catalog.service === 'sbc';
     const [variantId, setVariantId] = useState(product.variants[0]?.id ?? '');
     const variant = product.variants.find((option) => option.id === variantId);
+
+    useEffect(() => {
+        trackViewItem({
+            id: product.id,
+            name: product.name,
+            quantity: 1,
+            ...(product.price !== null && product.price.currency === 'SAR'
+                ? { price: riyals(product.price.amountMinor) }
+                : {}),
+        });
+        // Once per page load: the page is one product.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [product.id]);
 
     return (
         <StoreLayout
@@ -153,6 +167,20 @@ export default function StoreCatalogProduct() {
                                 {variantId === '' ? null : (
                                     <CatalogAddControl
                                         addUrl={props.catalogCartUrl}
+                                        analytics={{
+                                            id: product.id,
+                                            name: product.name,
+                                            ...(variant?.price != null &&
+                                            variant.price.currency === 'SAR'
+                                                ? {
+                                                      priceMinorSar:
+                                                          variant.price
+                                                              .amountMinor,
+                                                  }
+                                                : {}),
+                                            quantity: 1,
+                                            serviceType: 'catalog',
+                                        }}
                                         errorLabel={props.productPage.add_error}
                                         idleLabel={
                                             props.productPage.add_to_cart
@@ -162,7 +190,7 @@ export default function StoreCatalogProduct() {
                                         }
                                         imageUrl={
                                             product.image?.url ??
-                                            '/images/store/navigation/logo-sbc-96.webp'
+                                            '/images/store/navigation/logo-sbc-256.webp'
                                         }
                                         loadingLabel={props.productPage.adding}
                                         itemLabel={product.name}

@@ -96,7 +96,7 @@ it('renders the refined SBC hierarchy and trust strip', () => {
     ).toBeVisible();
     expect(
         document.querySelector('.store-catalog-hero__shield img'),
-    ).toHaveAttribute('src', '/images/store/navigation/logo-sbc-96.webp');
+    ).toHaveAttribute('src', '/images/store/navigation/logo-sbc-256.webp');
     expect(document.querySelector('.store-catalog-page')).toHaveClass(
         'store-catalog-page--sbc',
     );

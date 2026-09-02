@@ -75,6 +75,52 @@
             <script type="application/ld+json">{!! json_encode($seo['schema'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
         @endif
 
+        @php($analyticsVendors = array_filter([
+            'ga4' => (string) config('services.analytics.ga4_measurement_id'),
+            'meta' => (string) config('services.analytics.meta_pixel_id'),
+            'tiktok' => (string) config('services.analytics.tiktok_pixel_id'),
+        ]))
+        @if ($analyticsVendors !== [] && ($isStoreRoute || ($page['component'] ?? '') === 'account/live-order'))
+            {{-- Consent bootstrap only. No vendor script lives in the head:
+                 resources/js/lib/analytics.ts loads each vendor after the
+                 visitor accepts, and Google's consent default has to exist
+                 before its tag can ever run, so it is declared here first. --}}
+            <script>
+                window.dataLayer = window.dataLayer || [];
+                function gtag() { window.dataLayer.push(arguments); }
+                gtag('consent', 'default', {
+                    ad_storage: 'denied',
+                    ad_user_data: 'denied',
+                    ad_personalization: 'denied',
+                    analytics_storage: 'denied',
+                });
+                window.__arabutAnalytics = @json($analyticsVendors, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+            </script>
+        @endif
+
+        @if ($isStoreRoute)
+            {{-- Installable storefront: the manifest gives phones an "add to
+                 home screen" entry with the brand icon and the warm-black shell. --}}
+            <link rel="manifest" href="/site.webmanifest?v=arab-ut-2026-2">
+            <meta name="apple-mobile-web-app-title" content="Arab UT">
+
+            {{-- The four faces every store screen paints above the fold.
+                 Without the hints the browser only discovers them after the
+                 stylesheet has downloaded and parsed. --}}
+            <link rel="preload" href="/fonts/thmanyah/thmanyahsans-Regular.woff2" as="font" type="font/woff2" crossorigin>
+            <link rel="preload" href="/fonts/thmanyah/thmanyahsans-Bold.woff2" as="font" type="font/woff2" crossorigin>
+            <link rel="preload" href="/fonts/thmanyah/thmanyahsans-Black.woff2" as="font" type="font/woff2" crossorigin>
+            <link rel="preload" href="/fonts/thmanyah/thmanyahserifdisplay-Bold.woff2" as="font" type="font/woff2" crossorigin>
+        @endif
+
+        @if (($page['component'] ?? '') === 'store/home')
+            {{-- The hero backdrop is the home page's largest paint. The media
+                 queries mirror the stylesheet so each device fetches one file,
+                 and browsers without AVIF skip the hint and load WebP from CSS. --}}
+            <link rel="preload" href="/images/store/hero/background.avif" as="image" type="image/avif" media="(hover: hover) and (pointer: fine)">
+            <link rel="preload" href="/images/store/hero/background-mobile.avif" as="image" type="image/avif" media="(max-width: 40rem)">
+        @endif
+
         <link rel="icon" href="/favicon-32x32.png?v=arab-ut-2026-2" sizes="32x32" type="image/png">
         <link rel="shortcut icon" href="/favicon-32x32.png?v=arab-ut-2026-2" type="image/png">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=arab-ut-2026-2">

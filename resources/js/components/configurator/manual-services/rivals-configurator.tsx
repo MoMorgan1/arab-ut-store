@@ -257,6 +257,15 @@ export function RivalsConfigurator({
             keyRef.current = newManualAttemptKey();
             setStatus('success');
             announceCartAddition({
+                analytics: {
+                    id: product.slug,
+                    name: product.name,
+                    ...(price !== null && price.currency === 'SAR'
+                        ? { priceMinorSar: price.amountMinor }
+                        : {}),
+                    quantity: 1,
+                    serviceType: 'rivals',
+                },
                 cartUrl: result.cartUrl,
                 imageAlt: product.image.alt,
                 imageUrl: product.image.url,
