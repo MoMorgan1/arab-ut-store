@@ -5,7 +5,7 @@ return [
         'home' => 'Home',
         'breadcrumb_label' => 'Breadcrumb',
         'updated_label' => 'Last updated',
-        'updated_value' => '12 August 2026',
+        'updated_value' => '2 September 2026',
         'support_title' => 'Have a question?',
         'support_subtitle' => 'Our team is ready to help around the clock',
         'support_action' => 'Contact us on WhatsApp',
