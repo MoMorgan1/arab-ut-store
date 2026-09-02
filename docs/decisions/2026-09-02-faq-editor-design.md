@@ -1,9 +1,9 @@
-# FAQ editor in the admin
+# Content editor in the admin: FAQ and policy pages
 
 Date: 2026-09-02
-Status: proposed, awaiting Mohamed's approval. Reviewed once (Opus, read-only) and revised.
-Scope decision (2026-09-02): v1 covers the home-page FAQ only; the policy pages stay in the
-language files and get an editor later if they ever change often enough to need one.
+Status: approved by Mohamed on 2026-09-02 with one change: **the policy pages are in v1 too**
+("do it all at once"). Decisions 2, 3 and 4 confirmed as written. Reviewed once (Opus,
+read-only) before the policies were added; the "Policy pages" section below extends the plan.
 
 ## Discovery
 
@@ -18,8 +18,8 @@ language files and get an editor later if they ever change often enough to need 
   and `lang/en/store.php` (four entries), read by `HomeController` and rendered by
   `faq-section.tsx` as `<details>` items.
 - **Accounts and access**: none.
-- **Constraints**: bilingual, ordered, hideable; the home page must render exactly what it
-  renders today on the deploy that ships this, with zero manual steps.
+- **Constraints**: bilingual, ordered, hideable; the home page and the five policy pages must
+  render exactly what they render today on the deploy that ships this, with zero manual steps.
 - **Success**: Mohamed changes a question from the admin and sees it on the home page on the
   next visit, in both languages, without a deploy.
 
@@ -50,10 +50,13 @@ In:
   the only source), and `public_id` is generated explicitly since the query builder bypasses the
   model's ULID hook.
 
+- **Policy pages** (privacy, returns, warranty, EA backup codes, terms): editable from the
+  admin with the same plain-text discipline; see "Policy pages" below.
+
 Later, not in v1:
 
-- Policy pages (privacy, returns, warranty, terms, EA backup codes) editing.
 - Drag-and-drop ordering, categories, rich text, images, per-page FAQs.
+- New policy pages (the five keys are fixed by `config/store.php` and their routes).
 - FAQ structured data (`FAQPage` JSON-LD); worth its own small change once the content is
   dynamic.
 - The AI assistant's own FAQ topics (`resources/ai-assistant/knowledge/arab-ut.json`) overlap
@@ -159,7 +162,7 @@ Medium. One seed migration, one reader, five admin endpoints, one admin screen.
 
 ## Decisions taken in this design
 
-1. FAQ only in v1; policy pages later.
+1. FAQ and the five policy pages together in v1 (Mohamed, 2026-09-02).
 2. Plain text answers with line breaks, no rich text.
 3. Ordering by up / down buttons, no drag-and-drop.
 4. Hard delete behind a confirmation.
@@ -167,3 +170,74 @@ Medium. One seed migration, one reader, five admin endpoints, one admin screen.
 6. The language-file entries are removed once the table is the source, so there is one truth.
 7. The AI assistant's FAQ knowledge stays separate for now (drift accepted; revisit later).
 8. No `/admin/more` tile for the FAQ.
+
+## Policy pages
+
+### What exists
+
+`SimpleStorePageController` serves five keys from `config('store.simple_pages')` (`privacy`,
+`returns`, `warranty`, `ea_backup_codes`, `terms`) out of `lang/{ar,en}/store_pages.php`:
+`meta` (labels plus one hardcoded `updated_value` date) and `pages.<key>` with `title`,
+optional `subtitle`, and a `blocks` list of `paragraph` / `heading` / `list` / `notice` /
+`divider` blocks whose text is a list of inline parts (`text`, optional `strong`, optional
+`url`). `ValidateStoreInformationPage` checks the whole shape on every request, including the
+allow-listed link targets (approved external hosts and root-relative store paths).
+`store-information-page.tsx` renders the blocks.
+
+### Data
+
+- Table `store_pages`: `id`, `public_id`, `key` (unique, one of the five), `title_ar`,
+  `title_en`, `subtitle_ar` / `subtitle_en` (nullable), `blocks_ar`, `blocks_en` (JSON, the
+  existing block shape), `updated_at`, `created_at`. A migration seeds the five rows from
+  literal copies kept in `database/seeders/data/store_pages/{ar,en}.php` (committed files, not
+  `trans()`), only when the table is empty; `down()` is a no-op. The `meta` labels stay in the
+  language files; `updated_value` is replaced by the row's `updated_at` formatted per locale.
+- The same seed-file approach is used for the FAQ (`database/seeders/data/faq_entries.php`)
+  so both migrations are independent of the language files.
+
+### Plain text with two markers
+
+Decision 2 stands: no rich text. Inside a paragraph, list item or notice the editor accepts
+exactly two markers, `**bold**` and `[label](url)`, which the server converts to the inline
+parts the pages already use (`strong`, `url`). Everything else is literal text. Links go
+through the existing allow-list, so an editor cannot point a policy at an unapproved host.
+The reverse conversion (parts to markers) fills the editor when a page is opened.
+
+### Storefront
+
+- `SimpleStorePageController` reads the row for the key, converts markers, runs
+  `ValidateStoreInformationPage` exactly as today, and renders the same page component. The
+  policy pages do not change visually.
+
+### Admin
+
+- `GET /marketing/pages` (`can:marketing.view`, key `marketingPages`, appended after the FAQ
+  under Marketing): the five pages with title, last update, and an edit link.
+- `GET /marketing/pages/{key}` (`can:marketing.view`): the editor. Arabic and English as two
+  tabs; per tab: title, subtitle, and an ordered list of blocks. Each block row has a type
+  selector (heading, paragraph, list, notice, divider), the text (a textarea; list items one
+  per line; notice tone select), and move up / down / remove controls; an "add block" button
+  at the end. One save button per page writes both locales.
+- `PUT /api/marketing/pages/{key}` (`can:marketing.manage`, four authorization layers as for
+  the FAQ): form request validates the block structure and lengths (titles 120, block text
+  4000, at most 60 blocks per locale), the action converts markers, runs
+  `ValidateStoreInformationPage` and rejects with the validator's message when a link target
+  is not allowed, saves inside a transaction, and records `store_pages.updated` with the
+  previous content in the audit metadata (so a bad save is recoverable).
+- No delete, no create: the five keys are fixed.
+
+### Testing additions
+
+- Pest: the seed inserts five pages once; every policy route renders the seeded row identically
+  to the previous language-file output for both locales (snapshot of the Inertia `page.blocks`
+  before and after); marker conversion round-trips bold and links; an unapproved link is
+  rejected; the audit entry carries the previous content; permission denial.
+- Vitest: the editor renders tabs and blocks, moves and removes a block, disables save while
+  submitting.
+
+### Complexity, revised
+
+Medium to Ambitious: the FAQ part is Medium; the block editor is the larger screen. Two
+seed migrations, two readers, one shared marker converter, seven admin endpoints, three admin
+screens (FAQ list + dialog, pages list, page editor). All three screens go on the `/design`
+canvas before code.
