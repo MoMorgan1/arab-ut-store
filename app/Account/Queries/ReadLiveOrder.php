@@ -168,15 +168,14 @@ final class ReadLiveOrder
             'orderId' => (string) $order->getAttribute('public_id'),
             'value' => round($paymentHalalah / 100, 2),
             'currency' => (string) $order->getAttribute('currency'),
-            'items' => $order->items
+            'items' => array_values($order->items
                 ->map(fn (OrderItem $item): array => [
                     'id' => (string) $item->getAttribute('sku'),
                     'name' => (string) $item->getAttribute('name_en'),
                     'quantity' => (int) $item->getAttribute('quantity'),
                     'price' => round(((int) $item->getAttribute('unit_price_halalah')) / 100, 2),
                 ])
-                ->values()
-                ->all(),
+                ->all()),
         ];
     }
 
