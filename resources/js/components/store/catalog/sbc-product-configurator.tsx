@@ -239,6 +239,18 @@ export function SbcProductConfigurator({
             setCredentials(EMPTY_CREDENTIALS);
             setState('idle');
             announceCartAddition({
+                analytics: {
+                    id: product.id,
+                    name: product.name,
+                    ...(selectedCompletionTier?.price.currency === 'SAR'
+                        ? {
+                              priceMinorSar:
+                                  selectedCompletionTier.price.amountMinor,
+                          }
+                        : {}),
+                    quantity: 1,
+                    serviceType: 'sbc',
+                },
                 cartUrl: result.cartUrl,
                 imageAlt: product.image?.alt || product.name,
                 imageUrl:

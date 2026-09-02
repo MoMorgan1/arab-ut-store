@@ -55,7 +55,9 @@ final class ReadLiveOrder
                     'service_type',
                     'platform',
                     'status',
+                    'sku',
                     'quantity',
+                    'unit_price_halalah',
                     'total_halalah',
                     'configuration',
                 ])
@@ -108,6 +110,7 @@ final class ReadLiveOrder
                 )
                 : null,
             'refreshable' => ! $terminal,
+            'analytics' => $this->analytics($order),
             'paymentStartUrl' => $order->status === OrderStatus::PendingPayment
                 ? route(
                     $locale === 'en'
@@ -144,6 +147,38 @@ final class ReadLiveOrder
      * describes the current status - so resuming an order clears the message
      * on its own instead of leaving a stale explanation on the page.
      */
+    /**
+     * The purchase event the browser may send once for this order, or null
+     * when there is nothing to report. Wallet credit is not revenue (owner
+     * decision, 2026-09-02): a wallet-only order sends no purchase and a
+     * mixed order reports only the amount that went through Paylink. Computed
+     * from the raw status, before forCustomer() folds Refunded into Cancelled.
+     *
+     * @return array{orderId: string, value: float, currency: string, items: list<array{id: string, name: string, quantity: int, price: float}>}|null
+     */
+    private function analytics(Order $order): ?array
+    {
+        $paymentHalalah = (int) ($order->getAttribute('payment_halalah') ?? 0);
+
+        if ($paymentHalalah <= 0 || in_array($order->status, [OrderStatus::PendingPayment, OrderStatus::Cancelled], true)) {
+            return null;
+        }
+
+        return [
+            'orderId' => (string) $order->getAttribute('public_id'),
+            'value' => round($paymentHalalah / 100, 2),
+            'currency' => (string) $order->getAttribute('currency'),
+            'items' => array_values($order->items
+                ->map(fn (OrderItem $item): array => [
+                    'id' => (string) $item->getAttribute('sku'),
+                    'name' => (string) $item->getAttribute('name_en'),
+                    'quantity' => (int) $item->getAttribute('quantity'),
+                    'price' => round(((int) $item->getAttribute('unit_price_halalah')) / 100, 2),
+                ])
+                ->all()),
+        ];
+    }
+
     private function statusNote(Order $order, string $locale): ?string
     {
         $latest = OrderStatusHistory::query()

@@ -75,6 +75,29 @@
             <script type="application/ld+json">{!! json_encode($seo['schema'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
         @endif
 
+        @php($analyticsVendors = array_filter([
+            'ga4' => (string) config('services.analytics.ga4_measurement_id'),
+            'meta' => (string) config('services.analytics.meta_pixel_id'),
+            'tiktok' => (string) config('services.analytics.tiktok_pixel_id'),
+        ]))
+        @if ($analyticsVendors !== [] && ($isStoreRoute || ($page['component'] ?? '') === 'account/live-order'))
+            {{-- Consent bootstrap only. No vendor script lives in the head:
+                 resources/js/lib/analytics.ts loads each vendor after the
+                 visitor accepts, and Google's consent default has to exist
+                 before its tag can ever run, so it is declared here first. --}}
+            <script>
+                window.dataLayer = window.dataLayer || [];
+                function gtag() { window.dataLayer.push(arguments); }
+                gtag('consent', 'default', {
+                    ad_storage: 'denied',
+                    ad_user_data: 'denied',
+                    ad_personalization: 'denied',
+                    analytics_storage: 'denied',
+                });
+                window.__arabutAnalytics = @json($analyticsVendors, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+            </script>
+        @endif
+
         @if ($isStoreRoute)
             {{-- Installable storefront: the manifest gives phones an "add to
                  home screen" entry with the brand icon and the warm-black shell. --}}

@@ -433,6 +433,13 @@ export function CoinsConfigurator({
             });
             idempotencyKey.current = null;
             announceCartAddition({
+                analytics: {
+                    id: quote.variantId,
+                    name: translations.summary.service_value,
+                    priceMinorSar: quote.total.amountHalalah,
+                    quantity: 1,
+                    serviceType: 'coins',
+                },
                 cartUrl: addition.cartUrl,
                 imageAlt: translations.summary.service_value,
                 imageUrl: '/images/store/coins/ut-coin-160.webp',

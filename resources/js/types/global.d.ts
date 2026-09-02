@@ -1,3 +1,4 @@
+import type { MetaPixel, TikTokPixel } from '@/lib/analytics';
 import type { Auth } from '@/types/auth';
 import type { ChatSharedProps } from '@/types/chat';
 
@@ -21,3 +22,18 @@ declare module '@inertiajs/core' {
         };
     }
 }
+
+declare global {
+    interface Window {
+        /** Vendor ids injected by app.blade.php; absent when analytics is off. */
+        __arabutAnalytics?: { ga4?: string; meta?: string; tiktok?: string };
+        dataLayer?: unknown[];
+        gtag?: (...args: unknown[]) => void;
+        fbq?: MetaPixel;
+        _fbq?: MetaPixel;
+        ttq?: TikTokPixel;
+        TiktokAnalyticsObject?: string;
+    }
+}
+
+export {};
