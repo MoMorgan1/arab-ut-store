@@ -1,14 +1,14 @@
 # FAQ editor in the admin
 
 Date: 2026-09-02
-Status: proposed, awaiting Mohamed's approval
+Status: proposed, awaiting Mohamed's approval. Reviewed once (Opus, read-only) and revised.
 Scope decision (2026-09-02): v1 covers the home-page FAQ only; the policy pages stay in the
 language files and get an editor later if they ever change often enough to need one.
 
 ## Discovery
 
-- **Users**: Mohamed and staff with the marketing permissions edit the questions; every
-  storefront visitor reads them on the home page.
+- **Users**: Mohamed (the Admin role is the only one holding the marketing permissions
+  today) edits the questions; every storefront visitor reads them on the home page.
 - **Look**: the admin's existing list + dialog pattern (coupons, categories); the storefront
   FAQ section keeps its current design.
 - **Technology**: nothing new. A `faq_entries` table and `FaqEntry` model already exist and
@@ -42,9 +42,13 @@ In:
   table holds public copy only, nothing a customer owns).
 - Storefront reads visible entries by `sort_order` from the table; the section is hidden
   when there are none.
-- A migration seeds the table from the current language-file entries when it is empty, so the
-  live home page does not change on deploy. The language-file entries are removed afterwards
-  in the same PR (the table becomes the only source).
+- A migration seeds the table when it is empty from a **literal copy** of the four current
+  entries (Arabic and English) written inside the migration itself, so the live home page does
+  not change on deploy. It must not call `trans()`: the deploy script runs `migrate` on the new
+  release tree after the language-file entries are gone, and CI's `migrate:fresh` would meet
+  the same empty array. The language-file entries are removed in the same PR (the table becomes
+  the only source), and `public_id` is generated explicitly since the query builder bypasses the
+  model's ULID hook.
 
 Later, not in v1:
 
@@ -52,6 +56,9 @@ Later, not in v1:
 - Drag-and-drop ordering, categories, rich text, images, per-page FAQs.
 - FAQ structured data (`FAQPage` JSON-LD); worth its own small change once the content is
   dynamic.
+- The AI assistant's own FAQ topics (`resources/ai-assistant/knowledge/arab-ut.json`) overlap
+  with the home FAQ and stay separate for now; editing the admin FAQ does not change what the
+  assistant answers. Making those editable is a later, separate decision.
 
 ## Existing code this builds on
 
@@ -72,16 +79,21 @@ Later, not in v1:
 
 ### Data
 
-- Migration: no schema change; seeds `faq_entries` from `trans('store.faq.entries')` for
-  both locales (pairing by index, `sort_order` 10, 20, 30…) **only when the table is empty**,
-  inside a transaction. `down()` is a no-op (the rows are content, not schema).
-- `FaqEntry` gains a `visible()` scope and `question($locale)` / `answer($locale)` helpers.
+- Migration: no schema change; inserts the four entries from a literal array (both
+  locales, `sort_order` 10, 20, 30, 40, explicit `Str::ulid()` public ids) **only when the table
+  is empty**, inside a transaction. `down()` is a no-op (the rows are content, not schema).
+- `FaqEntry` gains a `visible()` scope, `question($locale)` / `answer($locale)` helpers, and a
+  `FaqEntryFactory` for tests.
 
 ### Storefront
 
 - `app/Services/Content/StoreFaqReader::entries(string $locale)` returns
-  `list<{id, question, answer}>` ordered by `sort_order`, then `id`. `HomeController` uses it
-  instead of the language array. The home page hides the FAQ section when the list is empty.
+  `list<{id (public id), question, answer}>` ordered by `sort_order`, then `id`.
+  `HomeController` uses it instead of the language array; the `FaqEntry` type in
+  `store-content.ts` gains `id`, and `faq-section.tsx` keys on it. The home page hides the
+  FAQ section when the list is empty.
+- Answers keep their line breaks: `.store-faq details p` gets `white-space: pre-line`
+  (React already escapes the text).
 - The English fallback: if an English field is blank (cannot happen through the admin, which
   requires both), the Arabic text is shown rather than nothing.
 
@@ -93,12 +105,21 @@ Later, not in v1:
   `sortOrder`, `isVisible`, `updatedAt`; URL templates for update, visibility, move, delete;
   create URL).
 - `POST /api/marketing/faq` (create), `PUT /api/marketing/faq/{publicId}` (update),
-  `POST /api/marketing/faq/{publicId}/visibility` (`visible` + `expectedVisible`, 409 on
-  conflict like categories), `POST /api/marketing/faq/{publicId}/move` (`direction: up|down`,
-  swaps `sort_order` with the neighbour in a transaction), `DELETE /api/marketing/faq/{publicId}`;
-  all `can:marketing.manage`, form requests with the length rules above, actions under
-  `app/Admin/Actions/Faq/*`, each recording a staff audit (`faq.created`, `faq.updated`,
-  `faq.visibility_changed`, `faq.moved`, `faq.deleted`).
+  `POST /api/marketing/faq/{publicId}/visibility` (`visible` + `expectedVisible`, 409 through
+  a typed `AdminFaqEntryVisibilityConflict` exception like categories),
+  `POST /api/marketing/faq/{publicId}/move` (`direction: up|down`, swaps `sort_order` with
+  the neighbour in a transaction, 422 at the ends), `DELETE /api/marketing/faq/{publicId}`.
+  Authorization at all four layers the repository uses: route `can:marketing.manage`, the form
+  request's `authorize()`, a controller `Gate::authorize`, and the action's own check. Actions
+  are flat in `app/Admin/Actions/` (`CreateAdminFaqEntry`, `UpdateAdminFaqEntry`,
+  `SetAdminFaqEntryVisibility`, `MoveAdminFaqEntry`, `DeleteAdminFaqEntry`), the list comes
+  from `app/Admin/Queries/ListAdminFaqEntries`, and each action records a staff audit named
+  `faq_entries.created` / `.updated` / `.visibility_changed` / `.moved` / `.deleted`. The delete
+  audit carries all four text fields in its metadata, so the content is recoverable from the
+  audit trail after a hard delete.
+- Nav: the FAQ child is appended **last** under Marketing so the group's first URL stays the
+  coupons page; no tile on `/admin/more` (reviews has none either). `AdminMoreTest` and the
+  admin sidebar count in the storefront smoke spec are updated with it.
 - Page `resources/js/pages/admin/marketing/faq.tsx` + components under
   `resources/js/components/admin/faq/`: header, "new question" button, ordered list (table on
   desktop, cards on phones) with the Arabic question, an English caption, the visibility
@@ -117,14 +138,16 @@ This is a new admin screen, so the UI gate applies: the list and the dialog go o
 
 ## Testing
 
-- Pest: the seed migration fills the table from the language files once and never again;
-  the home page renders the table's visible entries in order for both locales and hides the
-  section when empty; create / update validation (lengths, all four fields required); move up
-  / down swaps order and refuses at the ends; visibility toggle with 409 on conflict; delete;
-  audit entries; permission denial for `marketing.view`-only users.
+- Pest: the seed migration inserts the four entries once and leaves an already-filled table
+  alone (tested by running the migration class directly); the home page renders the table's
+  visible entries in order for both locales and hides the section when empty; create / update
+  validation (lengths, all four fields required); move up / down swaps order and refuses at
+  the ends; visibility toggle with 409 on conflict; delete with the text in the audit metadata;
+  every audit entry; permission denial for `marketing.view`-only users and for Staff.
 - Vitest: the admin page renders rows and badges, disables move at the ends, opens the dialog
   with the row's values, and hides write controls without `marketing.manage`.
-- Playwright: not needed for v1; the admin smoke test's sidebar count grows by one.
+- Playwright: the storefront smoke spec's admin sidebar link count grows by one; nothing
+  else.
 
 ## Complexity
 
@@ -142,3 +165,5 @@ Medium. One seed migration, one reader, five admin endpoints, one admin screen.
 4. Hard delete behind a confirmation.
 5. Permissions reuse `marketing.view` / `marketing.manage`.
 6. The language-file entries are removed once the table is the source, so there is one truth.
+7. The AI assistant's FAQ knowledge stays separate for now (drift accepted; revisit later).
+8. No `/admin/more` tile for the FAQ.
