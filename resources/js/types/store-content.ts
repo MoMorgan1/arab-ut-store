@@ -21,7 +21,6 @@ export type StoreHomeContent = {
     faq: FaqEntry[];
     faqTranslations: FaqTranslations;
     reviews: ReviewCollection;
-    reviewsRateUrl?: string;
     reviewsTranslations: ReviewTranslations;
     reviewsUrl: string;
     services: HomeServiceCard[];

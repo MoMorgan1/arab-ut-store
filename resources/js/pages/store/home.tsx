@@ -237,7 +237,6 @@ export default function StoreHome() {
                             />
                             <ReviewsSection
                                 locale={locale}
-                                rateUrl={homeContent.reviewsRateUrl}
                                 reviews={homeContent.reviews}
                                 reviewsUrl={homeContent.reviewsUrl}
                                 translations={homeContent.reviewsTranslations}
