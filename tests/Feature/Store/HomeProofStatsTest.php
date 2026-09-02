@@ -41,8 +41,8 @@ it('formats large counts with thousands separators in English', function () {
             ->where('store.hero.stats.1', ['value' => '+31,456', 'unit' => '', 'label' => 'Completed orders']));
 });
 
-it('falls back to the audited export figures while no order is completed', function () {
-    Order::factory()->create(['status' => OrderStatus::PendingPayment]);
+it('falls back to the audited export figures until the Salla history import has landed', function () {
+    Order::factory()->count(3)->create(['status' => OrderStatus::Completed]);
 
     $this->get(route('home'))
         ->assertOk()
@@ -52,7 +52,7 @@ it('falls back to the audited export figures while no order is completed', funct
 });
 
 it('caches the counts so the homepage does not recount on every visit', function () {
-    Order::factory()->create(['status' => OrderStatus::Completed]);
+    Order::factory()->create(['status' => OrderStatus::Completed, 'channel' => 'salla_import']);
 
     $this->get(route('home'))->assertInertia(fn (Assert $page) => $page->where('store.hero.stats.1.value', '+1'));
 

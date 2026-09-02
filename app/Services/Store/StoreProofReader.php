@@ -17,15 +17,20 @@ use LogicException;
  * into the same orders table. The counts are cached briefly because the
  * homepage is the busiest page and the figures only ever creep upward.
  *
- * An empty database (a fresh environment, or one the import has not reached)
- * shows the audited export figures from config instead of "+0", which is what
- * the 2026-08-09 Salla import decision asked for.
+ * Until the Salla history import has landed (no completed order carries the
+ * `salla_import` channel) the audited export figures from config are shown
+ * instead, so a fresh environment or a not-yet-imported production database
+ * never advertises a handful of live orders as the store's whole history.
+ * That is what the 2026-08-09 Salla import decision asked for.
  */
 final class StoreProofReader
 {
     public const CACHE_KEY = 'store:proof:counts';
 
     public const CACHE_SECONDS = 900;
+
+    /** The channel ImportSallaOrders stamps on every historical order it writes. */
+    public const IMPORT_CHANNEL = 'salla_import';
 
     /**
      * Fill the `value` of every metric-driven hero stat, leaving fixed stats untouched.
@@ -64,16 +69,18 @@ final class StoreProofReader
     public function counts(): array
     {
         return Cache::remember(self::CACHE_KEY, self::CACHE_SECONDS, function (): array {
-            /** @var object{completed_orders: int|string, customers_served: int|string}|null $row */
+            /** @var object{completed_orders: int|string, customers_served: int|string, imported_orders: int|string|null}|null $row */
             $row = DB::table('orders')
                 ->where('status', OrderStatus::Completed->value)
                 ->selectRaw('COUNT(*) as completed_orders, COUNT(DISTINCT user_id) as customers_served')
+                ->selectRaw('SUM(CASE WHEN channel = ? THEN 1 ELSE 0 END) as imported_orders', [self::IMPORT_CHANNEL])
                 ->first();
 
             $completedOrders = (int) ($row->completed_orders ?? 0);
             $customersServed = (int) ($row->customers_served ?? 0);
+            $importedOrders = (int) ($row->imported_orders ?? 0);
 
-            if ($completedOrders === 0) {
+            if ($importedOrders === 0) {
                 return [
                     'customers_served' => Config::integer('store.proof.fallback.customers_served'),
                     'completed_orders' => Config::integer('store.proof.fallback.completed_orders'),
