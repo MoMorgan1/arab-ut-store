@@ -2,12 +2,15 @@
 
 namespace App\Actions\Reviews;
 
+use App\Enums\ServiceType;
 use App\Models\OrderItem;
 use App\Models\Review;
 use App\Services\Reviews\ResolveReviewService;
+use App\Services\Reviews\SallaProductServiceMap;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -109,13 +112,21 @@ final class ImportStoreReviews
 
         DB::transaction(function () use ($projected, $externalIds): void {
             foreach ($projected as $review) {
-                Review::query()->updateOrCreate(
-                    [
-                        'source_key' => self::SALLA_ARCHIVE_SOURCE_KEY,
-                        'external_id' => $review['external_id'],
-                    ],
-                    $review,
-                );
+                $existing = Review::query()
+                    ->where('source_key', self::SALLA_ARCHIVE_SOURCE_KEY)
+                    ->where('external_id', $review['external_id'])
+                    ->first();
+
+                if ($existing instanceof Review) {
+                    // A re-run refreshes the public content and the service,
+                    // but never undoes a hide the admin applied to this row.
+                    unset($review['is_visible']);
+                    $existing->forceFill($review)->save();
+
+                    continue;
+                }
+
+                Review::query()->create($review);
             }
 
             Review::query()
@@ -205,6 +216,13 @@ final class ImportStoreReviews
                 "data.{$index}.customer.city",
             );
 
+            // A product review names the Salla product; that public name is
+            // the only thing the source says about which service it was for.
+            $product = $input['product'] ?? null;
+            $productName = ($input['type'] ?? null) === 'product' && is_array($product) && is_string($product['name'] ?? null)
+                ? $product['name']
+                : null;
+
             $reviews[] = [
                 'id' => 'salla:'.trim((string) $id),
                 'rating' => $rating,
@@ -214,6 +232,7 @@ final class ImportStoreReviews
                 'public_location' => $publicLocation,
                 'published_at' => $date->format('Y-m-d\\TH:i:s\\Z'),
                 'is_visible' => true,
+                'service' => SallaProductServiceMap::resolve($productName),
             ];
         }
 
@@ -479,6 +498,7 @@ final class ImportStoreReviews
             'public_location',
             'published_at',
             'is_visible',
+            'service',
         ];
 
         if (array_diff(array_keys($input), $allowed) !== []) {
@@ -500,6 +520,7 @@ final class ImportStoreReviews
                 'regex:/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:\\d{2})$/D',
             ],
             'is_visible' => ['required', 'accepted'],
+            'service' => ['sometimes', 'nullable', 'string', Rule::enum(ServiceType::class)],
         ])->validate();
         $body = trim(strip_tags($validated['comment']));
         $publicName = isset($validated['public_name'])
@@ -537,7 +558,7 @@ final class ImportStoreReviews
             'rating' => (int) $validated['rating'],
             'body_ar' => $locale === 'ar' ? $body : null,
             'body_en' => $locale === 'en' ? $body : null,
-            'service_type' => null,
+            'service_type' => isset($validated['service']) ? (string) $validated['service'] : null,
             'source' => self::SALLA_ARCHIVE_SOURCE_KEY,
             'source_key' => self::SALLA_ARCHIVE_SOURCE_KEY,
             'external_id' => (string) $validated['id'],
