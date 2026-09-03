@@ -15046,3 +15046,219 @@ html.admin-document {
 .chat-shelf-track::-webkit-scrollbar {
     display: none;
 }
+
+/* ------------------------------------------------------------------------
+   Button language (2026-09-03, canvas-approved)
+
+   One rule set for every storefront action, mapped onto the existing class
+   names so the markup stays put. Primary: gold gradient with a top sheen and
+   a soft glow, lifts on hover, presses on click; disabled is a dark, honest
+   "not yet" instead of washed-out gold. Secondary: glass with a gold hairline.
+   Tabs: one segmented bar with a gold indicator. Kept outside @layer so it
+   wins over the component layer without specificity games.
+   ------------------------------------------------------------------------ */
+:root {
+    --btn-radius: 0.75rem;
+    --btn-gold: linear-gradient(180deg, #f0ca70 0%, #d4a843 56%, #b88725 100%);
+    --btn-gold-hover: linear-gradient(
+        180deg,
+        #f7d78a 0%,
+        #e4b756 56%,
+        #c5922c 100%
+    );
+    --btn-gold-border: rgb(240 202 112 / 72%);
+    --btn-sheen: inset 0 1px 0 rgb(255 255 255 / 38%);
+    --btn-shade: inset 0 -1px 0 rgb(0 0 0 / 18%);
+    --btn-glow: 0 10px 24px -12px rgb(212 168 67 / 80%);
+    --btn-glow-hover: 0 14px 30px -12px rgb(212 168 67 / 95%);
+    --btn-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Primary */
+.manual-configurator__submit,
+.coins-primary-action,
+.coins-fast-suggestion__action,
+.store-hero__cta--primary,
+.store-cart-checkout__action,
+.auth-shell .auth-form__submit,
+.account-profile-verify-cta,
+.account-order-review__submit,
+.account-order-card__action,
+.account-overview__empty-cta,
+.store-catalog-toolbar__submit {
+    border: 1px solid var(--btn-gold-border);
+    border-radius: var(--btn-radius);
+    background: var(--btn-gold);
+    color: var(--arabut-navy-deep);
+    font-weight: 800;
+    box-shadow: var(--btn-sheen), var(--btn-shade), var(--btn-glow);
+    transition:
+        transform 180ms var(--btn-ease),
+        box-shadow 180ms var(--btn-ease),
+        background-color 160ms ease,
+        border-color 160ms ease,
+        color 160ms ease,
+        opacity 160ms ease;
+}
+
+.manual-configurator__submit:hover:not(:disabled),
+.coins-primary-action:hover:not(:disabled),
+.coins-fast-suggestion__action:hover:not(:disabled),
+.store-hero__cta--primary:hover,
+.store-cart-checkout__action:hover:not(:disabled),
+.auth-shell .auth-form__submit:hover:not(:disabled),
+.account-profile-verify-cta:hover,
+.account-order-review__submit:hover:not(:disabled),
+.account-order-card__action:hover,
+.account-overview__empty-cta:hover,
+.store-catalog-toolbar__submit:hover:not(:disabled) {
+    border-color: #f7d78a;
+    background: var(--btn-gold-hover);
+    color: var(--arabut-navy-deep);
+    transform: translateY(-1px);
+    box-shadow: var(--btn-sheen), var(--btn-shade), var(--btn-glow-hover);
+}
+
+.manual-configurator__submit:active:not(:disabled),
+.coins-primary-action:active:not(:disabled),
+.coins-fast-suggestion__action:active:not(:disabled),
+.store-hero__cta--primary:active,
+.store-cart-checkout__action:active:not(:disabled),
+.auth-shell .auth-form__submit:active:not(:disabled),
+.account-profile-verify-cta:active,
+.account-order-review__submit:active:not(:disabled),
+.account-order-card__action:active,
+.account-overview__empty-cta:active,
+.store-catalog-toolbar__submit:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 20%),
+        0 4px 12px -8px rgb(212 168 67 / 60%);
+}
+
+.manual-configurator__submit:disabled,
+.coins-primary-action:disabled,
+.coins-fast-suggestion__action:disabled,
+.store-cart-checkout__action:disabled,
+.auth-shell .auth-form__submit:disabled,
+.account-order-review__submit:disabled,
+.store-catalog-toolbar__submit:disabled {
+    border-color: rgb(212 168 67 / 22%);
+    background: rgb(212 168 67 / 14%);
+    color: rgb(237 228 208 / 42%);
+    box-shadow: none;
+    opacity: 1;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Secondary (glass with a gold hairline) */
+.coins-secondary-action,
+.store-hero__cta--secondary,
+.store-cart-phone__button,
+.manual-squad-dropzone__button,
+.auth-google-action {
+    border: 1px solid rgb(212 168 67 / 38%);
+    border-radius: var(--btn-radius);
+    background: rgb(255 255 255 / 3.5%);
+    color: var(--arabut-ink);
+    font-weight: 750;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+    transition:
+        transform 180ms var(--btn-ease),
+        background-color 160ms ease,
+        border-color 160ms ease,
+        color 160ms ease;
+}
+
+.coins-secondary-action:hover:not(:disabled),
+.store-hero__cta--secondary:hover,
+.store-cart-phone__button:hover:not(:disabled),
+.manual-squad-dropzone__button:hover,
+.auth-google-action:hover {
+    border-color: var(--arabut-gold);
+    background: rgb(212 168 67 / 10%);
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%);
+}
+
+/* Round icon buttons (rail arrows) */
+.store-reviews__arrow {
+    border-color: rgb(212 168 67 / 32%);
+    background: rgb(8 8 8 / 40%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+}
+
+/* Segmented tabs: one bar, a gold indicator */
+.manual-service-tabs,
+.auth-login-method {
+    gap: 0.25rem;
+    border: 1px solid rgb(212 168 67 / 20%);
+    border-radius: 0.9rem;
+    background: rgb(8 8 8 / 45%);
+    padding: 0.25rem;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+
+.manual-service-tabs__tab,
+.auth-login-method__tab {
+    min-height: 2.625rem;
+    border: 0;
+    border-radius: 0.65rem;
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    color: var(--arabut-muted);
+    font-weight: 750;
+    transition:
+        color 160ms ease,
+        background-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.manual-service-tabs__tab:hover,
+.auth-login-method__tab:hover {
+    border: 0;
+    background: rgb(255 255 255 / 4%);
+    color: var(--arabut-ink);
+}
+
+.manual-service-tabs__tab[aria-selected='true'],
+.auth-login-method__tab[aria-selected='true'] {
+    border: 0;
+    background: var(--btn-gold);
+    color: var(--arabut-navy-deep);
+    box-shadow:
+        var(--btn-sheen),
+        0 8px 18px -10px rgb(212 168 67 / 80%);
+}
+
+/* WhatsApp pill keeps its green, joins the sheen and glow */
+.store-primary-nav__whatsapp-visual {
+    background: linear-gradient(180deg, #31de74, #1fb85a);
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 35%),
+        0 8px 20px -10px rgb(37 211 102 / 80%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .manual-configurator__submit,
+    .coins-primary-action,
+    .coins-fast-suggestion__action,
+    .store-hero__cta,
+    .store-cart-checkout__action,
+    .auth-shell .auth-form__submit,
+    .account-profile-verify-cta,
+    .account-order-review__submit,
+    .account-order-card__action,
+    .account-overview__empty-cta,
+    .store-catalog-toolbar__submit,
+    .coins-secondary-action,
+    .store-cart-phone__button,
+    .manual-squad-dropzone__button,
+    .auth-google-action {
+        transition: none;
+        transform: none;
+    }
+}
