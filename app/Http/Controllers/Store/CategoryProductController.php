@@ -7,6 +7,7 @@ use App\Enums\ServiceType;
 use App\Http\Controllers\Controller;
 use App\Services\Reviews\StoreReviewReader;
 use App\Support\Seo\StorePageSeo;
+use App\Support\StoreTutorials;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -44,6 +45,10 @@ final class CategoryProductController extends Controller
             'sbcCartUrl' => $this->route($request, 'cart.items.sbc.store'),
             'backUrl' => $this->route($request, 'store.'.(string) $request->route('service')),
             'productPage' => trans('store.product'),
+            'manualCommon' => trans('store.manual_services.common'),
+            'tutorials' => [
+                'ea' => StoreTutorials::EA,
+            ],
             'catalog' => $catalogPage,
             'serviceReviews' => $serviceReviews,
             'seo' => StorePageSeo::fromCatalogProduct($catalogPage['product'])->toArray(),

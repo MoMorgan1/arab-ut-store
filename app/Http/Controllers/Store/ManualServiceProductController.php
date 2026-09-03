@@ -15,6 +15,7 @@ use App\Models\ServicePriceSchedule;
 use App\Services\Reviews\StoreReviewReader;
 use App\Support\Money;
 use App\Support\Seo\StorePageSeo;
+use App\Support\StoreTutorials;
 use App\ValueObjects\Pricing\FutChampionsPricing;
 use App\ValueObjects\Pricing\PreparedDisplayMoneyConverter;
 use App\ValueObjects\Pricing\RivalsPricing;
@@ -26,10 +27,6 @@ use Inertia\Response;
 
 final class ManualServiceProductController extends Controller
 {
-    private const EA_TUTORIAL = 'https://youtube.com/shorts/hNIW1ps_t3k?si=i9MR5izDKRhpRNjo';
-
-    private const PLAYSTATION_TUTORIAL = 'https://youtu.be/fCAKsusuHR8?si=cYzL6fwszL4ExwPK';
-
     public function __invoke(
         Request $request,
         ReadManualServicePricing $readPricing,
@@ -110,8 +107,8 @@ final class ManualServiceProductController extends Controller
                 'addUrl' => $this->manualServiceCartUrl($request, $service),
                 'platforms' => [Platform::PlayStation->value, Platform::Pc->value],
                 'tutorials' => [
-                    'ea' => self::EA_TUTORIAL,
-                    'playstation' => self::PLAYSTATION_TUTORIAL,
+                    'ea' => StoreTutorials::EA,
+                    'playstation' => StoreTutorials::PLAYSTATION,
                 ],
                 'product' => $this->product($product, $service, $identity['slug']),
                 'pricing' => $pricingPayload,

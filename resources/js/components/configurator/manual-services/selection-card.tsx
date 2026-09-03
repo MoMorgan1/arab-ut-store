@@ -5,6 +5,7 @@ export function SelectionCard({
     caption,
     checked,
     children,
+    disabled = false,
     iconUrls,
     label,
     name,
@@ -16,6 +17,7 @@ export function SelectionCard({
     caption?: string;
     checked: boolean;
     children: ReactNode;
+    disabled?: boolean;
     iconUrls?: string[];
     label?: string;
     name: string;
@@ -33,6 +35,7 @@ export function SelectionCard({
                     aria-label={ariaLabel}
                     checked={checked}
                     className="sr-only"
+                    disabled={disabled}
                     name={name}
                     onChange={onChange}
                     type="radio"
@@ -72,6 +75,7 @@ export function SelectionCard({
         >
             <input
                 checked={checked}
+                disabled={disabled}
                 name={name}
                 onChange={onChange}
                 type="radio"

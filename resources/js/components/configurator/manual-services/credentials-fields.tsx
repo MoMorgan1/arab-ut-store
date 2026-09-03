@@ -411,7 +411,7 @@ export function CredentialsFields({
     );
 }
 
-function CodeFields({
+export function CodeFields({
     codes,
     errors = {},
     fieldPrefix,

@@ -82,6 +82,7 @@ export function ManualServicePanel({
     eta,
     facts,
     image,
+    inline = false,
     locale,
     price,
     status,
@@ -90,9 +91,10 @@ export function ManualServicePanel({
     title,
     translations,
 }: {
-    eta: string;
+    eta?: string;
     facts: Array<{ label: string; value: string }>;
     image: { alt: string; url: string };
+    inline?: boolean;
     locale: 'ar' | 'en';
     price: ManualServiceMoney | null;
     status: 'idle' | 'loading' | 'success' | 'error';
@@ -114,7 +116,13 @@ export function ManualServicePanel({
             : (submitLabel ?? translations.add_to_cart);
 
     return (
-        <aside className="manual-service-panel">
+        <aside
+            className={
+                inline
+                    ? 'manual-service-panel manual-service-panel--inline'
+                    : 'manual-service-panel'
+            }
+        >
             <div className="manual-service-panel__media">
                 <img
                     alt={image.alt}
@@ -144,10 +152,12 @@ export function ManualServicePanel({
                 ))}
             </dl>
 
-            <div className="manual-service-panel__eta">
-                <Clock aria-hidden="true" />
-                <span>{eta}</span>
-            </div>
+            {eta === undefined ? null : (
+                <div className="manual-service-panel__eta">
+                    <Clock aria-hidden="true" />
+                    <span>{eta}</span>
+                </div>
+            )}
 
             <div className="manual-service-panel__bar" ref={barRef}>
                 <div className="manual-service-panel__total">

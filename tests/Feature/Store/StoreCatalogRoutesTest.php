@@ -6,6 +6,7 @@ use App\Models\ExchangeRate;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Review;
+use App\Support\StoreTutorials;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -393,6 +394,18 @@ test('homepage service rail contract has equal ordered internal routes and the e
             ->where('homeContent.services.4.href', 'https://sell.arab-ut.com/')
             ->where('homeContent.services.4.imageUrl', '/images/store/services/sell-coins.webp')
             ->where('homeContent.services.4.external', true));
+});
+
+test('SBC product pages expose the EA tutorial and manual-service common copy', function () {
+    createStoreCatalogProduct(ServiceType::Sbc, ['slug' => 'sbc-unified-options']);
+
+    $this->get('/sbc/sbc-unified-options')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('store/catalog-product', false)
+            ->where('tutorials.ea', StoreTutorials::EA)
+            ->where('manualCommon.step_platform', trans('store.manual_services.common.step_platform'))
+            ->where('manualCommon.ea_tutorial', trans('store.manual_services.common.ea_tutorial')));
 });
 
 test('category product pages expose serviceReviews prop when threshold is met', function () {
