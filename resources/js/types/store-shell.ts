@@ -253,6 +253,8 @@ export type StoreCartTranslations = {
     credentials_save_error: string;
     remove_item: string;
     remove_hint: string;
+    remove_short: string;
+    remove_holding: string;
     remove_error: string;
     checkout: string;
     checkout_loading: string;

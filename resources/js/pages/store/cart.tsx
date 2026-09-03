@@ -1422,6 +1422,14 @@ function CartLine({
                             className="store-cart-line__remove-fill"
                         />
                         <Trash2 aria-hidden="true" />
+                        <span
+                            aria-hidden="true"
+                            className="store-cart-line__remove-label"
+                        >
+                            {holdProgress > 0
+                                ? translations.remove_holding
+                                : translations.remove_short}
+                        </span>
                     </button>
                     <span className="sr-only" id={`remove-hint-${cartItem.id}`}>
                         {translations.remove_hint}
