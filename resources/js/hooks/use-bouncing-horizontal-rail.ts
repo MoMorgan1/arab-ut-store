@@ -125,14 +125,14 @@ export function useBouncingHorizontalRail({
     );
 
     useEffect(() => {
-        // Touch screens scroll the rail themselves; a script nudging it every
-        // frame fights the native scroller and reads as lag on phones.
+        // Touch screens glide too: a finger on the rail pauses the glide (see
+        // the touch handlers below) and it resumes shortly after the momentum
+        // scroll settles, so the script never fights the native scroller.
         if (
             !overflows ||
             paused ||
             !pageVisible ||
-            window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
-            window.matchMedia('(pointer: coarse)').matches
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches
         ) {
             return;
         }
@@ -168,8 +168,7 @@ export function useBouncingHorizontalRail({
 
                 // Whole pixels only: iOS Safari rounds fractional scrollBy
                 // deltas, so sub-pixel steps every frame crawled and dropped
-                // frames on phones. Desktop pointers get the gentle glide; touch
-                // screens get no auto-motion at all (see the effect guard).
+                // frames on phones.
                 const elapsed = Math.min(timestamp - previousTimestamp, 50);
                 pendingDistance += pixelsPerSecond * (elapsed / 1_000);
                 const wholePixels = Math.floor(pendingDistance);

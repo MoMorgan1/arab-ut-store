@@ -10484,15 +10484,11 @@ html.admin-document {
 }
 
 @media (max-width: 40rem) {
+    /* One compact card per row on phones (owner decision 2026-09-03). */
     .store-catalog-page--sbc .store-catalog-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        column-gap: 0.75rem;
-    }
-
-    .store-catalog-page--sbc
-        .store-catalog-card--compact
-        .store-catalog-card__prices {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: minmax(0, 20rem);
+        justify-content: center;
+        row-gap: 2.5rem;
     }
 }
 
