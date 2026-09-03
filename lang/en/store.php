@@ -80,6 +80,8 @@ return [
         'credentials_save_error' => 'EA details could not be saved.',
         'remove_hint' => 'Press and hold until the bar fills to remove this product.',
         'remove_item' => 'Remove product',
+        'remove_short' => 'Remove',
+        'remove_holding' => 'Hold…',
         'remove_error' => 'The product could not be removed. Try again.',
         'prices_updated' => 'Prices updated',
         'prices_updated_note' => 'Coins prices change hourly. These are the current ones.',

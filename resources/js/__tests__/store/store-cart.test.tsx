@@ -136,6 +136,8 @@ const mockPage = vi.hoisted(() => ({
                 credentials_hide: 'Hide EA details',
                 remove_item: 'Remove product',
                 remove_hint: 'Press and hold until the bar fills.',
+                remove_short: 'Remove',
+                remove_holding: 'Keep holding…',
                 remove_error: 'The product could not be removed.',
                 backup_code: 'Backup code :number',
                 checkout: 'Continue to secure payment',

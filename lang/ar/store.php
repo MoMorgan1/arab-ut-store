@@ -77,6 +77,8 @@ return [
         'credentials_save_error' => 'تعذر حفظ بيانات EA.',
         'remove_hint' => 'استمر بالضغط حتى يكتمل الشريط لحذف المنتج.',
         'remove_item' => 'حذف المنتج',
+        'remove_short' => 'حذف',
+        'remove_holding' => 'استمر…',
         'remove_error' => 'تعذر حذف المنتج. حاول مرة أخرى.',
         'prices_updated' => 'تحدّثت الأسعار',
         'prices_updated_note' => 'أسعار الكوينز تتغيّر كل ساعة، وهذه أسعارها الحالية.',
