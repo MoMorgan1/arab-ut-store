@@ -82,6 +82,22 @@ export default function StoreCart() {
         0,
     );
 
+    const checkoutController = useCheckoutController({
+        authenticated,
+        canCheckout: cart.canCheckout,
+        checkout: cartPage.checkout,
+        coupon: cart.coupon,
+        items,
+        totalHalalah,
+        initialUseWallet: cart.useWallet,
+    });
+    const countCopy =
+        cart.count === 1
+            ? cartPage.translations.items_count_one
+            : interpolate(cartPage.translations.items_count, {
+                  count: formatInteger(cart.count, locale),
+              });
+
     function itemRemoved(count: number) {
         // Reload rather than filter local state: removing an unavailable item
         // has to refresh `cart.canCheckout` too, or the checkout button stays
@@ -109,8 +125,17 @@ export default function StoreCart() {
                 className="store-cart-page"
             >
                 <header className="store-cart-page__heading">
-                    <p>{cartPage.translations.eyebrow}</p>
-                    <h1 id="store-cart-title">{cartPage.translations.title}</h1>
+                    <div>
+                        <p>{cartPage.translations.eyebrow}</p>
+                        <h1 id="store-cart-title">
+                            {cartPage.translations.title}
+                        </h1>
+                    </div>
+                    {items.length > 0 ? (
+                        <span className="store-cart-page__count">
+                            {countCopy}
+                        </span>
+                    ) : null}
                 </header>
 
                 {items.length === 0 ? (
@@ -167,15 +192,15 @@ export default function StoreCart() {
                                 suggestions={cartPage.suggestions}
                                 translations={cartPage.translations.suggestions}
                             />
-                            <CheckoutPanel
+                            <CheckoutSummary
                                 authenticated={authenticated}
                                 canCheckout={cart.canCheckout}
                                 blockedByUnavailable={items.some(
                                     (item) => item.unavailableReason,
                                 )}
                                 checkout={cartPage.checkout}
+                                controller={checkoutController}
                                 coupon={cart.coupon}
-                                items={items}
                                 locale={locale}
                                 policyLinks={{
                                     terms: {
@@ -189,9 +214,16 @@ export default function StoreCart() {
                                 }}
                                 totalHalalah={totalHalalah}
                                 translations={cartPage.translations}
-                                useWallet={cart.useWallet}
                             />
                         </div>
+                        <CartDock
+                            authenticated={authenticated}
+                            canCheckout={cart.canCheckout}
+                            checkout={cartPage.checkout}
+                            controller={checkoutController}
+                            locale={locale}
+                            translations={cartPage.translations}
+                        />
                     </>
                 )}
             </section>
@@ -270,38 +302,47 @@ function CheckoutProgress({
     );
 }
 
-function CheckoutPanel({
+type CheckoutMachineState = 'idle' | 'loading' | 'confirming' | 'error';
+
+export type CheckoutController = {
+    state: CheckoutMachineState;
+    errorCode: string | null;
+    repricing: PaylinkRepricing | null;
+    useWallet: boolean;
+    walletBusy: boolean;
+    showWalletToggle: boolean;
+    discountHalalah: number;
+    totalAfterDiscount: number;
+    walletUsedHalalah: number;
+    payableHalalah: number;
+    handleWalletToggle: (
+        event: React.ChangeEvent<HTMLInputElement>,
+    ) => Promise<void>;
+    startPayment: (confirmed?: PaylinkRepricing) => Promise<void>;
+    dismissRepricing: () => void;
+};
+
+// One state machine feeds both the in-flow summary and the phone dock, so the
+// two controls can never disagree about what the checkout is doing.
+function useCheckoutController({
     authenticated,
-    blockedByUnavailable,
     canCheckout,
     checkout,
     coupon,
     items,
-    locale,
-    policyLinks,
     totalHalalah,
-    translations,
-    useWallet: initialUseWallet,
+    initialUseWallet,
 }: {
     authenticated: boolean;
-    blockedByUnavailable: boolean;
     canCheckout: boolean;
     checkout: StoreCartPageProps['cartPage']['checkout'];
     coupon: StoredCartCoupon | null;
     items: StoreCartItem[];
-    locale: 'ar' | 'en';
-    policyLinks: {
-        terms: { label: string; url: string };
-        warranty: { label: string; url: string };
-    };
     totalHalalah: number;
-    translations: StoreCartTranslations;
-    useWallet: boolean;
-}) {
+    initialUseWallet: boolean;
+}): CheckoutController {
     const idempotencyKey = useRef(newAttemptKey('checkout'));
-    const [state, setState] = useState<
-        'idle' | 'loading' | 'confirming' | 'error'
-    >('idle');
+    const [state, setState] = useState<CheckoutMachineState>('idle');
     const [errorCode, setErrorCode] = useState<string | null>(null);
     const [repricing, setRepricing] = useState<PaylinkRepricing | null>(null);
     const [useWallet, setUseWallet] = useState(initialUseWallet);
@@ -398,16 +439,88 @@ function CheckoutPanel({
         }
     }
 
+    function dismissRepricing() {
+        setRepricing(null);
+        setState('idle');
+        router.reload({ only: ['cart'] });
+    }
+
+    return {
+        state,
+        errorCode,
+        repricing,
+        useWallet,
+        walletBusy,
+        showWalletToggle,
+        discountHalalah,
+        totalAfterDiscount,
+        walletUsedHalalah,
+        payableHalalah,
+        handleWalletToggle,
+        startPayment,
+        dismissRepricing,
+    };
+}
+
+function scrollCheckoutTarget(targetId: string, focusFirstField: boolean) {
+    const target = document.getElementById(targetId);
+
+    if (!target) {
+        return;
+    }
+
+    target.scrollIntoView({ block: 'center' });
+
+    if (focusFirstField) {
+        target
+            .querySelector<HTMLElement>('input, select, textarea, button')
+            ?.focus({ preventScroll: true });
+    }
+}
+
+function CheckoutSummary({
+    authenticated,
+    blockedByUnavailable,
+    canCheckout,
+    checkout,
+    controller,
+    coupon,
+    locale,
+    policyLinks,
+    totalHalalah,
+    translations,
+}: {
+    authenticated: boolean;
+    blockedByUnavailable: boolean;
+    canCheckout: boolean;
+    checkout: StoreCartPageProps['cartPage']['checkout'];
+    controller: CheckoutController;
+    coupon: StoredCartCoupon | null;
+    locale: 'ar' | 'en';
+    policyLinks: {
+        terms: { label: string; url: string };
+        warranty: { label: string; url: string };
+    };
+    totalHalalah: number;
+    translations: StoreCartTranslations;
+}) {
+    const {
+        state,
+        errorCode,
+        repricing,
+        useWallet,
+        walletBusy,
+        showWalletToggle,
+        walletUsedHalalah,
+        payableHalalah,
+        handleWalletToggle,
+        startPayment,
+        dismissRepricing,
+    } = controller;
+
     return (
         <aside
-            className={[
-                'store-cart-checkout',
-                authenticated && checkout.phoneVerified
-                    ? 'store-cart-checkout--ready'
-                    : null,
-            ]
-                .filter(Boolean)
-                .join(' ')}
+            className="store-cart-checkout store-cart-summary"
             aria-label={translations.checkout}
         >
             <header className="store-cart-checkout__heading">
@@ -443,6 +556,10 @@ function CheckoutPanel({
                     />
                 </label>
             ) : null}
+            <div className="store-cart-checkout__subtotal">
+                <span>{translations.subtotal}</span>
+                <strong>{formatMinorUnits(totalHalalah, 'SAR', locale)}</strong>
+            </div>
             {coupon !== null ? (
                 <div className="store-cart-checkout__discount">
                     <span>{translations.coupon_discount}</span>
@@ -479,19 +596,27 @@ function CheckoutPanel({
             </p>
             {!authenticated ? (
                 <a
-                    className="store-cart-checkout__action"
+                    className="store-cart-checkout__action store-cart-checkout__action--desktop"
                     href={checkout.loginUrl}
                 >
                     {translations.checkout_login}
                 </a>
-            ) : !checkout.phoneVerified ? (
-                <CheckoutPhoneForm
-                    checkout={checkout}
-                    locale={locale}
-                    translations={translations}
-                />
-            ) : state === 'confirming' && repricing !== null ? (
-                <div className="store-cart-confirm" role="alert">
+            ) : null}
+            {authenticated && !checkout.phoneVerified ? (
+                <div id="store-cart-phone-form">
+                    <CheckoutPhoneForm
+                        checkout={checkout}
+                        locale={locale}
+                        translations={translations}
+                    />
+                </div>
+            ) : null}
+            {state === 'confirming' && repricing !== null ? (
+                <div
+                    className="store-cart-confirm"
+                    id="store-cart-confirm"
+                    role="alert"
+                >
                     <p className="store-cart-confirm__title">
                         {translations.confirm_total_title}
                     </p>
@@ -557,22 +682,16 @@ function CheckoutPanel({
                         >
                             {translations.confirm_pay}
                         </button>
-                        <button
-                            onClick={() => {
-                                setRepricing(null);
-                                setState('idle');
-                                router.reload({ only: ['cart'] });
-                            }}
-                            type="button"
-                        >
+                        <button onClick={dismissRepricing} type="button">
                             {translations.confirm_cancel}
                         </button>
                     </div>
                 </div>
-            ) : (
+            ) : null}
+            {authenticated && checkout.phoneVerified ? (
                 <>
                     <button
-                        className="store-cart-checkout__action"
+                        className="store-cart-checkout__action store-cart-checkout__action--desktop"
                         data-busy={state === 'loading'}
                         disabled={!canCheckout || state === 'loading'}
                         onClick={() => startPayment()}
@@ -588,19 +707,103 @@ function CheckoutPanel({
                         </p>
                     ) : null}
                 </>
-            )}
+            ) : null}
             {state === 'error' ? (
                 <p className="store-cart-checkout__error" role="alert">
-                    {errorCode === 'cart_changed'
-                        ? translations.checkout_cart_changed
-                        : errorCode === 'pricing_updating'
-                          ? translations.checkout_pricing_updating
-                          : errorCode === 'too_many_requests'
-                            ? translations.checkout_too_many_requests
-                            : translations.checkout_error}
+                    {checkoutErrorCopy(errorCode, translations)}
                 </p>
             ) : null}
         </aside>
+    );
+}
+
+function checkoutErrorCopy(
+    errorCode: string | null,
+    translations: StoreCartTranslations,
+): string {
+    switch (errorCode) {
+        case 'cart_changed':
+            return translations.checkout_cart_changed;
+        case 'pricing_updating':
+            return translations.checkout_pricing_updating;
+        case 'too_many_requests':
+            return translations.checkout_too_many_requests;
+        default:
+            return translations.checkout_error;
+    }
+}
+
+function CartDock({
+    authenticated,
+    canCheckout,
+    checkout,
+    controller,
+    locale,
+    translations,
+}: {
+    authenticated: boolean;
+    canCheckout: boolean;
+    checkout: StoreCartPageProps['cartPage']['checkout'];
+    controller: CheckoutController;
+    locale: 'ar' | 'en';
+    translations: StoreCartTranslations;
+}) {
+    const { errorCode, state, repricing, payableHalalah, startPayment } =
+        controller;
+
+    return (
+        <div className="store-cart-dock">
+            <div className="store-cart-dock__total">
+                <span className="store-cart-dock__label">
+                    {translations.order_total}
+                </span>
+                <strong className="store-cart-dock__amount">
+                    {formatMinorUnits(payableHalalah, 'SAR', locale)}
+                </strong>
+            </div>
+            {!authenticated ? (
+                <a className="store-cart-dock__action" href={checkout.loginUrl}>
+                    {translations.checkout_login}
+                </a>
+            ) : state === 'confirming' && repricing !== null ? (
+                <button
+                    className="store-cart-dock__action"
+                    onClick={() =>
+                        scrollCheckoutTarget('store-cart-confirm', false)
+                    }
+                    type="button"
+                >
+                    {translations.review_reprice}
+                </button>
+            ) : !checkout.phoneVerified ? (
+                <button
+                    className="store-cart-dock__action"
+                    onClick={() =>
+                        scrollCheckoutTarget('store-cart-phone-form', true)
+                    }
+                    type="button"
+                >
+                    {translations.verify_phone_short}
+                </button>
+            ) : (
+                <button
+                    className="store-cart-dock__action"
+                    data-busy={state === 'loading'}
+                    disabled={!canCheckout || state === 'loading'}
+                    onClick={() => startPayment()}
+                    type="button"
+                >
+                    {state === 'loading'
+                        ? translations.checkout_loading
+                        : translations.pay_now}
+                </button>
+            )}
+            {state === 'error' ? (
+                <p className="store-cart-dock__error">
+                    {checkoutErrorCopy(errorCode, translations)}
+                </p>
+            ) : null}
+        </div>
     );
 }
 
@@ -1124,17 +1327,30 @@ function CartLine({
                 .filter(Boolean)
                 .join(' ')}
         >
-            <div className="store-cart-line__title">
-                {cartItem.product.imageUrl !== null ? (
-                    <img
-                        alt={isCoins ? '' : cartItem.product.name}
-                        aria-hidden={isCoins ? 'true' : undefined}
-                        height="42"
-                        src={cartItem.product.imageUrl}
-                        width="42"
-                    />
-                ) : null}
-                <div>
+            <div className="store-cart-line__top">
+                <span
+                    className={[
+                        'store-cart-line__thumb',
+                        cartItem.product.serviceType === 'sbc'
+                            ? 'store-cart-line__thumb--raised'
+                            : '',
+                    ]
+                        .filter(Boolean)
+                        .join(' ')}
+                >
+                    {cartItem.product.imageUrl !== null ? (
+                        <img
+                            alt={isCoins ? '' : cartItem.product.name}
+                            aria-hidden={isCoins ? 'true' : undefined}
+                            height="62"
+                            src={cartItem.product.imageUrl}
+                            width="62"
+                        />
+                    ) : (
+                        <ShoppingBag aria-hidden="true" />
+                    )}
+                </span>
+                <div className="store-cart-line__name">
                     <span>{translations.service}</span>
                     <h2>{cartItem.product.name}</h2>
                     {cartItem.unavailableReason ? (
@@ -1144,47 +1360,80 @@ function CartLine({
                         </p>
                     ) : null}
                 </div>
-                <button
-                    aria-describedby={`remove-hint-${cartItem.id}`}
-                    aria-label={translations.remove_item}
-                    className="store-cart-line__remove"
-                    disabled={removing}
-                    onBlur={cancelHold}
-                    onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            startHold();
+                <div className="store-cart-line__trailing">
+                    {cartItem.promotion ? (
+                        <p className="store-cart-line__total store-cart-line__total--promo">
+                            <strong>
+                                {formatMinorUnits(
+                                    cartItem.totalHalalah -
+                                        cartItem.promotion.discountHalalah,
+                                    'SAR',
+                                    locale,
+                                )}
+                            </strong>
+                            <del className="store-price-compare">
+                                {formatMinorUnits(
+                                    cartItem.totalHalalah,
+                                    'SAR',
+                                    locale,
+                                )}
+                            </del>
+                            <span className="store-promo-badge">
+                                {cartItem.promotion.badge}
+                            </span>
+                        </p>
+                    ) : (
+                        <p className="store-cart-line__total">
+                            <strong>
+                                {formatMinorUnits(
+                                    cartItem.totalHalalah,
+                                    'SAR',
+                                    locale,
+                                )}
+                            </strong>
+                        </p>
+                    )}
+                    <button
+                        aria-describedby={`remove-hint-${cartItem.id}`}
+                        aria-label={translations.remove_item}
+                        className="store-cart-line__remove"
+                        disabled={removing}
+                        onBlur={cancelHold}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                startHold();
+                            }
+                        }}
+                        onKeyUp={cancelHold}
+                        onPointerCancel={cancelHold}
+                        onPointerDown={startHold}
+                        onPointerLeave={cancelHold}
+                        onPointerUp={cancelHold}
+                        style={
+                            {
+                                '--hold': String(holdProgress),
+                            } as React.CSSProperties
                         }
-                    }}
-                    onKeyUp={cancelHold}
-                    onPointerCancel={cancelHold}
-                    onPointerDown={startHold}
-                    onPointerLeave={cancelHold}
-                    onPointerUp={cancelHold}
-                    style={
-                        {
-                            '--hold': String(holdProgress),
-                        } as React.CSSProperties
-                    }
-                    type="button"
-                >
-                    <span
-                        aria-hidden="true"
-                        className="store-cart-line__remove-fill"
-                    />
-                    <Trash2 aria-hidden="true" />
-                    <span>{translations.remove_item}</span>
-                </button>
-                <span className="sr-only" id={`remove-hint-${cartItem.id}`}>
-                    {translations.remove_hint}
-                </span>
+                        type="button"
+                    >
+                        <span
+                            aria-hidden="true"
+                            className="store-cart-line__remove-fill"
+                        />
+                        <Trash2 aria-hidden="true" />
+                    </button>
+                    <span className="sr-only" id={`remove-hint-${cartItem.id}`}>
+                        {translations.remove_hint}
+                    </span>
+                </div>
             </div>
             {failed ? (
                 <p className="store-cart-line__remove-error" role="alert">
                     {translations.remove_error}
                 </p>
             ) : null}
-            <dl className="store-cart-line__summary">
+            <dl className="store-cart-line__chips">
                 <CartFact label={translations.platform} value={platform} />
                 {isCoins ? (
                     <CartFact label={translations.delivery} value={delivery} />
@@ -1279,41 +1528,6 @@ function CartLine({
                         )}
                     />
                 ) : null}
-                {cartItem.promotion ? (
-                    <div className="store-cart-line__total">
-                        <dt>{translations.total}</dt>
-                        <dd className="store-cart-line__promo">
-                            <span className="store-promo-badge">
-                                {cartItem.promotion.badge}
-                            </span>
-                            <del className="store-price-compare">
-                                {formatMinorUnits(
-                                    cartItem.totalHalalah,
-                                    'SAR',
-                                    locale,
-                                )}
-                            </del>
-                            <strong>
-                                {formatMinorUnits(
-                                    cartItem.totalHalalah -
-                                        cartItem.promotion.discountHalalah,
-                                    'SAR',
-                                    locale,
-                                )}
-                            </strong>
-                        </dd>
-                    </div>
-                ) : (
-                    <CartFact
-                        emphasized
-                        label={translations.total}
-                        value={formatMinorUnits(
-                            cartItem.totalHalalah,
-                            'SAR',
-                            locale,
-                        )}
-                    />
-                )}
             </dl>
             {cartItem.priceChanged && cartItem.previousTotalHalalah !== null ? (
                 <p className="store-cart-line__repriced">
@@ -1367,23 +1581,28 @@ function ManualFulfillmentState({
         !fulfillment.squadImagePresent
     ) {
         return (
-            <p className="store-cart-credentials store-cart-credentials--missing">
-                {translations.fulfillment_missing}
+            <p className="store-cart-line__status store-cart-line__status--missing">
+                <span
+                    aria-hidden="true"
+                    className="store-cart-line__status-dot"
+                />
+                <span className="store-cart-line__status-label">
+                    {translations.fulfillment_missing}
+                </span>
             </p>
         );
     }
 
     return (
-        <div className="store-cart-fulfillment" role="status">
-            <span>
-                <CheckCircle2 aria-hidden="true" />
-                {translations.account_details_ready}
+        <p
+            className="store-cart-line__status store-cart-line__status--ready"
+            role="status"
+        >
+            <span aria-hidden="true" className="store-cart-line__status-dot" />
+            <span className="store-cart-line__status-label">
+                {translations.fulfillment_ready}
             </span>
-            <span>
-                <CheckCircle2 aria-hidden="true" />
-                {translations.squad_image_ready}
-            </span>
-        </div>
+        </p>
     );
 }
 
@@ -1444,13 +1663,25 @@ function CredentialState({
 
     if (cartItem.requiresCredentials || cartItem.credentials === null) {
         return (
-            <p className="store-cart-credentials store-cart-credentials--missing">
-                {translations.credentials_missing}
+            <p className="store-cart-line__status store-cart-line__status--missing">
+                <span
+                    aria-hidden="true"
+                    className="store-cart-line__status-dot"
+                />
+                <span className="store-cart-line__status-label">
+                    {translations.credentials_missing}
+                </span>
             </p>
         );
     }
 
     const contentId = `cart-credentials-${cartItem.id}`;
+    const statusLabel = `${translations.credentials} · ${interpolate(
+        translations.backup_codes,
+        {
+            count: formatInteger(cartItem.credentials.backupCodeCount, locale),
+        },
+    )}`;
     const disclosure = (
         <button
             aria-controls={contentId}
@@ -1460,7 +1691,7 @@ function CredentialState({
                     ? translations.credentials_hide
                     : translations.credentials_show
             }
-            className="store-cart-credentials__disclosure"
+            className="store-cart-line__status store-cart-line__status--ready store-cart-credentials__disclosure"
             onClick={() => {
                 setExpanded((current) => !current);
 
@@ -1472,17 +1703,8 @@ function CredentialState({
             }}
             type="button"
         >
-            <span>
-                <strong>{translations.credentials}</strong>
-                <small>
-                    {interpolate(translations.backup_codes, {
-                        count: formatInteger(
-                            cartItem.credentials.backupCodeCount,
-                            locale,
-                        ),
-                    })}
-                </small>
-            </span>
+            <span aria-hidden="true" className="store-cart-line__status-dot" />
+            <span className="store-cart-line__status-label">{statusLabel}</span>
             <ChevronDown aria-hidden="true" />
         </button>
     );
@@ -1496,7 +1718,7 @@ function CredentialState({
             <div className="store-cart-credentials">
                 {disclosure}
                 <p
-                    className="store-cart-credentials--missing"
+                    className="store-cart-line__status store-cart-line__status--missing"
                     id={contentId}
                     role="alert"
                 >
@@ -1782,17 +2004,9 @@ function CredentialState({
     );
 }
 
-function CartFact({
-    emphasized = false,
-    label,
-    value,
-}: {
-    emphasized?: boolean;
-    label: string;
-    value: string;
-}) {
+function CartFact({ label, value }: { label: string; value: string }) {
     return (
-        <div className={emphasized ? 'store-cart-line__total' : undefined}>
+        <div>
             <dt>{label}</dt>
             <dd>{value}</dd>
         </div>

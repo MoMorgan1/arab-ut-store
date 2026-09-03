@@ -288,6 +288,13 @@ export type StoreCartTranslations = {
     phone_unavailable: string;
     phone_delivery_error: string;
     order_total: string;
+    subtotal: string;
+    verify_phone_short: string;
+    review_reprice: string;
+    pay_now: string;
+    fulfillment_ready: string;
+    items_count_one: string;
+    items_count: string;
     coupon_label: string;
     coupon_prompt: string;
     coupon_placeholder: string;

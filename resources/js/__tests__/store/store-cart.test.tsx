@@ -175,7 +175,14 @@ const mockPage = vi.hoisted(() => ({
                 phone_unavailable: 'This number is already in use.',
                 phone_delivery_error:
                     'The WhatsApp code could not be sent right now.',
-                order_total: 'Order total',
+                order_total: 'Total to pay',
+                subtotal: 'Subtotal',
+                verify_phone_short: 'Verify your number',
+                review_reprice: 'Review the new price',
+                pay_now: 'Pay now',
+                fulfillment_ready: 'Account details and squad image ready',
+                items_count_one: '1 item',
+                items_count: ':count items',
                 coupon_label: 'Discount code',
                 coupon_prompt: 'Have a discount code?',
                 coupon_placeholder: 'Enter coupon code',
@@ -370,14 +377,30 @@ it('renders only the authoritative read-only Coins cart summary', () => {
     expect(screen.getByText('PS / Xbox')).toBeVisible();
     expect(screen.getByText('Fast')).toBeVisible();
     expect(screen.getByText('500,000 Coins')).toBeVisible();
-    expect(screen.getAllByText(/125\.00/)).toHaveLength(2);
+    // Line total, summary subtotal, summary total, and the dock mirror.
+    expect(screen.getAllByText(/125\.00/)).toHaveLength(4);
+    expect(
+        within(
+            document.querySelector('.store-cart-dock') as HTMLElement,
+        ).getByText(/125\.00/),
+    ).toBeVisible();
     expect(document.body.textContent).not.toContain('EA email:');
-    expect(screen.getByText('3 backup codes stored')).toBeVisible();
+    expect(screen.getByText(/3 backup codes stored/)).toBeVisible();
+    expect(screen.getByText('1 item')).toBeVisible();
     expect(
         screen.queryByRole('link', { name: 'Back to Coins' }),
     ).not.toBeInTheDocument();
+    // The login action exists twice: the desktop summary link and the phone
+    // dock link mirror each other.
+    const loginLinks = screen.getAllByRole('link', {
+        name: 'Sign in to continue',
+    });
+    expect(loginLinks).toHaveLength(2);
+    expect(loginLinks[0]).toHaveAttribute('href', '/en/login');
     expect(
-        screen.getByRole('link', { name: 'Sign in to continue' }),
+        within(
+            document.querySelector('.store-cart-dock') as HTMLElement,
+        ).getByRole('link', { name: 'Sign in to continue' }),
     ).toHaveAttribute('href', '/en/login');
     expect(document.body.textContent).not.toMatch(
         /10000001|opaque EA password/,
@@ -416,8 +439,13 @@ it('renders an immutable FUT summary with fulfillment readiness and no credentia
     expect(screen.getByText('Rank 3')).toBeVisible();
     expect(screen.getByText('Yes — 24–36 hours')).toBeVisible();
     expect(screen.getByText('4')).toBeVisible();
-    expect(screen.getByText('Account details stored securely')).toBeVisible();
-    expect(screen.getByText('Squad image attached')).toBeVisible();
+    expect(
+        screen.getByText('Account details and squad image ready'),
+    ).toBeVisible();
+    expect(
+        screen.queryByText('Account details stored securely'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Squad image attached')).not.toBeInTheDocument();
     expect(
         screen.queryByRole('button', { name: 'Edit EA details' }),
     ).not.toBeInTheDocument();
@@ -479,8 +507,11 @@ it('locks checkout while Paylink opens and navigates only to the validated hoste
     fireEvent.click(checkout);
 
     expect(
-        screen.getByRole('button', { name: 'Opening Paylink…' }),
-    ).toBeDisabled();
+        screen.getAllByRole('button', { name: 'Opening Paylink…' }),
+    ).toHaveLength(2);
+    screen
+        .getAllByRole('button', { name: 'Opening Paylink…' })
+        .forEach((button) => expect(button).toBeDisabled());
     await waitFor(() =>
         expect(
             fetchMock.mock.calls.filter(
@@ -857,7 +888,7 @@ it('does not invent a Coins presentation for another safe service type', () => {
     expect(screen.queryByText('500,000 Coins')).not.toBeInTheDocument();
     expect(
         document.querySelector(
-            '.store-cart-line__title img[src="/images/store/coins/ut-coin-80.webp"]',
+            '.store-cart-line__thumb img[src="/images/store/coins/ut-coin-80.webp"]',
         ),
     ).not.toBeInTheDocument();
 });
@@ -1038,8 +1069,8 @@ describe('cart coupon field', () => {
         expect(screen.getByText('SAVE20')).toBeVisible();
         expect(screen.getByText('Discount')).toBeVisible();
         expect(screen.getByText('-SAR 25.00')).toBeVisible();
-        // 125.00 subtotal minus the 25.00 discount.
-        expect(screen.getByText('SAR 100.00')).toBeVisible();
+        // 125.00 subtotal minus the 25.00 discount, mirrored in the dock.
+        expect(screen.getAllByText('SAR 100.00')).toHaveLength(2);
         expect(
             screen.queryByLabelText('Discount code'),
         ).not.toBeInTheDocument();
@@ -1152,8 +1183,8 @@ describe('Cart wallet balance at checkout', () => {
         expect(checkbox).toBeChecked();
         expect(screen.getByText('Wallet balance')).toBeVisible();
         expect(screen.getByText('-SAR 50.00')).toBeVisible();
-        // 125.00 minus 50.00 = 75.00
-        expect(screen.getByText('SAR 75.00')).toBeVisible();
+        // 125.00 minus 50.00 = 75.00, mirrored in the dock.
+        expect(screen.getAllByText('SAR 75.00')).toHaveLength(2);
     });
 
     it('displays breakdown correctly with both coupon discount and wallet deduction', () => {
@@ -1170,7 +1201,7 @@ describe('Cart wallet balance at checkout', () => {
         expect(screen.getByText('-SAR 25.00')).toBeVisible();
         expect(screen.getByText('Wallet balance')).toBeVisible();
         expect(screen.getByText('-SAR 50.00')).toBeVisible();
-        expect(screen.getByText('SAR 50.00')).toBeVisible();
+        expect(screen.getAllByText('SAR 50.00')).toHaveLength(2);
     });
 
     it('displays zero payable total when order is fully covered by wallet', () => {
@@ -1181,7 +1212,7 @@ describe('Cart wallet balance at checkout', () => {
 
         expect(screen.getByText('Wallet balance')).toBeVisible();
         expect(screen.getByText('-SAR 125.00')).toBeVisible();
-        expect(screen.getByText('SAR 0.00')).toBeVisible();
+        expect(screen.getAllByText('SAR 0.00')).toHaveLength(2);
     });
 });
 
@@ -1354,6 +1385,132 @@ it('shows the order total in the confirmation when a wallet hides the change', a
     expect(within(confirm).getByText('Order total before')).toBeVisible();
     expect(within(confirm).getByText('SAR 125.00')).toBeVisible();
     expect(within(confirm).getByText('SAR 150.00')).toBeVisible();
+});
+
+describe('phone checkout dock and line status', () => {
+    it('shows the login action in the phone dock for guests', () => {
+        render(<StoreCart />);
+
+        const dock = document.querySelector('.store-cart-dock') as HTMLElement;
+
+        expect(dock).not.toBeNull();
+        expect(
+            within(dock).getByRole('link', {
+                name: 'Sign in to continue',
+            }),
+        ).toHaveAttribute('href', '/en/login');
+    });
+
+    it('shows a verify-number shortcut in the dock while the phone is unverified', () => {
+        mockPage.props.auth.user = { id: 1, name: 'Buyer' };
+
+        render(<StoreCart />);
+
+        const dock = document.querySelector('.store-cart-dock') as HTMLElement;
+
+        expect(
+            within(dock).getByRole('button', {
+                name: 'Verify your number',
+            }),
+        ).toBeVisible();
+        expect(
+            within(dock).queryByRole('button', { name: 'Pay now' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('pays from the dock when the checkout is ready', async () => {
+        mockPage.props.auth.user = { id: 1, name: 'Buyer' };
+        mockPage.props.cart.canCheckout = true;
+        mockPage.props.cartPage.checkout.phoneVerified = true;
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((input: RequestInfo | URL) => {
+                if (String(input).endsWith('/credentials')) {
+                    return Promise.resolve(new Response('{}', { status: 404 }));
+                }
+
+                return Promise.resolve(
+                    new Response(
+                        JSON.stringify({
+                            data: {
+                                orderUrl:
+                                    '/en/orders/01K00000000000000000000000',
+                                paymentUrl: null,
+                                status: 'paid',
+                            },
+                        }),
+                        { status: 200 },
+                    ),
+                );
+            }),
+        );
+
+        render(<StoreCart />);
+
+        const dock = document.querySelector('.store-cart-dock') as HTMLElement;
+
+        fireEvent.click(within(dock).getByRole('button', { name: 'Pay now' }));
+
+        await waitFor(() =>
+            expect(navigateToOrder).toHaveBeenCalledWith(
+                '/en/orders/01K00000000000000000000000',
+            ),
+        );
+    });
+
+    it('renders no phone dock for the empty cart', () => {
+        mockPage.props.cart.items = [];
+        mockPage.props.cart.count = 0;
+
+        render(<StoreCart />);
+
+        expect(document.querySelector('.store-cart-dock')).toBeNull();
+    });
+
+    it('shows the amber missing-credentials status row', () => {
+        mockPage.props.cart.items = [
+            {
+                ...defaultCartItem,
+                credentials: null,
+                requiresCredentials: true,
+            },
+        ] as typeof mockPage.props.cart.items;
+
+        render(<StoreCart />);
+
+        const status = document.querySelector(
+            '.store-cart-line__status--missing',
+        ) as HTMLElement;
+
+        expect(status).not.toBeNull();
+        expect(status.textContent).toContain(
+            'EA details need to be entered again.',
+        );
+        expect(within(status).queryByRole('button')).not.toBeInTheDocument();
+    });
+
+    it('raises SBC art above its thumbnail tile', () => {
+        mockPage.props.cart.items = [
+            {
+                ...defaultCartItem,
+                configuration: {
+                    ...validConfiguration,
+                    service_type: 'sbc' as const,
+                },
+                product: {
+                    imageUrl: '/images/store/sbc/sbc-80.webp',
+                    name: 'Repeatable SBC',
+                    serviceType: 'sbc' as const,
+                },
+            },
+        ] as typeof mockPage.props.cart.items;
+
+        render(<StoreCart />);
+
+        expect(
+            document.querySelector('.store-cart-line__thumb--raised'),
+        ).not.toBeNull();
+    });
 });
 
 describe('cart suggestions', () => {
