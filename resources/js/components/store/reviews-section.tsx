@@ -32,6 +32,7 @@ export function ReviewsSection({
         <section
             aria-labelledby="store-reviews-title"
             className="store-reviews"
+            data-reveal
             id="reviews"
         >
             <div className="store-reviews__inner">
@@ -328,10 +329,12 @@ export function ReviewSummary({
 
 export function ReviewCard({
     locale,
+    revealDelayMs,
     review,
     translations,
 }: {
     locale: 'ar' | 'en';
+    revealDelayMs?: number;
     review: ReviewItem;
     translations: ReviewTranslations;
 }) {
@@ -350,7 +353,12 @@ export function ReviewCard({
         .join(' ');
 
     return (
-        <li className={cardClassName} data-testid="review-card">
+        <li
+            className={cardClassName}
+            data-reveal={revealDelayMs === undefined ? undefined : ''}
+            data-reveal-delay={revealDelayMs ?? undefined}
+            data-testid="review-card"
+        >
             <div className="store-review-card__top">
                 <div
                     aria-label={ratingLabel}

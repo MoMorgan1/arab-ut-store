@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { interpolate } from '@/components/configurator/coins/configurator-copy';
 import OneTimeCodeField from '@/components/one-time-code-field';
 import PhoneNumberField from '@/components/phone-number-field';
+import { SbcCatalogCard } from '@/components/store/catalog/sbc-catalog-card';
 import { StoreSeoHead } from '@/components/store/store-seo-head';
 import { Label } from '@/components/ui/label';
 import StoreLayout from '@/layouts/store-layout';
@@ -47,6 +48,8 @@ import type {
     StoredCartCoupon,
     StoreCartItem,
     StoreCartPageProps,
+    StoreCartSuggestions,
+    StoreCartSuggestionsTranslations,
     StoreCartTranslations,
 } from '@/types/store-shell';
 
@@ -158,6 +161,11 @@ export default function StoreCart() {
                                     ))}
                                 </ol>
                             </section>
+                            <CartSuggestions
+                                locale={locale}
+                                suggestions={cartPage.suggestions}
+                                translations={cartPage.translations.suggestions}
+                            />
                             <CheckoutPanel
                                 authenticated={authenticated}
                                 canCheckout={cart.canCheckout}
@@ -909,6 +917,106 @@ function CouponField({
                 </p>
             ) : null}
         </div>
+    );
+}
+
+function CartSuggestions({
+    locale,
+    suggestions,
+    translations,
+}: {
+    locale: 'ar' | 'en';
+    suggestions: StoreCartSuggestions;
+    translations: StoreCartSuggestionsTranslations;
+}) {
+    if (
+        suggestions.products.length === 0 &&
+        suggestions.services.length === 0
+    ) {
+        return null;
+    }
+
+    const cardTranslations = {
+        included: translations.included,
+        platform_prices: translations.platform_prices,
+        unavailable_price: translations.unavailable_price,
+    };
+
+    return (
+        <section
+            aria-labelledby="store-cart-suggestions-title"
+            className="manual-section store-cart-suggestions"
+        >
+            <header className="store-cart-suggestions__header">
+                <div className="store-cart-suggestions__heading">
+                    <p className="store-cart-suggestions__eyebrow">
+                        {translations.eyebrow}
+                    </p>
+                    <h2
+                        className="store-cart-suggestions__title"
+                        id="store-cart-suggestions-title"
+                    >
+                        {translations.title}
+                    </h2>
+                </div>
+                <a
+                    className="store-cart-suggestions__see-all"
+                    href={suggestions.sbcUrl}
+                >
+                    {translations.see_all}
+                </a>
+            </header>
+            <ul className="store-cart-suggestions__rail">
+                {suggestions.products.map((product, index) => (
+                    <SbcCatalogCard
+                        key={product.id}
+                        locale={locale}
+                        product={product}
+                        reason={
+                            index === 0
+                                ? (suggestions.reason ?? undefined)
+                                : undefined
+                        }
+                        translations={cardTranslations}
+                    />
+                ))}
+                {suggestions.services.map((service, index) => (
+                    <li
+                        className="store-cart-suggestions__service"
+                        key={service.key}
+                    >
+                        {suggestions.products.length === 0 &&
+                        index === 0 &&
+                        suggestions.reason !== null ? (
+                            <span className="store-cart-suggestions__reason">
+                                {suggestions.reason}
+                            </span>
+                        ) : null}
+                        <a
+                            className="store-cart-suggestions__service-target"
+                            href={service.href}
+                        >
+                            <span className="store-cart-suggestions__service-media">
+                                <img
+                                    alt=""
+                                    height="360"
+                                    loading="lazy"
+                                    src={service.imageUrl}
+                                    width="640"
+                                />
+                            </span>
+                            <span className="store-cart-suggestions__service-body">
+                                <strong>{service.title}</strong>
+                                <span>{service.description}</span>
+                                <span className="store-cart-suggestions__open">
+                                    {translations.open}
+                                </span>
+                            </span>
+                        </a>
+                    </li>
+                ))}
+            </ul>
+        </section>
     );
 }
 

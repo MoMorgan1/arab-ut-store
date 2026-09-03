@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { newAttemptKey } from '@/lib/attempt-key';
 import { announceCartAddition } from '@/lib/cart-added-event';
@@ -37,7 +37,17 @@ export function CatalogAddControl({
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState(false);
 
-    const add = async () => {
+    useEffect(() => {
+        if (!success) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => setSuccess(false), 2000);
+
+        return () => window.clearTimeout(timer);
+    }, [success]);
+
+    const add = async (button: HTMLButtonElement) => {
         setLoading(true);
         setError(false);
         setSuccess(false);
@@ -50,9 +60,13 @@ export function CatalogAddControl({
             });
             keyRef.current = newAttemptKey();
             setSuccess(true);
-            announceCartAddition({
+            // The item is in the cart: release the button before the flight
+            // so the success look gets its full two seconds.
+            setLoading(false);
+            await announceCartAddition({
                 analytics,
                 cartUrl: result.cartUrl,
+                from: button,
                 imageAlt,
                 imageUrl,
                 itemLabel,
@@ -82,7 +96,7 @@ export function CatalogAddControl({
             <button
                 data-state={loading ? 'loading' : success ? 'success' : 'idle'}
                 disabled={loading}
-                onClick={() => void add()}
+                onClick={(event) => void add(event.currentTarget)}
                 type="button"
             >
                 {loading

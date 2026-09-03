@@ -406,7 +406,7 @@ export function CoinsConfigurator({
         return translations.summary.generic_error;
     }
 
-    async function addToCart() {
+    async function addToCart(button: HTMLButtonElement) {
         const quote = quoteState.status === 'success' ? quoteState.quote : null;
 
         if (
@@ -432,7 +432,7 @@ export function CoinsConfigurator({
                 quantity: state.lastValidQuantity,
             });
             idempotencyKey.current = null;
-            announceCartAddition({
+            await announceCartAddition({
                 analytics: {
                     id: quote.variantId,
                     name: translations.summary.service_value,
@@ -441,6 +441,7 @@ export function CoinsConfigurator({
                     serviceType: 'coins',
                 },
                 cartUrl: addition.cartUrl,
+                from: button,
                 imageAlt: translations.summary.service_value,
                 imageUrl: '/images/store/coins/ut-coin-160.webp',
                 itemLabel: translations.summary.service_value,

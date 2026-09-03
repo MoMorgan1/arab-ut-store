@@ -131,6 +131,19 @@ return [
         'coupon_error' => 'The coupon could not be applied. Try again.',
         'wallet_toggle' => 'Use wallet balance (:balance)',
         'wallet_deduction' => 'Wallet balance',
+        'suggestions' => [
+            'title' => 'Usually ordered together',
+            'eyebrow' => 'Suggestions',
+            'see_all' => 'All SBC challenges',
+            'reason_coins' => 'With coins',
+            'reason_rivals' => 'With Rivals',
+            'reason_fut' => 'With FUT Champions',
+            'reason_sbc' => 'With the SBC',
+            'open' => 'Choose',
+            'included' => 'Coins + completion',
+            'platform_prices' => 'Platform prices',
+            'unavailable_price' => 'Price temporarily unavailable',
+        ],
     ],
     'checkout' => [
         'authentication_required' => 'Please sign in to proceed to checkout.',
@@ -217,6 +230,7 @@ return [
         'assurance_support_detail' => 'Our team is available whenever you need it.',
         'assurance_secure' => 'Secure service',
         'assurance_secure_detail' => 'Your account details stay protected throughout the service.',
+        'loading' => 'Loading',
     ],
     'product' => [
         'choose_option' => 'Choose an option',

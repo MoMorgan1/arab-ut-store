@@ -22,6 +22,7 @@ export function ServiceRail({
         <section
             aria-labelledby="store-services-title"
             className="store-services"
+            data-reveal
             id="services"
         >
             <div className="store-services__inner">

@@ -18,7 +18,7 @@ export function ManualSection({
     title: string;
 }) {
     return (
-        <section aria-labelledby={id} className="manual-section">
+        <section aria-labelledby={id} className="manual-section" data-reveal>
             <header className="manual-section__header">
                 <span aria-hidden="true" className="manual-section__badge">
                     {formatInteger(number, locale)}

@@ -126,6 +126,12 @@ function baseProps() {
                 phoneVerifyUrl: '/en/checkout/phone/verify',
             },
             translations: translations(),
+            suggestions: {
+                products: [],
+                services: [],
+                reason: null,
+                sbcUrl: '/en/sbc',
+            },
         },
         direction: 'ltr',
         displayCurrencies: ['SAR'],

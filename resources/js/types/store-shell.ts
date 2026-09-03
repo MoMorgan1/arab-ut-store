@@ -1,3 +1,5 @@
+import type { CatalogProduct } from '@/types/store-content';
+
 export type StoreLocale = 'ar' | 'en';
 
 export type SimpleStorePageKey =
@@ -296,12 +298,42 @@ export type StoreCartTranslations = {
     coupon_error: string;
     wallet_toggle: string;
     wallet_deduction: string;
+    suggestions: StoreCartSuggestionsTranslations;
 };
 
 export type StoredCartCoupon = {
     code: string;
     discountType: 'percent' | 'fixed';
     discountHalalah: number;
+};
+
+export type StoreCartSuggestionService = {
+    key: string;
+    title: string;
+    description: string;
+    href: string;
+    imageUrl: string;
+};
+
+export type StoreCartSuggestions = {
+    products: CatalogProduct[];
+    services: StoreCartSuggestionService[];
+    reason: string | null;
+    sbcUrl: string;
+};
+
+export type StoreCartSuggestionsTranslations = {
+    title: string;
+    eyebrow: string;
+    see_all: string;
+    reason_coins: string;
+    reason_rivals: string;
+    reason_fut: string;
+    reason_sbc: string;
+    open: string;
+    included: string;
+    platform_prices: string;
+    unavailable_price: string;
 };
 
 export type StoreCartPageProps = {
@@ -332,6 +364,7 @@ export type StoreCartPageProps = {
             phoneVerifyUrl: string;
         };
         translations: StoreCartTranslations;
+        suggestions: StoreCartSuggestions;
     };
     direction: 'rtl' | 'ltr';
     displayCurrency: string;

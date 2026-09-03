@@ -217,6 +217,12 @@ export function SbcProductConfigurator({
     async function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
+        // currentTarget nulls out once the handler yields, so the flight
+        // origin is captured before the first await.
+        const submitButton = event.currentTarget.querySelector(
+            '.manual-configurator__submit',
+        );
+
         const nextErrors = validate(credentials, translations.sbc);
         const firstError = Object.keys(nextErrors)[0] as
             CoinsCredentialField | undefined;
@@ -249,7 +255,7 @@ export function SbcProductConfigurator({
             attemptKey.current = newAttemptKey();
             setCredentials(EMPTY_CREDENTIALS);
             setState('idle');
-            announceCartAddition({
+            await announceCartAddition({
                 analytics: {
                     id: product.id,
                     name: product.name,
@@ -263,6 +269,9 @@ export function SbcProductConfigurator({
                     serviceType: 'sbc',
                 },
                 cartUrl: result.cartUrl,
+                ...(submitButton instanceof HTMLElement
+                    ? { from: submitButton }
+                    : {}),
                 imageAlt: product.image?.alt || product.name,
                 imageUrl:
                     product.image?.url ??

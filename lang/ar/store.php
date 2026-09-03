@@ -128,6 +128,19 @@ return [
         'coupon_error' => 'تعذر تطبيق الكوبون. حاول مرة أخرى.',
         'wallet_toggle' => 'استخدم رصيد المحفظة (:balance)',
         'wallet_deduction' => 'رصيد المحفظة',
+        'suggestions' => [
+            'title' => 'يُطلب معه عادةً',
+            'eyebrow' => 'اقتراحات',
+            'see_all' => 'كل التحديات',
+            'reason_coins' => 'مع الكوينز',
+            'reason_rivals' => 'مع الرايفلز',
+            'reason_fut' => 'مع الفوت',
+            'reason_sbc' => 'مع التحدي',
+            'open' => 'اختر',
+            'included' => 'شامل الشحن والتنفيذ',
+            'platform_prices' => 'أسعار المنصات',
+            'unavailable_price' => 'السعر غير متاح مؤقتًا',
+        ],
     ],
     'checkout' => [
         'authentication_required' => 'سجّل الدخول للمتابعة إلى الدفع.',
@@ -214,6 +227,7 @@ return [
         'assurance_support_detail' => 'فريقنا معك وقت ما تحتاج مساعدة.',
         'assurance_secure' => 'خدمة آمنة',
         'assurance_secure_detail' => 'بيانات حسابك محمية طوال تنفيذ الخدمة.',
+        'loading' => 'جارٍ التحميل',
     ],
     'product' => [
         'choose_option' => 'اختر الباقة',

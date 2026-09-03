@@ -165,10 +165,11 @@ export default function StoreReviews() {
                     <p className="store-reviews__empty">{copy.empty}</p>
                 ) : (
                     <ul className="store-reviews-page__grid">
-                        {props.reviews.items.map((review) => (
+                        {props.reviews.items.map((review, index) => (
                             <ReviewCard
                                 key={review.id}
                                 locale={locale}
+                                revealDelayMs={Math.min(index * 70, 280)}
                                 review={review}
                                 translations={copy}
                             />

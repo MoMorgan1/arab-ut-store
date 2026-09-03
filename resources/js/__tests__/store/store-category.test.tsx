@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import {
+    act,
     cleanup,
     fireEvent,
     render,
@@ -426,6 +427,49 @@ it('keeps unavailable SBC platform prices informational and linkable', () => {
     );
 });
 
+it('shows the skeleton grid only after a slow catalog reload', () => {
+    vi.useFakeTimers();
+    render(<StoreCategory />);
+
+    expect(document.querySelector('.store-catalog-skeleton')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Icons/ }));
+
+    const visitOptions = mocks.get.mock.lastCall?.[2] as {
+        onStart?: () => void;
+        onFinish?: () => void;
+    };
+    expect(typeof visitOptions.onStart).toBe('function');
+    expect(typeof visitOptions.onFinish).toBe('function');
+
+    act(() => {
+        visitOptions.onStart?.();
+    });
+
+    // Fast responses never flicker: nothing shows before 150 ms.
+    act(() => {
+        vi.advanceTimersByTime(100);
+    });
+    expect(document.querySelector('.store-catalog-skeleton')).toBeNull();
+
+    act(() => {
+        vi.advanceTimersByTime(100);
+    });
+
+    // One product on the page clamps the skeleton count to the minimum of 3.
+    expect(document.querySelectorAll('.store-catalog-skeleton')).toHaveLength(
+        3,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('Loading');
+    expect(document.getElementById('store-catalog-products')).not.toBeNull();
+
+    act(() => {
+        visitOptions.onFinish?.();
+    });
+    expect(document.querySelector('.store-catalog-skeleton')).toBeNull();
+    vi.useRealTimers();
+});
+
 function categoryProps(overrides: Record<string, unknown> = {}) {
     return {
         catalog: {
@@ -497,6 +541,7 @@ function catalogTranslations() {
         price_desc: 'Price: high to low',
         from: 'From',
         unavailable_price: 'Price temporarily unavailable',
+        loading: 'Loading',
         empty: 'No services',
         previous: 'Previous',
         next: 'Next',

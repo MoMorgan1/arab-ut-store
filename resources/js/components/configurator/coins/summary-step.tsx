@@ -13,7 +13,7 @@ type SummaryStepProps = {
     error: string | null;
     focusRef: Ref<HTMLHeadingElement>;
     locale: 'ar' | 'en';
-    onAdd: () => void;
+    onAdd: (button: HTMLButtonElement) => void;
     onBack: () => void;
     onCancel: () => void;
     pending: boolean;
@@ -101,7 +101,7 @@ export function SummaryStep(props: SummaryStepProps) {
                 <button
                     className="coins-primary-action"
                     disabled={pending}
-                    onClick={onAdd}
+                    onClick={(event) => onAdd(event.currentTarget)}
                     type="button"
                 >
                     {pending
