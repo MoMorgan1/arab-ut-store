@@ -1,3 +1,5 @@
+import { flyToCart } from '@/lib/fly-to-cart';
+
 export const CART_ADDED_EVENT = 'arabut:cart-added';
 
 /**
@@ -16,14 +18,29 @@ export type CartAddedAnalytics = {
 export type CartAddedDetail = {
     analytics?: CartAddedAnalytics;
     cartUrl: string;
+    from?: HTMLElement;
     imageAlt: string;
     imageUrl: string;
     itemLabel: string;
     selectionLabel?: string;
 };
 
-export function announceCartAddition(detail: CartAddedDetail) {
+export function announceCartAddition(detail: CartAddedDetail): Promise<void> {
+    const { from, ...notice } = detail;
+
     window.dispatchEvent(
-        new CustomEvent<CartAddedDetail>(CART_ADDED_EVENT, { detail }),
+        new CustomEvent<CartAddedDetail>(CART_ADDED_EVENT, {
+            detail: notice,
+        }),
     );
+
+    if (from === undefined) {
+        return Promise.resolve();
+    }
+
+    return flyToCart({
+        from,
+        imageUrl: detail.imageUrl,
+        imageAlt: detail.imageAlt,
+    });
 }

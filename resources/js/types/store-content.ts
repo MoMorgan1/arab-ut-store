@@ -155,6 +155,7 @@ export type CatalogTranslations = {
     from: string;
     icons: string;
     included: string;
+    loading: string;
     newest: string;
     next: string;
     page_status: string;

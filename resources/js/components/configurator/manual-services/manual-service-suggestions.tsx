@@ -24,6 +24,7 @@ export function ManualServiceSuggestions({
         <section
             aria-labelledby="manual-related-services-title"
             className="manual-service-related"
+            data-reveal
         >
             <header className="manual-service-related__header">
                 <p className="manual-service-related__eyebrow">

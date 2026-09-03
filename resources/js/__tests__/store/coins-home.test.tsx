@@ -430,13 +430,19 @@ describe('Coins homepage', () => {
     });
 
     it('counts hero proof values only after the proof enters the viewport', () => {
-        let reveal: (() => void) | undefined;
+        // Every constructed observer registers its trigger: the layout's
+        // shared scroll-reveal observer is built alongside the hero's own
+        // counter, and a real viewport entry would fire both.
+        const reveals: Array<() => void> = [];
+        const reveal = () => {
+            reveals.forEach((trigger) => trigger());
+        };
 
         vi.stubGlobal(
             'IntersectionObserver',
             class {
                 constructor(callback: IntersectionObserverCallback) {
-                    reveal = () =>
+                    reveals.push(() =>
                         callback(
                             [
                                 {
@@ -444,7 +450,8 @@ describe('Coins homepage', () => {
                                 } as IntersectionObserverEntry,
                             ],
                             this as unknown as IntersectionObserver,
-                        );
+                        ),
+                    );
                 }
 
                 disconnect() {}
@@ -466,7 +473,7 @@ describe('Coins homepage', () => {
         expect(within(proof).getAllByText('0')).toHaveLength(4);
 
         act(() => {
-            reveal?.();
+            reveal();
             vi.advanceTimersByTime(1_200);
         });
 

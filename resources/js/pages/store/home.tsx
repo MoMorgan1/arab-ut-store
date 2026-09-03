@@ -181,6 +181,7 @@ export default function StoreHome() {
                     <section
                         aria-labelledby="coins-section-title"
                         className="store-coins-section"
+                        data-reveal
                         id="coins"
                     >
                         <div className="store-coins-section__inner">

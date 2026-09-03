@@ -193,6 +193,27 @@ const mockPage = vi.hoisted(() => ({
                 coupon_error: 'The coupon could not be applied. Try again.',
                 wallet_toggle: 'Use wallet balance (:balance)',
                 wallet_deduction: 'Wallet balance',
+                suggestions: {
+                    title: 'Usually ordered together',
+                    eyebrow: 'Suggestions',
+                    see_all: 'All SBC challenges',
+                    reason_coins: 'With coins',
+                    reason_rivals: 'With Rivals',
+                    reason_fut: 'With FUT Champions',
+                    reason_sbc: 'With the SBC',
+                    open: 'Choose',
+                    included: 'Coins + completion',
+                    platform_prices: 'Platform prices',
+                    unavailable_price: 'Price temporarily unavailable',
+                },
+            },
+            suggestions: {
+                products:
+                    [] as StoreCartPageProps['cartPage']['suggestions']['products'],
+                services:
+                    [] as StoreCartPageProps['cartPage']['suggestions']['services'],
+                reason: null as string | null,
+                sbcUrl: '/en/sbc',
             },
         },
         direction: 'ltr',
@@ -324,6 +345,12 @@ beforeEach(() => {
     };
     mockPage.props.direction = 'ltr';
     mockPage.props.locale = 'en';
+    mockPage.props.cartPage.suggestions = {
+        products: [],
+        services: [],
+        reason: null,
+        sbcUrl: '/en/sbc',
+    };
     navigateToHostedPayment.mockReset();
     navigateToOrder.mockReset();
     reloadAfterPhoneVerification.mockReset();
@@ -1322,4 +1349,121 @@ it('shows the order total in the confirmation when a wallet hides the change', a
     expect(within(confirm).getByText('Order total before')).toBeVisible();
     expect(within(confirm).getByText('SAR 125.00')).toBeVisible();
     expect(within(confirm).getByText('SAR 150.00')).toBeVisible();
+});
+
+describe('cart suggestions', () => {
+    const suggestionProduct = {
+        id: '01K00000000000000000000010',
+        slug: 'icon-service',
+        url: '/en/sbc/icon-service',
+        name: 'Icon Service',
+        description: 'Complete the Icon challenge.',
+        image: null,
+        price: { amountMinor: 12500, currency: 'SAR' },
+        compareAtPrice: null,
+        promotionBadge: null,
+        platforms: ['playstation'],
+        variants: [
+            {
+                id: '01K00000000000000000000011',
+                name: 'PlayStation',
+                platform: 'playstation',
+                price: { amountMinor: 12500, currency: 'SAR' },
+                compareAtPrice: null,
+                promotionBadge: null,
+                completionTiers: [],
+            },
+        ],
+    };
+
+    const suggestionServices = [
+        {
+            key: 'rivals',
+            title: 'Division Rivals',
+            description: 'Division Rivals progress and rewards.',
+            href: '/en/rivals',
+            imageUrl: '/images/store/services/rivals.webp',
+        },
+        {
+            key: 'fut_champions',
+            title: 'FUT Champions',
+            description: 'Competitive FUT Champions packages.',
+            href: '/en/fut-champions',
+            imageUrl: '/images/store/services/fut-champions.webp',
+        },
+    ];
+
+    it('renders the rail with the reason tag on the first card only', () => {
+        mockPage.props.cartPage.suggestions = {
+            products: [suggestionProduct],
+            services: suggestionServices,
+            reason: 'With coins',
+            sbcUrl: '/en/sbc',
+        };
+
+        render(<StoreCart />);
+
+        expect(
+            screen.getByRole('heading', {
+                name: 'Usually ordered together',
+            }),
+        ).toBeVisible();
+        expect(screen.getByText('Suggestions')).toBeVisible();
+        expect(
+            screen.getByRole('link', { name: 'All SBC challenges' }),
+        ).toHaveAttribute('href', '/en/sbc');
+
+        const reasons = document.querySelectorAll(
+            '.store-cart-suggestions__reason',
+        );
+        expect(reasons).toHaveLength(1);
+        expect(reasons[0]?.textContent).toBe('With coins');
+        expect(reasons[0]?.closest('li')?.textContent).toContain(
+            'Icon Service',
+        );
+
+        expect(screen.getByText('Division Rivals')).toBeVisible();
+        const suggestions = document.querySelector(
+            '.store-cart-suggestions',
+        ) as HTMLElement;
+        expect(within(suggestions).getByText('FUT Champions')).toBeVisible();
+        expect(
+            within(suggestions).getByRole('link', {
+                name: /Division Rivals/,
+            }),
+        ).toHaveAttribute('href', '/en/rivals');
+        expect(
+            document.querySelector('.store-cart-suggestions__service img'),
+        ).toHaveAttribute('src', '/images/store/services/rivals.webp');
+    });
+
+    it('puts the reason tag on the service card when no product is suggested', () => {
+        mockPage.props.cartPage.suggestions = {
+            products: [],
+            services: suggestionServices,
+            reason: 'With coins',
+            sbcUrl: '/en/sbc',
+        };
+
+        render(<StoreCart />);
+
+        const reasons = document.querySelectorAll(
+            '.store-cart-suggestions__reason',
+        );
+        expect(reasons).toHaveLength(1);
+        expect(reasons[0]?.closest('li')?.textContent).toContain(
+            'Division Rivals',
+        );
+    });
+
+    it('hides the section when both lists are empty', () => {
+        render(<StoreCart />);
+
+        expect(
+            screen.queryByRole('heading', {
+                name: 'Usually ordered together',
+            }),
+        ).not.toBeInTheDocument();
+        expect(document.querySelector('.store-cart-suggestions')).toBeNull();
+    });
 });

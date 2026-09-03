@@ -44,6 +44,7 @@ export function ServiceReviewsSection({
         <section
             aria-labelledby="service-reviews-heading"
             className="manual-section service-reviews-section"
+            data-reveal
         >
             <header className="service-reviews-section__header">
                 {eyebrow ? (

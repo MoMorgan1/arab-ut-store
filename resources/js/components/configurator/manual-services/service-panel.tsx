@@ -176,6 +176,7 @@ export function ManualServicePanel({
 
                 <button
                     className="manual-configurator__submit"
+                    data-state={status === 'success' ? 'success' : undefined}
                     disabled={disabled}
                     type="submit"
                 >
@@ -219,6 +220,7 @@ export function ManualServicePanel({
                 </div>
                 <button
                     className="manual-configurator__submit manual-service-dock__submit"
+                    data-state={status === 'success' ? 'success' : undefined}
                     disabled={disabled}
                     tabIndex={dockVisible ? undefined : -1}
                     type="submit"

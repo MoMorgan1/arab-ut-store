@@ -6,9 +6,10 @@ import {
     ShieldCheck,
     Zap,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { CatalogAddControl } from '@/components/store/catalog/catalog-add-control';
+import { CatalogSkeletonGrid } from '@/components/store/catalog/catalog-skeleton-grid';
 import { SbcCatalogCard } from '@/components/store/catalog/sbc-catalog-card';
 import { StoreSeoHead } from '@/components/store/store-seo-head';
 import StoreLayout from '@/layouts/store-layout';
@@ -22,7 +23,42 @@ export default function StoreCategory() {
     const page = usePage<StoreCategoryPageProps>();
     const props = page.props;
     const [query, setQuery] = useState(props.catalog.query);
+    const [pending, setPending] = useState(false);
+    const pendingTimer = useRef<number | null>(null);
     const isSbc = props.catalog.service === 'sbc';
+
+    useEffect(
+        () => () => {
+            if (pendingTimer.current !== null) {
+                window.clearTimeout(pendingTimer.current);
+                pendingTimer.current = null;
+            }
+        },
+        [],
+    );
+
+    // The skeleton appears only when the reload is slow enough to notice:
+    // fast responses never flicker.
+    const trackPending = () => ({
+        onStart: () => {
+            if (pendingTimer.current !== null) {
+                window.clearTimeout(pendingTimer.current);
+            }
+
+            pendingTimer.current = window.setTimeout(() => {
+                pendingTimer.current = null;
+                setPending(true);
+            }, 150);
+        },
+        onFinish: () => {
+            if (pendingTimer.current !== null) {
+                window.clearTimeout(pendingTimer.current);
+                pendingTimer.current = null;
+            }
+
+            setPending(false);
+        },
+    });
     const pageTitle =
         isSbc && props.servicePage.page_title !== undefined
             ? props.servicePage.page_title
@@ -34,19 +70,24 @@ export default function StoreCategory() {
         router.get(
             props.catalogPageUrl,
             { filter: next.filter, q: next.q, sort: next.sort },
-            { preserveScroll: true, replace: true },
+            { preserveScroll: true, replace: true, ...trackPending() },
         );
     };
     const filters =
         props.catalog.service === 'sbc'
             ? ['all', 'players', 'icons', 'upgrades', 'foundations']
             : ['all'];
+    const skeletonCount = Math.min(
+        8,
+        Math.max(3, props.catalog.products.length),
+    );
 
     const navigatePage = (nextPage: number) => {
         const next = { ...query, page: nextPage };
 
         setQuery(next);
         router.get(props.catalogPageUrl, next, {
+            ...trackPending(),
             onSuccess: () => {
                 document
                     .getElementById('store-catalog-products')
@@ -193,25 +234,36 @@ export default function StoreCategory() {
                     </div>
                 </form>
 
-                {props.catalog.products.length === 0 ? (
+                {pending ? (
+                    <p className="sr-only" role="status">
+                        {props.catalogPage.loading}
+                    </p>
+                ) : null}
+                {!pending && props.catalog.products.length === 0 ? (
                     <p className="store-catalog-empty" role="status">
                         {props.catalogPage.empty}
                     </p>
                 ) : (
                     <ul
+                        aria-busy={pending || undefined}
                         className="store-catalog-grid"
+                        data-reveal
                         id="store-catalog-products"
                     >
-                        {props.catalog.products.map((product) => (
-                            <CatalogCard
-                                addUrl={props.catalogCartUrl}
-                                isSbc={isSbc}
-                                key={product.id}
-                                locale={props.locale}
-                                product={product}
-                                translations={props.catalogPage}
-                            />
-                        ))}
+                        {pending ? (
+                            <CatalogSkeletonGrid count={skeletonCount} />
+                        ) : (
+                            props.catalog.products.map((product) => (
+                                <CatalogCard
+                                    addUrl={props.catalogCartUrl}
+                                    isSbc={isSbc}
+                                    key={product.id}
+                                    locale={props.locale}
+                                    product={product}
+                                    translations={props.catalogPage}
+                                />
+                            ))
+                        )}
                     </ul>
                 )}
 

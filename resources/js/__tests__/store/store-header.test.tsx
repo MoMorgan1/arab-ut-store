@@ -467,4 +467,50 @@ describe('StoreHeader', () => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         expect(trigger).toHaveAttribute('aria-expanded', 'false');
     });
+
+    it('exposes the cart icon hook and bumps the badge when the count grows', () => {
+        renderHeader();
+
+        const cart = screen.getByRole('link', { name: 'Cart' });
+
+        expect(cart).toHaveAttribute('data-cart-icon');
+        expect(cart).not.toHaveClass('is-bumping');
+
+        fireEvent(
+            window,
+            new CustomEvent<number>('arabut:cart-count', { detail: 1 }),
+        );
+
+        expect(cart).toHaveClass('is-bumping');
+        expect(screen.getByText('1')).toBeInTheDocument();
+
+        fireEvent.animationEnd(cart);
+
+        expect(cart).not.toHaveClass('is-bumping');
+    });
+
+    it('does not bump the badge on an equal or lower count', () => {
+        renderHeader();
+
+        const cart = screen.getByRole('link', { name: 'Cart' });
+
+        fireEvent(
+            window,
+            new CustomEvent<number>('arabut:cart-count', { detail: 0 }),
+        );
+        expect(cart).not.toHaveClass('is-bumping');
+
+        fireEvent(
+            window,
+            new CustomEvent<number>('arabut:cart-count', { detail: 2 }),
+        );
+        expect(cart).toHaveClass('is-bumping');
+        fireEvent.animationEnd(cart);
+
+        fireEvent(
+            window,
+            new CustomEvent<number>('arabut:cart-count', { detail: 1 }),
+        );
+        expect(cart).not.toHaveClass('is-bumping');
+    });
 });

@@ -11,6 +11,7 @@ export function FaqSection({
         <section
             aria-labelledby="store-faq-title"
             className="store-faq"
+            data-reveal
             id="faq"
         >
             <div className="store-faq__inner">
@@ -19,8 +20,12 @@ export function FaqSection({
                     <h2 id="store-faq-title">{translations.title}</h2>
                 </header>
                 <div className="store-faq__list">
-                    {entries.map((entry) => (
-                        <details key={entry.id}>
+                    {entries.map((entry, index) => (
+                        <details
+                            data-reveal
+                            data-reveal-delay={Math.min(index * 70, 280)}
+                            key={entry.id}
+                        >
                             <summary>
                                 <span>{entry.question}</span>
                                 <svg

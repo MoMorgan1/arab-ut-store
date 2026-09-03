@@ -157,6 +157,12 @@ export function FutChampionsConfigurator({
     async function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
+        // currentTarget nulls out once the handler yields, so the flight
+        // origin is captured before the first await.
+        const submitButton = event.currentTarget.querySelector(
+            '.manual-configurator__submit',
+        );
+
         if (status === 'loading') {
             return;
         }
@@ -262,7 +268,7 @@ export function FutChampionsConfigurator({
             );
             keyRef.current = newManualAttemptKey();
             setStatus('success');
-            announceCartAddition({
+            await announceCartAddition({
                 analytics: {
                     id: product.slug,
                     name: product.name,
@@ -273,6 +279,9 @@ export function FutChampionsConfigurator({
                     serviceType: 'fut_champions',
                 },
                 cartUrl: result.cartUrl,
+                ...(submitButton instanceof HTMLElement
+                    ? { from: submitButton }
+                    : {}),
                 imageAlt: product.image.alt,
                 imageUrl: product.image.url,
                 itemLabel: product.name,

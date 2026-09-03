@@ -11,10 +11,12 @@ import type {
 export function SbcCatalogCard({
     locale,
     product,
+    reason,
     translations,
 }: {
     locale: 'ar' | 'en';
     product: CatalogProduct;
+    reason?: string;
     translations: Pick<
         CatalogTranslations,
         'included' | 'platform_prices' | 'unavailable_price'
@@ -98,6 +100,9 @@ export function SbcCatalogCard({
             onTouchEnd={() => setIsPressed(false)}
             onTouchStart={() => setIsPressed(true)}
         >
+            {reason === undefined || reason === '' ? null : (
+                <span className="store-cart-suggestions__reason">{reason}</span>
+            )}
             <a
                 aria-label={product.name}
                 className="store-catalog-card__target"

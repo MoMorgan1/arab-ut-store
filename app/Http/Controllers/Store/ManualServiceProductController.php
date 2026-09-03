@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Store;
 
-use App\Actions\Catalog\StoreCatalogReader;
 use App\Actions\Pricing\ConvertDisplayMoney;
 use App\Actions\Pricing\ReadManualServicePricing;
 use App\Enums\Platform;
@@ -15,6 +14,7 @@ use App\Models\ServicePriceSchedule;
 use App\Services\Reviews\StoreReviewReader;
 use App\Support\Money;
 use App\Support\Seo\StorePageSeo;
+use App\Support\StoreSuggestions;
 use App\Support\StoreTutorials;
 use App\ValueObjects\Pricing\FutChampionsPricing;
 use App\ValueObjects\Pricing\PreparedDisplayMoneyConverter;
@@ -31,7 +31,7 @@ final class ManualServiceProductController extends Controller
         Request $request,
         ReadManualServicePricing $readPricing,
         ConvertDisplayMoney $convertDisplayMoney,
-        StoreCatalogReader $catalogReader,
+        StoreSuggestions $suggestions,
         StoreReviewReader $reviewReader,
     ): Response {
         $service = ServiceType::from((string) $request->route('service'));
@@ -87,7 +87,7 @@ final class ManualServiceProductController extends Controller
             'serviceReviews' => $serviceReviews,
             'manualServicePage' => [
                 'common' => trans('store.manual_services.common'),
-                'relatedServices' => $this->relatedServices($request, $service, $catalogReader),
+                'relatedServices' => $suggestions->forManualService($request, $service),
                 'relatedTranslations' => [
                     'eyebrow' => trans('store.services_section.eyebrow'),
                     'title' => trans('store.services_section.title'),
@@ -255,52 +255,6 @@ final class ManualServiceProductController extends Controller
             : 'cart.items.rivals.store';
 
         return $this->route($request, $name);
-    }
-
-    /**
-     * Up to eight public SBC products in the reader's public catalog shape
-     * (the same one the SBC product page renders), plus the other manual service.
-     *
-     * @return array{products: list<array<string, mixed>>, sbcUrl: string, service: array{key: string, title: string, description: string, href: string, imageUrl: string}}
-     */
-    private function relatedServices(Request $request, ServiceType $service, StoreCatalogReader $catalogReader): array
-    {
-        $displayCurrency = (string) ($request->session()->get('display_currency') ?? config('store.default_display_currency'));
-        $sbcProducts = [];
-
-        try {
-            $catalog = $catalogReader->category(
-                ServiceType::Sbc,
-                app()->getLocale(),
-                $displayCurrency,
-                'all',
-                'recommended',
-                '',
-                1,
-            );
-
-            $sbcProducts = array_slice($catalog['products'], 0, 8);
-        } catch (DomainException) {
-            $sbcProducts = [];
-        }
-
-        $otherServiceKey = $service === ServiceType::FutChampions ? 'rivals' : 'fut_champions';
-        $otherServiceRoute = $service === ServiceType::FutChampions ? 'store.rivals' : 'store.fut_champions';
-        $otherServiceImage = $service === ServiceType::FutChampions
-            ? '/images/store/services/rivals.webp'
-            : '/images/store/services/fut-champions.webp';
-
-        return [
-            'products' => $sbcProducts,
-            'sbcUrl' => $this->route($request, 'store.sbc'),
-            'service' => [
-                'key' => $otherServiceKey,
-                'title' => trans("store.services.{$otherServiceKey}.title"),
-                'description' => trans("store.services.{$otherServiceKey}.card_description"),
-                'href' => $this->route($request, $otherServiceRoute),
-                'imageUrl' => $otherServiceImage,
-            ],
-        ];
     }
 
     /** @param array<string, mixed> $parameters */

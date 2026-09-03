@@ -23,6 +23,7 @@ use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\WalletAccount;
 use App\Services\Catalog\CoinsCatalogReader;
+use App\Support\StoreSuggestions;
 use App\ValueObjects\Cart\CartRepricing;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -40,6 +41,7 @@ final class CartController extends Controller
         private readonly DiscountEngine $discountEngine,
         private readonly RepriceCart $repriceCart,
         private readonly CoinsCatalogReader $coinsCatalog,
+        private readonly StoreSuggestions $suggestions,
     ) {}
 
     public function __invoke(Request $request, ResolveCartOwner $resolveCartOwner): Response
@@ -133,6 +135,12 @@ final class CartController extends Controller
                     ),
                 ],
                 'translations' => trans('store.cart_page'),
+                'suggestions' => fn (): array => $this->suggestions->forCart(
+                    $activeCart,
+                    $request,
+                    app()->getLocale(),
+                    (string) ($request->session()->get('display_currency') ?? config('store.default_display_currency')),
+                ),
             ],
             'cart' => [
                 // Lives here, not in cartPage: every partial reload on this page

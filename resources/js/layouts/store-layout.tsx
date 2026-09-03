@@ -3,6 +3,7 @@ import type { PropsWithChildren } from 'react';
 import { CartAddedNotice } from '@/components/store/cart-added-notice';
 import { StoreFooter } from '@/components/store/store-footer';
 import { StoreHeader } from '@/components/store/store-header';
+import { useScrollReveal } from '@/hooks/use-scroll-reveal';
 import type {
     StoreShellConfig,
     StoreShellTranslations,
@@ -32,6 +33,8 @@ export default function StoreLayout({
     storeShell,
     ui,
 }: StoreLayoutProps) {
+    useScrollReveal();
+
     return (
         <div
             className="store-shell min-h-screen bg-[var(--arabut-navy)] text-[var(--arabut-ink)]"

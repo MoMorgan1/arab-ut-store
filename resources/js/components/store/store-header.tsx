@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { StorePreferences } from '@/components/store/store-preferences';
 
 import type {
@@ -188,26 +188,75 @@ export function StoreHeader(props: StoreHeaderProps) {
         translations,
     } = props;
     const [visibleCartCount, setVisibleCartCount] = useState(cartCount);
-    const liveCurrentUrl = useSyncExternalStore(
-        subscribeToBrowserNavigation,
-        () => browserUrlFor(currentUrl),
-        () => currentUrl,
-    );
+    const [bumping, setBumping] = useState(false);
+    const countRef = useRef(cartCount);
+    const bumpTimer = useRef<number | null>(null);
+    const cartLinkRef = useRef<HTMLAnchorElement | null>(null);
+
+    useEffect(() => {
+        const link = cartLinkRef.current;
+
+        if (link === null) {
+            return;
+        }
+
+        // A native listener: the badge and icon animations bubble here in
+        // the browser, and React's synthetic animation event does not fire
+        // for unit-dispatched events.
+        function clearBump() {
+            if (bumpTimer.current !== null) {
+                window.clearTimeout(bumpTimer.current);
+                bumpTimer.current = null;
+            }
+
+            setBumping(false);
+        }
+
+        link.addEventListener('animationend', clearBump);
+
+        return () => link.removeEventListener('animationend', clearBump);
+    }, []);
 
     useEffect(() => {
         function updateCartCount(event: Event) {
             const nextCount = (event as CustomEvent<number>).detail;
 
             if (Number.isSafeInteger(nextCount) && nextCount >= 0) {
+                if (nextCount > countRef.current) {
+                    setBumping(true);
+
+                    if (bumpTimer.current !== null) {
+                        window.clearTimeout(bumpTimer.current);
+                    }
+
+                    bumpTimer.current = window.setTimeout(() => {
+                        bumpTimer.current = null;
+                        setBumping(false);
+                    }, 600);
+                }
+
+                countRef.current = nextCount;
                 setVisibleCartCount(nextCount);
             }
         }
 
         window.addEventListener('arabut:cart-count', updateCartCount);
 
-        return () =>
+        return () => {
             window.removeEventListener('arabut:cart-count', updateCartCount);
+
+            if (bumpTimer.current !== null) {
+                window.clearTimeout(bumpTimer.current);
+                bumpTimer.current = null;
+            }
+        };
     }, []);
+    const liveCurrentUrl = useSyncExternalStore(
+        subscribeToBrowserNavigation,
+        () => browserUrlFor(currentUrl),
+        () => currentUrl,
+    );
+
     const wordmarkMatch = translations.brand.match(/^(.*)\s+(\S+)$/u);
     const wordmarkName = wordmarkMatch?.[1] ?? translations.brand;
     const wordmarkAccent = wordmarkMatch?.[2];
@@ -282,8 +331,15 @@ export function StoreHeader(props: StoreHeaderProps) {
                         />
                         <a
                             aria-label={translations.header.cart}
-                            className="store-header__icon-link"
+                            className={[
+                                'store-header__icon-link',
+                                bumping ? 'is-bumping' : null,
+                            ]
+                                .filter(Boolean)
+                                .join(' ')}
+                            data-cart-icon=""
                             href={shell.cartUrl}
+                            ref={cartLinkRef}
                         >
                             <CartIcon />
                             <span aria-hidden="true">{visibleCartCount}</span>
