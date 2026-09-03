@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CodeFields } from '@/components/configurator/manual-services/credentials-fields';
 import {
@@ -77,7 +77,11 @@ const translations = {
     backup_code: 'Backup code :number',
 } as ManualServiceCommonTranslations;
 
-function CodeHarness() {
+function CodeHarness({
+    onBlurField,
+}: {
+    onBlurField?: (field: string, value: string) => void;
+}) {
     const [codes, setCodes] = useState<[string, string, string]>(['', '', '']);
 
     return (
@@ -87,6 +91,7 @@ function CodeHarness() {
             label="EA codes"
             namePrefix="ea-code"
             numeric
+            onBlurField={onBlurField}
             onChange={setCodes}
             translations={translations}
             tutorialHref="https://example.test/ea"
@@ -125,5 +130,20 @@ describe('CodeFields auto-advance', () => {
 
         expect(fields[2]).toHaveValue('87654321');
         expect(document.activeElement).toBe(fields[2]);
+    });
+
+    it('validates the completed code, not the value before the last digit', () => {
+        // The advance blurs the field before React commits the new code;
+        // the validator must see the eight digits, never the stale seven.
+        const onBlurField = vi.fn();
+        render(<CodeHarness onBlurField={onBlurField} />);
+
+        const fields = screen.getAllByLabelText(/Backup code/);
+        (fields[0] as HTMLInputElement).focus();
+        fireEvent.change(fields[0]!, { target: { value: '1234567' } });
+        fireEvent.change(fields[0]!, { target: { value: '12345678' } });
+
+        expect(document.activeElement).toBe(fields[1]);
+        expect(onBlurField).toHaveBeenLastCalledWith('eaCode-0', '12345678');
     });
 });

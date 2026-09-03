@@ -2157,10 +2157,9 @@ html.admin-document {
         gap: 0.7rem;
     }
 
-    .coins-step__actions--split {
-        direction: ltr;
-    }
-
+    /* The credentials and summary steps list the primary first in the DOM
+       (focus order); `order` puts it in the large second column so every
+       step shows the same row: back small, next large. */
     .coins-step__actions--split .coins-primary-action {
         order: 2;
     }
@@ -2176,6 +2175,7 @@ html.admin-document {
             position: sticky;
             inset-block-end: 0.75rem;
             z-index: 5;
+            margin-block-start: 1rem;
             margin-inline: -0.5rem;
             border: 1px solid rgb(214 175 71 / 22%);
             border-radius: 0.9rem;
@@ -3943,7 +3943,7 @@ html.admin-document {
     .store-cart-line__top {
         display: grid;
         grid-template-columns: 56px minmax(0, 1fr) auto;
-        align-items: start;
+        align-items: center;
         gap: 0.8rem;
     }
 
@@ -4062,35 +4062,16 @@ html.admin-document {
     }
 
     /* Edit and remove sit side by side under the price on phones. */
+    /* Card footer: identity, facts and status read top-down, and the two
+       actions sit last under a hairline, edit first, remove quieter. */
     .store-cart-line__actions {
         display: flex;
         flex-wrap: wrap;
-        justify-content: flex-end;
-        gap: 0.5rem;
-    }
-
-    /* On phones the two pills would squeeze the name into a sliver, so the
-       trailing column dissolves: the price keeps its corner and the actions
-       take a full row under the name. */
-    @media (max-width: 52rem) {
-        .store-cart-line__trailing {
-            display: contents;
-        }
-
-        .store-cart-line__top
-            > .store-cart-line__trailing
-            > .store-cart-line__total {
-            grid-column: 3;
-            grid-row: 1;
-        }
-
-        .store-cart-line__top
-            > .store-cart-line__trailing
-            > .store-cart-line__actions {
-            grid-column: 1 / -1;
-            grid-row: 2;
-            justify-content: flex-start;
-        }
+        justify-content: flex-start;
+        gap: 0.6rem;
+        margin-block-start: 0.35rem;
+        border-block-start: 1px solid var(--arabut-line);
+        padding-block-start: 0.85rem;
     }
 
     .store-cart-line__edit {
@@ -4135,11 +4116,11 @@ html.admin-document {
         justify-content: center;
         gap: 0.4rem;
         padding: 0 0.9rem;
-        border: 1px solid rgb(237 228 208 / 16%);
+        border: 1px solid transparent;
         border-radius: 999px;
         font-size: 0.85rem;
         font-weight: 700;
-        background: rgb(8 8 8 / 38%);
+        background: transparent;
         color: var(--arabut-muted);
         cursor: pointer;
         transition:
@@ -4507,7 +4488,7 @@ html.admin-document {
         display: flex;
         flex-wrap: wrap;
         gap: 0.45rem;
-        margin: 1rem 0 0;
+        margin: 0.85rem 0 0;
         padding: 0;
         border: 0;
     }
@@ -6464,20 +6445,6 @@ html.admin-document {
     .coins-backup-code > input {
         font-size: 1rem;
         letter-spacing: 0.01em;
-    }
-
-    .coins-step__actions--split {
-        display: flex;
-        flex-direction: column;
-        gap: 0.625rem;
-    }
-
-    .coins-step__actions--split .coins-primary-action {
-        order: 1;
-    }
-
-    .coins-step__actions--split .coins-secondary-action {
-        order: 2;
     }
 }
 

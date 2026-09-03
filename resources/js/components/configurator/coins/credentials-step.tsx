@@ -234,8 +234,20 @@ export function CredentialsStep({
             return;
         }
 
+        // The blurred field's value may be newer than state (the auto-advance
+        // blurs before React commits), so it is folded in before validating.
+        const codeMatch = /^code-([0-2])$/.exec(field);
+        const snapshot =
+            codeMatch === null
+                ? credentials
+                : {
+                      ...credentials,
+                      backupCodes: credentials.backupCodes.map((code, index) =>
+                          index === Number(codeMatch[1]) ? value : code,
+                      ) as CoinsCredentials['backupCodes'],
+                  };
         const nextErrors = validateCredentials(
-            credentials,
+            snapshot,
             requiresBalance,
             translations.credentials,
         );
@@ -393,8 +405,17 @@ export function CredentialsStep({
                                         id={`coins-backup-${index}`}
                                         inputMode="numeric"
                                         maxLength={8}
-                                        onBlur={() =>
-                                            validateFieldOnBlur(field, code)
+                                        onBlur={(event) =>
+                                            // Blur can fire from the
+                                            // auto-advance before the new
+                                            // code commits: read the DOM.
+                                            validateFieldOnBlur(
+                                                field,
+                                                event.currentTarget.value.replace(
+                                                    /[^0-9]/g,
+                                                    '',
+                                                ),
+                                            )
                                         }
                                         onChange={(event) => {
                                             if (

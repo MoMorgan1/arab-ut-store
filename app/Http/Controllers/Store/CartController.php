@@ -344,8 +344,20 @@ final class CartController extends Controller
             $name = trim((string) $product->getAttribute("name_{$fallback}"));
         }
 
+        $imageUrl = $this->safeImageUrl($product->media->first());
+
+        // Manual services carry no catalog media; the cart shows the same
+        // artwork the storefront rails use.
+        if ($imageUrl === null) {
+            $imageUrl = match ($service) {
+                ServiceType::Rivals => '/images/store/services/rivals.webp',
+                ServiceType::FutChampions => '/images/store/services/fut-champions.webp',
+                default => null,
+            };
+        }
+
         return [
-            'imageUrl' => $this->safeImageUrl($product->media->first()),
+            'imageUrl' => $imageUrl,
             'name' => $name,
             'serviceType' => $service->value,
         ];

@@ -495,7 +495,22 @@ export function CodeFields({
                                 inputMode={numeric ? 'numeric' : 'text'}
                                 maxLength={numeric ? 8 : 6}
                                 name={inputId}
-                                onBlur={() => onBlurField?.(fieldKey, code)}
+                                // The auto-advance blurs this field before
+                                // React commits the new code, so the DOM
+                                // value is the truth here, not the prop.
+                                onBlur={(event) =>
+                                    onBlurField?.(
+                                        fieldKey,
+                                        numeric
+                                            ? event.currentTarget.value.replace(
+                                                  /[^0-9]/g,
+                                                  '',
+                                              )
+                                            : event.currentTarget.value
+                                                  .replace(/[^A-Za-z0-9]/g, '')
+                                                  .toUpperCase(),
+                                    )
+                                }
                                 onChange={(event) => {
                                     const maxLength = numeric ? 8 : 6;
                                     const next: [string, string, string] = [
