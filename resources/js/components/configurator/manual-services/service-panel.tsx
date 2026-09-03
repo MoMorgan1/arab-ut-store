@@ -90,6 +90,7 @@ export function ManualServicePanel({
     submitLabel,
     title,
     translations,
+    trustLabel,
 }: {
     eta?: string;
     facts: Array<{ label: string; value: string }>;
@@ -102,6 +103,7 @@ export function ManualServicePanel({
     submitLabel?: string;
     title: string;
     translations: ManualServiceCommonTranslations;
+    trustLabel?: string;
 }) {
     const barRef = useRef<HTMLDivElement>(null);
     const dockVisible = useDockVisibility(barRef);
@@ -194,7 +196,9 @@ export function ManualServicePanel({
 
             <p className="manual-service-panel__trust">
                 <ShieldCheck aria-hidden="true" />
-                <span>{translations.review_credentials_ready}</span>
+                <span>
+                    {trustLabel ?? translations.review_credentials_ready}
+                </span>
             </p>
 
             <div

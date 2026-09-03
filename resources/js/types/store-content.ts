@@ -202,6 +202,7 @@ export type ProductTranslations = {
         required_password: string;
         related_eyebrow: string;
         related_link: string;
+        credentials_ready: string;
         related_title: string;
         selected: string;
         show_password: string;

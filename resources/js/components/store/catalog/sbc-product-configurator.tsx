@@ -575,6 +575,7 @@ export function SbcProductConfigurator({
                 submitLabel={translations.add_to_cart}
                 title={product.name}
                 translations={manualCommon}
+                trustLabel={translations.sbc.credentials_ready}
             />
         </form>
     );

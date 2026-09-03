@@ -253,6 +253,7 @@ return [
             'related_eyebrow' => 'More SBC services',
             'related_title' => 'You may also like',
             'related_link' => 'Open service',
+            'credentials_ready' => 'Your account details travel safely with the order and are never stored in the browser.',
         ],
     ],
     'manual_services' => [
