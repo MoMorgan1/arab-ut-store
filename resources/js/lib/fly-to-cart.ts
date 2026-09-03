@@ -87,22 +87,22 @@ function runFlight({
     image.src = imageUrl;
     image.alt = '';
     image.setAttribute('aria-hidden', 'true');
-    image.width = 44;
-    image.height = 44;
+    image.width = 56;
+    image.height = 56;
     chip.appendChild(image);
 
     if (imageAlt !== '') {
         chip.setAttribute('aria-label', imageAlt);
     }
 
-    const size = 44;
+    const size = 56;
     chip.style.left = `${startX - size / 2}px`;
     chip.style.top = `${startY - size / 2}px`;
     document.body.appendChild(chip);
 
     const deltaX = target.x - startX;
     const deltaY = target.y - startY;
-    const lift = Math.min(120, Math.max(48, Math.hypot(deltaX, deltaY) / 4));
+    const lift = Math.min(160, Math.max(64, Math.hypot(deltaX, deltaY) / 3));
 
     if (typeof chip.animate !== 'function') {
         chip.remove();
@@ -118,24 +118,31 @@ function runFlight({
                 offset: 0,
             },
             {
-                transform: `translate(${deltaX / 2}px, ${deltaY / 2 - lift}px) scale(0.7)`,
+                transform: 'translate(0px, 0px) scale(1.08)',
                 opacity: 1,
-                offset: 0.5,
+                offset: 0.12,
             },
             {
-                transform: `translate(${deltaX}px, ${deltaY}px) scale(0.35)`,
+                transform: `translate(${deltaX / 2}px, ${deltaY / 2 - lift}px) scale(0.85)`,
                 opacity: 1,
-                offset: 0.8,
+                offset: 0.55,
             },
             {
-                transform: `translate(${deltaX}px, ${deltaY}px) scale(0.35)`,
+                transform: `translate(${deltaX}px, ${deltaY}px) scale(0.4)`,
+                opacity: 1,
+                offset: 0.88,
+            },
+            {
+                transform: `translate(${deltaX}px, ${deltaY}px) scale(0.3)`,
                 opacity: 0,
                 offset: 1,
             },
         ],
         {
-            duration: 420,
-            easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+            // Long enough to be read on a phone: the chip lifts off the button,
+            // arcs across the screen and lands on the cart.
+            duration: 760,
+            easing: 'cubic-bezier(0.45, 0.05, 0.25, 1)',
             fill: 'forwards',
         },
     );

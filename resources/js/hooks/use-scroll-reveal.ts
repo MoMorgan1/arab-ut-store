@@ -49,7 +49,10 @@ function observer(): IntersectionObserver | null {
                 }
             });
         },
-        { threshold: 0.15, rootMargin: '0px 0px -8% 0px' },
+        // Threshold zero: a tall element (the SBC grid on a phone runs to
+        // thousands of pixels) must reveal as soon as its top edge enters,
+        // not once a fraction of its whole height is on screen.
+        { threshold: 0, rootMargin: '0px 0px -10% 0px' },
     );
 
     return sharedObserver;

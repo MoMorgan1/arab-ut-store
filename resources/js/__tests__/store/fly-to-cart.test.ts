@@ -168,8 +168,8 @@ describe('flyToCart', () => {
         expect(animate).toHaveBeenCalledTimes(1);
 
         const keyframes = animate.mock.calls[0]?.[0] as Keyframe[];
-        expect(keyframes).toHaveLength(4);
-        expect(animate.mock.calls[0]?.[1]).toMatchObject({ duration: 420 });
+        expect(keyframes).toHaveLength(5);
+        expect(animate.mock.calls[0]?.[1]).toMatchObject({ duration: 760 });
 
         resolveFlight();
         await expect(flight).resolves.toBeUndefined();
