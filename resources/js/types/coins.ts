@@ -90,7 +90,6 @@ export type CoinsStoreTranslations = {
     };
     platform: {
         title: string;
-        help: string;
         options: Record<CoinsPlatformValue, string>;
         descriptions: Record<CoinsPlatformValue, string>;
     };

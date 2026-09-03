@@ -3,6 +3,9 @@ import type { FocusEvent, PointerEvent } from 'react';
 
 const DEFAULT_PIXELS_PER_SECOND = 50;
 const MANUAL_RESUME_DELAY_MS = 900;
+// After an arrow or dot press the visitor wants to read the card they asked
+// for; the glide waits longer before drifting the rail back.
+const PROGRAMMATIC_RESUME_DELAY_MS = 4_000;
 
 export function useBouncingHorizontalRail({
     direction,
@@ -15,6 +18,7 @@ export function useBouncingHorizontalRail({
     const autoTravelDirectionRef = useRef<1 | -1>(1);
     const manualScrollRef = useRef(false);
     const manualResumeTimerRef = useRef<number | null>(null);
+    const resumeDelayRef = useRef(MANUAL_RESUME_DELAY_MS);
     const [overflows, setOverflows] = useState(false);
     const [focusOrHoverPaused, setFocusOrHoverPaused] = useState(false);
     const [manualPaused, setManualPaused] = useState(false);
@@ -62,12 +66,14 @@ export function useBouncingHorizontalRail({
         manualResumeTimerRef.current = window.setTimeout(() => {
             manualScrollRef.current = false;
             manualResumeTimerRef.current = null;
+            resumeDelayRef.current = MANUAL_RESUME_DELAY_MS;
             setManualPaused(false);
-        }, MANUAL_RESUME_DELAY_MS);
+        }, resumeDelayRef.current);
     }, []);
 
     const beginManualScroll = useCallback(() => {
         manualScrollRef.current = true;
+        resumeDelayRef.current = MANUAL_RESUME_DELAY_MS;
         setManualPaused(true);
 
         if (manualResumeTimerRef.current !== null) {
@@ -189,6 +195,14 @@ export function useBouncingHorizontalRail({
         return () => window.cancelAnimationFrame(animationFrame);
     }, [direction, overflows, pageVisible, paused, pixelsPerSecond]);
 
+    // Arrows and dots scroll the rail themselves; the glide would cancel their
+    // smooth scroll every frame, so they pause it the way a drag does.
+    const pauseForProgrammaticScroll = useCallback(() => {
+        beginManualScroll();
+        resumeDelayRef.current = PROGRAMMATIC_RESUME_DELAY_MS;
+        scheduleManualResume();
+    }, [beginManualScroll, scheduleManualResume]);
+
     return {
         containerProps: {
             onBlurCapture: (event: FocusEvent<HTMLElement>) => {
@@ -220,6 +234,7 @@ export function useBouncingHorizontalRail({
         },
         move,
         overflows,
+        pauseForProgrammaticScroll,
         trackProps: {
             dir: direction,
             onScroll: () => {

@@ -1,4 +1,4 @@
-import { ReviewCard, ReviewSummary } from '@/components/store/reviews-section';
+import { ReviewsRail, ReviewSummary } from '@/components/store/reviews-section';
 import type { ServiceReviewsProps } from '@/types/store-content';
 
 function ArrowIcon({ direction }: { direction: 'back' | 'forward' }) {
@@ -68,16 +68,12 @@ export function ServiceReviewsSection({
                 translations={serviceReviews.translations}
             />
 
-            <ul className="store-reviews-rail" dir={direction} role="list">
-                {serviceReviews.reviews.items.map((review) => (
-                    <ReviewCard
-                        key={review.id}
-                        locale={locale}
-                        review={review}
-                        translations={serviceReviews.translations}
-                    />
-                ))}
-            </ul>
+            <ReviewsRail
+                direction={direction}
+                items={serviceReviews.reviews.items}
+                locale={locale}
+                translations={serviceReviews.translations}
+            />
 
             <div className="service-reviews-section__footer">
                 <a

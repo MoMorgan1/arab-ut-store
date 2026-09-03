@@ -55,7 +55,6 @@ const store = {
     },
     platform: {
         title: 'Choose your platform',
-        help: 'Choose PS / Xbox or PC.',
         options: {
             playstation: 'PS / Xbox',
             pc: 'PC',

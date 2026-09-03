@@ -26,11 +26,68 @@ export function ReviewsSection({
     translations: ReviewTranslations;
 }) {
     const direction = locale === 'ar' ? 'rtl' : 'ltr';
-    const { containerProps, trackProps } = useBouncingHorizontalRail({
-        direction,
-    });
-    const [activeIndex, setActiveIndex] = useState(0);
     const items = reviews.items;
+
+    return (
+        <section
+            aria-labelledby="store-reviews-title"
+            className="store-reviews"
+            id="reviews"
+        >
+            <div className="store-reviews__inner">
+                <div className="store-reviews__top">
+                    <header className="store-section-heading store-reviews__heading">
+                        <p>{translations.eyebrow}</p>
+                        <h2 id="store-reviews-title">{translations.title}</h2>
+                    </header>
+                    {reviews.average === null ? null : (
+                        <ReviewSummary
+                            locale={locale}
+                            reviews={reviews}
+                            translations={translations}
+                        />
+                    )}
+                </div>
+
+                {items.length === 0 ? (
+                    <p className="store-reviews__empty">{translations.empty}</p>
+                ) : (
+                    <ReviewsRail
+                        direction={direction}
+                        items={items}
+                        locale={locale}
+                        translations={translations}
+                    />
+                )}
+
+                <a className="store-reviews__more" href={reviewsUrl}>
+                    {translations.read_all ?? translations.view_all}
+                    <ArrowIcon direction="forward" />
+                </a>
+            </div>
+        </section>
+    );
+}
+
+/**
+ * The horizontal card rail with its arrows and dots. It glides on its own on
+ * desktop and pauses while the visitor drags it, hovers it, or presses an
+ * arrow; the home page and the per-service blocks share it.
+ */
+export function ReviewsRail({
+    direction,
+    items,
+    locale,
+    translations,
+}: {
+    direction: 'rtl' | 'ltr';
+    items: ReviewItem[];
+    locale: 'ar' | 'en';
+    translations: ReviewTranslations;
+}) {
+    const { containerProps, pauseForProgrammaticScroll, trackProps } =
+        useBouncingHorizontalRail({ direction });
+    const [activeIndex, setActiveIndex] = useState(0);
 
     useEffect(() => {
         const track = trackProps.ref.current;
@@ -103,6 +160,10 @@ export function ReviewsSection({
             return;
         }
 
+        // The desktop glide nudges the rail every frame and would cancel the
+        // smooth scroll mid-way, so it steps aside for a moment first.
+        pauseForProgrammaticScroll();
+
         const distance = card.getBoundingClientRect().width + 16;
 
         track.scrollBy({
@@ -116,6 +177,7 @@ export function ReviewsSection({
         const card = track?.children.item(index);
 
         if (card instanceof HTMLElement) {
+            pauseForProgrammaticScroll();
             card.scrollIntoView({
                 behavior: 'smooth',
                 block: 'nearest',
@@ -125,94 +187,60 @@ export function ReviewsSection({
     }
 
     return (
-        <section
-            aria-labelledby="store-reviews-title"
-            className="store-reviews"
-            id="reviews"
-        >
-            <div className="store-reviews__inner">
-                <div className="store-reviews__top">
-                    <header className="store-section-heading store-reviews__heading">
-                        <p>{translations.eyebrow}</p>
-                        <h2 id="store-reviews-title">{translations.title}</h2>
-                    </header>
-                    {reviews.average === null ? null : (
-                        <ReviewSummary
-                            locale={locale}
-                            reviews={reviews}
-                            translations={translations}
-                        />
-                    )}
-                </div>
-
-                {items.length === 0 ? (
-                    <p className="store-reviews__empty">{translations.empty}</p>
-                ) : (
-                    <div className="store-reviews__rail-shell">
-                        <ul
-                            aria-label={translations.rail_label}
-                            className="store-reviews-rail"
-                            {...containerProps}
-                            {...trackProps}
+        <div className="store-reviews__rail-shell">
+            <ul
+                aria-label={translations.rail_label}
+                className="store-reviews-rail"
+                {...containerProps}
+                {...trackProps}
+            >
+                {items.map((review) => (
+                    <ReviewCard
+                        key={review.id}
+                        locale={locale}
+                        review={review}
+                        translations={translations}
+                    />
+                ))}
+            </ul>
+            {items.length > 1 ? (
+                <div className="store-reviews__controls">
+                    <div className="store-reviews__arrows">
+                        <button
+                            aria-label={translations.previous_cards}
+                            className="store-reviews__arrow"
+                            onClick={() => scrollCards(-1)}
+                            type="button"
                         >
-                            {items.map((review) => (
-                                <ReviewCard
-                                    key={review.id}
-                                    locale={locale}
-                                    review={review}
-                                    translations={translations}
-                                />
-                            ))}
-                        </ul>
-                        {items.length > 1 ? (
-                            <div className="store-reviews__controls">
-                                <div className="store-reviews__arrows">
-                                    <button
-                                        aria-label={translations.previous_cards}
-                                        className="store-reviews__arrow"
-                                        onClick={() => scrollCards(-1)}
-                                        type="button"
-                                    >
-                                        <ArrowIcon direction="back" />
-                                    </button>
-                                    <button
-                                        aria-label={translations.next_cards}
-                                        className="store-reviews__arrow"
-                                        onClick={() => scrollCards(1)}
-                                        type="button"
-                                    >
-                                        <ArrowIcon direction="forward" />
-                                    </button>
-                                </div>
-                                <div
-                                    aria-hidden="true"
-                                    className="store-reviews__dots"
-                                >
-                                    {items.map((review, index) => (
-                                        <button
-                                            className={
-                                                index === activeIndex
-                                                    ? 'is-active'
-                                                    : undefined
-                                            }
-                                            key={review.id}
-                                            onClick={() => scrollToCard(index)}
-                                            tabIndex={-1}
-                                            type="button"
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        ) : null}
+                            <ArrowIcon direction="back" />
+                        </button>
+                        <button
+                            aria-label={translations.next_cards}
+                            className="store-reviews__arrow"
+                            onClick={() => scrollCards(1)}
+                            type="button"
+                        >
+                            <ArrowIcon direction="forward" />
+                        </button>
                     </div>
-                )}
-
-                <a className="store-reviews__more" href={reviewsUrl}>
-                    {translations.read_all ?? translations.view_all}
-                    <ArrowIcon direction="forward" />
-                </a>
-            </div>
-        </section>
+                    <div aria-hidden="true" className="store-reviews__dots">
+                        {items.map((review, index) => (
+                            <button
+                                className={
+                                    index === activeIndex
+                                        ? 'is-active'
+                                        : undefined
+                                }
+                                key={review.id}
+                                onClick={() => scrollToCard(index)}
+                                tabIndex={-1}
+                                type="button"
+                            />
+                        ))}
+                    </div>
+                </div>
+            ) : null}
+        </div>
     );
 }
 
