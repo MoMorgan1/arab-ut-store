@@ -22,6 +22,7 @@ final class CoinsCartRequest extends FormRequest
     {
         return [
             ...app(CoinsSelectionRules::class)->for($this->input('platform'), $this->input('delivery')),
+            'replaceCartItemId' => ['nullable', 'string', 'ulid'],
             'credentials' => ['required', 'array:ea_email,ea_password,backup_codes,current_balance,companion_market_open,policy_accepted'],
             'credentials.ea_email' => ['required', 'string', 'email:rfc', 'max:254'],
             'credentials.ea_password' => ['present', 'string', 'min:1', 'max:128'],
@@ -43,7 +44,7 @@ final class CoinsCartRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator): void {
-            if (array_diff(array_keys($this->all()), ['platform', 'delivery', 'quantity', 'credentials']) !== []) {
+            if (array_diff(array_keys($this->all()), ['platform', 'delivery', 'quantity', 'credentials', 'replaceCartItemId']) !== []) {
                 $validator->errors()->add('request', trans('store.cart.unknown_fields'));
             }
 

@@ -7,7 +7,7 @@ import {
     waitFor,
     within,
 } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { formatMinorUnits } from '@/lib/money';
 import { SbcCartRequestError } from '@/lib/sbc-cart-api';
@@ -383,6 +383,100 @@ function fillValidCredentials() {
         });
     });
 }
+
+describe('SBC edit from cart', () => {
+    const REPLACE_ID = '01K00000000000000000000000';
+    const VARIANT_ID = '01K00000000000000000000004';
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    function replaceProps() {
+        const base = sbcProductProps();
+
+        return {
+            ...base,
+            cartVariantIds: [VARIANT_ID],
+            replaceCredentialsUrl: `/cart/items/${REPLACE_ID}/credentials`,
+            manualCommon: {
+                ...base.manualCommon,
+                in_cart: 'In cart',
+                open_cart: 'Open cart',
+            },
+            productPage: {
+                ...base.productPage,
+                sbc: {
+                    ...base.productPage.sbc,
+                    editing_replace: 'Editing the item in your cart',
+                },
+            },
+        };
+    }
+
+    function stubCredentials(status: number) {
+        return vi.fn(() =>
+            Promise.resolve(
+                new Response(
+                    JSON.stringify({
+                        data: {
+                            backupCodes: ['93000001', '93000002', '93000003'],
+                            companionMarketOpen: false,
+                            currentBalance: null,
+                            eaEmail: 'owner@example.test',
+                            eaPassword: 'opaque password',
+                            policyAccepted: false,
+                        },
+                    }),
+                    { status },
+                ),
+            ),
+        );
+    }
+
+    it('prefills completions and credentials from the edited line and sends its id', async () => {
+        page.url = `/en/sbc/icon-challenge?variant=${VARIANT_ID}&completions=10&replace=${REPLACE_ID}`;
+        page.props = replaceProps();
+        vi.stubGlobal('fetch', stubCredentials(200));
+
+        render(<StoreCatalogProduct />);
+
+        expect(screen.getByText('Editing the item in your cart')).toBeVisible();
+        expect(within(orderPanel()).getByText('10')).toBeVisible();
+        expect(
+            await screen.findByDisplayValue('owner@example.test'),
+        ).toBeVisible();
+
+        submitForm();
+
+        await waitFor(() => expect(mocks.submit).toHaveBeenCalledTimes(1));
+        expect(mocks.submit).toHaveBeenCalledWith(
+            expect.objectContaining({
+                variantId: VARIANT_ID,
+                completionCount: 10,
+                replaceCartItemId: REPLACE_ID,
+            }),
+        );
+        // The replacement landed: the old line is gone, the new one is in
+        // the cart, so the control now reads in-cart and the editing note is
+        // over. A further add from this page would be a plain add.
+        expect(screen.getByRole('button', { name: 'In cart' })).toBeDisabled();
+        expect(
+            screen.queryByText('Editing the item in your cart'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('shows the editing note with empty fields when the credentials fetch fails', async () => {
+        page.url = `/en/sbc/icon-challenge?variant=${VARIANT_ID}&completions=10&replace=${REPLACE_ID}`;
+        page.props = replaceProps();
+        vi.stubGlobal('fetch', stubCredentials(404));
+
+        render(<StoreCatalogProduct />);
+
+        expect(screen.getByText('Editing the item in your cart')).toBeVisible();
+        expect(screen.getByLabelText('EA email')).toHaveValue('');
+    });
+});
 
 function sbcProductProps() {
     return {

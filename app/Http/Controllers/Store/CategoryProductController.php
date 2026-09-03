@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Store;
 
+use App\Actions\Cart\ResolveCartOwner;
 use App\Actions\Catalog\StoreCatalogReader;
 use App\Enums\ServiceType;
 use App\Http\Controllers\Controller;
+use App\Models\Cart;
+use App\Models\CartItem;
 use App\Services\Reviews\StoreReviewReader;
 use App\Support\Seo\StorePageSeo;
 use App\Support\StoreTutorials;
@@ -43,6 +46,7 @@ final class CategoryProductController extends Controller
         return Inertia::render('store/catalog-product', [
             'catalogCartUrl' => $this->route($request, 'cart.items.catalog.store'),
             'sbcCartUrl' => $this->route($request, 'cart.items.sbc.store'),
+            'replaceCredentialsUrl' => $this->replaceCredentialsUrl($request),
             'backUrl' => $this->route($request, 'store.'.(string) $request->route('service')),
             'productPage' => trans('store.product'),
             'manualCommon' => trans('store.manual_services.common'),
@@ -53,6 +57,34 @@ final class CategoryProductController extends Controller
             'serviceReviews' => $serviceReviews,
             'seo' => StorePageSeo::fromCatalogProduct($catalogPage['product'])->toArray(),
         ]);
+    }
+
+    /**
+     * The owner-scoped credentials URL for the cart line being edited, if the
+     * `replace` query value names a line on the visitor's own active cart.
+     * Built server-side so the client never assembles credential URLs.
+     */
+    private function replaceCredentialsUrl(Request $request): ?string
+    {
+        $replace = $request->query('replace');
+
+        if (! is_string($replace) || preg_match('/\A[0-7][0-9A-HJKMNP-TV-Z]{25}\z/D', $replace) !== 1) {
+            return null;
+        }
+
+        $ownedCartIds = Cart::query();
+        $ownedCartIds->activeForOwner(app(ResolveCartOwner::class)->forRequest($request));
+
+        $item = CartItem::query()
+            ->where('public_id', $replace)
+            ->whereIn('cart_id', $ownedCartIds->select('id'))
+            ->first();
+
+        if (! $item instanceof CartItem) {
+            return null;
+        }
+
+        return $this->route($request, 'cart.items.credentials.show', ['cartItem' => $item->public_id]);
     }
 
     /** @param array<string, mixed> $parameters */

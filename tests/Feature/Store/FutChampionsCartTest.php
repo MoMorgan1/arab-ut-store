@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Cart\PurgeRemovedCartItems;
 use App\Enums\ServiceType;
 use App\Models\CartItem;
 use App\Models\CartItemSecret;
@@ -237,7 +238,7 @@ it('projects only a safe immutable FUT summary into the cart', function () {
     );
 });
 
-it('removes FUT secrets and the private squad image with the owned cart line', function () {
+it('soft-removes the owned cart line and purges its FUT secrets and squad image past the undo window', function () {
     postFutCart(validFutCartPayload(), 'delete-fut-fulfillment')->assertCreated();
 
     $item = CartItem::query()->sole();
@@ -249,7 +250,18 @@ it('removes FUT secrets and the private squad image with the owned cart line', f
         ->assertOk()
         ->assertJsonPath('data.cartCount', 0);
 
+    // The undo window keeps the row, its secret, and the squad image.
     expect(CartItem::query()->count())->toBe(0)
+        ->and(CartItem::withRemoved()->count())->toBe(1)
+        ->and(CartItemSecret::query()->count())->toBe(1)
+        ->and(FulfillmentAttachment::query()->count())->toBe(1);
+    Storage::disk('local')->assertExists($path);
+
+    $item->refresh();
+    $item->update(['removed_at' => now()->subMinutes(31)]);
+    app(PurgeRemovedCartItems::class)->execute();
+
+    expect(CartItem::withRemoved()->count())->toBe(0)
         ->and(CartItemSecret::query()->count())->toBe(0)
         ->and(FulfillmentAttachment::query()->count())->toBe(0);
     Storage::disk('local')->assertMissing($path);

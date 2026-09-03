@@ -33,6 +33,7 @@ final class CoinsCartFingerprint
             'platform' => $validated['platform'],
             'delivery' => $validated['delivery'] ?? null,
             'quantity' => (int) $validated['quantity'],
+            'replace_cart_item_id' => $validated['replaceCartItemId'] ?? null,
             'credentials' => $canonicalCredentials,
         ];
 

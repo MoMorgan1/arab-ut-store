@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Store;
 
+use App\Actions\Cart\PurgeRemovedCartItems;
 use App\Actions\Cart\RepriceCart;
 use App\Actions\Cart\ResolveCartOwner;
 use App\Checkout\DiscountEngine;
@@ -42,13 +43,21 @@ final class CartController extends Controller
         private readonly RepriceCart $repriceCart,
         private readonly CoinsCatalogReader $coinsCatalog,
         private readonly StoreSuggestions $suggestions,
+        private readonly PurgeRemovedCartItems $purgeRemovedCartItems,
     ) {}
 
     public function __invoke(Request $request, ResolveCartOwner $resolveCartOwner): Response
     {
         $localized = $request->route('locale') === 'en';
+        $owner = $resolveCartOwner->forRequest($request);
+        $ownCartId = Cart::query()->activeForOwner($owner)->value('id');
+
+        if (is_int($ownCartId)) {
+            $this->purgeRemovedCartItems->execute($ownCartId);
+        }
+
         $activeCart = Cart::query()
-            ->activeForOwner($resolveCartOwner->forRequest($request))
+            ->activeForOwner($owner)
             ->with(['items.secret', 'items.squadImage', 'items.productVariant.product.media', 'items.productVariant.product.category', 'coupon.targets'])
             ->first();
 
@@ -253,6 +262,7 @@ final class CartController extends Controller
             'credentials' => $credentials,
             'credentialsUrl' => $isManualService ? null : $this->credentialsUrl($cartItem, $localized),
             'deleteUrl' => $this->deleteUrl($cartItem, $localized),
+            'editUrl' => $this->editUrl($cartItem, $localized),
             'fulfillment' => $fulfillment,
             'requiresCredentials' => $isManualService
                 ? ! $fulfillment['credentialsReady']
@@ -402,6 +412,51 @@ final class CartController extends Controller
             ...($localized ? ['locale' => 'en'] : []),
             'cartItem' => $cartItem->public_id,
         ], absolute: false);
+    }
+
+    private function editUrl(CartItem $cartItem, bool $localized): ?string
+    {
+        $serviceType = $cartItem->productVariant->service_type;
+        $configuration = $cartItem->configuration ?? [];
+
+        if ($serviceType === ServiceType::Coins) {
+            $home = route(
+                $localized ? 'localized.home' : 'home',
+                $localized ? ['locale' => 'en'] : [],
+                absolute: false,
+            );
+            $query = array_filter([
+                'platform' => $configuration['platform'] ?? null,
+                'delivery' => $configuration['delivery'] ?? null,
+                'quantity' => $configuration['coins_quantity'] ?? null,
+                'replace' => $cartItem->public_id,
+            ], fn (mixed $value): bool => $value !== null);
+
+            return $home.'?'.http_build_query($query).'#coins';
+        }
+
+        if ($serviceType === ServiceType::Sbc) {
+            $slug = $cartItem->productVariant->product?->slug;
+
+            if (! is_string($slug) || $slug === '') {
+                return null;
+            }
+
+            $url = route(
+                $localized ? 'localized.store.sbc.show' : 'store.sbc.show',
+                [...($localized ? ['locale' => 'en'] : []), 'slug' => $slug],
+                absolute: false,
+            );
+            $query = array_filter([
+                'variant' => $cartItem->productVariant->public_id,
+                'completions' => $configuration['completion_count'] ?? null,
+                'replace' => $cartItem->public_id,
+            ], fn (mixed $value): bool => $value !== null);
+
+            return $url.'?'.http_build_query($query);
+        }
+
+        return null;
     }
 
     /**

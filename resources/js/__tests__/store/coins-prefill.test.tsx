@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sliderStops } from '@/lib/coins-quantity';
 
@@ -151,6 +157,9 @@ const store = {
         conflict_error: 'Start a new submission.',
         unavailable_error: 'Pricing unavailable.',
         generic_error: 'Could not add Coins.',
+        in_cart: 'In cart',
+        open_cart: 'Open cart',
+        editing_replace: 'Editing the item in your cart',
     },
     actions: {
         continue: 'Continue',
@@ -494,5 +503,154 @@ describe('Coins configurator URL prefilling', () => {
 
         fireEvent.click(screen.getByRole('button', { name: '1M' }));
         expectAmountDigits(amountInput, '1000000');
+    });
+});
+
+describe('Coins edit from cart', () => {
+    const REPLACE_ID = '01K00000000000000000000000';
+
+    beforeEach(() => {
+        vi.useRealTimers();
+        document.head.innerHTML =
+            '<meta name="csrf-token" content="test-token">';
+        vi.stubGlobal('crypto', {
+            randomUUID: () => '3dc56ae8-6ed2-4dde-92fd-d170cefa8a3d',
+        });
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    function replaceProps() {
+        return {
+            ...pageProps(),
+            cartVariantIds: ['01K00000000000000000000001'],
+            coinsCart: {
+                addUrl: '/en/cart/items/coins',
+                initialSelection: null,
+                replaceCredentialsUrl: `/cart/items/${REPLACE_ID}/credentials`,
+            },
+        };
+    }
+
+    function stubCartRequests(posts: Array<Record<string, unknown>>) {
+        return vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+            if (String(input).endsWith('/credentials')) {
+                return Promise.resolve(
+                    new Response(
+                        JSON.stringify({
+                            data: {
+                                backupCodes: [
+                                    '10000001',
+                                    '10000002',
+                                    '10000003',
+                                ],
+                                companionMarketOpen: true,
+                                currentBalance: null,
+                                eaEmail: 'owner@example.test',
+                                eaPassword: 'opaque EA password',
+                                policyAccepted: true,
+                            },
+                        }),
+                        { status: 200 },
+                    ),
+                );
+            }
+
+            if (init?.method === 'POST') {
+                posts.push(JSON.parse(String(init.body)));
+
+                return Promise.resolve(
+                    new Response(
+                        JSON.stringify({
+                            data: {
+                                cartCount: 1,
+                                cartItemId: REPLACE_ID,
+                                cartTotalHalalah: 600,
+                                cartUrl: '/en/cart',
+                            },
+                        }),
+                        { status: 201 },
+                    ),
+                );
+            }
+
+            return Promise.resolve(new Response('{}', { status: 404 }));
+        });
+    }
+
+    it('prefills quantity and credentials from the edited line and sends its id', async () => {
+        mockPage.props = replaceProps();
+        window.history.pushState(
+            {},
+            '',
+            `/en?platform=pc&quantity=500000&replace=${REPLACE_ID}`,
+        );
+        const posts: Array<Record<string, unknown>> = [];
+        vi.stubGlobal('fetch', stubCartRequests(posts));
+
+        render(<StoreHome />);
+
+        expect(screen.getByText('Editing the item in your cart')).toBeVisible();
+        const amountInput = screen.getByRole('textbox', {
+            name: store.amount_copy.label,
+        });
+        expectAmountDigits(amountInput, '500000');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        expect(
+            screen.getByRole('heading', { name: store.credentials.title }),
+        ).toBeVisible();
+        expect(
+            await screen.findByDisplayValue('owner@example.test'),
+        ).toBeVisible();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        expect(
+            screen.getByRole('heading', { name: store.summary.title }),
+        ).toBeVisible();
+        // The edited variant is already in the cart, but replacing it must
+        // not trip the in-cart state.
+        expect(
+            screen.getByRole('button', { name: store.summary.add }),
+        ).toBeVisible();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: store.summary.add }),
+        );
+
+        await waitFor(() => expect(posts).toHaveLength(1));
+        expect(posts[0]).toMatchObject({
+            platform: 'pc',
+            quantity: 500000,
+            replaceCartItemId: REPLACE_ID,
+        });
+        expect(document.body.textContent).not.toContain('opaque EA password');
+    });
+
+    it('shows the editing note with empty fields when the credentials fetch fails', async () => {
+        mockPage.props = replaceProps();
+        window.history.pushState(
+            {},
+            '',
+            `/en?platform=pc&quantity=500000&replace=${REPLACE_ID}`,
+        );
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => Promise.resolve(new Response('{}', { status: 404 }))),
+        );
+
+        render(<StoreHome />);
+
+        expect(screen.getByText('Editing the item in your cart')).toBeVisible();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        expect(
+            screen.getByRole('heading', { name: store.credentials.title }),
+        ).toBeVisible();
+        expect(
+            screen.getByRole('textbox', { name: store.credentials.email }),
+        ).toHaveValue('');
     });
 });

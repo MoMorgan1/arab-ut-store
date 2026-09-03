@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -20,7 +21,21 @@ class CartItem extends DomainModel
             'configuration' => 'array',
             'unit_price_halalah' => 'integer',
             'total_halalah' => 'integer',
+            'removed_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('notRemoved', function (Builder $query): void {
+            $query->whereNull($query->getModel()->getTable().'.removed_at');
+        });
+    }
+
+    /** @param Builder<CartItem> $query */
+    public function scopeWithRemoved(Builder $query): void
+    {
+        $query->withoutGlobalScope('notRemoved');
     }
 
     /** @return BelongsTo<Cart, $this> */

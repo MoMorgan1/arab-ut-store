@@ -30,6 +30,7 @@ export type CoinsResumeSelection = {
 export type CoinsCartConfig = {
     addUrl: string;
     initialSelection: CoinsResumeSelection | null;
+    replaceCredentialsUrl?: string | null;
 };
 
 export type CoinsDeliveryOption = {
@@ -175,6 +176,7 @@ export type CoinsStoreTranslations = {
         generic_error: string;
         in_cart: string;
         open_cart: string;
+        editing_replace: string;
     };
     actions: {
         continue: string;

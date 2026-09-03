@@ -62,6 +62,7 @@ const mockPage = vi.hoisted(() => ({
                     credentialsUrl:
                         '/en/cart/items/01K00000000000000000000000/credentials',
                     deleteUrl: '/en/cart/items/01K00000000000000000000000',
+                    editUrl: null,
                     id: '01K00000000000000000000000',
                     product: {
                         imageUrl: '/images/store/coins/ut-coin-80.webp' as
@@ -135,9 +136,12 @@ const mockPage = vi.hoisted(() => ({
                 credentials_show: 'Show EA details',
                 credentials_hide: 'Hide EA details',
                 remove_item: 'Remove product',
-                remove_hint: 'Press and hold until the bar fills.',
                 remove_short: 'Remove',
-                remove_holding: 'Keep holding…',
+                edit_line: 'Edit',
+                removed_line: 'Removed :name',
+                undo: 'Undo',
+                undo_failed: "Couldn't restore it, refresh the page",
+                restore_duplicate: 'This item is already in your cart',
                 remove_error: 'The product could not be removed.',
                 backup_code: 'Backup code :number',
                 checkout: 'Continue to secure payment',
@@ -800,61 +804,199 @@ it('drops a stored balance from the update when the admin toggle is off', async 
     });
 });
 
-it('removes a product only after a sustained hold', async () => {
-    const cartCountEvents: number[] = [];
-    window.addEventListener(
-        'arabut:cart-count',
-        (event) => {
-            cartCountEvents.push((event as CustomEvent<number>).detail);
-        },
-        { once: true },
-    );
-    const fetchMock = vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ data: { cartCount: 0 } }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-        }),
-    );
-    vi.stubGlobal('fetch', fetchMock);
-
-    // Drive the hold deterministically: hold the animation frame instead of
-    // running it, so the clock can be moved past the hold duration by hand.
-    let clock = 0;
-    let frame: FrameRequestCallback | null = null;
-    vi.spyOn(performance, 'now').mockImplementation(() => clock);
-    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
-        frame = cb;
-
-        return 1;
-    });
-    vi.stubGlobal('cancelAnimationFrame', () => {
-        frame = null;
+describe('cart line removal with undo', () => {
+    beforeEach(() => {
+        vi.mocked(router.reload).mockClear();
     });
 
-    render(<StoreCart />);
-    const remove = screen.getByRole('button', { name: 'Remove product' });
-
-    // A tap that is not held deletes nothing. The hold is the confirmation,
-    // and the delete it commits to is immediate and final.
-    fireEvent.pointerUp(remove);
-    expect(fetchMock).not.toHaveBeenCalled();
-
-    fireEvent.pointerDown(remove);
-    expect(frame).not.toBeNull();
-
-    clock = 10_000;
-    act(() => {
-        frame?.(10_000);
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
-    await waitFor(() =>
-        expect(fetchMock).toHaveBeenCalledWith(
-            '/en/cart/items/01K00000000000000000000000',
-            expect.objectContaining({ method: 'DELETE' }),
-        ),
-    );
-    expect(router.reload).toHaveBeenCalledWith({ only: ['cart'] });
-    expect(cartCountEvents).toEqual([0]);
+    function removalFetch(
+        restoreUrl = '/en/cart/items/01K00000000000000000000000/restore',
+    ) {
+        return vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    data: { cartCount: 0, restoreUrl },
+                }),
+                {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                },
+            ),
+        );
+    }
+
+    it('removes on one tap and shows the undo bar with the product name', async () => {
+        const cartCountEvents: number[] = [];
+        window.addEventListener(
+            'arabut:cart-count',
+            (event) => {
+                cartCountEvents.push((event as CustomEvent<number>).detail);
+            },
+            { once: true },
+        );
+        const fetchMock = removalFetch();
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<StoreCart />);
+        fireEvent.click(screen.getByRole('button', { name: 'Remove product' }));
+
+        await waitFor(() =>
+            expect(fetchMock).toHaveBeenCalledWith(
+                '/en/cart/items/01K00000000000000000000000',
+                expect.objectContaining({ method: 'DELETE' }),
+            ),
+        );
+        expect(router.reload).toHaveBeenCalledWith({ only: ['cart'] });
+        expect(cartCountEvents).toEqual([0]);
+
+        const undoBar = screen.getByRole('status', {
+            name: (_content, element) =>
+                element?.classList.contains('store-cart-undo') === true,
+        });
+        expect(undoBar).toHaveTextContent('Removed FC 27 Coins');
+        expect(
+            within(undoBar).getByRole('button', { name: 'Undo' }),
+        ).toBeVisible();
+    });
+
+    it('restores through the undo bar and reloads the cart', async () => {
+        const fetchMock = removalFetch();
+        fetchMock.mockResolvedValueOnce(
+            new Response(
+                JSON.stringify({
+                    data: {
+                        cartCount: 0,
+                        restoreUrl:
+                            '/en/cart/items/01K00000000000000000000000/restore',
+                    },
+                }),
+                { status: 200 },
+            ),
+        );
+        fetchMock.mockResolvedValueOnce(
+            new Response(JSON.stringify({ data: { cartCount: 1 } }), {
+                status: 200,
+            }),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<StoreCart />);
+        fireEvent.click(screen.getByRole('button', { name: 'Remove product' }));
+
+        const undoButton = await screen.findByRole('button', {
+            name: 'Undo',
+        });
+        fireEvent.click(undoButton);
+
+        await waitFor(() =>
+            expect(fetchMock).toHaveBeenCalledWith(
+                '/en/cart/items/01K00000000000000000000000/restore',
+                expect.objectContaining({ method: 'POST' }),
+            ),
+        );
+        expect(router.reload).toHaveBeenCalledWith({ only: ['cart'] });
+        await waitFor(() =>
+            expect(
+                document.querySelector('.store-cart-undo'),
+            ).not.toBeInTheDocument(),
+        );
+    });
+
+    it('shows the duplicate copy when the restore is refused as already in cart', async () => {
+        const fetchMock = removalFetch();
+        fetchMock.mockResolvedValueOnce(
+            new Response(
+                JSON.stringify({
+                    data: {
+                        cartCount: 0,
+                        restoreUrl:
+                            '/en/cart/items/01K00000000000000000000000/restore',
+                    },
+                }),
+                { status: 200 },
+            ),
+        );
+        fetchMock.mockResolvedValueOnce(
+            new Response(
+                JSON.stringify({ error: { code: 'already_in_cart' } }),
+                { status: 409 },
+            ),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<StoreCart />);
+        fireEvent.click(screen.getByRole('button', { name: 'Remove product' }));
+
+        const undoButton = await screen.findByRole('button', {
+            name: 'Undo',
+        });
+        fireEvent.click(undoButton);
+
+        expect(
+            await screen.findByText('This item is already in your cart'),
+        ).toBeVisible();
+        expect(
+            screen.queryByRole('button', { name: 'Undo' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('hides the undo bar after six seconds', async () => {
+        vi.useFakeTimers();
+
+        try {
+            const fetchMock = removalFetch();
+            vi.stubGlobal('fetch', fetchMock);
+
+            render(<StoreCart />);
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Remove product' }),
+            );
+
+            // Flush the removal promise without touching the timers: findBy
+            // would wait on a timer that fake time never advances.
+            await act(async () => {});
+            expect(screen.getByRole('button', { name: 'Undo' })).toBeVisible();
+
+            act(() => {
+                vi.advanceTimersByTime(6_000);
+            });
+
+            expect(
+                document.querySelector('.store-cart-undo'),
+            ).not.toBeInTheDocument();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('shows an edit link only when the line carries an edit URL', () => {
+        mockPage.props.cart.items = [
+            {
+                ...defaultCartItem,
+                editUrl:
+                    '/en?platform=playstation&delivery=fast&quantity=500000&replace=01K00000000000000000000000#coins',
+            },
+        ] as typeof mockPage.props.cart.items;
+
+        render(<StoreCart />);
+
+        expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+            'href',
+            '/en?platform=playstation&delivery=fast&quantity=500000&replace=01K00000000000000000000000#coins',
+        );
+    });
+
+    it('shows no edit link for lines without one', () => {
+        render(<StoreCart />);
+
+        expect(
+            screen.queryByRole('link', { name: 'Edit' }),
+        ).not.toBeInTheDocument();
+    });
 });
 
 it('does not invent cart facts when a safe projected field is absent', () => {

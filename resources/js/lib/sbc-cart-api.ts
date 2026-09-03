@@ -14,6 +14,7 @@ type SubmitSbcCartInput = {
     completionCount: number;
     credentials: CoinsCredentials;
     idempotencyKey: string;
+    replaceCartItemId?: string;
     variantId: string;
 };
 
@@ -165,6 +166,10 @@ function safeSuccess(payload: unknown): SbcCartSuccess | null {
 
 function requestBody(input: SubmitSbcCartInput) {
     return {
+        ...(input.replaceCartItemId === undefined ||
+        input.replaceCartItemId === ''
+            ? {}
+            : { replaceCartItemId: input.replaceCartItemId }),
         variantId: input.variantId,
         completionCount: input.completionCount,
         credentials: {

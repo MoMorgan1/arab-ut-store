@@ -3,6 +3,7 @@
 namespace App\Actions\Cart;
 
 use App\Enums\ServiceType;
+use App\Exceptions\Cart\ReplacedCartItemMissing;
 use App\Exceptions\IdempotencyConflict;
 use App\Models\Cart;
 use App\Models\CartItem;
@@ -66,6 +67,7 @@ final readonly class AddSbcToCart
         }
 
         $cart = $this->acquireActiveCart->execute($owner);
+        $this->softRemoveReplaced($cart, $validated['replaceCartItemId'] ?? null);
         $this->assertVariantNotInCart->execute($cart, $variant);
         $item = $this->createItem($cart, $variant, $price, $completionCount);
         $this->persistCredentials->execute($item, $validated['credentials']);
@@ -109,6 +111,25 @@ final readonly class AddSbcToCart
         }
 
         return $price;
+    }
+
+    private function softRemoveReplaced(Cart $cart, mixed $replaceCartItemId): void
+    {
+        if (! is_string($replaceCartItemId) || $replaceCartItemId === '') {
+            return;
+        }
+
+        $replaced = CartItem::query()
+            ->where('public_id', $replaceCartItemId)
+            ->where('cart_id', $cart->id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $replaced instanceof CartItem) {
+            throw new ReplacedCartItemMissing('The replaced cart item is unavailable.');
+        }
+
+        $replaced->update(['removed_at' => now()]);
     }
 
     private function createItem(

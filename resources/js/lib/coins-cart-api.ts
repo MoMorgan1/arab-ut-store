@@ -14,6 +14,7 @@ type SubmitCoinsCartInput = {
     idempotencyKey: string;
     platform: CoinsPlatformValue;
     quantity: number;
+    replaceCartItemId?: string;
 };
 
 export type CoinsCartSuccess = {
@@ -183,6 +184,10 @@ function safeSuccess(payload: unknown): CoinsCartSuccess | null {
 
 function requestBody(input: SubmitCoinsCartInput) {
     return {
+        ...(input.replaceCartItemId === undefined ||
+        input.replaceCartItemId === ''
+            ? {}
+            : { replaceCartItemId: input.replaceCartItemId }),
         credentials: {
             backup_codes: input.credentials.backupCodes,
             companion_market_open:

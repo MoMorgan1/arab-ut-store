@@ -5,10 +5,13 @@ import {
     announceCartAddition,
     announceCartDuplicate,
 } from '@/lib/cart-added-event';
+import { loadCartCredentials } from '@/lib/cart-credentials-api';
+import type { StoredCartCredentials } from '@/lib/cart-credentials-api';
 import { CoinsCartRequestError, submitCoinsCart } from '@/lib/coins-cart-api';
 import { acceptsQuantity } from '@/lib/coins-quantity';
 import { quoteFromSchedule } from '@/lib/coins-quote-schedule';
 import { formatCoins, formatMinorUnits } from '@/lib/money';
+import { parseQueryParams } from '@/lib/query-params';
 import type {
     CoinsAmountRules,
     CoinsCartConfig,
@@ -37,6 +40,18 @@ import { ProgressRail } from './progress-rail';
 import type { CoinsStep } from './progress-rail';
 import { SummaryStep } from './summary-step';
 import { useCoinsQuoteRequest } from './use-coins-quote-request';
+
+function toCoinsCredentials(stored: StoredCartCredentials): CoinsCredentials {
+    return {
+        backupCodes: [...stored.backupCodes],
+        companionMarketOpen: stored.companionMarketOpen,
+        currentBalance:
+            stored.currentBalance === null ? '' : String(stored.currentBalance),
+        eaEmail: stored.eaEmail,
+        eaPassword: stored.eaPassword,
+        policyAccepted: stored.policyAccepted,
+    };
+}
 
 type CoinsConfiguratorProps = {
     amount: CoinsAmountRules;
@@ -87,6 +102,31 @@ export function CoinsConfigurator({
     const [credentials, setCredentials] = useState<CoinsCredentials>(
         emptyCoinsCredentials,
     );
+    // Editing a cart line: `replace` names the line, and the server passes
+    // its credentials URL through the page props — it is never built here.
+    const [replaceCartItemId, setReplaceCartItemId] = useState<string | null>(
+        () => {
+            if (typeof window === 'undefined') {
+                return null;
+            }
+
+            const replace = parseQueryParams(window.location.search).get(
+                'replace',
+            );
+
+            return replace !== null &&
+                /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i.test(replace)
+                ? replace
+                : null;
+        },
+    );
+    const replaceCredentialsUrl =
+        typeof cart.replaceCredentialsUrl === 'string' &&
+        cart.replaceCredentialsUrl !== ''
+            ? cart.replaceCredentialsUrl
+            : null;
+    const replacing = replaceCartItemId !== null;
+
     const [pending, setPending] = useState(false);
     const [retrying, setRetrying] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
@@ -395,6 +435,32 @@ export function CoinsConfigurator({
         navigateTo('amount');
     }
 
+    // Prefill the credentials step from the line being edited. A failed fetch
+    // leaves the fields empty — and never leaks — while the note still shows.
+    // Placed after the credential mutators: writing the ref from an earlier
+    // effect would forbid every later write to it.
+    useEffect(() => {
+        if (!replacing || replaceCredentialsUrl === null) {
+            return;
+        }
+
+        const controller = new AbortController();
+
+        loadCartCredentials(replaceCredentialsUrl, controller.signal)
+            .then((stored) => {
+                const prefilled = toCoinsCredentials(stored);
+                credentialsRef.current = prefilled;
+                setCredentials(prefilled);
+            })
+            .catch(() => {
+                // Fields stay empty; the editing note still shows.
+            });
+
+        return () => controller.abort();
+        // Once per configurator: the line being edited never changes mid-flow.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     function submitErrorMessage(error: CoinsCartRequestError): string {
         if (error.code === 'transport_error') {
             return translations.summary.transport_error;
@@ -439,8 +505,12 @@ export function CoinsConfigurator({
                 idempotencyKey: idempotencyKey.current,
                 platform: selectedPlatform.value,
                 quantity: state.lastValidQuantity,
+                ...(replaceCartItemId === null ? {} : { replaceCartItemId }),
             });
             idempotencyKey.current = null;
+            // The old line is gone now; a second add from this page is a
+            // plain add, not another replacement.
+            setReplaceCartItemId(null);
             setAddedVariantIds((current) =>
                 current.includes(quote.variantId)
                     ? current
@@ -541,6 +611,11 @@ export function CoinsConfigurator({
 
     return (
         <div className="coins-configurator" ref={configuratorRoot}>
+            {replacing ? (
+                <p className="coins-configurator__editing" role="note">
+                    {translations.summary.editing_replace}
+                </p>
+            ) : null}
             <ProgressRail
                 current={state.step}
                 includesDelivery={!isPc}
@@ -636,8 +711,13 @@ export function CoinsConfigurator({
                     error={submitError}
                     focusRef={summaryHeading}
                     inCart={
-                        cartVariantIds.includes(quoteState.quote.variantId) ||
-                        addedVariantIds.includes(quoteState.quote.variantId)
+                        // While replacing, the old line is the one being
+                        // replaced — it must not block the edit as "in cart".
+                        !replacing &&
+                        (cartVariantIds.includes(quoteState.quote.variantId) ||
+                            addedVariantIds.includes(
+                                quoteState.quote.variantId,
+                            ))
                     }
                     locale={locale}
                     onAdd={addToCart}

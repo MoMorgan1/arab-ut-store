@@ -14,6 +14,8 @@ import {
     announceCartAddition,
     announceCartDuplicate,
 } from '@/lib/cart-added-event';
+import { loadCartCredentials } from '@/lib/cart-credentials-api';
+import type { StoredCartCredentials } from '@/lib/cart-credentials-api';
 import { catalogPlatformName } from '@/lib/catalog-platform-name';
 import { formatMinorUnits } from '@/lib/money';
 import { SbcCartRequestError, submitSbcCart } from '@/lib/sbc-cart-api';
@@ -58,14 +60,69 @@ function initialVariant(product: CatalogProduct, currentUrl: string): string {
     );
 }
 
+function requestedCompletions(currentUrl: string): number | null {
+    try {
+        const raw = new URL(
+            currentUrl,
+            'https://store.arab-ut.com',
+        ).searchParams.get('completions');
+
+        if (raw === null || !/^[0-9]{1,3}$/.test(raw)) {
+            return null;
+        }
+
+        const count = Number(raw);
+
+        return Number.isSafeInteger(count) && count >= 1 && count <= 100
+            ? count
+            : null;
+    } catch {
+        return null;
+    }
+}
+
+function requestedReplaceId(currentUrl: string): string | null {
+    try {
+        const replace = new URL(
+            currentUrl,
+            'https://store.arab-ut.com',
+        ).searchParams.get('replace');
+
+        return replace !== null &&
+            /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i.test(replace)
+            ? replace
+            : null;
+    } catch {
+        return null;
+    }
+}
+
 function initialCompletionCount(
     product: CatalogProduct,
     variantId: string,
+    currentUrl: string,
 ): number {
-    return (
-        product.variants.find((variant) => variant.id === variantId)
-            ?.completionTiers[0]?.completions ?? 1
-    );
+    const variant = product.variants.find((option) => option.id === variantId);
+    const requested = requestedCompletions(currentUrl);
+
+    if (
+        requested !== null &&
+        variant?.completionTiers.some(
+            (tier) => tier.completions === requested,
+        ) === true
+    ) {
+        return requested;
+    }
+
+    return variant?.completionTiers[0]?.completions ?? 1;
+}
+
+function toSbcCredentials(stored: StoredCartCredentials): CoinsCredentials {
+    return {
+        backupCodes: [...stored.backupCodes],
+        eaEmail: stored.eaEmail,
+        eaPassword: stored.eaPassword,
+    };
 }
 
 function completionLabel(
@@ -122,6 +179,7 @@ export function SbcProductConfigurator({
     locale,
     manualCommon,
     product,
+    replaceCredentialsUrl = null,
     translations,
     tutorials,
 }: {
@@ -131,14 +189,21 @@ export function SbcProductConfigurator({
     locale: 'ar' | 'en';
     manualCommon: ManualServiceCommonTranslations;
     product: CatalogProduct;
+    replaceCredentialsUrl?: string | null;
     translations: ProductTranslations;
     tutorials: { ea: string };
 }) {
     const initialVariantId = initialVariant(product, currentUrl);
     const [variantId, setVariantId] = useState(initialVariantId);
     const [completionCount, setCompletionCount] = useState(() =>
-        initialCompletionCount(product, initialVariantId),
+        initialCompletionCount(product, initialVariantId, currentUrl),
     );
+    // Editing a cart line: `replace` names the line, and the server passes
+    // its credentials URL through the page props — it is never built here.
+    const [replaceCartItemId, setReplaceCartItemId] = useState<string | null>(
+        () => requestedReplaceId(currentUrl),
+    );
+    const replacing = replaceCartItemId !== null;
     const [credentials, setCredentials] =
         useState<CoinsCredentials>(EMPTY_CREDENTIALS);
     const [errors, setErrors] = useState<CredentialErrors>({});
@@ -174,6 +239,29 @@ export function SbcProductConfigurator({
         fieldRefs.current[pendingFocus.current]?.focus();
         pendingFocus.current = null;
     }, [state]);
+
+    // Prefill the completion count and credentials from the line being
+    // edited. A failed credentials fetch leaves the fields empty — and never
+    // leaks — while the note still shows.
+    useEffect(() => {
+        if (!replacing || replaceCredentialsUrl === null) {
+            return;
+        }
+
+        const controller = new AbortController();
+
+        loadCartCredentials(replaceCredentialsUrl, controller.signal)
+            .then((stored) => {
+                setCredentials(toSbcCredentials(stored));
+            })
+            .catch(() => {
+                // Fields stay empty; the editing note still shows.
+            });
+
+        return () => controller.abort();
+        // Once per configurator: the line being edited never changes mid-flow.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     function updateCredential<Key extends keyof CoinsCredentials>(
         key: Key,
@@ -274,8 +362,12 @@ export function SbcProductConfigurator({
                 credentials,
                 idempotencyKey: attemptKey.current,
                 variantId: variant.id,
+                ...(replaceCartItemId === null ? {} : { replaceCartItemId }),
             });
             attemptKey.current = newAttemptKey();
+            // The old line is gone now; a second add from this page is a
+            // plain add, not another replacement.
+            setReplaceCartItemId(null);
             setAddedVariantIds((current) =>
                 current.includes(variant.id)
                     ? current
@@ -399,6 +491,11 @@ export function SbcProductConfigurator({
             noValidate
             onSubmit={(event) => void submit(event)}
         >
+            {replacing ? (
+                <p className="sbc-product-configurator__editing" role="note">
+                    {translations.sbc.editing_replace}
+                </p>
+            ) : null}
             <div className="manual-configurator__main">
                 <ManualSection
                     id="sbc-step-platform"
@@ -648,6 +745,9 @@ export function SbcProductConfigurator({
                     }
                 }
                 inCart={
+                    // While replacing, the old line is the one being
+                    // replaced — it must not block the edit as "in cart".
+                    !replacing &&
                     variant !== undefined &&
                     (cartVariantIds.includes(variant.id) ||
                         addedVariantIds.includes(variant.id))

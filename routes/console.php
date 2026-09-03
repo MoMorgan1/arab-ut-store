@@ -6,6 +6,7 @@ use App\Console\Commands\PrunePricingHistory;
 use App\Console\Commands\PublishOrderPaidEvents;
 use App\Console\Commands\PurgeDeadCancelledOrders;
 use App\Console\Commands\PurgeGuestCartClaims;
+use App\Console\Commands\PurgeRemovedCartItems;
 use App\Console\Commands\RecoverStaleAgentTurns;
 use App\Console\Commands\RefreshDisplayExchangeRates;
 use Illuminate\Foundation\Inspiring;
@@ -18,6 +19,7 @@ Artisan::command('inspire', function () {
 
 Schedule::command(RefreshDisplayExchangeRates::class)->daily();
 Schedule::command(PurgeGuestCartClaims::class)->hourly()->withoutOverlapping();
+Schedule::command(PurgeRemovedCartItems::class)->hourly()->withoutOverlapping();
 Schedule::command(PublishOrderPaidEvents::class)->everyMinute()->withoutOverlapping();
 Schedule::command(MaintainChatConversations::class)->hourly()->withoutOverlapping();
 Schedule::command(RecoverStaleAgentTurns::class)->everyMinute()->withoutOverlapping();

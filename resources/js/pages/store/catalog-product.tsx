@@ -85,6 +85,9 @@ export default function StoreCatalogProduct() {
                             locale={props.locale}
                             manualCommon={props.manualCommon}
                             product={product}
+                            replaceCredentialsUrl={
+                                props.replaceCredentialsUrl ?? null
+                            }
                             translations={props.productPage}
                             tutorials={props.tutorials}
                         />

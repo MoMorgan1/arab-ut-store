@@ -14,9 +14,9 @@ test('authenticated fingerprints preserve the exact pre-guest canonical hash', f
         ],
     ];
     expect(CoinsCartFingerprint::generate('user:17', $validated, 'synthetic-application-key'))
-        ->toBe('7583127614832ff7841f94f039d3b876700d727d5516eeca5de25c50b1b91fba')
+        ->toBe('ff29acecf3524c75ab9d0b87f4bec088a51bbfd9a1025c2813aa3da60d8b3287')
         ->and(CoinsCartFingerprint::generate('user:17', $validated, 'different-application-key'))
-        ->not->toBe('7583127614832ff7841f94f039d3b876700d727d5516eeca5de25c50b1b91fba');
+        ->not->toBe('ff29acecf3524c75ab9d0b87f4bec088a51bbfd9a1025c2813aa3da60d8b3287');
 });
 
 test('guest fingerprints use an explicit opaque-owner canonical branch', function () {
@@ -35,7 +35,7 @@ test('guest fingerprints use an explicit opaque-owner canonical branch', functio
         'guest:'.str_repeat('a', 64),
         $validated,
         'synthetic-application-key',
-    ))->toBe('7dd090e9c33ac922cf2ebb9e5787565447a3af9f1c04fee46d21e586b3a865a7')
+    ))->toBe('b5deb6967de6970b33226c833f30e5009220570395f1394d1d4a3ae2f9f1eeb7')
         ->and(fn () => CoinsCartFingerprint::generate(
             'guest:raw-session-id',
             $validated,
