@@ -1574,33 +1574,6 @@ function CartLine({
                             </strong>
                         </p>
                     )}
-                    <div className="store-cart-line__actions">
-                        {cartItem.editUrl !== null &&
-                        cartItem.editUrl !== undefined ? (
-                            <a
-                                className="store-cart-line__edit"
-                                href={cartItem.editUrl}
-                            >
-                                <Pencil aria-hidden="true" />
-                                <span>{translations.edit_line}</span>
-                            </a>
-                        ) : null}
-                        <button
-                            aria-label={translations.remove_item}
-                            className="store-cart-line__remove"
-                            disabled={removing}
-                            onClick={remove}
-                            type="button"
-                        >
-                            <Trash2 aria-hidden="true" />
-                            <span
-                                aria-hidden="true"
-                                className="store-cart-line__remove-label"
-                            >
-                                {translations.remove_short}
-                            </span>
-                        </button>
-                    </div>
                 </div>
             </div>
             {failed ? (
@@ -1728,6 +1701,32 @@ function CartLine({
                     translations={translations}
                 />
             )}
+            <div className="store-cart-line__actions">
+                {cartItem.editUrl !== null && cartItem.editUrl !== undefined ? (
+                    <a
+                        className="store-cart-line__edit"
+                        href={cartItem.editUrl}
+                    >
+                        <Pencil aria-hidden="true" />
+                        <span>{translations.edit_line}</span>
+                    </a>
+                ) : null}
+                <button
+                    aria-label={translations.remove_item}
+                    className="store-cart-line__remove"
+                    disabled={removing}
+                    onClick={remove}
+                    type="button"
+                >
+                    <Trash2 aria-hidden="true" />
+                    <span
+                        aria-hidden="true"
+                        className="store-cart-line__remove-label"
+                    >
+                        {translations.remove_short}
+                    </span>
+                </button>
+            </div>
         </li>
     );
 }
