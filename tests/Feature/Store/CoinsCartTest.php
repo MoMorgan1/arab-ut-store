@@ -554,10 +554,15 @@ test('a cart owner can remove an item and its secret while another owner cannot'
     $this->withSession([ResolveCartOwner::SESSION_KEY => $ownerToken]);
     $response = $this->deleteJson($deleteUrl);
 
-    $response->assertOk()->assertExactJson(['data' => ['cartCount' => 0]]);
+    // Removal is soft now: the row and its secret stay for the undo window
+    // and only the scoped readers stop seeing them.
+    $response->assertOk()
+        ->assertJsonPath('data.cartCount', 0)
+        ->assertJsonPath('data.restoreUrl', "{$prefix}/cart/items/{$item->public_id}/restore");
     expect($response->headers->get('Cache-Control'))->toContain('no-store')
         ->and(CartItem::count())->toBe(0)
-        ->and(CartItemSecret::count())->toBe(0);
+        ->and(CartItem::withRemoved()->count())->toBe(1)
+        ->and(CartItemSecret::count())->toBe(1);
 })->with([
     'Arabic' => '',
     'English' => '/en',

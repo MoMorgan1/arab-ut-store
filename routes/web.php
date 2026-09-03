@@ -71,6 +71,9 @@ Route::patch('/cart/items/{cartItem}/credentials', [CartItemCredentialsControlle
 Route::delete('/cart/items/{cartItem}', [CartItemController::class, 'destroy'])
     ->middleware([NoStore::class, 'throttle:coins-cart'])
     ->name('cart.items.destroy');
+Route::post('/cart/items/{cartItem}/restore', [CartItemController::class, 'restore'])
+    ->middleware([NoStore::class, 'throttle:coins-cart'])
+    ->name('cart.items.restore');
 Route::post('/cart/coupon', [CartCouponController::class, 'store'])
     ->middleware([NoStore::class, 'throttle:coins-cart'])
     ->name('cart.coupons.store');
@@ -186,6 +189,9 @@ Route::prefix('{locale}')
         Route::delete('/cart/items/{cartItem}', [CartItemController::class, 'destroy'])
             ->middleware([NoStore::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.destroy');
+        Route::post('/cart/items/{cartItem}/restore', [CartItemController::class, 'restore'])
+            ->middleware([NoStore::class, 'throttle:coins-cart'])
+            ->name('localized.cart.items.restore');
         Route::post('/cart/coupon', [CartCouponController::class, 'store'])
             ->middleware([NoStore::class, 'throttle:coins-cart'])
             ->name('localized.cart.coupons.store');

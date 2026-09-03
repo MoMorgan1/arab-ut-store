@@ -8,7 +8,7 @@ test('all expected schedule events are registered with correct frequencies and o
     $schedule = app(Schedule::class);
     $events = collect($schedule->events());
 
-    expect($events)->toHaveCount(9);
+    expect($events)->toHaveCount(10);
 
     $findEvent = function (string $commandSubstring) use ($events): ?Event {
         return $events->first(fn (Event $event): bool => str_contains((string) $event->command, $commandSubstring));
@@ -61,7 +61,13 @@ test('all expected schedule events are registered with correct frequencies and o
         ->and($prunePricing->expression)->toBe('20 3 * * *')
         ->and($prunePricing->withoutOverlapping)->toBeTrue();
 
-    // 9. queue:work with required arguments - every minute, without overlapping (2 min), run in background
+    // 9. PurgeRemovedCartItems - hourly, without overlapping
+    $purgeRemoved = $findEvent('cart-items:purge-removed');
+    expect($purgeRemoved)->not->toBeNull()
+        ->and($purgeRemoved->expression)->toBe('0 * * * *')
+        ->and($purgeRemoved->withoutOverlapping)->toBeTrue();
+
+    // 10. queue:work with required arguments - every minute, without overlapping (2 min), run in background
     $queueWork = $findEvent('queue:work');
     expect($queueWork)->not->toBeNull()
         ->and($queueWork->expression)->toBe('* * * * *')

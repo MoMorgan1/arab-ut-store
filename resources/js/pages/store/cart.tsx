@@ -3,6 +3,7 @@ import {
     CheckCircle2,
     ChevronDown,
     CreditCard,
+    Pencil,
     ShoppingBag,
     ShieldCheck,
     Trash2,
@@ -28,7 +29,11 @@ import {
     updateCartCredentials,
 } from '@/lib/cart-credentials-api';
 import type { StoredCartCredentials } from '@/lib/cart-credentials-api';
-import { removeCartItem } from '@/lib/cart-items-api';
+import {
+    CartRestoreConflict,
+    removeCartItem,
+    restoreCartItem,
+} from '@/lib/cart-items-api';
 import { toggleCartWallet } from '@/lib/cart-wallet-api';
 import {
     CheckoutPhoneError,
@@ -98,14 +103,57 @@ export default function StoreCart() {
                   count: formatInteger(cart.count, locale),
               });
 
-    function itemRemoved(count: number) {
+    // One tap removes the line; the bar below offers the way back. Only the
+    // latest removal gets a bar — an earlier one simply stays removed, still
+    // restorable server-side inside its 30-minute window.
+    const [undo, setUndo] = useState<{
+        key: number;
+        itemId: string;
+        name: string;
+        restoreUrl: string | null;
+    } | null>(null);
+    const undoKey = useRef(0);
+
+    function itemRemoved(removal: {
+        cartCount: number;
+        itemId: string;
+        name: string;
+        restoreUrl: string | null;
+    }) {
         // Reload rather than filter local state: removing an unavailable item
         // has to refresh `cart.canCheckout` too, or the checkout button stays
         // dead until a manual refresh.
+        undoKey.current += 1;
+        setUndo({ ...removal, key: undoKey.current });
         router.reload({ only: ['cart'] });
         window.dispatchEvent(
-            new CustomEvent<number>('arabut:cart-count', { detail: count }),
+            new CustomEvent<number>('arabut:cart-count', {
+                detail: removal.cartCount,
+            }),
         );
+    }
+
+    async function undoRemove(): Promise<'restored' | 'duplicate' | 'failed'> {
+        if (undo?.restoreUrl === null || undo?.restoreUrl === undefined) {
+            return 'failed';
+        }
+
+        try {
+            const result = await restoreCartItem(undo.restoreUrl);
+            setUndo(null);
+            router.reload({ only: ['cart'] });
+            window.dispatchEvent(
+                new CustomEvent<number>('arabut:cart-count', {
+                    detail: result.cartCount,
+                }),
+            );
+
+            return 'restored';
+        } catch (error) {
+            return error instanceof CartRestoreConflict
+                ? 'duplicate'
+                : 'failed';
+        }
     }
 
     return (
@@ -226,6 +274,18 @@ export default function StoreCart() {
                         />
                     </>
                 )}
+                {/* Outside the empty/filled branch: removing the last line
+                    flips the page to the empty state, and the undo must
+                    survive that. */}
+                {undo !== null ? (
+                    <CartUndoBar
+                        key={undo.key}
+                        name={undo.name}
+                        onHidden={() => setUndo(null)}
+                        onUndo={undoRemove}
+                        translations={cartPage.translations}
+                    />
+                ) : null}
             </section>
         </StoreLayout>
     );
@@ -807,6 +867,147 @@ function CartDock({
     );
 }
 
+const UNDO_VISIBLE_MS = 6_000;
+
+function CartUndoBar({
+    name,
+    onHidden,
+    onUndo,
+    translations,
+}: {
+    name: string;
+    onHidden: () => void;
+    onUndo: () => Promise<'restored' | 'duplicate' | 'failed'>;
+    translations: StoreCartTranslations;
+}) {
+    const [notice, setNotice] = useState<'removed' | 'duplicate' | 'failed'>(
+        'removed',
+    );
+    const [undoing, setUndoing] = useState(false);
+    // The bar hides itself; hovering or touching it holds the timer so the
+    // customer can read it first.
+    const remaining = useRef(UNDO_VISIBLE_MS);
+    const deadline = useRef(0);
+    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    function clearTimer() {
+        if (timer.current !== null) {
+            clearTimeout(timer.current);
+            timer.current = null;
+        }
+
+        if (deadline.current !== 0) {
+            remaining.current = Math.max(0, deadline.current - Date.now());
+            deadline.current = 0;
+        }
+    }
+
+    function startTimer() {
+        clearTimer();
+        deadline.current = Date.now() + remaining.current;
+        timer.current = setTimeout(onHidden, remaining.current);
+    }
+
+    useEffect(() => {
+        remaining.current = UNDO_VISIBLE_MS;
+        startTimer();
+
+        return clearTimer;
+        // Once per bar: a replacement mounts a fresh bar through its key.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // A new outcome deserves a full read, so the timer restarts on it.
+    useEffect(() => {
+        if (notice !== 'removed') {
+            remaining.current = UNDO_VISIBLE_MS;
+            startTimer();
+        }
+
+        return clearTimer;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [notice]);
+
+    async function undo() {
+        if (undoing) {
+            return;
+        }
+
+        setUndoing(true);
+
+        const outcome = await onUndo();
+
+        // A restore unmounts this bar through the parent state; the other two
+        // outcomes stay readable inside it instead.
+        if (outcome === 'restored') {
+            return;
+        }
+
+        setNotice(outcome);
+        setUndoing(false);
+    }
+
+    const message =
+        notice === 'duplicate'
+            ? translations.restore_duplicate
+            : notice === 'failed'
+              ? translations.undo_failed
+              : interpolate(translations.removed_line, { name });
+
+    return (
+        <div
+            className="store-cart-undo"
+            onBlur={(event) => {
+                if (
+                    !event.currentTarget.contains(
+                        event.relatedTarget as Node | null,
+                    )
+                ) {
+                    startTimer();
+                }
+            }}
+            onFocus={clearTimer}
+            onMouseEnter={clearTimer}
+            onMouseLeave={startTimer}
+            onPointerCancel={(event) => {
+                if (event.pointerType === 'touch') {
+                    startTimer();
+                }
+            }}
+            onPointerDown={(event) => {
+                if (event.pointerType === 'touch') {
+                    clearTimer();
+                }
+            }}
+            onPointerEnter={clearTimer}
+            onPointerLeave={startTimer}
+            onPointerUp={(event) => {
+                if (event.pointerType === 'touch') {
+                    startTimer();
+                }
+            }}
+            role="status"
+        >
+            <p className="store-cart-undo__message">{message}</p>
+            {notice === 'removed' ? (
+                <button
+                    className="store-cart-undo__action"
+                    disabled={undoing}
+                    onClick={() => void undo()}
+                    type="button"
+                >
+                    {translations.undo}
+                </button>
+            ) : null}
+            <span
+                aria-hidden="true"
+                className="store-cart-undo__progress"
+                key={notice}
+            />
+        </div>
+    );
+}
+
 function CheckoutPhoneForm({
     checkout,
     locale,
@@ -1232,15 +1433,19 @@ function CartLine({
 }: {
     cartItem: StoreCartItem;
     locale: 'ar' | 'en';
-    onRemoved: (cartCount: number) => void;
+    onRemoved: (removal: {
+        cartCount: number;
+        itemId: string;
+        name: string;
+        restoreUrl: string | null;
+    }) => void;
     translations: StoreCartTranslations;
 }) {
-    // Hold to delete rather than click-then-confirm: one gesture the customer
-    // can abandon at any moment by letting go, and no second control to read.
-    const [holdProgress, setHoldProgress] = useState(0);
+    // One tap removes the line at once; the undo bar is the way back. The
+    // hold gesture it replaces never painted its fill on iOS, so lines just
+    // disappeared with no recovery.
     const [removing, setRemoving] = useState(false);
     const [failed, setFailed] = useState(false);
-    const holdFrame = useRef<number | null>(null);
     const configuration = cartItem.configuration;
     const isCoins = cartItem.product.serviceType === 'coins';
     const isFutChampions = cartItem.product.serviceType === 'fut_champions';
@@ -1269,52 +1474,27 @@ function CartLine({
             ? '—'
             : `${formatCoins(configuration.coins_quantity, locale)} ${translations.coins_unit}`;
 
-    const HOLD_MS = 900;
-
-    function cancelHold() {
-        if (holdFrame.current !== null) {
-            cancelAnimationFrame(holdFrame.current);
-            holdFrame.current = null;
-        }
-
-        setHoldProgress(0);
-    }
-
-    function startHold() {
-        if (holdFrame.current !== null) {
+    function remove() {
+        if (removing) {
             return;
         }
 
-        const started = performance.now();
-
-        const step = () => {
-            const progress = Math.min(
-                (performance.now() - started) / HOLD_MS,
-                1,
-            );
-            setHoldProgress(progress);
-
-            if (progress < 1) {
-                holdFrame.current = requestAnimationFrame(step);
-
-                return;
-            }
-
-            holdFrame.current = null;
-            setHoldProgress(0);
-            setRemoving(true);
-            void removeCartItem(cartItem.deleteUrl)
-                .then((result) => onRemoved(result.cartCount))
-                .catch(() => {
-                    setRemoving(false);
-                    setFailed(true);
-                });
-        };
-
-        holdFrame.current = requestAnimationFrame(step);
+        setRemoving(true);
+        setFailed(false);
+        void removeCartItem(cartItem.deleteUrl)
+            .then((result) =>
+                onRemoved({
+                    cartCount: result.cartCount,
+                    itemId: cartItem.id,
+                    name: cartItem.product.name,
+                    restoreUrl: result.restoreUrl,
+                }),
+            )
+            .catch(() => {
+                setRemoving(false);
+                setFailed(true);
+            });
     }
-
-    useEffect(() => cancelHold, []);
 
     return (
         <li
@@ -1323,6 +1503,7 @@ function CartLine({
                 cartItem.unavailableReason
                     ? 'store-cart-line--unavailable'
                     : '',
+                removing ? 'store-cart-line--removing' : '',
             ]
                 .filter(Boolean)
                 .join(' ')}
@@ -1393,47 +1574,33 @@ function CartLine({
                             </strong>
                         </p>
                     )}
-                    <button
-                        aria-describedby={`remove-hint-${cartItem.id}`}
-                        aria-label={translations.remove_item}
-                        className="store-cart-line__remove"
-                        disabled={removing}
-                        onBlur={cancelHold}
-                        onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                startHold();
-                            }
-                        }}
-                        onKeyUp={cancelHold}
-                        onPointerCancel={cancelHold}
-                        onPointerDown={startHold}
-                        onPointerLeave={cancelHold}
-                        onPointerUp={cancelHold}
-                        style={
-                            {
-                                '--hold': String(holdProgress),
-                            } as React.CSSProperties
-                        }
-                        type="button"
-                    >
-                        <span
-                            aria-hidden="true"
-                            className="store-cart-line__remove-fill"
-                        />
-                        <Trash2 aria-hidden="true" />
-                        <span
-                            aria-hidden="true"
-                            className="store-cart-line__remove-label"
+                    <div className="store-cart-line__actions">
+                        {cartItem.editUrl !== null &&
+                        cartItem.editUrl !== undefined ? (
+                            <a
+                                className="store-cart-line__edit"
+                                href={cartItem.editUrl}
+                            >
+                                <Pencil aria-hidden="true" />
+                                <span>{translations.edit_line}</span>
+                            </a>
+                        ) : null}
+                        <button
+                            aria-label={translations.remove_item}
+                            className="store-cart-line__remove"
+                            disabled={removing}
+                            onClick={remove}
+                            type="button"
                         >
-                            {holdProgress > 0
-                                ? translations.remove_holding
-                                : translations.remove_short}
-                        </span>
-                    </button>
-                    <span className="sr-only" id={`remove-hint-${cartItem.id}`}>
-                        {translations.remove_hint}
-                    </span>
+                            <Trash2 aria-hidden="true" />
+                            <span
+                                aria-hidden="true"
+                                className="store-cart-line__remove-label"
+                            >
+                                {translations.remove_short}
+                            </span>
+                        </button>
+                    </div>
                 </div>
             </div>
             {failed ? (

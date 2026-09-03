@@ -161,6 +161,7 @@ export type StoreCartItem = {
     } | null;
     credentialsUrl: string | null;
     deleteUrl: string;
+    editUrl: string | null;
     fulfillment?: {
         credentialsReady: boolean;
         squadImagePresent: boolean;
@@ -252,9 +253,12 @@ export type StoreCartTranslations = {
     credentials_load_error: string;
     credentials_save_error: string;
     remove_item: string;
-    remove_hint: string;
     remove_short: string;
-    remove_holding: string;
+    edit_line: string;
+    removed_line: string;
+    undo: string;
+    undo_failed: string;
+    restore_duplicate: string;
     remove_error: string;
     checkout: string;
     checkout_loading: string;

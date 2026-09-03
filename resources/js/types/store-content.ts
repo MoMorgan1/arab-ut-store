@@ -209,6 +209,7 @@ export type ProductTranslations = {
         related_eyebrow: string;
         related_link: string;
         credentials_ready: string;
+        editing_replace: string;
         related_title: string;
         selected: string;
         show_password: string;
@@ -284,6 +285,7 @@ export type StoreCatalogProductPageProps = StoreBasePageProps & {
     manualCommon: ManualServiceCommonTranslations;
     tutorials: { ea: string };
     sbcCartUrl: string;
+    replaceCredentialsUrl?: string | null;
     serviceReviews?: ServiceReviewsData | null;
 };
 

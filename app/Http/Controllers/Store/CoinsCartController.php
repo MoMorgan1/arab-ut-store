@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Store;
 use App\Actions\Cart\AddCoinsToCart;
 use App\Actions\Cart\ResolveCartOwner;
 use App\Exceptions\Cart\DuplicateCartItem;
+use App\Exceptions\Cart\ReplacedCartItemMissing;
 use App\Exceptions\IdempotencyConflict;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Store\CoinsCartRequest;
@@ -36,6 +37,8 @@ final class CoinsCartController extends Controller
                     'cartUrl' => $this->cartUrl(),
                 ],
             ], 409)->header('Cache-Control', 'no-store');
+        } catch (ReplacedCartItemMissing) {
+            return $this->errorResponse('replaced_item_unavailable', trans('store.cart.replaced_item_unavailable'), 404);
         } catch (DomainException|ValueError $exception) {
             // The customer still gets the same generic 503, but the cause is no
             // longer thrown away. Without this an operator seeing this status in

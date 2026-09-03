@@ -26,6 +26,7 @@ const promotedItem: StoreCartItem = {
     credentials: null,
     credentialsUrl: null,
     deleteUrl: '/en/cart/items/01K00000000000000000000000',
+    editUrl: null,
     id: '01K00000000000000000000000',
     product: {
         imageUrl: null,

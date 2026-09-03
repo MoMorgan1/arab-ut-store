@@ -6,6 +6,7 @@ use App\Actions\Pricing\QuoteCoins;
 use App\Enums\DeliveryMode;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
+use App\Exceptions\Cart\ReplacedCartItemMissing;
 use App\Exceptions\IdempotencyConflict;
 use App\Models\Cart;
 use App\Models\CartItem;
@@ -64,6 +65,7 @@ final readonly class AddCoinsToCart
         $quote = $this->quote($validated);
         $productVariant = ProductVariant::where('public_id', $quote->variantId)->sole();
         $activeCart = $this->acquireActiveCart->execute($owner);
+        $this->softRemoveReplaced($activeCart, $validated['replaceCartItemId'] ?? null);
         $this->assertVariantNotInCart->execute($activeCart, $productVariant);
         $cartItem = $this->createCartItem($activeCart, $productVariant, $quote);
         $this->persistCredentials->execute($cartItem, $validated['credentials']);
@@ -122,6 +124,25 @@ final readonly class AddCoinsToCart
             isset($validated['delivery']) ? DeliveryMode::from((string) $validated['delivery']) : null,
             (int) $validated['quantity'],
         );
+    }
+
+    private function softRemoveReplaced(Cart $activeCart, mixed $replaceCartItemId): void
+    {
+        if (! is_string($replaceCartItemId) || $replaceCartItemId === '') {
+            return;
+        }
+
+        $replaced = CartItem::query()
+            ->where('public_id', $replaceCartItemId)
+            ->where('cart_id', $activeCart->id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $replaced instanceof CartItem) {
+            throw new ReplacedCartItemMissing('The replaced cart item is unavailable.');
+        }
+
+        $replaced->update(['removed_at' => now()]);
     }
 
     private function createCartItem(Cart $activeCart, ProductVariant $productVariant, CoinsQuote $quote): CartItem

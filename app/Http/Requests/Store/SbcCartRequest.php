@@ -20,6 +20,7 @@ final class SbcCartRequest extends FormRequest
         return [
             'variantId' => ['required', 'string', 'ulid'],
             'completionCount' => ['required', 'integer:strict', 'min:1', 'max:100'],
+            'replaceCartItemId' => ['nullable', 'string', 'ulid'],
             'credentials' => ['required', 'array:ea_email,ea_password,backup_codes'],
             'credentials.ea_email' => ['required', 'string', 'email:rfc', 'max:254'],
             'credentials.ea_password' => ['present', 'string', 'min:1', 'max:128'],
@@ -32,7 +33,7 @@ final class SbcCartRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator): void {
-            if (array_diff(array_keys($this->all()), ['variantId', 'completionCount', 'credentials']) !== []) {
+            if (array_diff(array_keys($this->all()), ['variantId', 'completionCount', 'credentials', 'replaceCartItemId']) !== []) {
                 $validator->errors()->add('request', trans('store.cart.unknown_fields'));
             }
 

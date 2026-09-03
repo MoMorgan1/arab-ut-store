@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Store;
 
+use App\Actions\Cart\ResolveCartOwner;
 use App\Actions\Pricing\BuildCoinsQuoteSchedule;
 use App\Enums\Platform;
 use App\Http\Controllers\Controller;
+use App\Models\Cart;
+use App\Models\CartItem;
 use App\Services\Catalog\CoinsCatalogReader;
 use App\Services\Content\StoreFaqReader;
 use App\Services\Reviews\StoreReviewReader;
@@ -52,6 +55,7 @@ class HomeController extends Controller
             'coinsCart' => [
                 'addUrl' => $this->storeRoute($request, 'cart.items.coins.store'),
                 'initialSelection' => $this->initialSelection($request, $selectionRules),
+                'replaceCredentialsUrl' => $this->replaceCredentialsUrl($request),
             ],
             'amount' => [
                 'minimum' => $quantityRules->minimum(),
@@ -159,6 +163,40 @@ class HomeController extends Controller
             'delivery' => isset($selection['delivery']) ? (string) $selection['delivery'] : null,
             'quantity' => (int) $selection['quantity'],
         ];
+    }
+
+    /**
+     * The owner-scoped credentials URL for the cart line being edited, if the
+     * `replace` query value names a line on the visitor's own active cart.
+     * Built server-side so the client never assembles credential URLs.
+     */
+    private function replaceCredentialsUrl(Request $request): ?string
+    {
+        $replace = $request->query('replace');
+
+        if (! is_string($replace) || preg_match('/\A[0-7][0-9A-HJKMNP-TV-Z]{25}\z/D', $replace) !== 1) {
+            return null;
+        }
+
+        $ownedCartIds = Cart::query();
+        $ownedCartIds->activeForOwner(app(ResolveCartOwner::class)->forRequest($request));
+
+        $item = CartItem::query()
+            ->where('public_id', $replace)
+            ->whereIn('cart_id', $ownedCartIds->select('id'))
+            ->first();
+
+        if (! $item instanceof CartItem) {
+            return null;
+        }
+
+        $localized = $request->route('locale') === 'en';
+
+        return route(
+            $localized ? 'localized.cart.items.credentials.show' : 'cart.items.credentials.show',
+            [...($localized ? ['locale' => 'en'] : []), 'cartItem' => $item->public_id],
+            absolute: false,
+        );
     }
 
     private function queryContainsCredentials(Request $request): bool

@@ -1701,6 +1701,16 @@ html.admin-document {
         line-height: 1.65;
     }
 
+    .coins-configurator__editing,
+    .sbc-product-configurator__editing {
+        margin: 0 0 1rem;
+        border-inline-start: 3px solid var(--arabut-gold);
+        padding-inline-start: 0.75rem;
+        color: var(--arabut-gold-bright);
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+
     .coins-configurator {
         max-width: 50rem;
         margin-inline: auto;
@@ -4034,8 +4044,89 @@ html.admin-document {
         }
     }
 
-    /* A pill, not a 34px square: the hold fill sweeps across it under the
-       finger, so the customer sees the progress instead of a dead button. */
+    /* The line collapses the moment it is removed, and the undo bar below
+       is the way back. */
+    .store-cart-line {
+        /* A base max-height so the collapse actually transitions. */
+        max-height: 80rem;
+        transition:
+            opacity 200ms var(--store-ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+            max-height 200ms
+                var(--store-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+    }
+
+    .store-cart-line--removing {
+        overflow: hidden;
+        max-height: 4rem;
+        opacity: 0;
+    }
+
+    /* Edit and remove sit side by side under the price on phones. */
+    .store-cart-line__actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+
+    /* On phones the two pills would squeeze the name into a sliver, so the
+       trailing column dissolves: the price keeps its corner and the actions
+       take a full row under the name. */
+    @media (max-width: 52rem) {
+        .store-cart-line__trailing {
+            display: contents;
+        }
+
+        .store-cart-line__top
+            > .store-cart-line__trailing
+            > .store-cart-line__total {
+            grid-column: 3;
+            grid-row: 1;
+        }
+
+        .store-cart-line__top
+            > .store-cart-line__trailing
+            > .store-cart-line__actions {
+            grid-column: 1 / -1;
+            grid-row: 2;
+            justify-content: flex-start;
+        }
+    }
+
+    .store-cart-line__edit {
+        display: inline-flex;
+        min-height: 2.75rem;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        padding: 0 0.9rem;
+        border: 1px solid rgb(217 171 58 / 42%);
+        border-radius: 999px;
+        background: rgb(8 8 8 / 38%);
+        color: var(--arabut-gold-bright);
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition:
+            color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+            border-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+            background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .store-cart-line__edit svg {
+        width: 1rem;
+        height: 1rem;
+        opacity: 0.85;
+    }
+
+    .store-cart-line__edit:hover,
+    .store-cart-line__edit:focus-visible {
+        border-color: rgb(217 171 58 / 72%);
+        background: rgb(217 171 58 / 12%);
+        color: var(--arabut-gold-bright);
+    }
+
+    /* A 44px pill: one tap removes the line at once. */
     .store-cart-line__remove {
         display: inline-flex;
         min-width: 5.75rem;
@@ -4058,56 +4149,127 @@ html.admin-document {
     }
 
     .store-cart-line__remove-label {
-        position: relative;
-        z-index: 1;
         white-space: nowrap;
     }
 
     .store-cart-line__remove svg {
-        position: relative;
-        z-index: 1;
         opacity: 0.75;
         transition: opacity 160ms cubic-bezier(0.22, 1, 0.36, 1);
     }
 
-    /* The hold gesture is the confirmation: the fill is how far the customer
-       has committed, and letting go at any point abandons it. */
-    .store-cart-line__remove {
-        position: relative;
-        overflow: hidden;
-        touch-action: none;
-        -webkit-user-select: none;
-        user-select: none;
-    }
-
-    .store-cart-line__remove-fill {
-        position: absolute;
-        inset-block: 0;
-        inset-inline-start: 0;
-        z-index: 0;
-        width: calc(var(--hold, 0) * 100%);
-        background: rgb(214 90 90 / 55%);
-        transition: width 60ms linear;
-    }
-
-    .store-cart-line__remove:has(.store-cart-line__remove-fill[style]) {
-        border-color: rgb(234 105 105 / 55%);
-    }
-
     .store-cart-coupon__toggle:focus-visible,
     .store-cart-confirm__actions button:focus-visible,
-    .store-cart-line__remove:focus-visible {
+    .store-cart-line__edit:focus-visible,
+    .store-cart-line__remove:focus-visible,
+    .store-cart-undo__action:focus-visible {
         outline: 2px solid var(--arabut-gold-bright);
         outline-offset: 2px;
     }
 
-    /* The fill is a progress readout, not decoration, so it stays; only its
-       easing is dropped. */
     @media (prefers-reduced-motion: reduce) {
+        .store-cart-line,
         .store-cart-line__remove,
-        .store-cart-line__remove svg {
-            transition-duration: 0.01ms;
+        .store-cart-line__remove svg,
+        .store-cart-line__edit,
+        .store-cart-undo__progress {
+            transition: none;
+            animation: none;
         }
+
+        .store-cart-line--removing {
+            transition: none;
+        }
+    }
+
+    /* The undo bar: a glass strip above the phone dock while the dock is on
+       screen, bottom-start on desktop. */
+    .store-cart-undo {
+        position: fixed;
+        inset-inline: 0.75rem;
+        bottom: calc(0.75rem + env(safe-area-inset-bottom));
+        z-index: 60;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        overflow: hidden;
+        border: 1px solid rgb(217 171 58 / 38%);
+        border-radius: 1rem;
+        background: rgb(18 14 10 / 92%);
+        box-shadow:
+            0 12px 36px rgb(0 0 0 / 55%),
+            inset 0 1px 0 rgb(255 255 255 / 6%);
+        -webkit-backdrop-filter: blur(16px);
+        backdrop-filter: blur(16px);
+        padding: 0.65rem 0.65rem 0.85rem;
+        padding-inline-start: 1rem;
+    }
+
+    body:has(.store-cart-dock) .store-cart-undo {
+        bottom: calc(5.75rem + env(safe-area-inset-bottom));
+    }
+
+    @media (min-width: 52.01rem) {
+        .store-cart-undo {
+            inset-inline: auto;
+            inset-inline-start: 1.5rem;
+            bottom: 1.5rem;
+            max-width: 26rem;
+        }
+
+        body:has(.store-cart-dock) .store-cart-undo {
+            bottom: 1.5rem;
+        }
+    }
+
+    .store-cart-undo__message {
+        margin: 0;
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        color: var(--arabut-ink);
+        font-size: 0.85rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .store-cart-undo__action {
+        flex: none;
+        border: 0;
+        background: none;
+        padding: 0.5rem 0.35rem;
+        color: var(--arabut-gold-bright);
+        font-size: 0.85rem;
+        font-weight: 800;
+        cursor: pointer;
+    }
+
+    .store-cart-undo__action:disabled {
+        cursor: wait;
+        opacity: 0.6;
+    }
+
+    .store-cart-undo__progress {
+        position: absolute;
+        inset-inline: 0;
+        bottom: 0;
+        height: 2px;
+        background: var(--arabut-gold);
+        transform-origin: center;
+        animation: store-cart-undo-progress 6s linear forwards;
+    }
+
+    @keyframes store-cart-undo-progress {
+        from {
+            transform: scaleX(1);
+        }
+
+        to {
+            transform: scaleX(0);
+        }
+    }
+
+    .store-cart-undo:hover .store-cart-undo__progress {
+        animation-play-state: paused;
     }
 
     .store-cart-line__remove:hover,
@@ -15827,5 +15989,13 @@ html.admin-document {
 @media (max-width: 52rem) {
     body:has(.store-cart-dock) .chat-widget-root {
         bottom: calc(5.75rem + env(safe-area-inset-bottom));
+    }
+}
+
+/* And one more step while the undo bar is showing, so the launcher never
+       sits on the bar's action. */
+@media (max-width: 52rem) {
+    body:has(.store-cart-undo) .chat-widget-root {
+        bottom: calc(9.25rem + env(safe-area-inset-bottom));
     }
 }

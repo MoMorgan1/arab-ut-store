@@ -13,6 +13,7 @@ final class SbcCartFingerprint
             ...self::canonicalOwner($ownerKey),
             'variant_id' => $validated['variantId'],
             'completion_count' => (int) $validated['completionCount'],
+            'replace_cart_item_id' => $validated['replaceCartItemId'] ?? null,
             'credentials' => [
                 'ea_email' => $validated['credentials']['ea_email'],
                 'ea_password' => $validated['credentials']['ea_password'],
