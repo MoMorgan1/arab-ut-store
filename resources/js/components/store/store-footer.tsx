@@ -187,7 +187,6 @@ export function StoreFooter({ locale, shell, translations }: StoreFooterProps) {
                             String(year),
                         )}
                     </span>
-                    <span aria-hidden="true"> · </span>
                     <span dir="ltr">{translations.footer.ea_disclaimer}</span>
                 </p>
             </div>

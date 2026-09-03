@@ -30,7 +30,6 @@ export function PlatformStep({
             <legend className="coins-step__title" ref={focusRef} tabIndex={-1}>
                 {translations.platform.title}
             </legend>
-            <p className="coins-step__help">{translations.platform.help}</p>
             <div className="coins-choice-grid coins-choice-grid--platforms">
                 {platforms.map((platform) => {
                     const primaryLabel =

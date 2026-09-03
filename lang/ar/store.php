@@ -430,7 +430,6 @@ return [
     ],
     'platform' => [
         'title' => 'اختر منصتك',
-        'help' => 'اختر PS / Xbox أو PC.',
         'options' => [
             'playstation' => 'PS / Xbox',
             'pc' => 'PC',

@@ -107,40 +107,40 @@ test('Rivals on a phone keeps the service image on top and the add-to-cart bar p
     const heroImage = page.locator('.manual-service-hero__media img');
     const panelImage = page.locator('.manual-service-panel__media');
     const bar = page.locator('.manual-service-panel__bar');
+    const dock = page.locator('.manual-service-dock');
     const submit = bar.getByRole('button', { name: ADD_TO_CART });
 
     await expect(heroImage).toBeVisible();
     await expect(panelImage).toBeHidden();
-    await expect(bar).toHaveCSS('position', 'fixed');
-    await expect(submit).toBeVisible();
+    // The dock stays away while the hero is on screen.
+    await expect(dock).toBeHidden();
+    await expect(bar).toHaveCSS('position', 'static');
 
-    const viewportHeight = 844;
-
-    async function expectBarPinnedToBottom() {
-        const box = await bar.boundingBox();
-
-        expect(box).not.toBeNull();
-
-        if (box === null) {
-            throw new Error('Expected the add-to-cart bar to render');
-        }
-
-        expect(box.y + box.height).toBeLessThanOrEqual(viewportHeight + 1);
-        expect(box.y).toBeGreaterThan(viewportHeight * 0.6);
-
-        return box;
-    }
-
-    const before = await expectBarPinnedToBottom();
-
-    await page.mouse.wheel(0, 1200);
+    await page.mouse.wheel(0, 900);
     await expect
         .poll(() => page.evaluate(() => window.scrollY))
         .toBeGreaterThan(600);
 
-    const after = await expectBarPinnedToBottom();
+    await expect(dock).toBeVisible();
+    await expect(dock).toHaveCSS('position', 'fixed');
+    await expect(dock.getByRole('button', { name: ADD_TO_CART })).toBeVisible();
 
-    expect(after.y).toBeCloseTo(before.y, 0);
+    const viewportHeight = 844;
+    const box = await dock.boundingBox();
+
+    expect(box).not.toBeNull();
+
+    if (box === null) {
+        throw new Error('Expected the add-to-cart dock to render');
+    }
+
+    expect(box.y + box.height).toBeLessThanOrEqual(viewportHeight + 1);
+    expect(box.y).toBeGreaterThan(viewportHeight * 0.6);
+
+    // Reaching the panel itself hides the dock: one total, one button.
+    await submit.scrollIntoViewIfNeeded();
+    await expect(submit).toBeVisible();
+    await expect(dock).toBeHidden();
     await expectNoHorizontalOverflow(page);
 
     assertRuntimeClean();

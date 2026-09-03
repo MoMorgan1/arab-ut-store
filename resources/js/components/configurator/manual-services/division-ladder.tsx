@@ -86,11 +86,6 @@ export function DivisionLadder({
                     {routeSummary}
                 </span>
                 <span className="manual-route-strip__badge">{stepsCount}</span>
-                {price ? (
-                    <strong className="manual-route-strip__price">
-                        {price}
-                    </strong>
-                ) : null}
             </div>
 
             {/* Target Division Slider */}
