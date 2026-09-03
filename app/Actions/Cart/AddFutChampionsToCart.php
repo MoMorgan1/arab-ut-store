@@ -20,6 +20,7 @@ final readonly class AddFutChampionsToCart
     public function __construct(
         private ReadManualServicePricing $readPricing,
         private AcquireActiveCart $acquireActiveCart,
+        private AssertVariantNotInCart $assertVariantNotInCart,
         private PersistManualServiceFulfillment $persistFulfillment,
         private ManualServiceCartSupport $support,
     ) {}
@@ -54,6 +55,7 @@ final readonly class AddFutChampionsToCart
             $variant = $this->support->eligibleVariant(ServiceType::FutChampions, $platform);
             $price = $pricing['pricing']->priceForRank((int) $validated['rank'], (bool) $validated['urgent']);
             $cart = $this->acquireActiveCart->execute($owner);
+            $this->assertVariantNotInCart->execute($cart, $variant);
             $item = $this->createItem($cart, $variant, $validated, $price, $schedule->version);
             $this->persistFulfillment->execute(
                 $item,

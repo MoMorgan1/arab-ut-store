@@ -20,6 +20,7 @@ final readonly class AddRivalsToCart
     public function __construct(
         private ReadManualServicePricing $readPricing,
         private AcquireActiveCart $acquireActiveCart,
+        private AssertVariantNotInCart $assertVariantNotInCart,
         private PersistManualServiceFulfillment $persistFulfillment,
         private ManualServiceCartSupport $support,
     ) {}
@@ -67,6 +68,7 @@ final readonly class AddRivalsToCart
                 ? $rules->weeklyMatchesPriceHalalah()
                 : $rules->priceForRoute($validated['currentDivision'], $validated['targetDivision']);
             $cart = $this->acquireActiveCart->execute($owner);
+            $this->assertVariantNotInCart->execute($cart, $variant);
             $item = $this->createItem(
                 $cart,
                 $variant,

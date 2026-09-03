@@ -9,9 +9,11 @@ import type {
 } from '@/types/coins';
 
 type SummaryStepProps = {
+    cartUrl: string;
     delivery: CoinsDeliveryValue | null;
     error: string | null;
     focusRef: Ref<HTMLHeadingElement>;
+    inCart: boolean;
     locale: 'ar' | 'en';
     onAdd: (button: HTMLButtonElement) => void;
     onBack: () => void;
@@ -25,9 +27,11 @@ type SummaryStepProps = {
 
 export function SummaryStep(props: SummaryStepProps) {
     const {
+        cartUrl,
         delivery,
         error,
         focusRef,
+        inCart,
         locale,
         onAdd,
         onBack,
@@ -98,19 +102,37 @@ export function SummaryStep(props: SummaryStepProps) {
                 >
                     {translations.actions.back}
                 </button>
-                <button
-                    className="coins-primary-action"
-                    disabled={pending}
-                    onClick={(event) => onAdd(event.currentTarget)}
-                    type="button"
-                >
-                    {pending
-                        ? translations.summary.adding
-                        : retrying
-                          ? translations.summary.retry
-                          : translations.summary.add}
-                </button>
+                {inCart ? (
+                    <button
+                        className="coins-secondary-action"
+                        data-state="in-cart"
+                        disabled
+                        type="button"
+                    >
+                        {translations.summary.in_cart}
+                    </button>
+                ) : (
+                    <button
+                        className="coins-primary-action"
+                        disabled={pending}
+                        onClick={(event) => onAdd(event.currentTarget)}
+                        type="button"
+                    >
+                        {pending
+                            ? translations.summary.adding
+                            : retrying
+                              ? translations.summary.retry
+                              : translations.summary.add}
+                    </button>
+                )}
             </div>
+            {inCart ? (
+                <p className="coins-in-cart-note">
+                    <a className="coins-policy-link" href={cartUrl}>
+                        {translations.summary.open_cart}
+                    </a>
+                </p>
+            ) : null}
             <button
                 className="coins-clear-action"
                 disabled={pending}

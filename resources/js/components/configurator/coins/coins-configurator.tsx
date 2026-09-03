@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
 import { newAttemptKey } from '@/lib/attempt-key';
-import { announceCartAddition } from '@/lib/cart-added-event';
+import {
+    announceCartAddition,
+    announceCartDuplicate,
+} from '@/lib/cart-added-event';
 import { CoinsCartRequestError, submitCoinsCart } from '@/lib/coins-cart-api';
 import { acceptsQuantity } from '@/lib/coins-quantity';
 import { quoteFromSchedule } from '@/lib/coins-quote-schedule';
+import { formatCoins, formatMinorUnits } from '@/lib/money';
 import type {
     CoinsAmountRules,
     CoinsCartConfig,
@@ -37,6 +41,8 @@ import { useCoinsQuoteRequest } from './use-coins-quote-request';
 type CoinsConfiguratorProps = {
     amount: CoinsAmountRules;
     cart: CoinsCartConfig;
+    cartUrl?: string;
+    cartVariantIds?: string[];
     displayCurrency: string;
     locale: 'ar' | 'en';
     platforms: CoinsPlatformOption[];
@@ -51,6 +57,8 @@ type CoinsConfiguratorProps = {
 export function CoinsConfigurator({
     amount,
     cart,
+    cartUrl,
+    cartVariantIds = [],
     displayCurrency,
     locale,
     platforms,
@@ -85,6 +93,7 @@ export function CoinsConfigurator({
     const [rejectedCredentialFields, setRejectedCredentialFields] = useState<
         CoinsCredentialField[]
     >([]);
+    const [addedVariantIds, setAddedVariantIds] = useState<string[]>([]);
     const credentialsRef = useRef(credentials);
     const idempotencyKey = useRef<string | null>(null);
     const pendingSubmission = useRef(false);
@@ -432,6 +441,23 @@ export function CoinsConfigurator({
                 quantity: state.lastValidQuantity,
             });
             idempotencyKey.current = null;
+            setAddedVariantIds((current) =>
+                current.includes(quote.variantId)
+                    ? current
+                    : [...current, quote.variantId],
+            );
+            const priceLabel = formatMinorUnits(
+                quote.total.amountHalalah,
+                quote.total.currency,
+                locale,
+            );
+            const selectionLabel = [
+                translations.platform.options[selectedPlatform.value],
+                requestDelivery === null
+                    ? translations.summary.delivery_pc
+                    : translations.delivery.options[requestDelivery],
+                `${formatCoins(state.lastValidQuantity, locale)} ${translations.units.coins}`,
+            ].join(' · ');
             await announceCartAddition({
                 analytics: {
                     id: quote.variantId,
@@ -440,11 +466,15 @@ export function CoinsConfigurator({
                     quantity: 1,
                     serviceType: 'coins',
                 },
+                cartCount: addition.cartCount,
+                cartTotalHalalah: addition.cartTotalHalalah,
                 cartUrl: addition.cartUrl,
                 from: button,
                 imageAlt: translations.summary.service_value,
                 imageUrl: '/images/store/coins/ut-coin-160.webp',
                 itemLabel: translations.summary.service_value,
+                priceLabel,
+                selectionLabel,
             });
             window.dispatchEvent(
                 new CustomEvent<number>('arabut:cart-count', {
@@ -459,6 +489,30 @@ export function CoinsConfigurator({
 
             if (error.conclusive) {
                 idempotencyKey.current = null;
+            }
+
+            if (error.code === 'already_in_cart') {
+                setRetrying(false);
+                setSubmitError(null);
+
+                if (quote !== null) {
+                    setAddedVariantIds((current) =>
+                        current.includes(quote.variantId)
+                            ? current
+                            : [...current, quote.variantId],
+                    );
+                }
+
+                announceCartDuplicate({
+                    cartUrl:
+                        error.cartUrl ??
+                        (locale === 'en' ? '/en/cart' : '/cart'),
+                    imageAlt: translations.summary.service_value,
+                    imageUrl: '/images/store/coins/ut-coin-160.webp',
+                    itemLabel: translations.summary.service_value,
+                });
+
+                return;
             }
 
             if (error.status === 422 && error.validationFields.length > 0) {
@@ -575,9 +629,16 @@ export function CoinsConfigurator({
             selectedPlatform !== null &&
             quoteState.status === 'success' ? (
                 <SummaryStep
+                    cartUrl={
+                        cartUrl ?? (locale === 'en' ? '/en/cart' : '/cart')
+                    }
                     delivery={requestDelivery}
                     error={submitError}
                     focusRef={summaryHeading}
+                    inCart={
+                        cartVariantIds.includes(quoteState.quote.variantId) ||
+                        addedVariantIds.includes(quoteState.quote.variantId)
+                    }
                     locale={locale}
                     onAdd={addToCart}
                     onBack={goBack}

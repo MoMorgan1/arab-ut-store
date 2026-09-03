@@ -151,3 +151,30 @@ test('cart projection contains only safe localized product data for catalog line
         ->assertInertia(fn (Assert $page) => $page
             ->where('cart.items.0.product.name', 'Safe Icon Service'));
 });
+
+test('adding the same catalog variant twice returns 409 already_in_cart', function () {
+    $variant = createCatalogCartVariant();
+
+    postCatalogVariant('/cart/items/catalog', $variant, (string) Str::ulid())->assertCreated();
+
+    $second = postCatalogVariant('/cart/items/catalog', $variant, (string) Str::ulid());
+
+    $second->assertConflict()
+        ->assertJsonPath('error.code', 'already_in_cart')
+        ->assertJsonPath('error.message', trans('store.cart.already_in_cart'))
+        ->assertJsonPath('error.cartUrl', '/cart');
+    expect($second->headers->get('Cache-Control'))->toContain('no-store')
+        ->and(CartItem::count())->toBe(1);
+});
+
+test('adding a different catalog variant creates a second line', function () {
+    $first = createCatalogCartVariant();
+    $second = createCatalogCartVariant(['slug' => 'second-service']);
+
+    postCatalogVariant('/cart/items/catalog', $first, (string) Str::ulid())->assertCreated();
+    postCatalogVariant('/cart/items/catalog', $second, (string) Str::ulid())
+        ->assertCreated()
+        ->assertJsonPath('data.cartCount', 2);
+
+    expect(CartItem::count())->toBe(2);
+});

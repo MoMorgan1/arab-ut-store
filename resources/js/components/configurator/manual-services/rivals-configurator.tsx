@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react';
 
-import { announceCartAddition } from '@/lib/cart-added-event';
+import {
+    announceCartAddition,
+    announceCartDuplicate,
+} from '@/lib/cart-added-event';
 import {
     ManualServiceCartError,
     submitManualServiceCart,
@@ -267,6 +270,14 @@ export function RivalsConfigurator({
             );
             keyRef.current = newManualAttemptKey();
             setStatus('success');
+            const selectionLabel = [
+                common.platforms[platform],
+                isWeekly
+                    ? (service.weekly_summary ?? service.mode_weekly)
+                    : service.route_summary
+                          .replace(':from', divisionLabel(from))
+                          .replace(':to', divisionLabel(to)),
+            ].join(' · ');
             await announceCartAddition({
                 analytics: {
                     id: product.slug,
@@ -277,6 +288,8 @@ export function RivalsConfigurator({
                     quantity: 1,
                     serviceType: 'rivals',
                 },
+                cartCount: result.cartCount,
+                cartTotalHalalah: result.cartTotalHalalah,
                 cartUrl: result.cartUrl,
                 ...(submitButton instanceof HTMLElement
                     ? { from: submitButton }
@@ -284,6 +297,8 @@ export function RivalsConfigurator({
                 imageAlt: product.image.alt,
                 imageUrl: product.image.url,
                 itemLabel: product.name,
+                priceLabel: formattedPrice === '' ? undefined : formattedPrice,
+                selectionLabel,
             });
             window.dispatchEvent(
                 new CustomEvent<number>('arabut:cart-count', {
@@ -296,6 +311,23 @@ export function RivalsConfigurator({
                 failure.conclusive
             ) {
                 keyRef.current = newManualAttemptKey();
+            }
+
+            if (
+                failure instanceof ManualServiceCartError &&
+                failure.code === 'already_in_cart'
+            ) {
+                setStatus('idle');
+                announceCartDuplicate({
+                    cartUrl:
+                        failure.cartUrl ??
+                        (locale === 'en' ? '/en/cart' : '/cart'),
+                    imageAlt: product.image.alt,
+                    imageUrl: product.image.url,
+                    itemLabel: product.name,
+                });
+
+                return;
             }
 
             setStatus('error');

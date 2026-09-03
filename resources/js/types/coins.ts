@@ -173,6 +173,8 @@ export type CoinsStoreTranslations = {
         conflict_error: string;
         unavailable_error: string;
         generic_error: string;
+        in_cart: string;
+        open_cart: string;
     };
     actions: {
         continue: string;

@@ -49,10 +49,15 @@ const shell: StoreShellConfig = {
 const translations = {
     brand: 'Arab UT',
     cart_added: {
-        title: 'Added to your cart',
-        message: ':item is ready in your cart.',
-        buy_now: 'Buy now',
-        continue_shopping: 'Continue shopping',
+        title: 'Added to cart',
+        in_cart: ':count items in your cart · :total',
+        checkout: 'Checkout',
+        cart: 'Cart',
+        dismiss: 'Dismiss',
+        duplicate_title: 'Already in your cart',
+        duplicate_hint:
+            'To change the options, remove it from the cart and add it again',
+        open_cart: 'Open cart',
     },
     language: 'العربية',
     currency_selector: 'Display currency',

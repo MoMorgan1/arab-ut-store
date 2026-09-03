@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Ref } from 'react';
 import { createPortal } from 'react-dom';
 
+import { focusSiblingCodeField } from '@/lib/code-field-focus';
 import { formatInteger } from '@/lib/money';
 import type {
     CoinsCredentialField,
@@ -385,6 +386,8 @@ export function CredentialsStep({
                                         }
                                         autoComplete="off"
                                         data-1p-ignore="true"
+                                        data-code-field=""
+                                        data-code-group="coins-backup"
                                         data-lpignore="true"
                                         dir="ltr"
                                         id={`coins-backup-${index}`}
@@ -393,13 +396,37 @@ export function CredentialsStep({
                                         onBlur={() =>
                                             validateFieldOnBlur(field, code)
                                         }
-                                        onChange={(event) =>
+                                        onChange={(event) => {
+                                            if (
+                                                event.currentTarget.value
+                                                    .replace(/[^0-9]/g, '')
+                                                    .slice(0, 8).length === 8 &&
+                                                code.length < 8
+                                            ) {
+                                                focusSiblingCodeField(
+                                                    event.currentTarget,
+                                                    1,
+                                                );
+                                            }
+
                                             updateCode(
                                                 index,
                                                 event.currentTarget.value,
                                                 field,
-                                            )
-                                        }
+                                            );
+                                        }}
+                                        onKeyDown={(event) => {
+                                            if (
+                                                event.key === 'Backspace' &&
+                                                event.currentTarget.value === ''
+                                            ) {
+                                                event.preventDefault();
+                                                focusSiblingCodeField(
+                                                    event.currentTarget,
+                                                    -1,
+                                                );
+                                            }
+                                        }}
                                         pattern="[0-9]{8}"
                                         placeholder="12345678"
                                         ref={(node) => {

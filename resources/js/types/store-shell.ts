@@ -32,9 +32,14 @@ export type StoreShellTranslations = {
     brand: string;
     cart_added: {
         title: string;
-        message: string;
-        buy_now: string;
-        continue_shopping: string;
+        in_cart: string;
+        in_cart_one?: string;
+        checkout: string;
+        cart: string;
+        dismiss: string;
+        duplicate_title: string;
+        duplicate_hint: string;
+        open_cart: string;
     };
     language: string;
     currency_selector: string;
@@ -75,6 +80,7 @@ export type StoreShellTranslations = {
 
 export type SimpleStorePageProps = {
     cartCount: number;
+    cartVariantIds: string[];
     direction: 'rtl' | 'ltr';
     displayCurrency: string;
     displayCurrencies: string[];
@@ -339,6 +345,7 @@ export type StoreCartSuggestionsTranslations = {
 export type StoreCartPageProps = {
     auth: { user: { id: number; name: string } | null };
     cartCount: number;
+    cartVariantIds: string[];
     coinsRequiresBalance?: boolean;
     cart: {
         // Lives beside the items rather than in cartPage: partial reloads on the

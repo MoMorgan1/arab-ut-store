@@ -112,6 +112,7 @@ final readonly class ManualServiceCartSupport
         return ['data' => [
             'cartItemId' => $item->public_id,
             'cartCount' => $cart->items()->count(),
+            'cartTotalHalalah' => (int) $cart->items()->sum('total_halalah'),
             'cartUrl' => route(
                 $localized ? 'localized.store.cart' : 'store.cart',
                 $localized ? ['locale' => 'en'] : [],

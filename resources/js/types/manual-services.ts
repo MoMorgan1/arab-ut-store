@@ -88,6 +88,8 @@ export type ManualServiceCommonTranslations = {
     adding: string;
     added: string;
     add_error: string;
+    in_cart: string;
+    open_cart: string;
     unavailable_title: string;
     unavailable_body: string;
     review_title: string;
@@ -152,6 +154,7 @@ export type RivalsServiceTranslations = {
 export type ManualServicePageProps = {
     backUrl: string;
     cartCount: number;
+    cartVariantIds: string[];
     direction: 'rtl' | 'ltr';
     displayCurrencies: string[];
     displayCurrency: string;

@@ -1,6 +1,7 @@
 import { ExternalLink, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 
+import { focusSiblingCodeField } from '@/lib/code-field-focus';
 import type {
     ManualCredentialsDraft,
     ManualServiceCommonTranslations,
@@ -487,6 +488,8 @@ export function CodeFields({
                                     String(index + 1),
                                 )}
                                 autoComplete="off"
+                                data-code-field=""
+                                data-code-group={namePrefix}
                                 dir="ltr"
                                 id={inputId}
                                 inputMode={numeric ? 'numeric' : 'text'}
@@ -494,6 +497,7 @@ export function CodeFields({
                                 name={inputId}
                                 onBlur={() => onBlurField?.(fieldKey, code)}
                                 onChange={(event) => {
+                                    const maxLength = numeric ? 8 : 6;
                                     const next: [string, string, string] = [
                                         ...codes,
                                     ];
@@ -505,7 +509,30 @@ export function CodeFields({
                                               .replace(/[^A-Za-z0-9]/g, '')
                                               .toUpperCase()
                                               .slice(0, 6);
+
+                                    if (
+                                        next[index].length === maxLength &&
+                                        code.length < maxLength
+                                    ) {
+                                        focusSiblingCodeField(
+                                            event.currentTarget,
+                                            1,
+                                        );
+                                    }
+
                                     onChange(next);
+                                }}
+                                onKeyDown={(event) => {
+                                    if (
+                                        event.key === 'Backspace' &&
+                                        event.currentTarget.value === ''
+                                    ) {
+                                        event.preventDefault();
+                                        focusSiblingCodeField(
+                                            event.currentTarget,
+                                            -1,
+                                        );
+                                    }
                                 }}
                                 pattern={
                                     numeric ? '[0-9]{8}' : '[A-Za-z0-9]{6}'

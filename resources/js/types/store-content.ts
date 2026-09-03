@@ -138,6 +138,8 @@ export type CatalogTranslations = {
     add_to_cart: string;
     added: string;
     adding: string;
+    in_cart: string;
+    open_cart: string;
     all: string;
     assurance_fast: string;
     assurance_fast_detail: string;
@@ -179,6 +181,8 @@ export type ProductTranslations = {
     adding: string;
     back: string;
     choose_option: string;
+    in_cart: string;
+    open_cart: string;
     platform: string;
     price: string;
     unavailable_price: string;
@@ -190,6 +194,7 @@ export type ProductTranslations = {
         credentials_title: string;
         completion_legend: string;
         completion_option: string;
+        completion_option_one?: string;
         completion_summary: string;
         duplicate_code: string;
         email: string;
@@ -214,6 +219,7 @@ export type ProductTranslations = {
 
 export type StoreBasePageProps = {
     cartCount: number;
+    cartVariantIds: string[];
     direction: 'rtl' | 'ltr';
     displayCurrencies: string[];
     displayCurrency: string;

@@ -254,3 +254,32 @@ it('removes FUT secrets and the private squad image with the owned cart line', f
         ->and(FulfillmentAttachment::query()->count())->toBe(0);
     Storage::disk('local')->assertMissing($path);
 });
+
+test('adding the same FUT Champions variant twice returns 409 already_in_cart', function () {
+    postFutCart(validFutCartPayload(), 'fut-duplicate-1')->assertCreated();
+
+    $second = postFutCart(validFutCartPayload(), 'fut-duplicate-2');
+
+    $second->assertConflict()
+        ->assertJsonPath('error.code', 'already_in_cart')
+        ->assertJsonPath('error.message', trans('store.cart.already_in_cart'))
+        ->assertJsonPath('error.cartUrl', '/cart');
+    expect($second->headers->get('Cache-Control'))->toContain('no-store')
+        ->and(CartItem::count())->toBe(1);
+});
+
+test('adding another FUT Champions platform variant creates a second line', function () {
+    postFutCart(validFutCartPayload(), 'fut-platform-1')->assertCreated();
+
+    $pcPayload = validFutCartPayload([
+        'platform' => 'pc',
+        'pcStore' => 'steam',
+        'credentials' => futCartCredentials('pc', 'steam'),
+    ]);
+
+    postFutCart($pcPayload, 'fut-platform-2')
+        ->assertCreated()
+        ->assertJsonPath('data.cartCount', 2);
+
+    expect(CartItem::count())->toBe(2);
+});

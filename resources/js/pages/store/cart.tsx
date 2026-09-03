@@ -36,6 +36,7 @@ import {
     sendCheckoutPhoneCode,
     verifyCheckoutPhoneCode,
 } from '@/lib/checkout-phone-api';
+import { focusSiblingCodeField } from '@/lib/code-field-focus';
 import { formatCoins, formatInteger, formatMinorUnits } from '@/lib/money';
 import {
     navigateToHostedPayment,
@@ -1661,15 +1662,41 @@ function CredentialState({
                                 </span>
                                 <input
                                     autoComplete="off"
+                                    data-code-field=""
+                                    data-code-group={`cart-backup-${cartItem.id}`}
                                     dir="ltr"
                                     inputMode="numeric"
                                     maxLength={8}
-                                    onChange={(event) =>
+                                    onChange={(event) => {
+                                        if (
+                                            event.currentTarget.value
+                                                .replace(/[^0-9]/g, '')
+                                                .slice(0, 8).length === 8 &&
+                                            code.length < 8
+                                        ) {
+                                            focusSiblingCodeField(
+                                                event.currentTarget,
+                                                1,
+                                            );
+                                        }
+
                                         updateCode(
                                             index as 0 | 1 | 2,
                                             event.currentTarget.value,
-                                        )
-                                    }
+                                        );
+                                    }}
+                                    onKeyDown={(event) => {
+                                        if (
+                                            event.key === 'Backspace' &&
+                                            event.currentTarget.value === ''
+                                        ) {
+                                            event.preventDefault();
+                                            focusSiblingCodeField(
+                                                event.currentTarget,
+                                                -1,
+                                            );
+                                        }
+                                    }}
                                     pattern="[0-9]{8}"
                                     required
                                     value={code}

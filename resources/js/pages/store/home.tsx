@@ -32,6 +32,7 @@ type StorePageProps = {
     quoteUrl: string;
     amount: CoinsAmountRules;
     cartCount: number;
+    cartVariantIds: string[];
     homeContent?: StoreHomeContent;
     coinsCart: CoinsCartConfig;
     platforms: CoinsPlatformOption[];
@@ -45,6 +46,7 @@ export default function StoreHome() {
     const {
         amount,
         cartCount,
+        cartVariantIds,
         coinsCart,
         coinsRequiresBalance,
         direction,
@@ -197,6 +199,8 @@ export default function StoreHome() {
                                 <CoinsConfigurator
                                     amount={amount}
                                     cart={coinsCart}
+                                    cartUrl={storeShell.cartUrl}
+                                    cartVariantIds={cartVariantIds}
                                     requiresCurrentBalance={
                                         coinsRequiresBalance === true
                                     }

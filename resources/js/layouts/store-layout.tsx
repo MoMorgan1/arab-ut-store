@@ -57,7 +57,7 @@ export default function StoreLayout({
             <main className="store-main" id="store-content">
                 {children}
             </main>
-            <CartAddedNotice translations={ui.cart_added} />
+            <CartAddedNotice locale={locale} translations={ui.cart_added} />
             <StoreFooter locale={locale} shell={storeShell} translations={ui} />
         </div>
     );

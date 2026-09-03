@@ -24,6 +24,7 @@ final readonly class AddSbcToCart
 
     public function __construct(
         private AcquireActiveCart $acquireActiveCart,
+        private AssertVariantNotInCart $assertVariantNotInCart,
         private PersistCartItemCredentials $persistCredentials,
     ) {}
 
@@ -65,6 +66,7 @@ final readonly class AddSbcToCart
         }
 
         $cart = $this->acquireActiveCart->execute($owner);
+        $this->assertVariantNotInCart->execute($cart, $variant);
         $item = $this->createItem($cart, $variant, $price, $completionCount);
         $this->persistCredentials->execute($item, $validated['credentials']);
         $body = $this->responseBody($cart, $item, $locale);
@@ -174,6 +176,7 @@ final readonly class AddSbcToCart
         return ['data' => [
             'cartItemId' => $item->public_id,
             'cartCount' => $cart->items()->count(),
+            'cartTotalHalalah' => (int) $cart->items()->sum('total_halalah'),
             'cartUrl' => route(
                 $localized ? 'localized.store.cart' : 'store.cart',
                 $localized ? ['locale' => 'en'] : [],

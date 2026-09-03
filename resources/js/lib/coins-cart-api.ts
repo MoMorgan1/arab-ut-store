@@ -19,6 +19,7 @@ type SubmitCoinsCartInput = {
 export type CoinsCartSuccess = {
     cartCount: number;
     cartItemId: string;
+    cartTotalHalalah?: number;
     cartUrl: string;
 };
 
@@ -29,19 +30,22 @@ export class CoinsCartRequestError extends Error {
     readonly conclusive: boolean;
     readonly status: number;
     readonly validationFields: CoinsCredentialField[];
+    readonly cartUrl?: string;
 
     constructor(
         code: string,
         status: number,
         conclusive: boolean,
         validationFields: CoinsCredentialField[] = [],
+        cartUrl?: string,
     ) {
         super('Coins cart request failed.');
         this.name = 'CoinsCartRequestError';
         this.code = code;
-        this.conclusive = conclusive;
         this.status = status;
+        this.conclusive = conclusive;
         this.validationFields = validationFields;
+        this.cartUrl = cartUrl;
     }
 }
 
@@ -116,6 +120,38 @@ function credentialValidationFields(payload: unknown): CoinsCredentialField[] {
     ];
 }
 
+function responseErrorCartUrl(payload: unknown): string | undefined {
+    if (!isRecord(payload) || !isRecord(payload.error)) {
+        return undefined;
+    }
+
+    const { cartUrl } = payload.error;
+
+    if (typeof cartUrl !== 'string') {
+        return undefined;
+    }
+
+    const safeCartUrl = sameOriginUrl(cartUrl);
+
+    return safeCartUrl === null
+        ? undefined
+        : `${safeCartUrl.pathname}${safeCartUrl.search}${safeCartUrl.hash}`;
+}
+
+function safeMinorTotal(payload: unknown): number | undefined {
+    if (!isRecord(payload) || !isRecord(payload.data)) {
+        return undefined;
+    }
+
+    const { cartTotalHalalah } = payload.data;
+
+    return typeof cartTotalHalalah === 'number' &&
+        Number.isSafeInteger(cartTotalHalalah) &&
+        cartTotalHalalah >= 0
+        ? cartTotalHalalah
+        : undefined;
+}
+
 function safeSuccess(payload: unknown): CoinsCartSuccess | null {
     if (!isRecord(payload) || !isRecord(payload.data)) {
         return null;
@@ -135,10 +171,13 @@ function safeSuccess(payload: unknown): CoinsCartSuccess | null {
         return null;
     }
 
+    const cartTotalHalalah = safeMinorTotal(payload);
+
     return {
         cartCount: Number(cartCount),
         cartItemId,
         cartUrl: `${safeCartUrl.pathname}${safeCartUrl.search}${safeCartUrl.hash}`,
+        ...(cartTotalHalalah === undefined ? {} : { cartTotalHalalah }),
     };
 }
 
@@ -217,6 +256,7 @@ export async function submitCoinsCart(
             response.status,
             true,
             response.status === 422 ? credentialValidationFields(payload) : [],
+            responseErrorCartUrl(payload),
         );
     }
 

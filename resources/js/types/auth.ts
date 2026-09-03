@@ -156,6 +156,7 @@ export type AuthSharedProps = {
     authUi: AuthUiTranslations;
     direction: 'rtl' | 'ltr';
     cartCount: number;
+    cartVariantIds: string[];
     displayCurrency: string;
     displayCurrencies: string[];
     locale: 'ar' | 'en';

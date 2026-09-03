@@ -1,11 +1,14 @@
 import { useRef, useState } from 'react';
 
-import { announceCartAddition } from '@/lib/cart-added-event';
+import {
+    announceCartAddition,
+    announceCartDuplicate,
+} from '@/lib/cart-added-event';
 import {
     ManualServiceCartError,
     submitManualServiceCart,
 } from '@/lib/manual-service-cart-api';
-import { formatInteger } from '@/lib/money';
+import { formatInteger, formatMinorUnits } from '@/lib/money';
 import { getInitialFutChampionsConfig } from '@/lib/query-params';
 import type {
     FutServiceTranslations,
@@ -273,6 +276,11 @@ export function FutChampionsConfigurator({
             );
             keyRef.current = newManualAttemptKey();
             setStatus('success');
+            const selectionLabel = [
+                common.platforms[platform],
+                rankLabel,
+                ...(urgent ? [service.urgent] : []),
+            ].join(' · ');
             await announceCartAddition({
                 analytics: {
                     id: product.slug,
@@ -283,6 +291,8 @@ export function FutChampionsConfigurator({
                     quantity: 1,
                     serviceType: 'fut_champions',
                 },
+                cartCount: result.cartCount,
+                cartTotalHalalah: result.cartTotalHalalah,
                 cartUrl: result.cartUrl,
                 ...(submitButton instanceof HTMLElement
                     ? { from: submitButton }
@@ -290,6 +300,15 @@ export function FutChampionsConfigurator({
                 imageAlt: product.image.alt,
                 imageUrl: product.image.url,
                 itemLabel: product.name,
+                priceLabel:
+                    price === null
+                        ? undefined
+                        : formatMinorUnits(
+                              price.amountMinor,
+                              price.currency,
+                              locale,
+                          ),
+                selectionLabel,
             });
             window.dispatchEvent(
                 new CustomEvent<number>('arabut:cart-count', {
@@ -302,6 +321,23 @@ export function FutChampionsConfigurator({
                 failure.conclusive
             ) {
                 keyRef.current = newManualAttemptKey();
+            }
+
+            if (
+                failure instanceof ManualServiceCartError &&
+                failure.code === 'already_in_cart'
+            ) {
+                setStatus('idle');
+                announceCartDuplicate({
+                    cartUrl:
+                        failure.cartUrl ??
+                        (locale === 'en' ? '/en/cart' : '/cart'),
+                    imageAlt: product.image.alt,
+                    imageUrl: product.image.url,
+                    itemLabel: product.name,
+                });
+
+                return;
             }
 
             setStatus('error');

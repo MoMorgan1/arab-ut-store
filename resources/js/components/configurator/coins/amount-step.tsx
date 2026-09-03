@@ -317,7 +317,12 @@ export function AmountStep({
                 </aside>
             ) : null}
 
-            <div className="coins-step__actions coins-step__actions--amount">
+            <QuotePanel
+                locale={locale}
+                state={quoteState}
+                translations={translations}
+            />
+            <div className="coins-step__actions">
                 <button
                     className="coins-secondary-action"
                     onClick={onBack}
@@ -325,21 +330,15 @@ export function AmountStep({
                 >
                     {translations.actions.back}
                 </button>
-            </div>
-            <QuotePanel
-                locale={locale}
-                state={quoteState}
-                translations={translations}
-            />
-            {isValid && quoteState.status === 'success' ? (
                 <button
-                    className="coins-primary-action coins-primary-action--full"
+                    className="coins-primary-action"
+                    disabled={!isValid || quoteState.status !== 'success'}
                     onClick={onContinue}
                     type="button"
                 >
                     {translations.actions.continue}
                 </button>
-            ) : null}
+            </div>
         </div>
     );
 }

@@ -166,10 +166,14 @@ const mockPage = vi.hoisted(() => ({
         ui: {
             brand: 'عرب التيميت',
             cart_added: {
-                title: 'تمت الإضافة',
-                message: 'أضيفت الخدمة.',
-                buy_now: 'إتمام الشراء',
-                continue_shopping: 'متابعة التسوق',
+                title: 'أُضيف إلى السلة',
+                in_cart: ':count منتجات في سلتك · :total',
+                checkout: 'إتمام الطلب',
+                cart: 'السلة',
+                dismiss: 'إغلاق',
+                duplicate_title: 'موجود في السلة بالفعل',
+                duplicate_hint: 'لتغيير الخيارات احذفه من السلة وأضفه من جديد',
+                open_cart: 'افتح السلة',
             },
             currency_selector: 'اختر العملة',
             language: 'English',

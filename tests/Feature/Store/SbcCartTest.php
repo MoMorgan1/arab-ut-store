@@ -113,8 +113,10 @@ test('an SBC bundle uses the exact server tier while cart and Paylink quantity r
         ->and($item->total_halalah)->toBe(107_900)
         ->and($item->configuration)->toMatchArray(['completion_count' => 10])
         ->and($response->getContent())->not->toContain('completionPricing')
-        ->not->toContain('multiplierBps')
-        ->not->toContain('107900');
+        ->not->toContain('multiplierBps');
+    // The cart total rides along for the added-to-cart sheet; the pricing
+    // schedule internals above stay out of the response.
+    $response->assertJsonPath('data.cartTotalHalalah', 107_900);
 });
 
 test('SBC completion counts must be required positive integers', function (array $changes) {
@@ -360,3 +362,32 @@ test('unexpected SBC debug failures stay generic JSON and never render submitted
     'canonical endpoint' => '/cart/items/sbc',
     'localized endpoint' => '/en/cart/items/sbc',
 ]);
+
+test('adding the same SBC variant twice returns 409 already_in_cart', function () {
+    ['variant' => $variant] = createSbcCartProduct();
+
+    $this->postJson('/cart/items/sbc', sbcCartPayload($variant), ['Idempotency-Key' => 'sbc-duplicate-1'])
+        ->assertCreated();
+
+    $second = $this->postJson('/cart/items/sbc', sbcCartPayload($variant), ['Idempotency-Key' => 'sbc-duplicate-2']);
+
+    $second->assertConflict()
+        ->assertJsonPath('error.code', 'already_in_cart')
+        ->assertJsonPath('error.message', trans('store.cart.already_in_cart'))
+        ->assertJsonPath('error.cartUrl', '/cart');
+    expect($second->headers->get('Cache-Control'))->toContain('no-store')
+        ->and(CartItem::count())->toBe(1);
+});
+
+test('adding another SBC platform variant creates a second line', function () {
+    ['variant' => $first] = createSbcCartProduct();
+    ['variant' => $second] = createSbcCartProduct(variantChanges: ['platform' => Platform::Pc]);
+
+    $this->postJson('/cart/items/sbc', sbcCartPayload($first), ['Idempotency-Key' => 'sbc-platform-1'])
+        ->assertCreated();
+    $this->postJson('/cart/items/sbc', sbcCartPayload($second), ['Idempotency-Key' => 'sbc-platform-2'])
+        ->assertCreated()
+        ->assertJsonPath('data.cartCount', 2);
+
+    expect(CartItem::count())->toBe(2);
+});

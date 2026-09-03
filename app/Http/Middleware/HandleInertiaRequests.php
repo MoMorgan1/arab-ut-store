@@ -50,6 +50,7 @@ class HandleInertiaRequests extends Middleware
         $routeName = fn (string $name): string => $localized ? "localized.{$name}" : $name;
         $storeUrl = fn (string $name): string => route($routeName("store.{$name}"), $routeParameters, absolute: false);
         $homeUrl = route($routeName('home'), $routeParameters, absolute: false);
+        $cartSummary = $this->cartSummary($request);
 
         return [
             ...parent::share($request),
@@ -59,7 +60,8 @@ class HandleInertiaRequests extends Middleware
             'displayCurrency' => $request->session()->get('display_currency'),
             'displayCurrencies' => config('store.display_currencies'),
             'checkoutCurrency' => config('store.checkout_currency'),
-            'cartCount' => $this->cartCount($request),
+            'cartCount' => $cartSummary['count'],
+            'cartVariantIds' => $cartSummary['variantIds'],
             'ui' => trans('ui'),
             'storeShell' => [
                 'homeUrl' => $homeUrl,
@@ -110,13 +112,36 @@ class HandleInertiaRequests extends Middleware
         ];
     }
 
-    private function cartCount(Request $request): int
+    /** @return array{count: int, variantIds: string[]} */
+    private function cartSummary(Request $request): array
     {
         $activeCart = Cart::query()
             ->activeForOwner($this->resolveCartOwner->forRequest($request))
-            ->withCount('items')
             ->first();
 
-        return $activeCart->items_count ?? 0;
+        if ($activeCart === null) {
+            return ['count' => 0, 'variantIds' => []];
+        }
+
+        // One query reads the variants on the active cart's lines; the count
+        // is the row count, not distinct ids, so legacy carts that already
+        // hold duplicates keep their badge number.
+        $variantIds = $activeCart->items()
+            ->join(
+                'product_variants',
+                'product_variants.id',
+                '=',
+                'cart_items.product_variant_id',
+            )
+            ->orderBy('cart_items.id')
+            ->pluck('product_variants.public_id')
+            ->all();
+
+        // Row count, not distinct ids: carts from before the one-per-variant
+        // rule may still hold two lines of the same variant.
+        return [
+            'count' => count($variantIds),
+            'variantIds' => array_values(array_unique($variantIds)),
+        ];
     }
 }

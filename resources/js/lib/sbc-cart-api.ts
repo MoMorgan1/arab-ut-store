@@ -5,6 +5,7 @@ type JsonRecord = Record<string, unknown>;
 export type SbcCartSuccess = {
     cartCount: number;
     cartItemId: string;
+    cartTotalHalalah?: number;
     cartUrl: string;
 };
 
@@ -33,6 +34,7 @@ export class SbcCartRequestError extends Error {
         readonly status: number,
         readonly conclusive: boolean,
         readonly validationFields: CoinsCredentialField[] = [],
+        readonly cartUrl?: string,
     ) {
         super('SBC cart request failed.');
         this.name = 'SbcCartRequestError';
@@ -91,14 +93,48 @@ function validationFields(payload: unknown): CoinsCredentialField[] {
     ];
 }
 
+function responseErrorCartUrl(payload: unknown): string | undefined {
+    if (!isRecord(payload) || !isRecord(payload.error)) {
+        return undefined;
+    }
+
+    const { cartUrl } = payload.error;
+
+    if (typeof cartUrl !== 'string') {
+        return undefined;
+    }
+
+    const safeCartUrl = sameOriginUrl(cartUrl);
+
+    return safeCartUrl === null
+        ? undefined
+        : `${safeCartUrl.pathname}${safeCartUrl.search}${safeCartUrl.hash}`;
+}
+
+function safeMinorTotal(payload: unknown): number | undefined {
+    if (!isRecord(payload) || !isRecord(payload.data)) {
+        return undefined;
+    }
+
+    const { cartTotalHalalah } = payload.data;
+
+    return typeof cartTotalHalalah === 'number' &&
+        Number.isSafeInteger(cartTotalHalalah) &&
+        cartTotalHalalah >= 0
+        ? cartTotalHalalah
+        : undefined;
+}
+
 function safeSuccess(payload: unknown): SbcCartSuccess | null {
     if (!isRecord(payload) || !isRecord(payload.data)) {
         return null;
     }
 
+    const keys = Object.keys(payload.data).sort().join(',');
+
     if (
-        Object.keys(payload.data).sort().join(',') !==
-        'cartCount,cartItemId,cartUrl'
+        keys !== 'cartCount,cartItemId,cartUrl' &&
+        keys !== 'cartCount,cartItemId,cartTotalHalalah,cartUrl'
     ) {
         return null;
     }
@@ -117,10 +153,13 @@ function safeSuccess(payload: unknown): SbcCartSuccess | null {
         return null;
     }
 
+    const cartTotalHalalah = safeMinorTotal(payload);
+
     return {
         cartCount: Number(cartCount),
         cartItemId,
         cartUrl: `${safeCartUrl.pathname}${safeCartUrl.search}${safeCartUrl.hash}`,
+        ...(cartTotalHalalah === undefined ? {} : { cartTotalHalalah }),
     };
 }
 
@@ -184,6 +223,7 @@ export async function submitSbcCart(
             response.status,
             true,
             response.status === 422 ? validationFields(payload) : [],
+            responseErrorCartUrl(payload),
         );
     }
 

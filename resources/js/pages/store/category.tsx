@@ -393,6 +393,8 @@ function CatalogCard({
                             quantity: 1,
                             serviceType: 'catalog',
                         }}
+                        amountMinor={selected.price.amountMinor}
+                        currency={selected.price.currency}
                         errorLabel={translations.add_error}
                         idleLabel={translations.add_to_cart}
                         imageAlt={product.image?.alt || product.name}
@@ -400,8 +402,12 @@ function CatalogCard({
                             product.image?.url ??
                             '/images/store/navigation/logo-sbc-256.webp'
                         }
+                        inCartLabel={translations.in_cart}
                         itemLabel={product.name}
                         loadingLabel={translations.adding}
+                        locale={locale}
+                        openCartLabel={translations.open_cart}
+                        selectionLabel={selected.name}
                         successLabel={translations.added}
                         variantId={variantId}
                     />

@@ -21,7 +21,10 @@ final readonly class AddCatalogItemToCart
 {
     private const SCOPE = 'catalog-cart';
 
-    public function __construct(private AcquireActiveCart $acquireActiveCart) {}
+    public function __construct(
+        private AcquireActiveCart $acquireActiveCart,
+        private AssertVariantNotInCart $assertVariantNotInCart,
+    ) {}
 
     /** @return array{status: int, body: array<string, mixed>} */
     public function execute(
@@ -56,6 +59,7 @@ final readonly class AddCatalogItemToCart
         $variant = $this->eligibleVariant($variantPublicId);
         $price = $this->effectivePrice($variant);
         $cart = $this->acquireActiveCart->execute($owner);
+        $this->assertVariantNotInCart->execute($cart, $variant);
         $item = $this->createItem($cart, $variant, $price);
         $body = $this->responseBody($cart, $item, $locale);
         $this->completeClaim($claim, $body);
@@ -155,6 +159,7 @@ final readonly class AddCatalogItemToCart
         return ['data' => [
             'cartItemId' => $item->public_id,
             'cartCount' => $cart->items()->count(),
+            'cartTotalHalalah' => (int) $cart->items()->sum('total_halalah'),
             'cartUrl' => route(
                 $localized ? 'localized.store.cart' : 'store.cart',
                 $localized ? ['locale' => 'en'] : [],
