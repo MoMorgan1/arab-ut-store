@@ -1,12 +1,21 @@
+import { Eye, EyeOff } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import type { CSSProperties } from 'react';
 
+import { CodeFields } from '@/components/configurator/manual-services/credentials-fields';
+import { FieldError } from '@/components/configurator/manual-services/field-error';
+import type { ManualFormErrors } from '@/components/configurator/manual-services/form-utils';
+import { ManualSection } from '@/components/configurator/manual-services/section';
+import { SelectionCard } from '@/components/configurator/manual-services/selection-card';
+import { ManualServicePanel } from '@/components/configurator/manual-services/service-panel';
+import { ServiceSlider } from '@/components/configurator/manual-services/service-slider';
 import { newAttemptKey } from '@/lib/attempt-key';
 import { announceCartAddition } from '@/lib/cart-added-event';
 import { catalogPlatformName } from '@/lib/catalog-platform-name';
 import { formatMinorUnits } from '@/lib/money';
 import { SbcCartRequestError, submitSbcCart } from '@/lib/sbc-cart-api';
+import { sbcPlatformIconUrls } from '@/lib/sbc-platform-artwork';
 import type { CoinsCredentialField, CoinsCredentials } from '@/types/coins';
+import type { ManualServiceCommonTranslations } from '@/types/manual-services';
 import type {
     CatalogProduct,
     ProductTranslations,
@@ -94,15 +103,21 @@ function validate(
 export function SbcProductConfigurator({
     addUrl,
     currentUrl,
+    direction,
     locale,
+    manualCommon,
     product,
     translations,
+    tutorials,
 }: {
     addUrl: string;
     currentUrl: string;
+    direction: 'rtl' | 'ltr';
     locale: 'ar' | 'en';
+    manualCommon: ManualServiceCommonTranslations;
     product: CatalogProduct;
     translations: ProductTranslations;
+    tutorials: { ea: string };
 }) {
     const initialVariantId = initialVariant(product, currentUrl);
     const [variantId, setVariantId] = useState(initialVariantId);
@@ -128,24 +143,9 @@ export function SbcProductConfigurator({
         ),
     );
     const selectedCompletionTier = completionTiers[selectedCompletionIndex];
-    const completionSliderProgress =
-        completionTiers.length > 1
-            ? `${(selectedCompletionIndex / (completionTiers.length - 1)) * 100}%`
-            : '0%';
     const completionTier = variant?.completionTiers.find(
         (tier) => tier.completions === completionCount,
     );
-    const completionSliderValueText =
-        selectedCompletionTier === undefined
-            ? ''
-            : `${completionLabel(
-                  translations.sbc.completion_option,
-                  selectedCompletionTier.completions,
-              )} · ${formatMinorUnits(
-                  selectedCompletionTier.price.amountMinor,
-                  selectedCompletionTier.price.currency,
-                  locale,
-              )}`;
     const locked = state === 'loading';
 
     useEffect(() => {
@@ -169,14 +169,6 @@ export function SbcProductConfigurator({
         setCredentials((current) => ({ ...current, [key]: value }));
         setErrors((current) => ({ ...current, [field]: undefined }));
         setState('idle');
-    }
-
-    function updateCode(index: 0 | 1 | 2, rawCode: string) {
-        const backupCodes: [string, string, string] = [
-            ...credentials.backupCodes,
-        ];
-        backupCodes[index] = rawCode.replace(/[^0-9]/g, '').slice(0, 8);
-        updateCredential('backupCodes', backupCodes, `code-${index}`);
     }
 
     function selectVariant(nextVariantId: string) {
@@ -205,7 +197,26 @@ export function SbcProductConfigurator({
         }
     }
 
-    async function add() {
+    function handleCodesChange(nextCodes: [string, string, string]) {
+        const changed =
+            ([0, 1, 2] as const).find(
+                (index) => nextCodes[index] !== credentials.backupCodes[index],
+            ) ?? 0;
+        updateCredential('backupCodes', nextCodes, `code-${changed}`);
+    }
+
+    function registerCodeRef(field: string, node: HTMLInputElement | null) {
+        const match = /^eaCode-([012])$/.exec(field);
+
+        if (match !== null) {
+            fieldRefs.current[`code-${match[1]}` as CoinsCredentialField] =
+                node;
+        }
+    }
+
+    async function submit(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
         const nextErrors = validate(credentials, translations.sbc);
         const firstError = Object.keys(nextErrors)[0] as
             CoinsCredentialField | undefined;
@@ -288,363 +299,284 @@ export function SbcProductConfigurator({
         }
     }
 
+    const codeErrors: ManualFormErrors = {};
+
+    CODE_FIELDS.forEach((field, index) => {
+        const message = errors[field];
+
+        if (message !== undefined) {
+            codeErrors[`eaCode-${index}`] = message;
+        }
+    });
+
+    const platformName =
+        variant === undefined
+            ? '—'
+            : catalogPlatformName(variant.platform, variant.name, locale);
+
     return (
-        <div className="sbc-product-configurator">
-            <fieldset className="sbc-product-platforms" disabled={locked}>
-                <legend>{translations.sbc.platform_legend}</legend>
-                <div>
-                    {product.variants.map((option) => (
-                        <label key={option.id}>
-                            <input
-                                checked={option.id === variantId}
-                                disabled={option.price === null}
-                                name="sbc-platform"
-                                onChange={() => selectVariant(option.id)}
-                                type="radio"
-                                value={option.id}
-                            />
-                            <span>
-                                {catalogPlatformName(
+        <form
+            className="sbc-product-configurator manual-configurator"
+            noValidate
+            onSubmit={(event) => void submit(event)}
+        >
+            <div className="manual-configurator__main">
+                <ManualSection
+                    id="sbc-step-platform"
+                    locale={locale}
+                    number={1}
+                    title={manualCommon.step_platform}
+                >
+                    <fieldset className="manual-fieldset" disabled={locked}>
+                        <legend className="sr-only">
+                            {translations.sbc.platform_legend}
+                        </legend>
+                        <div
+                            aria-label={translations.sbc.platform_legend}
+                            className="coins-choice-grid coins-choice-grid--platforms"
+                            role="radiogroup"
+                        >
+                            {product.variants.map((option) => {
+                                const optionName = catalogPlatformName(
                                     option.platform,
                                     option.name,
                                     locale,
-                                )}
-                            </span>
-                            <strong>
-                                {option.price === null
-                                    ? translations.unavailable_price
-                                    : formatMinorUnits(
-                                          option.price.amountMinor,
-                                          option.price.currency,
-                                          locale,
-                                      )}
-                            </strong>
-                        </label>
-                    ))}
-                </div>
-            </fieldset>
+                                );
+                                const priceText =
+                                    option.price === null
+                                        ? translations.unavailable_price
+                                        : formatMinorUnits(
+                                              option.price.amountMinor,
+                                              option.price.currency,
+                                              locale,
+                                          );
 
-            {completionTiers.length > 1 ? (
-                <fieldset className="sbc-completion-tiers" disabled={locked}>
-                    <legend>{translations.sbc.completion_legend}</legend>
-                    <div className="sbc-completion-tiers__slider">
-                        <div className="sbc-completion-tiers__slider-header">
-                            <span>
-                                {selectedCompletionTier === undefined
-                                    ? '—'
-                                    : completionLabel(
-                                          translations.sbc.completion_option,
-                                          selectedCompletionTier.completions,
-                                      )}
-                            </span>
-                            <span
-                                aria-live="polite"
-                                className="sbc-completion-tiers__slider-price"
-                                id="sbc-completion-slider-output"
-                            >
-                                {selectedCompletionTier === undefined
-                                    ? translations.unavailable_price
-                                    : formatMinorUnits(
-                                          selectedCompletionTier.price
-                                              .amountMinor,
-                                          selectedCompletionTier.price.currency,
-                                          locale,
-                                      )}
-                            </span>
-                        </div>
-                        <input
-                            aria-describedby="sbc-completion-slider-output"
-                            aria-label={translations.sbc.completion_legend}
-                            aria-valuetext={completionSliderValueText}
-                            id="sbc-completion-slider"
-                            max={completionTiers.length - 1}
-                            min="0"
-                            onChange={(event) => {
-                                const tier =
-                                    completionTiers[
-                                        Number(event.currentTarget.value)
-                                    ];
-
-                                if (tier !== undefined) {
-                                    setCompletionCount(tier.completions);
-                                }
-                            }}
-                            step="1"
-                            style={
-                                {
-                                    '--sbc-slider-progress':
-                                        completionSliderProgress,
-                                } as CSSProperties
-                            }
-                            type="range"
-                            value={selectedCompletionIndex}
-                        />
-                        <div
-                            aria-hidden="true"
-                            className="sbc-completion-tiers__slider-labels"
-                        >
-                            {completionTiers.map((tier) => (
-                                <span key={tier.completions}>
-                                    {tier.completions}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                </fieldset>
-            ) : null}
-
-            <section
-                aria-labelledby="sbc-credentials-title"
-                className="sbc-product-credentials"
-            >
-                <h2 id="sbc-credentials-title">
-                    {translations.sbc.credentials_title}
-                </h2>
-                <CredentialField
-                    disabled={locked}
-                    error={errors.email}
-                    id="sbc-ea-email"
-                    inputRef={(node) => {
-                        fieldRefs.current.email = node;
-                    }}
-                    label={translations.sbc.email}
-                    onChange={(value) =>
-                        updateCredential('eaEmail', value, 'email')
-                    }
-                    type="email"
-                    value={credentials.eaEmail}
-                />
-                <div className="sbc-credential-field">
-                    <label htmlFor="sbc-ea-password">
-                        {translations.sbc.password}
-                    </label>
-                    <div className="sbc-password-control">
-                        <input
-                            aria-describedby={
-                                errors.password === undefined
-                                    ? undefined
-                                    : 'sbc-ea-password-error'
-                            }
-                            aria-invalid={errors.password !== undefined}
-                            autoComplete="off"
-                            data-1p-ignore="true"
-                            data-lpignore="true"
-                            dir="ltr"
-                            disabled={locked}
-                            id="sbc-ea-password"
-                            onChange={(event) =>
-                                updateCredential(
-                                    'eaPassword',
-                                    event.currentTarget.value,
-                                    'password',
-                                )
-                            }
-                            ref={(node) => {
-                                fieldRefs.current.password = node;
-                            }}
-                            spellCheck={false}
-                            type={passwordVisible ? 'text' : 'password'}
-                            value={credentials.eaPassword}
-                        />
-                        <button
-                            aria-label={
-                                passwordVisible
-                                    ? translations.sbc.hide_password
-                                    : translations.sbc.show_password
-                            }
-                            disabled={locked}
-                            onClick={() =>
-                                setPasswordVisible((visible) => !visible)
-                            }
-                            type="button"
-                        >
-                            <EyeIcon />
-                        </button>
-                    </div>
-                    <FieldError
-                        error={errors.password}
-                        id="sbc-ea-password-error"
-                    />
-                </div>
-                <fieldset className="sbc-backup-codes" disabled={locked}>
-                    <legend>{translations.sbc.backup_codes}</legend>
-                    <p>{translations.sbc.backup_help}</p>
-                    <div>
-                        {CODE_FIELDS.map((field, index) => {
-                            const label =
-                                translations.sbc.backup_code_labels[index];
-
-                            return (
-                                <div
-                                    className="sbc-credential-field"
-                                    key={field}
-                                >
-                                    <label htmlFor={`sbc-backup-${index}`}>
-                                        {label}
-                                    </label>
-                                    <input
-                                        aria-label={translations.sbc.backup_code.replace(
-                                            ':number',
-                                            String(index + 1),
+                                return (
+                                    <SelectionCard
+                                        checked={option.id === variantId}
+                                        disabled={option.price === null}
+                                        iconUrls={sbcPlatformIconUrls(
+                                            option.platform,
                                         )}
+                                        key={option.id}
+                                        label={`${optionName} · ${priceText}`}
+                                        name="sbc-platform"
+                                        onChange={() =>
+                                            selectVariant(option.id)
+                                        }
+                                        value={option.id}
+                                        variant="platform"
+                                    >
+                                        <span>{optionName}</span>
+                                        <span className="sbc-platform-price">
+                                            {priceText}
+                                        </span>
+                                    </SelectionCard>
+                                );
+                            })}
+                        </div>
+                    </fieldset>
+                </ManualSection>
+
+                {completionTiers.length > 1 &&
+                selectedCompletionTier !== undefined ? (
+                    <ManualSection
+                        id="sbc-step-completions"
+                        locale={locale}
+                        number={2}
+                        title={translations.sbc.completion_legend}
+                    >
+                        <fieldset className="manual-fieldset" disabled={locked}>
+                            <ServiceSlider
+                                direction={direction}
+                                inputName="sbc-completion"
+                                legend={translations.sbc.completion_legend}
+                                maxValue={completionTiers.length - 1}
+                                minValue={0}
+                                onValueChange={(index) => {
+                                    const tier = completionTiers[index];
+
+                                    if (tier !== undefined) {
+                                        setCompletionCount(tier.completions);
+                                    }
+                                }}
+                                price={formatMinorUnits(
+                                    selectedCompletionTier.price.amountMinor,
+                                    selectedCompletionTier.price.currency,
+                                    locale,
+                                )}
+                                selectedValue={selectedCompletionIndex}
+                                stopLabels={completionTiers.map((tier) =>
+                                    String(tier.completions),
+                                )}
+                                valueLabel={completionLabel(
+                                    translations.sbc.completion_option,
+                                    selectedCompletionTier.completions,
+                                )}
+                            />
+                        </fieldset>
+                    </ManualSection>
+                ) : null}
+
+                <ManualSection
+                    id="sbc-step-account"
+                    locale={locale}
+                    number={3}
+                    title={translations.sbc.credentials_title}
+                >
+                    <div className="coins-credentials-form manual-credentials-form">
+                        <div className="manual-credentials__grid">
+                            <div className="coins-credential-field">
+                                <label htmlFor="sbc-ea-email">
+                                    {translations.sbc.email}
+                                </label>
+                                <input
+                                    aria-describedby={
+                                        errors.email === undefined
+                                            ? undefined
+                                            : 'sbc-ea-email-error'
+                                    }
+                                    aria-invalid={errors.email !== undefined}
+                                    autoComplete="off"
+                                    data-1p-ignore="true"
+                                    data-lpignore="true"
+                                    dir="ltr"
+                                    disabled={locked}
+                                    id="sbc-ea-email"
+                                    name="sbc-ea-email"
+                                    onChange={(event) =>
+                                        updateCredential(
+                                            'eaEmail',
+                                            event.currentTarget.value,
+                                            'email',
+                                        )
+                                    }
+                                    ref={(node) => {
+                                        fieldRefs.current.email = node;
+                                    }}
+                                    spellCheck={false}
+                                    type="email"
+                                    value={credentials.eaEmail}
+                                />
+                                <FieldError
+                                    error={errors.email}
+                                    id="sbc-ea-email-error"
+                                />
+                            </div>
+
+                            <div className="coins-credential-field">
+                                <label htmlFor="sbc-ea-password">
+                                    {translations.sbc.password}
+                                </label>
+                                <div className="coins-password-control">
+                                    <input
                                         aria-describedby={
-                                            errors[field] === undefined
+                                            errors.password === undefined
                                                 ? undefined
-                                                : `sbc-backup-${index}-error`
+                                                : 'sbc-ea-password-error'
                                         }
                                         aria-invalid={
-                                            errors[field] !== undefined
+                                            errors.password !== undefined
                                         }
                                         autoComplete="off"
                                         data-1p-ignore="true"
                                         data-lpignore="true"
                                         dir="ltr"
-                                        id={`sbc-backup-${index}`}
-                                        inputMode="numeric"
-                                        maxLength={8}
+                                        disabled={locked}
+                                        id="sbc-ea-password"
+                                        name="sbc-ea-password"
                                         onChange={(event) =>
-                                            updateCode(
-                                                index as 0 | 1 | 2,
+                                            updateCredential(
+                                                'eaPassword',
                                                 event.currentTarget.value,
+                                                'password',
                                             )
                                         }
-                                        pattern="[0-9]{8}"
-                                        placeholder="12345678"
                                         ref={(node) => {
-                                            fieldRefs.current[field] = node;
+                                            fieldRefs.current.password = node;
                                         }}
                                         spellCheck={false}
-                                        value={credentials.backupCodes[index]}
+                                        type={
+                                            passwordVisible
+                                                ? 'text'
+                                                : 'password'
+                                        }
+                                        value={credentials.eaPassword}
                                     />
-                                    <FieldError
-                                        error={errors[field]}
-                                        id={`sbc-backup-${index}-error`}
-                                    />
+                                    <button
+                                        aria-label={
+                                            passwordVisible
+                                                ? translations.sbc.hide_password
+                                                : translations.sbc.show_password
+                                        }
+                                        disabled={locked}
+                                        onClick={() =>
+                                            setPasswordVisible(
+                                                (visible) => !visible,
+                                            )
+                                        }
+                                        type="button"
+                                    >
+                                        {passwordVisible ? (
+                                            <EyeOff aria-hidden="true" />
+                                        ) : (
+                                            <Eye aria-hidden="true" />
+                                        )}
+                                    </button>
                                 </div>
-                            );
-                        })}
+                                <FieldError
+                                    error={errors.password}
+                                    id="sbc-ea-password-error"
+                                />
+                            </div>
+                        </div>
+
+                        <fieldset className="manual-fieldset" disabled={locked}>
+                            <CodeFields
+                                codes={credentials.backupCodes}
+                                errors={codeErrors}
+                                fieldPrefix="eaCode"
+                                label={translations.sbc.backup_codes}
+                                namePrefix="sbc-backup"
+                                numeric
+                                onChange={handleCodesChange}
+                                registerFieldRef={registerCodeRef}
+                                translations={manualCommon}
+                                tutorialHref={tutorials.ea}
+                                tutorialLabel={manualCommon.ea_tutorial}
+                            />
+                        </fieldset>
+                        <p className="sbc-backup-help">
+                            {translations.sbc.backup_help}
+                        </p>
                     </div>
-                </fieldset>
-            </section>
+                </ManualSection>
+            </div>
 
-            <dl className="sbc-product-summary">
-                <div>
-                    <dt>{translations.sbc.selected}</dt>
-                    <dd className="sbc-product-summary__platform">
-                        {variant === undefined
-                            ? '—'
-                            : catalogPlatformName(
-                                  variant.platform,
-                                  variant.name,
-                                  locale,
-                              )}
-                    </dd>
-                </div>
-                <div>
-                    <dt>{translations.sbc.total}</dt>
-                    <dd>
-                        {completionTier === undefined
-                            ? translations.unavailable_price
-                            : formatMinorUnits(
-                                  completionTier.price.amountMinor,
-                                  completionTier.price.currency,
-                                  locale,
-                              )}
-                    </dd>
-                </div>
-                <div>
-                    <dt>{translations.sbc.completion_summary}</dt>
-                    <dd>{completionCount}</dd>
-                </div>
-            </dl>
-            <button
-                className="sbc-product-add"
-                data-state={state}
-                disabled={state === 'loading' || completionTier === undefined}
-                onClick={() => void add()}
-                type="button"
-            >
-                {state === 'loading'
-                    ? translations.adding
-                    : translations.add_to_cart}
-            </button>
-            {state === 'error' ? (
-                <p className="sbc-product-status" role="alert">
-                    {translations.add_error}
-                </p>
-            ) : null}
-        </div>
-    );
-}
-
-function CredentialField({
-    disabled,
-    error,
-    id,
-    inputRef,
-    label,
-    onChange,
-    type,
-    value,
-}: {
-    disabled: boolean;
-    error: string | undefined;
-    id: string;
-    inputRef: (node: HTMLInputElement | null) => void;
-    label: string;
-    onChange: (value: string) => void;
-    type: 'email';
-    value: string;
-}) {
-    return (
-        <div className="sbc-credential-field">
-            <label htmlFor={id}>{label}</label>
-            <input
-                aria-describedby={
-                    error === undefined ? undefined : `${id}-error`
+            <ManualServicePanel
+                facts={[
+                    { label: translations.sbc.selected, value: platformName },
+                    {
+                        label: translations.sbc.completion_summary,
+                        value: String(completionCount),
+                    },
+                ]}
+                image={
+                    product.image ?? {
+                        alt: product.name,
+                        url: '/images/store/navigation/logo-sbc-256.webp',
+                    }
                 }
-                aria-invalid={error !== undefined}
-                autoComplete="off"
-                data-1p-ignore="true"
-                data-lpignore="true"
-                dir="ltr"
-                disabled={disabled}
-                id={id}
-                onChange={(event) => onChange(event.currentTarget.value)}
-                ref={inputRef}
-                spellCheck={false}
-                type={type}
-                value={value}
+                inline
+                locale={locale}
+                price={completionTier?.price ?? null}
+                status={state}
+                submitDisabled={completionTier === undefined}
+                submitLabel={translations.add_to_cart}
+                title={product.name}
+                translations={manualCommon}
+                trustLabel={translations.sbc.credentials_ready}
             />
-            <FieldError error={error} id={`${id}-error`} />
-        </div>
-    );
-}
-
-function FieldError({ error, id }: { error: string | undefined; id: string }) {
-    return error === undefined ? null : (
-        <p id={id} role="alert">
-            {error}
-        </p>
-    );
-}
-
-function EyeIcon() {
-    return (
-        <svg
-            aria-hidden="true"
-            fill="none"
-            height="20"
-            viewBox="0 0 24 24"
-            width="20"
-        >
-            <path
-                d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.7"
-            />
-        </svg>
+        </form>
     );
 }

@@ -5,9 +5,11 @@ import {
     render,
     screen,
     waitFor,
+    within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
+import { formatMinorUnits } from '@/lib/money';
 import { SbcCartRequestError } from '@/lib/sbc-cart-api';
 import StoreCatalogProduct from '@/pages/store/catalog-product';
 
@@ -46,6 +48,34 @@ beforeEach(() => {
     page.props = sbcProductProps();
 });
 
+function submitForm() {
+    const form = screen
+        .getByRole('button', { name: 'Add to cart' })
+        .closest('form');
+
+    if (form === null) {
+        throw new Error('SBC configurator form not found');
+    }
+
+    fireEvent.submit(form);
+}
+
+function orderPanel() {
+    return screen.getByRole('complementary');
+}
+
+function panelTotal() {
+    const total = orderPanel().querySelector(
+        '.manual-service-panel__total-amount',
+    );
+
+    if (total === null) {
+        throw new Error('Order panel total not found');
+    }
+
+    return total;
+}
+
 it('defaults an SBC product to the available PlayStation and Xbox variant', () => {
     page.url = '/en/sbc/icon-challenge';
 
@@ -56,24 +86,28 @@ it('defaults an SBC product to the available PlayStation and Xbox variant', () =
             name: /PlayStation \/ Xbox.*SAR.*125.00/,
         }),
     ).toBeChecked();
-    expect(
-        document.querySelector('.sbc-product-summary__platform'),
-    ).toHaveTextContent('PlayStation / Xbox');
+    expect(within(orderPanel()).getByText('PlayStation / Xbox')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Add to cart' })).toBeEnabled();
 });
 
-it('matches the compact SBC platform and three-code credential hierarchy', () => {
+it('matches the unified SBC step hierarchy with platform prices and one-row codes', () => {
     render(<StoreCatalogProduct />);
 
-    expect(
-        screen.getByRole('heading', { name: 'Icon Challenge' }),
-    ).toBeVisible();
+    const productHeadings = screen.getAllByRole('heading', {
+        name: 'Icon Challenge',
+    });
+
+    expect(productHeadings).toHaveLength(2);
+    expect(screen.getByRole('heading', { name: 'Platform' })).toBeVisible();
     expect(
         screen.getByRole('group', { name: 'Choose platform' }),
     ).toBeVisible();
     expect(
         screen.getByRole('radio', { name: /PC.*SAR.*150.00/ }),
     ).toBeChecked();
+    expect(
+        screen.getByRole('heading', { name: 'Number of completions' }),
+    ).toBeVisible();
     expect(
         screen.getByRole('heading', { name: 'EA account details' }),
     ).toBeVisible();
@@ -82,15 +116,20 @@ it('matches the compact SBC platform and three-code credential hierarchy', () =>
         'type',
         'password',
     );
-    expect(screen.getByText('First code')).toBeVisible();
-    expect(screen.getByText('Second code')).toBeVisible();
-    expect(screen.getByText('Third code')).toBeVisible();
+    expect(screen.getByLabelText('Backup code 1')).toBeVisible();
+    expect(screen.getByLabelText('Backup code 2')).toBeVisible();
+    expect(screen.getByLabelText('Backup code 3')).toBeVisible();
+    expect(
+        screen.getByText('Enter three different eight-digit codes.'),
+    ).toBeVisible();
+    expect(
+        screen.getByRole('link', { name: 'EA backup code guide' }),
+    ).toHaveAttribute('href', 'https://help.ea.com/backup-codes');
     expect(screen.queryByText(/automatically deleted|24 hours/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /checkout|pay/i })).toBeNull();
     expect(screen.getByText('platform')).toBeVisible();
-    expect(
-        document.querySelector('.sbc-product-summary__platform'),
-    ).toHaveTextContent('PC');
+    expect(within(orderPanel()).getByText('PC')).toBeVisible();
+    expect(within(orderPanel()).getByText('Your order')).toBeVisible();
     expect(
         screen.getByRole('heading', { name: 'You may also like' }),
     ).toBeVisible();
@@ -103,6 +142,9 @@ it('matches the compact SBC platform and three-code credential hierarchy', () =>
     expect(
         screen.getByRole('link', { name: /Related challenge/ }).closest('li'),
     ).toHaveClass('store-catalog-card--sbc');
+    expect(
+        screen.getByRole('link', { name: /Related challenge/ }).closest('li'),
+    ).toHaveClass('store-catalog-card--compact');
 });
 
 it('selects an exact repeatable completion bundle and preserves it across platforms', () => {
@@ -119,20 +161,14 @@ it('selects an exact repeatable completion bundle and preserves it across platfo
         screen.queryByRole('radio', { name: /5 completions/ }),
     ).not.toBeInTheDocument();
     expect(slider).toHaveValue('0');
-    expect(
-        document.querySelector('.sbc-product-summary > div:nth-child(2) dd'),
-    ).toHaveTextContent('SAR 150.00');
+    expect(panelTotal()).toHaveTextContent('SAR 150.00');
 
     fireEvent.change(slider, { target: { value: '1' } });
-    expect(
-        document.querySelector('.sbc-product-summary > div:nth-child(2) dd'),
-    ).toHaveTextContent('SAR 285.00');
+    expect(panelTotal()).toHaveTextContent('SAR 285.00');
 
     fireEvent.click(screen.getByRole('radio', { name: /PlayStation \/ Xbox/ }));
     expect(slider).toHaveValue('1');
-    expect(
-        document.querySelector('.sbc-product-summary > div:nth-child(2) dd'),
-    ).toHaveTextContent('SAR 237.50');
+    expect(panelTotal()).toHaveTextContent('SAR 237.50');
 });
 
 it('exposes repeatable completion tiers as an accessible range control', () => {
@@ -147,7 +183,7 @@ it('exposes repeatable completion tiers as an accessible range control', () => {
     expect(slider).toHaveValue('0');
     expect(slider).toHaveAttribute(
         'aria-valuetext',
-        '5 completions · SAR\u00a0150.00',
+        `5 completions · ${formatMinorUnits(15000, 'SAR', 'en')}`,
     );
 
     fireEvent.change(slider, { target: { value: '1' } });
@@ -155,25 +191,37 @@ it('exposes repeatable completion tiers as an accessible range control', () => {
     expect(slider).toHaveValue('1');
     expect(slider).toHaveAttribute(
         'aria-valuetext',
-        '10 completions · SAR\u00a0285.00',
+        `10 completions · ${formatMinorUnits(28500, 'SAR', 'en')}`,
     );
 });
 
-it('places the SBC identity above its image on a direct visit', () => {
+it('places the SBC identity above its image without the two-column options grid', () => {
     page.url = '/en/sbc/icon-challenge';
     render(<StoreCatalogProduct />);
 
     expect(document.querySelector('.store-catalog-product')).toHaveClass(
         'store-catalog-product--sbc',
     );
+    expect(document.querySelector('.store-catalog-product__grid')).toBeNull();
+    const hero = document.querySelector('.store-catalog-product__sbc-hero');
+
+    expect(hero).not.toBeNull();
+    const title = document.getElementById('catalog-product-title');
+
+    expect(title?.tagName).toBe('H1');
+    expect(title?.closest('header')).toHaveClass(
+        'store-catalog-product__identity',
+    );
+    expect(hero).toContainElement(
+        document.querySelector('.store-catalog-product__image'),
+    );
     expect(
-        screen
-            .getByRole('heading', { name: 'Icon Challenge' })
-            .closest('header'),
-    ).toHaveClass('store-catalog-product__identity');
-    expect(
-        document.querySelector('.store-catalog-product__media-column'),
-    ).toContainElement(document.querySelector('.store-catalog-product__image'));
+        title?.compareDocumentPosition(
+            document.querySelector(
+                '.store-catalog-product__sbc-hero .store-catalog-product__image',
+            ) as Node,
+        ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(
         screen.getByRole('radio', {
             name: /PlayStation \/ Xbox.*SAR.*125.00/,
@@ -185,7 +233,7 @@ it('places the SBC identity above its image on a direct visit', () => {
 it('focuses the first invalid field and submits exactly three credentials in memory', async () => {
     render(<StoreCatalogProduct />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add to cart' }));
+    submitForm();
     expect(screen.getByLabelText('EA email')).toHaveFocus();
     expect(screen.getByLabelText('EA email')).toHaveAttribute(
         'aria-describedby',
@@ -204,7 +252,7 @@ it('focuses the first invalid field and submits exactly three credentials in mem
             target: { value: code },
         });
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Add to cart' }));
+    submitForm();
 
     await waitFor(() => expect(mocks.submit).toHaveBeenCalledTimes(1));
     expect(mocks.submit.mock.calls[0][0]).toMatchObject({
@@ -238,7 +286,7 @@ it('reveals the password accessibly and confirms the add without leaving the pro
             target: { value: code },
         });
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Add to cart' }));
+    submitForm();
     await vi.waitFor(() => expect(mocks.submit).toHaveBeenCalledTimes(1));
     await act(async () => {
         await Promise.resolve();
@@ -273,7 +321,7 @@ it('locks the selected platform and credentials while the add request is in flig
     render(<StoreCatalogProduct />);
     fillValidCredentials();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add to cart' }));
+    submitForm();
     await waitFor(() => expect(mocks.submit).toHaveBeenCalledTimes(1));
 
     expect(screen.getByLabelText('EA email')).toBeDisabled();
@@ -285,7 +333,6 @@ it('locks the selected platform and credentials while the add request is in flig
     expect(
         screen.getByRole('slider', { name: 'Number of completions' }),
     ).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Adding…' }));
     expect(mocks.submit).toHaveBeenCalledTimes(1);
 
     completeRequest?.({
@@ -307,11 +354,11 @@ it('keeps a transport retry key and focuses only an allowlisted rejected field',
     render(<StoreCatalogProduct />);
     fillValidCredentials();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add to cart' }));
+    submitForm();
     await waitFor(() => expect(screen.getByRole('alert')).toBeVisible());
     const firstKey = mocks.submit.mock.calls[0][0].idempotencyKey;
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add to cart' }));
+    submitForm();
     await waitFor(() => expect(mocks.submit).toHaveBeenCalledTimes(2));
     expect(mocks.submit.mock.calls[1][0].idempotencyKey).toBe(firstKey);
     await waitFor(() =>
@@ -343,6 +390,18 @@ function sbcProductProps() {
         backUrl: '/en/sbc',
         catalogCartUrl: '/en/cart/items/catalog',
         sbcCartUrl: '/en/cart/items/sbc',
+        manualCommon: {
+            step_platform: 'Platform',
+            panel_title: 'Your order',
+            review_total: 'Total',
+            review_credentials_ready: 'Credentials are sent securely.',
+            add_to_cart: 'Add service to cart',
+            adding: 'Adding…',
+            add_error: 'Could not add this item.',
+            backup_code: 'Backup code :number',
+            ea_tutorial: 'EA backup code guide',
+        },
+        tutorials: { ea: 'https://help.ea.com/backup-codes' },
         catalog: {
             service: 'sbc',
             product: {
@@ -438,6 +497,9 @@ function sbcProductProps() {
                 related_eyebrow: 'More SBC services',
                 related_title: 'You may also like',
                 related_link: 'Open service',
+
+                credentials_ready:
+                    'Your account details travel safely with the order.',
             },
         },
         storeShell: {

@@ -56,9 +56,9 @@ export default function StoreCatalogProduct() {
                 <a className="store-catalog-product__back" href={props.backUrl}>
                     {props.productPage.back}
                 </a>
-                <div className="store-catalog-product__grid">
-                    <div className="store-catalog-product__media-column">
-                        {isSbc ? (
+                {isSbc ? (
+                    <>
+                        <div className="store-catalog-product__sbc-hero">
                             <header className="store-catalog-product__identity">
                                 <p>{props.catalog.service.replace('_', ' ')}</p>
                                 <h1 id="catalog-product-title">
@@ -66,142 +66,145 @@ export default function StoreCatalogProduct() {
                                 </h1>
                                 <p>{product.description}</p>
                             </header>
-                        ) : null}
-                        <div className="store-catalog-product__image">
-                            <img
-                                alt={product.image?.alt ?? ''}
-                                height="520"
-                                src={
-                                    product.image?.url ??
-                                    '/images/store/hero/arabut-logo-hero.webp'
-                                }
-                                width="640"
-                            />
+                            <div className="store-catalog-product__image">
+                                <img
+                                    alt={product.image?.alt ?? ''}
+                                    height="520"
+                                    src={
+                                        product.image?.url ??
+                                        '/images/store/hero/arabut-logo-hero.webp'
+                                    }
+                                    width="640"
+                                />
+                            </div>
                         </div>
-                    </div>
-                    <section
-                        aria-labelledby="catalog-product-title"
-                        className="store-catalog-product__content"
-                    >
-                        {!isSbc ? (
-                            <>
-                                <p>{props.catalog.service.replace('_', ' ')}</p>
-                                <h1
-                                    className="store-catalog-product__title"
-                                    id="catalog-product-title"
+                        <SbcProductConfigurator
+                            addUrl={props.sbcCartUrl}
+                            currentUrl={page.url}
+                            direction={props.direction}
+                            locale={props.locale}
+                            manualCommon={props.manualCommon}
+                            product={product}
+                            translations={props.productPage}
+                            tutorials={props.tutorials}
+                        />
+                    </>
+                ) : (
+                    <div className="store-catalog-product__grid">
+                        <div className="store-catalog-product__media-column">
+                            <div className="store-catalog-product__image">
+                                <img
+                                    alt={product.image?.alt ?? ''}
+                                    height="520"
+                                    src={
+                                        product.image?.url ??
+                                        '/images/store/hero/arabut-logo-hero.webp'
+                                    }
+                                    width="640"
+                                />
+                            </div>
+                        </div>
+                        <section
+                            aria-labelledby="catalog-product-title"
+                            className="store-catalog-product__content"
+                        >
+                            <p>{props.catalog.service.replace('_', ' ')}</p>
+                            <h1
+                                className="store-catalog-product__title"
+                                id="catalog-product-title"
+                            >
+                                {product.name}
+                            </h1>
+                            <div className="store-catalog-product__description">
+                                {product.description}
+                            </div>
+                            <label>
+                                <span>{props.productPage.choose_option}</span>
+                                <select
+                                    aria-label={props.productPage.choose_option}
+                                    onChange={(event) =>
+                                        setVariantId(event.target.value)
+                                    }
+                                    value={variantId}
                                 >
-                                    {product.name}
-                                </h1>
-                                <div className="store-catalog-product__description">
-                                    {product.description}
+                                    {product.variants.map((option) => (
+                                        <option
+                                            key={option.id}
+                                            value={option.id}
+                                        >
+                                            {option.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <dl>
+                                <div>
+                                    <dt>{props.productPage.platform}</dt>
+                                    <dd>{variant?.platform ?? '—'}</dd>
                                 </div>
-                            </>
-                        ) : null}
-                        {isSbc ? (
-                            <SbcProductConfigurator
-                                addUrl={props.sbcCartUrl}
-                                currentUrl={page.url}
-                                locale={props.locale}
-                                product={product}
-                                translations={props.productPage}
-                            />
-                        ) : (
-                            <>
-                                <label>
-                                    <span>
-                                        {props.productPage.choose_option}
-                                    </span>
-                                    <select
-                                        aria-label={
-                                            props.productPage.choose_option
-                                        }
-                                        onChange={(event) =>
-                                            setVariantId(event.target.value)
-                                        }
-                                        value={variantId}
-                                    >
-                                        {product.variants.map((option) => (
-                                            <option
-                                                key={option.id}
-                                                value={option.id}
-                                            >
-                                                {option.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <dl>
-                                    <div>
-                                        <dt>{props.productPage.platform}</dt>
-                                        <dd>{variant?.platform ?? '—'}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>{props.productPage.price}</dt>
-                                        <dd>
-                                            {variant?.price == null
-                                                ? props.productPage
-                                                      .unavailable_price
-                                                : formatMinorUnits(
+                                <div>
+                                    <dt>{props.productPage.price}</dt>
+                                    <dd>
+                                        {variant?.price == null
+                                            ? props.productPage
+                                                  .unavailable_price
+                                            : formatMinorUnits(
+                                                  variant.price.amountMinor,
+                                                  variant.price.currency,
+                                                  props.locale,
+                                              )}
+                                        {variant?.compareAtPrice ? (
+                                            <del className="store-price-compare">
+                                                {formatMinorUnits(
+                                                    variant.compareAtPrice
+                                                        .amountMinor,
+                                                    variant.compareAtPrice
+                                                        .currency,
+                                                    props.locale,
+                                                )}
+                                            </del>
+                                        ) : null}
+                                        {variant?.promotionBadge ? (
+                                            <span className="store-promo-badge">
+                                                {variant.promotionBadge}
+                                            </span>
+                                        ) : null}
+                                    </dd>
+                                </div>
+                            </dl>
+                            {variantId === '' ? null : (
+                                <CatalogAddControl
+                                    addUrl={props.catalogCartUrl}
+                                    analytics={{
+                                        id: product.id,
+                                        name: product.name,
+                                        ...(variant?.price != null &&
+                                        variant.price.currency === 'SAR'
+                                            ? {
+                                                  priceMinorSar:
                                                       variant.price.amountMinor,
-                                                      variant.price.currency,
-                                                      props.locale,
-                                                  )}
-                                            {variant?.compareAtPrice ? (
-                                                <del className="store-price-compare">
-                                                    {formatMinorUnits(
-                                                        variant.compareAtPrice
-                                                            .amountMinor,
-                                                        variant.compareAtPrice
-                                                            .currency,
-                                                        props.locale,
-                                                    )}
-                                                </del>
-                                            ) : null}
-                                            {variant?.promotionBadge ? (
-                                                <span className="store-promo-badge">
-                                                    {variant.promotionBadge}
-                                                </span>
-                                            ) : null}
-                                        </dd>
-                                    </div>
-                                </dl>
-                                {variantId === '' ? null : (
-                                    <CatalogAddControl
-                                        addUrl={props.catalogCartUrl}
-                                        analytics={{
-                                            id: product.id,
-                                            name: product.name,
-                                            ...(variant?.price != null &&
-                                            variant.price.currency === 'SAR'
-                                                ? {
-                                                      priceMinorSar:
-                                                          variant.price
-                                                              .amountMinor,
-                                                  }
-                                                : {}),
-                                            quantity: 1,
-                                            serviceType: 'catalog',
-                                        }}
-                                        errorLabel={props.productPage.add_error}
-                                        idleLabel={
-                                            props.productPage.add_to_cart
-                                        }
-                                        imageAlt={
-                                            product.image?.alt || product.name
-                                        }
-                                        imageUrl={
-                                            product.image?.url ??
-                                            '/images/store/navigation/logo-sbc-256.webp'
-                                        }
-                                        loadingLabel={props.productPage.adding}
-                                        itemLabel={product.name}
-                                        variantId={variantId}
-                                    />
-                                )}
-                            </>
-                        )}
-                    </section>
-                </div>
+                                              }
+                                            : {}),
+                                        quantity: 1,
+                                        serviceType: 'catalog',
+                                    }}
+                                    errorLabel={props.productPage.add_error}
+                                    idleLabel={props.productPage.add_to_cart}
+                                    imageAlt={
+                                        product.image?.alt || product.name
+                                    }
+                                    imageUrl={
+                                        product.image?.url ??
+                                        '/images/store/navigation/logo-sbc-256.webp'
+                                    }
+                                    loadingLabel={props.productPage.adding}
+                                    itemLabel={product.name}
+                                    variantId={variantId}
+                                />
+                            )}
+                        </section>
+                    </div>
+                )}
                 <ServiceReviewsSection
                     direction={props.direction}
                     locale={props.locale}

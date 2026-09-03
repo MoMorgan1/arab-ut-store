@@ -82,6 +82,7 @@ export function ManualServicePanel({
     eta,
     facts,
     image,
+    inline = false,
     locale,
     price,
     status,
@@ -89,10 +90,12 @@ export function ManualServicePanel({
     submitLabel,
     title,
     translations,
+    trustLabel,
 }: {
-    eta: string;
+    eta?: string;
     facts: Array<{ label: string; value: string }>;
     image: { alt: string; url: string };
+    inline?: boolean;
     locale: 'ar' | 'en';
     price: ManualServiceMoney | null;
     status: 'idle' | 'loading' | 'success' | 'error';
@@ -100,6 +103,7 @@ export function ManualServicePanel({
     submitLabel?: string;
     title: string;
     translations: ManualServiceCommonTranslations;
+    trustLabel?: string;
 }) {
     const barRef = useRef<HTMLDivElement>(null);
     const dockVisible = useDockVisibility(barRef);
@@ -114,7 +118,13 @@ export function ManualServicePanel({
             : (submitLabel ?? translations.add_to_cart);
 
     return (
-        <aside className="manual-service-panel">
+        <aside
+            className={
+                inline
+                    ? 'manual-service-panel manual-service-panel--inline'
+                    : 'manual-service-panel'
+            }
+        >
             <div className="manual-service-panel__media">
                 <img
                     alt={image.alt}
@@ -144,10 +154,12 @@ export function ManualServicePanel({
                 ))}
             </dl>
 
-            <div className="manual-service-panel__eta">
-                <Clock aria-hidden="true" />
-                <span>{eta}</span>
-            </div>
+            {eta === undefined ? null : (
+                <div className="manual-service-panel__eta">
+                    <Clock aria-hidden="true" />
+                    <span>{eta}</span>
+                </div>
+            )}
 
             <div className="manual-service-panel__bar" ref={barRef}>
                 <div className="manual-service-panel__total">
@@ -184,7 +196,9 @@ export function ManualServicePanel({
 
             <p className="manual-service-panel__trust">
                 <ShieldCheck aria-hidden="true" />
-                <span>{translations.review_credentials_ready}</span>
+                <span>
+                    {trustLabel ?? translations.review_credentials_ready}
+                </span>
             </p>
 
             <div

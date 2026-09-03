@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 
 import { catalogPlatformName } from '@/lib/catalog-platform-name';
 import { formatMinorUnits } from '@/lib/money';
+import { sbcPlatformIconUrls } from '@/lib/sbc-platform-artwork';
 import type {
     CatalogProduct,
     CatalogTranslations,
@@ -41,6 +42,7 @@ export function SbcCatalogCard({
             className={[
                 'store-catalog-card',
                 'store-catalog-card--sbc',
+                'store-catalog-card--compact',
                 isPressed ? 'is-pressed' : null,
             ]
                 .filter(Boolean)
@@ -186,17 +188,7 @@ function PlatformMark({
     name: string;
     platform: string;
 }) {
-    const iconUrls =
-        platform === 'playstation'
-            ? [
-                  '/images/store/platforms/ps-logo-white-80.webp',
-                  '/images/store/platforms/xbox-logo-white-80.webp',
-              ]
-            : platform === 'xbox'
-              ? ['/images/store/platforms/xbox-logo-white-80.webp']
-              : platform === 'pc'
-                ? ['/images/store/platforms/pc-logo.svg']
-                : [];
+    const iconUrls = sbcPlatformIconUrls(platform);
 
     return (
         <span className="store-catalog-card__platform">

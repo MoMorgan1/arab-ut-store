@@ -1,3 +1,4 @@
+import type { ManualServiceCommonTranslations } from '@/types/manual-services';
 import type {
     StoreShellConfig,
     StoreShellTranslations,
@@ -201,6 +202,7 @@ export type ProductTranslations = {
         required_password: string;
         related_eyebrow: string;
         related_link: string;
+        credentials_ready: string;
         related_title: string;
         selected: string;
         show_password: string;
@@ -272,6 +274,8 @@ export type StoreCatalogProductPageProps = StoreBasePageProps & {
     };
     catalogCartUrl: string;
     productPage: ProductTranslations;
+    manualCommon: ManualServiceCommonTranslations;
+    tutorials: { ea: string };
     sbcCartUrl: string;
     serviceReviews?: ServiceReviewsData | null;
 };

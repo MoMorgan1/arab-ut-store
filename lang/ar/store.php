@@ -250,6 +250,7 @@ return [
             'related_eyebrow' => 'خدمات SBC أخرى',
             'related_title' => 'قد يعجبك أيضًا',
             'related_link' => 'افتح الخدمة',
+            'credentials_ready' => 'بيانات الحساب تُرسل بأمان مع الطلب ولا تُحفظ في المتصفح.',
         ],
     ],
     'manual_services' => [
