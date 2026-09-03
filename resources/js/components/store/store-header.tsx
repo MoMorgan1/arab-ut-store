@@ -232,7 +232,7 @@ export function StoreHeader(props: StoreHeaderProps) {
                     bumpTimer.current = window.setTimeout(() => {
                         bumpTimer.current = null;
                         setBumping(false);
-                    }, 600);
+                    }, 1000);
                 }
 
                 countRef.current = nextCount;

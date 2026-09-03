@@ -217,11 +217,16 @@ export function SbcProductConfigurator({
     async function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        // currentTarget nulls out once the handler yields, so the flight
-        // origin is captured before the first await.
-        const submitButton = event.currentTarget.querySelector(
-            '.manual-configurator__submit',
-        );
+        // The flight starts from the button the visitor actually pressed
+        // (phone dock or inline bar); currentTarget nulls out once the
+        // handler yields, so both are captured before the first await.
+        const submitter = (event.nativeEvent as SubmitEvent).submitter;
+        const submitButton =
+            submitter instanceof HTMLElement
+                ? submitter
+                : event.currentTarget.querySelector(
+                      '.manual-configurator__submit',
+                  );
 
         const nextErrors = validate(credentials, translations.sbc);
         const firstError = Object.keys(nextErrors)[0] as

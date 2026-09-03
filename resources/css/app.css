@@ -3386,8 +3386,8 @@ html.admin-document {
     .store-fly-chip {
         position: fixed;
         z-index: 120;
-        width: 2.75rem;
-        height: 2.75rem;
+        width: 3.5rem;
+        height: 3.5rem;
         overflow: hidden;
         border: 1px solid var(--arabut-gold);
         border-radius: 0.75rem;
@@ -3403,12 +3403,18 @@ html.admin-document {
         object-fit: contain;
     }
 
+    .store-header__icon-link.is-bumping {
+        border-color: var(--arabut-gold-bright);
+        background: rgb(212 168 67 / 14%);
+        color: var(--arabut-gold-bright);
+    }
+
     .store-header__icon-link.is-bumping > svg {
-        animation: store-cart-icon-nudge 260ms var(--store-ease-out);
+        animation: store-cart-icon-nudge 620ms var(--store-ease-out);
     }
 
     .store-header__icon-link.is-bumping > span {
-        animation: store-cart-badge-bump 260ms var(--store-ease-out);
+        animation: store-cart-badge-bump 620ms var(--store-ease-out);
     }
 
     .store-header__icon-link.is-bumping > span::after {
@@ -3418,7 +3424,7 @@ html.admin-document {
         border-radius: 999px;
         box-shadow: 0 0 0 2px var(--arabut-gold-bright);
         opacity: 0;
-        animation: store-cart-badge-ring 260ms var(--store-ease-out);
+        animation: store-cart-badge-ring 720ms var(--store-ease-out);
     }
 
     @keyframes store-cart-icon-nudge {
@@ -3427,8 +3433,8 @@ html.admin-document {
             transform: translateY(0);
         }
 
-        40% {
-            transform: translateY(-2px);
+        35% {
+            transform: translateY(-3px) scale(1.12);
         }
     }
 
@@ -3438,8 +3444,13 @@ html.admin-document {
             background: var(--arabut-gold);
         }
 
-        40% {
-            transform: scale(1.35);
+        35% {
+            transform: scale(1.6);
+            background: var(--arabut-gold-bright);
+        }
+
+        70% {
+            transform: scale(1.15);
             background: var(--arabut-gold-bright);
         }
 
@@ -3457,7 +3468,7 @@ html.admin-document {
 
         100% {
             opacity: 0;
-            transform: scale(1.4);
+            transform: scale(2.2);
         }
     }
 
@@ -3718,7 +3729,11 @@ html.admin-document {
             overscroll-behavior-inline: contain;
             scroll-snap-type: inline mandatory;
             scrollbar-color: var(--arabut-gold) rgb(255 255 255 / 10%);
-            padding-block-end: 0.5rem;
+            /* A horizontal scroller clips vertical overflow too, so the raised
+               card art gets its room inside the scroll box instead. */
+            margin-block-start: -3.25rem;
+            padding-block: 3.75rem 0.5rem;
+            padding-inline: 0.25rem;
         }
 
         .store-cart-suggestions__rail > li {
@@ -4736,11 +4751,13 @@ html.admin-document {
             order: 1;
         }
 
-        .store-cart-page__layout > .store-cart-checkout {
+        /* The checkout panel is sticky to the bottom edge on phones, so it
+           stays the last child; the suggestions sit between it and the lines. */
+        .store-cart-suggestions {
             order: 2;
         }
 
-        .store-cart-suggestions {
+        .store-cart-page__layout > .store-cart-checkout {
             order: 3;
         }
 
@@ -5908,10 +5925,12 @@ html.admin-document {
         display: none;
     }
 
+    /* Never below 1rem: iOS zooms the page into any focused field that is
+       smaller than 16px, and the codes are typed on phones. */
     .coins-backup-code > input {
-        padding-inline: 0.4rem;
-        font-size: 0.85rem;
-        letter-spacing: 0.05em;
+        padding-inline: 0.35rem;
+        font-size: 1rem;
+        letter-spacing: 0.04em;
     }
 
     .store-cart-line__summary {
@@ -6027,8 +6046,8 @@ html.admin-document {
     }
 
     .coins-backup-code > input {
-        font-size: 0.78rem;
-        letter-spacing: 0.02em;
+        font-size: 1rem;
+        letter-spacing: 0.01em;
     }
 
     .coins-step__actions--split {
@@ -10742,7 +10761,9 @@ html.admin-document {
 }
 
 .store-catalog-skeleton__media {
-    background: radial-gradient(circle, rgb(217 171 58 / 13%), transparent 68%);
+    display: grid;
+    place-items: center;
+    background: none;
 }
 
 .store-catalog-skeleton__image,
@@ -10761,12 +10782,18 @@ html.admin-document {
     animation: store-catalog-skeleton-shimmer 1.6s linear infinite;
 }
 
+/* The raised card art: a portrait placeholder with the same gold glow and
+   lift as the real artwork, not a flat bar across the card. */
 .store-catalog-skeleton__image {
     display: block;
-    width: 100%;
-    min-height: 9rem;
+    width: 8.5rem;
+    height: 11rem;
     margin-block-start: -3.6rem;
-    border-radius: 0.9rem;
+    border-radius: 1rem;
+    background-color: rgb(255 255 255 / 6%);
+    box-shadow:
+        0 1.2rem 2rem rgb(0 0 0 / 35%),
+        0 0 3rem rgb(217 171 58 / 14%);
 }
 
 .store-catalog-skeleton__included {
