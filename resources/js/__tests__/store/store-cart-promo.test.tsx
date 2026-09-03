@@ -73,9 +73,11 @@ it('shows the promotion badge with the struck-through line total on cart rows', 
 
     expect(badge).toBeVisible();
     expect(badge).toHaveClass('store-promo-badge');
-    expect(screen.getByText(/125\.00/).closest('del')).toHaveClass(
-        'store-price-compare',
-    );
+    const struck = screen
+        .getAllByText(/125\.00/)
+        .map((node) => node.closest('del'))
+        .find((node) => node !== null);
+    expect(struck).toHaveClass('store-price-compare');
     expect(screen.getAllByText(/SAR 100\.00/).length).toBeGreaterThan(0);
 });
 
@@ -87,8 +89,11 @@ it('keeps the checkout summary payable amount on the promoted totals', () => {
         name: 'Continue to secure payment',
     });
 
-    expect(summary.textContent).toContain('Order total');
+    expect(summary.textContent).toContain('Total to pay');
+    expect(summary.textContent).toContain('Subtotal');
     expect(summary.textContent).toContain('100.00');
+    // Item promotions are already netted into the subtotal the summary
+    // receives, so the pre-discount figure lives only on the line's <del>.
     expect(summary.textContent).not.toContain('125.00');
 });
 
@@ -220,7 +225,14 @@ function translations(): Record<string, string> {
         phone_invalid: 'Check the number or code and try again.',
         phone_unavailable: 'This number is already in use.',
         phone_delivery_error: 'The WhatsApp code could not be sent right now.',
-        order_total: 'Order total',
+        order_total: 'Total to pay',
+        subtotal: 'Subtotal',
+        verify_phone_short: 'Verify your number',
+        review_reprice: 'Review the new price',
+        pay_now: 'Pay now',
+        fulfillment_ready: 'Account details and squad image ready',
+        items_count_one: '1 item',
+        items_count: ':count items',
         coupon_label: 'Discount code',
         coupon_prompt: 'Have a discount code?',
         coupon_placeholder: 'Enter coupon code',
