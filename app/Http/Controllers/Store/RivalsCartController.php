@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Store;
 use App\Actions\Cart\AddRivalsToCart;
 use App\Actions\Cart\ResolveCartOwner;
 use App\Exceptions\Cart\DuplicateCartItem;
+use App\Exceptions\Cart\ReplacedCartItemMissing;
 use App\Exceptions\IdempotencyConflict;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Store\RivalsCartRequest;
@@ -29,6 +30,8 @@ final class RivalsCartController extends Controller
             return $this->error('idempotency_conflict', trans('store.cart.idempotency_conflict'), 409);
         } catch (DuplicateCartItem) {
             return $this->duplicate();
+        } catch (ReplacedCartItemMissing) {
+            return $this->error('replaced_item_unavailable', trans('store.cart.replaced_item_unavailable'), 404);
         } catch (DomainException) {
             return $this->error('manual_service_unavailable', trans('store.cart.manual_service_unavailable'), 422);
         }

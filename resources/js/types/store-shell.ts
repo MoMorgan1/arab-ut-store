@@ -160,6 +160,7 @@ export type StoreCartItem = {
         hasPassword: true;
     } | null;
     credentialsUrl: string | null;
+    credentialsKind: 'coins' | 'sbc' | 'manual';
     deleteUrl: string;
     editUrl: string | null;
     fulfillment?: {
@@ -243,15 +244,26 @@ export type StoreCartTranslations = {
     backup_code: string;
     ea_email: string;
     ea_password: string;
+    playstation_email: string;
+    playstation_password: string;
+    steam_username: string;
+    steam_password: string;
+    ea_backup_codes: string;
+    playstation_backup_codes: string;
     current_balance: string;
     credentials_show: string;
     credentials_hide: string;
     edit_credentials: string;
     save_credentials: string;
+    edit_details: string;
+    save_details: string;
     cancel_edit: string;
     credentials_saved: string;
     credentials_load_error: string;
     credentials_save_error: string;
+    details_saved: string;
+    details_load_error: string;
+    details_save_error: string;
     remove_item: string;
     remove_short: string;
     edit_line: string;

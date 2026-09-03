@@ -1027,7 +1027,12 @@ describe('Coins credentials flow', () => {
         const firstCode =
             document.querySelector<HTMLInputElement>('#coins-backup-0');
 
-        expect(firstCodeLabel?.closest('[dir]')).toHaveAttribute('dir', 'rtl');
+        // The code grid runs left-to-right on every service (1 → 3, badge
+        // on the right of each field); the fieldset around it stays RTL.
+        expect(firstCodeLabel?.closest('[dir]')).toHaveAttribute('dir', 'ltr');
+        expect(
+            firstCodeLabel?.closest('fieldset')?.closest('[dir]'),
+        ).toHaveAttribute('dir', 'rtl');
         expect(firstCode).toHaveAttribute('dir', 'ltr');
     });
 

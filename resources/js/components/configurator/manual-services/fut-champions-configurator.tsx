@@ -1,15 +1,24 @@
-import { useRef, useState } from 'react';
+import { usePage } from '@inertiajs/react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
     announceCartAddition,
     announceCartDuplicate,
 } from '@/lib/cart-added-event';
+import { loadManualCartCredentials } from '@/lib/cart-credentials-api';
+import type { StoredManualCartCredentials } from '@/lib/cart-credentials-api';
 import {
     ManualServiceCartError,
     submitManualServiceCart,
 } from '@/lib/manual-service-cart-api';
 import { formatInteger, formatMinorUnits } from '@/lib/money';
-import { getInitialFutChampionsConfig } from '@/lib/query-params';
+import {
+    getInitialManualLauncher,
+    getInitialManualPlatform,
+    getInitialMatchesPlayed,
+    getInitialReplaceId,
+    getInitialFutChampionsConfig,
+} from '@/lib/query-params';
 import type {
     FutServiceTranslations,
     ManualCredentialsDraft,
@@ -43,24 +52,43 @@ type FutPricing = Extract<
     { rankOptions: unknown }
 >;
 
+function toManualDraft(
+    stored: StoredManualCartCredentials,
+): ManualCredentialsDraft {
+    return {
+        eaEmail: stored.eaEmail,
+        eaPassword: stored.eaPassword,
+        eaCodes: [...stored.eaCodes],
+        playstationEmail: stored.playstationEmail,
+        playstationPassword: stored.playstationPassword,
+        playstationCodes: [...stored.playstationCodes],
+        steamUsername: stored.steamUsername,
+        steamPassword: stored.steamPassword,
+    };
+}
+
 export function FutChampionsConfigurator({
     addUrl,
     common,
     locale,
     pricing,
     product,
+    replaceCredentialsUrl = null,
     scheduleVersion,
     service,
     tutorials,
+    variantIds,
 }: {
     addUrl: string;
     common: ManualServiceCommonTranslations;
     locale: 'ar' | 'en';
     pricing: FutPricing;
     product: ManualServicePageProps['manualService']['product'];
+    replaceCredentialsUrl?: string | null;
     scheduleVersion: number;
     service: FutServiceTranslations;
     tutorials: { ea: string; playstation: string };
+    variantIds: Record<ManualServicePlatform, string | null>;
 }) {
     const formRef = useRef<HTMLFormElement>(null);
     const keyRef = useRef(newManualAttemptKey());
@@ -68,9 +96,18 @@ export function FutChampionsConfigurator({
     const squadInputRef = useRef<HTMLInputElement | null>(null);
     const matchesInputRef = useRef<HTMLInputElement | null>(null);
 
-    const [platform, setPlatform] =
-        useState<ManualServicePlatform>('playstation');
-    const [launcher, setLauncher] = useState<PcLauncher | null>(null);
+    const [platform, setPlatform] = useState<ManualServicePlatform>(() => {
+        const search =
+            typeof window !== 'undefined' ? window.location.search : '';
+
+        return getInitialManualPlatform(search) ?? 'playstation';
+    });
+    const [launcher, setLauncher] = useState<PcLauncher | null>(() => {
+        const search =
+            typeof window !== 'undefined' ? window.location.search : '';
+
+        return getInitialManualLauncher(search) ?? null;
+    });
     const [rank, setRank] = useState(() => {
         const search =
             typeof window !== 'undefined' ? window.location.search : '';
@@ -83,14 +120,69 @@ export function FutChampionsConfigurator({
 
         return getInitialFutChampionsConfig(search, pricing.rankOptions).urgent;
     });
-    const [hasPlayed, setHasPlayed] = useState(false);
-    const [matchesPlayed, setMatchesPlayed] = useState(0);
+    const [hasPlayed, setHasPlayed] = useState(() => {
+        const search =
+            typeof window !== 'undefined' ? window.location.search : '';
+
+        return getInitialMatchesPlayed(search) > 0;
+    });
+    const [matchesPlayed, setMatchesPlayed] = useState(() => {
+        const search =
+            typeof window !== 'undefined' ? window.location.search : '';
+
+        return getInitialMatchesPlayed(search);
+    });
     const [credentials, setCredentials] = useState(emptyManualCredentials);
     const [image, setImage] = useState<File | null>(null);
     const [errors, setErrors] = useState<ManualFormErrors>({});
     const [status, setStatus] = useState<
         'idle' | 'loading' | 'success' | 'error'
     >('idle');
+    // Editing a cart line: `replace` names the line, and the server passes
+    // its credentials URL through the page props — it is never built here.
+    const [replaceCartItemId, setReplaceCartItemId] = useState<string | null>(
+        () => {
+            const search =
+                typeof window !== 'undefined' ? window.location.search : '';
+
+            return getInitialReplaceId(search);
+        },
+    );
+    const replacing = replaceCartItemId !== null;
+    const [addedVariantIds, setAddedVariantIds] = useState<string[]>([]);
+    const pageProps = usePage<ManualServicePageProps>().props;
+    const cartVariantIds = pageProps.cartVariantIds ?? [];
+    const selectedVariantId = variantIds[platform] ?? null;
+    // While replacing, the old line is the one being replaced — it must
+    // not block the edit as "in cart".
+    const inCart =
+        !replacing &&
+        selectedVariantId !== null &&
+        (cartVariantIds.includes(selectedVariantId) ||
+            addedVariantIds.includes(selectedVariantId));
+
+    // Prefill the credentials from the line being edited. A failed fetch
+    // leaves the fields empty — and never leaks — while the note still
+    // shows.
+    useEffect(() => {
+        if (!replacing || replaceCredentialsUrl === null) {
+            return;
+        }
+
+        const controller = new AbortController();
+
+        loadManualCartCredentials(replaceCredentialsUrl, controller.signal)
+            .then((stored) => {
+                setCredentials(toManualDraft(stored));
+            })
+            .catch(() => {
+                // Fields stay empty; the editing note still shows.
+            });
+
+        return () => controller.abort();
+        // Once per configurator: the line being edited never changes mid-flow.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     const option = pricing.rankOptions.find((entry) => entry.rank === rank);
     const rankLabel = service.rank.replace(
         ':rank',
@@ -181,7 +273,10 @@ export function FutChampionsConfigurator({
             credentials,
             common,
         );
-        const imageIssue = validSquadImage(image);
+        // A replacement without a new upload keeps the old squad image, so
+        // the dropzone stays optional until one is picked.
+        const imageIssue =
+            replacing && image === null ? null : validSquadImage(image);
         const imageErrorMessage =
             imageIssue === 'size'
                 ? common.image_too_large
@@ -265,6 +360,10 @@ export function FutChampionsConfigurator({
             form.set('pcStore', launcher);
         }
 
+        if (replaceCartItemId !== null) {
+            form.set('replaceCartItemId', replaceCartItemId);
+        }
+
         appendCredentials(form, platform, launcher, credentials);
         setStatus('loading');
 
@@ -276,6 +375,18 @@ export function FutChampionsConfigurator({
             );
             keyRef.current = newManualAttemptKey();
             setStatus('success');
+            // The old line is gone now; a second add from this page is a
+            // plain add, not another replacement.
+            setReplaceCartItemId(null);
+
+            if (selectedVariantId !== null) {
+                setAddedVariantIds((current) =>
+                    current.includes(selectedVariantId)
+                        ? current
+                        : [...current, selectedVariantId],
+                );
+            }
+
             const selectionLabel = [
                 common.platforms[platform],
                 rankLabel,
@@ -328,6 +439,15 @@ export function FutChampionsConfigurator({
                 failure.code === 'already_in_cart'
             ) {
                 setStatus('idle');
+
+                if (selectedVariantId !== null) {
+                    setAddedVariantIds((current) =>
+                        current.includes(selectedVariantId)
+                            ? current
+                            : [...current, selectedVariantId],
+                    );
+                }
+
                 announceCartDuplicate({
                     cartUrl:
                         failure.cartUrl ??
@@ -376,6 +496,11 @@ export function FutChampionsConfigurator({
             onSubmit={submit}
             ref={formRef}
         >
+            {replacing ? (
+                <p className="manual-configurator__editing" role="note">
+                    {common.editing_replace}
+                </p>
+            ) : null}
             <div className="manual-configurator__main">
                 {/* Step 1: Platform */}
                 <ManualSection
@@ -545,6 +670,11 @@ export function FutChampionsConfigurator({
                         inputRef={(node) => {
                             squadInputRef.current = node;
                         }}
+                        keptNotice={
+                            replacing && image === null
+                                ? common.squad_image_kept
+                                : null
+                        }
                         onChange={(file) => {
                             setImage(file);
                             setErrors((prev) => {
@@ -561,10 +691,14 @@ export function FutChampionsConfigurator({
 
             {/* Sticky Order Panel (Desktop) / Glassmorphic Action Bar (Mobile) */}
             <ManualServicePanel
+                cartUrl={pageProps.storeShell.cartUrl}
                 eta={urgent ? service.urgent_eta : service.standard_eta}
                 facts={facts}
                 image={product.image}
+                inCart={inCart}
+                inCartLabel={common.in_cart}
                 locale={locale}
+                openCartLabel={common.open_cart}
                 price={price}
                 status={status}
                 submitDisabled={platform === 'pc' && launcher === null}

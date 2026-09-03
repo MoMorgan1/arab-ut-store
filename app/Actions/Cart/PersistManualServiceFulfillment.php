@@ -64,6 +64,71 @@ final readonly class PersistManualServiceFulfillment
         }
     }
 
+    /**
+     * Persists fulfillment for a replacement that arrived without a new
+     * squad image: the new line keeps working from a copy of the old
+     * line's image.
+     *
+     * The file is duplicated, not moved or shared. The soft-removed old
+     * line stays fully restorable inside its 30-minute undo window, and
+     * when that window expires PurgeRemovedCartItems deletes the old
+     * attachment's file through DeleteCartItemFulfillment — a shared path
+     * would delete the new line's image from under it.
+     */
+    public function executeWithCarriedImage(
+        CartItem $cartItem,
+        ManualServiceCredentials $credentials,
+        FulfillmentAttachment $source,
+    ): void {
+        if (! $cartItem->exists) {
+            throw new DomainException('The cart item must exist before fulfillment data can be stored.');
+        }
+
+        if ($source->disk !== 'local' || $source->path === '' || ! Storage::disk('local')->exists($source->path)) {
+            throw new DomainException('The kept squad image is no longer available.');
+        }
+
+        $extension = match ($source->mime_type) {
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => throw new DomainException('The kept squad image has an unsupported format.'),
+        };
+        $path = 'fulfillment/squad-images/'.((string) Str::ulid()).'.'.$extension;
+
+        if (! Storage::disk('local')->copy($source->path, $path)) {
+            throw new RuntimeException('The squad image could not be kept.');
+        }
+
+        try {
+            DB::transaction(function () use ($cartItem, $credentials, $source, $path): void {
+                $secret = new CartItemSecret(['cart_item_id' => $cartItem->id]);
+                $secret->forceFill([
+                    'masked_summary' => $credentials->maskedSummary(),
+                    'retained_until' => null,
+                    'deleted_at' => null,
+                ]);
+                $secret->encrypted_payload = $credentials->payload();
+                $secret->save();
+
+                FulfillmentAttachment::create([
+                    'cart_item_id' => $cartItem->id,
+                    'order_item_id' => null,
+                    'kind' => 'squad_image',
+                    'disk' => 'local',
+                    'path' => $path,
+                    'mime_type' => $source->mime_type,
+                    'bytes' => $source->bytes,
+                    'sha256' => $source->sha256,
+                ]);
+            });
+        } catch (Throwable $exception) {
+            Storage::disk('local')->delete($path);
+
+            throw $exception;
+        }
+    }
+
     /** @return array{extension: string, mime: string, bytes: int, sha256: string} */
     private function inspectImage(UploadedFile $file): array
     {

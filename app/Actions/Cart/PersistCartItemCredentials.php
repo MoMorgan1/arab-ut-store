@@ -4,6 +4,7 @@ namespace App\Actions\Cart;
 
 use App\Models\CartItem;
 use App\Models\CartItemSecret;
+use App\ValueObjects\Cart\ManualServiceCredentials;
 
 final readonly class PersistCartItemCredentials
 {
@@ -30,6 +31,22 @@ final readonly class PersistCartItemCredentials
             'deleted_at' => null,
         ]);
         $secret->encrypted_payload = $this->payload($credentials);
+        $secret->save();
+    }
+
+    /**
+     * Re-persists an edited manual-service secret through the same value
+     * object the add path uses, so the masked summary the cart reads stays
+     * in sync with the payload and `credentialsReady` keeps meaning it.
+     */
+    public function replaceManual(CartItemSecret $secret, ManualServiceCredentials $credentials): void
+    {
+        $secret->forceFill([
+            'masked_summary' => $credentials->maskedSummary(),
+            'retained_until' => null,
+            'deleted_at' => null,
+        ]);
+        $secret->encrypted_payload = $credentials->payload();
         $secret->save();
     }
 

@@ -186,6 +186,9 @@ const translations: ManualServiceCommonTranslations = {
     add_error: 'Error',
     in_cart: 'In cart',
     open_cart: 'Open cart',
+    editing_replace: 'Editing the order in your cart',
+    squad_image_kept:
+        'Your current image is kept — upload a new one to change it',
     unavailable_title: 'Unavailable',
     unavailable_body: 'Try later',
     review_title: 'Review your service',

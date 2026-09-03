@@ -13,10 +13,28 @@ import type {
     RivalsServiceTranslations,
 } from '@/types/manual-services';
 
+const PS_VARIANT_ID = '01K00000000000000000000001';
+const PC_VARIANT_ID = '01K00000000000000000000002';
+const REPLACE_ID = '01K00000000000000000000000';
+
+const page = vi.hoisted(() => ({
+    props: {
+        cartVariantIds: [] as string[],
+        storeShell: { cartUrl: '/cart' },
+    },
+    url: '/rivals',
+}));
+
+vi.mock('@inertiajs/react', () => ({
+    usePage: () => page,
+}));
+
 const fetchMock = vi.fn();
 
 beforeEach(() => {
     window.history.pushState({}, '', '/rivals');
+    page.props.cartVariantIds = [];
+    page.url = '/rivals';
     fetchMock.mockReset().mockResolvedValue(
         new Response(
             JSON.stringify({
@@ -294,7 +312,112 @@ it('swaps credentials fields when switching platforms', () => {
     expect(screen.queryByLabelText('EA email')).not.toBeInTheDocument();
 });
 
-function renderRivals() {
+it('shows the in-cart state up front when the platform variant is in the cart', () => {
+    page.props.cartVariantIds = [PS_VARIANT_ID];
+    renderRivals();
+
+    expect(screen.getByRole('button', { name: 'In cart' })).toBeDisabled();
+    expect(screen.getByRole('link', { name: 'Open cart' })).toHaveAttribute(
+        'href',
+        '/cart',
+    );
+
+    fireEvent.click(screen.getByRole('radio', { name: 'PC' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'EA app' }));
+
+    expect(
+        screen.getByRole('button', { name: 'Add service to cart' }),
+    ).toBeEnabled();
+    expect(
+        screen.queryByRole('link', { name: 'Open cart' }),
+    ).not.toBeInTheDocument();
+});
+
+it('prefills the edit URL, keeps the squad image, and sends the replaced line id', async () => {
+    window.history.pushState(
+        {},
+        '',
+        `/rivals?platform=pc&launcher=steam&from=6&to=3&mode=route&replace=${REPLACE_ID}`,
+    );
+    vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, init?: RequestInit) => {
+            const isPost = (init?.method ?? 'GET') === 'POST';
+
+            return Promise.resolve(
+                new Response(
+                    isPost
+                        ? JSON.stringify({
+                              data: {
+                                  cartCount: 1,
+                                  cartItemId: '01K00000000000000000000005',
+                                  cartUrl: '/cart',
+                              },
+                          })
+                        : JSON.stringify({
+                              data: {
+                                  platform: 'pc',
+                                  launcher: 'steam',
+                                  eaEmail: 'owner@example.test',
+                                  eaPassword: 'ea secret',
+                                  eaCodes: ['12345678', '23456789', '34567890'],
+                                  playstationEmail: '',
+                                  playstationPassword: '',
+                                  playstationCodes: ['', '', ''],
+                                  steamUsername: 'SteamPlayer',
+                                  steamPassword: 'steam secret',
+                              },
+                          }),
+                    { status: isPost ? 201 : 200 },
+                ),
+            );
+        }),
+    );
+    renderRivals(`/cart/items/${REPLACE_ID}/credentials`);
+
+    expect(screen.getByText('Editing the order in your cart')).toBeVisible();
+    expect(
+        screen.getByText(
+            'Your current image is kept — upload a new one to change it',
+        ),
+    ).toBeVisible();
+    expect(await screen.findByDisplayValue('owner@example.test')).toBeVisible();
+    expect(screen.getByDisplayValue('SteamPlayer')).toBeVisible();
+
+    const codes = screen.getAllByLabelText(/Backup code/);
+    expect(codes).toHaveLength(3);
+
+    fireEvent.submit(
+        screen
+            .getByRole('button', { name: 'Add service to cart' })
+            .closest('form')!,
+    );
+
+    await waitFor(() => {
+        const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
+        const post = calls.find(
+            (call) => (call[1] as RequestInit)?.method === 'POST',
+        );
+
+        expect(post).toBeDefined();
+
+        const form = (post?.[1] as RequestInit).body as FormData;
+        expect(form.get('replaceCartItemId')).toBe(REPLACE_ID);
+        // No new upload: the old squad image is carried over server-side.
+        expect(form.get('squadImage')).toBeNull();
+        expect(form.get('platform')).toBe('pc');
+        expect(form.get('pcStore')).toBe('steam');
+    });
+
+    // The replacement landed, so the editing note is over.
+    await waitFor(() =>
+        expect(
+            screen.queryByText('Editing the order in your cart'),
+        ).not.toBeInTheDocument(),
+    );
+});
+
+function renderRivals(replaceCredentialsUrl: string | null = null) {
     render(
         <RivalsConfigurator
             addUrl="/cart/items/rivals"
@@ -352,12 +475,14 @@ function renderRivals() {
                 description: 'Service description',
                 image: { alt: 'Rivals', url: '/rivals.webp' },
             }}
+            replaceCredentialsUrl={replaceCredentialsUrl}
             scheduleVersion={1}
             service={rivals}
             tutorials={{
                 ea: 'https://example.test/ea',
                 playstation: 'https://example.test/ps',
             }}
+            variantIds={{ playstation: PS_VARIANT_ID, pc: PC_VARIANT_ID }}
         />,
     );
 }
@@ -398,6 +523,9 @@ const common: ManualServiceCommonTranslations = {
     add_error: 'Error',
     in_cart: 'In cart',
     open_cart: 'Open cart',
+    editing_replace: 'Editing the order in your cart',
+    squad_image_kept:
+        'Your current image is kept — upload a new one to change it',
     unavailable_title: 'Unavailable',
     unavailable_body: 'Try later',
     review_title: 'Review your service',

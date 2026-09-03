@@ -22,6 +22,9 @@ final class RivalsCartRequest extends FormRequest
 
         return [
             ...$this->fulfillmentRules(),
+            'replaceCartItemId' => ['nullable', 'string', 'ulid'],
+            // Replacing keeps the old squad image unless a new one is sent.
+            'squadImage' => ['required_without:replaceCartItemId', 'file', 'max:5120'],
             'mode' => ['required', 'string', 'in:promotion,weekly_matches'],
             // A week of matches promotes nothing, so a division on it would be
             // a claim the service does not make.
@@ -34,7 +37,7 @@ final class RivalsCartRequest extends FormRequest
     public function after(): array
     {
         return [fn (Validator $validator) => $this->validateManualServiceRequest($validator, [
-            'scheduleVersion', 'platform', 'pcStore', 'mode', 'currentDivision', 'targetDivision', 'credentials', 'squadImage',
+            'scheduleVersion', 'platform', 'pcStore', 'mode', 'currentDivision', 'targetDivision', 'credentials', 'squadImage', 'replaceCartItemId',
         ])];
     }
 

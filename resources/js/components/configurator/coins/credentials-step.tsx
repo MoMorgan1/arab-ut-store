@@ -362,7 +362,7 @@ export function CredentialsStep({
                 <fieldset className="coins-backup-codes">
                     <legend>{translations.credentials.backup_codes}</legend>
                     <p>{translations.credentials.backup_help}</p>
-                    <div className="coins-backup-codes__grid">
+                    <div className="coins-backup-codes__grid" dir="ltr">
                         {BACKUP_CODE_FIELDS.map((field, index) => {
                             const code = credentials.backupCodes[index];
                             const label = interpolate(

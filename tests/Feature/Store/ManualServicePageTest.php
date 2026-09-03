@@ -42,6 +42,10 @@ it('exposes the exact public FUT Champions service contract in both locales', fu
             ->where('manualService.scheduleVersion', 1)
             ->where('manualService.addUrl', $addUrl)
             ->where('manualService.platforms', ['playstation', 'pc'])
+            ->where('manualService.variantIds', [
+                'playstation' => '01K2HZ00000000000000000011',
+                'pc' => '01K2HZ00000000000000000012',
+            ])
             ->where('manualService.tutorials.ea', 'https://youtube.com/shorts/hNIW1ps_t3k?si=i9MR5izDKRhpRNjo')
             ->where('manualService.tutorials.playstation', 'https://youtu.be/fCAKsusuHR8?si=cYzL6fwszL4ExwPK')
             ->where('manualService.product.slug', 'fut-champions')
@@ -85,6 +89,10 @@ it('exposes the exact public Rivals service contract in both locales', function 
             ->where('manualService.scheduleVersion', 1)
             ->where('manualService.addUrl', $addUrl)
             ->where('manualService.platforms', ['playstation', 'pc'])
+            ->where('manualService.variantIds', [
+                'playstation' => '01K2HZ00000000000000000021',
+                'pc' => '01K2HZ00000000000000000022',
+            ])
             ->where('manualService.tutorials.ea', 'https://youtube.com/shorts/hNIW1ps_t3k?si=i9MR5izDKRhpRNjo')
             ->where('manualService.tutorials.playstation', 'https://youtu.be/fCAKsusuHR8?si=cYzL6fwszL4ExwPK')
             ->where('manualService.product.slug', 'division-rivals')

@@ -20,6 +20,9 @@ final class FutChampionsCartRequest extends FormRequest
     {
         return [
             ...$this->fulfillmentRules(),
+            'replaceCartItemId' => ['nullable', 'string', 'ulid'],
+            // Replacing keeps the old squad image unless a new one is sent.
+            'squadImage' => ['required_without:replaceCartItemId', 'file', 'max:5120'],
             'rank' => ['required', 'integer:strict', 'between:1,6'],
             'urgent' => ['required', 'boolean'],
             'matchesPlayed' => ['required', 'integer:strict', 'between:0,100'],
@@ -30,7 +33,7 @@ final class FutChampionsCartRequest extends FormRequest
     public function after(): array
     {
         return [fn (Validator $validator) => $this->validateManualServiceRequest($validator, [
-            'scheduleVersion', 'platform', 'pcStore', 'rank', 'urgent', 'matchesPlayed', 'credentials', 'squadImage',
+            'scheduleVersion', 'platform', 'pcStore', 'rank', 'urgent', 'matchesPlayed', 'credentials', 'squadImage', 'replaceCartItemId',
         ])];
     }
 
