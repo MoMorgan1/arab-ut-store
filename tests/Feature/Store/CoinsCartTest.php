@@ -206,7 +206,7 @@ test('non JSON Coins additions are rejected without reflecting credentials', fun
     'localized authenticated user' => [true, '/en/cart/items/coins'],
 ]);
 
-test('supported Coins modes create distinct safe lines with encrypted credentials', function (array $selection, int $expectedTotal) {
+test('supported Coins modes create one safe line per platform variant', function (array $selection, int $expectedTotal) {
     // The fast-console dataset sends the balance, which is accepted only
     // while the admin toggle is on.
     enableCoinsCurrentBalanceRequirement();
@@ -220,6 +220,8 @@ test('supported Coins modes create distinct safe lines with encrypted credential
 
     $this->actingAs($user);
     $first = addCoinsToCart('/cart/items/coins', $payload, 'mode-key-1');
+    // One line per product variant: the same platform twice (fresh key) is a
+    // 409, not a second line — quantities scale the price through tiers.
     $second = addCoinsToCart('/cart/items/coins', $payload, 'mode-key-2');
 
     $first->assertCreated()
@@ -229,11 +231,11 @@ test('supported Coins modes create distinct safe lines with encrypted credential
         ->assertJsonPath('data.quote.quantity', 100_000)
         ->assertJsonPath('data.quote.total.amountHalalah', $expectedTotal)
         ->assertJsonPath('data.quote.total.currency', 'SAR');
-    $second->assertCreated()->assertJsonPath('data.cartCount', 2);
+    $second->assertConflict()->assertJsonPath('error.code', 'already_in_cart');
     expect($first->headers->get('Cache-Control'))->toContain('no-store')
         ->and(Cart::count())->toBe(1)
-        ->and(CartItem::count())->toBe(2)
-        ->and(CartItemSecret::count())->toBe(2);
+        ->and(CartItem::count())->toBe(1)
+        ->and(CartItemSecret::count())->toBe(1);
 
     $cart = Cart::sole();
     $item = CartItem::oldest('id')->firstOrFail();
@@ -929,4 +931,47 @@ test('localized guest writes preserve the English storefront', function () {
     $this->get('/en/cart')->assertInertia(fn (Assert $page) => $page
         ->where('cartCount', 1)
         ->where('cart.count', 1));
+});
+
+test('adding the same Coins variant twice returns 409 already_in_cart', function () {
+    createCartCatalog();
+    $this->actingAs(User::factory()->create());
+
+    addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'coins-duplicate-1')->assertCreated();
+
+    $second = addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'coins-duplicate-2');
+
+    $second->assertConflict()
+        ->assertJsonPath('error.code', 'already_in_cart')
+        ->assertJsonPath('error.message', trans('store.cart.already_in_cart'))
+        ->assertJsonPath('error.cartUrl', '/cart');
+    expect($second->headers->get('Cache-Control'))->toContain('no-store')
+        ->and(CartItem::count())->toBe(1);
+});
+
+test('adding a different Coins platform variant creates a second line', function () {
+    createCartCatalog();
+    $this->actingAs(User::factory()->create());
+
+    addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'coins-platform-1')->assertCreated();
+
+    $pcPayload = coinsCartPayload(['platform' => 'pc']);
+    unset($pcPayload['delivery']);
+
+    addCoinsToCart('/cart/items/coins', $pcPayload, 'coins-platform-2')
+        ->assertCreated()
+        ->assertJsonPath('data.cartCount', 2);
+
+    expect(CartItem::count())->toBe(2);
+});
+
+test('the storefront shares cartVariantIds alongside cartCount', function () {
+    $catalog = createCartCatalog();
+    $this->actingAs(User::factory()->create());
+
+    addCoinsToCart('/cart/items/coins', coinsCartPayload(), 'coins-shared-variant')->assertCreated();
+
+    $this->get('/')->assertInertia(fn (Assert $page) => $page
+        ->where('cartCount', 1)
+        ->where('cartVariantIds', [$catalog['variants']['playstation']->public_id]));
 });

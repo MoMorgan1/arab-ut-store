@@ -25,6 +25,7 @@ final readonly class AddCoinsToCart
     public function __construct(
         private QuoteCoins $quoteCoins,
         private AcquireActiveCart $acquireActiveCart,
+        private AssertVariantNotInCart $assertVariantNotInCart,
         private PersistCartItemCredentials $persistCredentials,
     ) {}
 
@@ -63,6 +64,7 @@ final readonly class AddCoinsToCart
         $quote = $this->quote($validated);
         $productVariant = ProductVariant::where('public_id', $quote->variantId)->sole();
         $activeCart = $this->acquireActiveCart->execute($owner);
+        $this->assertVariantNotInCart->execute($activeCart, $productVariant);
         $cartItem = $this->createCartItem($activeCart, $productVariant, $quote);
         $this->persistCredentials->execute($cartItem, $validated['credentials']);
         $safeResponseBody = $this->responseBody($activeCart, $cartItem, $quote, $locale);
@@ -150,6 +152,7 @@ final readonly class AddCoinsToCart
         return ['data' => [
             'cartItemId' => $cartItem->public_id,
             'cartCount' => $activeCart->items()->count(),
+            'cartTotalHalalah' => (int) $activeCart->items()->sum('total_halalah'),
             'cartUrl' => route($cartRoute, $routeParameters, absolute: false),
             'quote' => $this->quoteSummary($quote),
         ]];

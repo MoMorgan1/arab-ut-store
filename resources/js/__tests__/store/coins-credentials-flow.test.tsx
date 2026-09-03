@@ -4,6 +4,7 @@ import {
     fireEvent,
     render,
     screen,
+    within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sliderStops } from '@/lib/coins-quantity';
@@ -305,10 +306,15 @@ function pageProps(authenticated = true) {
         ui: {
             brand: 'Arab UT',
             cart_added: {
-                title: 'Added to your cart',
-                message: ':item is ready in your cart.',
-                buy_now: 'Buy now',
-                continue_shopping: 'Continue shopping',
+                title: 'Added to cart',
+                in_cart: ':count items in your cart · :total',
+                checkout: 'Checkout',
+                cart: 'Cart',
+                dismiss: 'Dismiss',
+                duplicate_title: 'Already in your cart',
+                duplicate_hint:
+                    'To change the options, remove it from the cart and add it again',
+                open_cart: 'Open cart',
             },
             currency_selector: 'Choose display currency',
             home_title: 'Home',
@@ -761,6 +767,7 @@ describe('Coins credentials flow', () => {
                             data: {
                                 cartCount: 2,
                                 cartItemId: '01K00000000000000000000000',
+                                cartTotalHalalah: 600,
                                 cartUrl: '/en/cart',
                                 quote: {
                                     delivery: null,
@@ -820,13 +827,19 @@ describe('Coins credentials flow', () => {
         expect(document.body.textContent).not.toContain('opaque EA password');
         expect(cartCountEvents).toEqual([2]);
         expect(visitMock).not.toHaveBeenCalled();
+        // The sheet lands after the flight promise resolves, not
+        // synchronously: flush the microtask queue without touching the
+        // 5-second dismiss timer (fake timers stay on in this file).
+        await vi.advanceTimersByTimeAsync(0);
+        const sheet = document.querySelector('.store-cart-sheet');
+        expect(sheet).not.toBeNull();
+        expect(sheet).toHaveTextContent('Added to cart');
+        expect(sheet).toHaveTextContent('2 items in your cart · SAR 6.00');
         expect(
-            screen.getByText('FC 27 Coins is ready in your cart.'),
-        ).toBeVisible();
-        expect(screen.getByRole('link', { name: 'Buy now' })).toHaveAttribute(
-            'href',
-            '/en/cart',
-        );
+            within(sheet as HTMLElement).getByRole('link', {
+                name: 'Checkout',
+            }),
+        ).toHaveAttribute('href', '/en/cart');
     });
 
     it('maps a mixed 422 to credential fields without reflecting backend text', async () => {

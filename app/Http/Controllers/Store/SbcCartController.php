@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Store;
 
 use App\Actions\Cart\AddSbcToCart;
 use App\Actions\Cart\ResolveCartOwner;
+use App\Exceptions\Cart\DuplicateCartItem;
 use App\Exceptions\IdempotencyConflict;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Store\SbcCartRequest;
@@ -26,6 +27,8 @@ final class SbcCartController extends Controller
             );
         } catch (IdempotencyConflict) {
             return $this->error('idempotency_conflict', trans('store.cart.idempotency_conflict'), 409);
+        } catch (DuplicateCartItem) {
+            return $this->duplicate();
         } catch (DomainException) {
             return $this->error('catalog_item_unavailable', trans('store.cart.catalog_item_unavailable'), 422);
         }
@@ -38,5 +41,19 @@ final class SbcCartController extends Controller
     {
         return response()->json(['error' => compact('code', 'message')], $status)
             ->header('Cache-Control', 'no-store');
+    }
+
+    private function duplicate(): JsonResponse
+    {
+        $locale = (string) app()->getLocale();
+        $cartUrl = $locale === 'en'
+            ? route('localized.store.cart', ['locale' => 'en'], absolute: false)
+            : route('store.cart', [], absolute: false);
+
+        return response()->json(['error' => [
+            'code' => 'already_in_cart',
+            'message' => trans('store.cart.already_in_cart'),
+            'cartUrl' => $cartUrl,
+        ]], 409)->header('Cache-Control', 'no-store');
     }
 }

@@ -396,6 +396,8 @@ const common: ManualServiceCommonTranslations = {
     adding: 'Adding…',
     added: 'Added',
     add_error: 'Error',
+    in_cart: 'In cart',
+    open_cart: 'Open cart',
     unavailable_title: 'Unavailable',
     unavailable_body: 'Try later',
     review_title: 'Review your service',

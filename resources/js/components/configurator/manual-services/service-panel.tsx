@@ -79,11 +79,15 @@ function useDockVisibility(barRef: RefObject<HTMLDivElement | null>) {
 }
 
 export function ManualServicePanel({
+    cartUrl,
     eta,
     facts,
     image,
+    inCart = false,
+    inCartLabel,
     inline = false,
     locale,
+    openCartLabel,
     price,
     status,
     submitDisabled = false,
@@ -92,11 +96,15 @@ export function ManualServicePanel({
     translations,
     trustLabel,
 }: {
+    cartUrl?: string;
     eta?: string;
     facts: Array<{ label: string; value: string }>;
     image: { alt: string; url: string };
+    inCart?: boolean;
+    inCartLabel?: string;
     inline?: boolean;
     locale: 'ar' | 'en';
+    openCartLabel?: string;
     price: ManualServiceMoney | null;
     status: 'idle' | 'loading' | 'success' | 'error';
     submitDisabled?: boolean;
@@ -112,10 +120,13 @@ export function ManualServicePanel({
             ? '—'
             : formatMinorUnits(price.amountMinor, price.currency, locale);
     const disabled = submitDisabled || status === 'loading';
-    const label =
-        status === 'loading'
-            ? translations.adding
-            : (submitLabel ?? translations.add_to_cart);
+    const showInCart =
+        inCart && cartUrl !== undefined && inCartLabel !== undefined;
+    const label = showInCart
+        ? inCartLabel
+        : status === 'loading'
+          ? translations.adding
+          : (submitLabel ?? translations.add_to_cart);
 
     return (
         <aside
@@ -176,12 +187,31 @@ export function ManualServicePanel({
 
                 <button
                     className="manual-configurator__submit"
-                    data-state={status === 'success' ? 'success' : undefined}
-                    disabled={disabled}
-                    type="submit"
+                    data-state={
+                        showInCart
+                            ? 'in-cart'
+                            : status === 'success'
+                              ? 'success'
+                              : undefined
+                    }
+                    disabled={showInCart ? true : disabled}
+                    onClick={
+                        showInCart
+                            ? (event) => event.preventDefault()
+                            : undefined
+                    }
+                    type={showInCart ? 'button' : 'submit'}
                 >
                     {label}
                 </button>
+                {showInCart && openCartLabel !== undefined ? (
+                    <a
+                        className="manual-service-panel__open-cart"
+                        href={cartUrl}
+                    >
+                        {openCartLabel}
+                    </a>
+                ) : null}
 
                 {status === 'success' ? (
                     <p className="manual-service-panel__status" role="status">
@@ -220,13 +250,33 @@ export function ManualServicePanel({
                 </div>
                 <button
                     className="manual-configurator__submit manual-service-dock__submit"
-                    data-state={status === 'success' ? 'success' : undefined}
-                    disabled={disabled}
+                    data-state={
+                        showInCart
+                            ? 'in-cart'
+                            : status === 'success'
+                              ? 'success'
+                              : undefined
+                    }
+                    disabled={showInCart ? true : disabled}
+                    onClick={
+                        showInCart
+                            ? (event) => event.preventDefault()
+                            : undefined
+                    }
                     tabIndex={dockVisible ? undefined : -1}
-                    type="submit"
+                    type={showInCart ? 'button' : 'submit'}
                 >
                     {label}
                 </button>
+                {showInCart && openCartLabel !== undefined ? (
+                    <a
+                        className="manual-service-dock__open-cart"
+                        href={cartUrl}
+                        tabIndex={dockVisible ? undefined : -1}
+                    >
+                        {openCartLabel}
+                    </a>
+                ) : null}
             </div>
         </aside>
     );

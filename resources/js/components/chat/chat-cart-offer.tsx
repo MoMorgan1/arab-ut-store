@@ -4,8 +4,12 @@ import type { FormEvent } from 'react';
 import { useId, useRef, useState } from 'react';
 
 import { newAttemptKey } from '@/lib/attempt-key';
-import { announceCartAddition } from '@/lib/cart-added-event';
+import {
+    announceCartDuplicate,
+    announceCartAddition,
+} from '@/lib/cart-added-event';
 import type { ChatCoinsCartOffer } from '@/lib/chat-cart';
+import { focusSiblingCodeField } from '@/lib/code-field-focus';
 import { CoinsCartRequestError, submitCoinsCart } from '@/lib/coins-cart-api';
 import { formatCoins, formatMinorUnits } from '@/lib/money';
 import type { ChatServicePrices } from '@/types/chat';
@@ -249,7 +253,7 @@ function CoinsCartPanel({
             idempotencyKey.current = null;
             setAddedCartUrl(addition.cartUrl);
             setExpanded(false);
-            announceCartAddition({
+            await announceCartAddition({
                 analytics: {
                     id: `coins:${platform}`,
                     name: selectionLabel,
@@ -261,10 +265,13 @@ function CoinsCartPanel({
                     quantity: 1,
                     serviceType: 'coins',
                 },
+                cartCount: addition.cartCount,
+                cartTotalHalalah: addition.cartTotalHalalah,
                 cartUrl: addition.cartUrl,
                 imageAlt: selectionLabel,
                 imageUrl: COIN_IMAGE,
                 itemLabel: copy.quantity(formatCoins(quantity, moneyLocale)),
+                priceLabel: quote ?? undefined,
                 selectionLabel,
             });
             window.dispatchEvent(
@@ -274,6 +281,28 @@ function CoinsCartPanel({
             );
         } catch (error) {
             if (error instanceof CoinsCartRequestError) {
+                if (error.code === 'already_in_cart') {
+                    setRejected([]);
+                    setErrorMessage(null);
+
+                    if (error.conclusive) {
+                        idempotencyKey.current = null;
+                    }
+
+                    announceCartDuplicate({
+                        cartUrl: error.cartUrl ?? (isEn ? '/en/cart' : '/cart'),
+                        imageAlt: selectionLabel,
+                        imageUrl: COIN_IMAGE,
+                        itemLabel: copy.quantity(
+                            formatCoins(quantity, moneyLocale),
+                        ),
+                        priceLabel: quote ?? undefined,
+                        selectionLabel,
+                    });
+
+                    return;
+                }
+
                 setRejected(error.validationFields);
                 setErrorMessage(
                     error.code === 'validation_error'
@@ -481,12 +510,39 @@ function CoinsCartPanel({
                                         'text-center',
                                     )}
                                     aria-label={copy.backupCode(index + 1)}
+                                    data-code-field=""
+                                    data-code-group={`chat-backup-${errorId}`}
                                     inputMode="numeric"
                                     key={index}
                                     maxLength={8}
-                                    onChange={(event) =>
-                                        updateCode(index, event.target.value)
-                                    }
+                                    onChange={(event) => {
+                                        if (
+                                            event.currentTarget.value
+                                                .replace(/\D/g, '')
+                                                .slice(0, 8).length === 8 &&
+                                            credentials.backupCodes[index]
+                                                .length < 8
+                                        ) {
+                                            focusSiblingCodeField(
+                                                event.currentTarget,
+                                                1,
+                                            );
+                                        }
+
+                                        updateCode(index, event.target.value);
+                                    }}
+                                    onKeyDown={(event) => {
+                                        if (
+                                            event.key === 'Backspace' &&
+                                            event.currentTarget.value === ''
+                                        ) {
+                                            event.preventDefault();
+                                            focusSiblingCodeField(
+                                                event.currentTarget,
+                                                -1,
+                                            );
+                                        }
+                                    }}
                                     type="text"
                                     value={credentials.backupCodes[index]}
                                 />

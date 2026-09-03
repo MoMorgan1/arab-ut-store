@@ -666,13 +666,26 @@ describe('Coins homepage', () => {
         });
         expect(quoteResult).not.toBeNull();
         expect(adjustments).not.toBeNull();
+        const actions = document.querySelector('.coins-step__actions');
+        expect(actions).not.toBeNull();
+        expect(actions).not.toHaveClass('coins-step__actions--amount');
         expect(
-            backButton.compareDocumentPosition(quoteResult!) &
+            quoteResult!.compareDocumentPosition(actions!) &
                 Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
         expect(quoteResult?.matches('a, button')).toBe(false);
         expect(quoteResult?.querySelector('a, button')).toBeNull();
         expect(backButton).toBeVisible();
+        expect(
+            within(actions as HTMLElement).getByRole('button', {
+                name: store.actions.back,
+            }),
+        ).toBeVisible();
+        expect(
+            within(actions as HTMLElement).getByRole('button', {
+                name: store.actions.continue,
+            }),
+        ).toBeVisible();
         expect(document.querySelector('.coins-product-reference')).toBeNull();
         expect(
             screen
@@ -819,6 +832,9 @@ describe('Coins homepage', () => {
         const backButton = screen.getByRole('button', {
             name: store.actions.back,
         });
+        const continueButton = screen.getByRole('button', {
+            name: store.actions.continue,
+        });
         const fiveMillion = screen.getByRole('button', { name: '5M' });
         const orderedControls = [
             amountInput,
@@ -826,8 +842,9 @@ describe('Coins homepage', () => {
             range,
             ...sliderLabels,
             ...adjustments,
-            backButton,
             quotePanel,
+            backButton,
+            continueButton,
         ];
 
         expect(quickChips).toHaveLength(5);
@@ -862,6 +879,7 @@ describe('Coins homepage', () => {
             '+500K',
             '+1M',
             store.actions.back,
+            store.actions.continue,
         ]) {
             expect(
                 screen.getByRole('button', { name: accessibleName }),
@@ -1370,9 +1388,11 @@ describe('Coins homepage', () => {
         expect(
             screen.getByText((text) => text.includes('500.00')),
         ).toBeVisible();
+        // The continue button stays rendered but disabled until the edited
+        // amount lands back on a priced stop.
         expect(
-            screen.queryByRole('button', { name: store.actions.continue }),
-        ).not.toBeInTheDocument();
+            screen.getByRole('button', { name: store.actions.continue }),
+        ).toBeDisabled();
 
         fireEvent.blur(amountInput);
 

@@ -188,6 +188,8 @@ export default function StoreCatalogProduct() {
                                         quantity: 1,
                                         serviceType: 'catalog',
                                     }}
+                                    amountMinor={variant?.price?.amountMinor}
+                                    currency={variant?.price?.currency}
                                     errorLabel={props.productPage.add_error}
                                     idleLabel={props.productPage.add_to_cart}
                                     imageAlt={
@@ -197,8 +199,12 @@ export default function StoreCatalogProduct() {
                                         product.image?.url ??
                                         '/images/store/navigation/logo-sbc-256.webp'
                                     }
+                                    inCartLabel={props.productPage.in_cart}
                                     loadingLabel={props.productPage.adding}
+                                    locale={props.locale}
                                     itemLabel={product.name}
+                                    openCartLabel={props.productPage.open_cart}
+                                    selectionLabel={variant?.name}
                                     variantId={variantId}
                                 />
                             )}

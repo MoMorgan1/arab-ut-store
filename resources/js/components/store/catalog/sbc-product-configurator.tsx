@@ -1,3 +1,4 @@
+import { usePage } from '@inertiajs/react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -9,7 +10,10 @@ import { SelectionCard } from '@/components/configurator/manual-services/selecti
 import { ManualServicePanel } from '@/components/configurator/manual-services/service-panel';
 import { ServiceSlider } from '@/components/configurator/manual-services/service-slider';
 import { newAttemptKey } from '@/lib/attempt-key';
-import { announceCartAddition } from '@/lib/cart-added-event';
+import {
+    announceCartAddition,
+    announceCartDuplicate,
+} from '@/lib/cart-added-event';
 import { catalogPlatformName } from '@/lib/catalog-platform-name';
 import { formatMinorUnits } from '@/lib/money';
 import { SbcCartRequestError, submitSbcCart } from '@/lib/sbc-cart-api';
@@ -19,6 +23,7 @@ import type { ManualServiceCommonTranslations } from '@/types/manual-services';
 import type {
     CatalogProduct,
     ProductTranslations,
+    StoreCatalogProductPageProps,
 } from '@/types/store-content';
 
 type CredentialErrors = Partial<Record<CoinsCredentialField, string>>;
@@ -63,8 +68,18 @@ function initialCompletionCount(
     );
 }
 
-function completionLabel(template: string, count: number): string {
-    return template.replace(':count', String(count));
+function completionLabel(
+    copy: Pick<
+        ProductTranslations['sbc'],
+        'completion_option' | 'completion_option_one'
+    >,
+    count: number,
+): string {
+    if (count === 1 && copy.completion_option_one !== undefined) {
+        return copy.completion_option_one;
+    }
+
+    return copy.completion_option.replace(':count', String(count));
 }
 
 function validate(
@@ -129,6 +144,9 @@ export function SbcProductConfigurator({
     const [errors, setErrors] = useState<CredentialErrors>({});
     const [passwordVisible, setPasswordVisible] = useState(false);
     const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
+    const [addedVariantIds, setAddedVariantIds] = useState<string[]>([]);
+    const pageProps = usePage<StoreCatalogProductPageProps>().props;
+    const cartVariantIds = pageProps.cartVariantIds ?? [];
     const attemptKey = useRef(newAttemptKey());
     const fieldRefs = useRef<
         Partial<Record<CoinsCredentialField, HTMLInputElement | null>>
@@ -258,6 +276,11 @@ export function SbcProductConfigurator({
                 variantId: variant.id,
             });
             attemptKey.current = newAttemptKey();
+            setAddedVariantIds((current) =>
+                current.includes(variant.id)
+                    ? current
+                    : [...current, variant.id],
+            );
             setCredentials(EMPTY_CREDENTIALS);
             setState('idle');
             await announceCartAddition({
@@ -273,6 +296,8 @@ export function SbcProductConfigurator({
                     quantity: 1,
                     serviceType: 'sbc',
                 },
+                cartCount: result.cartCount,
+                cartTotalHalalah: result.cartTotalHalalah,
                 cartUrl: result.cartUrl,
                 ...(submitButton instanceof HTMLElement
                     ? { from: submitButton }
@@ -282,8 +307,17 @@ export function SbcProductConfigurator({
                     product.image?.url ??
                     '/images/store/navigation/logo-sbc-256.webp',
                 itemLabel: product.name,
+                priceLabel:
+                    selectedCompletionTier === undefined
+                        ? undefined
+                        : formatMinorUnits(
+                              selectedCompletionTier.price.amountMinor,
+                              selectedCompletionTier.price.currency,
+                              locale,
+                          ),
+                raisedArt: true,
                 selectionLabel: `${completionLabel(
-                    translations.sbc.completion_option,
+                    translations.sbc,
                     completionCount,
                 )} · ${catalogPlatformName(
                     variant.platform,
@@ -300,6 +334,37 @@ export function SbcProductConfigurator({
             if (failure instanceof SbcCartRequestError) {
                 if (failure.conclusive) {
                     attemptKey.current = newAttemptKey();
+                }
+
+                if (failure.code === 'already_in_cart') {
+                    setAddedVariantIds((current) =>
+                        current.includes(variant.id)
+                            ? current
+                            : [...current, variant.id],
+                    );
+                    setCredentials(EMPTY_CREDENTIALS);
+                    setState('idle');
+                    announceCartDuplicate({
+                        cartUrl:
+                            failure.cartUrl ??
+                            `/${locale === 'en' ? 'en/' : ''}cart`,
+                        imageAlt: product.image?.alt || product.name,
+                        imageUrl:
+                            product.image?.url ??
+                            '/images/store/navigation/logo-sbc-256.webp',
+                        itemLabel: product.name,
+                        raisedArt: true,
+                        selectionLabel: `${completionLabel(
+                            translations.sbc,
+                            completionCount,
+                        )} · ${catalogPlatformName(
+                            variant.platform,
+                            variant.name,
+                            locale,
+                        )}`,
+                    });
+
+                    return;
                 }
 
                 const firstRejected = failure.validationFields[0];
@@ -424,7 +489,7 @@ export function SbcProductConfigurator({
                                     String(tier.completions),
                                 )}
                                 valueLabel={completionLabel(
-                                    translations.sbc.completion_option,
+                                    translations.sbc,
                                     selectedCompletionTier.completions,
                                 )}
                             />
@@ -575,14 +640,22 @@ export function SbcProductConfigurator({
                         value: String(completionCount),
                     },
                 ]}
+                cartUrl={pageProps.storeShell.cartUrl}
                 image={
                     product.image ?? {
                         alt: product.name,
                         url: '/images/store/navigation/logo-sbc-256.webp',
                     }
                 }
+                inCart={
+                    variant !== undefined &&
+                    (cartVariantIds.includes(variant.id) ||
+                        addedVariantIds.includes(variant.id))
+                }
+                inCartLabel={manualCommon.in_cart}
                 inline
                 locale={locale}
+                openCartLabel={manualCommon.open_cart}
                 price={completionTier?.price ?? null}
                 status={state}
                 submitDisabled={completionTier === undefined}

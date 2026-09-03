@@ -1,6 +1,7 @@
 export type ManualServiceCartSuccess = {
     cartCount: number;
     cartItemId: string;
+    cartTotalHalalah?: number;
     cartUrl: string;
 };
 
@@ -11,6 +12,7 @@ export class ManualServiceCartError extends Error {
         readonly code: string,
         readonly status: number,
         readonly conclusive: boolean,
+        readonly cartUrl?: string,
     ) {
         super('Manual service cart request failed.');
         this.name = 'ManualServiceCartError';
@@ -64,6 +66,7 @@ export async function submitManualServiceCart(
             errorCode(body),
             response.status,
             true,
+            errorCartUrl(body),
         );
     }
 
@@ -96,14 +99,48 @@ function errorCode(body: unknown): string {
         : 'unsafe_response';
 }
 
+function errorCartUrl(body: unknown): string | undefined {
+    if (!isRecord(body) || !isRecord(body.error)) {
+        return undefined;
+    }
+
+    const { cartUrl } = body.error;
+
+    if (typeof cartUrl !== 'string') {
+        return undefined;
+    }
+
+    const safeCartUrl = sameOriginUrl(cartUrl);
+
+    return safeCartUrl === null
+        ? undefined
+        : `${safeCartUrl.pathname}${safeCartUrl.search}${safeCartUrl.hash}`;
+}
+
+function safeMinorTotal(body: unknown): number | undefined {
+    if (!isRecord(body) || !isRecord(body.data)) {
+        return undefined;
+    }
+
+    const { cartTotalHalalah } = body.data;
+
+    return typeof cartTotalHalalah === 'number' &&
+        Number.isSafeInteger(cartTotalHalalah) &&
+        cartTotalHalalah >= 0
+        ? cartTotalHalalah
+        : undefined;
+}
+
 function safeSuccess(body: unknown): ManualServiceCartSuccess | null {
     if (!isRecord(body) || !isRecord(body.data)) {
         return null;
     }
 
+    const keys = Object.keys(body.data).sort().join(',');
+
     if (
-        Object.keys(body.data).sort().join(',') !==
-        'cartCount,cartItemId,cartUrl'
+        keys !== 'cartCount,cartItemId,cartUrl' &&
+        keys !== 'cartCount,cartItemId,cartTotalHalalah,cartUrl'
     ) {
         return null;
     }
@@ -122,9 +159,12 @@ function safeSuccess(body: unknown): ManualServiceCartSuccess | null {
         return null;
     }
 
+    const cartTotalHalalah = safeMinorTotal(body);
+
     return {
         cartCount: Number(cartCount),
         cartItemId,
         cartUrl: `${safeCartUrl.pathname}${safeCartUrl.search}${safeCartUrl.hash}`,
+        ...(cartTotalHalalah === undefined ? {} : { cartTotalHalalah }),
     };
 }

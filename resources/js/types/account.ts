@@ -405,6 +405,7 @@ export type AccountPageShellProps = {
     accountUi: AccountTranslations;
     adminUrl?: string | null;
     cartCount: number;
+    cartVariantIds: string[];
     direction: 'rtl' | 'ltr';
     displayCurrency: string;
     displayCurrencies: string[];

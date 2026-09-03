@@ -3,6 +3,7 @@ type JsonRecord = Record<string, unknown>;
 export type CatalogCartSuccess = {
     cartCount: number;
     cartItemId: string;
+    cartTotalHalalah?: number;
     cartUrl: string;
 };
 
@@ -18,13 +19,20 @@ export class CatalogCartRequestError extends Error {
     readonly code: string;
     readonly conclusive: boolean;
     readonly status: number;
+    readonly cartUrl?: string;
 
-    constructor(code: string, status: number, conclusive: boolean) {
+    constructor(
+        code: string,
+        status: number,
+        conclusive: boolean,
+        cartUrl?: string,
+    ) {
         super('Catalog cart request failed.');
         this.name = 'CatalogCartRequestError';
         this.code = code;
         this.status = status;
         this.conclusive = conclusive;
+        this.cartUrl = cartUrl;
     }
 }
 
@@ -64,14 +72,49 @@ function errorCode(body: unknown): string {
         : 'unsafe_response';
 }
 
+function errorCartUrl(body: unknown): string | undefined {
+    if (!isRecord(body) || !isRecord(body.error)) {
+        return undefined;
+    }
+
+    const { cartUrl } = body.error;
+
+    if (typeof cartUrl !== 'string') {
+        return undefined;
+    }
+
+    const safeCartUrl = sameOriginUrl(cartUrl);
+
+    return safeCartUrl === null
+        ? undefined
+        : `${safeCartUrl.pathname}${safeCartUrl.search}${safeCartUrl.hash}`;
+}
+
+function safeMinorTotal(body: unknown): number | undefined {
+    if (!isRecord(body) || !isRecord(body.data)) {
+        return undefined;
+    }
+
+    const { cartTotalHalalah } = body.data;
+
+    return typeof cartTotalHalalah === 'number' &&
+        Number.isSafeInteger(cartTotalHalalah) &&
+        cartTotalHalalah >= 0
+        ? cartTotalHalalah
+        : undefined;
+}
+
 function safeSuccess(body: unknown): CatalogCartSuccess | null {
     if (!isRecord(body) || !isRecord(body.data)) {
         return null;
     }
 
-    const keys = Object.keys(body.data).sort();
+    const keys = Object.keys(body.data).sort().join(',');
 
-    if (keys.join(',') !== 'cartCount,cartItemId,cartUrl') {
+    if (
+        keys !== 'cartCount,cartItemId,cartUrl' &&
+        keys !== 'cartCount,cartItemId,cartTotalHalalah,cartUrl'
+    ) {
         return null;
     }
 
@@ -89,10 +132,13 @@ function safeSuccess(body: unknown): CatalogCartSuccess | null {
         return null;
     }
 
+    const cartTotalHalalah = safeMinorTotal(body);
+
     return {
         cartCount: Number(cartCount),
         cartItemId,
         cartUrl: `${safeCartUrl.pathname}${safeCartUrl.search}${safeCartUrl.hash}`,
+        ...(cartTotalHalalah === undefined ? {} : { cartTotalHalalah }),
     };
 }
 
@@ -141,6 +187,7 @@ export async function submitCatalogCart(
             errorCode(body),
             response.status,
             true,
+            errorCartUrl(body),
         );
     }
 

@@ -37,10 +37,15 @@ const mockPage = vi.hoisted(() => ({
         ui: {
             brand: 'Arab UT',
             cart_added: {
-                title: 'Added to your cart',
-                message: ':item is ready in your cart.',
-                buy_now: 'Buy now',
-                continue_shopping: 'Continue shopping',
+                title: 'Added to cart',
+                in_cart: ':count items in your cart · :total',
+                checkout: 'Checkout',
+                cart: 'Cart',
+                dismiss: 'Dismiss',
+                duplicate_title: 'Already in your cart',
+                duplicate_hint:
+                    'To change the options, remove it from the cart and add it again',
+                open_cart: 'Open cart',
             },
             checkout_notice:
                 'All final prices and checkout are in Saudi Riyal (:currency).',
@@ -265,11 +270,151 @@ describe('StoreLayout', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('shows a timed top-center product notification with explicit next actions', () => {
+    it('shows a timed mini-cart sheet with the count, total and next actions', () => {
         vi.useFakeTimers();
         render(
             <StoreLayout
                 cartCount={0}
+                currentUrl="/en/sbc/icon-challenge"
+                locale="en"
+                storeShell={storeShell}
+                direction="ltr"
+                displayCurrency="SAR"
+                displayCurrencies={['SAR']}
+                ui={englishUi}
+            >
+                <p>Product details remain visible</p>
+            </StoreLayout>,
+        );
+
+        fireEvent(
+            window,
+            new CustomEvent('arabut:cart-added', {
+                detail: {
+                    cartCount: 3,
+                    cartTotalHalalah: 61_000,
+                    cartUrl: '/en/cart',
+                    imageAlt: 'Icon Challenge artwork',
+                    imageUrl: '/images/icon-challenge.webp',
+                    itemLabel: 'Icon Challenge',
+                    priceLabel: 'SAR 125.00',
+                    selectionLabel: '5 completions · PC',
+                    variant: 'added',
+                },
+            }),
+        );
+
+        const notification = screen.getByRole('status');
+
+        expect(notification).toHaveClass('store-cart-sheet');
+        expect(notification).toHaveTextContent('Added to cart');
+        expect(notification).toHaveTextContent(
+            '3 items in your cart · SAR 610.00',
+        );
+        expect(notification).toHaveTextContent('Icon Challenge');
+        expect(notification).toHaveTextContent('5 completions');
+        expect(notification).toHaveTextContent('PC');
+        expect(notification).toHaveTextContent('SAR 125.00');
+        expect(
+            notification.querySelector('.store-cart-sheet__progress'),
+        ).not.toBeNull();
+        expect(
+            within(notification).getByRole('link', { name: 'Checkout' }),
+        ).toHaveAttribute('href', '/en/cart');
+        expect(
+            within(notification).getByRole('link', { name: 'Cart' }),
+        ).toHaveAttribute('href', '/en/cart');
+        expect(
+            screen.getByText('Product details remain visible'),
+        ).toBeVisible();
+
+        act(() => vi.advanceTimersByTime(5_000));
+        act(() => vi.advanceTimersByTime(180));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        vi.useRealTimers();
+    });
+
+    it('lets shoppers dismiss the cart sheet without leaving the page', () => {
+        vi.useFakeTimers();
+        render(
+            <StoreLayout
+                cartCount={0}
+                currentUrl="/en/sbc/icon-challenge"
+                locale="en"
+                storeShell={storeShell}
+                direction="ltr"
+                displayCurrency="SAR"
+                displayCurrencies={['SAR']}
+                ui={englishUi}
+            >
+                <p>Product details remain visible</p>
+            </StoreLayout>,
+        );
+
+        fireEvent(
+            window,
+            new CustomEvent('arabut:cart-added', {
+                detail: {
+                    cartCount: 1,
+                    cartTotalHalalah: 12_500,
+                    cartUrl: '/en/cart',
+                    imageAlt: 'Icon Challenge artwork',
+                    imageUrl: '/images/icon-challenge.webp',
+                    itemLabel: 'Icon Challenge',
+                },
+            }),
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+        act(() => vi.advanceTimersByTime(180));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        vi.useRealTimers();
+    });
+
+    it('closes the cart sheet on Escape', () => {
+        vi.useFakeTimers();
+        render(
+            <StoreLayout
+                cartCount={0}
+                currentUrl="/en/sbc/icon-challenge"
+                locale="en"
+                storeShell={storeShell}
+                direction="ltr"
+                displayCurrency="SAR"
+                displayCurrencies={['SAR']}
+                ui={englishUi}
+            >
+                <p>Product details remain visible</p>
+            </StoreLayout>,
+        );
+
+        fireEvent(
+            window,
+            new CustomEvent('arabut:cart-added', {
+                detail: {
+                    cartCount: 1,
+                    cartTotalHalalah: 12_500,
+                    cartUrl: '/en/cart',
+                    imageAlt: 'Icon Challenge artwork',
+                    imageUrl: '/images/icon-challenge.webp',
+                    itemLabel: 'Icon Challenge',
+                },
+            }),
+        );
+
+        fireEvent.keyDown(document, { key: 'Escape' });
+        act(() => vi.advanceTimersByTime(180));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        vi.useRealTimers();
+    });
+
+    it('shows the amber duplicate variant with a single open-cart action', () => {
+        render(
+            <StoreLayout
+                cartCount={1}
                 currentUrl="/en/sbc/icon-challenge"
                 locale="en"
                 storeShell={storeShell}
@@ -291,69 +436,25 @@ describe('StoreLayout', () => {
                     imageUrl: '/images/icon-challenge.webp',
                     itemLabel: 'Icon Challenge',
                     selectionLabel: '5 completions · PC',
+                    variant: 'duplicate',
                 },
             }),
         );
 
         const notification = screen.getByRole('status');
 
-        expect(notification).toHaveClass('store-cart-added');
+        expect(notification).toHaveClass('store-cart-sheet--duplicate');
+        expect(notification).toHaveTextContent('Already in your cart');
         expect(notification).toHaveTextContent(
-            'Icon Challenge is ready in your cart.',
+            'To change the options, remove it from the cart and add it again',
         );
-        expect(notification).toHaveTextContent('5 completions · PC');
-        expect(
-            screen.getByRole('img', { name: 'Icon Challenge artwork' }),
-        ).toHaveAttribute('src', '/images/icon-challenge.webp');
-        expect(
-            notification.querySelector('.store-cart-added__progress'),
-        ).not.toBeNull();
-        expect(screen.getByRole('link', { name: 'Buy now' })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: 'Open cart' })).toHaveAttribute(
             'href',
             '/en/cart',
         );
         expect(
-            screen.getByText('Product details remain visible'),
-        ).toBeVisible();
-
-        act(() => vi.advanceTimersByTime(5_000));
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
-
-        vi.useRealTimers();
-    });
-
-    it('lets shoppers dismiss the cart notification without leaving the page', () => {
-        render(
-            <StoreLayout
-                cartCount={0}
-                currentUrl="/en/sbc/icon-challenge"
-                locale="en"
-                storeShell={storeShell}
-                direction="ltr"
-                displayCurrency="SAR"
-                displayCurrencies={['SAR']}
-                ui={englishUi}
-            >
-                <p>Product details remain visible</p>
-            </StoreLayout>,
-        );
-
-        fireEvent(
-            window,
-            new CustomEvent('arabut:cart-added', {
-                detail: {
-                    cartUrl: '/en/cart',
-                    imageAlt: 'Icon Challenge artwork',
-                    imageUrl: '/images/icon-challenge.webp',
-                    itemLabel: 'Icon Challenge',
-                },
-            }),
-        );
-
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Continue shopping' }),
-        );
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+            screen.queryByRole('link', { name: 'Checkout' }),
+        ).not.toBeInTheDocument();
     });
 
     it('keeps the cart notification visible while shoppers interact with it', () => {
@@ -393,6 +494,8 @@ describe('StoreLayout', () => {
 
         fireEvent.mouseLeave(notification);
         act(() => vi.advanceTimersByTime(5_000));
+        expect(screen.getByRole('status')).toBeInTheDocument();
+        act(() => vi.advanceTimersByTime(180));
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
         vi.useRealTimers();
@@ -440,6 +543,8 @@ describe('StoreLayout', () => {
         act(() => vi.advanceTimersByTime(2_999));
         expect(screen.getByRole('status')).toBeVisible();
         act(() => vi.advanceTimersByTime(1));
+        expect(screen.getByRole('status')).toBeInTheDocument();
+        act(() => vi.advanceTimersByTime(180));
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
         vi.useRealTimers();
@@ -483,6 +588,54 @@ describe('StoreLayout', () => {
         fireEvent.pointerUp(notification, { pointerType: 'touch' });
         expect(notification).toHaveAttribute('data-paused', 'false');
         act(() => vi.advanceTimersByTime(5_000));
+        expect(screen.getByRole('status')).toBeInTheDocument();
+        act(() => vi.advanceTimersByTime(180));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        vi.useRealTimers();
+    });
+
+    it('dismisses the sheet on a swipe-up of more than 40px', () => {
+        vi.useFakeTimers();
+        render(
+            <StoreLayout
+                cartCount={0}
+                currentUrl="/en/sbc/icon-challenge"
+                locale="en"
+                storeShell={storeShell}
+                direction="ltr"
+                displayCurrency="SAR"
+                displayCurrencies={['SAR']}
+                ui={englishUi}
+            >
+                <p>Product details remain visible</p>
+            </StoreLayout>,
+        );
+
+        fireEvent(
+            window,
+            new CustomEvent('arabut:cart-added', {
+                detail: {
+                    cartCount: 1,
+                    cartTotalHalalah: 12_500,
+                    cartUrl: '/en/cart',
+                    imageAlt: 'Icon Challenge artwork',
+                    imageUrl: '/images/icon-challenge.webp',
+                    itemLabel: 'Icon Challenge',
+                },
+            }),
+        );
+
+        const notification = screen.getByRole('status');
+        fireEvent.pointerDown(notification, {
+            pointerType: 'touch',
+            clientY: 300,
+        });
+        fireEvent.pointerUp(notification, {
+            pointerType: 'touch',
+            clientY: 200,
+        });
+        act(() => vi.advanceTimersByTime(180));
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
         vi.useRealTimers();

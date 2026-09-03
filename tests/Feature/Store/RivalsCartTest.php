@@ -319,3 +319,32 @@ it('shows the week of matches and its win count on the cart page', function () {
             ->missing('cart.items.0.configuration.from_division'),
     );
 });
+
+test('adding the same Rivals variant twice returns 409 already_in_cart', function () {
+    postRivalsCart(validRivalsCartPayload(), 'rivals-duplicate-1')->assertCreated();
+
+    $second = postRivalsCart(validRivalsCartPayload(), 'rivals-duplicate-2');
+
+    $second->assertConflict()
+        ->assertJsonPath('error.code', 'already_in_cart')
+        ->assertJsonPath('error.message', trans('store.cart.already_in_cart'))
+        ->assertJsonPath('error.cartUrl', '/cart');
+    expect($second->headers->get('Cache-Control'))->toContain('no-store')
+        ->and(CartItem::count())->toBe(1);
+});
+
+test('adding another Rivals platform variant creates a second line', function () {
+    postRivalsCart(validRivalsCartPayload(), 'rivals-platform-1')->assertCreated();
+
+    $pcPayload = validRivalsCartPayload([
+        'platform' => 'pc',
+        'pcStore' => 'steam',
+        'credentials' => rivalsCartCredentials('pc', 'steam'),
+    ]);
+
+    postRivalsCart($pcPayload, 'rivals-platform-2')
+        ->assertCreated()
+        ->assertJsonPath('data.cartCount', 2);
+
+    expect(CartItem::count())->toBe(2);
+});

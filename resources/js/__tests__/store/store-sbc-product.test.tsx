@@ -42,6 +42,7 @@ beforeEach(() => {
     mocks.submit.mockResolvedValue({
         cartCount: 1,
         cartItemId: '01K00000000000000000000005',
+        cartTotalHalalah: 15_000,
         cartUrl: '/en/cart',
     });
     page.url = '/en/sbc/icon-challenge?variant=01K00000000000000000000004';
@@ -291,15 +292,18 @@ it('reveals the password accessibly and confirms the add without leaving the pro
     await act(async () => {
         await Promise.resolve();
     });
+    expect(screen.getByRole('status')).toHaveTextContent('Added to cart');
     expect(screen.getByRole('status')).toHaveTextContent(
-        'Icon Challenge is ready in your cart.',
+        '1 items in your cart · SAR 150.00',
     );
-    expect(screen.getByRole('status')).toHaveTextContent('5 completions · PC');
+    expect(screen.getByRole('status')).toHaveTextContent('Icon Challenge');
+    expect(screen.getByRole('status')).toHaveTextContent('5 completions');
+    expect(screen.getByRole('status')).toHaveTextContent('SAR 150.00');
     expect(mocks.visit).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(450);
     expect(mocks.visit).not.toHaveBeenCalled();
-    expect(screen.getByRole('link', { name: 'Buy now' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Checkout' })).toHaveAttribute(
         'href',
         '/en/cart',
     );
@@ -522,10 +526,15 @@ function sbcProductProps() {
         ui: {
             brand: 'Arab UT',
             cart_added: {
-                title: 'Added to your cart',
-                message: ':item is ready in your cart.',
-                buy_now: 'Buy now',
-                continue_shopping: 'Continue shopping',
+                title: 'Added to cart',
+                in_cart: ':count items in your cart · :total',
+                checkout: 'Checkout',
+                cart: 'Cart',
+                dismiss: 'Dismiss',
+                duplicate_title: 'Already in your cart',
+                duplicate_hint:
+                    'To change the options, remove it from the cart and add it again',
+                open_cart: 'Open cart',
             },
             language: 'Arabic',
             currency_selector: 'Currency',
