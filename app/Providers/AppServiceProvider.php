@@ -11,9 +11,11 @@ use App\Services\AI\ConfiguredAgentModelResolver;
 use App\Support\AI\AgentRuntimeConfig;
 use App\Support\AI\SystemAgentSleeper;
 use App\Support\AI\SystemMonotonicClock;
+use App\View\Components\InertiaApp;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -39,6 +41,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureRateLimiting();
+
+        // Emits the Inertia page payload as UTF-8 rather than escape sequences.
+        Blade::component('inertia-app', InertiaApp::class);
     }
 
     /**

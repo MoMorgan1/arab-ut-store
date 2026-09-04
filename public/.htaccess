@@ -5,6 +5,30 @@
     AddType application/manifest+json .webmanifest
 </IfModule>
 
+<IfModule mod_headers.c>
+    # Every script and stylesheet this host serves comes out of `public/build`
+    # with a content hash in its name, so a cached copy can never go stale — a
+    # change ships under a new URL. The host default of a week made returning
+    # visitors revalidate bytes that are provably still correct.
+    <FilesMatch "\.(js|css)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    # The brand faces carry no hash, so they keep a revalidation window rather
+    # than `immutable`. A month still spares every returning visitor the ~600 KB
+    # of woff2 that a store page pulls.
+    <FilesMatch "\.woff2$">
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+
+    # LiteSpeed sends these with no Cache-Control at all, so a returning visitor
+    # spends a round trip revalidating every single image. A week cuts that
+    # without holding a swapped-out asset for long.
+    <FilesMatch "\.(avif|webp|png|jpe?g|gif|svg|ico)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
