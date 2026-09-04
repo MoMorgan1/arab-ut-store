@@ -169,6 +169,8 @@ it('projects only a safe immutable Rivals route into the cart', function () {
         'targetDivision' => 'elite',
     ]), 'safe-rivals-projection')->assertCreated();
 
+    $item = CartItem::query()->sole();
+
     $response = $this->get('/cart')->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
         ->where('cart.items.0.configuration.service_type', 'rivals')
@@ -178,7 +180,8 @@ it('projects only a safe immutable Rivals route into the cart', function () {
         ->where('cart.items.0.fulfillment.credentialsReady', true)
         ->where('cart.items.0.fulfillment.squadImagePresent', true)
         ->where('cart.items.0.credentials', null)
-        ->where('cart.items.0.credentialsUrl', null)
+        ->where('cart.items.0.credentialsKind', 'manual')
+        ->where('cart.items.0.credentialsUrl', "/cart/items/{$item->public_id}/credentials")
         ->missing('cart.items.0.configuration.urgent'));
 
     expect(strtolower($response->getContent()))->not->toContain(
@@ -347,4 +350,42 @@ test('adding another Rivals platform variant creates a second line', function ()
         ->assertJsonPath('data.cartCount', 2);
 
     expect(CartItem::count())->toBe(2);
+});
+
+test('replacing a Rivals line removes the old line and keeps the count', function () {
+    postRivalsCart(validRivalsCartPayload(), 'rivals-replace-first')->assertCreated();
+    $old = CartItem::query()->sole();
+
+    $replacement = validRivalsCartPayload(['targetDivision' => '1']);
+    unset($replacement['squadImage']);
+    $replacement['replaceCartItemId'] = $old->public_id;
+
+    postRivalsCart($replacement, 'rivals-replace-second')
+        ->assertCreated()
+        ->assertJsonPath('data.cartCount', 1);
+
+    expect(CartItem::count())->toBe(1)
+        ->and(CartItem::withRemoved()->count())->toBe(2)
+        ->and($old->fresh()->removed_at)->not->toBeNull()
+        ->and(CartItem::sole()->configuration['target_division'])->toBe('1')
+        ->and(CartItem::sole()->squadImage)->not->toBeNull();
+});
+
+test('replacing a Rivals line that is not on the owner cart is refused', function () {
+    $owner = User::factory()->create();
+    $this->actingAs($owner);
+    postRivalsCart(validRivalsCartPayload(), 'rivals-replace-owner')->assertCreated();
+    $foreign = CartItem::query()->sole();
+
+    $this->actingAs(User::factory()->create());
+
+    $replacement = validRivalsCartPayload();
+    unset($replacement['squadImage']);
+    $replacement['replaceCartItemId'] = $foreign->public_id;
+
+    postRivalsCart($replacement, 'rivals-replace-foreign')
+        ->assertNotFound()
+        ->assertJsonPath('error.code', 'replaced_item_unavailable');
+
+    expect($foreign->fresh()->removed_at)->toBeNull();
 });

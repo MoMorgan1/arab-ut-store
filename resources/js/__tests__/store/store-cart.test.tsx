@@ -326,7 +326,8 @@ const manualFutCartItem = {
         urgent: true,
     },
     credentials: null,
-    credentialsUrl: null,
+    credentialsUrl: '/en/cart/items/01K00000000000000000000000/credentials',
+    credentialsKind: 'manual',
     fulfillment: { credentialsReady: true, squadImagePresent: true },
     product: {
         imageUrl: '/images/store/navigation/logo-champions-80.webp',
@@ -336,6 +337,31 @@ const manualFutCartItem = {
     requiresCredentials: false,
     totalHalalah: 21_000,
     unitPriceHalalah: 21_000,
+} as StoreCartItem;
+
+const manualRivalsCartItem = {
+    ...defaultCartItem,
+    configuration: {
+        market: 'console',
+        platform: 'playstation',
+        schedule_version: 1,
+        service_type: 'rivals',
+        from_division: '5',
+        to_division: 'elite',
+    },
+    credentials: null,
+    credentialsUrl: '/en/cart/items/01K00000000000000000000001/credentials',
+    credentialsKind: 'manual',
+    fulfillment: { credentialsReady: true, squadImagePresent: true },
+    id: '01K00000000000000000000001',
+    product: {
+        imageUrl: '/images/store/services/rivals.webp',
+        name: 'Division Rivals service',
+        serviceType: 'rivals',
+    },
+    requiresCredentials: false,
+    totalHalalah: 75_000,
+    unitPriceHalalah: 75_000,
 } as StoreCartItem;
 
 vi.mock('@inertiajs/react', () => ({
@@ -418,7 +444,7 @@ it('renders only the authoritative read-only Coins cart summary', () => {
     expect(screen.getByText('Your services')).toBeVisible();
 });
 
-it('renders an immutable FUT summary with fulfillment readiness and no credential edit action', () => {
+it('renders a FUT line with fulfillment readiness and no inline edit before it is expanded', () => {
     Object.assign(mockPage.props.cartPage.translations, {
         account_details_ready: 'Account details stored securely',
         division_elite: 'Elite',
@@ -458,6 +484,85 @@ it('renders an immutable FUT summary with fulfillment readiness and no credentia
     expect(
         screen.queryByRole('button', { name: 'Show EA details' }),
     ).not.toBeInTheDocument();
+});
+
+it('expands a manual line, edits its stored details, and saves them', async () => {
+    Object.assign(mockPage.props.cartPage.translations, {
+        edit_details: 'Edit details',
+        save_details: 'Save details',
+        details_saved: 'Details saved',
+        details_load_error: 'Details could not be loaded.',
+        details_save_error: 'Details could not be saved.',
+        playstation_email: 'PlayStation email',
+        playstation_password: 'PlayStation password',
+        ea_backup_codes: 'EA backup codes',
+        playstation_backup_codes: 'PlayStation backup codes',
+        squad_image_ready: 'Squad image attached',
+    });
+    mockPage.props.cart.items = [
+        manualRivalsCartItem,
+    ] as typeof mockPage.props.cart.items;
+
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+        if ((init?.method ?? 'GET') === 'PATCH') {
+            return Promise.resolve(new Response(null, { status: 204 }));
+        }
+
+        return Promise.resolve(
+            new Response(
+                JSON.stringify({
+                    data: {
+                        platform: 'playstation',
+                        launcher: null,
+                        eaEmail: '',
+                        eaPassword: '',
+                        eaCodes: ['12345678', '23456789', '34567890'],
+                        playstationEmail: 'player@example.test',
+                        playstationPassword: 'PS secret',
+                        playstationCodes: ['A1B2C3', 'D4E5F6', 'Z9Y8X7'],
+                        steamUsername: '',
+                        steamPassword: '',
+                    },
+                }),
+                { status: 200 },
+            ),
+        );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<StoreCart />);
+
+    fireEvent.click(
+        screen.getByRole('button', {
+            name: 'Account details and squad image ready',
+        }),
+    );
+
+    expect(await screen.findByText('player@example.test')).toBeVisible();
+    expect(screen.getByText('PS secret')).toBeVisible();
+    expect(screen.getByText('Squad image attached')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }));
+    fireEvent.change(screen.getByDisplayValue('player@example.test'), {
+        target: { value: 'edited@example.test' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save details' }));
+
+    await waitFor(() =>
+        expect(screen.getByText('Details saved')).toBeVisible(),
+    );
+
+    const patch = fetchMock.mock.calls.find(
+        (call) => (call[1] as RequestInit)?.method === 'PATCH',
+    );
+    expect(patch?.[0]).toBe(
+        '/en/cart/items/01K00000000000000000000001/credentials',
+    );
+    expect(JSON.parse(patch?.[1]?.body as string)).toMatchObject({
+        playstation_email: 'edited@example.test',
+        ea_backup_codes: ['12345678', '23456789', '34567890'],
+        playstation_backup_codes: ['A1B2C3', 'D4E5F6', 'Z9Y8X7'],
+    });
 });
 
 it('offers the Coins route from a purposeful empty state without a back link', () => {

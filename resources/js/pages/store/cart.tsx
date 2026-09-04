@@ -26,9 +26,14 @@ import {
 } from '@/lib/cart-coupon-api';
 import {
     loadCartCredentials,
+    loadManualCartCredentials,
     updateCartCredentials,
+    updateManualCartCredentials,
 } from '@/lib/cart-credentials-api';
-import type { StoredCartCredentials } from '@/lib/cart-credentials-api';
+import type {
+    StoredCartCredentials,
+    StoredManualCartCredentials,
+} from '@/lib/cart-credentials-api';
 import {
     CartRestoreConflict,
     removeCartItem,
@@ -1689,9 +1694,10 @@ function CartLine({
                     </del>
                 </p>
             ) : null}
-            {isManualService ? (
-                <ManualFulfillmentState
-                    fulfillment={cartItem.fulfillment ?? null}
+            {cartItem.credentialsKind === 'manual' ? (
+                <ManualCredentialState
+                    cartItem={cartItem}
+                    locale={locale}
                     translations={translations}
                 />
             ) : (
@@ -1741,19 +1747,57 @@ function divisionLabel(
         : formatInteger(Number(division), locale);
 }
 
-function ManualFulfillmentState({
-    fulfillment,
+function ManualCredentialState({
+    cartItem,
+    locale,
     translations,
 }: {
-    fulfillment: StoreCartItem['fulfillment'];
+    cartItem: StoreCartItem;
+    locale: 'ar' | 'en';
     translations: StoreCartTranslations;
 }) {
-    if (
-        fulfillment === null ||
-        fulfillment === undefined ||
-        !fulfillment.credentialsReady ||
-        !fulfillment.squadImagePresent
-    ) {
+    const [credentials, setCredentials] =
+        useState<StoredManualCartCredentials | null>(null);
+    const [draft, setDraft] = useState<StoredManualCartCredentials | null>(
+        null,
+    );
+    const [expanded, setExpanded] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [loadFailed, setLoadFailed] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [saveState, setSaveState] = useState<'idle' | 'saved' | 'failed'>(
+        'idle',
+    );
+    const fulfillment = cartItem.fulfillment ?? null;
+    const ready =
+        fulfillment !== null &&
+        fulfillment.credentialsReady &&
+        fulfillment.squadImagePresent;
+
+    useEffect(() => {
+        if (!expanded || !ready || cartItem.credentialsUrl === null) {
+            return;
+        }
+
+        const controller = new AbortController();
+
+        loadManualCartCredentials(cartItem.credentialsUrl, controller.signal)
+            .then((loaded) => {
+                setCredentials(loaded);
+                setDraft(loaded);
+            })
+            .catch((error: unknown) => {
+                if (!(
+                    error instanceof DOMException && error.name === 'AbortError'
+                )) {
+                    setLoadFailed(true);
+                }
+            });
+
+        return () => controller.abort();
+    }, [cartItem.credentialsUrl, expanded, ready]);
+
+    if (!ready) {
         return (
             <p className="store-cart-line__status store-cart-line__status--missing">
                 <span
@@ -1767,16 +1811,545 @@ function ManualFulfillmentState({
         );
     }
 
-    return (
-        <p
-            className="store-cart-line__status store-cart-line__status--ready"
-            role="status"
+    const contentId = `cart-manual-credentials-${cartItem.id}`;
+    const disclosure = (
+        <button
+            aria-controls={contentId}
+            aria-expanded={expanded}
+            className="store-cart-line__status store-cart-line__status--ready store-cart-credentials__disclosure"
+            onClick={() => {
+                // A failed load is retried on the next expand, not remembered.
+                setLoadFailed(false);
+                setExpanded((current) => !current);
+
+                if (expanded) {
+                    setEditing(false);
+                    setDraft(credentials);
+                    setSaveState('idle');
+                }
+            }}
+            type="button"
         >
             <span aria-hidden="true" className="store-cart-line__status-dot" />
             <span className="store-cart-line__status-label">
                 {translations.fulfillment_ready}
             </span>
-        </p>
+            <ChevronDown aria-hidden="true" />
+        </button>
+    );
+
+    if (!expanded) {
+        return <div className="store-cart-credentials">{disclosure}</div>;
+    }
+
+    if (loadFailed) {
+        return (
+            <div className="store-cart-credentials">
+                {disclosure}
+                <p
+                    className="store-cart-line__status store-cart-line__status--missing"
+                    id={contentId}
+                    role="alert"
+                >
+                    {translations.details_load_error}
+                </p>
+            </div>
+        );
+    }
+
+    if (credentials === null || draft === null) {
+        return (
+            <div className="store-cart-credentials">
+                {disclosure}
+                <p id={contentId} role="status">
+                    {translations.fulfillment_ready}
+                </p>
+            </div>
+        );
+    }
+
+    function updateDraft<Key extends keyof StoredManualCartCredentials>(
+        key: Key,
+        value: StoredManualCartCredentials[Key],
+    ) {
+        setDraft((current) =>
+            current === null ? current : { ...current, [key]: value },
+        );
+        setSaveState('idle');
+    }
+
+    function updateEaCode(index: 0 | 1 | 2, value: string) {
+        if (draft === null) {
+            return;
+        }
+
+        const eaCodes: [string, string, string] = [...draft.eaCodes];
+        eaCodes[index] = value.replace(/[^0-9]/g, '').slice(0, 8);
+        updateDraft('eaCodes', eaCodes);
+    }
+
+    function updatePlayStationCode(index: 0 | 1 | 2, value: string) {
+        if (draft === null) {
+            return;
+        }
+
+        const playstationCodes: [string, string, string] = [
+            ...draft.playstationCodes,
+        ];
+        playstationCodes[index] = value
+            .replace(/[^A-Za-z0-9]/g, '')
+            .toUpperCase()
+            .slice(0, 6);
+        updateDraft('playstationCodes', playstationCodes);
+    }
+
+    async function save() {
+        if (
+            draft === null ||
+            saving ||
+            !isManualDraftValid(draft) ||
+            cartItem.credentialsUrl === null
+        ) {
+            return;
+        }
+
+        setSaving(true);
+        setSaveState('idle');
+
+        try {
+            await updateManualCartCredentials(cartItem.credentialsUrl, draft);
+            setCredentials(draft);
+            setEditing(false);
+            setSaveState('saved');
+        } catch {
+            setSaveState('failed');
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    return (
+        <div className="store-cart-credentials">
+            {disclosure}
+            <div className="store-cart-credentials__content" id={contentId}>
+                {editing ? (
+                    <ManualCredentialForm
+                        draft={draft}
+                        groupId={cartItem.id}
+                        locale={locale}
+                        onCancel={() => {
+                            setDraft(credentials);
+                            setEditing(false);
+                            setSaveState('idle');
+                        }}
+                        onEaCodeChange={updateEaCode}
+                        onFieldChange={updateDraft}
+                        onPlayStationCodeChange={updatePlayStationCode}
+                        onSave={save}
+                        saving={saving}
+                        translations={translations}
+                    />
+                ) : (
+                    <>
+                        <ManualCredentialValues
+                            credentials={credentials}
+                            locale={locale}
+                            translations={translations}
+                        />
+                        <button
+                            className="store-cart-credentials__edit"
+                            onClick={() => setEditing(true)}
+                            type="button"
+                        >
+                            {translations.edit_details}
+                        </button>
+                    </>
+                )}
+                {saveState === 'saved' ? (
+                    <p role="status">{translations.details_saved}</p>
+                ) : null}
+                {saveState === 'failed' ? (
+                    <p role="alert">{translations.details_save_error}</p>
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
+const MANUAL_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MANUAL_EA_CODE_PATTERN = /^[0-9]{8}$/;
+const MANUAL_PS_CODE_PATTERN = /^[A-Za-z0-9]{6}$/;
+
+function isCodeTriple(
+    codes: [string, string, string],
+    pattern: RegExp,
+): boolean {
+    return (
+        codes.every((code) => pattern.test(code)) && new Set(codes).size === 3
+    );
+}
+
+function isManualDraftValid(draft: StoredManualCartCredentials): boolean {
+    if (!isCodeTriple(draft.eaCodes, MANUAL_EA_CODE_PATTERN)) {
+        return false;
+    }
+
+    if (draft.platform === 'playstation') {
+        return (
+            MANUAL_EMAIL_PATTERN.test(draft.playstationEmail) &&
+            draft.playstationEmail.length <= 254 &&
+            draft.playstationPassword.length >= 1 &&
+            draft.playstationPassword.length <= 256 &&
+            isCodeTriple(draft.playstationCodes, MANUAL_PS_CODE_PATTERN)
+        );
+    }
+
+    return (
+        MANUAL_EMAIL_PATTERN.test(draft.eaEmail) &&
+        draft.eaEmail.length <= 254 &&
+        draft.eaPassword.length >= 1 &&
+        draft.eaPassword.length <= 256 &&
+        (draft.launcher !== 'steam' ||
+            (draft.steamUsername.trim() !== '' &&
+                draft.steamUsername.length <= 128 &&
+                draft.steamPassword.length >= 1 &&
+                draft.steamPassword.length <= 256))
+    );
+}
+
+function ManualCredentialValues({
+    credentials,
+    locale,
+    translations,
+}: {
+    credentials: StoredManualCartCredentials;
+    locale: 'ar' | 'en';
+    translations: StoreCartTranslations;
+}) {
+    const rows: Array<{ label: string; value: string }> = [];
+
+    if (credentials.platform === 'playstation') {
+        rows.push(
+            {
+                label: translations.playstation_email,
+                value: credentials.playstationEmail,
+            },
+            {
+                label: translations.playstation_password,
+                value: credentials.playstationPassword,
+            },
+        );
+    } else {
+        rows.push(
+            { label: translations.ea_email, value: credentials.eaEmail },
+            {
+                label: translations.ea_password,
+                value: credentials.eaPassword,
+            },
+        );
+    }
+
+    credentials.eaCodes.forEach((code, index) => {
+        rows.push({
+            label: `${translations.ea_backup_codes} · ${formatInteger(index + 1, locale)}`,
+            value: code,
+        });
+    });
+
+    if (credentials.platform === 'playstation') {
+        credentials.playstationCodes.forEach((code, index) => {
+            rows.push({
+                label: `${translations.playstation_backup_codes} · ${formatInteger(index + 1, locale)}`,
+                value: code,
+            });
+        });
+    }
+
+    if (credentials.platform === 'pc' && credentials.launcher === 'steam') {
+        rows.push(
+            {
+                label: translations.steam_username,
+                value: credentials.steamUsername,
+            },
+            {
+                label: translations.steam_password,
+                value: credentials.steamPassword,
+            },
+        );
+    }
+
+    return (
+        <>
+            <dl className="store-cart-credentials__values" dir="ltr">
+                {rows.map((row, index) => (
+                    <div key={index}>
+                        <dt>{row.label}</dt>
+                        <dd>{row.value}</dd>
+                    </div>
+                ))}
+            </dl>
+            <p className="store-cart-line__status store-cart-line__status--ready">
+                <span
+                    aria-hidden="true"
+                    className="store-cart-line__status-dot"
+                />
+                <span className="store-cart-line__status-label">
+                    {translations.squad_image_ready}
+                </span>
+            </p>
+        </>
+    );
+}
+
+function ManualCredentialForm({
+    draft,
+    groupId,
+    locale,
+    onCancel,
+    onEaCodeChange,
+    onFieldChange,
+    onPlayStationCodeChange,
+    onSave,
+    saving,
+    translations,
+}: {
+    draft: StoredManualCartCredentials;
+    groupId: string;
+    locale: 'ar' | 'en';
+    onCancel: () => void;
+    onEaCodeChange: (index: 0 | 1 | 2, value: string) => void;
+    onFieldChange: <Key extends keyof StoredManualCartCredentials>(
+        key: Key,
+        value: StoredManualCartCredentials[Key],
+    ) => void;
+    onPlayStationCodeChange: (index: 0 | 1 | 2, value: string) => void;
+    onSave: () => void;
+    saving: boolean;
+    translations: StoreCartTranslations;
+}) {
+    // Scoped per line: two manual lines on one platform must not share a
+    // code group, or the auto-advance would jump between them.
+    const group = `cart-manual-${groupId}`;
+
+    return (
+        <div className="store-cart-credentials__form">
+            {draft.platform === 'playstation' ? (
+                <>
+                    <label>
+                        <span>{translations.playstation_email}</span>
+                        <input
+                            autoComplete="off"
+                            dir="ltr"
+                            onChange={(event) =>
+                                onFieldChange(
+                                    'playstationEmail',
+                                    event.currentTarget.value,
+                                )
+                            }
+                            required
+                            type="email"
+                            value={draft.playstationEmail}
+                        />
+                    </label>
+                    <label>
+                        <span>{translations.playstation_password}</span>
+                        <input
+                            autoComplete="off"
+                            dir="ltr"
+                            onChange={(event) =>
+                                onFieldChange(
+                                    'playstationPassword',
+                                    event.currentTarget.value,
+                                )
+                            }
+                            required
+                            type="text"
+                            value={draft.playstationPassword}
+                        />
+                    </label>
+                </>
+            ) : (
+                <>
+                    <label>
+                        <span>{translations.ea_email}</span>
+                        <input
+                            autoComplete="off"
+                            dir="ltr"
+                            onChange={(event) =>
+                                onFieldChange(
+                                    'eaEmail',
+                                    event.currentTarget.value,
+                                )
+                            }
+                            required
+                            type="email"
+                            value={draft.eaEmail}
+                        />
+                    </label>
+                    <label>
+                        <span>{translations.ea_password}</span>
+                        <input
+                            autoComplete="off"
+                            dir="ltr"
+                            onChange={(event) =>
+                                onFieldChange(
+                                    'eaPassword',
+                                    event.currentTarget.value,
+                                )
+                            }
+                            required
+                            type="text"
+                            value={draft.eaPassword}
+                        />
+                    </label>
+                </>
+            )}
+            {draft.eaCodes.map((code, index) => (
+                <label key={`ea-${index}`}>
+                    <span>
+                        {interpolate(translations.backup_code, {
+                            number: formatInteger(index + 1, locale),
+                        })}
+                    </span>
+                    <input
+                        autoComplete="off"
+                        data-code-field=""
+                        data-code-group={group}
+                        dir="ltr"
+                        inputMode="numeric"
+                        maxLength={8}
+                        onChange={(event) => {
+                            if (
+                                event.currentTarget.value
+                                    .replace(/[^0-9]/g, '')
+                                    .slice(0, 8).length === 8 &&
+                                code.length < 8
+                            ) {
+                                focusSiblingCodeField(event.currentTarget, 1);
+                            }
+
+                            onEaCodeChange(
+                                index as 0 | 1 | 2,
+                                event.currentTarget.value,
+                            );
+                        }}
+                        onKeyDown={(event) => {
+                            if (
+                                event.key === 'Backspace' &&
+                                event.currentTarget.value === ''
+                            ) {
+                                event.preventDefault();
+                                focusSiblingCodeField(event.currentTarget, -1);
+                            }
+                        }}
+                        pattern="[0-9]{8}"
+                        required
+                        value={code}
+                    />
+                </label>
+            ))}
+            {draft.platform === 'playstation'
+                ? draft.playstationCodes.map((code, index) => (
+                      <label key={`ps-${index}`}>
+                          <span>
+                              {interpolate(translations.backup_code, {
+                                  number: formatInteger(index + 4, locale),
+                              })}
+                          </span>
+                          <input
+                              autoComplete="off"
+                              data-code-field=""
+                              data-code-group={group}
+                              dir="ltr"
+                              inputMode="text"
+                              maxLength={6}
+                              onChange={(event) => {
+                                  if (
+                                      event.currentTarget.value
+                                          .replace(/[^A-Za-z0-9]/g, '')
+                                          .toUpperCase()
+                                          .slice(0, 6).length === 6 &&
+                                      code.length < 6
+                                  ) {
+                                      focusSiblingCodeField(
+                                          event.currentTarget,
+                                          1,
+                                      );
+                                  }
+
+                                  onPlayStationCodeChange(
+                                      index as 0 | 1 | 2,
+                                      event.currentTarget.value,
+                                  );
+                              }}
+                              onKeyDown={(event) => {
+                                  if (
+                                      event.key === 'Backspace' &&
+                                      event.currentTarget.value === ''
+                                  ) {
+                                      event.preventDefault();
+                                      focusSiblingCodeField(
+                                          event.currentTarget,
+                                          -1,
+                                      );
+                                  }
+                              }}
+                              pattern="[A-Za-z0-9]{6}"
+                              required
+                              value={code}
+                          />
+                      </label>
+                  ))
+                : null}
+            {draft.platform === 'pc' && draft.launcher === 'steam' ? (
+                <>
+                    <label>
+                        <span>{translations.steam_username}</span>
+                        <input
+                            autoComplete="off"
+                            dir="ltr"
+                            onChange={(event) =>
+                                onFieldChange(
+                                    'steamUsername',
+                                    event.currentTarget.value,
+                                )
+                            }
+                            required
+                            type="text"
+                            value={draft.steamUsername}
+                        />
+                    </label>
+                    <label>
+                        <span>{translations.steam_password}</span>
+                        <input
+                            autoComplete="off"
+                            dir="ltr"
+                            onChange={(event) =>
+                                onFieldChange(
+                                    'steamPassword',
+                                    event.currentTarget.value,
+                                )
+                            }
+                            required
+                            type="text"
+                            value={draft.steamPassword}
+                        />
+                    </label>
+                </>
+            ) : null}
+            <div className="store-cart-credentials__actions">
+                <button
+                    disabled={saving || !isManualDraftValid(draft)}
+                    onClick={onSave}
+                    type="button"
+                >
+                    {translations.save_details}
+                </button>
+                <button onClick={onCancel} type="button">
+                    {translations.cancel_edit}
+                </button>
+            </div>
+        </div>
     );
 }
 

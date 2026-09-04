@@ -9,12 +9,14 @@ export function SquadUpload({
     error,
     file,
     inputRef,
+    keptNotice = null,
     onChange,
     translations,
 }: {
     error?: string;
     file: File | null;
     inputRef?: (node: HTMLInputElement | null) => void;
+    keptNotice?: string | null;
     onChange: (file: File | null) => void;
     translations: ManualServiceCommonTranslations;
 }) {
@@ -33,6 +35,11 @@ export function SquadUpload({
 
     return (
         <div className="manual-squad-upload">
+            {keptNotice !== null && file === null ? (
+                <p className="manual-configurator__hint" role="note">
+                    {keptNotice}
+                </p>
+            ) : null}
             <label className="manual-squad-dropzone">
                 <input
                     accept="image/jpeg,image/png,image/webp"

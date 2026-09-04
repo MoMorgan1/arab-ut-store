@@ -5,12 +5,15 @@ namespace App\Actions\Cart;
 use App\Actions\Pricing\ReadManualServicePricing;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
+use App\Exceptions\Cart\ReplacedCartItemMissing;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\FulfillmentAttachment;
 use App\Models\ProductVariant;
 use App\Security\FutChampionsCartFingerprint;
 use App\ValueObjects\Cart\CartOwner;
 use DomainException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
 final readonly class AddFutChampionsToCart
@@ -55,18 +58,61 @@ final readonly class AddFutChampionsToCart
             $variant = $this->support->eligibleVariant(ServiceType::FutChampions, $platform);
             $price = $pricing['pricing']->priceForRank((int) $validated['rank'], (bool) $validated['urgent']);
             $cart = $this->acquireActiveCart->execute($owner);
+            $replaced = $this->softRemoveReplaced($cart, $validated['replaceCartItemId'] ?? null);
             $this->assertVariantNotInCart->execute($cart, $variant);
             $item = $this->createItem($cart, $variant, $validated, $price, $schedule->version);
-            $this->persistFulfillment->execute(
-                $item,
-                $this->support->credentials($validated),
-                $validated['squadImage'],
-            );
+            $this->persistFulfillment($item, $validated, $replaced);
             $body = $this->support->responseBody($cart, $item, $locale);
             $this->support->complete($claim, $body);
 
             return ['status' => 201, 'body' => $body];
         }, attempts: 3);
+    }
+
+    /** @param array<string, mixed> $validated */
+    private function persistFulfillment(CartItem $item, array $validated, ?CartItem $replaced): void
+    {
+        $credentials = $this->support->credentials($validated);
+        $image = $validated['squadImage'] ?? null;
+
+        if ($image instanceof UploadedFile) {
+            $this->persistFulfillment->execute($item, $credentials, $image);
+
+            return;
+        }
+
+        $source = $replaced?->squadImage()->first();
+
+        if (! $source instanceof FulfillmentAttachment) {
+            throw new DomainException('The kept squad image is no longer available.');
+        }
+
+        $this->persistFulfillment->executeWithCarriedImage($item, $credentials, $source);
+    }
+
+    /**
+     * Soft-removes the owner's line being replaced, so the new line can
+     * take its variant and the old one stays restorable in the undo window.
+     */
+    private function softRemoveReplaced(Cart $cart, mixed $replaceCartItemId): ?CartItem
+    {
+        if (! is_string($replaceCartItemId) || $replaceCartItemId === '') {
+            return null;
+        }
+
+        $replaced = CartItem::query()
+            ->where('public_id', $replaceCartItemId)
+            ->where('cart_id', $cart->id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $replaced instanceof CartItem) {
+            throw new ReplacedCartItemMissing('The replaced cart item is unavailable.');
+        }
+
+        $replaced->update(['removed_at' => now()]);
+
+        return $replaced;
     }
 
     /** @param array<string, mixed> $validated */

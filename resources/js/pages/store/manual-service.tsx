@@ -142,12 +142,16 @@ export default function StoreManualService() {
                             locale={props.locale}
                             pricing={manual.pricing}
                             product={manual.product}
+                            replaceCredentialsUrl={
+                                props.replaceCredentialsUrl ?? null
+                            }
                             scheduleVersion={manual.scheduleVersion}
                             service={
                                 props.manualServicePage
                                     .service as FutServiceTranslations
                             }
                             tutorials={manual.tutorials}
+                            variantIds={manual.variantIds}
                         />
                     ) : manual.service === 'rivals' &&
                       manual.scheduleVersion !== null &&
@@ -159,12 +163,16 @@ export default function StoreManualService() {
                             locale={props.locale}
                             pricing={manual.pricing}
                             product={manual.product}
+                            replaceCredentialsUrl={
+                                props.replaceCredentialsUrl ?? null
+                            }
                             scheduleVersion={manual.scheduleVersion}
                             service={
                                 props.manualServicePage
                                     .service as RivalsServiceTranslations
                             }
                             tutorials={manual.tutorials}
+                            variantIds={manual.variantIds}
                         />
                     ) : null}
                 </div>

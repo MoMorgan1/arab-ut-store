@@ -214,6 +214,8 @@ it('projects only a safe immutable FUT summary into the cart', function () {
         'credentials' => futCartCredentials('pc', 'steam'),
     ]), 'safe-fut-projection')->assertCreated();
 
+    $item = CartItem::query()->sole();
+
     $response = $this->get('/en/cart')->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
         ->where('cart.items.0.configuration.service_type', 'fut_champions')
@@ -226,7 +228,8 @@ it('projects only a safe immutable FUT summary into the cart', function () {
         ->where('cart.items.0.fulfillment.credentialsReady', true)
         ->where('cart.items.0.fulfillment.squadImagePresent', true)
         ->where('cart.items.0.credentials', null)
-        ->where('cart.items.0.credentialsUrl', null));
+        ->where('cart.items.0.credentialsKind', 'manual')
+        ->where('cart.items.0.credentialsUrl', "/en/cart/items/{$item->public_id}/credentials"));
 
     $serialized = strtolower($response->getContent());
     expect($serialized)->not->toContain(
@@ -294,4 +297,107 @@ test('adding another FUT Champions platform variant creates a second line', func
         ->assertJsonPath('data.cartCount', 2);
 
     expect(CartItem::count())->toBe(2);
+});
+
+test('replacing a FUT line without a new image keeps the squad image on the new line', function () {
+    postFutCart(validFutCartPayload(), 'fut-replace-first')->assertCreated();
+
+    $old = CartItem::query()->sole();
+    $oldPath = FulfillmentAttachment::query()->sole()->path;
+    Storage::disk('local')->assertExists($oldPath);
+
+    $replacement = validFutCartPayload(['rank' => 2]);
+    unset($replacement['squadImage']);
+    $replacement['replaceCartItemId'] = $old->public_id;
+
+    postFutCart($replacement, 'fut-replace-second')
+        ->assertCreated()
+        ->assertJsonPath('data.cartCount', 1);
+
+    expect(CartItem::count())->toBe(1)
+        ->and(CartItem::withRemoved()->count())->toBe(2)
+        ->and($old->fresh()->removed_at)->not->toBeNull();
+
+    $new = CartItem::query()->sole();
+    $carried = $new->squadImage;
+
+    // The file was duplicated, not moved: the old line keeps its bytes for
+    // the undo window while the new line owns its copy.
+    expect($carried)->not->toBeNull()
+        ->and($carried->path)->not->toBe($oldPath)
+        ->and($carried->sha256)->toBe(FulfillmentAttachment::where('path', $oldPath)->sole()->sha256);
+    Storage::disk('local')->assertExists($carried->path);
+    Storage::disk('local')->assertExists($oldPath);
+
+    expect($new->configuration['rank'])->toBe(2)
+        ->and($new->secret->encrypted_payload['playstation_email'])->toBe('player@example.com');
+});
+
+test('a replaced FUT line stays restorable with its squad image inside the undo window', function () {
+    postFutCart(validFutCartPayload(), 'fut-restore-first')->assertCreated();
+
+    $old = CartItem::query()->sole();
+    $oldPath = FulfillmentAttachment::query()->sole()->path;
+
+    $replacement = validFutCartPayload(['rank' => 2]);
+    unset($replacement['squadImage']);
+    $replacement['replaceCartItemId'] = $old->public_id;
+
+    postFutCart($replacement, 'fut-restore-second')->assertCreated();
+
+    $new = CartItem::query()->sole();
+
+    // Take the replacement back out, then undo the replacement itself.
+    $this->deleteJson('/cart/items/'.$new->public_id)->assertOk();
+    $this->postJson('/cart/items/'.$old->public_id.'/restore')->assertOk();
+
+    expect($old->fresh()->removed_at)->toBeNull()
+        ->and($old->fresh()->squadImage)->not->toBeNull();
+    Storage::disk('local')->assertExists($oldPath);
+});
+
+test('replacing a FUT line with a new image uses the new one', function () {
+    postFutCart(validFutCartPayload(), 'fut-image-first')->assertCreated();
+
+    $old = CartItem::query()->sole();
+    $oldSha = FulfillmentAttachment::query()->sole()->sha256;
+
+    $replacement = validFutCartPayload([
+        'rank' => 2,
+        'squadImage' => new UploadedFile(
+            public_path('images/store/navigation/logo-champions-80.webp'),
+            'fut-squad-new.webp',
+            null,
+            UPLOAD_ERR_OK,
+            true,
+        ),
+    ]);
+    $replacement['replaceCartItemId'] = $old->public_id;
+
+    postFutCart($replacement, 'fut-image-second')->assertCreated();
+
+    $new = CartItem::query()->sole();
+
+    expect($new->squadImage)->not->toBeNull()
+        ->and($new->squadImage->sha256)->not->toBe($oldSha);
+    Storage::disk('local')->assertExists($new->squadImage->path);
+});
+
+test('replacing a FUT line that is not on the owner cart is refused', function () {
+    $owner = User::factory()->create();
+    $this->actingAs($owner);
+    postFutCart(validFutCartPayload(), 'fut-replace-owner')->assertCreated();
+    $foreign = CartItem::query()->sole();
+
+    $this->actingAs(User::factory()->create());
+
+    $replacement = validFutCartPayload();
+    unset($replacement['squadImage']);
+    $replacement['replaceCartItemId'] = $foreign->public_id;
+
+    postFutCart($replacement, 'fut-replace-foreign')
+        ->assertNotFound()
+        ->assertJsonPath('error.code', 'replaced_item_unavailable');
+
+    expect($foreign->fresh()->removed_at)->toBeNull();
 });

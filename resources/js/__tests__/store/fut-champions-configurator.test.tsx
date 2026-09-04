@@ -14,10 +14,28 @@ import type {
     ManualServiceCommonTranslations,
 } from '@/types/manual-services';
 
+const PS_VARIANT_ID = '01K00000000000000000000001';
+const PC_VARIANT_ID = '01K00000000000000000000002';
+const REPLACE_ID = '01K00000000000000000000000';
+
+const page = vi.hoisted(() => ({
+    props: {
+        cartVariantIds: [] as string[],
+        storeShell: { cartUrl: '/cart' },
+    },
+    url: '/fut-champions',
+}));
+
+vi.mock('@inertiajs/react', () => ({
+    usePage: () => page,
+}));
+
 const fetchMock = vi.fn();
 
 beforeEach(() => {
     window.history.pushState({}, '', '/fut-champions');
+    page.props.cartVariantIds = [];
+    page.url = '/fut-champions';
     fetchMock.mockReset().mockResolvedValue(
         new Response(
             JSON.stringify({
@@ -195,7 +213,123 @@ it('validates invalid email on blur and clears error on fix', () => {
     expect(screen.queryByText('Invalid email')).not.toBeInTheDocument();
 });
 
-function renderFut() {
+it('shows the in-cart state up front when the platform variant is in the cart', () => {
+    page.props.cartVariantIds = [PC_VARIANT_ID];
+    window.history.pushState(
+        {},
+        '',
+        '/fut-champions?platform=pc&launcher=ea_app',
+    );
+    renderFut();
+
+    expect(screen.getByRole('button', { name: 'In cart' })).toBeDisabled();
+    expect(screen.getByRole('link', { name: 'Open cart' })).toHaveAttribute(
+        'href',
+        '/cart',
+    );
+
+    fireEvent.click(screen.getByRole('radio', { name: 'PlayStation' }));
+
+    expect(
+        screen.getByRole('button', { name: 'Add service to cart' }),
+    ).toBeEnabled();
+    expect(
+        screen.queryByRole('link', { name: 'Open cart' }),
+    ).not.toBeInTheDocument();
+});
+
+it('prefills the edit URL, keeps the squad image, and sends the replaced line id', async () => {
+    window.history.pushState(
+        {},
+        '',
+        `/fut-champions?platform=playstation&rank=2&urgent=1&matches=4&replace=${REPLACE_ID}`,
+    );
+    vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, init?: RequestInit) => {
+            const isPost = (init?.method ?? 'GET') === 'POST';
+
+            return Promise.resolve(
+                new Response(
+                    isPost
+                        ? JSON.stringify({
+                              data: {
+                                  cartCount: 1,
+                                  cartItemId: '01K00000000000000000000005',
+                                  cartUrl: '/cart',
+                              },
+                          })
+                        : JSON.stringify({
+                              data: {
+                                  platform: 'playstation',
+                                  launcher: null,
+                                  eaEmail: '',
+                                  eaPassword: '',
+                                  eaCodes: ['11111111', '22222222', '33333333'],
+                                  playstationEmail: 'owner@example.test',
+                                  playstationPassword: 'ps secret',
+                                  playstationCodes: [
+                                      'ABC123',
+                                      'DEF456',
+                                      'GHI789',
+                                  ],
+                                  steamUsername: '',
+                                  steamPassword: '',
+                              },
+                          }),
+                    { status: isPost ? 201 : 200 },
+                ),
+            );
+        }),
+    );
+    renderFut(`/cart/items/${REPLACE_ID}/credentials`);
+
+    expect(screen.getByText('Editing the order in your cart')).toBeVisible();
+    expect(
+        screen.getByText(
+            'Your current image is kept — upload a new one to change it',
+        ),
+    ).toBeVisible();
+    expect(await screen.findByDisplayValue('owner@example.test')).toBeVisible();
+    // Rank, urgent, and played matches all arrive from the edit link.
+    expect(screen.getByRole('slider', { name: 'Target rank' })).toHaveValue(
+        '2',
+    );
+    expect(screen.getByRole('checkbox', { name: /Urgent/ })).toBeChecked();
+    expect(screen.getByLabelText('Matches already played')).toHaveValue(4);
+
+    fireEvent.submit(
+        screen
+            .getByRole('button', { name: 'Add service to cart' })
+            .closest('form')!,
+    );
+
+    await waitFor(() => {
+        const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
+        const post = calls.find(
+            (call) => (call[1] as RequestInit)?.method === 'POST',
+        );
+
+        expect(post).toBeDefined();
+
+        const form = (post?.[1] as RequestInit).body as FormData;
+        expect(form.get('replaceCartItemId')).toBe(REPLACE_ID);
+        // No new upload: the old squad image is carried over server-side.
+        expect(form.get('squadImage')).toBeNull();
+        expect(form.get('rank')).toBe('2');
+        expect(form.get('urgent')).toBe('1');
+        expect(form.get('matchesPlayed')).toBe('4');
+    });
+
+    // The replacement landed, so the editing note is over.
+    await waitFor(() =>
+        expect(
+            screen.queryByText('Editing the order in your cart'),
+        ).not.toBeInTheDocument(),
+    );
+});
+
+function renderFut(replaceCredentialsUrl: string | null = null) {
     render(
         <FutChampionsConfigurator
             addUrl="/cart/items/fut-champions"
@@ -220,12 +354,14 @@ function renderFut() {
                 description: 'Service description',
                 image: { alt: 'FUT', url: '/fut.webp' },
             }}
+            replaceCredentialsUrl={replaceCredentialsUrl}
             scheduleVersion={1}
             service={fut}
             tutorials={{
                 ea: 'https://example.test/ea',
                 playstation: 'https://example.test/ps',
             }}
+            variantIds={{ playstation: PS_VARIANT_ID, pc: PC_VARIANT_ID }}
         />,
     );
 }
@@ -266,6 +402,9 @@ const common: ManualServiceCommonTranslations = {
     add_error: 'Error',
     in_cart: 'In cart',
     open_cart: 'Open cart',
+    editing_replace: 'Editing the order in your cart',
+    squad_image_kept:
+        'Your current image is kept — upload a new one to change it',
     unavailable_title: 'Unavailable',
     unavailable_body: 'Try later',
     review_title: 'Review your service',

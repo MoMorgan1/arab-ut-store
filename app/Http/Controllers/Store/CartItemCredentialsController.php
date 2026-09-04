@@ -4,14 +4,17 @@ namespace App\Http\Controllers\Store;
 
 use App\Actions\Cart\PersistCartItemCredentials;
 use App\Actions\Cart\ResolveCartOwner;
+use App\Enums\ServiceType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Store\CartItemCredentialsRequest;
 use App\Models\Cart;
 use App\Models\CartItemSecret;
 use App\Services\Catalog\CoinsCatalogReader;
 use App\ValueObjects\Cart\CartOwner;
+use App\ValueObjects\Cart\ManualServiceCredentials;
 use DateTimeImmutable;
 use DateTimeInterface;
+use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +30,15 @@ final class CartItemCredentialsController extends Controller
         ResolveCartOwner $resolveCartOwner,
     ): JsonResponse {
         $secret = $this->ownedSecret($cartItem, $resolveCartOwner->forRequest($request));
+
+        if ($this->isManual($secret)) {
+            $manual = $this->manualCredentials($secret);
+
+            abort_if($manual === null, Response::HTTP_NOT_FOUND);
+
+            return response()->json(['data' => $manual]);
+        }
+
         $credentials = $this->credentials($secret);
 
         abort_if($credentials === null, Response::HTTP_NOT_FOUND);
@@ -53,6 +65,16 @@ final class CartItemCredentialsController extends Controller
                 $resolveCartOwner->forRequest($request),
                 lock: true,
             );
+
+            if ($this->isManual($secret)) {
+                $persistCredentials->replaceManual(
+                    $secret,
+                    $this->validatedManualUpdate($secret, $request->validated()),
+                );
+
+                return;
+            }
+
             $persistCredentials->replace(
                 $secret,
                 $this->validatedUpdate($secret, $request->validated()),
@@ -77,6 +99,125 @@ final class CartItemCredentialsController extends Controller
         }
 
         return $query->firstOrFail();
+    }
+
+    private function isManual(CartItemSecret $secret): bool
+    {
+        $serviceType = $secret->cartItem->productVariant->service_type;
+
+        return in_array($serviceType, [ServiceType::Rivals, ServiceType::FutChampions], true);
+    }
+
+    /**
+     * The manual shape read from the secret payload the add path wrote.
+     * Fields the platform does not use come back empty; the platform and
+     * launcher come from the stored line and are never editable here.
+     *
+     * @return array{platform: string, launcher: string|null, eaEmail: string, eaPassword: string, eaCodes: array{string, string, string}, playstationEmail: string, playstationPassword: string, playstationCodes: array{string, string, string}, steamUsername: string, steamPassword: string}|null
+     */
+    private function manualCredentials(CartItemSecret $secret): ?array
+    {
+        $payload = $secret->encrypted_payload;
+        $configuration = $secret->cartItem->configuration;
+
+        if (! is_array($payload) || ! is_array($configuration)) {
+            return null;
+        }
+
+        $platform = $configuration['platform'] ?? null;
+        $store = $configuration['pc_store'] ?? null;
+
+        if (($payload['platform'] ?? null) !== $platform
+            || ($platform === 'pc' && ($payload['pc_store'] ?? null) !== $store)
+            || ($platform === 'playstation' && array_key_exists('pc_store', $payload))) {
+            return null;
+        }
+
+        if ($platform === 'playstation') {
+            if (! isset($payload['playstation_email'], $payload['playstation_password'], $payload['ea_backup_codes'], $payload['playstation_backup_codes'])
+                || ! is_string($payload['playstation_email'])
+                || ! is_string($payload['playstation_password'])
+                || ! $this->validEaCodes($payload['ea_backup_codes'])
+                || ! $this->validPlayStationCodes($payload['playstation_backup_codes'])) {
+                return null;
+            }
+
+            /** @var array{string, string, string} $eaCodes */
+            $eaCodes = array_values($payload['ea_backup_codes']);
+            /** @var array{string, string, string} $playStationCodes */
+            $playStationCodes = array_values($payload['playstation_backup_codes']);
+
+            return [
+                'platform' => 'playstation',
+                'launcher' => null,
+                'eaEmail' => '',
+                'eaPassword' => '',
+                'eaCodes' => $eaCodes,
+                'playstationEmail' => $payload['playstation_email'],
+                'playstationPassword' => $payload['playstation_password'],
+                'playstationCodes' => $playStationCodes,
+                'steamUsername' => '',
+                'steamPassword' => '',
+            ];
+        }
+
+        if ($platform === 'pc' && in_array($store, ['ea_app', 'steam'], true)) {
+            if (! isset($payload['ea_email'], $payload['ea_password'], $payload['ea_backup_codes'])
+                || ! is_string($payload['ea_email'])
+                || ! is_string($payload['ea_password'])
+                || ! $this->validEaCodes($payload['ea_backup_codes'])) {
+                return null;
+            }
+
+            if ($store === 'steam'
+                && (! isset($payload['steam_username'], $payload['steam_password'])
+                    || ! is_string($payload['steam_username'])
+                    || ! is_string($payload['steam_password']))) {
+                return null;
+            }
+
+            /** @var array{string, string, string} $eaCodes */
+            $eaCodes = array_values($payload['ea_backup_codes']);
+
+            return [
+                'platform' => 'pc',
+                'launcher' => $store,
+                'eaEmail' => $payload['ea_email'],
+                'eaPassword' => $payload['ea_password'],
+                'eaCodes' => $eaCodes,
+                'playstationEmail' => '',
+                'playstationPassword' => '',
+                'playstationCodes' => ['', '', ''],
+                'steamUsername' => $store === 'steam' ? $payload['steam_username'] : '',
+                'steamPassword' => $store === 'steam' ? $payload['steam_password'] : '',
+            ];
+        }
+
+        return null;
+    }
+
+    private function validEaCodes(mixed $codes): bool
+    {
+        return is_array($codes)
+            && count($codes) === 3
+            && array_filter(
+                $codes,
+                fn (mixed $code): bool => ! is_string($code)
+                    || preg_match('/\A[0-9]{8}\z/D', $code) !== 1,
+            ) === []
+            && count(array_unique($codes)) === 3;
+    }
+
+    private function validPlayStationCodes(mixed $codes): bool
+    {
+        return is_array($codes)
+            && count($codes) === 3
+            && array_filter(
+                $codes,
+                fn (mixed $code): bool => ! is_string($code)
+                    || preg_match('/\A[A-Z0-9]{6}\z/D', $code) !== 1,
+            ) === []
+            && count(array_unique($codes)) === 3;
     }
 
     /** @return array{ea_email: string, ea_password: string, backup_codes: array{string, string, string}, current_balance: int|null, companion_market_open: bool, policy_accepted: bool}|null */
@@ -184,6 +325,32 @@ final class CartItemCredentialsController extends Controller
         }
 
         return $validated;
+    }
+
+    /**
+     * Rebuilds the validated edit through the stored platform/launcher, so
+     * the value object sees exactly the shape the add path validated and
+     * the masked summary stays in sync.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function validatedManualUpdate(CartItemSecret $secret, array $validated): ManualServiceCredentials
+    {
+        $configuration = $secret->cartItem->configuration;
+        $platform = is_array($configuration) ? ($configuration['platform'] ?? null) : null;
+        $store = is_array($configuration) ? ($configuration['pc_store'] ?? null) : null;
+
+        try {
+            $combined = ['platform' => $platform, ...$validated];
+
+            if ($platform === 'pc') {
+                $combined['pc_store'] = $store;
+            }
+
+            return ManualServiceCredentials::fromValidated($combined);
+        } catch (DomainException) {
+            $this->failUpdate('credentials');
+        }
     }
 
     private function failUpdate(string $field): never

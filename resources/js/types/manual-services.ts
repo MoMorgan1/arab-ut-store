@@ -90,6 +90,8 @@ export type ManualServiceCommonTranslations = {
     add_error: string;
     in_cart: string;
     open_cart: string;
+    editing_replace: string;
+    squad_image_kept: string;
     unavailable_title: string;
     unavailable_body: string;
     review_title: string;
@@ -155,6 +157,7 @@ export type ManualServicePageProps = {
     backUrl: string;
     cartCount: number;
     cartVariantIds: string[];
+    replaceCredentialsUrl?: string | null;
     direction: 'rtl' | 'ltr';
     displayCurrencies: string[];
     displayCurrency: string;
@@ -173,6 +176,7 @@ export type ManualServicePageProps = {
         service: 'fut_champions' | 'rivals';
         scheduleVersion: number | null;
         platforms: ManualServicePlatform[];
+        variantIds: Record<ManualServicePlatform, string | null>;
         tutorials: { ea: string; playstation: string };
         product: {
             id: string | null;

@@ -181,8 +181,10 @@ export function readBooleanQueryParam(
 
 /**
  * Computes the initial Rivals division route from the URL search string.
- * If both currentDivision and targetDivision form a valid route on the ladder, returns them.
- * If either is missing, invalid, out-of-ladder, or reverse, ignores both and returns default.
+ * Accepts the edit-link names (`from`/`to`) as well as the historic
+ * `currentDivision`/`targetDivision` deep-link names. If both ends form a
+ * valid route on the ladder, returns them. Otherwise ignores both and
+ * returns the default.
  */
 export function getInitialRivalsRoute(
     search: unknown,
@@ -190,8 +192,12 @@ export function getInitialRivalsRoute(
     defaultFrom: Division = '5',
     defaultTo: Division = 'elite',
 ): { from: Division; to: Division } {
-    const rawFrom = readQueryParam(search, 'currentDivision', ladder);
-    const rawTo = readQueryParam(search, 'targetDivision', ladder);
+    const rawFrom =
+        readQueryParam(search, 'from', ladder) ??
+        readQueryParam(search, 'currentDivision', ladder);
+    const rawTo =
+        readQueryParam(search, 'to', ladder) ??
+        readQueryParam(search, 'targetDivision', ladder);
 
     if (rawFrom !== undefined && rawTo !== undefined) {
         const fromIndex = ladder.indexOf(rawFrom);
@@ -341,4 +347,66 @@ export function getInitialCoinsConfig(
         platformValue,
         step,
     };
+}
+
+const ULID_PATTERN = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i;
+
+/**
+ * Reads the `platform` edit-link param for the manual services. Anything
+ * outside the two sold platforms degrades to undefined so the page keeps
+ * its default instead of rendering a choice it cannot sell.
+ */
+export function getInitialManualPlatform(
+    search: unknown,
+): 'playstation' | 'pc' | undefined {
+    return readQueryParam(search, 'platform', ['playstation', 'pc'] as const);
+}
+
+/**
+ * Reads the `launcher` edit-link param (the PC game launcher). Unknown
+ * values degrade to undefined; PlayStation never reads it.
+ */
+export function getInitialManualLauncher(
+    search: unknown,
+): 'ea_app' | 'steam' | undefined {
+    return readQueryParam(search, 'launcher', ['ea_app', 'steam'] as const);
+}
+
+/**
+ * Reads the `mode` edit-link param for Rivals (`weekly` for a week of
+ * matches, `route` for a division promotion). Defaults to the promotion
+ * the page always sold.
+ */
+export function getInitialRivalsMode(
+    search: unknown,
+): 'promotion' | 'weekly_matches' {
+    const raw = readQueryParam(search, 'mode', ['weekly', 'route'] as const);
+
+    return raw === 'weekly' ? 'weekly_matches' : 'promotion';
+}
+
+/**
+ * Reads the `matches` edit-link param for FUT Champions (matches already
+ * played). Anything outside 0–100 degrades to 0, the "no matches" default.
+ */
+export function getInitialMatchesPlayed(search: unknown): number {
+    const raw = readNumericQueryParam(search, 'matches');
+
+    return raw !== undefined && raw >= 0 && raw <= 100 ? raw : 0;
+}
+
+/**
+ * Reads the `replace` edit-link param: the public id of the cart line being
+ * edited. Malformed values degrade to null so a hostile link can never
+ * name an arbitrary line — and the credentials themselves always come from
+ * the server-built `replaceCredentialsUrl`, never from the URL.
+ */
+export function getInitialReplaceId(search: unknown): string | null {
+    try {
+        const raw = parseQueryParams(search).get('replace');
+
+        return raw !== null && ULID_PATTERN.test(raw) ? raw : null;
+    } catch {
+        return null;
+    }
 }

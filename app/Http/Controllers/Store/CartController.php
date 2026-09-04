@@ -260,7 +260,8 @@ final class CartController extends Controller
             'configuration' => $this->safeConfiguration($cartItem->configuration),
             'product' => $this->safeProduct($cartItem->productVariant),
             'credentials' => $credentials,
-            'credentialsUrl' => $isManualService ? null : $this->credentialsUrl($cartItem, $localized),
+            'credentialsUrl' => $this->credentialsUrl($cartItem, $localized),
+            'credentialsKind' => $this->credentialsKind($serviceType),
             'deleteUrl' => $this->deleteUrl($cartItem, $localized),
             'editUrl' => $this->editUrl($cartItem, $localized),
             'fulfillment' => $fulfillment,
@@ -414,6 +415,17 @@ final class CartController extends Controller
         ], absolute: false);
     }
 
+    /** @return 'coins'|'sbc'|'manual' */
+    private function credentialsKind(ServiceType $serviceType): string
+    {
+        return match ($serviceType) {
+            ServiceType::Coins => 'coins',
+            ServiceType::Rivals, ServiceType::FutChampions => 'manual',
+            // Objectives ride the same EA credential shape as SBC.
+            default => 'sbc',
+        };
+    }
+
     private function deleteUrl(CartItem $cartItem, bool $localized): string
     {
         $route = $localized
@@ -462,6 +474,43 @@ final class CartController extends Controller
             $query = array_filter([
                 'variant' => $cartItem->productVariant->public_id,
                 'completions' => $configuration['completion_count'] ?? null,
+                'replace' => $cartItem->public_id,
+            ], fn (mixed $value): bool => $value !== null);
+
+            return $url.'?'.http_build_query($query);
+        }
+
+        if ($serviceType === ServiceType::Rivals) {
+            $url = route(
+                $localized ? 'localized.store.rivals' : 'store.rivals',
+                $localized ? ['locale' => 'en'] : [],
+                absolute: false,
+            );
+            $query = array_filter([
+                'platform' => $configuration['platform'] ?? null,
+                'launcher' => $configuration['pc_store'] ?? null,
+                'from' => $configuration['current_division'] ?? null,
+                'to' => $configuration['target_division'] ?? null,
+                'mode' => ($configuration['mode'] ?? null) === 'weekly_matches' ? 'weekly' : 'route',
+                'replace' => $cartItem->public_id,
+            ], fn (mixed $value): bool => $value !== null);
+
+            return $url.'?'.http_build_query($query);
+        }
+
+        if ($serviceType === ServiceType::FutChampions) {
+            $url = route(
+                $localized ? 'localized.store.fut_champions' : 'store.fut_champions',
+                $localized ? ['locale' => 'en'] : [],
+                absolute: false,
+            );
+            $urgent = $configuration['urgent'] ?? null;
+            $query = array_filter([
+                'platform' => $configuration['platform'] ?? null,
+                'launcher' => $configuration['pc_store'] ?? null,
+                'rank' => $configuration['rank'] ?? null,
+                'urgent' => is_bool($urgent) ? ($urgent ? '1' : '0') : null,
+                'matches' => $configuration['matches_played'] ?? null,
                 'replace' => $cartItem->public_id,
             ], fn (mixed $value): bool => $value !== null);
 

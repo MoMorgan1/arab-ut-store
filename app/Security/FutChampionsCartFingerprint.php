@@ -20,7 +20,8 @@ final class FutChampionsCartFingerprint
             'urgent' => (bool) $validated['urgent'],
             'matches_played' => $validated['matchesPlayed'],
             'credentials' => self::credentials($validated)->payload(),
-            'squad_image_sha256' => self::imageHash($validated['squadImage'] ?? null),
+            'squad_image_sha256' => self::imageHashOrNull($validated['squadImage'] ?? null),
+            'replace_cart_item_id' => $validated['replaceCartItemId'] ?? null,
         ], JSON_THROW_ON_ERROR), $applicationKey);
     }
 
@@ -49,6 +50,19 @@ final class FutChampionsCartFingerprint
         }
 
         return $hash;
+    }
+
+    /**
+     * A replacement without a new upload keeps the old squad image, so
+     * there is no file to hash — the null marks exactly that case.
+     */
+    private static function imageHashOrNull(mixed $file): ?string
+    {
+        if ($file === null) {
+            return null;
+        }
+
+        return self::imageHash($file);
     }
 
     /** @return array{user_id: int}|array{owner_key: string} */

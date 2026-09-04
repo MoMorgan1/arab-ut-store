@@ -1702,6 +1702,7 @@ html.admin-document {
     }
 
     .coins-configurator__editing,
+    .manual-configurator__editing,
     .sbc-product-configurator__editing {
         margin: 0 0 1rem;
         border-inline-start: 3px solid var(--arabut-gold);
@@ -6316,15 +6317,20 @@ html.admin-document {
         font-size: 0.68rem;
     }
 
-    /* The three backup codes stay side by side on phones: the corner
-       number chip is hidden and the digits tighten so 8 characters fit
-       in a third of the row. */
+    /* The three backup codes stay side by side on phones: the number chip
+       shrinks into the top corner so the digits keep the full width. */
     .coins-backup-codes__grid {
         gap: 0.45rem;
     }
 
     .coins-backup-code__number {
-        display: none;
+        top: 0.3rem;
+        right: 0.3rem;
+        width: 1.05rem;
+        height: 1.05rem;
+        border-radius: 0.25rem;
+        font-size: 0.6rem;
+        transform: none;
     }
 
     /* Never below 1rem: iOS zooms the page into any focused field that is

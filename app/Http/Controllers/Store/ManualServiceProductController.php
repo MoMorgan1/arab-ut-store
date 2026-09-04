@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Store;
 
+use App\Actions\Cart\ResolveCartOwner;
 use App\Actions\Pricing\ConvertDisplayMoney;
 use App\Actions\Pricing\ReadManualServicePricing;
 use App\Enums\Platform;
 use App\Enums\ProductAuthority;
 use App\Enums\ServiceType;
 use App\Http\Controllers\Controller;
+use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ServicePriceSchedule;
@@ -81,6 +84,7 @@ final class ManualServiceProductController extends Controller
 
         return Inertia::render('store/manual-service', [
             'backUrl' => $this->route($request, 'home').'#services',
+            'replaceCredentialsUrl' => $this->replaceCredentialsUrl($request),
             'seo' => StorePageSeo::default(
                 trans("store.manual_services.{$service->value}.title"),
             )->toArray(),
@@ -106,6 +110,7 @@ final class ManualServiceProductController extends Controller
                 'scheduleVersion' => $schedule?->version,
                 'addUrl' => $this->manualServiceCartUrl($request, $service),
                 'platforms' => [Platform::PlayStation->value, Platform::Pc->value],
+                'variantIds' => $this->variantIds($product),
                 'tutorials' => [
                     'ea' => StoreTutorials::EA,
                     'playstation' => StoreTutorials::PLAYSTATION,
@@ -255,6 +260,62 @@ final class ManualServiceProductController extends Controller
             : 'cart.items.rivals.store';
 
         return $this->route($request, $name);
+    }
+
+    /**
+     * The public variant ids keyed by platform, for the up-front in-cart
+     * state. Only active variants count; anything else stays null so the
+     * page never claims a line is in the cart that cannot be bought.
+     *
+     * @return array{playstation: string|null, pc: string|null}
+     */
+    private function variantIds(?Product $product): array
+    {
+        $ids = ['playstation' => null, 'pc' => null];
+
+        if (! $product instanceof Product) {
+            return $ids;
+        }
+
+        foreach ($product->variants as $variant) {
+            $platform = $variant->platform->value;
+
+            if (array_key_exists($platform, $ids)
+                && $variant->is_active
+                && $variant->public_id !== '') {
+                $ids[$platform] = $variant->public_id;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * The owner-scoped credentials URL for the cart line being edited, if the
+     * `replace` query value names a line on the visitor's own active cart.
+     * Built server-side so the client never assembles credential URLs.
+     */
+    private function replaceCredentialsUrl(Request $request): ?string
+    {
+        $replace = $request->query('replace');
+
+        if (! is_string($replace) || preg_match('/\A[0-7][0-9A-HJKMNP-TV-Z]{25}\z/D', $replace) !== 1) {
+            return null;
+        }
+
+        $ownedCartIds = Cart::query();
+        $ownedCartIds->activeForOwner(app(ResolveCartOwner::class)->forRequest($request));
+
+        $item = CartItem::query()
+            ->where('public_id', $replace)
+            ->whereIn('cart_id', $ownedCartIds->select('id'))
+            ->first();
+
+        if (! $item instanceof CartItem) {
+            return null;
+        }
+
+        return $this->route($request, 'cart.items.credentials.show', ['cartItem' => $item->public_id]);
     }
 
     /** @param array<string, mixed> $parameters */
