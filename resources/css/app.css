@@ -6323,25 +6323,10 @@ html.admin-document {
         gap: 0.45rem;
     }
 
-    /* Eight digits fill a third of a phone row, so the number moves out of
-       the field and sits above it as a small tab. */
-    .coins-backup-code {
-        display: grid;
-        gap: 0.25rem;
-        justify-items: start;
-    }
-
+    /* Eight digits fill a third of a phone row: the number chip is dropped
+       on phones (owner decision, 2026-09-04) so the digits own the field. */
     .coins-backup-code__number {
-        position: static;
-        width: 1.1rem;
-        height: 1.1rem;
-        border-radius: 0.3rem;
-        font-size: 0.62rem;
-        transform: none;
-    }
-
-    .coins-backup-code > input {
-        width: 100%;
+        display: none;
     }
 
     /* Never below 1rem: iOS zooms the page into any focused field that is
