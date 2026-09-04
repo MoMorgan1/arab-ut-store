@@ -32,6 +32,7 @@ final class StoreCanonicalUrls
     public const INDEXABLE = [
         'home',
         'store.reviews',
+        'store.sitemap-page',
         'store.privacy',
         'store.returns',
         'store.warranty',

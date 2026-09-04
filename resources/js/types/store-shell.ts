@@ -17,6 +17,7 @@ export type StoreShellConfig = {
     warrantyUrl: string;
     eaBackupCodesUrl: string;
     termsUrl: string;
+    sitemapUrl?: string;
     whatsappUrl: string;
     email: string;
     socials: { x: string; instagram: string };
@@ -69,6 +70,7 @@ export type StoreShellTranslations = {
         warranty: string;
         ea_backup_codes: string;
         terms: string;
+        sitemap?: string;
         customer_service: string;
         whatsapp: string;
         payment_methods: string;
@@ -76,6 +78,32 @@ export type StoreShellTranslations = {
         ea_disclaimer: string;
         verified_freelance?: string;
     };
+};
+
+export type StoreSitemapLink = {
+    label: string;
+    href: string;
+};
+
+export type StoreSitemapGroup = {
+    heading: string;
+    links: StoreSitemapLink[];
+};
+
+export type StoreSitemapPageProps = {
+    cartCount: number;
+    cartVariantIds: string[];
+    direction: 'rtl' | 'ltr';
+    displayCurrency: string;
+    displayCurrencies: string[];
+    locale: StoreLocale;
+    sitemapPage: {
+        eyebrow: string;
+        title: string;
+        groups: StoreSitemapGroup[];
+    };
+    storeShell: StoreShellConfig;
+    ui: StoreShellTranslations;
 };
 
 export type SimpleStorePageProps = {

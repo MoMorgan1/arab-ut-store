@@ -145,6 +145,30 @@ final class StoreCatalogReader
         );
     }
 
+    /**
+     * Names and slugs of every product a visitor can reach, for the
+     * human-readable sitemap page. Same visibility query as the XML sitemap,
+     * so a hidden product can never leak into either.
+     *
+     * @return list<array{slug: string, name: string}>
+     */
+    public function publicProductLinks(ServiceType $service, string $locale): array
+    {
+        $nameColumn = $locale === 'en' ? 'name_en' : 'name_ar';
+
+        return array_values(
+            $this->publicProductsQuery($service)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get(['slug', $nameColumn])
+                ->map(fn (Product $product): array => [
+                    'slug' => (string) $product->slug,
+                    'name' => (string) $product->getAttribute($nameColumn),
+                ])
+                ->all(),
+        );
+    }
+
     /** @return Builder<Product> */
     private function publicProductsQuery(ServiceType $service): Builder
     {

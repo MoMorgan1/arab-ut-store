@@ -12,6 +12,7 @@ use App\Services\Catalog\CoinsCatalogReader;
 use App\Services\Content\StoreFaqReader;
 use App\Services\Reviews\StoreReviewReader;
 use App\Services\Store\StoreProofReader;
+use App\Support\Seo\StorePageSeo;
 use App\Validation\CoinsSelectionRules;
 use DomainException;
 use Illuminate\Http\Request;
@@ -45,6 +46,10 @@ class HomeController extends Controller
             // The public homepage stays available while pricing fails closed.
         }
 
+        $locale = app()->getLocale();
+        $homeReviews = $reviews->homepage($locale);
+        $faqEntries = $faqReader->entries($locale);
+
         return Inertia::render('store/home', [
             'status' => $status,
             'coinsRequiresBalance' => $catalog->requiresCurrentBalance(),
@@ -67,16 +72,22 @@ class HomeController extends Controller
             'homeContent' => [
                 'services' => $this->services($request),
                 'servicesTranslations' => trans('store.services_section'),
-                'reviews' => $reviews->homepage(app()->getLocale()),
+                'reviews' => $homeReviews,
                 'reviewsUrl' => $this->storeRoute($request, 'store.reviews'),
                 'reviewsTranslations' => trans('store.reviews'),
-                'faq' => $faqReader->entries(app()->getLocale()),
+                'faq' => $faqEntries,
                 'faqTranslations' => [
                     'eyebrow' => trans('store.faq.eyebrow'),
                     'title' => trans('store.faq.title'),
                 ],
             ],
             'store' => $this->storeTranslations($proof),
+            'seo' => StorePageSeo::default()
+                ->withHome($locale)
+                ->withRating($homeReviews['average'], $homeReviews['count'])
+                ->withReviews($homeReviews['items'])
+                ->withFaq($faqEntries)
+                ->toArray(),
         ]);
     }
 

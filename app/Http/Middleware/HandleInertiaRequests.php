@@ -80,6 +80,7 @@ class HandleInertiaRequests extends Middleware
                 'warrantyUrl' => $storeUrl('warranty'),
                 'eaBackupCodesUrl' => $storeUrl('ea_backup_codes'),
                 'termsUrl' => $storeUrl('terms'),
+                'sitemapUrl' => $storeUrl('sitemap-page'),
                 'whatsappUrl' => config('store.support.whatsapp_url'),
                 'email' => config('store.support.email'),
                 'socials' => config('store.socials'),

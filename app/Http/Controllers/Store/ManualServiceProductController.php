@@ -16,6 +16,7 @@ use App\Models\ProductMedia;
 use App\Models\ServicePriceSchedule;
 use App\Services\Reviews\StoreReviewReader;
 use App\Support\Money;
+use App\Support\Seo\StoreCanonicalUrls;
 use App\Support\Seo\StorePageSeo;
 use App\Support\StoreSuggestions;
 use App\Support\StoreTutorials;
@@ -81,13 +82,22 @@ final class ManualServiceProductController extends Controller
             'reviews' => $reviewsData,
             'translations' => (array) trans('store.reviews'),
         ] : null;
+        $productPayload = $this->product($product, $service, $identity['slug']);
 
         return Inertia::render('store/manual-service', [
             'backUrl' => $this->route($request, 'home').'#services',
             'replaceCredentialsUrl' => $this->replaceCredentialsUrl($request),
             'seo' => StorePageSeo::default(
                 trans("store.manual_services.{$service->value}.title"),
-            )->toArray(),
+            )
+                ->withService(
+                    (string) ($productPayload['name'] ?? trans("store.manual_services.{$service->value}.title")),
+                    isset($productPayload['description']) ? (string) $productPayload['description'] : null,
+                )
+                ->withRating($reviewsData['average'] ?? null, (int) ($reviewsData['count'] ?? 0))
+                ->withReviews($reviewsData['items'] ?? [])
+                ->withBreadcrumbs($this->breadcrumbs($service))
+                ->toArray(),
             'serviceReviews' => $serviceReviews,
             'manualServicePage' => [
                 'common' => trans('store.manual_services.common'),
@@ -115,10 +125,27 @@ final class ManualServiceProductController extends Controller
                     'ea' => StoreTutorials::EA,
                     'playstation' => StoreTutorials::PLAYSTATION,
                 ],
-                'product' => $this->product($product, $service, $identity['slug']),
+                'product' => $productPayload,
                 'pricing' => $pricingPayload,
             ],
         ]);
+    }
+
+    /**
+     * The Home → service trail, on the page's own locale canonicals.
+     *
+     * @return list<array{name: string, url: string}>
+     */
+    private function breadcrumbs(ServiceType $service): array
+    {
+        $locale = app()->getLocale() === 'en' ? 'en' : 'ar';
+        $home = StoreCanonicalUrls::alternatesFor('home')[$locale];
+        $page = StoreCanonicalUrls::alternatesFor("store.{$service->value}")[$locale];
+
+        return [
+            ['name' => (string) trans('ui.home_title'), 'url' => $home],
+            ['name' => (string) trans("store.manual_services.{$service->value}.title"), 'url' => $page],
+        ];
     }
 
     private function displayConverter(

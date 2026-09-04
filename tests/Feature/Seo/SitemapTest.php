@@ -21,7 +21,7 @@ it('serves well-formed XML at /sitemap.xml', function () {
 it('lists every static storefront page', function () {
     $content = $this->get('/sitemap.xml')->assertOk()->getContent();
 
-    foreach (['/sbc', '/objectives', '/fut-champions', '/rivals', '/reviews', '/privacy', '/terms'] as $path) {
+    foreach (['/sbc', '/objectives', '/fut-champions', '/rivals', '/reviews', '/sitemap', '/privacy', '/terms'] as $path) {
         expect($content)->toContain('<loc>'.url($path).'</loc>');
     }
 
@@ -70,10 +70,17 @@ it('includes a visible catalog product and excludes a hidden one', function () {
 });
 
 it('advertises the sitemap and protects private paths in robots.txt', function () {
-    $robots = file_get_contents(public_path('robots.txt'));
+    config(['app.url' => 'https://example.test']);
+
+    $response = $this->get('/robots.txt');
+
+    $response->assertOk();
+    $response->assertHeader('Content-Type', 'text/plain; charset=UTF-8');
+
+    $robots = $response->getContent();
 
     expect($robots)
-        ->toContain('Sitemap: https://store.arab-ut.com/sitemap.xml')
+        ->toContain('Sitemap: https://example.test/sitemap.xml')
         ->toContain('Disallow: /admin')
         ->toContain('Disallow: /account')
         // The /ar prefix duplicates the canonical unprefixed Arabic pages.
