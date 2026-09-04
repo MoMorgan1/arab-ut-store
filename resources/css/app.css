@@ -6323,14 +6323,25 @@ html.admin-document {
         gap: 0.45rem;
     }
 
+    /* Eight digits fill a third of a phone row, so the number moves out of
+       the field and sits above it as a small tab. */
+    .coins-backup-code {
+        display: grid;
+        gap: 0.25rem;
+        justify-items: start;
+    }
+
     .coins-backup-code__number {
-        top: 0.3rem;
-        right: 0.3rem;
-        width: 1.05rem;
-        height: 1.05rem;
-        border-radius: 0.25rem;
-        font-size: 0.6rem;
+        position: static;
+        width: 1.1rem;
+        height: 1.1rem;
+        border-radius: 0.3rem;
+        font-size: 0.62rem;
         transform: none;
+    }
+
+    .coins-backup-code > input {
+        width: 100%;
     }
 
     /* Never below 1rem: iOS zooms the page into any focused field that is
@@ -6338,7 +6349,7 @@ html.admin-document {
     .coins-backup-code > input {
         padding-inline: 0.35rem;
         font-size: 1rem;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.02em;
     }
 
     .coins-choice-grid--delivery {
