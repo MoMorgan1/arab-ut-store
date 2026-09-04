@@ -212,7 +212,7 @@ return [
     ],
     'services' => [
         'sbc' => ['eyebrow' => 'FC 27 services', 'title' => 'SBC Services', 'page_title' => 'Complete Squad Building Challenges', 'intro' => 'Strengthen your squad and earn valuable rewards with our fast, secure Squad Building Challenge service.', 'card_description' => 'Squad Building Challenges completed for you.'],
-        'objectives' => ['eyebrow' => 'FC 27 services', 'title' => 'Objectives', 'intro' => 'Browse available Objective services and add the right option directly to your cart.', 'card_description' => 'Choose the Objective progress that fits your account.'],
+        'objectives' => ['page_title' => 'FC 27 Objectives completed for you', 'eyebrow' => 'FC 27 services', 'title' => 'Objectives', 'intro' => 'Browse available Objective services and add the right option directly to your cart.', 'card_description' => 'Choose the Objective progress that fits your account.'],
         'fut_champions' => ['eyebrow' => 'Competitive services', 'title' => 'FUT Champions', 'intro' => 'Choose an available FUT Champions option and add it securely to your cart.', 'card_description' => 'Competitive FUT Champions packages.'],
         'rivals' => ['eyebrow' => 'Competitive services', 'title' => 'Division Rivals', 'intro' => 'Choose an available Rivals option and add it securely to your cart.', 'card_description' => 'Division Rivals progress and rewards.'],
         'sell_coins' => ['title' => 'Sell Coins', 'card_description' => 'Sell your Coins through the dedicated Arab UT service.'],
@@ -473,6 +473,15 @@ return [
     'faq' => [
         'eyebrow' => 'Frequently asked questions',
         'title' => 'Everything you need before ordering',
+    ],
+    'sitemap_page' => [
+        'eyebrow' => 'Every link in the store',
+        'title' => 'Site map',
+        'groups' => [
+            'services' => 'Services',
+            'store' => 'Store',
+            'policies' => 'Policies',
+        ],
     ],
     'progress' => [
         'platform' => 'Platform',

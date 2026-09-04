@@ -43,6 +43,7 @@ return [
         'warranty' => 'سياسة الضمان والتعويض',
         'ea_backup_codes' => 'أكواد EA الاحتياطية',
         'terms' => 'الشروط والأحكام',
+        'sitemap' => 'خريطة الموقع',
         'customer_service' => 'خدمة العملاء',
         'whatsapp' => 'واتساب',
         'payment_methods' => 'طرق الدفع عند الإطلاق',

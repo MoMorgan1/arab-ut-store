@@ -22,9 +22,11 @@ use App\Http\Controllers\Store\PaylinkOrderPaymentController;
 use App\Http\Controllers\Store\PaylinkReturnController;
 use App\Http\Controllers\Store\ReviewsController;
 use App\Http\Controllers\Store\RivalsCartController;
+use App\Http\Controllers\Store\RobotsController;
 use App\Http\Controllers\Store\SbcCartController;
 use App\Http\Controllers\Store\SimpleStorePageController;
 use App\Http\Controllers\Store\SitemapController;
+use App\Http\Controllers\Store\SitemapPageController;
 use App\Http\Middleware\NoStore;
 use App\Http\Middleware\RequireCatalogCartJson;
 use App\Http\Middleware\RequireCoinsCartJson;
@@ -136,6 +138,8 @@ $localizedLoginMiddleware = array_filter([
 
 // Not locale-prefixed: one sitemap lists both locales as xhtml alternates.
 Route::get('/sitemap.xml', SitemapController::class)->name('store.sitemap');
+Route::get('/sitemap', SitemapPageController::class)->name('store.sitemap-page');
+Route::get('/robots.txt', RobotsController::class)->name('store.robots');
 
 foreach ($simpleStorePages as $page => $uri) {
     Route::get($uri, SimpleStorePageController::class)
@@ -202,6 +206,7 @@ Route::prefix('{locale}')
             ->middleware([NoStore::class, 'throttle:coins-cart'])
             ->name('localized.cart.wallet.store');
         Route::get('/reviews', ReviewsController::class)->name('localized.store.reviews');
+        Route::get('/sitemap', SitemapPageController::class)->name('localized.store.sitemap-page');
         Route::post('/cart/items/coins', CoinsCartController::class)
             ->middleware([NoStore::class, RequireCoinsCartJson::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.coins.store');

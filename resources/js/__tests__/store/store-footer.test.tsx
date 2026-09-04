@@ -19,6 +19,7 @@ const shell: StoreShellConfig = {
     warrantyUrl: '/en/warranty',
     eaBackupCodesUrl: '/en/ea-backup-codes',
     termsUrl: '/en/terms',
+    sitemapUrl: '/en/sitemap',
     whatsappUrl: 'https://wa.me/966537998099',
     email: 'info@arab-ut.com',
     socials: {
@@ -94,6 +95,7 @@ const translations = {
         warranty: 'Warranty and Compensation',
         ea_backup_codes: 'EA Backup Codes',
         terms: 'Terms and Conditions',
+        sitemap: 'Site map',
         customer_service: 'Customer service',
         whatsapp: 'WhatsApp support',
         payment_methods: 'Payment methods at launch',
@@ -148,6 +150,7 @@ describe('StoreFooter', () => {
             ['Warranty and Compensation', '/en/warranty'],
             ['EA Backup Codes', '/en/ea-backup-codes'],
             ['Terms and Conditions', '/en/terms'],
+            ['Site map', '/en/sitemap'],
         ]) {
             expect(
                 within(importantLinks).getByRole('link', { name }),

@@ -33,8 +33,19 @@ final class ReviewsController extends Controller
         ];
         $locale = app()->getLocale();
 
+        // The summary in the page result ignores the rating/verified/comment
+        // filters and is scoped only by service, so the schema always matches
+        // what the page shows; a service filter moves the rating onto a
+        // Service node so the store-wide node never changes per URL.
+        $page = $reviews->paginate($locale, (int) ($query['page'] ?? 1), $filters);
+        $seo = StorePageSeo::default(trans('store.reviews.title'));
+
+        if ($filters['service'] !== null) {
+            $seo = $seo->withService((string) trans("store.reviews.service_names.{$filters['service']}"), null);
+        }
+
         return Inertia::render('store/reviews', [
-            'reviews' => $reviews->paginate($locale, (int) ($query['page'] ?? 1), $filters),
+            'reviews' => $page,
             'reviewsPage' => trans('store.reviews'),
             'filters' => $filters,
             'rateUrl' => route(
@@ -42,7 +53,10 @@ final class ReviewsController extends Controller
                 $locale === 'en' ? ['locale' => 'en'] : [],
                 absolute: false,
             ),
-            'seo' => StorePageSeo::default(trans('store.reviews.title'))->toArray(),
+            'seo' => $seo
+                ->withRating($page['average'], $page['count'])
+                ->withReviews($page['items'])
+                ->toArray(),
         ]);
     }
 }

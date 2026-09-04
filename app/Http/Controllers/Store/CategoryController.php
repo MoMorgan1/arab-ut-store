@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Store;
 use App\Actions\Catalog\StoreCatalogReader;
 use App\Enums\ServiceType;
 use App\Http\Controllers\Controller;
+use App\Support\Seo\StoreCanonicalUrls;
 use App\Support\Seo\StorePageSeo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -32,7 +33,9 @@ final class CategoryController extends Controller
             'catalogPageUrl' => $this->route($request, "store.{$service->value}"),
             'catalogPage' => trans('store.catalog'),
             'servicePage' => trans("store.services.{$service->value}"),
-            'seo' => StorePageSeo::default(trans("store.services.{$service->value}.page_title"))->toArray(),
+            'seo' => StorePageSeo::default(trans("store.services.{$service->value}.page_title"))
+                ->withBreadcrumbs($this->breadcrumbs($service))
+                ->toArray(),
             'catalog' => $catalog->category(
                 $service,
                 app()->getLocale(),
@@ -50,5 +53,20 @@ final class CategoryController extends Controller
         $localized = $request->route('locale') === 'en';
 
         return route($localized ? "localized.{$name}" : $name, $localized ? ['locale' => 'en'] : [], absolute: false);
+    }
+
+    /**
+     * The Home → category trail, on the page's own locale canonicals.
+     *
+     * @return list<array{name: string, url: string}>
+     */
+    private function breadcrumbs(ServiceType $service): array
+    {
+        $locale = app()->getLocale() === 'en' ? 'en' : 'ar';
+
+        return [
+            ['name' => (string) trans('ui.home_title'), 'url' => StoreCanonicalUrls::alternatesFor('home')[$locale]],
+            ['name' => (string) trans("store.services.{$service->value}.title"), 'url' => StoreCanonicalUrls::alternatesFor("store.{$service->value}")[$locale]],
+        ];
     }
 }

@@ -65,13 +65,18 @@ function ShieldCheckIcon() {
 }
 
 export function StoreFooter({ locale, shell, translations }: StoreFooterProps) {
-    const legalLinks = [
+    const legalLinks: Array<readonly [string, string]> = [
         [translations.footer.privacy, shell.privacyUrl],
         [translations.footer.returns, shell.returnsUrl],
         [translations.footer.warranty, shell.warrantyUrl],
         [translations.footer.ea_backup_codes, shell.eaBackupCodesUrl],
         [translations.footer.terms, shell.termsUrl],
-    ] as const;
+    ];
+
+    if (translations.footer.sitemap && shell.sitemapUrl) {
+        legalLinks.push([translations.footer.sitemap, shell.sitemapUrl]);
+    }
+
     const year = new Date().getFullYear();
 
     return (

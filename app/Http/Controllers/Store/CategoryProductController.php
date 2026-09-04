@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Services\Reviews\StoreReviewReader;
+use App\Support\Seo\StoreCanonicalUrls;
 use App\Support\Seo\StorePageSeo;
 use App\Support\StoreTutorials;
 use Illuminate\Http\Request;
@@ -55,8 +56,32 @@ final class CategoryProductController extends Controller
             ],
             'catalog' => $catalogPage,
             'serviceReviews' => $serviceReviews,
-            'seo' => StorePageSeo::fromCatalogProduct($catalogPage['product'])->toArray(),
+            'seo' => StorePageSeo::fromCatalogProduct($catalogPage['product'])
+                ->withService($serviceName, null)
+                ->withRating($reviewsData['average'] ?? null, (int) ($reviewsData['count'] ?? 0))
+                ->withReviews($reviewsData['items'] ?? [])
+                ->withBreadcrumbs($this->breadcrumbs($service, (string) ($catalogPage['product']['name'] ?? ''), (string) $request->route('slug')))
+                ->toArray(),
         ]);
+    }
+
+    /**
+     * The Home → category → product trail, on the page's own locale canonicals.
+     *
+     * @return list<array{name: string, url: string}>
+     */
+    private function breadcrumbs(ServiceType $service, string $productName, string $slug): array
+    {
+        $locale = app()->getLocale() === 'en' ? 'en' : 'ar';
+        $home = StoreCanonicalUrls::alternatesFor('home')[$locale];
+        $category = StoreCanonicalUrls::alternatesFor("store.{$service->value}")[$locale];
+        $product = StoreCanonicalUrls::alternatesFor("store.{$service->value}.show", ['slug' => $slug])[$locale];
+
+        return [
+            ['name' => (string) trans('ui.home_title'), 'url' => $home],
+            ['name' => (string) trans("store.services.{$service->value}.title"), 'url' => $category],
+            ['name' => $productName, 'url' => $product],
+        ];
     }
 
     /**
