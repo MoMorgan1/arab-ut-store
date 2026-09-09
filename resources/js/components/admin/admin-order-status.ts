@@ -48,9 +48,3 @@ export function getStatusVariant(status: string): AdminBadgeVariant {
             return 'neutral';
     }
 }
-
-export function getStatusCssColor(status: string): string {
-    const variant = getStatusVariant(status);
-
-    return `var(--status-${variant})`;
-}

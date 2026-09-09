@@ -30,6 +30,7 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
+import { dateRangePatch } from '@/components/admin/orders/admin-orders-toolbar';
 import { hasActiveCustomerFilters } from '@/lib/admin-customers-query';
 import type {
     AdminCustomerRow,
@@ -49,31 +50,6 @@ export type AdminCustomersToolbarProps = {
     onResetFilters: () => void;
     table: Table<AdminCustomerRow>;
 };
-
-/**
- * A start date after the current end date clears the end date; a new end date
- * before the current start date clears the start date.
- */
-export function dateRangePatch(
-    field: 'date_from' | 'date_to',
-    value: string | null,
-    current: { date_from?: string | null; date_to?: string | null },
-): { date_from?: string | null; date_to?: string | null } {
-    const other = field === 'date_from' ? current.date_to : current.date_from;
-    const conflicts =
-        value !== null &&
-        other !== null &&
-        other !== undefined &&
-        (field === 'date_from' ? other < value : value < other);
-
-    if (field === 'date_from') {
-        return conflicts
-            ? { date_from: value, date_to: null }
-            : { date_from: value };
-    }
-
-    return conflicts ? { date_from: null, date_to: value } : { date_to: value };
-}
 
 export default function AdminCustomersToolbar({
     adminUi,

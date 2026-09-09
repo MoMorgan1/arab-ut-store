@@ -1,4 +1,4 @@
-export class CartWalletError extends Error {
+class CartWalletError extends Error {
     readonly code: string;
 
     constructor(code: string = 'wallet_error') {

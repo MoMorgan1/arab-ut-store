@@ -40,7 +40,7 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 /** Share of the visual viewport the mobile bottom sheet occupies. */
-export const SHEET_HEIGHT_RATIO = 0.88;
+const SHEET_HEIGHT_RATIO = 0.88;
 /** Drag distance (px) or velocity (px/ms) that dismisses the sheet. */
 const SHEET_DISMISS_DISTANCE = 110;
 const SHEET_DISMISS_VELOCITY = 0.6;
@@ -50,7 +50,7 @@ const SHEET_DISMISS_VELOCITY = 0.6;
  * open the sheet takes the whole remaining viewport; otherwise it leaves a
  * strip of the page visible above it, like a native sheet.
  */
-export function mobileSheetGeometry(
+function mobileSheetGeometry(
     viewport: { offsetTop: number; height: number },
     layoutHeight: number,
 ): { top: number; height: number; keyboardOpen: boolean } {

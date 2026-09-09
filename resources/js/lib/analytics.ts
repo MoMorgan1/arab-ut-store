@@ -13,7 +13,7 @@ import type { CartAddedDetail } from '@/lib/cart-added-event';
  */
 
 export const CONSENT_COOKIE = 'arabut_consent';
-export const CONSENT_VERSION = '1';
+const CONSENT_VERSION = '1';
 const CONSENT_MAX_AGE_DAYS = 365;
 const TRACKED_ORDERS_KEY = 'arabut_tracked_orders';
 const CURRENCY = 'SAR';
@@ -56,7 +56,7 @@ export type TikTokPixel = unknown[][] & {
 let initialised = false;
 let vendorsLoaded = false;
 
-export function analyticsVendors(): Vendors {
+function analyticsVendors(): Vendors {
     if (typeof window === 'undefined') {
         return {};
     }
@@ -70,7 +70,7 @@ export function analyticsVendors(): Vendors {
     };
 }
 
-export function analyticsEnabled(): boolean {
+function analyticsEnabled(): boolean {
     const vendors = analyticsVendors();
 
     return Boolean(vendors.ga4 || vendors.meta || vendors.tiktok);
@@ -118,7 +118,7 @@ export function trackingAllowed(): boolean {
     return readConsent() !== 'denied';
 }
 
-export const TRACKING_QUERY = 'tracking';
+const TRACKING_QUERY = 'tracking';
 
 /**
  * The privacy page offers `?tracking=off` and `?tracking=on` links. Applied
@@ -356,7 +356,7 @@ function sendCommerce(
     });
 }
 
-export function trackPageView(path: string = window.location.pathname) {
+function trackPageView(path: string = window.location.pathname) {
     if (!tracking()) {
         return;
     }
