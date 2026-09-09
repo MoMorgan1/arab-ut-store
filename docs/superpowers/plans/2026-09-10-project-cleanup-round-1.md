@@ -285,7 +285,8 @@ git commit -m "refactor(admin): actions trust AdminAccess instead of re-checking
 - Test: `tests/Feature/Admin/StaffAuditTest.php` (extend) and the existing GrantAdminRole command test (find it with `grep -rln 'GrantAdminRole\|admin:grant' tests`)
 
 **Interfaces:**
-- Produces: `RecordStaffAudit::execute(?User $actor, ?Model $subject, StaffAuditEvent $event): StaffAuditLog`. A `null` actor means the console; the active-Admin/Staff check applies only when an actor is given.
+- Produces: `RecordStaffAudit::executeFromConsole(?Model $subject, StaffAuditEvent $event): StaffAuditLog`. `execute(User $actor, ...)` stays strict. The console path refuses to run unless `app()->runningInConsole()`, so a web request can never write an actor-less row.
+- **Amended 2026-09-10 after review.** The first draft made `execute()` accept a nullable actor; the reviewer (gpt-5.6-luna) flagged that this let any caller write an unauthenticated audit row, and gpt-5.6-sol asked for the split to be recorded here. The split API is the approved contract.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -315,7 +316,7 @@ test('a console audit still rejects secret-looking metadata', function (): void 
 Run: `php vendor/bin/pest tests/Feature/Admin/StaffAuditTest.php`
 Expected: FAIL with a TypeError (argument 1 must be of type User, null given)
 
-- [ ] **Step 3: Make the actor nullable**
+- [ ] **Step 3: Add the console-only path** (superseded text below kept for history; implement the split API from the Interfaces block)
 
 ```php
     public function execute(?User $actor, ?Model $subject, StaffAuditEvent $event): StaffAuditLog
