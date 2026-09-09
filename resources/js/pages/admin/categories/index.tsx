@@ -32,9 +32,7 @@ import type {
 
 export default function AdminCategoriesIndex(props: AdminCategoriesPageProps) {
     const copy = props.adminUi.categories;
-    const canManage =
-        props.permissions.includes('catalog.manage') &&
-        props.adminIdentity.role === 'admin';
+    const canManage = props.permissions.includes('catalog.manage');
 
     const [isNavigating, setIsNavigating] = useState(false);
     const [queryFailed, setQueryFailed] = useState(false);
