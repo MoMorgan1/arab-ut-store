@@ -47,18 +47,6 @@ final class DiscountEngine
     ) {}
 
     /**
-     * Resolve the best active promotion for a single line item.
-     */
-    public function resolvePromotion(
-        ?int $categoryId,
-        ServiceType $serviceType,
-        int $basePriceHalalah,
-        ?int $productId = null,
-    ): ?PromotionPrice {
-        return $this->promotionPricing->resolve($categoryId, $serviceType, $basePriceHalalah, $productId);
-    }
-
-    /**
      * Calculate discounts for a cart (promotions + attached coupon).
      */
     public function calculateForCart(Cart $cart, ?User $user = null): DiscountResult
@@ -93,20 +81,6 @@ final class DiscountEngine
         $lines = $this->snapshotsToLines($snapshots);
 
         return $this->calculate($lines, $coupon, $user, throwOnCouponRejection: true);
-    }
-
-    /**
-     * Evaluate an already-loaded coupon against validated item snapshots.
-     *
-     * @param  iterable<int|string, array<string, mixed>>  $snapshots
-     *
-     * @throws CouponRejected
-     */
-    public function evaluateSnapshotsCoupon(iterable $snapshots, Coupon $coupon, ?User $user = null): AppliedCoupon
-    {
-        $lines = $this->snapshotsToLines($snapshots);
-
-        return $this->evaluateCoupon($coupon, $lines, $user);
     }
 
     /**
