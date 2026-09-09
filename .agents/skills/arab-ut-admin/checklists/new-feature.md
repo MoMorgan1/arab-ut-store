@@ -14,7 +14,7 @@
 - [ ] Check downstream presenters/UI whenever a new enum subtype or metadata
       meaning changes how an existing record must display.
 - [ ] Write the failing behavior/security tests before production code.
-- [ ] For UI, inspect WordPress/current repo parity and load required UI skills.
+- [ ] For new or redesigned UI, inspect the existing Admin screens, get the `/design` canvas approved, then load the required UI skills.
 - [ ] Include Arabic/English, mobile/desktop, keyboard, focus, touch, reduced
       motion, loading, empty, error, success, and confirmation states.
 - [ ] Update this skill/spec when an approved decision changes the source of

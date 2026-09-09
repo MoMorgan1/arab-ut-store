@@ -2,7 +2,7 @@
 
 ## Source of truth
 
-- Live/current Arab UT WordPress identity and approved local assets.
+- The existing Admin screens in this repository and approved local assets.
 - Repository `.impeccable.md` and `resources/js/styles/tokens.css`.
 - Local Thmanyah Sans and Thmanyah Serif Display fonts.
 - Existing Radix/shadcn-derived primitives, refined rather than replaced.

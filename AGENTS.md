@@ -101,7 +101,7 @@ newest explicit owner decision or canonical status.
 
 - The lead is whichever agent Mohamed is talking to in the current session (Claude, Codex, or another orchestrator). The lead owns planning, architecture, difficult problems, security-sensitive work, migrations, and final review.
 - Delegate only bounded implementation after all applicable discovery, research, UI, planning, and owner-approval gates above are complete.
-- Use project lane `feature` for Gemini 3.7 Flash High implementation, `fast` for Codex (GPT-5.6 Luna) at `xhigh`, and `tests` for Codex at `max`. Delegate when the work is bounded and repetitive; the lead writes bug fixes and small changes directly.
+- Use project lane `feature` for Gemini 3.8 Flash High implementation, `fallback` for OpenCode (GLM 5.3 Flash) when Gemini hits its limit, `fast` for Codex (GPT-5.6 Luna) at `xhigh`, and `tests` for Codex at `max`. The `*-delegate` skills live in the global skills directory, not in this repository. Delegate when the work is bounded and repetitive; the lead writes bug fixes and small changes directly.
 - Workers implement an approved direction; they do not make consequential product, architecture, security, data, or visual decisions.
 - Do not delegate work whose scope cannot be expressed as one self-contained brief with explicit allowed paths and observable acceptance criteria.
 

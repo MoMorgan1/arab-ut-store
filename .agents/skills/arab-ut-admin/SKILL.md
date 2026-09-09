@@ -7,8 +7,8 @@ description: Build or review Arab UT Admin Dashboard features in this Laravel/In
 
 Use this skill for any route, backend action, query, presenter, React page,
 component, test, or documentation change under the Arab UT Admin Dashboard.
-Do not use it for the separately planned AI support operator inbox unless its
-canonical design explicitly adopts these foundations.
+The support inbox under `/admin/support` is an Admin module and follows these
+foundations; its runtime contract lives in `docs/ai-assistant/ADMIN-INBOX.md`.
 
 ## Binding sources
 
@@ -23,7 +23,7 @@ canonical design explicitly adopts these foundations.
 
 - Before a leaf feature starts, verify the Admin route, MFA, permission, recent
   reauthentication, and audit foundations it depends on are implemented and
-  covered. If not, implement the planned foundation phase first.
+  covered. If not, implement the missing foundation first.
 - Laravel is the authorization and business-logic boundary. React never
   decides permission or financial/domain validity.
 - Admin/Staff access requires an active account and confirmed TOTP MFA.

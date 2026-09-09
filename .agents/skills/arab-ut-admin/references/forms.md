@@ -3,7 +3,7 @@
 ## Validation and authorization
 
 - Form Requests validate explicit fields and reject unknown mutation fields.
-- Authorization uses the planned permission Gate/policy; Actions recheck
+- Authorization uses the permission Gate/policy; Actions recheck
   high-risk permission and current state.
 - Use public IDs at the boundary and locked internal IDs in transactions.
 

@@ -52,6 +52,6 @@
 
 ## Chat/support
 
-- Current chat is a deterministic customer foundation with no operator queue,
-  assignment, notes, or handoff model.
-- Do not represent the planned AI support inbox as an implemented Admin module.
+- Chat conversations carry handoff state, support tickets, staff replies, and
+  internal notes; the operator inbox reads them under `can:chat.view`. See
+  `docs/ai-assistant/ADMIN-INBOX.md` before touching any of it.
