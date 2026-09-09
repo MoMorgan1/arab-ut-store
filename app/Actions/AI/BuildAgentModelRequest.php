@@ -59,7 +59,8 @@ final readonly class BuildAgentModelRequest
 
     /**
      * Approved store knowledge for the question being asked, injected as a
-     * delimited block so the model can quote it and cite the topic it used.
+     * delimited block the model quotes from. Topic ids stay server-side: they
+     * gate the live-price block and are never shown to the model.
      *
      * @param  Collection<int, ChatMessage>  $current
      * @return array{0: string, 1: list<string>}
@@ -84,7 +85,7 @@ final readonly class BuildAgentModelRequest
         }
 
         $rendered = array_map(
-            static fn ($topic): string => "[id: {$topic->id}] {$topic->title($locale)}
+            static fn ($topic): string => "{$topic->title($locale)}
 {$topic->body($locale)}",
             $topics,
         );

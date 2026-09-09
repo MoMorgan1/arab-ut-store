@@ -1,12 +1,12 @@
 # Agent runtime
 
-**Lifecycle:** Implemented, deployed, and active; running `support-v8`
+**Lifecycle:** Implemented, deployed, and active; running `support-v9`
 **Verified:** 2026-09-01
 
 Phase 2 adds a durable provider-neutral turn runtime and a direct OpenAI
 Responses adapter for `gpt-5.6-luna`. Following owner acceptance of the evaluated
 `support-v3` batch, Phase 3 knowledge grounding, server-derived service cards, and
-human support handoff & ticketing have been implemented and deployed, running `support-v8`.
+human support handoff & ticketing have been implemented and deployed, running `support-v9`.
 
 ## Implemented boundary
 
@@ -14,8 +14,8 @@ human support handoff & ticketing have been implemented and deployed, running `s
   assistant messages, recovery, usage, and cost records.
 - `AgentModel` and `AgentModelResolver` isolate provider behavior. The configured
   resolver supports only `fake` and `openai`; no community OpenAI SDK is used.
-- Each turn persists the `support-v8` version identifier (or configured prompt version).
-  Instructions are loaded from `resources/ai-assistant/prompts/support-v8.md` when the model
+- Each turn persists the `support-v9` version identifier (or configured prompt version).
+  Instructions are loaded from `resources/ai-assistant/prompts/support-v9.md` when the model
   request is built; prompt content itself is not persisted on the turn.
 - Phase 3 knowledge grounding (lexical RAG via `resources/ai-assistant/knowledge/arab-ut.json`),
   server-derived service cards/live prices, and human support handoff & ticketing in the admin
@@ -178,7 +178,7 @@ Repository defaults are fail closed:
 | Rollout                 | `disabled`        |
 | Provider                | empty             |
 | Model                   | `gpt-5.6-luna`    |
-| Prompt                  | `support-v8`      |
+| Prompt                  | `support-v9`      |
 | Quiet window            | 1,500 ms          |
 | Context                 | 24 messages       |
 | Output                  | 1,000 tokens      |
@@ -189,7 +189,7 @@ Repository defaults are fail closed:
 | Stale recovery          | 60 s              |
 
 Production runs: AI enabled, public rollout, the OpenAI provider,
-`support-v8`, and `knowledge_max_topics: 3`. The prompt version in docs must be checked
+`support-v9`, and `knowledge_max_topics: 3`. The prompt version in docs must be checked
 and updated whenever `config/ai-assistant.php` changes. Historical evaluation batches
 are recorded in [EVALS.md](EVALS.md).
 
