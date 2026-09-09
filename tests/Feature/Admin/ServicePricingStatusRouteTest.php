@@ -20,7 +20,7 @@ beforeEach(function (): void {
     );
 });
 
-function createStatusTestAdmin(): User
+function createScheduleStatusTestAdmin(): User
 {
     $secret = app(TwoFactorAuthenticationProvider::class)->generateSecretKey();
     $user = User::factory()->create([
@@ -39,7 +39,7 @@ function createStatusTestAdmin(): User
 test('coins is rejected at the controller: it has a schedule but cannot be switched off', function (): void {
     // The controller used to accept coins and let the Action reject it with a
     // different error, so a client saw two shapes for one mistake.
-    $admin = createStatusTestAdmin();
+    $admin = createScheduleStatusTestAdmin();
     $before = ServicePriceSchedule::query()->where('service_type', ServiceType::Coins)->value('is_active');
 
     $this->actingAs($admin)
@@ -55,7 +55,7 @@ test('coins is rejected at the controller: it has a schedule but cannot be switc
 });
 
 test('a manual service can be deactivated through the same route', function (): void {
-    $admin = createStatusTestAdmin();
+    $admin = createScheduleStatusTestAdmin();
 
     $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
