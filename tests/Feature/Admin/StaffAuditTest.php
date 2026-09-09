@@ -165,3 +165,22 @@ test('audit events reject non-finite numbers and resources before persistence', 
         fclose($resource);
     }
 });
+
+test('a console audit has no actor but still goes through the event guard', function (): void {
+    $target = User::factory()->create();
+
+    $log = app(RecordStaffAudit::class)->execute(
+        null,
+        $target,
+        new StaffAuditEvent('staff.role_changed', ['previous_role' => 'customer', 'new_role' => 'admin', 'source' => 'console'], null),
+    );
+
+    expect($log->actor_user_id)->toBeNull()
+        ->and($log->action)->toBe('staff.role_changed')
+        ->and($log->metadata['source'])->toBe('console');
+});
+
+test('a console audit still rejects secret-looking metadata', function (): void {
+    expect(fn () => new StaffAuditEvent('staff.role_changed', ['password' => 'x'], null))
+        ->toThrow(InvalidArgumentException::class);
+});
