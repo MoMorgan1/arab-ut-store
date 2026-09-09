@@ -37,7 +37,7 @@ final class UpdateServicePriceScheduleStatus
 
         $type = is_string($serviceType) ? ServiceType::tryFrom($serviceType) : $serviceType;
 
-        if ($type === null || ! in_array($type, [ServiceType::FutChampions, ServiceType::Rivals], true)) {
+        if ($type === null || ! $type->isManual()) {
             throw ValidationException::withMessages([
                 'service_type' => ['The requested service type is not supported.'],
             ]);

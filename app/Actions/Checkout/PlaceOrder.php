@@ -588,7 +588,7 @@ final readonly class PlaceOrder
 
     private function isManualService(ServiceType $service): bool
     {
-        return in_array($service, [ServiceType::FutChampions, ServiceType::Rivals], true);
+        return $service->isManual();
     }
 
     private function requiredSecret(CartItem $item): CartItemSecret

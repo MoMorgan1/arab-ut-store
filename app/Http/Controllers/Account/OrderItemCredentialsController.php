@@ -29,7 +29,7 @@ final class OrderItemCredentialsController extends Controller
         $item = OrderItem::query()
             ->where('public_id', (string) $request->route('orderItem'))
             ->where('order_id', $order->id)
-            ->whereIn('service_type', [ServiceType::FutChampions, ServiceType::Rivals])
+            ->whereIn('service_type', ServiceType::manual())
             ->with('secret')
             ->firstOrFail();
         $secret = $item->secret;

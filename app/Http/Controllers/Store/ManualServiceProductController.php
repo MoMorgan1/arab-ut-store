@@ -39,7 +39,7 @@ final class ManualServiceProductController extends Controller
         StoreReviewReader $reviewReader,
     ): Response {
         $service = ServiceType::from((string) $request->route('service'));
-        abort_unless(in_array($service, [ServiceType::FutChampions, ServiceType::Rivals], true), 404);
+        abort_unless($service->isManual(), 404);
 
         $identity = $this->identity($service);
         $product = Product::query()
