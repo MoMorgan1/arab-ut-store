@@ -169,8 +169,7 @@ test('audit events reject non-finite numbers and resources before persistence', 
 test('a console audit has no actor but still goes through the event guard', function (): void {
     $target = User::factory()->create();
 
-    $log = app(RecordStaffAudit::class)->execute(
-        null,
+    $log = app(RecordStaffAudit::class)->executeFromConsole(
         $target,
         new StaffAuditEvent('staff.role_changed', ['previous_role' => 'customer', 'new_role' => 'admin', 'source' => 'console'], null),
     );

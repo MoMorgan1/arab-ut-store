@@ -63,8 +63,7 @@ final class GrantAdminRole extends Command
         DB::transaction(function () use ($user, $targetRole, $previousRole, $recordStaffAudit): void {
             $user->forceFill(['role' => $targetRole])->save();
 
-            $recordStaffAudit->execute(
-                null,
+            $recordStaffAudit->executeFromConsole(
                 $user,
                 new StaffAuditEvent('staff.role_changed', [
                     'previous_role' => $previousRole->value,
