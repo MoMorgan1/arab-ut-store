@@ -35,10 +35,6 @@ final class GrantStaffAccess
             throw new AuthorizationException('This action requires staff.manage permission.');
         }
 
-        if ($actor->role !== UserRole::Admin) {
-            throw new AuthorizationException('Only Admin actors may grant staff access.');
-        }
-
         $targetRole = match ($newRole) {
             'admin' => UserRole::Admin,
             'staff' => UserRole::Staff,

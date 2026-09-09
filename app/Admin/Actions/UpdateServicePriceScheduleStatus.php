@@ -5,7 +5,6 @@ namespace App\Admin\Actions;
 use App\Admin\Audit\StaffAuditEvent;
 use App\Enums\AdminPermission;
 use App\Enums\ServiceType;
-use App\Enums\UserRole;
 use App\Exceptions\AdminServicePricingConflict;
 use App\Models\ServicePriceSchedule;
 use App\Models\User;
@@ -29,10 +28,6 @@ final class UpdateServicePriceScheduleStatus
     ): ServicePriceSchedule {
         if (! $actor->is_active || ! $actor->can(AdminPermission::SettingsManage->value)) {
             throw new AuthorizationException('This action requires settings.manage permission.');
-        }
-
-        if ($actor->role !== UserRole::Admin) {
-            throw new AuthorizationException('Only Admin actors may update service schedule availability.');
         }
 
         $type = is_string($serviceType) ? ServiceType::tryFrom($serviceType) : $serviceType;

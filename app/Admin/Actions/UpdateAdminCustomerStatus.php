@@ -30,10 +30,6 @@ final class UpdateAdminCustomerStatus
             throw new AuthorizationException('This action requires customers.update_status permission.');
         }
 
-        if ($actor->role !== UserRole::Admin) {
-            throw new AuthorizationException('Only Admin actors may update customer status.');
-        }
-
         return DB::transaction(function () use (
             $actor,
             $customerPublicId,

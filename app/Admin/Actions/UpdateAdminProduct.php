@@ -5,7 +5,6 @@ namespace App\Admin\Actions;
 use App\Admin\Audit\StaffAuditEvent;
 use App\Enums\AdminPermission;
 use App\Enums\ProductAuthority;
-use App\Enums\UserRole;
 use App\Exceptions\AdminProductConflict;
 use App\Exceptions\AdminProductNotEditable;
 use App\Models\Product;
@@ -44,10 +43,6 @@ final class UpdateAdminProduct
     ): Product {
         if (! $actor->is_active || ! $actor->can(AdminPermission::CatalogManage->value)) {
             throw new AuthorizationException('This action requires catalog.manage permission.');
-        }
-
-        if ($actor->role !== UserRole::Admin) {
-            throw new AuthorizationException('Only Admin actors may update products.');
         }
 
         return DB::transaction(function () use (

@@ -11,14 +11,19 @@ use Illuminate\Database\Eloquent\Model;
 
 final class RecordStaffAudit
 {
-    public function execute(User $actor, ?Model $subject, StaffAuditEvent $event): StaffAuditLog
+    /**
+     * A null actor is the console: server operators have no user row, but
+     * their writes still go through the event guard like every other audit.
+     */
+    public function execute(?User $actor, ?Model $subject, StaffAuditEvent $event): StaffAuditLog
     {
-        if (! $actor->is_active || ! in_array($actor->role, [UserRole::Admin, UserRole::Staff], true)) {
+        if ($actor !== null
+            && (! $actor->is_active || ! in_array($actor->role, [UserRole::Admin, UserRole::Staff], true))) {
             throw new AuthorizationException('Only active Admin or Staff actors may record staff audits.');
         }
 
         return StaffAuditLog::query()->create([
-            'actor_user_id' => $actor->id,
+            'actor_user_id' => $actor?->id,
             'action' => $event->action,
             'auditable_type' => $subject?->getMorphClass(),
             'auditable_id' => $subject?->getKey(),

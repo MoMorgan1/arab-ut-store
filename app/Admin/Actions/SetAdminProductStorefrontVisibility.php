@@ -4,7 +4,6 @@ namespace App\Admin\Actions;
 
 use App\Admin\Audit\StaffAuditEvent;
 use App\Enums\AdminPermission;
-use App\Enums\UserRole;
 use App\Exceptions\AdminProductVisibilityConflict;
 use App\Models\Product;
 use App\Models\User;
@@ -36,10 +35,6 @@ final class SetAdminProductStorefrontVisibility
     ): Product {
         if (! $actor->is_active || ! $actor->can(AdminPermission::CatalogManage->value)) {
             throw new AuthorizationException('This action requires catalog.manage permission.');
-        }
-
-        if ($actor->role !== UserRole::Admin) {
-            throw new AuthorizationException('Only Admin actors may change storefront visibility.');
         }
 
         return DB::transaction(function () use ($actor, $productPublicId, $hidden, $expectedHidden, $ipAddress): Product {
