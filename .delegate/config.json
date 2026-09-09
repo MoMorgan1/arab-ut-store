@@ -3,7 +3,11 @@
   "lanes": {
     "feature": {
       "implementer": "agy",
-      "model": "gemini-3.7-flash-high"
+      "model": "gemini-3.8-flash-high"
+    },
+    "fallback": {
+      "implementer": "opencode",
+      "model": "opencode-go/glm-5.3-flash"
     },
     "fast": {
       "implementer": "codex",

@@ -8,12 +8,12 @@
 
 ## Placement
 
-- Routes: planned `routes/admin.php`, loaded by `bootstrap/app.php`.
+- Routes: `routes/admin.php`, loaded by `bootstrap/app.php`.
 - Controllers/requests: `app/Http/Controllers/Admin` and
   `app/Http/Requests/Admin`.
 - Application logic: `app/Admin/Actions`, `app/Admin/Queries`, and
   `app/Admin/Presenters`; reuse existing domain Actions when one exists.
-- Authorization: planned `App\Enums\AdminPermission`, central access matrix,
+- Authorization: `App\Enums\AdminPermission`, central access matrix,
   Laravel Gates/policies, route/request/action checks.
 - UI: `resources/js/pages/admin`, `resources/js/layouts/admin-layout.tsx`, and
   focused components under `resources/js/components/admin`.
