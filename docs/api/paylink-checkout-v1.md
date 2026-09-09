@@ -27,7 +27,7 @@ The checkout total and Paylink invoice are always SAR integer halalah. Display c
 | GET | `/payments/paylink/cancel` | authenticated | Reconcile cancellation/pending state and show the order |
 | GET | `/orders/{publicId}` | owner only | Safe order result; no EA credentials are rendered |
 | POST | `/api/payments/paylink/webhook` | Paylink bearer token | Acknowledge only after authoritative invoice lookup |
-| POST | `/admin/api/orders/{publicId}/refund` | admin or staff | One full original-method Paylink refund |
+| POST | `/admin/api/orders/{publicId}/refund` | admin (`can:orders.refund`) | One full original-method Paylink refund |
 
 Localized customer routes use the same paths under `/en`. Sensitive JSON responses and order pages are `no-store`.
 

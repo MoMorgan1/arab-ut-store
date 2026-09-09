@@ -4,11 +4,11 @@
 **Verified:** 2026-08-23
 
 The assistant is grounded in a curated, staff-authored corpus rather than an
-indexed crawl. `resources/ai-assistant/knowledge/arab-ut.json` holds 45 bilingual
+indexed crawl. `resources/ai-assistant/knowledge/arab-ut.json` holds 47 bilingual
 topics (Arabic authoritative) adapted from the legacy storefront's knowledge base
 with the owner's decisions of 2026-08-23 applied. `SelectSupportKnowledge` picks
 the few topics a customer's message is about and `BuildAgentModelRequest` injects
-them into a `<store_knowledge>` block; `support-v3` instructs the model to answer
+them into a `<store_knowledge>` block; the configured prompt (`support-v9` today) instructs the model to answer
 from that block, quote its facts exactly, and say plainly when the block does not
 cover the question.
 

@@ -6,11 +6,11 @@
 ## What is and is not live
 
 The runtime has **no tool calling**. The model is never given a tool schema,
-never emits a tool call, and can never take an action. `support-v3` forbids
+never emits a tool call, and can never take an action. The configured prompt (`support-v9` today; `config/ai-assistant.php` is the source of truth) forbids
 emitting JSON, tool calls, or code fences, and the adapter maps only text
 deltas, completion and failure events.
 
-Three customer-visible surfaces exist and are frequently mistaken for tools.
+Five customer-visible surfaces exist and are frequently mistaken for tools.
 Each is derived **server-side from the customer's own message**:
 
 | Surface | What it is | What the model does |
@@ -18,6 +18,8 @@ Each is derived **server-side from the customer's own message**:
 | Service cards | `cards.v1` metadata attached to an assistant message, linking to a service | Nothing. The server selects cards from the customer's message. |
 | Card prices | Resolved at render time through `chat.service-prices` | Nothing. The model may not state a price at all. |
 | Add-to-cart offer | A button that posts to the store's existing cart endpoint over the customer's own session | Nothing. The customer confirms, and the EA details go in the secure form, never the transcript. |
+| Choice chips | `choices` metadata built by `BuildAssistantChoices` from the customer's message, one tap sends the next message | Nothing. The server writes the chips; the customer's tap is an ordinary message. |
+| SBC shelf | `shelf.v1` metadata listing real SBC challenges, priced at render time | Nothing. The server picks the shelf from the catalogue. |
 
 Prices resolve at render time rather than being frozen into the message because
 messages persist: a price written into history would go stale and become a false

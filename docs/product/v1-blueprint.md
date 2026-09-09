@@ -157,7 +157,7 @@ Mohamed approved Paylink integration on 2026-08-14. The repository now includes 
 - Generate/download non-VAT PDF receipts and resend email receipts.
 - Maintain admin and read-only staff roles.
 
-General page-builder functionality, visual banner editing, menu management, and manual review editing are intentionally outside v1. Bilingual FAQ, policy, homepage, and navigation content remains version-controlled for the MVP.
+General page-builder functionality, visual banner editing, and menu management are intentionally outside v1. The FAQ and policy pages are edited in the admin (decision 2026-09-02, FAQ editor), and admins moderate order reviews (decision 2026-09-02, customer order reviews). Homepage and navigation content remains version-controlled.
 
 ## Automation and integration boundary
 
@@ -175,7 +175,7 @@ General page-builder functionality, visual banner editing, menu management, and 
 - Credit may cover all or part of an order; the remainder goes through the Paylink payment adapter when production checkout is enabled.
 - Refunds may use original payment or wallet credit as selected by an authorized admin.
 - Coupons and automatic cart/quantity discounts are calculated server-side and recorded on the order.
-- Loyalty uses configurable completed-lifetime-spend thresholds for Silver, Gold, and Platinum. v1 has no points or automatic cashback engine.
+- Loyalty uses configurable completed-lifetime-spend thresholds for Silver, Gold, and Platinum. Each tier carries a cashback basis-points rate; completed orders accrue wallet cashback automatically (see `docs/decisions/2026-09-10-automatic-cashback-decision.md`). There is no points engine.
 - Customer documents are receipts/invoices in SAR with no VAT line or VAT-invoice claim.
 
 ## Deliberately excluded from v1
@@ -184,9 +184,9 @@ General page-builder functionality, visual banner editing, menu management, and 
 - Customer wallet top-ups.
 - Customer-initiated cancellation/refund.
 - Player/operator accounts, assignment, commission, or fulfillment portal.
-- Visual CMS/page builder for homepage, FAQ, policies, or navigation.
-- Manual review moderation/creation in admin.
-- Loyalty points or automatic cashback.
+- Visual CMS/page builder for homepage or navigation (FAQ and policy pages have an admin editor since 2026-09-02).
+- Manual review creation in admin (moderation of customer order reviews shipped 2026-09-02).
+- Loyalty points.
 - Native mobile applications.
 - A new n8n deployment or migration.
 - Node.js/PostgreSQL/VPS infrastructure.

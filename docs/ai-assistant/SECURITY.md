@@ -18,7 +18,7 @@ inside a transaction and clears the raw session token only after a successful cl
 
 - **Internal Note Confidentiality:** Messages with `message_type = 'internal_note'` are filtered out of all customer-facing presenters (`ChatPresenter::loadBoundedMessages`). They are visible only in the authenticated admin inbox.
 - **Data Leak Prevention:** Presenters never expose `guest_key`, `user_id`, or `assigned_admin_id`.
-- **Admin Permission Boundary:** All admin conversation routes, conversation details, and `GET /admin/support/unread-count` are strictly protected by `can:chat.view` permission inside the admin MFA group.
+- **Admin Permission Boundary:** Reading the inbox (`admin.conversations`, `admin.conversations.show`, `GET /admin/support/unread-count`) requires `can:chat.view`. Replying, adding an internal note, taking over, and resolving a ticket (`POST …/reply`, `…/note`, `…/take-over`, `PATCH /admin/tickets/{publicId}`) require `can:chat.reply`. Both sit behind permission inside the admin MFA group.
 - **Deadlock-Free Locking Order:** To ensure transactional safety across concurrent customer turns and staff actions, database locks strictly follow: `conversation -> ticket -> turn -> run`.
 - **Customer Email Notifications:** `SupportReplyNotification` is sent synchronously via email to away customers without embedding conversation transcripts, order secrets, or sensitive customer notes.
 - **Copy Invariants:** All customer-facing system and banner strings forbid time promises ("soon", "shortly", "within", "قريبًا", "خلال") to eliminate misleading customer commitments.
