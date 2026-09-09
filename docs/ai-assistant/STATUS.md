@@ -1,7 +1,7 @@
 # Live status
 
 **Lifecycle:** Phase 1 accepted; Phase 2 accepted by Mohamed on 2026-08-23;
-Phase 3 knowledge grounding, service cards, and human support handoff & ticketing are implemented and active; running `support-v8`
+Phase 3 knowledge grounding, service cards, and human support handoff & ticketing are implemented and active; running `support-v9`
 **Verified:** 2026-09-01
 
 ## Release snapshot
@@ -20,7 +20,7 @@ Phase 3 knowledge grounding, service cards, and human support handoff & ticketin
 | Phase 1 owner acceptance                                   | Mohamed accepted the deployed Phase 1 release on 2026-08-21 after completing the real-account and physical iPhone/Safari checks. This closes the remaining device/owner gate without changing the scope of the automated Chromium evidence.                                                                                                               |
 | Phase 2 runtime release                                    | [Tests 32578736891](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32578736891) and [deploy 32578995534](https://github.com/MoMorgan1/arab-ut-store/actions/runs/32578995534) passed for `e13ee8bde25263a262788177d0ce78fb4f46f37f`. The active release, seven chat routes, and minute stale-turn recovery schedule were verified in production. |
 | Public Luna evaluation                                     | The 2026-08-22 batch failed mandatory mixed-language, safety-critical-case, and first-visible-content thresholds; see [the sanitized evidence](evidence/2026-08-22-phase-2-luna-public-eval.md). The 2026-08-23 batch `phase3-knowledge-eval-20260823T074807Z` passed every mandatory threshold and is the accepted evidence. See [EVALS.md](EVALS.md).                                                                                       |
-| Current production mode                                    | **Nawaf is active in production.** Phase 2 was accepted by Mohamed on 2026-08-23 after the `support-v3` batch passed every mandatory threshold. The active configuration is `support-v8` with knowledge grounding at `knowledge_max_topics: 3` and server-derived service cards. The kill switch and rate limits are unchanged: clearing the AI enable flag returns new messages to the accepted Phase 1 demo behavior. |
+| Current production mode                                    | **Nawaf is active in production.** Phase 2 was accepted by Mohamed on 2026-08-23 after the `support-v3` batch passed every mandatory threshold. The active configuration is `support-v9` with knowledge grounding at `knowledge_max_topics: 3` and server-derived service cards. The kill switch and rate limits are unchanged: clearing the AI enable flag returns new messages to the accepted Phase 1 demo behavior. |
 
 The application contains the Phase 2 runtime, direct Nawaf adapter,
 streaming routes, durable turn/run schema, recovery, and cost accounting, plus
@@ -87,7 +87,8 @@ language 2/4, and a 10.663 s first-visible outlier — are all resolved. See
 [EVALS.md](EVALS.md) for the full table and for the selection defect the batch
 surfaced and that was fixed before acceptance.
 
-The accepted configuration is `support-v3` with knowledge grounding
+The configuration accepted on 2026-08-23 was `support-v3`; the active
+configuration is `support-v9` with knowledge grounding
 (`knowledge_max_topics: 3`) and server-derived service cards. Setting
 `knowledge_max_topics` to 0 disables grounding without touching the prompt.
 
@@ -97,7 +98,7 @@ Phases 1-3 and human support handoff & ticketing are implemented, tested, and ac
 staff replies from the admin inbox, durable `support_tickets` records, a 48-hour guest retention window,
 and customer-visible conversation history are live.
 
-Production currently runs `support-v8` with `knowledge_max_topics: 3`. Setting `AI_ASSISTANT_KNOWLEDGE_MAX_TOPICS=0`
+Production currently runs `support-v9` with `knowledge_max_topics: 3`. Setting `AI_ASSISTANT_KNOWLEDGE_MAX_TOPICS=0`
 disables grounding dynamically. Any prompt, threshold, guard, model, token budget, or runtime default
 change requires checking and updating the canonical docs to match `config/ai-assistant.php`.
 See [AGENT-RUNTIME.md](AGENT-RUNTIME.md), [EVALS.md](EVALS.md), and [OPERATIONS.md](OPERATIONS.md).

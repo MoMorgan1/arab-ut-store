@@ -54,6 +54,6 @@ test('a question with no pricing relevance carries no price table', function () 
 test('a greeting carries neither knowledge nor prices', function () {
     $instructions = livePricedInstructions('السلام عليكم');
 
-    expect($instructions)->not->toContain('[id: ')
+    expect($instructions)->not->toContain('</store_knowledge>')
         ->not->toContain('rivals |');
 });
