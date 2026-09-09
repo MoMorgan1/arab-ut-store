@@ -254,7 +254,7 @@ final class CartController extends Controller
             'priceChanged' => $priceChanged,
             'unavailableReason' => $unavailableReason?->value,
             'promotion' => $promotion === null ? null : [
-                'badge' => $this->promotionBadge($promotion),
+                'badge' => $promotion->promotion->badgeFor(app()->getLocale()),
                 'discountHalalah' => $promotion->discountHalalah,
             ],
             'configuration' => $this->safeConfiguration($cartItem->configuration),
@@ -269,18 +269,6 @@ final class CartController extends Controller
                 ? ! $fulfillment['credentialsReady']
                 : $credentials === null,
         ];
-    }
-
-    private function promotionBadge(PromotionPrice $promotion): string
-    {
-        $locale = app()->getLocale();
-        $localized = trim((string) $promotion->promotion->{"badge_{$locale}"});
-
-        if ($localized !== '') {
-            return $localized;
-        }
-
-        return trim((string) $promotion->promotion->{'badge_'.($locale === 'ar' ? 'en' : 'ar')});
     }
 
     /** @return array{credentialsReady: bool, squadImagePresent: bool} */

@@ -236,7 +236,7 @@ final class StoreCatalogReader
                 ? $this->convert($converter, $lowestPromotion->baseHalalah)
                 : null,
             'promotionBadge' => $lowestPromotion instanceof PromotionPrice
-                ? $this->promotionBadge($lowestPromotion, $locale)
+                ? $lowestPromotion->promotion->badgeFor($locale)
                 : null,
             'platforms' => $variants
                 ->map(fn (ProductVariant $variant): string => $variant->platform->value)
@@ -293,7 +293,7 @@ final class StoreCatalogReader
                 ? $this->convert($converter, $promotion->baseHalalah)
                 : null,
             'promotionBadge' => $promotion instanceof PromotionPrice
-                ? $this->promotionBadge($promotion, $locale)
+                ? $promotion->promotion->badgeFor($locale)
                 : null,
             'completionTiers' => $includeCompletionTiers
                 ? $this->completionTiers($variant, $product, $promotion, $converter)
@@ -343,19 +343,6 @@ final class StoreCatalogReader
             $basePriceHalalah,
             $product->id,
         );
-    }
-
-    private function promotionBadge(PromotionPrice $promotion, string $locale): string
-    {
-        $localized = trim((string) $promotion->promotion->{"badge_{$locale}"});
-
-        if ($localized !== '') {
-            return $localized;
-        }
-
-        $fallback = trim((string) $promotion->promotion->{'badge_'.($locale === 'ar' ? 'en' : 'ar')});
-
-        return $fallback !== '' ? $fallback : $this->localized($promotion->promotion, 'name', $locale);
     }
 
     /** @param Collection<int, ProductVariant> $variants
