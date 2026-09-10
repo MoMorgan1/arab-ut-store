@@ -413,6 +413,7 @@ function profileProps() {
                 security: 'Security',
                 support: 'Support',
                 logout: 'Log out',
+                attention: 'Needs a step',
             },
             profile: {
                 title: 'Profile',

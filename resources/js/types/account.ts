@@ -95,6 +95,8 @@ export type AccountTranslations = {
         logout: string;
         admin?: string;
         coming_soon?: string;
+        /** Announced for a destination that still needs the customer. */
+        attention: string;
     };
     bottom_nav?: {
         home: string;

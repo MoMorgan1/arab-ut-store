@@ -16,6 +16,7 @@ return [
         'logout' => 'Log out',
         'admin' => 'Admin dashboard',
         'coming_soon' => 'Coming soon',
+        'attention' => 'Needs a step from you',
     ],
     'bottom_nav' => [
         'home' => 'Home',

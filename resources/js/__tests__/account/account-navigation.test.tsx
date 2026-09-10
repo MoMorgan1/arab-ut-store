@@ -45,6 +45,7 @@ it('keeps destination navigation separate from the POST logout action', () => {
                 security: 'Security',
                 support: 'Support',
                 logout: 'Log out',
+                attention: 'Needs a step',
             }}
         />,
     );
@@ -89,6 +90,7 @@ it('keeps the profile destination a single link without a nested sections rail',
                 security: 'Security',
                 support: 'Support',
                 logout: 'Log out',
+                attention: 'Needs a step',
             }}
         />,
     );
@@ -141,6 +143,7 @@ it('renders attention dot for attention items and badge pill for badged items', 
                 security: 'Security',
                 support: 'Support',
                 logout: 'Log out',
+                attention: 'Needs a step',
             }}
         />,
     );

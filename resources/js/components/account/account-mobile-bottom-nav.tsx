@@ -95,10 +95,19 @@ export function AccountMobileBottomNav({
                                 {label}
                             </span>
                             {attention.includes(item.key) ? (
-                                <span
-                                    aria-hidden="true"
-                                    className="arabut-bottom-bar__dot"
-                                />
+                                <>
+                                    <span
+                                        aria-hidden="true"
+                                        className="arabut-bottom-bar__dot"
+                                    />
+                                    {/* The dot is decorative, so the state it
+                                        signals needs a text equivalent or the
+                                        customer is never told something is
+                                        waiting for them. */}
+                                    <span className="sr-only">
+                                        {translations.attention}
+                                    </span>
+                                </>
                             ) : null}
                         </Link>
                     );

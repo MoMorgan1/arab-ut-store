@@ -16,6 +16,7 @@ return [
         'logout' => 'تسجيل الخروج',
         'admin' => 'لوحة الإدارة',
         'coming_soon' => 'قريبًا',
+        'attention' => 'يحتاج منك خطوة',
     ],
     'bottom_nav' => [
         'home' => 'الرئيسية',
