@@ -13,21 +13,17 @@ use Illuminate\Validation\ValidationException;
 /**
  * The customer's own verdict on a finished order.
  *
- * The review is built field by field and never from the request array:
+ * The caller resolves the order from its short handle, scoped to the signed-in
+ * customer, so an attacker cannot review someone else's order by guessing a
+ * number. The review is built field by field and never from the request array:
  * `DomainModel` guards only `id` and `public_id`, so a posted `is_visible` or
  * `published_at` would otherwise be mass assignable and a one-star review could
  * publish itself.
  */
 final class SubmitOrderReview
 {
-    public function execute(User $user, string $orderPublicId, int $rating, ?string $body): Review
+    public function execute(User $user, Order $order, int $rating, ?string $body): Review
     {
-        /** @var Order $order */
-        $order = Order::query()
-            ->where('public_id', $orderPublicId)
-            ->where('user_id', $user->id)
-            ->firstOrFail();
-
         if ($order->completed_at === null || $order->channel === 'salla_import') {
             throw ValidationException::withMessages([
                 'rating' => [(string) trans('account.orders.review.not_eligible')],

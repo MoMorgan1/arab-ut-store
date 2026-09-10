@@ -44,12 +44,14 @@ The canonical account routes are authenticated and no-store:
 | --- | --- | --- |
 | Overview | `/my-account` | `/en/my-account` |
 | Orders | `/my-account/orders` | `/en/my-account/orders` |
-| Live order detail | `/my-account/orders/{publicId}` | `/en/my-account/orders/{publicId}` |
+| Live order detail | `/my-account/orders/{orderNumber}` | `/en/my-account/orders/{orderNumber}` |
 | Archived order detail | `/my-account/orders/archive/{legacyOrder:public_id}` | `/en/my-account/orders/archive/{legacyOrder:public_id}` |
 | Wallet | `/my-account/wallet` | `/en/my-account/wallet` |
 | Profile | `/my-account/profile` | `/en/my-account/profile` |
 | Security | `/my-account/security` | `/en/my-account/security` |
 | Support | `/my-account/support` | `/en/my-account/support` |
+
+> **2026-09-10 amendment:** Live order URLs address the order by its public order number (`AUT-…`, or an imported `UT-…`). A 26-character order ULID in the order segment still resolves, and a safe (GET) request is permanently redirected (301) to the order-number URL. The internal `public_id` stays the join key and never appears in a generated URL. Archived orders keep using their `public_id` segment as shown above.
 
 The existing `/dashboard` route redirects to the locale-appropriate canonical account overview. Existing `/settings/*` routes either redirect to their account equivalents or remain internal aliases until all callers and tests move. The shared header's authenticated account URL points to the canonical overview.
 

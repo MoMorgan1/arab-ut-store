@@ -63,14 +63,14 @@ final readonly class AdminOrderDetailPage
             ...$this->shell->for($actor, $locale),
             'order' => $this->detailPresenter->present($order, $locale, $auditLogs),
             'allowedTransitions' => $allowedTargets,
-            'transitionUrl' => route($prefix.'orders.transitions.store', ['publicId' => (string) $order->public_id], absolute: false),
-            'revealUrlTemplate' => route($prefix.'orders.items.reveal', ['publicId' => (string) $order->public_id, 'itemPublicId' => '__ITEM_ID__'], absolute: false),
+            'transitionUrl' => route($prefix.'orders.transitions.store', ['order' => (string) $order->order_number], absolute: false),
+            'revealUrlTemplate' => route($prefix.'orders.items.reveal', ['order' => (string) $order->order_number, 'itemPublicId' => '__ITEM_ID__'], absolute: false),
             'refund' => [
                 'eligible' => $eligible,
                 'amountMinor' => $amountMinor,
                 'currency' => $currency,
             ],
-            'refundUrl' => route($prefix.'orders.paylink-refund', ['order' => (string) $order->public_id], absolute: false),
+            'refundUrl' => route($prefix.'orders.paylink-refund', ['order' => (string) $order->order_number], absolute: false),
         ];
     }
 

@@ -60,7 +60,7 @@ test('the account order page carries the bootstrap while auth and admin pages do
     $order = analyticsOrder($user, OrderStatus::InProgress, 10_000);
 
     $this->actingAs($user)
-        ->get('/my-account/orders/'.$order->public_id)
+        ->get('/my-account/orders/'.$order->order_number)
         ->assertOk()
         ->assertSee('window.__arabutAnalytics = {"meta":"987654321"}', false);
     $this->get('/my-account/orders')->assertOk()->assertDontSee('__arabutAnalytics', false);
@@ -71,7 +71,7 @@ test('a Paylink-paid order exposes a purchase payload for the Paylink amount onl
     $order = analyticsOrder($user, OrderStatus::InProgress, 7_500, 2_500);
 
     $this->actingAs($user)
-        ->get('/my-account/orders/'.$order->public_id)
+        ->get('/my-account/orders/'.$order->order_number)
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('order.analytics.orderId', $order->public_id)
@@ -88,7 +88,7 @@ test('wallet-only, pending and cancelled orders expose no purchase payload', fun
     $order = analyticsOrder($user, $status, $payment, $wallet);
 
     $this->actingAs($user)
-        ->get('/my-account/orders/'.$order->public_id)
+        ->get('/my-account/orders/'.$order->order_number)
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('order.analytics', null));
 })->with([

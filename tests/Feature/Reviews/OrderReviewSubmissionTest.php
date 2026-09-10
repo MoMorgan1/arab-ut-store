@@ -25,7 +25,7 @@ function submitReview(User $user, Order $order, array $payload = [], string $pre
 {
     return test()
         ->actingAs($user)
-        ->post("{$prefix}/my-account/orders/{$order->public_id}/review", [
+        ->post("{$prefix}/my-account/orders/{$order->order_number}/review", [
             'rating' => 5,
             ...$payload,
         ]);
@@ -36,7 +36,7 @@ it('stores a five star review from the order owner and publishes it', function (
     $order = reviewableOrder($user);
 
     submitReview($user, $order, ['body' => 'خدمة سريعة وممتازة.'])
-        ->assertRedirect("/my-account/orders/{$order->public_id}");
+        ->assertRedirect("/my-account/orders/{$order->order_number}");
 
     $review = Review::query()->where('order_id', $order->id)->firstOrFail();
 
@@ -106,7 +106,7 @@ it('accepts the English twin of the route', function (): void {
     $order = reviewableOrder($user, ['locale' => 'en']);
 
     submitReview($user, $order, ['rating' => 5, 'body' => 'Fast and clean.'], '/en')
-        ->assertRedirect("/en/my-account/orders/{$order->public_id}");
+        ->assertRedirect("/en/my-account/orders/{$order->order_number}");
 
     expect(Review::query()->where('order_id', $order->id)->value('body_en'))
         ->toBe('Fast and clean.');
@@ -225,26 +225,26 @@ it('exposes the review slot on the order page only when the order can be reviewe
     $reviewable = reviewableOrder($user);
 
     test()->actingAs($user)
-        ->get("/my-account/orders/{$open->public_id}")
+        ->get("/my-account/orders/{$open->order_number}")
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('order.review', null));
 
     test()->actingAs($user)
-        ->get("/my-account/orders/{$imported->public_id}")
+        ->get("/my-account/orders/{$imported->order_number}")
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('order.review', null));
 
     test()->actingAs($user)
-        ->get("/my-account/orders/{$reviewable->public_id}")
+        ->get("/my-account/orders/{$reviewable->order_number}")
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('order.review.url', "/my-account/orders/{$reviewable->public_id}/review")
+            ->where('order.review.url', "/my-account/orders/{$reviewable->order_number}/review")
             ->where('order.review.submitted', null));
 
     submitReview($user, $reviewable, ['rating' => 5, 'body' => 'شكرًا لكم.'])->assertRedirect();
 
     test()->actingAs($user)
-        ->get("/my-account/orders/{$reviewable->public_id}")
+        ->get("/my-account/orders/{$reviewable->order_number}")
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('order.review.submitted.rating', 5)

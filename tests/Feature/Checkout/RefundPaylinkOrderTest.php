@@ -37,7 +37,7 @@ function refundablePaylinkOrder(): array
 {
     $admin = mfaConfirmedAdmin();
     $order = Order::factory()->create([
-        'order_number' => 'AUT-REFUND-1001',
+        'order_number' => 'AUT-900002',
         'status' => OrderStatus::Received,
         'currency' => 'SAR',
         'subtotal_halalah' => 1250,
@@ -92,7 +92,7 @@ test('an admin can issue one verified full Paylink refund and exact retries neve
         'https://restpilot.paylink.sa/api/partner/auth' => Http::response(['id_token' => 'partner-token']),
         'https://restpilot.paylink.sa/rest/partner/v2/merchant/accountNo/123456/refund' => Http::response([
             'id' => 237,
-            'orderNumber' => 'AUT-REFUND-1001',
+            'orderNumber' => 'AUT-900002',
             'amount' => 12.50,
             'currency' => 'SAR',
             'refundReason' => 'Customer request.',
@@ -220,7 +220,7 @@ test('a mismatched Paylink refund is quarantined for manual review without chang
         'https://restpilot.paylink.sa/api/partner/auth' => Http::response(['id_token' => 'partner-token']),
         'https://restpilot.paylink.sa/rest/partner/v2/merchant/accountNo/123456/refund' => Http::response([
             'id' => 238,
-            'orderNumber' => 'AUT-REFUND-1001',
+            'orderNumber' => 'AUT-900002',
             'amount' => 11.00,
             'currency' => 'SAR',
             'refundReason' => 'Customer request.',
@@ -261,7 +261,7 @@ test('the admin refund endpoint is authenticated, admin restricted, mfa gated, p
     $unconfirmedMfaAdmin = User::factory()->create(['role' => UserRole::Admin]);
     Http::fake();
 
-    $url = '/admin/api/orders/'.$order->public_id.'/refund';
+    $url = '/admin/api/orders/'.$order->order_number.'/refund';
     $payload = ['amountHalalah' => 1250, 'reason' => 'Customer request.'];
 
     $this->postJson($url, $payload)->assertUnauthorized();
@@ -285,7 +285,7 @@ test('the admin refund endpoint completes one provider verified refund', functio
         'https://restpilot.paylink.sa/api/partner/auth' => Http::response(['id_token' => 'partner-token']),
         'https://restpilot.paylink.sa/rest/partner/v2/merchant/accountNo/123456/refund' => Http::response([
             'id' => 239,
-            'orderNumber' => 'AUT-REFUND-1001',
+            'orderNumber' => 'AUT-900002',
             'amount' => 12.50,
             'currency' => 'SAR',
             'refundReason' => 'Customer request.',
@@ -295,7 +295,7 @@ test('the admin refund endpoint completes one provider verified refund', functio
 
     $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
-        ->postJson('/admin/api/orders/'.$order->public_id.'/refund', [
+        ->postJson('/admin/api/orders/'.$order->order_number.'/refund', [
             'amountHalalah' => 1250,
             'reason' => 'Customer request.',
         ])
@@ -316,7 +316,7 @@ test('a cancelled order with a captured payment can be refunded', function () {
         'https://restpilot.paylink.sa/api/partner/auth' => Http::response(['id_token' => 'partner-token']),
         'https://restpilot.paylink.sa/rest/partner/v2/merchant/accountNo/123456/refund' => Http::response([
             'id' => 240,
-            'orderNumber' => 'AUT-REFUND-1001',
+            'orderNumber' => 'AUT-900002',
             'amount' => 12.50,
             'currency' => 'SAR',
             'refundReason' => 'Refund cancelled order.',

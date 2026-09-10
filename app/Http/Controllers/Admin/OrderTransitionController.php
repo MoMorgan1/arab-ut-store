@@ -18,7 +18,7 @@ final class OrderTransitionController extends Controller
         private readonly AdminOrderDetail $presenter,
     ) {}
 
-    public function __invoke(TransitionRequest $request, string $publicId): JsonResponse
+    public function __invoke(TransitionRequest $request, string $order): JsonResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
@@ -26,9 +26,9 @@ final class OrderTransitionController extends Controller
         $targetStatus = $request->targetStatus();
         $expectedStatus = $request->expectedStatus();
 
-        $order = $this->action->execute(
+        $model = $this->action->execute(
             actor: $actor,
-            orderPublicId: $publicId,
+            orderHandle: $order,
             targetStatus: $targetStatus,
             expectedStatus: $expectedStatus,
             reason: $request->reason(),
@@ -36,17 +36,17 @@ final class OrderTransitionController extends Controller
         );
 
         $locale = $request->route('locale') === 'en' ? 'en' : 'ar';
-        $detail = $this->query->findByPublicId((string) $order->public_id, $actor);
+        $detail = $this->query->findByHandle((string) $model->getAttribute('order_number'), $actor);
         $presented = $detail !== null
             ? $this->presenter->present($detail['order'], $locale, $detail['auditLogs'])
             : [
-                'id' => (string) $order->public_id,
-                'status' => $order->status->value,
+                'id' => (string) $model->getAttribute('order_number'),
+                'status' => $model->status->value,
             ];
 
         return response()->json([
             'order' => $presented,
-            'status' => $order->status->value,
+            'status' => $model->status->value,
         ], 200);
     }
 }

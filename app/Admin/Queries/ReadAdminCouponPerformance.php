@@ -48,7 +48,6 @@ use stdClass;
  *     chart: list<array{date: string, redemptions: int, revenueHalalah: int, discountHalalah: int}>,
  *     recentRedemptions: list<array{
  *         id: string,
- *         orderId: string,
  *         orderNumber: string,
  *         orderStatus: string,
  *         isPaid: bool,
@@ -210,7 +209,6 @@ final class ReadAdminCouponPerformance
             ->select([
                 'coupon_redemptions.id',
                 'coupon_redemptions.redeemed_at',
-                'orders.public_id as order_public_id',
                 'orders.order_number',
                 'orders.status as order_status',
                 'orders.paid_at',
@@ -229,7 +227,6 @@ final class ReadAdminCouponPerformance
         $recentRedemptions = array_map(function (stdClass $r): array {
             return [
                 'id' => (string) $r->id,
-                'orderId' => (string) $r->order_public_id,
                 'orderNumber' => (string) $r->order_number,
                 'orderStatus' => (string) $r->order_status,
                 'isPaid' => $r->paid_at !== null,

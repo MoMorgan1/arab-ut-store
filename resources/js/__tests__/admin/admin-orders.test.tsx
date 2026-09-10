@@ -114,10 +114,7 @@ describe('AdminOrdersPage', () => {
         const detailLink = within(ordersTable).getByRole('link', {
             name: 'AUT-1001',
         });
-        expect(detailLink).toHaveAttribute(
-            'href',
-            '/admin/orders/01K5ADM1N00000000000000001',
-        );
+        expect(detailLink).toHaveAttribute('href', '/admin/orders/AUT-1001');
     });
 
     it('submits search query and resets page to 1 via router.get', () => {
@@ -511,7 +508,7 @@ describe('AdminOrdersPage', () => {
             within(mobileContainer).getByRole('link', {
                 name: firstOrder.orderNumber,
             }),
-        ).toHaveAttribute('href', `/admin/orders/${firstOrder.id}`);
+        ).toHaveAttribute('href', `/admin/orders/${firstOrder.orderNumber}`);
 
         expect(
             within(mobileContainer).getByRole('checkbox', {

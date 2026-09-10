@@ -1851,7 +1851,6 @@ export type AdminSettingsPageProps = {
 };
 
 export type AdminOrderCustomer = {
-    id: string;
     /** The short CUS- number; only the order detail carries it. */
     number?: string | null;
     name: string;
@@ -2300,7 +2299,6 @@ export type AdminCouponChartPoint = {
 
 export type AdminCouponRecentRedemption = {
     id: string;
-    orderId: string;
     orderNumber: string;
     orderStatus: string;
     isPaid: boolean;
@@ -2700,7 +2698,7 @@ export type AdminReviewRow = {
     rating: number;
     excerpt: string;
     bodyLocale: 'ar' | 'en';
-    order: { number: string; publicId: string } | null;
+    order: { number: string } | null;
     source: 'customer' | 'archive';
     serviceType: string | null;
     serviceLabel: string;

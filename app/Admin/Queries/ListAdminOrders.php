@@ -2,6 +2,7 @@
 
 namespace App\Admin\Queries;
 
+use App\Customers\CustomerNumber;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
@@ -25,7 +26,7 @@ use stdClass;
  * @phpstan-type AdminOrderRow array{
  *     id: string,
  *     orderNumber: string,
- *     customer: array{id: string, name: string, email: string, phone: ?string},
+ *     customer: array{name: string, email: string, phone: ?string},
  *     status: string,
  *     serviceTypes: list<string>,
  *     platforms: list<string>,
@@ -133,15 +134,16 @@ final class ListAdminOrders
         }
 
         $lowercaseSearch = mb_strtolower($search);
-        $query->where(function (Builder $orderQuery) use ($search, $lowercaseSearch): void {
+        $uppercaseSearch = mb_strtoupper($search);
+        $query->where(function (Builder $orderQuery) use ($search, $lowercaseSearch, $uppercaseSearch): void {
             $orderQuery->where('orders.order_number', $search)
-                ->orWhere('orders.public_id', $search)
-                ->orWhereExists(function (Builder $userQuery) use ($search, $lowercaseSearch): void {
+                ->orWhereExists(function (Builder $userQuery) use ($search, $lowercaseSearch, $uppercaseSearch): void {
                     $userQuery->select(DB::raw(1))
                         ->from('users')
                         ->whereColumn('users.id', 'orders.user_id')
-                        ->where(function (Builder $contactQuery) use ($search, $lowercaseSearch): void {
-                            $contactQuery->where('users.public_id', $search)
+                        ->where(function (Builder $contactQuery) use ($search, $lowercaseSearch, $uppercaseSearch): void {
+                            $contactQuery->where('users.customer_number', $uppercaseSearch)
+                                ->orWhere('users.customer_number', CustomerNumber::PREFIX.$uppercaseSearch)
                                 ->orWhereRaw('LOWER(users.email) = ?', [$lowercaseSearch])
                                 ->orWhere('users.phone', $search);
                         });
@@ -218,7 +220,6 @@ final class ListAdminOrders
 
         foreach (DB::table('users')->whereIn('id', $userIds)->select([
             'id',
-            'public_id',
             'first_name',
             'last_name',
             'email',
@@ -272,7 +273,6 @@ final class ListAdminOrders
                 'id' => (string) $order->public_id,
                 'orderNumber' => (string) $order->order_number,
                 'customer' => [
-                    'id' => (string) $user->public_id,
                     'name' => trim((string) $user->first_name.' '.(string) $user->last_name),
                     'email' => (string) $user->email,
                     'phone' => $user->phone !== null ? (string) $user->phone : null,

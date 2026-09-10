@@ -9,7 +9,6 @@ import type { AdminOrderDetailItem, AdminTranslations } from '@/types/admin';
 
 export type AdminOrderItemSecretProps = {
     item: AdminOrderDetailItem;
-    orderId: string;
     orderNumber: string;
     locale: 'ar' | 'en';
     direction: 'ltr' | 'rtl';
@@ -31,7 +30,7 @@ function parseResponseData(data: unknown): unknown {
 
 export default function AdminOrderItemSecret({
     item,
-    orderId,
+    orderNumber,
     adminUi,
     revealUrlTemplate,
 }: AdminOrderItemSecretProps) {
@@ -53,7 +52,7 @@ export default function AdminOrderItemSecret({
 
     const revealUrl = revealUrlTemplate
         ? revealUrlTemplate.replace('__ITEM_ID__', item.id)
-        : `/admin/api/orders/${orderId}/items/${item.id}/reveal`;
+        : `/admin/api/orders/${orderNumber}/items/${item.id}/reveal`;
 
     const revealHttp = useHttp<
         { purpose?: string },

@@ -39,7 +39,7 @@ function createRefundablePaylinkOrderFixture(int $amountHalalah = 2500): array
 {
     $admin = createPaylinkAdminActor();
     $order = Order::factory()->create([
-        'order_number' => 'AUT-PAYLINK-REFUND-1',
+        'order_number' => 'AUT-900001',
         'status' => OrderStatus::Received,
         'currency' => 'SAR',
         'subtotal_halalah' => $amountHalalah,
@@ -94,7 +94,7 @@ function createPaylinkAdminActor(UserRole $role = UserRole::Admin): User
 
 test('unauthenticated users and non-admin actors are forbidden from refund endpoint', function (): void {
     ['order' => $order] = createRefundablePaylinkOrderFixture();
-    $url = "/admin/api/orders/{$order->public_id}/refund";
+    $url = "/admin/api/orders/{$order->order_number}/refund";
     $payload = ['amountHalalah' => 2500, 'reason' => 'Customer cancellation.'];
 
     $this->postJson($url, $payload)->assertUnauthorized();
@@ -113,7 +113,7 @@ test('unauthenticated users and non-admin actors are forbidden from refund endpo
 
 test('unconfirmed MFA redirects to security setup', function (): void {
     ['admin' => $admin, 'order' => $order] = createRefundablePaylinkOrderFixture();
-    $url = "/admin/api/orders/{$order->public_id}/refund";
+    $url = "/admin/api/orders/{$order->order_number}/refund";
     $payload = ['amountHalalah' => 2500, 'reason' => 'Customer request.'];
 
     $unconfirmedAdmin = createPaylinkAdminActor();
@@ -132,7 +132,7 @@ test('both default and localized route families execute refund and return safe J
         'https://restpilot.paylink.sa/api/partner/auth' => Http::response(['id_token' => 'partner-token']),
         'https://restpilot.paylink.sa/rest/partner/v2/merchant/accountNo/123456/refund' => Http::response([
             'id' => 999,
-            'orderNumber' => 'AUT-PAYLINK-REFUND-1',
+            'orderNumber' => 'AUT-900001',
             'amount' => 30.00,
             'currency' => 'SAR',
             'refundReason' => 'Staff processed refund.',
@@ -140,7 +140,7 @@ test('both default and localized route families execute refund and return safe J
         ]),
     ]);
 
-    $url = "{$prefix}/api/orders/{$order->public_id}/refund";
+    $url = "{$prefix}/api/orders/{$order->order_number}/refund";
     $response = $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson($url, [
@@ -171,7 +171,7 @@ test('both default and localized route families execute refund and return safe J
 
 test('amount mismatch records refunds.rejected audit and returns 422 full_refund_required', function (): void {
     ['admin' => $admin, 'order' => $order] = createRefundablePaylinkOrderFixture(2500);
-    $url = "/admin/api/orders/{$order->public_id}/refund";
+    $url = "/admin/api/orders/{$order->order_number}/refund";
 
     $response = $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
@@ -197,7 +197,7 @@ test('amount mismatch records refunds.rejected audit and returns 422 full_refund
 
 test('request validation failures are not audited', function (): void {
     ['admin' => $admin, 'order' => $order] = createRefundablePaylinkOrderFixture(2500);
-    $url = "/admin/api/orders/{$order->public_id}/refund";
+    $url = "/admin/api/orders/{$order->order_number}/refund";
 
     // Unknown fields
     $this->actingAs($admin)
@@ -236,7 +236,7 @@ test('replay of completed refund returns 200 without creating a second audit', f
         'https://restpilot.paylink.sa/api/partner/auth' => Http::response(['id_token' => 'partner-token']),
         'https://restpilot.paylink.sa/rest/partner/v2/merchant/accountNo/123456/refund' => Http::response([
             'id' => 777,
-            'orderNumber' => 'AUT-PAYLINK-REFUND-1',
+            'orderNumber' => 'AUT-900001',
             'amount' => 25.00,
             'currency' => 'SAR',
             'refundReason' => 'Customer request.',
@@ -244,7 +244,7 @@ test('replay of completed refund returns 200 without creating a second audit', f
         ]),
     ]);
 
-    $url = "/admin/api/orders/{$order->public_id}/refund";
+    $url = "/admin/api/orders/{$order->order_number}/refund";
     $payload = ['amountHalalah' => 2500, 'reason' => 'Customer request.'];
 
     $firstResponse = $this->actingAs($admin)
@@ -265,7 +265,7 @@ test('replay of completed refund returns 200 without creating a second audit', f
 test('rate limiter throttles after ten requests for the same admin, returns 429 with Retry-After, and adds no audit', function (): void {
     ['admin' => $admin, 'order' => $order] = createRefundablePaylinkOrderFixture(2500);
     Http::fake();
-    $url = "/admin/api/orders/{$order->public_id}/refund";
+    $url = "/admin/api/orders/{$order->order_number}/refund";
 
     for ($i = 0; $i < 10; $i++) {
         $this->actingAs($admin)
@@ -300,7 +300,7 @@ test('order detail presenter exposes the captured amount and route for an eligib
         'eligible' => true,
         'amountMinor' => '2500',
         'currency' => 'SAR',
-    ])->and($props['refundUrl'])->toBe("/admin/api/orders/{$order->public_id}/refund");
+    ])->and($props['refundUrl'])->toBe("/admin/api/orders/{$order->order_number}/refund");
 });
 
 test('order detail presenter rejects non-refundable order and payment states', function (

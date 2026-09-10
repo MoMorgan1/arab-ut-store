@@ -7,6 +7,8 @@ use App\Admin\Queries\ReadAdminOrderDetail;
 use App\Enums\AdminPermission;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\PublicHandle\OrderHandle;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -19,14 +21,22 @@ final class OrderDetailController extends Controller
         private readonly AdminOrderDetailPage $page,
     ) {}
 
-    public function __invoke(Request $request, string $publicId): Response
+    public function __invoke(Request $request, string $order): Response|RedirectResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
         Gate::forUser($actor)->authorize(AdminPermission::OrdersView->value);
 
+        if (OrderHandle::isUlid($order)) {
+            $redirect = OrderHandle::legacyRedirect($request, OrderHandle::resolveForAdmin($order));
+
+            if ($redirect instanceof RedirectResponse) {
+                return $redirect;
+            }
+        }
+
         $locale = $request->route('locale') === 'en' ? 'en' : 'ar';
-        $result = $this->orderDetailQuery->findByPublicId($publicId, $actor);
+        $result = $this->orderDetailQuery->findByHandle($order, $actor);
         abort_if($result === null, 404);
 
         return Inertia::render('admin/orders/show', [

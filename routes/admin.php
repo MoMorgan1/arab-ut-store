@@ -63,6 +63,7 @@ use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureAdminMfa;
 use App\Http\Middleware\EnsureAdminPassword;
 use App\Http\Middleware\PrivateNoStore;
+use App\Support\PublicHandle\OrderHandle;
 use Illuminate\Support\Facades\Route;
 
 $adminMiddleware = [
@@ -139,7 +140,8 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $orders->defaults('locale', $locale);
                 }
 
-                $orderDetail = Route::get('/orders/{publicId}', OrderDetailController::class)
+                $orderDetail = Route::get('/orders/{order}', OrderDetailController::class)
+                    ->where('order', OrderHandle::routePattern())
                     ->middleware('can:orders.view')
                     ->name('orders.show');
 
@@ -147,14 +149,17 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $orderDetail->defaults('locale', $locale);
                 }
 
-                $orderTransition = Route::post('/orders/{publicId}/transitions', OrderTransitionController::class)
+                $orderTransition = Route::post('/orders/{order}/transitions', OrderTransitionController::class)
+                    ->where('order', OrderHandle::routePattern())
                     ->name('orders.transitions.store');
 
                 if ($locale !== null) {
                     $orderTransition->defaults('locale', $locale);
                 }
 
-                $reveal = Route::post('/api/orders/{publicId}/items/{itemPublicId}/reveal', OrderItemSecretRevealController::class)
+                $reveal = Route::post('/api/orders/{order}/items/{itemPublicId}/reveal', OrderItemSecretRevealController::class)
+                    ->where('order', OrderHandle::routePattern())
+                    ->whereUlid('itemPublicId')
                     ->middleware(['can:orders.view', 'can:order_credentials.view'])
                     ->name('orders.items.reveal');
 
@@ -162,7 +167,8 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $reveal->defaults('locale', $locale);
                 }
 
-                $refund = Route::post('/api/orders/{order:public_id}/refund', PaylinkRefundController::class)
+                $refund = Route::post('/api/orders/{order}/refund', PaylinkRefundController::class)
+                    ->where('order', OrderHandle::routePattern())
                     ->middleware(['can:orders.refund', 'throttle:staff-payments'])
                     ->name('orders.paylink-refund');
 

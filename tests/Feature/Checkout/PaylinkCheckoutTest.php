@@ -200,18 +200,18 @@ test('a Paylink outage preserves the pending order for a safe retry', function (
     $this->actingAs($user)->postJson('/checkout/paylink', [], paylinkCheckoutHeaders('checkout-http-recover'))->assertServiceUnavailable()->assertJsonPath('error.code', 'payment_unavailable');
 
     expect(Order::count())->toBe(1)->and(Payment::count())->toBe(1);
-    $canonicalOrderUrl = '/my-account/orders/'.Order::sole()->public_id;
-    $this->actingAs($user)->get('/orders/'.Order::sole()->public_id)
+    $canonicalOrderUrl = '/my-account/orders/'.Order::sole()->order_number;
+    $this->actingAs($user)->get('/orders/'.Order::sole()->order_number)
         ->assertRedirect($canonicalOrderUrl);
     $this->get($canonicalOrderUrl)
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('order.status', 'pending_payment')
-            ->where('order.paymentStartUrl', '/orders/'.Order::sole()->public_id.'/payments/paylink'));
+            ->where('order.paymentStartUrl', '/orders/'.Order::sole()->order_number.'/payments/paylink'));
     fakePaylinkCheckout(Order::sole()->order_number);
 
     $this->actingAs($user)
-        ->postJson('/orders/'.Order::sole()->public_id.'/payments/paylink')
+        ->postJson('/orders/'.Order::sole()->order_number.'/payments/paylink')
         ->assertOk()
         ->assertHeader('Cache-Control', 'no-store, private')
         ->assertJsonPath('data.paymentUrl', 'https://payment.paylink.sa/pay/info/1710000000099');
@@ -254,10 +254,21 @@ test('a retry whose Paylink invoice is already paid returns the order instead of
     $this->actingAs($user)->postJson('/checkout/paylink', [], paylinkCheckoutHeaders('checkout-http-paid-retry'))->assertOk()
         ->assertJsonPath('data.status', 'paid')
         ->assertJsonPath('data.paymentUrl', null)
-        ->assertJsonPath('data.orderUrl', '/orders/'.Order::sole()->public_id);
+        ->assertJsonPath('data.orderUrl', '/orders/'.Order::sole()->order_number);
 
     expect(Order::sole()->status->value)->toBe('received')
         ->and(Payment::sole()->status->value)->toBe('paid');
+});
+
+test('a pending payment can be resumed through the legacy order ULID', function () {
+    ['user' => $owner] = paylinkCheckoutCart();
+    fakePaylinkCheckout();
+    $this->actingAs($owner)->postJson('/checkout/paylink', [], paylinkCheckoutHeaders('checkout-http-legacy'))->assertCreated();
+
+    $this->actingAs($owner)
+        ->postJson('/orders/'.Order::sole()->public_id.'/payments/paylink')
+        ->assertOk()
+        ->assertJsonPath('data.orderUrl', '/orders/'.Order::sole()->order_number);
 });
 
 test('only the pending order owner can resume its Paylink payment', function () {
@@ -265,7 +276,7 @@ test('only the pending order owner can resume its Paylink payment', function () 
     $otherUser = User::factory()->create();
     fakePaylinkCheckout();
     $this->actingAs($owner)->postJson('/checkout/paylink', [], paylinkCheckoutHeaders('checkout-http-owner'))->assertCreated();
-    $resumeUrl = '/orders/'.Order::sole()->public_id.'/payments/paylink';
+    $resumeUrl = '/orders/'.Order::sole()->order_number.'/payments/paylink';
 
     $this->actingAs($otherUser)->postJson($resumeUrl)->assertNotFound();
 
@@ -280,15 +291,15 @@ test('the Paylink return verifies the invoice before marking the owner order rec
     fakePaylinkCheckout(getStatus: 'Paid');
     $this->actingAs($user)->postJson('/checkout/paylink', [], paylinkCheckoutHeaders('checkout-http-paid'))->assertCreated();
     $this->actingAs($user)->get('/payments/paylink/callback?TransactionNo=1710000000099&OrderNumber='.Order::sole()->order_number)
-        ->assertRedirect('/orders/'.Order::sole()->public_id);
+        ->assertRedirect('/orders/'.Order::sole()->order_number);
 
     expect(Order::sole()->status->value)->toBe('received')
         ->and(Payment::sole()->status->value)->toBe('paid')
         ->and(Payment::sole()->captured_halalah)->toBe(1250)
         ->and(Payment::sole()->provider_metadata)->toMatchArray(['payment_method' => 'mada']);
 
-    $canonicalOrderUrl = '/my-account/orders/'.Order::sole()->public_id;
-    $this->actingAs($user)->get('/orders/'.Order::sole()->public_id)
+    $canonicalOrderUrl = '/my-account/orders/'.Order::sole()->order_number;
+    $this->actingAs($user)->get('/orders/'.Order::sole()->order_number)
         ->assertRedirect($canonicalOrderUrl);
     $this->get($canonicalOrderUrl)
         ->assertOk()

@@ -76,7 +76,7 @@ final readonly class AdminReviewsPage
                 ],
                 'perPageOptions' => [15, 25, 50, 100],
             ],
-            'orderUrlTemplate' => route($prefix.'orders.show', ['publicId' => '__ID__'], absolute: false),
+            'orderUrlTemplate' => route($prefix.'orders.show', ['order' => '__ID__'], absolute: false),
             'visibilityUrlTemplate' => route($prefix.'reviews.visibility.store', ['publicId' => '__ID__'], absolute: false),
         ];
     }

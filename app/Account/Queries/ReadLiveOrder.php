@@ -15,6 +15,7 @@ use App\Models\ProductMedia;
 use App\Models\Review;
 use App\Models\User;
 use App\Payments\PaymentMethodLabel;
+use App\Support\PublicHandle\OrderHandle;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -23,7 +24,7 @@ use Illuminate\Support\Facades\Storage;
 final class ReadLiveOrder
 {
     /** @return array<string, mixed> */
-    public function for(User $user, string $publicId, string $locale): array
+    public function for(User $user, string $handle, string $locale): array
     {
         $order = Order::query()
             ->select([
@@ -44,7 +45,7 @@ final class ReadLiveOrder
                 'placed_at',
                 'created_at',
             ])
-            ->where('public_id', $publicId)
+            ->where(OrderHandle::column($handle), OrderHandle::value($handle))
             ->where('user_id', $user->id)
             ->with(['payments' => fn ($payments) => $payments
                 ->select(['id', 'order_id', 'provider', 'provider_metadata'])
@@ -116,20 +117,20 @@ final class ReadLiveOrder
                 : null,
             'refreshable' => ! $terminal,
             'analytics' => $this->analytics($order),
-            'review' => $this->review($order, $publicId, $locale),
+            'review' => $this->review($order, $locale),
             'paymentStartUrl' => $order->status === OrderStatus::PendingPayment
                 ? route(
                     $locale === 'en'
                         ? 'localized.store.orders.paylink-payment'
                         : 'store.orders.paylink-payment',
-                    [...($locale === 'en' ? ['locale' => 'en'] : []), 'order' => $publicId],
+                    [...($locale === 'en' ? ['locale' => 'en'] : []), 'order' => (string) $order->getAttribute('order_number')],
                     absolute: false,
                 )
                 : null,
             'cancelUrl' => $order->status === OrderStatus::PendingPayment
                 ? route(
                     $locale === 'en' ? 'localized.account.orders.cancel' : 'account.orders.cancel',
-                    ['order' => $publicId],
+                    ['order' => (string) $order->getAttribute('order_number')],
                     absolute: false,
                 )
                 : null,
@@ -146,7 +147,7 @@ final class ReadLiveOrder
                         (string) $order->getAttribute('currency'),
                     ),
                     'credentialsPresent' => (bool) $item->getAttribute('secret_exists'),
-                    'manualFulfillment' => $this->manualFulfillment($item, $publicId, $locale),
+                    'manualFulfillment' => $this->manualFulfillment($item, (string) $order->getAttribute('order_number'), $locale),
                 ])
                 ->values()
                 ->all(),
@@ -163,7 +164,7 @@ final class ReadLiveOrder
      *
      * @return array{url: string, submitted: array{rating: int, body: ?string, publishedAt: ?string, visible: bool}|null}|null
      */
-    private function review(Order $order, string $publicId, string $locale): ?array
+    private function review(Order $order, string $locale): ?array
     {
         if ($order->completed_at === null || $order->channel === 'salla_import') {
             return null;
@@ -182,7 +183,7 @@ final class ReadLiveOrder
                 $locale === 'en'
                     ? 'localized.account.orders.review.store'
                     : 'account.orders.review.store',
-                ['order' => $publicId],
+                ['order' => (string) $order->getAttribute('order_number')],
                 absolute: false,
             ),
             'submitted' => $review instanceof Review

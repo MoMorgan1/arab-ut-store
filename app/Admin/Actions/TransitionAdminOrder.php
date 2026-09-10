@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Notifications\ReviewInviteNotification;
 use App\Services\Payments\PaymentManager;
 use App\Support\OrderClosingNote;
+use App\Support\PublicHandle\OrderHandle;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -39,7 +40,7 @@ final class TransitionAdminOrder
 
     public function execute(
         User $actor,
-        string $orderPublicId,
+        string $orderHandle,
         OrderStatus $targetStatus,
         OrderStatus $expectedStatus,
         ?OrderHoldReason $reason = null,
@@ -59,10 +60,10 @@ final class TransitionAdminOrder
             throw new AuthorizationException('This action requires orders.cancel permission.');
         }
 
-        return DB::transaction(function () use ($actor, $orderPublicId, $targetStatus, $expectedStatus, $reason, $note): Order {
+        return DB::transaction(function () use ($actor, $orderHandle, $targetStatus, $expectedStatus, $reason, $note): Order {
             /** @var Order $order */
             $order = Order::query()
-                ->where('public_id', $orderPublicId)
+                ->where(OrderHandle::column($orderHandle), OrderHandle::value($orderHandle))
                 ->lockForUpdate()
                 ->firstOrFail();
 
@@ -80,7 +81,7 @@ final class TransitionAdminOrder
             }
 
             if ($order->status !== $expectedStatus) {
-                throw new AdminOrderStatusConflict((string) $order->public_id, $order->status->value);
+                throw new AdminOrderStatusConflict((string) $order->getAttribute('order_number'), $order->status->value);
             }
 
             $itemSourceStatuses = $this->rules->itemTargets($order->status, $targetStatus);

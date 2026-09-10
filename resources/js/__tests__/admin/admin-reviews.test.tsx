@@ -52,7 +52,7 @@ const rows: AdminReviewRow[] = [
         rating: 5,
         excerpt: 'Fast and safe delivery.',
         bodyLocale: 'en',
-        order: { number: 'UT-00000101', publicId: 'order-101' },
+        order: { number: 'UT-00000101' },
         source: 'customer',
         serviceType: 'rivals',
         serviceLabel: 'Rivals',
@@ -67,7 +67,7 @@ const rows: AdminReviewRow[] = [
         rating: 2,
         excerpt: 'Took longer than promised.',
         bodyLocale: 'en',
-        order: { number: 'UT-00000102', publicId: 'order-102' },
+        order: { number: 'UT-00000102' },
         source: 'customer',
         serviceType: null,
         serviceLabel: '—',
@@ -163,7 +163,7 @@ describe('AdminReviewsPage', () => {
         expect(within(table).getByText('Fahad')).toBeVisible();
         expect(
             within(table).getByRole('link', { name: 'UT-00000101' }),
-        ).toHaveAttribute('href', '/admin/orders/order-101');
+        ).toHaveAttribute('href', '/admin/orders/UT-00000101');
     });
 
     it('labels the storefront state and source of each row', () => {

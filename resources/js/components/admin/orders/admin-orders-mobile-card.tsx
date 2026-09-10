@@ -30,7 +30,7 @@ export default function AdminOrdersMobileCard({
     const basePath = isLocalized ? '/en/admin/orders' : '/admin/orders';
     const copy = adminUi.orders;
     const order = row.original;
-    const detailUrl = `${basePath}/${order.id}`;
+    const detailUrl = `${basePath}/${order.orderNumber}`;
     const paymentStatus = order.latestPaymentStatus;
 
     return (

@@ -75,9 +75,18 @@ function ownerManualOrder(): array
     return compact('owner', 'order', 'item', 'secret', 'attachment');
 }
 
-it('reveals normalized credentials only to the order owner and records the access', function () {
+it('reveals credentials through a legacy order ULID without a canonicalizing redirect', function () {
     $state = ownerManualOrder();
     $url = "/en/my-account/orders/{$state['order']->public_id}/items/{$state['item']->public_id}/credentials";
+
+    $this->actingAs($state['owner'])->getJson($url)
+        ->assertOk()
+        ->assertJsonPath('data.playstationEmail', 'reveal@example.test');
+});
+
+it('reveals normalized credentials only to the order owner and records the access', function () {
+    $state = ownerManualOrder();
+    $url = "/en/my-account/orders/{$state['order']->order_number}/items/{$state['item']->public_id}/credentials";
 
     $response = $this->actingAs($state['owner'])->getJson($url, ['X-Forwarded-For' => '203.0.113.9']);
 
@@ -101,7 +110,7 @@ it('reveals normalized credentials only to the order owner and records the acces
 
 it('streams the private squad image only to the order owner without exposing its path', function () {
     $state = ownerManualOrder();
-    $url = "/my-account/orders/{$state['order']->public_id}/items/{$state['item']->public_id}/squad-image";
+    $url = "/my-account/orders/{$state['order']->order_number}/items/{$state['item']->public_id}/squad-image";
 
     $response = $this->actingAs($state['owner'])->get($url);
 
@@ -116,7 +125,7 @@ it('returns not found for other users, item-order mismatches, and deleted fulfil
     $state = ownerManualOrder();
     $other = User::factory()->create();
     $otherItem = OrderItem::factory()->create(['service_type' => ServiceType::FutChampions]);
-    $base = "/my-account/orders/{$state['order']->public_id}/items";
+    $base = "/my-account/orders/{$state['order']->order_number}/items";
 
     $this->actingAs($other)
         ->getJson("{$base}/{$state['item']->public_id}/credentials")
@@ -134,7 +143,7 @@ it('returns not found for other users, item-order mismatches, and deleted fulfil
 
 it('requires authentication and exposes no post-order credential update route', function () {
     $state = ownerManualOrder();
-    $url = "/my-account/orders/{$state['order']->public_id}/items/{$state['item']->public_id}/credentials";
+    $url = "/my-account/orders/{$state['order']->order_number}/items/{$state['item']->public_id}/credentials";
 
     $this->getJson($url)->assertUnauthorized();
     $this->actingAs($state['owner'])->patchJson($url, [])->assertMethodNotAllowed();
@@ -144,13 +153,13 @@ it('keeps ordinary order props secret-free and provides owner-scoped reveal URLs
     $state = ownerManualOrder();
 
     $response = $this->actingAs($state['owner'])
-        ->get("/en/my-account/orders/{$state['order']->public_id}")
+        ->get("/en/my-account/orders/{$state['order']->order_number}")
         ->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
         ->where('order.items.0.manualFulfillment.credentialsUrl',
-            "/en/my-account/orders/{$state['order']->public_id}/items/{$state['item']->public_id}/credentials")
+            "/en/my-account/orders/{$state['order']->order_number}/items/{$state['item']->public_id}/credentials")
         ->where('order.items.0.manualFulfillment.squadImageUrl',
-            "/en/my-account/orders/{$state['order']->public_id}/items/{$state['item']->public_id}/squad-image")
+            "/en/my-account/orders/{$state['order']->order_number}/items/{$state['item']->public_id}/squad-image")
         ->where('order.items.0.manualFulfillment.targetRank', 3)
         ->where('order.items.0.manualFulfillment.urgent', true)
         ->missing('order.items.0.credentials')

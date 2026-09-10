@@ -19,7 +19,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Str;
 use Laravel\Fortify\Fortify;
 
 afterEach(function (): void {
@@ -59,7 +58,7 @@ test('admin can transition received order to in_progress with item propagation, 
     ]);
 
     $response = $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'received',
             'target_status' => 'in_progress',
         ]);
@@ -144,7 +143,7 @@ test('transitioning to completed sets completed_at timestamp', function (): void
     ]);
 
     $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'in_progress',
             'target_status' => 'completed',
         ])
@@ -190,7 +189,7 @@ test('transitioning to cancelled sets cancelled_at timestamp and cancels all act
     ]);
 
     $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'waiting_for_customer',
             'target_status' => 'cancelled',
         ])
@@ -213,14 +212,14 @@ test('stale expected_status yields 409 conflict JSON with fresh canonical status
 
     // Client sends stale expected_status 'received', but DB is 'in_progress'
     $response = $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'received',
             'target_status' => 'completed',
         ]);
 
     $response->assertStatus(409)
         ->assertJson([
-            'order' => (string) $order->public_id,
+            'order' => (string) $order->order_number,
             'status' => 'in_progress',
         ]);
 
@@ -241,7 +240,7 @@ test('illegal transition pairs return 422 validation failure without side effect
     $initialAuditCount = StaffAuditLog::query()->count();
 
     $response = $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => $fromStatus,
             'target_status' => $toStatus,
         ]);
@@ -263,7 +262,7 @@ test('transitioning directly to refunded is rejected with 422 even for Admin', f
     $order = createTransitionTestOrder(OrderStatus::Received);
 
     $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'received',
             'target_status' => 'refunded',
         ])
@@ -277,7 +276,7 @@ test('transition request rejecting unknown fields with 422', function (): void {
     $order = createTransitionTestOrder(OrderStatus::Received);
 
     $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'received',
             'target_status' => 'in_progress',
             'unauthorized_field' => 'injection_attempt',
@@ -292,7 +291,7 @@ test('transition permissions gate actions per transition type', function (): voi
 
     // Customer denied
     $this->actingAs($customer)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'received',
             'target_status' => 'in_progress',
         ])
@@ -303,14 +302,14 @@ test('transition permissions gate actions per transition type', function (): voi
     Gate::define(AdminPermission::OrdersCancel->value, fn (): bool => false);
 
     $this->actingAs($staff)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'received',
             'target_status' => 'cancelled',
         ])
         ->assertForbidden();
 
     $this->actingAs($staff)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'received',
             'target_status' => 'in_progress',
         ])
@@ -324,7 +323,7 @@ test('transition permissions gate actions per transition type', function (): voi
     Gate::define(AdminPermission::OrdersUpdate->value, fn (): bool => false);
 
     $this->actingAs($staff)
-        ->postJson("/admin/orders/{$orderInProgress->public_id}/transitions", [
+        ->postJson("/admin/orders/{$orderInProgress->order_number}/transitions", [
             'expected_status' => 'received',
             'target_status' => 'in_progress',
         ])
@@ -337,7 +336,7 @@ test('unconfirmed MFA admin actors are redirected to MFA setup when transitionin
     $order = createTransitionTestOrder(OrderStatus::Received);
 
     $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'received',
             'target_status' => 'in_progress',
         ])
@@ -356,7 +355,7 @@ test('localized transition alias routes execute successfully', function (): void
     $order = createTransitionTestOrder(OrderStatus::Received);
 
     $this->actingAs($admin)
-        ->postJson("/en/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/en/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'received',
             'target_status' => 'in_progress',
         ])
@@ -373,7 +372,7 @@ test('an order cannot be paused without something the customer can read', functi
     $order = createTransitionTestOrder(OrderStatus::InProgress);
 
     $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'in_progress',
             'target_status' => 'waiting_for_customer',
         ])
@@ -389,7 +388,7 @@ test('pausing an order freezes the chosen reason in both locales', function (): 
     $order = createTransitionTestOrder(OrderStatus::InProgress);
 
     $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'in_progress',
             'target_status' => 'waiting_for_customer',
             'reason' => 'insufficient_coins',
@@ -412,7 +411,7 @@ test('a free note is kept alongside the curated reason', function (): void {
     $order = createTransitionTestOrder(OrderStatus::InProgress);
 
     $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'in_progress',
             'target_status' => 'waiting_for_customer',
             'reason' => 'market_locked',
@@ -438,7 +437,7 @@ test('a note alone is enough to pause an order', function (): void {
     $order = createTransitionTestOrder(OrderStatus::InProgress);
 
     $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'in_progress',
             'target_status' => 'waiting_for_customer',
             'note' => 'We need a screenshot of your club.',
@@ -459,7 +458,7 @@ test('an unknown reason is refused rather than written as a blank message', func
     $order = createTransitionTestOrder(OrderStatus::InProgress);
 
     $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'in_progress',
             'target_status' => 'waiting_for_customer',
             'reason' => 'dog_ate_the_coins',
@@ -491,7 +490,7 @@ function createTransitionTestOrder(OrderStatus $status): Order
     ]);
 
     return Order::factory()->for($customer)->create([
-        'order_number' => 'AUT-TRANS-'.Str::random(6),
+        'order_number' => 'AUT-'.random_int(100000, 999999),
         'status' => $status,
         'subtotal_halalah' => 5000,
         'discount_halalah' => 0,
@@ -526,7 +525,7 @@ test('cancelling a wallet-funded order tells the customer their money came back'
     ]);
 
     $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'waiting_for_customer',
             'target_status' => 'cancelled',
         ])
@@ -565,7 +564,7 @@ test('cancelling an order that held no wallet money names no figure', function (
     ]);
 
     $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'waiting_for_customer',
             'target_status' => 'cancelled',
         ])
@@ -618,7 +617,7 @@ test('cancelling a pending-payment order calls cancelInvoice with the right tran
     ]);
 
     $response = $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'pending_payment',
             'target_status' => 'cancelled',
         ]);
@@ -672,7 +671,7 @@ test('if cancelInvoice throws, the order stays in its original status', function
     ]);
 
     $response = $this->actingAs($admin)
-        ->postJson("/admin/orders/{$order->public_id}/transitions", [
+        ->postJson("/admin/orders/{$order->order_number}/transitions", [
             'expected_status' => 'pending_payment',
             'target_status' => 'cancelled',
         ]);

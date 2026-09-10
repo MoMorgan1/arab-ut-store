@@ -25,7 +25,7 @@ use stdClass;
  *     rating: int,
  *     excerpt: string,
  *     bodyLocale: 'ar'|'en',
- *     order: array{number: string, publicId: string}|null,
+ *     order: array{number: string}|null,
  *     source: 'customer'|'archive',
  *     serviceType: ?string,
  *     serviceLabel: string,
@@ -70,7 +70,6 @@ final class ListAdminReviews
                 'reviews.published_at',
                 'reviews.created_at',
                 'orders.order_number as order_number',
-                'orders.public_id as order_public_id',
             ])
             ->leftJoin('orders', 'orders.id', '=', 'reviews.order_id')
             ->orderByDesc('reviews.created_at')
@@ -188,7 +187,6 @@ final class ListAdminReviews
                 'order' => $review->order_id !== null && $review->order_number !== null
                     ? [
                         'number' => (string) $review->order_number,
-                        'publicId' => (string) $review->order_public_id,
                     ]
                     : null,
                 'source' => $review->source === 'customer' ? 'customer' : 'archive',

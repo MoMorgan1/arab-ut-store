@@ -59,7 +59,7 @@ final class OrderPaidNotification extends Notification implements ShouldQueue
         $locale = $order->locale === 'en' ? 'en' : 'ar';
         $orderUrl = rtrim((string) config('app.url'), '/')
             .($locale === 'en' ? '/en' : '')
-            .'/my-account/orders/'.$order->public_id;
+            .'/my-account/orders/'.$order->order_number;
 
         $this->locale($locale);
 
