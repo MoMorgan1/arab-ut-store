@@ -14,11 +14,6 @@ export const phoneCountries = [
 
 export type PhoneCountry = (typeof phoneCountries)[number];
 export type PhoneCountryDial = PhoneCountry['dial'];
-
-export const phoneCountryCodes = phoneCountries.map(
-    (country) => country.dial,
-) as readonly PhoneCountryDial[];
-
 export function splitE164(
     value: string,
 ): { dial: string; national: string } | null {

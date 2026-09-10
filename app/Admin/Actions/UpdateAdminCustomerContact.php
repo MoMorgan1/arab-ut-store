@@ -34,10 +34,6 @@ final class UpdateAdminCustomerContact
             throw new AuthorizationException('This action requires customers.update_contact permission.');
         }
 
-        if ($actor->role !== UserRole::Admin) {
-            throw new AuthorizationException('Only Admin actors may update customer contact details.');
-        }
-
         return DB::transaction(function () use (
             $actor,
             $customerPublicId,

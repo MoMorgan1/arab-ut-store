@@ -5,7 +5,6 @@ namespace App\Admin\Actions;
 use App\Admin\Audit\StaffAuditEvent;
 use App\Enums\AdminPermission;
 use App\Enums\ServiceType;
-use App\Enums\UserRole;
 use App\Exceptions\AdminVariantPriceConflict;
 use App\Models\ProductVariant;
 use App\Models\User;
@@ -46,10 +45,6 @@ final class SetAdminVariantPriceOverride
     ): ProductVariant {
         if (! $actor->is_active || ! $actor->can(AdminPermission::CatalogManage->value)) {
             throw new AuthorizationException('This action requires catalog.manage permission.');
-        }
-
-        if ($actor->role !== UserRole::Admin) {
-            throw new AuthorizationException('Only Admin actors may override prices.');
         }
 
         return DB::transaction(function () use (

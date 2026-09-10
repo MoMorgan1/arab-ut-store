@@ -117,4 +117,20 @@ class Promotion extends DomainModel
     {
         return $this->hasMany(OrderItem::class);
     }
+
+    /** The badge shown on a discounted line, falling back across locales and finally to the name. */
+    public function badgeFor(string $locale): string
+    {
+        $other = $locale === 'ar' ? 'en' : 'ar';
+
+        foreach (["badge_{$locale}", "badge_{$other}", "name_{$locale}", "name_{$other}"] as $field) {
+            $value = trim((string) $this->{$field});
+
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return '';
+    }
 }

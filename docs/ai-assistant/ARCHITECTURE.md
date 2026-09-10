@@ -25,13 +25,17 @@ All routes in `routes/chat.php` use `EnsureChatEnabled`, `NoStore`, and `SetChat
 | GET    | `chat.agent-turns.show`      | `/chat/conversations/{conversation}/agent-turns/{turn}`       | `chat-read`          |
 | POST   | `chat.agent-turns.retry`     | `/chat/conversations/{conversation}/agent-turns/{turn}/retry` | `agent-turns`        |
 
-Admin routes in `routes/admin.php` sit behind `can:chat.view` and admin MFA:
+Admin routes in `routes/admin.php` sit behind admin MFA; reads need `can:chat.view`, writes need `can:chat.reply`:
 
-| Method | Route name                  | Path                         | Throttle             |
-| ------ | --------------------------- | ---------------------------- | -------------------- |
-| GET    | `admin.conversations`       | `/admin/conversations`       | `admin`              |
-| GET    | `admin.conversations.show`  | `/admin/conversations/{id}`  | `admin`              |
-| GET    | `admin.support.unread-count`| `/admin/support/unread-count`| `admin`              |
+| Method | Route name                       | Path                                     | Permission   | Throttle |
+| ------ | -------------------------------- | ---------------------------------------- | ------------ | -------- |
+| GET    | `admin.conversations`            | `/admin/conversations`                   | `chat.view`  | `admin`  |
+| GET    | `admin.conversations.show`       | `/admin/conversations/{id}`              | `chat.view`  | `admin`  |
+| GET    | `admin.support.unread-count`     | `/admin/support/unread-count`            | `chat.view`  | `admin`  |
+| POST   | `admin.conversations.reply`      | `/admin/conversations/{publicId}/reply`  | `chat.reply` | `60,1`   |
+| POST   | `admin.conversations.note`       | `/admin/conversations/{publicId}/note`   | `chat.reply` | `admin`  |
+| POST   | `admin.conversations.take-over`  | `/admin/conversations/{publicId}/take-over` | `chat.reply` | `admin` |
+| PATCH  | `admin.tickets.resolve`          | `/admin/tickets/{publicId}`              | `chat.reply` | `admin`  |
 
 Creation returns the owner's existing open conversation or reopens their most
 recent inactivity-closed conversation inside the configured last-activity
@@ -74,10 +78,10 @@ Never lock a ticket or turn before the parent conversation.
 
 `SelectSupportKnowledge` picks topics lexically from `resources/ai-assistant/knowledge/arab-ut.json`, and the configured prompt (`support-v9`) injects them as a `<store_knowledge>` block, alongside a `<live_prices>` block built from the store catalogue in the viewer's own display currency.
 
-Customer-visible service cards and add-to-cart offers are derived server-side from customer message intent, never authored by the model.
+Four customer-visible surfaces are derived server-side from customer message intent, never authored by the model: service cards (`cards.v1`), the add-to-cart offer, choice chips (`BuildAssistantChoices`, attached to the assistant message as `choices`), and the SBC shelf (`shelf.v1`). All four are attached in `FinalizeAgentTurn`.
 
 ## Retention and Maintenance
 
-- Guest conversations are purged after 48 hours of inactivity by the hourly scheduler.
+- Guest conversations are purged after 48 hours of inactivity unless the conversation has an open ticket, a handoff in `requested`/`active`, or a waiting/running agent turn (`MaintainChatConversations`) by the hourly scheduler.
 - Authenticated closed conversations follow standard 180-day retention.
 - Cascade deletion ensures messages, tickets, turns, and runs are cleanly removed.

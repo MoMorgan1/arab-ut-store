@@ -28,10 +28,6 @@ final class UpdateStaffStatus
             throw new AuthorizationException('This action requires staff.manage permission.');
         }
 
-        if ($actor->role !== UserRole::Admin) {
-            throw new AuthorizationException('Only Admin actors may update staff status.');
-        }
-
         return DB::transaction(function () use (
             $actor,
             $staffPublicId,

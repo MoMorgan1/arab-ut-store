@@ -6,7 +6,7 @@ Approved by Mohamed on 2026-08-09.
 
 The repository currently powers `store.arab-ut.com` with the bilingual Laravel/React storefront, authoritative commerce schema, Coins and SBC buying flows, secure cart storage, localized email/phone/Google authentication, live signed Coins/SBC automation boundaries, and the historical Salla review archive. Order placement and the fail-closed Paylink hosted-checkout, callback/webhook, refund, and signed paid-order n8n boundaries are implemented. Real Paylink acceptance remains an operational gate until Hostinger is configured and the controlled test-to-production pilot succeeds.
 
-Major planned areas still include the remaining service workflows, the broader order lifecycle and wallet/account experiences, complete admin and support operations, fulfillment-secret retrieval and supplier automation, customer notifications, production infrastructure, and final launch-policy and operational-readiness checks.
+Remaining planned areas are fulfillment-secret retrieval and supplier automation, and final launch-policy and operational-readiness checks. The admin dashboard, support inbox, customer notifications, and production infrastructure are live.
 
 ## Layout
 
@@ -33,7 +33,7 @@ Major planned areas still include the remaining service workflows, the broader o
 | [Paylink operations](operations/paylink-checkout.md)                     | Hostinger/Paylink setup, pilot, scheduler, and failure procedures                                        | Ready for operator configuration                    |
 | [Hostinger deployment](operations/hostinger-deployment.md)               | Release, scheduler, maintenance, and post-deploy procedures                                              | Active                                              |
 | [Hostinger rollback](operations/hostinger-rollback.md)                   | Automatic and manual Laravel release rollback                                                            | Active                                              |
-| [AI Assistant](ai-assistant/README.md)                                   | Canonical assistant handbook; read the [live status](ai-assistant/STATUS.md) first                       | Implemented foundation; future phases planned       |
+| [AI Assistant](ai-assistant/README.md)                                   | Canonical assistant handbook; read the [live status](ai-assistant/STATUS.md) first                       | Phases 1–3 and human handoff implemented; see STATUS.md |
 
 ## Decision precedence
 

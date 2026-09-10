@@ -71,7 +71,7 @@ type TierInputState = {
     totalMinor: string;
 };
 
-export function getVariantCompletionPricing(
+function getVariantCompletionPricing(
     variant: AdminProductVariant,
 ): SbcCompletionPricing | null {
     if (

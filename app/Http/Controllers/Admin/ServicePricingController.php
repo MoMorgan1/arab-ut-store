@@ -27,7 +27,7 @@ final class ServicePricingController extends Controller
 
         $type = ServiceType::tryFrom($serviceType);
 
-        if ($type === null || ! in_array($type, [ServiceType::FutChampions, ServiceType::Rivals, ServiceType::Coins], true)) {
+        if ($type === null || ! in_array($type, ServiceType::scheduled(), true)) {
             throw ValidationException::withMessages([
                 'service_type' => ['The requested service type is not supported.'],
             ]);

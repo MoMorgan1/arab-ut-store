@@ -2,8 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Admin\Actions\RecordStaffAudit;
+use App\Admin\Audit\StaffAuditEvent;
 use App\Enums\UserRole;
-use App\Models\StaffAuditLog;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ final class GrantAdminRole extends Command
 
     protected $description = 'Bootstrap or revoke Admin/Staff access for an existing account (server operators only)';
 
-    public function handle(): int
+    public function handle(RecordStaffAudit $recordStaffAudit): int
     {
         $email = mb_strtolower(trim((string) $this->argument('email')));
         $revoke = (bool) $this->option('revoke');
@@ -59,20 +60,17 @@ final class GrantAdminRole extends Command
 
         $previousRole = $user->role;
 
-        DB::transaction(function () use ($user, $targetRole, $previousRole): void {
+        DB::transaction(function () use ($user, $targetRole, $previousRole, $recordStaffAudit): void {
             $user->forceFill(['role' => $targetRole])->save();
 
-            StaffAuditLog::query()->create([
-                'actor_user_id' => null,
-                'action' => 'staff.role_changed',
-                'auditable_type' => $user->getMorphClass(),
-                'auditable_id' => $user->getKey(),
-                'metadata' => [
+            $recordStaffAudit->executeFromConsole(
+                $user,
+                new StaffAuditEvent('staff.role_changed', [
                     'previous_role' => $previousRole->value,
                     'new_role' => $targetRole->value,
                     'source' => 'console',
-                ],
-            ]);
+                ], null),
+            );
         });
 
         $this->components->info("{$user->email} is now {$targetRole->value}.");

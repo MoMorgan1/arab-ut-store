@@ -5,7 +5,6 @@ namespace App\Admin\Actions;
 use App\Admin\Audit\StaffAuditEvent;
 use App\Enums\AdminPermission;
 use App\Enums\ServiceType;
-use App\Enums\UserRole;
 use App\Exceptions\AdminServicePricingConflict;
 use App\Models\ServicePriceSchedule;
 use App\Models\User;
@@ -31,13 +30,9 @@ final class UpdateServicePriceScheduleStatus
             throw new AuthorizationException('This action requires settings.manage permission.');
         }
 
-        if ($actor->role !== UserRole::Admin) {
-            throw new AuthorizationException('Only Admin actors may update service schedule availability.');
-        }
-
         $type = is_string($serviceType) ? ServiceType::tryFrom($serviceType) : $serviceType;
 
-        if ($type === null || ! in_array($type, [ServiceType::FutChampions, ServiceType::Rivals], true)) {
+        if ($type === null || ! $type->isManual()) {
             throw ValidationException::withMessages([
                 'service_type' => ['The requested service type is not supported.'],
             ]);

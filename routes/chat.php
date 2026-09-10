@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware([EnsureChatEnabled::class, NoStore::class])->group(function (): void {
     Route::get('/chat/service-prices', ServicePriceController::class)
-        ->middleware(['throttle:chat-read'])
+        ->middleware([SetChatLocale::class, 'throttle:chat-read'])
         ->name('chat.service-prices');
 
     Route::post('/chat/conversations', [ChatConversationController::class, 'store'])

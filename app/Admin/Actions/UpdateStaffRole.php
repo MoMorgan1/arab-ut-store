@@ -28,10 +28,6 @@ final class UpdateStaffRole
             throw new AuthorizationException('This action requires staff.manage permission.');
         }
 
-        if ($actor->role !== UserRole::Admin) {
-            throw new AuthorizationException('Only Admin actors may update staff roles.');
-        }
-
         $targetRole = match ($newRole) {
             'admin' => UserRole::Admin,
             'staff' => UserRole::Staff,

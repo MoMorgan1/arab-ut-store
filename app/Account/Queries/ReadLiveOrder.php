@@ -313,7 +313,7 @@ final class ReadLiveOrder
     /** @return array<string, mixed>|null */
     private function manualFulfillment(OrderItem $item, string $orderId, string $locale): ?array
     {
-        if (! in_array($item->service_type, [ServiceType::FutChampions, ServiceType::Rivals], true)) {
+        if (! $item->service_type->isManual()) {
             return null;
         }
 

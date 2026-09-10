@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\SetChatLocale;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
@@ -40,4 +41,12 @@ test('prices stay out of the page render query budget', function () {
     DB::disableQueryLog();
 
     expect($queries)->toBeLessThanOrEqual(6);
+});
+
+test('the route resolves the chat locale like every other chat route', function () {
+    // BuildServicePriceLabels reads app()->getLocale() for the SBC shelf, so
+    // this route must run SetChatLocale or the labels follow ambient state.
+    $route = app('router')->getRoutes()->getByName('chat.service-prices');
+
+    expect($route->gatherMiddleware())->toContain(SetChatLocale::class);
 });

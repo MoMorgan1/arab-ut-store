@@ -27,7 +27,7 @@ final class OrderItemSquadImageController extends Controller
         $item = OrderItem::query()
             ->where('public_id', (string) $request->route('orderItem'))
             ->where('order_id', $order->id)
-            ->whereIn('service_type', [ServiceType::FutChampions, ServiceType::Rivals])
+            ->whereIn('service_type', ServiceType::manual())
             ->firstOrFail();
         $attachment = FulfillmentAttachment::query()
             ->where('order_item_id', $item->id)

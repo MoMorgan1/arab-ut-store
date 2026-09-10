@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-export function playAdminChime(): void {
+function playAdminChime(): void {
     try {
         if (typeof window === 'undefined') {
             return;

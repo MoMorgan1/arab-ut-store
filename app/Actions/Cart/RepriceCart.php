@@ -283,7 +283,7 @@ final readonly class RepriceCart
 
     private function isManualService(ServiceType $service): bool
     {
-        return in_array($service, [ServiceType::FutChampions, ServiceType::Rivals], true);
+        return $service->isManual();
     }
 
     private function quotedAt(): string

@@ -234,6 +234,21 @@ describe('AdminCategoriesPage', () => {
         ).toBeInTheDocument();
     });
 
+    it('shows action buttons to anyone the server granted catalog.manage', () => {
+        // The server decides who holds the permission; the page never
+        // second-guesses it by looking at the role.
+        pageState.props.permissions = ['catalog.view', 'catalog.manage'];
+        pageState.props.adminIdentity = {
+            ...pageState.props.adminIdentity,
+            role: 'staff',
+        };
+        render(<AdminCategoriesPage {...pageState.props} />);
+
+        expect(
+            screen.getAllByRole('button', { name: 'Hide from store' }).length,
+        ).toBeGreaterThan(0);
+    });
+
     it('hides action buttons when user lacks catalog.manage permission', () => {
         pageState.props.permissions = ['catalog.view'];
         render(<AdminCategoriesPage {...pageState.props} />);
