@@ -96,6 +96,8 @@ test('order status filters are allowlisted and preserve canonical pagination URL
             ->where('counts.completed', 1)
             ->has('orders', 1)
             ->where('orders.0.status', 'completed')
+            ->where('orders.0.images', ['/images/store/services/sbc.webp'])
+            ->where('orders.0.items', [['name' => 'خدمة 1']])
             ->where('pagination.nextUrl', null)
             ->where('pagination.previousUrl', null));
 

@@ -31,7 +31,7 @@ final readonly class ResolveLiveActionableOrder
             ->where('user_id', $user->id)
             ->whereIn('status', $this->openStatuses())
             ->with(['items' => fn ($query) => $query
-                ->select(['id', 'order_id', 'name_ar', 'name_en', 'status'])
+                ->select(['id', 'order_id', 'name_ar', 'name_en', 'service_type', 'status'])
                 ->orderBy('id')])
             ->withExists(['payments as has_failed_payment' => fn ($query) => $query
                 ->where('status', PaymentStatus::Failed->value)])

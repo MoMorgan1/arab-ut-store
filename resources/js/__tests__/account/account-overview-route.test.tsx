@@ -67,6 +67,13 @@ const mockPage = vi.hoisted(() => ({
                 pagination: 'الصفحات',
                 page_status: 'صفحة :current من :total',
             },
+            orders: {
+                item_count: ':count منتجات',
+                item_count_one: 'منتج واحد',
+                details: 'التفاصيل',
+                hide_details: 'إخفاء التفاصيل',
+                wallet_paid: 'مدفوع من المحفظة :amount',
+            },
             statuses: {
                 pending_payment: 'بانتظار الدفع',
                 received: 'تم استلام الدفع',
@@ -108,6 +115,8 @@ const mockPage = vi.hoisted(() => ({
             placedAt: '2026-08-15T10:00:00+00:00',
             summary: 'خدمة كوينز FC 27',
             itemCount: 1,
+            images: ['/images/store/coins/ut-coin-80.webp'],
+            items: [{ name: 'خدمة كوينز FC 27' }],
             total: { amountMinor: '12999', currency: 'SAR' },
             detailUrl: '/orders/01ACTIVE',
             action: { type: 'provide_details' },
@@ -142,6 +151,8 @@ const mockPage = vi.hoisted(() => ({
                 placedAt: '2026-08-14T10:00:00+00:00',
                 summary: 'خدمة SBC',
                 itemCount: 1,
+                images: ['/images/store/coins/ut-coin-80.webp'],
+                items: [{ name: 'خدمة SBC' }],
                 total: { amountMinor: '98765', currency: 'SAR' },
                 detailUrl: '/orders/01RECENT',
             },
@@ -290,6 +301,9 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
     const recentOrders = screen.getByRole('region', { name: 'أحدث الطلبات' });
 
     expect(within(recentOrders).getByTitle('UT-10000000')).toBeVisible();
+    fireEvent.click(
+        within(recentOrders).getByRole('button', { name: 'التفاصيل' }),
+    );
     expect(within(recentOrders).getByText('خدمة SBC')).toBeVisible();
     expect(
         document.documentElement.querySelector('[lang="ar"]'),
@@ -326,6 +340,8 @@ it('never duplicates activeOrder inside recentOrders even if present in the rece
             placedAt: '2026-08-15T10:00:00+00:00',
             summary: 'خدمة كوينز FC 27',
             itemCount: 1,
+            images: ['/images/store/coins/ut-coin-80.webp'],
+            items: [{ name: 'خدمة كوينز FC 27' }],
             total: { amountMinor: '12999', currency: 'SAR' },
             detailUrl: '/orders/01ACTIVE',
         },
@@ -337,6 +353,8 @@ it('never duplicates activeOrder inside recentOrders even if present in the rece
             placedAt: '2026-08-14T10:00:00+00:00',
             summary: 'خدمة SBC',
             itemCount: 1,
+            images: ['/images/store/coins/ut-coin-80.webp'],
+            items: [{ name: 'خدمة SBC' }],
             total: { amountMinor: '98765', currency: 'SAR' },
             detailUrl: '/orders/01RECENT',
         },

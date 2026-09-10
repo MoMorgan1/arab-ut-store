@@ -3,6 +3,7 @@
 namespace App\Account\Queries;
 
 use App\Account\Presenters\AccountMoney;
+use App\Account\Presenters\ServiceArtwork;
 use App\Enums\OrderStatus;
 use App\Enums\ServiceType;
 use App\Models\Order;
@@ -21,15 +22,6 @@ use Illuminate\Support\Facades\Storage;
 
 final class ReadLiveOrder
 {
-    /** The storefront artwork per service, the same files the home page cards use. */
-    private const SERVICE_ARTWORK = [
-        'coins' => '/images/store/coins/ut-coin-80.webp',
-        'sbc' => '/images/store/services/sbc.webp',
-        'objectives' => '/images/store/services/objectives.webp',
-        'rivals' => '/images/store/services/rivals.webp',
-        'fut_champions' => '/images/store/services/fut-champions.webp',
-    ];
-
     /** @return array<string, mixed> */
     public function for(User $user, string $publicId, string $locale): array
     {
@@ -299,7 +291,7 @@ final class ReadLiveOrder
         $product = $item->productVariant?->product;
         $media = $product instanceof Product ? $this->safeImageUrl($product->media->first()) : null;
 
-        return $media ?? self::SERVICE_ARTWORK[$item->service_type->value];
+        return $media ?? ServiceArtwork::for($item->service_type);
     }
 
     private function safeImageUrl(?ProductMedia $media): ?string

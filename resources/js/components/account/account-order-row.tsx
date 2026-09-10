@@ -1,11 +1,17 @@
 import { Link } from '@inertiajs/react';
-import { Ban, CircleAlert, CircleCheck, Clock3 } from 'lucide-react';
+import { useState } from 'react';
 
 import { formatAccountMoney } from '@/lib/account-money';
-import { formatOrderDate, formatOrderNumber } from '@/lib/account-order-format';
+import { formatOrderAge, formatOrderNumber } from '@/lib/account-order-format';
+import { formatInteger } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import type { AccountOrder, AccountTranslations } from '@/types/account';
 
+/**
+ * One order in the list: the service artwork (two stacked when the order
+ * mixes services), what was bought, the number and date, the status, the
+ * total, and for an unpaid order the one thing to do next.
+ */
 export default function AccountOrderRow({
     locale,
     order,
@@ -18,21 +24,23 @@ export default function AccountOrderRow({
     const isAttention =
         order.status === 'waiting_for_customer' ||
         order.status === 'pending_payment';
-
-    const StatusIcon =
-        order.status === 'completed'
-            ? CircleCheck
-            : order.status === 'in_progress' || order.status === 'received'
-              ? Clock3
-              : order.status === 'cancelled' || order.status === 'refunded'
-                ? Ban
-                : CircleAlert;
-
-    const action = order.action?.type ?? 'view_order';
-    const actionText = translations.actions[action];
-    const date = formatOrderDate(order.placedAt);
+    // The card's one action names the next step: pay, or give the details
+    // staff are waiting for. Anything else opens the order from its title.
+    const action =
+        order.action?.type ??
+        (order.status === 'pending_payment'
+            ? 'pay_now'
+            : order.status === 'waiting_for_customer'
+              ? 'provide_details'
+              : 'view_order');
+    const age = formatOrderAge(order.placedAt, locale);
     const displayNumber = formatOrderNumber(order.number);
     const statusLabel = translations.statuses[order.status];
+    const images = order.images.slice(0, 2);
+    // The order number is the title and the lines wait behind one "details"
+    // button that opens them in place (owner decision, 2026-09-10).
+    const [showItems, setShowItems] = useState(false);
+    const itemsId = `account-order-items-${order.id}`;
 
     return (
         <li
@@ -42,67 +50,84 @@ export default function AccountOrderRow({
             )}
             data-status={order.status}
         >
-            <span aria-hidden="true" className="account-order-row__mark">
-                <StatusIcon />
+            <span
+                aria-hidden="true"
+                className={cn(
+                    'account-order-row__art',
+                    images.length > 1 && 'account-order-row__art--stack',
+                )}
+            >
+                {images.map((src) => (
+                    <img alt="" height="48" key={src} src={src} width="48" />
+                ))}
+                {order.itemCount > 1 ? (
+                    <b>{formatInteger(order.itemCount, locale)}</b>
+                ) : null}
             </span>
             <div className="account-order-row__main">
                 <h3>
                     <Link
                         className="account-order-row__title-link"
                         href={order.detailUrl}
+                        title={order.number}
                     >
-                        {order.summary}
+                        <bdi dir="ltr">{displayNumber}</bdi>
                     </Link>
                 </h3>
                 <p className="account-order-row__meta">
-                    <span dir="ltr" title={order.number}>
-                        {displayNumber}
-                    </span>
+                    <time dateTime={order.placedAt}>{age}</time>
                     {' · '}
-                    <time dateTime={order.placedAt}>{date}</time>
-                    <span className="account-order-row__meta-status">
-                        {' · '}
-                        <span>{statusLabel}</span>
-                    </span>
-                    {order.walletPayment &&
-                    order.walletPayment.amountMinor !== '0' ? (
-                        <>
-                            {' · '}
-                            <span className="account-order-row__wallet-paid">
-                                {translations.orders.wallet_paid.replace(
-                                    ':amount',
-                                    formatAccountMoney(
-                                        order.walletPayment,
-                                        locale,
-                                    ),
-                                )}
-                            </span>
-                        </>
-                    ) : null}
+                    <bdi>
+                        {order.itemCount === 1
+                            ? translations.orders.item_count_one
+                            : translations.orders.item_count.replace(
+                                  ':count',
+                                  formatInteger(order.itemCount, locale),
+                              )}
+                    </bdi>
                 </p>
+                <button
+                    aria-controls={itemsId}
+                    aria-expanded={showItems}
+                    className="account-order-row__more"
+                    onClick={() => setShowItems((value) => !value)}
+                    type="button"
+                >
+                    {showItems
+                        ? translations.orders.hide_details
+                        : translations.orders.details}
+                </button>
+                {showItems ? (
+                    <ul className="account-order-row__items" id={itemsId}>
+                        {order.items.map((item, index) => (
+                            <li key={`${index}-${item.name}`}>{item.name}</li>
+                        ))}
+                    </ul>
+                ) : null}
             </div>
-            <span
-                className="account-order-row__status"
-                data-status={order.status}
-            >
+            <div className="account-order-row__side">
+                <strong className="account-order-row__total">
+                    {formatAccountMoney(order.total, locale)}
+                </strong>
                 <span
-                    aria-hidden="true"
-                    className="account-order-row__status-dot"
-                />
-                {statusLabel}
-            </span>
-            <strong className="account-order-row__total">
-                {formatAccountMoney(order.total, locale)}
-            </strong>
-            <Link
-                className={cn(
-                    'account-order-row__action',
-                    isAttention && 'account-order-row__action--primary',
-                )}
-                href={order.detailUrl}
-            >
-                {actionText}
-            </Link>
+                    className="account-order-row__status"
+                    data-status={order.status}
+                >
+                    <span
+                        aria-hidden="true"
+                        className="account-order-row__status-dot"
+                    />
+                    {statusLabel}
+                </span>
+            </div>
+            {isAttention ? (
+                <Link
+                    className="account-order-row__action"
+                    href={order.detailUrl}
+                >
+                    {translations.actions[action]}
+                </Link>
+            ) : null}
         </li>
     );
 }

@@ -101,6 +101,9 @@ it('renders canonical filters, safe order cards, and bounded pagination', () => 
     expect(within(filters).getByText('1')).toBeVisible();
     expect(within(filters).getByText('10')).toBeVisible();
     expect(screen.getByText('#000001')).toBeVisible();
+    // Placed "how long ago", not a calendar date, in the list.
+    expect(screen.getByText(/ago|yesterday|last/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
     expect(screen.getByText('FC 27 Coins service')).toBeVisible();
     expect(screen.getByText('Showing 1 of 11 orders')).toBeVisible();
     expect(screen.getByRole('link', { name: /Next/ })).toHaveAttribute(
@@ -607,15 +610,12 @@ it('renders search empty state when q is non-empty and orders array is empty', (
     ).not.toBeInTheDocument();
 });
 
-it('renders desktop status pill with dot in order row and column headings in order list', () => {
+it('renders each order as a card with its artwork, status pill and total, and no table headings', () => {
     const sampleOrder = order('01STATUS', 'UT-00000077', 'completed');
     const shell = shellProps();
 
     const { container } = render(
-        <AccountOrderList
-            aria-label="Orders"
-            headings={{ service: 'Service', status: 'Status', total: 'Total' }}
-        >
+        <AccountOrderList aria-label="Orders">
             <AccountOrderRow
                 locale="en"
                 order={sampleOrder}
@@ -624,11 +624,11 @@ it('renders desktop status pill with dot in order row and column headings in ord
         </AccountOrderList>,
     );
 
-    const head = container.querySelector('.account-order-list__head');
-    expect(head).not.toBeNull();
-    expect(head).toHaveTextContent('Service');
-    expect(head).toHaveTextContent('Status');
-    expect(head).toHaveTextContent('Total');
+    expect(container.querySelector('.account-order-list__head')).toBeNull();
+    expect(
+        container.querySelector('.account-order-row__art img'),
+    ).toHaveAttribute('src', '/images/store/coins/ut-coin-80.webp');
+    expect(container.querySelector('.account-order-row__action')).toBeNull();
 
     const statusPill = container.querySelector('.account-order-row__status');
     expect(statusPill).not.toBeNull();
@@ -639,13 +639,103 @@ it('renders desktop status pill with dot in order row and column headings in ord
     ).not.toBeNull();
 });
 
-it('renders paid from wallet in order rows, order cards, and live order page when wallet payment exists', () => {
+it('stacks two artworks and counts the items when an order mixes services', () => {
+    const mixed: AccountOrder = {
+        ...order('01MIXED', 'UT-00000078', 'pending_payment'),
+        summary: 'FUT Champions service +2',
+        itemCount: 3,
+        images: [
+            '/images/store/services/fut-champions.webp',
+            '/images/store/coins/ut-coin-80.webp',
+        ],
+        items: [
+            { name: 'FUT Champions service' },
+            { name: 'FC 27 Coins' },
+            { name: 'SBC weekly challenge' },
+        ],
+        action: { type: 'pay_now' },
+    };
+    const shell = shellProps();
+
+    const { container } = render(
+        <AccountOrderRow
+            locale="en"
+            order={mixed}
+            translations={shell.accountUi as unknown as AccountTranslations}
+        />,
+    );
+
+    const art = container.querySelector('.account-order-row__art');
+    expect(art).toHaveClass('account-order-row__art--stack');
+    expect(art?.querySelectorAll('img')).toHaveLength(2);
+    expect(art).toHaveTextContent('3');
+    expect(screen.getByText(/3 items/)).toBeVisible();
+    // The number is the title; the lines wait behind "details" and open in
+    // place.
+    expect(
+        screen.getByRole('heading', { level: 3, name: '#000078' }),
+    ).toBeVisible();
+    expect(screen.queryByText('SBC weekly challenge')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    expect(screen.getByText('FUT Champions service')).toBeVisible();
+    expect(screen.getByText('FC 27 Coins')).toBeVisible();
+    expect(screen.getByText('SBC weekly challenge')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Hide details' }));
+    expect(screen.queryByText('SBC weekly challenge')).not.toBeInTheDocument();
+    // An unpaid order carries the one thing to do next, inside the card.
+    expect(
+        screen.getByRole('link', { name: 'Complete payment' }),
+    ).toHaveAttribute('href', '/en/my-account/orders/01MIXED');
+});
+
+it('opens the search in place of the filters and closes it when cleared', () => {
+    page.props = {
+        ...shellProps(),
+        filters: { status: 'all' },
+        orders: [order('01ORDER1', 'UT-00000001', 'in_progress')],
+        pagination: {
+            currentPage: 1,
+            lastPage: 1,
+            perPage: 10,
+            total: 1,
+            nextUrl: null,
+            previousUrl: null,
+        },
+    };
+
+    render(<AccountOrders />);
+
+    expect(
+        screen.getByRole('navigation', { name: 'Filter orders' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    expect(
+        screen.getByRole('searchbox', { name: 'Search orders' }),
+    ).toBeVisible();
+    expect(
+        screen.queryByRole('navigation', { name: 'Filter orders' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close search' }));
+
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    expect(
+        screen.getByRole('navigation', { name: 'Filter orders' }),
+    ).toBeVisible();
+});
+
+it('renders paid from wallet on order cards and the live order page, not on list rows', () => {
     const orderWithWallet: AccountOrder = {
         ...order('01ORDER_WALLET', 'UT-00000002', 'completed'),
         walletPayment: { amountMinor: '5000', currency: 'SAR' },
     };
     const shell = shellProps();
 
+    // The list card keeps to number, date and count; the wallet split is
+    // stated on the order page and the overview card.
     const { container: rowContainer } = render(
         <AccountOrderRow
             locale="en"
@@ -655,7 +745,7 @@ it('renders paid from wallet in order rows, order cards, and live order page whe
     );
     expect(
         rowContainer.querySelector('.account-order-row__wallet-paid'),
-    ).toHaveTextContent('Paid from wallet SAR 50.00');
+    ).toBeNull();
 
     const { container: cardContainer } = render(
         <AccountOrderCard
@@ -690,6 +780,8 @@ function order(id: string, number: string, status: string): AccountOrder {
         placedAt: '2026-08-15T10:00:00+00:00',
         summary: 'FC 27 Coins service',
         itemCount: 1,
+        images: ['/images/store/coins/ut-coin-80.webp'],
+        items: [{ name: 'FC 27 Coins service' }],
         total: { amountMinor: '12999', currency: 'SAR' },
         detailUrl: `/en/my-account/orders/${id}`,
     };
@@ -783,11 +875,6 @@ function shellProps() {
                 search_placeholder: 'Search by order number or service name',
                 search_label: 'Search orders',
                 search_empty: 'No orders match your search.',
-                columns: {
-                    service: 'Service',
-                    status: 'Status',
-                    total: 'Total',
-                },
                 number: 'Order number',
                 placed_at: 'Placed on',
                 total: 'Total',
@@ -804,6 +891,10 @@ function shellProps() {
                 showing: 'Showing :shown of :total orders',
                 items_title: 'Service details',
                 item_quantity: 'Quantity: :count',
+                item_count: ':count items',
+                item_count_one: '1 item',
+                open_search: 'Search',
+                close_search: 'Close search',
                 credentials_ready: 'Fulfilment details stored securely',
                 manual_details: 'Manual service details',
                 platform: 'Platform',

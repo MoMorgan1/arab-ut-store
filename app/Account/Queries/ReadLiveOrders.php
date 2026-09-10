@@ -69,7 +69,7 @@ final readonly class ReadLiveOrders
             ])
             ->where('orders.user_id', $user->id)
             ->with(['items' => fn ($items) => $items
-                ->select(['id', 'order_id', 'name_ar', 'name_en', 'status'])
+                ->select(['id', 'order_id', 'name_ar', 'name_en', 'service_type', 'status'])
                 ->orderBy('id')]);
 
         if ($status === 'open') {
