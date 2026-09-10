@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Enums\AdminPermission;
 use App\Models\User;
+use App\Support\PublicHandle\CustomerHandle;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -38,8 +39,10 @@ final class UpdateAdminCustomerContact extends FormRequest
      */
     public function rules(): array
     {
-        $publicId = (string) $this->route('publicId');
-        $targetId = User::query()->where('public_id', $publicId)->value('id');
+        $handle = (string) $this->route('customer');
+        $targetId = User::query()
+            ->where(CustomerHandle::column($handle), CustomerHandle::value($handle))
+            ->value('id');
 
         return [
             'first_name' => [

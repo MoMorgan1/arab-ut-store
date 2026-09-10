@@ -154,7 +154,7 @@ test('stale mutation throws AdminCustomerStatusConflict with 409 json response',
 
     $response->assertStatus(409)
         ->assertJson([
-            'customer' => (string) $customer->public_id,
+            'customer' => $customer->customer_number,
             'isActive' => true,
         ]);
 });

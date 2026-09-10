@@ -8,6 +8,7 @@ use App\Exceptions\AdminCustomerContactConflict;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateAdminCustomerContact as UpdateContactRequest;
 use App\Models\User;
+use App\Support\PublicHandle\CustomerHandle;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
@@ -20,11 +21,14 @@ final class CustomerContactController extends Controller
         private readonly UpdateAdminCustomerContact $action,
     ) {}
 
-    public function __invoke(UpdateContactRequest $request, string $publicId): JsonResponse
+    public function __invoke(UpdateContactRequest $request, string $customer): JsonResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
         Gate::forUser($actor)->authorize(AdminPermission::CustomersUpdateContact->value);
+
+        $target = CustomerHandle::resolveForAdmin($customer);
+        $publicId = (string) $target->public_id;
 
         try {
             $user = $this->action->execute(
@@ -45,7 +49,7 @@ final class CustomerContactController extends Controller
             throw $this->duplicateIdentifierFailure($request, $publicId, $exception);
         } catch (AdminCustomerContactConflict $exception) {
             return response()->json([
-                'customer' => $exception->customerPublicId,
+                'customer' => $exception->customerNumber,
                 'current' => [
                     'firstName' => $exception->current['first_name'],
                     'lastName' => $exception->current['last_name'],

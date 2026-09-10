@@ -324,7 +324,7 @@ test('an expectation that no longer matches the row is a 409 carrying the live v
 
     $response->assertStatus(409)
         ->assertJson([
-            'customer' => (string) $customer->public_id,
+            'customer' => $customer->customer_number,
             'current' => [
                 'email' => 'moved.by.someone.else@example.test',
             ],

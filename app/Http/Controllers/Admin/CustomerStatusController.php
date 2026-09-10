@@ -7,6 +7,7 @@ use App\Enums\AdminPermission;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateAdminCustomerStatus as UpdateStatusRequest;
 use App\Models\User;
+use App\Support\PublicHandle\CustomerHandle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
@@ -16,15 +17,17 @@ final class CustomerStatusController extends Controller
         private readonly UpdateAdminCustomerStatus $action,
     ) {}
 
-    public function __invoke(UpdateStatusRequest $request, string $publicId): JsonResponse
+    public function __invoke(UpdateStatusRequest $request, string $customer): JsonResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
         Gate::forUser($actor)->authorize(AdminPermission::CustomersUpdateStatus->value);
 
+        $target = CustomerHandle::resolveForAdmin($customer);
+
         $user = $this->action->execute(
             actor: $actor,
-            customerPublicId: $publicId,
+            customerPublicId: (string) $target->public_id,
             action: $request->action(),
             reasonCode: $request->reasonCode(),
             caseReference: $request->caseReference(),

@@ -1866,9 +1866,11 @@ export const sampleAdminOrderRows = [
         id: '01K5ADM1N00000000000000001',
         orderNumber: 'AUT-1001',
         customer: {
+            number: 'CUS-ROW001',
             name: 'Saud Al-Otaibi',
             email: 'saud@example.test',
             phone: '+966500000001',
+            url: '/admin/customers/CUS-ROW001',
         },
         status: 'received',
         serviceTypes: ['coins'],
@@ -1885,9 +1887,11 @@ export const sampleAdminOrderRows = [
         id: '01K5ADM1N00000000000000002',
         orderNumber: 'AUT-1002',
         customer: {
+            number: 'CUS-ROW002',
             name: 'Fahad Al-Harbi',
             email: 'fahad@example.test',
             phone: null,
+            url: '/admin/customers/CUS-ROW002',
         },
         status: 'in_progress',
         serviceTypes: ['sbc', 'rivals'],
@@ -1904,9 +1908,11 @@ export const sampleAdminOrderRows = [
         id: '01K5ADM1N00000000000000003',
         orderNumber: 'AUT-1003',
         customer: {
+            number: 'CUS-ROW003',
             name: 'Tariq Al-Ghamdi',
             email: 'tariq@example.test',
             phone: '+966500000003',
+            url: '/admin/customers/CUS-ROW003',
         },
         status: 'pending_payment',
         serviceTypes: ['fut_champions'],
@@ -2043,6 +2049,7 @@ export const sampleAdminCustomerRows = [
     {
         id: '01K5CUST00000000000000001',
         number: 'CUS-ROW001',
+        url: '/admin/customers/CUS-ROW001',
         name: 'Saud Al-Otaibi',
         email: 'saud@example.test',
         phone: '+966500000001',
@@ -2062,6 +2069,7 @@ export const sampleAdminCustomerRows = [
     {
         id: '01K5CUST00000000000000002',
         number: 'CUS-ROW002',
+        url: '/admin/customers/CUS-ROW002',
         name: 'Fahad Al-Harbi',
         email: 'fahad@example.test',
         phone: null,
@@ -2089,7 +2097,6 @@ export const sampleAdminCustomerFilterOptions = {
 };
 
 export const sampleAdminCustomerDetail = {
-    id: '01K5CUST00000000000000001',
     number: 'CUS-7K4QXM',
     name: 'Saud Al-Otaibi',
     firstName: 'Saud',

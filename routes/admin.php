@@ -63,6 +63,7 @@ use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureAdminMfa;
 use App\Http\Middleware\EnsureAdminPassword;
 use App\Http\Middleware\PrivateNoStore;
+use App\Support\PublicHandle\CustomerHandle;
 use App\Support\PublicHandle\OrderHandle;
 use Illuminate\Support\Facades\Route;
 
@@ -184,7 +185,8 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $customers->defaults('locale', $locale);
                 }
 
-                $customerDetail = Route::get('/customers/{publicId}', CustomerDetailController::class)
+                $customerDetail = Route::get('/customers/{customer}', CustomerDetailController::class)
+                    ->where('customer', CustomerHandle::routePattern())
                     ->middleware('can:customers.view')
                     ->name('customers.show');
 
@@ -192,7 +194,8 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $customerDetail->defaults('locale', $locale);
                 }
 
-                $customerStatus = Route::post('/api/customers/{publicId}/status', CustomerStatusController::class)
+                $customerStatus = Route::post('/api/customers/{customer}/status', CustomerStatusController::class)
+                    ->where('customer', CustomerHandle::routePattern())
                     ->middleware('can:customers.update_status')
                     ->name('customers.status.store');
 
@@ -200,7 +203,8 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $customerStatus->defaults('locale', $locale);
                 }
 
-                $customerContact = Route::post('/api/customers/{publicId}/contact', CustomerContactController::class)
+                $customerContact = Route::post('/api/customers/{customer}/contact', CustomerContactController::class)
+                    ->where('customer', CustomerHandle::routePattern())
                     ->middleware(['can:customers.update_contact', 'throttle:staff-identity'])
                     ->name('customers.contact.store');
 
@@ -208,7 +212,8 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $customerContact->defaults('locale', $locale);
                 }
 
-                $customerWalletAdjust = Route::post('/api/customers/{publicId}/wallet/adjust', CustomerWalletAdjustController::class)
+                $customerWalletAdjust = Route::post('/api/customers/{customer}/wallet/adjust', CustomerWalletAdjustController::class)
+                    ->where('customer', CustomerHandle::routePattern())
                     ->middleware('can:wallet.adjust')
                     ->name('customers.wallet.adjust');
 

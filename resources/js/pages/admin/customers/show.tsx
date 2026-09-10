@@ -210,11 +210,8 @@ export default function AdminCustomerDetailPage() {
                                     : customersCopy.statusSuspended}
                             </AdminBadge>
                         </div>
-                        <p
-                            className="text-xs [overflow-wrap:anywhere] text-muted-foreground tabular-nums"
-                            title={customer.id}
-                        >
-                            <bdi>{customer.number ?? customer.id}</bdi>
+                        <p className="text-xs [overflow-wrap:anywhere] text-muted-foreground tabular-nums">
+                            <bdi>{customer.number || '—'}</bdi>
                         </p>
                         <p className="text-xs text-muted-foreground md:hidden">
                             <span className="tabular-nums">

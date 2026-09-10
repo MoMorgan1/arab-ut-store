@@ -144,9 +144,10 @@ function defaultDetailProps(): AdminCouponDetailPageProps {
                 orderTotal: { amountMinor: '20000', currency: 'SAR' },
                 discount: { amountMinor: '4000', currency: 'SAR' },
                 customer: {
-                    id: '01KUSER0000000000000001',
+                    number: 'CUS-000001',
                     name: 'Ahmed Al-Harbi',
                     email: 'ahmed@example.com',
+                    url: '/admin/customers/CUS-000001',
                 },
                 redeemedAt: '2026-08-22T12:00:00Z',
             },
@@ -225,7 +226,9 @@ describe('AdminCouponDetailPage', () => {
 
         // Recent Redemptions Table
         expect(screen.getByText('ORD-1001')).toBeVisible();
-        expect(screen.getByText('Ahmed Al-Harbi')).toBeVisible();
+        expect(
+            screen.getByRole('link', { name: 'Ahmed Al-Harbi' }),
+        ).toHaveAttribute('href', '/admin/customers/CUS-000001');
         expect(
             screen.getByText((text) => /SAR\s*200\.00/.test(text)),
         ).toBeVisible();

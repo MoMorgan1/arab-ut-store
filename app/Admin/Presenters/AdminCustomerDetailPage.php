@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\StaffAuditLog;
 use App\Models\User;
 use App\Models\WalletEntry;
+use App\Support\PublicHandle\CustomerHandle;
 
 final readonly class AdminCustomerDetailPage
 {
@@ -51,9 +52,9 @@ final readonly class AdminCustomerDetailPage
             'adminUi' => (array) trans('admin', locale: $locale),
             ...$this->shell->for($actor, $locale),
             'customer' => $presented,
-            'statusUrl' => route($prefix.'customers.status.store', ['publicId' => (string) $detail['user']->public_id], absolute: false),
-            'contactUrl' => route($prefix.'customers.contact.store', ['publicId' => (string) $detail['user']->public_id], absolute: false),
-            'walletAdjustUrl' => route($prefix.'customers.wallet.adjust', ['publicId' => (string) $detail['user']->public_id], absolute: false),
+            'statusUrl' => route($prefix.'customers.status.store', ['customer' => CustomerHandle::handleFor($detail['user'])], absolute: false),
+            'contactUrl' => route($prefix.'customers.contact.store', ['customer' => CustomerHandle::handleFor($detail['user'])], absolute: false),
+            'walletAdjustUrl' => route($prefix.'customers.wallet.adjust', ['customer' => CustomerHandle::handleFor($detail['user'])], absolute: false),
         ];
     }
 }

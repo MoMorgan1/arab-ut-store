@@ -1,6 +1,6 @@
 'use no memo'; // TanStack Table exposes mutable row and table objects.
 
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
     ArrowDown,
@@ -28,24 +28,16 @@ export type CustomerColumnOptions = {
 };
 
 function CustomerNameCell({ row }: { row: { original: AdminCustomerRow } }) {
-    const { url } = usePage();
-    const isLocalized = url.startsWith('/en/admin');
-    const basePath = isLocalized ? '/en/admin/customers' : '/admin/customers';
-    const detailUrl = `${basePath}/${row.original.id}`;
-
     return (
         <div className="flex max-w-44 flex-col gap-0.5">
             <Link
                 className="text-sm font-semibold whitespace-nowrap text-foreground underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
-                href={detailUrl}
+                href={row.original.url}
             >
                 <bdi>{row.original.name}</bdi>
             </Link>
-            <span
-                className="truncate text-xs text-muted-foreground tabular-nums"
-                title={row.original.id}
-            >
-                <bdi>{row.original.number ?? row.original.id}</bdi>
+            <span className="truncate text-xs text-muted-foreground tabular-nums">
+                <bdi>{row.original.number ?? '—'}</bdi>
             </span>
         </div>
     );
@@ -235,22 +227,14 @@ export function getAdminCustomerColumns({
             id: 'createdAt',
         },
         {
-            cell: ({ row }) => {
-                const isLocalized = locale === 'en';
-                const basePath = isLocalized
-                    ? '/en/admin/customers'
-                    : '/admin/customers';
-                const detailUrl = `${basePath}/${row.original.id}`;
-
-                return (
-                    <Link
-                        className="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-xs font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-                        href={detailUrl}
-                    >
-                        {copy.viewDetail}
-                    </Link>
-                );
-            },
+            cell: ({ row }) => (
+                <Link
+                    className="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-xs font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                    href={row.original.url}
+                >
+                    {copy.viewDetail}
+                </Link>
+            ),
             enableHiding: false,
             enableSorting: false,
             header: copy.actions,

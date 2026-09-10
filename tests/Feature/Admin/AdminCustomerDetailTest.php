@@ -56,7 +56,7 @@ test('confirmed Admin can open localized private customer detail routes', functi
     $customer = createCustomerDetailFixture();
 
     $this->actingAs($admin)
-        ->get("{$prefix}/customers/{$customer->public_id}")
+        ->get("{$prefix}/customers/{$customer->customer_number}")
         ->assertOk()
         ->assertHeader('Cache-Control', 'no-store, private')
         ->assertInertia(fn (AssertableInertia $page) => $page
@@ -64,7 +64,8 @@ test('confirmed Admin can open localized private customer detail routes', functi
             ->where('auth', null)
             ->where('locale', 'en')
             ->where('direction', 'ltr')
-            ->where('customer.id', (string) $customer->public_id)
+            ->where('customer.number', $customer->customer_number)
+            ->missing('customer.id')
             ->where('customer.name', $customer->name)
             ->where('customer.email', $customer->email)
             ->where('customer.isActive', true)
@@ -120,7 +121,7 @@ test('customer detail props never leak passwords or sensitive tokens', function 
         'password' => 'CustomerDetailSecretPassword!99',
     ]);
 
-    $response = $this->actingAs($admin)->get("/admin/customers/{$customer->public_id}");
+    $response = $this->actingAs($admin)->get("/admin/customers/{$customer->customer_number}");
     $content = $response->getContent();
 
     $response->assertOk();
@@ -175,7 +176,7 @@ test('customer detail properly derives wallet entry directions and includes audi
         ], '127.0.0.1'),
     );
 
-    $response = $this->actingAs($admin)->get("/admin/customers/{$customer->public_id}");
+    $response = $this->actingAs($admin)->get("/admin/customers/{$customer->customer_number}");
     $props = $response->original->getData()['page']['props'];
 
     expect($props['customer']['walletSummary']['balance']['amountMinor'])->toBe('15000')

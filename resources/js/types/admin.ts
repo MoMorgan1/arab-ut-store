@@ -1856,6 +1856,8 @@ export type AdminOrderCustomer = {
     name: string;
     email: string;
     phone: string | null;
+    /** Server-built customer page URL; the order detail omits it. */
+    url?: string;
 };
 
 export type AdminOrderRow = {
@@ -2030,6 +2032,8 @@ export type AdminOrderDetailPageProps = {
 export type AdminCustomerRow = {
     id: string;
     number: string | null;
+    /** Server-built detail URL, addressed by the short number or ULID fallback. */
+    url: string;
     name: string;
     email: string;
     phone: string | null;
@@ -2092,7 +2096,6 @@ export type AdminCustomerWalletEntry = {
 };
 
 export type AdminCustomerDetail = {
-    id: string;
     number: string | null;
     name: string;
     firstName: string;
@@ -2306,9 +2309,11 @@ export type AdminCouponRecentRedemption = {
     orderTotal: AdminMoney<'SAR'>;
     discount: AdminMoney<'SAR'>;
     customer: {
-        id: string;
+        number: string | null;
         name: string;
         email: string;
+        /** Server-built customer page URL, with a ULID fallback when unnumbered. */
+        url: string;
     };
     redeemedAt: string;
 };

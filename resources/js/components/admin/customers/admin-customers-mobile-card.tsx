@@ -1,6 +1,6 @@
 'use no memo'; // TanStack Table exposes mutable row objects.
 
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import type { Row } from '@tanstack/react-table';
 import { CheckCircle2, XCircle } from 'lucide-react';
 
@@ -22,12 +22,8 @@ export default function AdminCustomersMobileCard({
     locale,
     row,
 }: AdminCustomersMobileCardProps) {
-    const { url } = usePage();
-    const isLocalized = url.startsWith('/en/admin');
-    const basePath = isLocalized ? '/en/admin/customers' : '/admin/customers';
     const copy = adminUi.customers;
     const customer = row.original;
-    const detailUrl = `${basePath}/${customer.id}`;
     const isActive = customer.isActive;
 
     return (
@@ -54,15 +50,12 @@ export default function AdminCustomersMobileCard({
                     <div className="flex min-w-0 flex-col gap-0.5">
                         <Link
                             className="text-sm font-bold whitespace-nowrap text-foreground underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
-                            href={detailUrl}
+                            href={customer.url}
                         >
                             <bdi>{customer.name}</bdi>
                         </Link>
-                        <span
-                            className="text-xs [overflow-wrap:anywhere] text-muted-foreground tabular-nums"
-                            title={customer.id}
-                        >
-                            <bdi>{customer.number ?? customer.id}</bdi>
+                        <span className="text-xs [overflow-wrap:anywhere] text-muted-foreground tabular-nums">
+                            <bdi>{customer.number ?? '—'}</bdi>
                         </span>
                     </div>
                 </div>

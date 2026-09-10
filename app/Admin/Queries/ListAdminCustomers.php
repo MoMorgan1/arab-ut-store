@@ -4,6 +4,7 @@ namespace App\Admin\Queries;
 
 use App\Enums\OrderStatus;
 use App\Enums\UserRole;
+use App\Support\PublicHandle\CustomerHandle;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
@@ -24,6 +25,7 @@ use stdClass;
  * @phpstan-type AdminCustomerRow array{
  *     id: string,
  *     number: string|null,
+ *     url: string,
  *     name: string,
  *     email: string,
  *     phone: ?string,
@@ -155,8 +157,7 @@ final class ListAdminCustomers
         $phoneDigits = preg_replace('/\D+/', '', $search);
 
         $query->where(function (Builder $customerQuery) use ($search, $lowercaseSearch, $phoneDigits): void {
-            $customerQuery->where('users.public_id', $search)
-                ->orWhereRaw('LOWER(users.customer_number) = ?', [$lowercaseSearch])
+            $customerQuery->whereRaw('LOWER(users.customer_number) = ?', [$lowercaseSearch])
                 ->orWhereRaw('LOWER(users.customer_number) = ?', ['cus-'.$lowercaseSearch])
                 ->orWhereRaw('LOWER(users.first_name) LIKE ?', ['%'.$lowercaseSearch.'%'])
                 ->orWhereRaw('LOWER(users.last_name) LIKE ?', ['%'.$lowercaseSearch.'%'])
@@ -194,10 +195,17 @@ final class ListAdminCustomers
      */
     private function projectCustomers(array $users): array
     {
-        return array_map(function (stdClass $user): array {
+        $prefix = $this->urlPrefix();
+
+        return array_map(function (stdClass $user) use ($prefix): array {
             return [
                 'id' => (string) $user->public_id,
                 'number' => $user->customer_number,
+                'url' => route(
+                    $prefix.'customers.show',
+                    ['customer' => CustomerHandle::handleForValues($user->customer_number, (string) $user->public_id)],
+                    absolute: false,
+                ),
                 'name' => trim((string) $user->first_name.' '.(string) $user->last_name),
                 'email' => (string) $user->email,
                 'phone' => $user->phone !== null ? (string) $user->phone : null,
@@ -219,6 +227,21 @@ final class ListAdminCustomers
                 ],
             ];
         }, $users);
+    }
+
+    /**
+     * Route names differ between the default and localized admin groups; the
+     * application is under a locale-prefixed route when the current request is.
+     * Both groups resolve to the same controller, so only the name prefix and
+     * the generated URL change.
+     */
+    private function urlPrefix(): string
+    {
+        $currentRouteName = (string) request()->route()?->getName();
+
+        return str_starts_with($currentRouteName, 'localized.admin.')
+            ? 'localized.admin.'
+            : 'admin.';
     }
 
     /**

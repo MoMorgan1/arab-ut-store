@@ -189,7 +189,7 @@ test('search finds a customer by the short number staff read aloud', function ()
     }
 });
 
-test('search finds customers by name, email, phone digits, and public ID', function (): void {
+test('search finds customers by name, email, and phone digits', function (): void {
     $customer = User::factory()->create([
         'role' => UserRole::Customer,
         'first_name' => 'Tariq',
@@ -222,10 +222,14 @@ test('search finds customers by name, email, phone digits, and public ID', funct
     // Stripped phone digits
     $results = app(ListAdminCustomers::class)->paginate(['search' => '966551234567']);
     expect($results['customers'])->toHaveCount(1);
+});
 
-    // Public ULID
+test('search no longer resolves a customer by their internal public ID', function (): void {
+    $customer = User::factory()->create(['role' => UserRole::Customer]);
+
     $results = app(ListAdminCustomers::class)->paginate(['search' => (string) $customer->public_id]);
-    expect($results['customers'])->toHaveCount(1);
+
+    expect($results['customers'])->toHaveCount(0);
 });
 
 test('status filter returns only active or suspended customers', function (): void {
@@ -344,7 +348,7 @@ test('total_spent excludes pending_payment cancelled and refunded orders', funct
         'placed_at' => now(),
     ]);
 
-    $results = app(ListAdminCustomers::class)->paginate(['search' => (string) $customer->public_id]);
+    $results = app(ListAdminCustomers::class)->paginate(['search' => (string) $customer->customer_number]);
     expect($results['customers'][0]['totalSpent']['amountMinor'])->toBe('3000');
 });
 

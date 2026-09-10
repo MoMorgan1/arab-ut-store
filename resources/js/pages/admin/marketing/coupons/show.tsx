@@ -79,9 +79,6 @@ export default function AdminCouponDetailPage() {
     const copy = props.adminUi.coupons;
     const isLocalized = url.startsWith('/en/admin');
     const orderBasePath = isLocalized ? '/en/admin/orders' : '/admin/orders';
-    const customerBasePath = isLocalized
-        ? '/en/admin/customers'
-        : '/admin/customers';
 
     const canManage = props.permissions.includes('marketing.manage');
     const [editDrawerOpen, setEditDrawerOpen] = useState(false);
@@ -577,7 +574,11 @@ export default function AdminCouponDetailPage() {
                                                     <div className="flex flex-col">
                                                         <Link
                                                             className="text-xs font-medium text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-                                                            href={`${customerBasePath}/${redemption.customer.id}`}
+                                                            href={
+                                                                redemption
+                                                                    .customer
+                                                                    .url
+                                                            }
                                                         >
                                                             {
                                                                 redemption
