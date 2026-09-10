@@ -30,15 +30,9 @@ final class ReadAdminCustomerDetail
      *     auditLogs: list<StaffAuditLog>|null
      * }|null
      */
-    public function findByPublicId(string $publicId, User $actor): ?array
+    public function forUser(User $user, User $actor): ?array
     {
-        /** @var User|null $user */
-        $user = User::query()
-            ->where('public_id', $publicId)
-            ->where('role', UserRole::Customer)
-            ->first();
-
-        if ($user === null) {
+        if ($user->role !== UserRole::Customer) {
             return null;
         }
 

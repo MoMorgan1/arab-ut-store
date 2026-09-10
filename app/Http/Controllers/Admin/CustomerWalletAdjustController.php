@@ -7,6 +7,7 @@ use App\Enums\AdminPermission;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdjustAdminCustomerWallet;
 use App\Models\User;
+use App\Support\PublicHandle\CustomerHandle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
@@ -16,16 +17,18 @@ final class CustomerWalletAdjustController extends Controller
         private readonly AdjustCustomerWallet $action,
     ) {}
 
-    public function __invoke(AdjustAdminCustomerWallet $request, string $publicId): JsonResponse
+    public function __invoke(AdjustAdminCustomerWallet $request, string $customer): JsonResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
         Gate::forUser($actor)->authorize(AdminPermission::WalletAdjust->value);
 
+        $target = CustomerHandle::resolveForAdmin($customer);
+
         $amountHalalah = $request->amountHalalah();
         $result = $this->action->execute(
             actor: $actor,
-            customerPublicId: $publicId,
+            customerPublicId: (string) $target->public_id,
             amountHalalah: $amountHalalah,
             reason: $request->reason(),
             ipAddress: $request->ip(),

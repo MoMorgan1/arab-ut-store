@@ -5,6 +5,7 @@ namespace App\Admin\Queries;
 use App\Enums\OrderStatus;
 use App\Models\Coupon;
 use App\Models\CouponTarget;
+use App\Support\PublicHandle\CustomerHandle;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use stdClass;
@@ -54,7 +55,7 @@ use stdClass;
  *         paidAt: string|null,
  *         orderTotalHalalah: int,
  *         discountHalalah: int,
- *         customer: array{id: string, name: string, email: string},
+ *         customer: array{number: string|null, name: string, email: string, url: string},
  *         redeemedAt: string
  *     }>
  * }
@@ -214,6 +215,7 @@ final class ReadAdminCouponPerformance
                 'orders.paid_at',
                 'orders.total_halalah',
                 'order_discounts.amount_halalah as discount_halalah',
+                'users.customer_number as user_customer_number',
                 'users.public_id as user_public_id',
                 // users has no `name` column - it stores first_name / last_name.
                 'users.first_name as user_first_name',
@@ -224,7 +226,9 @@ final class ReadAdminCouponPerformance
             ->limit(20)
             ->get();
 
-        $recentRedemptions = array_map(function (stdClass $r): array {
+        $prefix = $this->urlPrefix();
+
+        $recentRedemptions = array_map(function (stdClass $r) use ($prefix): array {
             return [
                 'id' => (string) $r->id,
                 'orderNumber' => (string) $r->order_number,
@@ -236,9 +240,14 @@ final class ReadAdminCouponPerformance
                 'orderTotalHalalah' => (int) $r->total_halalah,
                 'discountHalalah' => (int) ($r->discount_halalah ?? 0),
                 'customer' => [
-                    'id' => (string) $r->user_public_id,
+                    'number' => $r->user_customer_number !== null ? (string) $r->user_customer_number : null,
                     'name' => trim(((string) $r->user_first_name).' '.((string) $r->user_last_name)),
                     'email' => (string) $r->user_email,
+                    'url' => route(
+                        $prefix.'customers.show',
+                        ['customer' => CustomerHandle::handleForValues($r->user_customer_number, (string) $r->user_public_id)],
+                        absolute: false,
+                    ),
                 ],
                 'redeemedAt' => Carbon::parse($r->redeemed_at, 'UTC')->utc()->toIso8601String(),
             ];
@@ -287,6 +296,21 @@ final class ReadAdminCouponPerformance
             // preserves the source keys, which the declared return type forbids.
             'recentRedemptions' => array_values($recentRedemptions),
         ];
+    }
+
+    /**
+     * Route names differ between the default and localized admin groups; the
+     * application is under a locale-prefixed route when the current request is.
+     * Both groups resolve to the same controller, so only the name prefix and
+     * the generated URL change.
+     */
+    private function urlPrefix(): string
+    {
+        $currentRouteName = (string) request()->route()?->getName();
+
+        return str_starts_with($currentRouteName, 'localized.admin.')
+            ? 'localized.admin.'
+            : 'admin.';
     }
 
     /**

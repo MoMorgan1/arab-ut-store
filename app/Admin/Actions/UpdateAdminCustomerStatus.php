@@ -50,7 +50,7 @@ final class UpdateAdminCustomerStatus
             }
 
             if ((bool) $target->is_active !== $expectedActive) {
-                throw new AdminCustomerStatusConflict((string) $target->public_id, (bool) $target->is_active);
+                throw new AdminCustomerStatusConflict((string) ($target->customer_number ?? $target->public_id), (bool) $target->is_active);
             }
 
             $newActive = match ($action) {

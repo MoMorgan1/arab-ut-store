@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 final class AdminCustomerStatusConflict extends Exception
 {
     public function __construct(
-        public readonly string $customerPublicId,
+        public readonly string $customerNumber,
         public readonly bool $currentActive,
         string $message = 'Customer status has changed.',
     ) {
@@ -19,7 +19,7 @@ final class AdminCustomerStatusConflict extends Exception
     public function render(Request $request): JsonResponse
     {
         return response()->json([
-            'customer' => $this->customerPublicId,
+            'customer' => $this->customerNumber,
             'isActive' => $this->currentActive,
         ], 409);
     }

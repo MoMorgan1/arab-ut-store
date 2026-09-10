@@ -24,7 +24,6 @@ final class AdminCustomerDetail
      * @param  list<WalletEntry>  $recentWalletEntries
      * @param  list<StaffAuditLog>|null  $auditLogs
      * @return array{
-     *     id: string,
      *     number: string|null,
      *     name: string,
      *     firstName: string,
@@ -87,7 +86,6 @@ final class AdminCustomerDetail
         string $locale,
     ): array {
         return [
-            'id' => (string) $user->public_id,
             'number' => $user->customer_number,
             'name' => trim((string) $user->first_name.' '.(string) $user->last_name),
             'firstName' => (string) $user->first_name,

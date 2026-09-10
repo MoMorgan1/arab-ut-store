@@ -386,15 +386,17 @@ test('order list presenter projects only safe row DTO and never leaks secrets or
         'latestPaymentStatus',
         'total',
         'placedAt',
-    ])->and(array_keys($row['customer']))->toBe(['name', 'email', 'phone'])
+    ])->and(array_keys($row['customer']))->toBe(['number', 'name', 'email', 'phone', 'url'])
         ->and(array_keys($row['total']))->toBe(['amountMinor', 'currency'])
         ->and($row)->toMatchArray([
             'id' => '01K5ADM1NPR1VACY0000000001',
             'orderNumber' => 'AUT-PRIVACY-1',
             'customer' => [
+                'number' => $customer->customer_number,
                 'name' => 'Privacy Tester',
                 'email' => 'privacy.test@example.test',
                 'phone' => null,
+                'url' => '/admin/customers/'.$customer->customer_number,
             ],
             'status' => 'received',
             'serviceTypes' => ['coins'],
@@ -405,7 +407,7 @@ test('order list presenter projects only safe row DTO and never leaks secrets or
         ->and($row['total']['amountMinor'])->toBeString();
 
     $serialized = json_encode($page['orders'], JSON_THROW_ON_ERROR);
-    foreach (['password', 'two_factor', 'provider_payment_id', 'idempotency_key', 'provider_metadata', 'encrypted_payload', 'HashedPasswordMustNotLeak'] as $forbidden) {
+    foreach (['password', 'two_factor', 'provider_payment_id', 'idempotency_key', 'provider_metadata', 'encrypted_payload', 'HashedPasswordMustNotLeak', (string) $customer->public_id] as $forbidden) {
         expect($serialized)->not->toContain($forbidden);
     }
 });

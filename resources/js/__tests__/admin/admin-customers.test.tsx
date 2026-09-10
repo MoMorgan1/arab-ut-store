@@ -123,7 +123,7 @@ describe('AdminCustomersPage', () => {
         });
         expect(detailLink).toHaveAttribute(
             'href',
-            '/admin/customers/01K5CUST00000000000000001',
+            '/admin/customers/CUS-ROW001',
         );
     });
 
@@ -304,6 +304,40 @@ describe('AdminCustomersPage', () => {
         const mobileList = screen.getByRole('list', { name: 'Customers list' });
         expect(within(mobileList).getByText('Saud Al-Otaibi')).toBeVisible();
         expect(within(mobileList).getByText('Fahad Al-Harbi')).toBeVisible();
+
+        // The mobile card links by the server-projected short number.
+        expect(
+            within(mobileList).getByRole('link', { name: 'Saud Al-Otaibi' }),
+        ).toHaveAttribute('href', '/admin/customers/CUS-ROW001');
+    });
+
+    it('renders a dash, never the internal ULID, when a customer has no number', () => {
+        pageState.props.customers = [
+            {
+                id: '01J3M4N5P6Q7R8S9T0V1W2X3Y4',
+                number: null,
+                url: '/admin/customers/01J3M4N5P6Q7R8S9T0V1W2X3Y4',
+                name: 'Noura Al-Zahrani',
+                email: 'noura@example.test',
+                phone: null,
+                isActive: true,
+                createdAt: '2026-08-17T09:00:00Z',
+                ordersCount: 0,
+                lastOrderAt: null,
+                totalSpent: { amountMinor: '0', currency: 'SAR' as const },
+                walletBalance: { amountMinor: '0', currency: 'SAR' as const },
+            },
+        ];
+
+        render(<AdminCustomersPage />);
+
+        const customersTable = screen.getByRole('region', {
+            name: 'Customers list',
+        });
+        expect(within(customersTable).getByText('—')).toBeVisible();
+        expect(
+            within(customersTable).queryByText(/01J3M4N5P6Q7R8S9T0V1W2X3Y4/),
+        ).toBeNull();
     });
 
     it('renders inline controls (search, filters, columns) on mobile while status select is desktop-only', () => {

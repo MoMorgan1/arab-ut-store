@@ -3,6 +3,7 @@
 namespace App\Admin\Queries;
 
 use App\Customers\CustomerNumber;
+use App\Support\PublicHandle\CustomerHandle;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
@@ -26,7 +27,7 @@ use stdClass;
  * @phpstan-type AdminOrderRow array{
  *     id: string,
  *     orderNumber: string,
- *     customer: array{name: string, email: string, phone: ?string},
+ *     customer: array{number: string|null, name: string, email: string, phone: ?string, url: string},
  *     status: string,
  *     serviceTypes: list<string>,
  *     platforms: list<string>,
@@ -220,6 +221,8 @@ final class ListAdminOrders
 
         foreach (DB::table('users')->whereIn('id', $userIds)->select([
             'id',
+            'public_id',
+            'customer_number',
             'first_name',
             'last_name',
             'email',
@@ -265,7 +268,9 @@ final class ListAdminOrders
         array $users,
         array $itemsByOrderId,
     ): array {
-        return array_map(function (stdClass $order) use ($users, $itemsByOrderId): array {
+        $prefix = $this->urlPrefix();
+
+        return array_map(function (stdClass $order) use ($users, $itemsByOrderId, $prefix): array {
             $user = $users[(int) $order->user_id];
             $items = $itemsByOrderId[(int) $order->id] ?? [];
 
@@ -273,9 +278,15 @@ final class ListAdminOrders
                 'id' => (string) $order->public_id,
                 'orderNumber' => (string) $order->order_number,
                 'customer' => [
+                    'number' => $user->customer_number !== null ? (string) $user->customer_number : null,
                     'name' => trim((string) $user->first_name.' '.(string) $user->last_name),
                     'email' => (string) $user->email,
                     'phone' => $user->phone !== null ? (string) $user->phone : null,
+                    'url' => route(
+                        $prefix.'customers.show',
+                        ['customer' => CustomerHandle::handleForValues($user->customer_number, (string) $user->public_id)],
+                        absolute: false,
+                    ),
                 ],
                 'status' => (string) $order->status,
                 'serviceTypes' => $this->distinctItemValues($items, 'service_type'),
@@ -305,6 +316,21 @@ final class ListAdminOrders
             fn (stdClass $item): string => (string) $item->{$column},
             $items,
         )));
+    }
+
+    /**
+     * Route names differ between the default and localized admin groups; the
+     * application is under a locale-prefixed route when the current request is.
+     * Both groups resolve to the same controller, so only the name prefix and
+     * the generated URL change.
+     */
+    private function urlPrefix(): string
+    {
+        $currentRouteName = (string) request()->route()?->getName();
+
+        return str_starts_with($currentRouteName, 'localized.admin.')
+            ? 'localized.admin.'
+            : 'admin.';
     }
 
     /**

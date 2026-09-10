@@ -66,7 +66,7 @@ final class UpdateAdminCustomerContact
             // both look current, and the caller only ever needs to be stopped
             // when a value it was shown has actually moved.
             if ($previousValues !== $expected) {
-                throw new AdminCustomerContactConflict((string) $target->public_id, $previousValues);
+                throw new AdminCustomerContactConflict((string) ($target->customer_number ?? $target->public_id), $previousValues);
             }
 
             $newValues = [
