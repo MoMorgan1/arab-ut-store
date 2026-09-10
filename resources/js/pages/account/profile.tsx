@@ -28,7 +28,9 @@ function maskPhoneNumber(value: string): string {
     const split = splitE164(value);
 
     if (!split) {
-        return value;
+        // A number the parser does not recognise is still masked: only the
+        // last four digits ever reach the DOM.
+        return `•••${value.slice(-4)}`;
     }
 
     const national = split.national;

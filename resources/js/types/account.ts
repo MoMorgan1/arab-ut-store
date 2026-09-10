@@ -280,7 +280,6 @@ export type AccountTranslations = {
         verified: string;
         unverified: string;
         not_set: string;
-        verify_phone_cta?: string;
         first_name: string;
         last_name: string;
         email: string;
@@ -289,8 +288,6 @@ export type AccountTranslations = {
         display_currency: string;
         save: string;
         saved: string;
-        edit_email: string;
-        edit_phone: string;
         cancel_edit: string;
         new_email: string;
         request_email: string;
@@ -326,12 +323,8 @@ export type AccountTranslations = {
         change_password: string;
         set_password: string;
         password_changed: string;
-        change_title: string;
-        setup_title: string;
         reset_link_button: string;
         reset_link_sent: string;
-        reset_link_needs_email: string;
-        reset_link_support: string;
     };
     support: {
         title: string;
