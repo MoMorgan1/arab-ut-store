@@ -10,6 +10,7 @@ return [
         'refund_split' => 'تم إلغاء الطلب واسترجاع :card ر.س إلى وسيلة الدفع و:wallet ر.س إلى محفظتك. قد تستغرق البنوك حتى 14 يوم عمل لإظهار مبلغ البطاقة.',
         'checkout_expired' => 'انتهت مهلة الدفع فأُلغي الطلب تلقائيًا. لم يُخصم منك شيء، وأي رصيد استخدمته رجع إلى محفظتك.',
         'payment_cancelled' => 'أُلغيت عملية الدفع فأُلغي الطلب. لم يُخصم منك شيء، وأي رصيد استخدمته رجع إلى محفظتك.',
+        'customer_cancelled' => 'ألغيت الطلب قبل الدفع. لم يُخصم منك شيء، وأي رصيد استخدمته رجع إلى محفظتك.',
     ],
     // Shown to the customer on the order page when an order stops.
     // The admin picks one of these when moving an order to "waiting for customer";

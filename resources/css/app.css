@@ -6463,8 +6463,7 @@ html.admin-document {
     gap: 1.25rem;
 }
 
-.account-page-heading p,
-.account-live-order__header p {
+.account-page-heading p {
     margin: 0 0 0.35rem;
     color: var(--arabut-gold-bright);
     font-size: 0.78rem;
@@ -6473,8 +6472,7 @@ html.admin-document {
     text-transform: uppercase;
 }
 
-.account-page-heading h2,
-.account-live-order__header h2 {
+.account-page-heading h2 {
     margin: 0;
     color: var(--arabut-ink);
     font-size: clamp(1.65rem, 4vw, 2.35rem);
@@ -6891,135 +6889,10 @@ html.admin-document {
     height: 1rem;
 }
 
-.account-live-order__header {
-    display: flex;
-    min-width: 0;
-    align-items: end;
-    justify-content: space-between;
-    gap: 1rem;
-    border: 1px solid var(--arabut-line);
-    border-radius: 1rem;
-    background:
-        linear-gradient(130deg, rgb(212 168 67 / 8%), transparent 55%),
-        rgb(28 24 20 / 68%);
-    padding: clamp(1rem, 4vw, 1.5rem);
-}
-
-.account-live-order__header h2 bdi {
-    display: block;
-    max-width: 100%;
-    direction: ltr;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-    unicode-bidi: isolate;
-}
-
-.account-live-order__header > div:first-child {
-    min-width: 0;
-    flex: 1 1 0;
-}
-
-.account-live-order__header h2 {
-    min-width: 0;
-    max-width: 100%;
-}
-
-.account-live-order__date {
-    display: inline-flex;
-    margin-block-start: 0.65rem;
-    align-items: center;
-    gap: 0.4rem;
-    color: var(--arabut-muted);
-    font-size: 0.85rem;
-}
-
-.account-live-order__date svg {
-    width: 1rem;
-    height: 1rem;
-}
-
-.account-live-order__total {
-    flex: 0 0 auto;
-    text-align: end;
-}
-
-.account-live-order__discount {
-    margin-block-end: 0.25rem;
-    color: #8ce3ad;
-}
-
-.account-live-order__wallet-paid {
-    margin-block-end: 0.25rem;
-    color: var(--arabut-gold-bright);
-    font-size: 0.85rem;
-}
-
 .account-order-row__wallet-paid,
 .account-order-card__wallet-paid {
     color: var(--arabut-gold-bright);
     font-weight: 600;
-}
-
-.account-live-order__total span,
-.account-live-order__statusbar span {
-    display: block;
-    color: var(--arabut-muted);
-    font-size: 0.82rem;
-}
-
-.account-live-order__total strong {
-    display: block;
-    margin-block-start: 0.3rem;
-    color: var(--arabut-ink);
-    font-size: clamp(1.25rem, 4vw, 1.75rem);
-}
-
-.account-live-order__statusbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    border: 1px solid var(--arabut-line);
-    border-radius: 0.9rem;
-    background: rgb(28 24 20 / 52%);
-    padding: 0.9rem 1rem;
-}
-
-.account-live-order__statusbar strong {
-    display: block;
-    margin-block-start: 0.2rem;
-    color: var(--arabut-gold-bright);
-}
-
-.account-live-order__statusbar button,
-.account-live-order__payment button {
-    display: inline-flex;
-    min-height: 2.75rem;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    border: 1px solid rgb(212 168 67 / 30%);
-    border-radius: 0.7rem;
-    background: rgb(212 168 67 / 10%);
-    padding: 0.6rem 0.9rem;
-    color: var(--arabut-gold-bright);
-    font-weight: 800;
-    cursor: pointer;
-}
-
-.account-live-order__statusbar button:disabled,
-.account-live-order__payment button:disabled {
-    cursor: wait;
-    opacity: 0.65;
-}
-
-.account-live-order__statusbar svg {
-    width: 1rem;
-    height: 1rem;
-}
-
-.account-live-order__statusbar svg.is-spinning {
-    animation: account-spin 800ms linear infinite;
 }
 
 /* Why the order is where it is, written by staff when they paused it. */
@@ -7106,11 +6979,15 @@ html.admin-document {
 }
 
 .account-order-review__star svg {
-    width: 1.65rem;
-    height: 1.65rem;
+    width: 2rem;
+    height: 2rem;
     fill: none;
-    stroke: currentcolor;
-    stroke-width: 1.75;
+    stroke: rgb(212 168 67 / 55%);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    transition:
+        transform 120ms ease,
+        filter 120ms ease;
 }
 
 .account-order-review__star[data-filled='true'] {
@@ -7119,6 +6996,15 @@ html.admin-document {
 
 .account-order-review__star[data-filled='true'] svg {
     fill: currentcolor;
+    stroke: var(--arabut-gold-bright);
+    filter: drop-shadow(0 0 6px rgb(228 183 86 / 45%));
+    transform: scale(1.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .account-order-review__star svg {
+        transition: none;
+    }
 }
 
 .account-order-review__star:focus-visible {
@@ -7246,119 +7132,10 @@ html.admin-document {
     line-height: 1.7;
 }
 
-.account-live-order__items > h2 {
-    margin: 0 0 0.75rem;
-    color: var(--arabut-ink);
-    font-size: clamp(1.2rem, 3vw, 1.55rem);
-}
-
-.account-live-order__items ol {
-    display: grid;
-    margin: 0;
-    gap: 0.65rem;
-    padding: 0;
-    list-style: none;
-}
-
-.account-live-order__items li {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0.8rem;
-    border: 1px solid var(--arabut-line);
-    border-radius: 0.9rem;
-    background: rgb(28 24 20 / 55%);
-    padding: 1rem;
-}
-
-.account-live-order__item-mark {
-    display: inline-flex;
-    width: 2.4rem;
-    height: 2.4rem;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0.7rem;
-    background: rgb(212 168 67 / 9%);
-    color: var(--arabut-gold-bright);
-}
-
-.account-live-order__item-mark svg {
-    width: 1.15rem;
-    height: 1.15rem;
-}
-
-.account-live-order__item-main {
-    min-width: 0;
-}
-
-.account-live-order__item-main h3 {
-    margin: 0;
-    overflow-wrap: anywhere;
-    color: var(--arabut-ink);
-    font-size: 1.05rem;
-}
-
-.account-live-order__item-main span,
-.account-live-order__item-main small,
-.account-live-order__item-total small {
-    display: block;
-    margin-block-start: 0.25rem;
-    color: var(--arabut-muted);
-    font-size: 0.78rem;
-}
-
-.account-live-order__item-main small {
-    color: var(--arabut-gold-bright);
-}
-
-.account-live-order__item-total {
-    text-align: end;
-}
-
-.account-live-order__item-total strong {
-    display: block;
-    margin-block-start: 0.25rem;
-    color: var(--arabut-ink);
-    white-space: nowrap;
-}
-
 .account-order-fulfillment {
     display: grid;
     min-width: 0;
-    grid-column: 1 / -1;
-    gap: 0.85rem;
-    border-block-start: 1px solid var(--arabut-line);
-    padding-block-start: 1rem;
-}
-
-.account-order-fulfillment h4 {
-    margin: 0;
-    color: var(--arabut-ink);
-    font-size: 1rem;
-    font-weight: 800;
-}
-
-.account-order-fulfillment__summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
-    margin: 0;
-    gap: 0.75rem 1rem;
-}
-
-.account-order-fulfillment__summary > div {
-    min-width: 0;
-}
-
-.account-order-fulfillment__summary dt {
-    color: var(--arabut-muted);
-    font-size: 0.78rem;
-}
-
-.account-order-fulfillment__summary dd {
-    margin: 0.25rem 0 0;
-    overflow-wrap: anywhere;
-    color: var(--arabut-ink);
-    font-weight: 750;
+    gap: 0.6rem;
 }
 
 .account-order-fulfillment__toggle {
@@ -7514,41 +7291,34 @@ html.admin-document {
     object-fit: contain;
 }
 
-.account-live-order__payment {
-    border: 1px solid rgb(212 168 67 / 24%);
-    border-radius: 0.9rem;
-    background: rgb(212 168 67 / 7%);
-    padding: 1rem;
-}
-
-.account-live-order__payment button {
-    width: 100%;
-    border-color: var(--arabut-gold);
-    background: var(--arabut-gold);
-    color: var(--arabut-navy-deep);
-}
-
-.account-live-order__payment p {
-    margin: 0.7rem 0 0;
-    color: var(--arabut-danger);
-}
-
-/* The invoice a customer keeps: what was bought, and what was paid. */
+/* The order page: one invoice card, a three-step track for paid orders, and
+   for an unpaid order a single pinned "complete payment" action with a
+   secondary cancel (owner decisions, 2026-09-10). */
 .account-invoice {
     display: grid;
-    gap: 1.15rem;
+    gap: 1rem;
     border: 1px solid var(--arabut-line);
     border-radius: 1rem;
     background: rgb(28 24 20 / 68%);
     padding: clamp(1rem, 4vw, 1.5rem);
 }
 
+/* An unpaid order is a payment request, not an invoice: it borrows the
+   action-needed gold language the pay button uses. */
+.account-invoice--request {
+    border-color: rgb(212 168 67 / 30%);
+    background: rgb(212 168 67 / 7%);
+}
+
 .account-invoice__head {
     display: flex;
-    flex-wrap: wrap;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 0.9rem 1.5rem;
+    gap: 0.75rem 1rem;
+}
+
+.account-invoice__brand {
+    min-width: 0;
 }
 
 .account-invoice__brand > p {
@@ -7566,72 +7336,139 @@ html.admin-document {
 .account-invoice__brand h2 {
     margin: 0;
     color: var(--arabut-ink);
-    font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
-    font-size: clamp(1.45rem, 3.5vw, 1.9rem);
-    font-weight: 700;
+    font-size: clamp(1.3rem, 3.2vw, 1.6rem);
+    font-weight: 800;
     line-height: 1.2;
 }
 
-.account-invoice__freelance {
-    display: inline-flex;
-    margin-block-start: 0.5rem;
-    align-items: center;
-    gap: 0.4rem;
-    color: var(--arabut-muted);
-    font-size: 0.85rem;
-}
-
-.account-invoice__meta {
-    display: grid;
-    flex: 0 0 auto;
-    gap: 0.5rem;
-    margin: 0;
-    text-align: end;
-}
-
-.account-invoice__meta dt {
-    color: var(--arabut-muted);
-    font-size: 0.78rem;
-}
-
-.account-invoice__meta dd {
-    margin: 0;
-    color: var(--arabut-ink);
-    font-variant-numeric: tabular-nums;
-    font-weight: 700;
+.account-invoice__brand h2 bdi {
+    direction: ltr;
+    unicode-bidi: isolate;
     overflow-wrap: anywhere;
 }
 
-.account-invoice__items {
-    display: grid;
+.account-invoice__meta {
+    display: block;
+    margin-block-start: 0.35rem;
+    color: var(--arabut-muted);
+    font-size: 0.82rem;
+    line-height: 1.6;
+}
+
+.account-invoice__meta bdi {
+    white-space: nowrap;
+}
+
+.account-invoice__mark {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 0.4rem;
     margin: 0;
-    gap: 0.85rem;
+    border: 1px solid rgb(212 168 67 / 35%);
+    border-radius: 999px;
+    background: rgb(212 168 67 / 14%);
+    padding: 0.35rem 0.7rem;
+    color: var(--arabut-gold-bright);
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.account-invoice__mark > span {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: currentColor;
+}
+
+.account-invoice__mark:is([data-status='cancelled'], [data-status='refunded']) {
+    border-color: rgb(255 180 169 / 30%);
+    background: rgb(255 180 169 / 10%);
+    color: var(--arabut-danger);
+}
+
+/* Received, in progress, completed: gold fills the steps the order passed. */
+.account-order-track {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.4rem;
+    margin: 0;
     padding: 0;
     list-style: none;
 }
 
-.account-invoice__items li {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+.account-order-track li {
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.8rem;
+    gap: 0.4rem;
+    color: var(--arabut-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-align: center;
 }
 
-.account-invoice__items li + li {
+.account-order-track li > span {
+    display: block;
+    width: 100%;
+    height: 0.25rem;
+    border-radius: 999px;
+    background: rgb(212 168 67 / 16%);
+}
+
+.account-order-track li[data-state='done'] {
+    color: var(--arabut-ink);
+}
+
+.account-order-track li[data-state='done'] > span {
+    background: var(--arabut-gold);
+}
+
+.account-order-track li[data-state='now'] {
+    color: var(--arabut-gold-bright);
+}
+
+.account-order-track li[data-state='now'] > span {
+    background: linear-gradient(
+        to var(--account-track-end, left),
+        var(--arabut-gold) 60%,
+        rgb(212 168 67 / 16%) 60%
+    );
+}
+
+[dir='ltr'] .account-order-track li[data-state='now'] > span {
+    --account-track-end: right;
+}
+
+.account-invoice__items {
+    display: grid;
+    gap: 0.85rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.account-invoice__item {
+    display: grid;
+    grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.5rem 0.8rem;
+}
+
+.account-invoice__item + .account-invoice__item {
     border-block-start: 1px solid var(--arabut-line);
     padding-block-start: 0.85rem;
 }
 
-.account-invoice__items img,
-.account-invoice__item-image {
-    width: 2.75rem;
-    height: 2.75rem;
+.account-invoice__item > img {
+    width: 3.5rem;
+    height: 3.5rem;
+    border: 1px solid var(--arabut-line);
+    border-radius: 0.75rem;
+    background: var(--arabut-navy-raised);
+    padding: 0.25rem;
     object-fit: contain;
-}
-
-.account-invoice__item-image {
-    border-radius: 0.5rem;
-    background: rgb(212 168 67 / 6%);
 }
 
 .account-invoice__item-main {
@@ -7640,31 +7477,90 @@ html.admin-document {
 
 .account-invoice__item-main h3 {
     margin: 0;
-    overflow-wrap: anywhere;
     color: var(--arabut-ink);
-    font-size: 1rem;
+    font-size: 0.95rem;
+    font-weight: 800;
+    line-height: 1.35;
 }
 
-.account-invoice__item-main span,
-.account-invoice__item-main small {
+.account-invoice__item-main span {
     display: block;
-    margin-block-start: 0.2rem;
+    margin-block-start: 0.15rem;
     color: var(--arabut-muted);
-    font-size: 0.78rem;
+    font-size: 0.82rem;
 }
 
 .account-invoice__item-total {
     color: var(--arabut-ink);
-    font-variant-numeric: tabular-nums;
+    font-size: 0.95rem;
     white-space: nowrap;
+}
+
+.account-invoice__item-more {
+    display: inline-flex;
+    grid-column: 2 / -1;
+    width: fit-content;
+    min-height: 2.25rem;
+    align-items: center;
+    gap: 0.3rem;
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--arabut-gold-bright);
+    font-size: 0.82rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.account-invoice__item-more svg {
+    width: 1rem;
+    height: 1rem;
+    transition: transform 150ms ease;
+}
+
+.account-invoice__item-more[aria-expanded='true'] svg {
+    transform: rotate(180deg);
+}
+
+.account-invoice__item-details {
+    display: grid;
+    grid-column: 1 / -1;
+    gap: 0.75rem;
+    border: 1px solid var(--arabut-line);
+    border-radius: 0.75rem;
+    background: rgb(28 24 20 / 60%);
+    padding: 0.75rem;
+}
+
+.account-order-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem 0.75rem;
+    margin: 0;
+}
+
+.account-order-facts > div {
+    min-width: 0;
+}
+
+.account-order-facts dt {
+    color: var(--arabut-muted);
+    font-size: 0.75rem;
+}
+
+.account-order-facts dd {
+    margin: 0.1rem 0 0;
+    color: var(--arabut-ink);
+    font-size: 0.88rem;
+    font-weight: 800;
 }
 
 .account-invoice__totals {
     display: grid;
-    gap: 0.55rem;
+    gap: 0.5rem;
     margin: 0;
     border-block-start: 1px solid var(--arabut-line);
-    padding-block-start: 0.95rem;
+    padding-block-start: 0.85rem;
 }
 
 .account-invoice__totals > div {
@@ -7682,16 +7578,22 @@ html.admin-document {
 .account-invoice__totals dd {
     margin: 0;
     color: var(--arabut-ink);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
+    font-size: 0.88rem;
+    font-weight: 700;
 }
 
 .account-invoice__deduction {
     color: #8ce3ad;
 }
 
+.account-invoice__grand {
+    border-block-start: 1px solid var(--arabut-line);
+    padding-block-start: 0.6rem;
+}
+
 .account-invoice__grand dt {
     color: var(--arabut-ink);
+    font-size: 1rem;
     font-weight: 800;
 }
 
@@ -7704,133 +7606,126 @@ html.admin-document {
 .account-invoice__method {
     margin: 0;
     color: var(--arabut-muted);
-    font-size: 0.85rem;
+    font-size: 0.82rem;
 }
 
-.account-invoice__method bdi {
-    font-variant-numeric: tabular-nums;
-}
-
-/* An unpaid order is a payment request, not an invoice: it borrows the
-   action-needed gold language the pay-now panel already uses. */
-.account-invoice--request {
-    border-color: rgb(212 168 67 / 30%);
-    background: rgb(212 168 67 / 7%);
-}
-
-.account-invoice__head > h2 {
+.account-live-order__flash {
     margin: 0;
+    border: 1px solid rgb(140 227 173 / 30%);
+    border-radius: 0.9rem;
+    background: rgb(140 227 173 / 8%);
+    padding: 0.75rem 0.9rem;
     color: var(--arabut-ink);
-    font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
-    font-size: clamp(1.3rem, 3.2vw, 1.7rem);
-    font-weight: 700;
-    line-height: 1.2;
+    font-size: 0.9rem;
+    line-height: 1.6;
 }
 
-.account-invoice__mark {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    margin: 0;
-    color: var(--arabut-muted);
-    font-size: 0.85rem;
-    font-weight: 700;
-    white-space: nowrap;
+.account-live-order__flash--error {
+    border-color: rgb(255 180 169 / 30%);
+    background: rgb(255 180 169 / 8%);
 }
 
-.account-invoice__mark > span {
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 999px;
-    background: var(--arabut-muted);
+.account-live-order__actions {
+    display: grid;
+    gap: 0.5rem;
 }
 
-.account-invoice__mark:is([data-status='cancelled'], [data-status='refunded']) {
-    color: var(--arabut-danger);
-}
-
-.account-invoice__mark:is([data-status='cancelled'], [data-status='refunded'])
-    > span {
-    background: var(--arabut-danger);
-}
-
-.account-invoice__pay {
+.account-live-order__pay,
+.account-live-order__cancel {
     display: inline-flex;
     width: 100%;
-    min-height: 2.75rem;
+    min-height: 3rem;
     align-items: center;
     justify-content: center;
     border: 1px solid var(--arabut-gold);
-    border-radius: 0.7rem;
-    background: var(--arabut-gold);
+    border-radius: 0.75rem;
+    background: linear-gradient(
+        180deg,
+        var(--arabut-gold-bright),
+        var(--arabut-gold)
+    );
     padding: 0.6rem 0.9rem;
     color: var(--arabut-navy-deep);
+    font-size: 1rem;
     font-weight: 800;
     cursor: pointer;
 }
 
-.account-invoice__pay:disabled {
+.account-live-order__cancel {
+    border-color: rgb(212 168 67 / 24%);
+    background: var(--arabut-navy-raised);
+    color: var(--arabut-muted);
+}
+
+.account-live-order__cancel--confirm {
+    border-color: rgb(255 180 169 / 40%);
+    color: var(--arabut-danger);
+}
+
+.account-live-order__pay:disabled,
+.account-live-order__cancel:disabled {
     cursor: wait;
     opacity: 0.65;
 }
 
-@keyframes account-spin {
-    to {
-        transform: rotate(1turn);
-    }
+.account-live-order__confirm {
+    display: grid;
+    gap: 0.6rem;
+    border: 1px solid rgb(255 180 169 / 30%);
+    border-radius: 0.9rem;
+    background: rgb(28 24 20 / 90%);
+    padding: 0.85rem;
+}
+
+.account-live-order__confirm p {
+    margin: 0;
+    color: var(--arabut-ink);
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.account-live-order__confirm > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.account-live-order__actions > p[role='alert'] {
+    margin: 0;
+    color: var(--arabut-danger);
+    font-size: 0.88rem;
 }
 
 @media (max-width: 34rem) {
-    .account-live-order__header,
-    .account-live-order__statusbar {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .account-live-order__total {
-        text-align: start;
-    }
-
-    .account-live-order__statusbar button {
-        width: 100%;
-    }
-
-    .account-live-order__items li {
-        grid-template-columns: auto minmax(0, 1fr);
-    }
-
-    .account-live-order__item-total {
-        grid-column: 2;
-        text-align: start;
-    }
-
-    .account-invoice__head {
-        flex-direction: column;
-    }
-
-    .account-invoice__meta {
-        text-align: start;
-    }
-
-    .account-invoice__items li {
-        grid-template-columns: auto minmax(0, 1fr);
-    }
-
-    .account-invoice__item-total {
-        grid-column: 2;
-        text-align: start;
-    }
-
     .account-order-fulfillment__credentials {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* The pay action stays under the thumb, above the bottom navigation and
+       clear of the chat button on the other side. */
+    .account-live-order--pending {
+        padding-block-end: 7.5rem;
+    }
+
+    .account-live-order__actions {
+        position: fixed;
+        inset-inline: 16px;
+        bottom: calc(100px + env(safe-area-inset-bottom));
+        z-index: 55;
+        border: 1px solid rgb(212 168 67 / 18%);
+        border-radius: 1rem;
+        background: rgb(20 17 14 / 88%);
+        -webkit-backdrop-filter: blur(18px);
+        backdrop-filter: blur(18px);
+        padding: 0.6rem;
+        /* The chat launcher is fixed to the physical right in both
+           directions, so the gap is a physical one too. */
+        padding-right: 4.6rem;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .account-live-order__statusbar svg.is-spinning {
-        animation: none;
-    }
-
+    .account-invoice__item-more svg,
     .account-order-fulfillment__toggle > svg {
         transition: none;
     }

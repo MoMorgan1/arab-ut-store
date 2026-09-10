@@ -11,7 +11,6 @@ use App\Models\OrderStatusHistory;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductMedia;
-use App\Models\ProductVariant;
 use App\Models\Review;
 use App\Models\User;
 use App\Payments\PaymentMethodLabel;
@@ -22,6 +21,15 @@ use Illuminate\Support\Facades\Storage;
 
 final class ReadLiveOrder
 {
+    /** The storefront artwork per service, the same files the home page cards use. */
+    private const SERVICE_ARTWORK = [
+        'coins' => '/images/store/coins/ut-coin-80.webp',
+        'sbc' => '/images/store/services/sbc.webp',
+        'objectives' => '/images/store/services/objectives.webp',
+        'rivals' => '/images/store/services/rivals.webp',
+        'fut_champions' => '/images/store/services/fut-champions.webp',
+    ];
+
     /** @return array<string, mixed> */
     public function for(User $user, string $publicId, string $locale): array
     {
@@ -123,6 +131,13 @@ final class ReadLiveOrder
                         ? 'localized.store.orders.paylink-payment'
                         : 'store.orders.paylink-payment',
                     [...($locale === 'en' ? ['locale' => 'en'] : []), 'order' => $publicId],
+                    absolute: false,
+                )
+                : null,
+            'cancelUrl' => $order->status === OrderStatus::PendingPayment
+                ? route(
+                    $locale === 'en' ? 'localized.account.orders.cancel' : 'account.orders.cancel',
+                    ['order' => $publicId],
                     absolute: false,
                 )
                 : null,
@@ -271,27 +286,20 @@ final class ReadLiveOrder
      *
      * Coin items have no media row; they use the same storefront coin asset.
      * Everything else reads the product's first media entry through the same
-     * path checks the cart applies before a URL leaves the server.
+     * path checks the cart applies before a URL leaves the server, and falls
+     * back to the storefront artwork for the service so a manual service
+     * (which has no product media) never renders as an empty box.
      */
-    private function itemImageUrl(OrderItem $item): ?string
+    private function itemImageUrl(OrderItem $item): string
     {
         if ($item->service_type === ServiceType::Coins) {
             return '/images/store/coins/ut-coin-80.webp';
         }
 
-        $variant = $item->productVariant;
+        $product = $item->productVariant?->product;
+        $media = $product instanceof Product ? $this->safeImageUrl($product->media->first()) : null;
 
-        if (! $variant instanceof ProductVariant) {
-            return null;
-        }
-
-        $product = $variant->product;
-
-        if (! $product instanceof Product) {
-            return null;
-        }
-
-        return $this->safeImageUrl($product->media->first());
+        return $media ?? self::SERVICE_ARTWORK[$item->service_type->value];
     }
 
     private function safeImageUrl(?ProductMedia $media): ?string

@@ -167,7 +167,11 @@ test('live order detail exposes current safe item progress and payment recovery 
             ->where('order.discount', ['amountMinor' => '500', 'currency' => 'SAR'])
             ->where('order.refreshable', true)
             ->where('order.paymentStartUrl', '/en/orders/'.$order->public_id.'/payments/paylink')
+            ->where('order.cancelUrl', '/en/my-account/orders/'.$order->public_id.'/cancel')
             ->has('order.items', 1)
+            // An SBC line without product media shows the storefront SBC artwork,
+            // never an empty box.
+            ->where('order.items.0.imageUrl', '/images/store/services/sbc.webp')
             ->where('order.items.0.credentialsPresent', true)
             ->where('order.items.0.name', 'Service 7')
             ->missing('order.items.0.configuration')
@@ -195,7 +199,8 @@ test('terminal live orders cannot expose operational refresh or payment actions'
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('order.refreshable', false)
-            ->where('order.paymentStartUrl', null));
+            ->where('order.paymentStartUrl', null)
+            ->where('order.cancelUrl', null));
 });
 
 test('legacy direct order URLs redirect their owner to the canonical locale', function (): void {

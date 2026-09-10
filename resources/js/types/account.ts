@@ -183,9 +183,22 @@ export type AccountTranslations = {
         steam_password: string;
         ea_codes: string;
         playstation_codes: string;
-        refresh_status: string;
+        details: string;
+        hide_details: string;
+        track_received: string;
+        track_in_progress: string;
+        track_completed: string;
+        cancel_order: string;
+        cancel_confirm: string;
+        cancel_yes: string;
+        cancel_no: string;
+        cancelling: string;
+        cancel_refused: string;
+        cancelled_notice: string;
+        paylink_unavailable: string;
+        team_note_title: string;
+        closed_title: string;
         refreshing: string;
-        status_note_title: string;
         back: string;
         copy: string;
         copied: string;
@@ -442,6 +455,8 @@ export type AccountOrdersPageProps = AccountPageShellProps & {
 };
 
 export type AccountLiveOrderPageProps = AccountPageShellProps & {
+    /** The session flash after a cancel attempt, if any. */
+    status?: string | null;
     order: {
         id: string;
         number: string;
@@ -467,6 +482,7 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
             }>;
         } | null;
         paymentStartUrl: string | null;
+        cancelUrl: string | null;
         review: {
             url: string;
             submitted: {
@@ -480,7 +496,7 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
             id: string;
             name: string;
             platform: 'playstation' | 'xbox' | 'pc';
-            imageUrl: string | null;
+            imageUrl: string;
             status: AccountOrderStatus;
             quantity: number;
             total: AccountMoney;

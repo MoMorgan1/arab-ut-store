@@ -10,6 +10,7 @@ return [
         'refund_split' => 'The order was cancelled: :card SAR was returned to your payment method and :wallet SAR went back to your wallet. Banks can take up to 14 business days to show the card amount.',
         'checkout_expired' => 'The payment window closed, so the order was cancelled automatically. You were not charged, and any balance you used went back to your wallet.',
         'payment_cancelled' => 'The payment was cancelled, so the order was too. You were not charged, and any balance you used went back to your wallet.',
+        'customer_cancelled' => 'You cancelled the order before paying. You were not charged, and any balance you used went back to your wallet.',
     ],
     // Shown to the customer on the order page when an order stops.
     // The admin picks one of these when moving an order to "waiting for customer";

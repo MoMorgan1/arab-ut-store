@@ -322,8 +322,25 @@ function loyaltyProps(): AccountLoyaltyPageProps {
                 steam_password: 'Steam password',
                 ea_codes: 'EA backup codes',
                 playstation_codes: 'PlayStation backup codes',
-                refresh_status: 'Refresh status',
-                status_note_title: 'Status details',
+                details: 'Details',
+                hide_details: 'Hide details',
+                track_received: 'Received',
+                track_in_progress: 'In progress',
+                track_completed: 'Completed',
+                cancel_order: 'Cancel order',
+                cancel_confirm:
+                    'Cancel this order? Your wallet balance and coupon come back right away.',
+                cancel_yes: 'Yes, cancel it',
+                cancel_no: 'Keep it',
+                cancelling: 'Cancelling…',
+                cancel_refused:
+                    'The order could not be cancelled: it was paid or already closed.',
+                cancelled_notice:
+                    'The order was cancelled and any balance you used is back in your wallet.',
+                paylink_unavailable:
+                    'The payment gateway cannot be reached right now. Try again in a moment.',
+                team_note_title: 'A note from the team',
+                closed_title: 'Order closed',
                 refreshing: 'Refreshing…',
                 back: 'Back to Orders',
                 copy: 'Copy',

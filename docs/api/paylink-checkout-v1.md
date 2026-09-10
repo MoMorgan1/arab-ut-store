@@ -9,6 +9,7 @@ Status: implemented; production remains fail-closed until the Hostinger environm
 3. `POST /checkout/paylink` (or `/en/checkout/paylink`) snapshots the cart, its current authoritative prices, and the encrypted item credentials into one immutable pending order.
 4. The server creates a Paylink hosted invoice and returns only an HTTPS `payment.paylink.sa` URL. Arab UT never receives card number, CVV, or cardholder-authentication data.
 5. If Paylink is unavailable after the order is placed, the owner can resume that same pending payment from the order page; no second order or browser-stored credential is required.
+   The owner can also cancel the unpaid order from that page (`POST /my-account/orders/{publicId}/cancel`), which asks Paylink `getInvoice` first (a paid invoice makes the order `received` instead), then closes the Paylink invoice at the gateway and only after that cancels locally and releases the wallet balance and coupon. If Paylink cannot be reached or refuses to close the invoice, nothing changes. An order still unpaid three hours after placement is handled the same way by the hourly `checkouts:expire-abandoned` job (owner decision, 2026-09-10). Starting a payment re-checks under the row lock that the order is still pending; an invoice raised for an order cancelled meanwhile is closed again and never attached.
 6. The browser returns through `/payments/paylink/callback`. The callback is not payment proof: the server calls Paylink `getInvoice` and verifies transaction, order number, amount, currency, and status before accepting payment.
 7. Paylink may also call `POST /api/payments/paylink/webhook`. That route authenticates the configured bearer token, then performs the same server-to-server invoice verification.
 8. The first verified paid transition creates one secret-free `order.paid` outbox event for n8n. Duplicate callbacks and webhooks do not create a second event.
@@ -26,6 +27,7 @@ The checkout total and Paylink invoice are always SAR integer halalah. Display c
 | GET | `/payments/paylink/callback` | authenticated | Reconcile a returned Paylink transaction and show the order |
 | GET | `/payments/paylink/cancel` | authenticated | Reconcile cancellation/pending state and show the order |
 | GET | `/orders/{publicId}` | owner only | Safe order result; no EA credentials are rendered |
+| POST | `/my-account/orders/{publicId}/cancel` | pending-order owner | Cancel an unpaid order, release wallet and coupon, close the invoice |
 | POST | `/api/payments/paylink/webhook` | Paylink bearer token | Acknowledge only after authoritative invoice lookup |
 | POST | `/admin/api/orders/{publicId}/refund` | admin (`can:orders.refund`) | One full original-method Paylink refund |
 
