@@ -3,26 +3,18 @@
     "lanes": {
         "feature": {
             "implementer": "opencode",
-            "model": "deepseek/deepseek-flash"
+            "model": "deepseek/deepseek-flash",
+            "variant": "high"
         },
         "review": {
             "implementer": "opencode",
             "model": "deepseek/deepseek-flash",
+            "variant": "max",
             "readOnly": true
         },
         "fallback": {
             "implementer": "agy",
             "model": "gemini-3.8-flash-high"
-        },
-        "fast": {
-            "implementer": "codex",
-            "model": "gpt-5.6-luna",
-            "effort": "xhigh"
-        },
-        "tests": {
-            "implementer": "codex",
-            "model": "gpt-5.6-luna",
-            "effort": "max"
         }
     }
 }
