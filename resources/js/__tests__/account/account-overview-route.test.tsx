@@ -33,6 +33,9 @@ const mockPage = vi.hoisted(() => ({
                 open_orders_metric: 'قيد التنفيذ',
                 completed_orders_metric: 'مكتملة',
                 wallet_metric: 'رصيد المحفظة',
+                wallet_tier: 'فئة الولاء: :tier',
+                open_of_total: 'من :count طلبات',
+                no_orders_yet: 'لا طلبات بعد',
                 active_order: 'طلب يحتاج متابعتك',
                 recent_orders: 'أحدث الطلبات',
                 loyalty: 'تقدم الولاء',
@@ -261,7 +264,10 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
     ).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('button', { name: 'تسجيل الخروج' })).toBeVisible();
     expect(screen.getByTitle('UT-10000001')).toBeVisible();
-    expect(screen.getByText('خدمة كوينز FC 27')).toBeVisible();
+    // The active order is the same card as the list: its lines open on demand.
+    const active = screen.getByRole('region', { name: 'طلب يحتاج متابعتك' });
+    fireEvent.click(within(active).getByRole('button', { name: 'التفاصيل' }));
+    expect(within(active).getByText('خدمة كوينز FC 27')).toBeVisible();
     expect(screen.getAllByText('رصيد المحفظة')[0]).toBeVisible();
     expect(screen.getByText('تقدم الولاء')).toBeVisible();
     expect(
@@ -274,7 +280,13 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
 
     const metricsDl = container.querySelector('dl.account-overview__metrics');
     expect(metricsDl).not.toBeNull();
-    expect(metricsDl?.querySelectorAll('dt')).toHaveLength(4);
+    // Two numbers lead the page: wallet and open orders, each opening its page.
+    expect(metricsDl?.querySelectorAll('dt')).toHaveLength(2);
+    expect(
+        within(metricsDl as HTMLElement).getByRole('link', {
+            name: /رصيد المحفظة/,
+        }),
+    ).toHaveAttribute('href', '/my-account/wallet');
 
     const activeOrderHeading = screen.getByRole('heading', {
         level: 2,

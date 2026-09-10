@@ -8,7 +8,6 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-import AccountOrderCard from '@/components/account/account-order-card';
 import AccountOrderList from '@/components/account/account-order-list';
 import AccountOrderRow from '@/components/account/account-order-row';
 import AccountLiveOrder, {
@@ -134,28 +133,6 @@ it('renders attention styling and provide_details action for waiting_for_custome
     expect(row).not.toBeNull();
     expect(row).toHaveClass('account-order-row--attention');
     expect(screen.getByRole('link', { name: 'Provide details' })).toBeVisible();
-});
-
-it('renders prominent active order card', () => {
-    const sampleOrder = order(
-        '01PROMINENT',
-        'UT-00000099',
-        'waiting_for_customer',
-    ) as unknown as AccountOrder;
-    const shell = shellProps();
-
-    const { container } = render(
-        <AccountOrderCard
-            locale="en"
-            order={sampleOrder}
-            translations={shell.accountUi as unknown as AccountTranslations}
-        />,
-    );
-
-    const prominentCard = container.querySelector('.account-order-card');
-    expect(prominentCard).not.toBeNull();
-    expect(prominentCard).toHaveClass('account-order-card--prominent');
-    expect(screen.getByTitle('UT-00000099')).toBeVisible();
 });
 
 it('refreshes only current safe order data on its own and keeps credentials opaque', () => {
@@ -701,15 +678,15 @@ it('opens the search in place of the filters and closes it when cleared', () => 
     ).toBeVisible();
 });
 
-it('renders paid from wallet on order cards and the live order page, not on list rows', () => {
+it('renders paid from wallet on the live order page, not on list rows', () => {
     const orderWithWallet: AccountOrder = {
         ...order('01ORDER_WALLET', 'UT-00000002', 'completed'),
         walletPayment: { amountMinor: '5000', currency: 'SAR' },
     };
     const shell = shellProps();
 
-    // The list card keeps to number, date and count; the wallet split is
-    // stated on the order page and the overview card.
+    // The list card keeps to number, age and count; the wallet split is
+    // stated on the order page.
     const { container: rowContainer } = render(
         <AccountOrderRow
             locale="en"
@@ -720,17 +697,6 @@ it('renders paid from wallet on order cards and the live order page, not on list
     expect(
         rowContainer.querySelector('.account-order-row__wallet-paid'),
     ).toBeNull();
-
-    const { container: cardContainer } = render(
-        <AccountOrderCard
-            locale="en"
-            order={orderWithWallet}
-            translations={shell.accountUi as AccountTranslations}
-        />,
-    );
-    expect(
-        cardContainer.querySelector('.account-order-card__wallet-paid'),
-    ).toHaveTextContent('Paid from wallet SAR 50.00');
 
     page.props = {
         ...shell,
