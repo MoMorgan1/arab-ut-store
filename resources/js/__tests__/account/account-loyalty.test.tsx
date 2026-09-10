@@ -285,6 +285,8 @@ function loyaltyProps(): AccountLoyaltyPageProps {
                 item_quantity: 'Quantity: :count',
                 item_count: ':count items',
                 open_search: 'Search',
+                show_all_items: 'Show all (:count)',
+                show_fewer_items: 'Show fewer',
                 close_search: 'Close search',
                 credentials_ready: 'Fulfilment details stored securely',
                 manual_details: 'Manual service details',

@@ -19,6 +19,7 @@ final class LiveOrderCard
      *     summary: string,
      *     itemCount: int,
      *     images: list<string>,
+     *     items: list<array{name: string}>,
      *     total: array{amountMinor: string, currency: string},
      *     walletPayment: array{amountMinor: string, currency: string}|null,
      *     detailUrl: string
@@ -41,6 +42,7 @@ final class LiveOrderCard
             'summary' => $this->summary($firstItem, $itemCount, $locale),
             'itemCount' => $itemCount,
             'images' => $this->images($items),
+            'items' => $this->itemNames($items, $locale),
             'total' => AccountMoney::fromMinor(
                 (int) $order->getAttribute('total_halalah'),
                 (string) $order->getAttribute('currency'),
@@ -83,6 +85,21 @@ final class LiveOrderCard
         }
 
         return $images;
+    }
+
+    /**
+     * @param  Collection<int, OrderItem>  $items
+     * @return list<array{name: string}>
+     */
+    private function itemNames(Collection $items, string $locale): array
+    {
+        $names = [];
+
+        foreach ($items as $item) {
+            $names[] = ['name' => (string) $item->getAttribute($locale === 'en' ? 'name_en' : 'name_ar')];
+        }
+
+        return $names;
     }
 
     private function summary(?OrderItem $firstItem, int $itemCount, string $locale): string

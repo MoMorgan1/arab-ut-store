@@ -78,6 +78,8 @@ return [
         'item_quantity' => 'الكمية: :count',
         'item_count' => ':count منتجات',
         'open_search' => 'بحث',
+        'show_all_items' => 'عرض الكل (:count)',
+        'show_fewer_items' => 'عرض أقل',
         'close_search' => 'إغلاق البحث',
         'credentials_ready' => 'بيانات التنفيذ محفوظة بأمان',
         'manual_details' => 'تفاصيل الخدمة اليدوية',

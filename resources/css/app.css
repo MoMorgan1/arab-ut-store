@@ -7080,6 +7080,9 @@ html.admin-document {
 
 .account-order-list {
     display: grid;
+    /* An explicit fluid track: an implicit `auto` track would take the
+       cards' min-content width and push the page past the viewport. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.6rem;
     margin: 0;
     padding: 0;
@@ -7088,6 +7091,7 @@ html.admin-document {
 
 .account-order-row {
     display: grid;
+    min-width: 0;
     grid-template-columns: 3rem minmax(0, 1fr) auto;
     align-items: center;
     gap: 0.6rem 0.75rem;
@@ -7192,6 +7196,44 @@ html.admin-document {
     color: var(--arabut-muted);
     font-size: 0.76rem;
     line-height: 1.4;
+}
+
+.account-order-row__items {
+    display: grid;
+    gap: 0.15rem;
+    margin: 0.4rem 0 0;
+    padding: 0;
+    list-style: none;
+    color: var(--arabut-ink);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.account-order-row__items li {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.account-order-row__items li::before {
+    margin-inline-end: 0.35rem;
+    color: var(--arabut-gold);
+    content: '·';
+}
+
+.account-order-row__more {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    min-height: 2rem;
+    align-items: center;
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--arabut-gold-bright);
+    font-size: 0.78rem;
+    font-weight: 800;
+    cursor: pointer;
 }
 
 .account-order-row__side {

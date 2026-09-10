@@ -619,6 +619,11 @@ it('stacks two artworks and counts the items when an order mixes services', () =
             '/images/store/services/fut-champions.webp',
             '/images/store/coins/ut-coin-80.webp',
         ],
+        items: [
+            { name: 'FUT Champions service' },
+            { name: 'FC 27 Coins' },
+            { name: 'SBC weekly challenge' },
+        ],
         action: { type: 'pay_now' },
     };
     const shell = shellProps();
@@ -636,6 +641,20 @@ it('stacks two artworks and counts the items when an order mixes services', () =
     expect(art?.querySelectorAll('img')).toHaveLength(2);
     expect(art).toHaveTextContent('3');
     expect(screen.getByText(/3 items/)).toBeVisible();
+    // The first line is the title; two lines show, the third waits behind
+    // "show all" and opens in place.
+    expect(
+        screen.getByRole('heading', {
+            level: 3,
+            name: 'FUT Champions service',
+        }),
+    ).toBeVisible();
+    expect(screen.getByText('FC 27 Coins')).toBeVisible();
+    expect(screen.queryByText('SBC weekly challenge')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show all (3)' }));
+    expect(screen.getByText('SBC weekly challenge')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Show fewer' }));
+    expect(screen.queryByText('SBC weekly challenge')).not.toBeInTheDocument();
     // An unpaid order carries the one thing to do next, inside the card.
     expect(
         screen.getByRole('link', { name: 'Complete payment' }),
@@ -735,6 +754,7 @@ function order(id: string, number: string, status: string): AccountOrder {
         summary: 'FC 27 Coins service',
         itemCount: 1,
         images: ['/images/store/coins/ut-coin-80.webp'],
+        items: [{ name: 'FC 27 Coins service' }],
         total: { amountMinor: '12999', currency: 'SAR' },
         detailUrl: `/en/my-account/orders/${id}`,
     };
@@ -846,6 +866,8 @@ function shellProps() {
                 item_quantity: 'Quantity: :count',
                 item_count: ':count items',
                 open_search: 'Search',
+                show_all_items: 'Show all (:count)',
+                show_fewer_items: 'Show fewer',
                 close_search: 'Close search',
                 credentials_ready: 'Fulfilment details stored securely',
                 manual_details: 'Manual service details',

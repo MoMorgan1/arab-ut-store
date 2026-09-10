@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { useState } from 'react';
 
 import { formatAccountMoney } from '@/lib/account-money';
 import { formatOrderDate, formatOrderNumber } from '@/lib/account-order-format';
@@ -36,6 +37,12 @@ export default function AccountOrderRow({
     const displayNumber = formatOrderNumber(order.number);
     const statusLabel = translations.statuses[order.status];
     const images = order.images.slice(0, 2);
+    // A mixed order lists its first two lines under the title; the rest open
+    // in place, so the customer never has to leave the list to see what an
+    // order held (owner suggestion, 2026-09-10).
+    const [showAllItems, setShowAllItems] = useState(false);
+    const visibleItems = showAllItems ? order.items : order.items.slice(0, 2);
+    const hiddenCount = order.items.length - 2;
 
     return (
         <li
@@ -65,7 +72,7 @@ export default function AccountOrderRow({
                         className="account-order-row__title-link"
                         href={order.detailUrl}
                     >
-                        {order.summary}
+                        {order.items[0]?.name ?? order.summary}
                     </Link>
                 </h3>
                 <p className="account-order-row__meta">
@@ -88,6 +95,28 @@ export default function AccountOrderRow({
                         </>
                     ) : null}
                 </p>
+                {order.items.length > 1 ? (
+                    <ul className="account-order-row__items">
+                        {visibleItems.map((item, index) => (
+                            <li key={`${index}-${item.name}`}>{item.name}</li>
+                        ))}
+                    </ul>
+                ) : null}
+                {hiddenCount > 0 ? (
+                    <button
+                        aria-expanded={showAllItems}
+                        className="account-order-row__more"
+                        onClick={() => setShowAllItems((value) => !value)}
+                        type="button"
+                    >
+                        {showAllItems
+                            ? translations.orders.show_fewer_items
+                            : translations.orders.show_all_items.replace(
+                                  ':count',
+                                  formatInteger(order.items.length, locale),
+                              )}
+                    </button>
+                ) : null}
             </div>
             <div className="account-order-row__side">
                 <strong className="account-order-row__total">

@@ -42,6 +42,8 @@ export type AccountOrder = {
     itemCount: number;
     /** Up to two service artworks for the thumbnail stack. */
     images: string[];
+    /** Every line's name, in order; the card lists them under the title. */
+    items: Array<{ name: string }>;
     total: AccountMoney;
     walletPayment?: AccountMoney | null;
     detailUrl: string;
@@ -148,6 +150,8 @@ export type AccountTranslations = {
         item_quantity: string;
         item_count: string;
         open_search: string;
+        show_all_items: string;
+        show_fewer_items: string;
         close_search: string;
         credentials_ready: string;
         manual_details: string;
