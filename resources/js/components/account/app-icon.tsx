@@ -26,7 +26,14 @@ export type AppIconName =
     | 'shield'
     | 'user'
     | 'wallet'
-    | 'whatsapp';
+    | 'whatsapp'
+    /* Loyalty tiers, ascending. Each is a different object rather than the same
+       generic medal under a different name, so the row reads as a ladder at a
+       glance instead of four interchangeable awards. */
+    | 'tier-bronze'
+    | 'tier-silver'
+    | 'tier-gold'
+    | 'tier-diamond';
 
 type AppIconProps = Omit<SVGProps<SVGSVGElement>, 'name'> & {
     name: AppIconName;
@@ -149,6 +156,41 @@ export function AppIcon({ name, ...props }: AppIconProps) {
                     <path d="M6 12h.01" />
                     <path d="M12 12h.01" />
                     <path d="M18 12h.01" />
+                </svg>
+            );
+        /* Three stacked coins: the entry rung, and the only tier whose mark is
+           about accumulating rather than holding status. */
+        case 'tier-bronze':
+            return (
+                <svg {...stroked} strokeWidth={1.6} {...props}>
+                    <ellipse cx="12" cy="7.5" rx="6.5" ry="2.6" />
+                    <path d="M5.5 7.5v4c0 1.44 2.91 2.6 6.5 2.6s6.5-1.16 6.5-2.6v-4" />
+                    <path d="M5.5 11.5v4c0 1.44 2.91 2.6 6.5 2.6s6.5-1.16 6.5-2.6v-4" />
+                </svg>
+            );
+        /* A shield: standing, defended status. */
+        case 'tier-silver':
+            return (
+                <svg {...stroked} strokeWidth={1.6} {...props}>
+                    <path d="M12 3 5 6v5.4c0 4.2 2.9 7.5 7 9.1 4.1-1.6 7-4.9 7-9.1V6l-7-3Z" />
+                    <path d="m8.75 11.75 2.4 2.4 4.1-4.6" />
+                </svg>
+            );
+        /* A crown: the top of the ordinary ladder. */
+        case 'tier-gold':
+            return (
+                <svg {...stroked} strokeWidth={1.6} {...props}>
+                    <path d="M4 17.5h16" />
+                    <path d="M4.5 8.5 8 12l4-5.5 4 5.5 3.5-3.5-1.4 7H5.9L4.5 8.5Z" />
+                </svg>
+            );
+        /* A cut stone: a rank beyond the ladder, not a further step on it. */
+        case 'tier-diamond':
+            return (
+                <svg {...stroked} strokeWidth={1.6} {...props}>
+                    <path d="M7 3.5h10l4 5.5-9 11.5L3 9l4-5.5Z" />
+                    <path d="M3 9h18" />
+                    <path d="m9.5 3.5-1.5 5.5 4 11.5 4-11.5-1.5-5.5" />
                 </svg>
             );
     }

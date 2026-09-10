@@ -2,30 +2,47 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     ArrowRight,
-    Award,
-    Gem,
-    Medal,
     Percent,
     Trophy,
     WalletCards,
 } from 'lucide-react';
 
+import AppIcon from '@/components/account/app-icon';
+import type { AppIconName } from '@/components/account/app-icon';
 import WalletLedger from '@/components/account/wallet-ledger';
 import MyAccountLayout from '@/layouts/my-account-layout';
 import { formatAccountMoney } from '@/lib/account-money';
 import { cn } from '@/lib/utils';
 import type { AccountWalletPageProps } from '@/types/account';
 
-function getTierIcon(index: number, total: number) {
-    if (index === 0) {
-        return Medal;
+/**
+ * The tier ladder is drawn as an ascending set of marks rather than one generic
+ * award repeated: coins, then a shield, then a crown, then a cut stone. Read
+ * positionally, so it stays meaningful whether the programme runs three tiers or
+ * five, and it does not depend on the tier's name being a metal.
+ */
+const TIER_ICONS = [
+    'tier-bronze',
+    'tier-silver',
+    'tier-gold',
+    'tier-diamond',
+] as const satisfies readonly AppIconName[];
+
+function tierIconName(index: number, total: number): AppIconName {
+    if (index >= total - 1) {
+        return TIER_ICONS[TIER_ICONS.length - 1];
     }
 
-    if (index === total - 1) {
-        return Gem;
+    return TIER_ICONS[Math.min(index, TIER_ICONS.length - 2)] ?? 'tier-bronze';
+}
+
+/** Weight per rung, so the ladder is visible even in a single colour. */
+function tierOpacity(index: number, total: number): number {
+    if (total <= 1) {
+        return 1;
     }
 
-    return Award;
+    return 0.55 + (index / (total - 1)) * 0.45;
 }
 
 export default function AccountWallet() {
@@ -176,7 +193,7 @@ export default function AccountWallet() {
                             {loyalty.tiers.map((tier, index) => {
                                 const isCurrent =
                                     loyalty.currentTier?.key === tier.key;
-                                const TierIcon = getTierIcon(
+                                const iconName = tierIconName(
                                     index,
                                     loyalty.tiers.length,
                                 );
@@ -209,8 +226,14 @@ export default function AccountWallet() {
                                         <span
                                             aria-hidden="true"
                                             className="account-wallet-loyalty__chip-icon"
+                                            style={{
+                                                opacity: tierOpacity(
+                                                    index,
+                                                    loyalty.tiers.length,
+                                                ),
+                                            }}
                                         >
-                                            <TierIcon />
+                                            <AppIcon name={iconName} />
                                         </span>
                                         <strong className="account-wallet-loyalty__chip-name">
                                             {tier.name}
