@@ -271,20 +271,15 @@ export type AccountTranslations = {
     };
     profile: {
         title: string;
-        description: string;
-        personal_title: string;
-        contact_title: string;
-        sections: {
-            label: string;
-            personal: string;
-            contact: string;
-            security: string;
-        };
-        sections_long?: {
-            personal: string;
-            contact: string;
-            security: string;
-        };
+        personal_card_title: string;
+        contact_card_title: string;
+        name: string;
+        edit: string;
+        change: string;
+        verify: string;
+        verified: string;
+        unverified: string;
+        not_set: string;
         verify_phone_cta?: string;
         first_name: string;
         last_name: string;
@@ -307,7 +302,6 @@ export type AccountTranslations = {
         phone_resend_in: string;
         phone_resend: string;
         phone_change_number: string;
-        sensitive_hint: string;
         pending_email: string;
         pending_phone: string;
         email_link_invalid: string;
@@ -317,29 +311,23 @@ export type AccountTranslations = {
         email_taken?: string;
         email_attribute?: string;
         add_email_prompt_title?: string;
-        add_email_prompt_desc?: string;
         add_email_prompt_action?: string;
         add_email_prompt_dismiss?: string;
     };
     security: {
         title: string;
-        description: string;
+        card_title: string;
+        state_set: string;
+        state_missing: string;
+        forgot: string;
         current_password: string;
         new_password: string;
         confirm_password: string;
         change_password: string;
         set_password: string;
         password_changed: string;
-        social_login_notice: string;
         change_title: string;
         setup_title: string;
-        change_description: string;
-        setup_description: string;
-        recovery_title: string;
-        recovery_email: string;
-        recovery_whatsapp: string;
-        recovery_action: string;
-        reset_link_description: string;
         reset_link_button: string;
         reset_link_sent: string;
         reset_link_needs_email: string;
@@ -572,9 +560,12 @@ export type AccountProfilePageProps = AccountPageShellProps & {
     };
     security: {
         emailVerified: boolean;
+        hasPassword: boolean;
     };
     securityActions: {
         resetLinkUrl: string;
+        changeUrl: string;
+        setupUrl: string;
     };
     profileActions: {
         updateUrl: string;

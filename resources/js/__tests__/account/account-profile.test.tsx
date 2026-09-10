@@ -12,6 +12,9 @@ const inertia = vi.hoisted(() => ({
     post: vi.fn(),
 }));
 const excluded = vi.hoisted(() => [] as string[][]);
+const putSpy = vi.hoisted(() => vi.fn());
+const patchSpy = vi.hoisted(() => vi.fn());
+
 type FormOptions = {
     onError?: (errors: Record<string, string>) => void;
     onSuccess?: () => void;
@@ -33,7 +36,7 @@ vi.mock('@inertiajs/react', () => ({
             data: formData,
             dontRemember: (...fields: string[]) => excluded.push(fields),
             errors: {},
-            patch: vi.fn(),
+            patch: patchSpy,
             post: vi.fn((url: string, options?: FormOptions) => {
                 if (url.includes('/profile/email')) {
                     options?.onError?.({ email: 'Invalid email.' });
@@ -45,17 +48,19 @@ vi.mock('@inertiajs/react', () => ({
                     } else {
                         options?.onSuccess?.();
                     }
+                } else if (url.includes('/security/password-link')) {
+                    options?.onSuccess?.();
                 }
             }),
-            put: vi.fn(),
+            put: putSpy,
             processing: false,
             recentlySuccessful: false,
             reset: vi.fn(() => {
                 formData = { ...initial };
                 formStore.set(key, formData);
             }),
-            setData: vi.fn((key: string, value: string) => {
-                formData[key] = value;
+            setData: vi.fn((fieldKey: string, value: string) => {
+                formData[fieldKey] = value;
             }),
         };
     },
@@ -66,10 +71,10 @@ vi.mock('@/layouts/my-account-layout', () => ({
 }));
 
 beforeEach(() => {
-    // jsdom does not implement scrollIntoView; the email prompt scrolls the
-    // field into view, exactly as the chat tests already stub it.
     Element.prototype.scrollIntoView = vi.fn();
     excluded.length = 0;
+    putSpy.mockClear();
+    patchSpy.mockClear();
     phoneRequestShouldFail = true;
     formStore.clear();
     page.props = profileProps();
@@ -77,57 +82,106 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-it('renders persistent identity labels, verified states, and safe autocomplete contracts', () => {
+it('renders the three cards with their rows, values, and badges', () => {
     render(<AccountProfile />);
 
     expect(
         screen.getByRole('heading', { level: 2, name: 'Profile' }),
     ).toBeVisible();
+    expect(
+        screen.getByRole('heading', { level: 3, name: 'My details' }),
+    ).toBeVisible();
+    expect(
+        screen.getByRole('heading', { level: 3, name: 'Contact' }),
+    ).toBeVisible();
+    expect(
+        screen.getByRole('heading', { level: 3, name: 'Password' }),
+    ).toBeVisible();
+
+    expect(screen.getByText('Name')).toBeVisible();
+    expect(screen.getByText('Mohamed Player')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeVisible();
+
+    expect(screen.getByText('WhatsApp number')).toBeVisible();
+    expect(screen.getByText('Email address')).toBeVisible();
+    expect(screen.getByText('owner@example.test')).toBeVisible();
+    expect(screen.getAllByText('Verified')).toHaveLength(2);
+
+    expect(screen.getByText('Set')).toBeVisible();
+});
+
+it('opens the name form in place on edit and closes on cancel_edit', () => {
+    render(<AccountProfile />);
+
+    expect(screen.queryByLabelText('First name')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Last name')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+
+    expect(screen.getByLabelText('First name')).toBeVisible();
     expect(screen.getByLabelText('First name')).toHaveAttribute(
         'autocomplete',
         'given-name',
     );
+    expect(screen.getByLabelText('Last name')).toBeVisible();
     expect(screen.getByLabelText('Last name')).toHaveAttribute(
         'autocomplete',
         'family-name',
     );
-    expect(screen.getAllByText('Verified')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByLabelText('First name')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Last name')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeVisible();
+});
+
+it('renders contact rows, verified states, and safe autocomplete contracts', () => {
+    render(<AccountProfile />);
+
     expect(
         screen.queryByLabelText('New email address'),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Change email' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Change email' }));
-    expect(screen.getByLabelText('New email address')).toHaveAttribute(
-        'autocomplete',
-        'email',
-    );
-    expect(
-        screen
-            .getByRole('button', { name: 'Cancel' })
-            .closest('.account-profile-contact'),
-    ).toHaveClass('is-editing');
-    fireEvent.click(screen.getByRole('button', { name: 'Edit number' }));
+
+    const changeButtons = screen.getAllByRole('button', { name: 'Change' });
+    // Phone row, Email row, Password row all have "Change" when verified/set
+    expect(changeButtons.length).toBeGreaterThanOrEqual(2);
+
+    // Click Change on phone
+    fireEvent.click(changeButtons[0]!);
     expect(screen.getByLabelText('New WhatsApp number')).toHaveAttribute(
         'autocomplete',
         'tel',
     );
+
+    // Click Change on email
+    fireEvent.click(changeButtons[1]!);
+    expect(screen.getByLabelText('New email address')).toHaveAttribute(
+        'autocomplete',
+        'email',
+    );
+
     expect(screen.queryByDisplayValue(/\$2y\$/)).not.toBeInTheDocument();
 });
 
-it.each([
-    ['Change email', 'Send verification link', 'New email address'],
-    ['Edit number', 'Send WhatsApp code', 'New WhatsApp number'],
-])(
-    'focuses the inline contact field when %s validation fails',
-    (editAction, submitAction, fieldLabel) => {
-        render(<AccountProfile />);
+it('focuses the inline contact field when validation fails', () => {
+    render(<AccountProfile />);
 
-        fireEvent.click(screen.getByRole('button', { name: editAction }));
-        fireEvent.click(screen.getByRole('button', { name: submitAction }));
+    const changeButtons = screen.getAllByRole('button', { name: 'Change' });
+    // Phone
+    fireEvent.click(changeButtons[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Send WhatsApp code' }));
+    expect(screen.getByLabelText('New WhatsApp number')).toHaveFocus();
 
-        expect(screen.getByLabelText(fieldLabel)).toHaveFocus();
-    },
-);
+    // Email
+    fireEvent.click(changeButtons[1]!);
+    fireEvent.click(
+        screen.getByRole('button', { name: 'Send verification link' }),
+    );
+    expect(screen.getByLabelText('New email address')).toHaveFocus();
+});
 
 it('excludes every secret identity field from remembered Inertia state', () => {
     render(<AccountProfile />);
@@ -135,83 +189,104 @@ it('excludes every secret identity field from remembered Inertia state', () => {
     expect(excluded).toContainEqual(['code']);
 });
 
-it('renders the password reset button for verified emails', () => {
-    render(<AccountProfile />);
+it('shows state_set and change for a password account, and state_missing and set_password otherwise', () => {
+    const { unmount } = render(<AccountProfile />);
 
+    expect(screen.getByText('Set')).toBeVisible();
     expect(
-        screen.getByRole('button', { name: 'Email me a password link' }),
-    ).toBeVisible();
-});
-
-it('renders the unverified notice and support link when email is unverified', () => {
-    const baseProps = profileProps();
-    page.props = {
-        ...baseProps,
-        profile: {
-            ...baseProps.profile,
-            email: {
-                value: 'unverified@example.test',
-                verified: false,
-                pending: null,
-            },
-        },
-        security: { emailVerified: false },
-        storeShell: {
-            whatsappUrl: 'https://wa.me/966537998099',
-        },
-    };
-
-    render(<AccountProfile />);
-
-    expect(
-        screen.queryByRole('button', { name: 'Email me a password link' }),
+        screen.queryByRole('button', { name: 'Set a password' }),
     ).not.toBeInTheDocument();
-    expect(
-        screen.getByText(
-            'Verify your email address first to change your password.',
-        ),
-    ).toBeVisible();
-    expect(
-        screen.getByRole('link', { name: 'Contact support' }),
-    ).toHaveAttribute('href', 'https://wa.me/966537998099');
-});
 
-it('renders the mobile verify phone CTA and attention marker when phone is unverified', () => {
-    const baseProps = profileProps();
+    unmount();
+
+    const noPasswordProps = profileProps();
     page.props = {
-        ...baseProps,
-        profile: {
-            ...baseProps.profile,
-            phone: {
-                value: null,
-                verified: false,
-                pending: null,
-            },
+        ...noPasswordProps,
+        security: {
+            ...noPasswordProps.security,
+            hasPassword: false,
         },
     };
 
     render(<AccountProfile />);
 
-    const contactNav = screen.getByRole('link', {
-        name: 'Contact & verification',
+    expect(screen.getByText('Not created yet')).toBeVisible();
+    expect(
+        screen.getByRole('button', { name: 'Set a password' }),
+    ).toBeVisible();
+});
+
+it('submits the password change form via put to changeUrl', () => {
+    render(<AccountProfile />);
+
+    // In password card with hasPassword: true, click Change
+    const changeButtons = screen.getAllByRole('button', { name: 'Change' });
+    // The password row is the third Change button (phone, email, password)
+    const passwordChangeBtn = changeButtons[changeButtons.length - 1]!;
+    fireEvent.click(passwordChangeBtn);
+
+    expect(screen.getByLabelText('Current password')).toHaveAttribute(
+        'autocomplete',
+        'current-password',
+    );
+    expect(screen.getByLabelText('New password')).toHaveAttribute(
+        'autocomplete',
+        'new-password',
+    );
+    expect(screen.getByLabelText('Confirm new password')).toHaveAttribute(
+        'autocomplete',
+        'new-password',
+    );
+
+    fireEvent.change(screen.getByLabelText('Current password'), {
+        target: { value: 'CurrentPassword123' },
     });
-    expect(contactNav).toHaveAttribute('data-attention', 'true');
-
-    const verifyCta = screen.getByRole('button', {
-        name: 'Verify WhatsApp number',
+    fireEvent.change(screen.getByLabelText('New password'), {
+        target: { value: 'NewPassword1234' },
     });
-    expect(verifyCta).toBeVisible();
+    fireEvent.change(screen.getByLabelText('Confirm new password'), {
+        target: { value: 'NewPassword1234' },
+    });
 
-    fireEvent.click(verifyCta);
+    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
 
-    expect(screen.getByLabelText('New WhatsApp number')).toBeVisible();
+    expect(putSpy).toHaveBeenCalledWith(
+        '/en/my-account/security/password',
+        expect.objectContaining({ preserveScroll: true }),
+    );
+});
+
+it('renders the forgot password link for verified emails and nothing extra for unverified', () => {
+    const { unmount } = render(<AccountProfile />);
+
+    expect(
+        screen.getByRole('button', { name: 'Forgot your password?' }),
+    ).toBeVisible();
+
+    unmount();
+
+    const unverifiedProps = profileProps();
+    page.props = {
+        ...unverifiedProps,
+        security: {
+            ...unverifiedProps.security,
+            emailVerified: false,
+        },
+    };
+
+    render(<AccountProfile />);
+
+    expect(
+        screen.queryByRole('button', { name: 'Forgot your password?' }),
+    ).not.toBeInTheDocument();
 });
 
 it('renders masked phone and resend control after successful request and allows changing number', () => {
     phoneRequestShouldFail = false;
     render(<AccountProfile />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit number' }));
+    const changeButtons = screen.getAllByRole('button', { name: 'Change' });
+    fireEvent.click(changeButtons[0]!); // Phone row
     const phoneInput = screen.getByLabelText('New WhatsApp number');
     fireEvent.change(phoneInput, { target: { value: '+201001234567' } });
 
@@ -290,21 +365,15 @@ function profileProps() {
             },
             profile: {
                 title: 'Profile',
-                description:
-                    'Your personal details, verified contact info, and security — all in one place.',
-                personal_title: 'Personal details',
-                contact_title: 'Contact & verification',
-                sections: {
-                    label: 'Profile sections',
-                    personal: 'Personal',
-                    contact: 'Contact & verification',
-                    security: 'Security',
-                },
-                sections_long: {
-                    personal: 'Personal details',
-                    contact: 'Contact & verification',
-                    security: 'Security',
-                },
+                personal_card_title: 'My details',
+                contact_card_title: 'Contact',
+                name: 'Name',
+                edit: 'Edit',
+                change: 'Change',
+                verify: 'Verify',
+                verified: 'Verified',
+                unverified: 'Not verified',
+                not_set: 'Not added',
                 verify_phone_cta: 'Verify WhatsApp number',
                 first_name: 'First name',
                 last_name: 'Last name',
@@ -327,41 +396,28 @@ function profileProps() {
                 phone_resend_in: 'Resend code in :seconds s',
                 phone_resend: 'Resend code',
                 phone_change_number: 'Change number',
-                sensitive_hint:
-                    'Any changes require confirmation via an email link or WhatsApp code before they are applied.',
                 pending_email: 'New email awaiting verification',
                 pending_phone: 'New number awaiting verification',
                 email_link_invalid: 'Invalid link.',
                 phone_code_invalid: 'Invalid code.',
-            },
-            verification: {
-                verified: 'Verified',
-                unverified: 'Not verified',
-                pending: 'Verification pending',
-                send_code: 'Send code',
-                verify: 'Verify',
-                code: 'Verification code',
+                add_email_prompt_title: 'Add your email address',
+                add_email_prompt_action: 'Add email',
+                add_email_prompt_dismiss: 'Dismiss prompt',
             },
             security: {
                 title: 'Security',
-                description: 'Manage your password.',
+                card_title: 'Password',
+                state_set: 'Set',
+                state_missing: 'Not created yet',
+                forgot: 'Forgot your password?',
                 current_password: 'Current password',
                 new_password: 'New password',
                 confirm_password: 'Confirm new password',
                 change_password: 'Change password',
                 set_password: 'Set a password',
-                password_changed: 'Password updated.',
-                social_login_notice: 'Set a password for your account.',
+                password_changed: 'Your password was updated securely.',
                 change_title: 'Change your password',
                 setup_title: 'Create an account password',
-                change_description: 'Use your current password.',
-                setup_description: 'Create a secure password.',
-                recovery_title: 'Account recovery',
-                recovery_email: 'Use your verified email.',
-                recovery_whatsapp: 'Use WhatsApp recovery.',
-                recovery_action: 'View recovery options',
-                reset_link_description:
-                    'For your security we email a password-change link to your verified address instead of showing the form here.',
                 reset_link_button: 'Email me a password link',
                 reset_link_sent: 'We emailed you a password-change link.',
                 reset_link_needs_email:
@@ -380,6 +436,14 @@ function profileProps() {
                 order_context: 'Regarding order',
                 unavailable_title: 'Support unavailable',
                 unavailable_description: 'Contact options are not configured.',
+            },
+            verification: {
+                verified: 'Verified',
+                unverified: 'Not verified',
+                pending: 'Verification pending',
+                send_code: 'Send code',
+                verify: 'Verify',
+                code: 'Verification code',
             },
             actions: { retry: 'Try again' },
         },
@@ -401,9 +465,12 @@ function profileProps() {
         },
         security: {
             emailVerified: true,
+            hasPassword: true,
         },
         securityActions: {
             resetLinkUrl: '/en/my-account/security/password-link',
+            changeUrl: '/en/my-account/security/password',
+            setupUrl: '/en/my-account/security/password',
         },
         profileActions: {
             updateUrl: '/en/my-account/profile',

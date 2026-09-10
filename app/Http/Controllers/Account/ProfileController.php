@@ -51,9 +51,12 @@ final class ProfileController extends Controller
             ],
             'security' => [
                 'emailVerified' => $user->email_verified_at !== null,
+                'hasPassword' => $user->password !== null,
             ],
             'securityActions' => [
                 'resetLinkUrl' => $this->route('account.security.password.link', $locale),
+                'changeUrl' => $this->route('account.security.password.change', $locale),
+                'setupUrl' => $this->route('account.security.password.setup', $locale),
             ],
             'profileActions' => [
                 'updateUrl' => $this->route('account.profile.update', $locale),
