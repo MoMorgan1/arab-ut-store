@@ -15,8 +15,6 @@ use App\Models\User;
 use App\Services\Payments\PaymentManager;
 use App\Support\OrderClosingNote;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Throwable;
 
 /**
  * A customer walks away from an unpaid order on purpose.
@@ -24,28 +22,31 @@ use Throwable;
  * The same release-and-cancel path the expiry job uses, taken now instead of
  * after the grace period, so the wallet balance and the coupon reservation
  * come back immediately (owner decision, 2026-09-10). Only the owner may do
- * it, and only while nothing has been paid: anything past PendingPayment is
- * refused rather than guessed at.
+ * it, and only while nothing has been paid.
+ *
+ * Money safety, in order: ask Paylink first (a paid invoice becomes a paid
+ * order, never a cancelled one with a refunded wallet); then, under the row
+ * lock, close the hosted invoice at the gateway BEFORE anything is written
+ * locally, so a cancelled order can never keep a chargeable invoice. If the
+ * gateway refuses or cannot be reached, nothing changes and the customer can
+ * try again.
  */
 final class CancelPendingOrder
 {
     public function __construct(
         private readonly ReleaseOrderWalletFunds $releaseOrderWalletFunds,
         private readonly ReconcilePaylinkPayment $reconcilePaylinkPayment,
+        private readonly CloseGatewayInvoice $closeGatewayInvoice,
         private readonly PaymentManager $payments,
     ) {}
 
     /**
      * @throws CheckoutUnavailable when the order is no longer pending payment
-     * @throws PaymentGatewayException|PaymentConfigurationException when Paylink cannot confirm the invoice
+     * @throws PaymentGatewayException|PaymentConfigurationException when Paylink cannot confirm or close the invoice
      */
     public function execute(User $customer, Order $order): Order
     {
-        // A local payment row only says what we recorded. If the order reached
-        // Paylink, ask the gateway first: a paid invoice must become a paid
-        // order, never a cancelled one with a refunded wallet. When Paylink
-        // cannot answer, refuse rather than guess; the customer can try again.
-        $invoice = $this->gatewayInvoice($order);
+        $invoice = $this->closeGatewayInvoice->pendingInvoice($order);
 
         if ($invoice instanceof Payment) {
             $this->reconcilePaylinkPayment->execute($invoice);
@@ -75,6 +76,10 @@ final class CancelPendingOrder
                 throw new CheckoutUnavailable('Only an unpaid order can be cancelled.');
             }
 
+            // Gateway first, while the row is locked: a failure here rolls
+            // everything back and the order stays exactly as it was.
+            $this->closeGatewayInvoice->execute($locked, $this->payments);
+
             $this->releaseOrderWalletFunds->execute($locked, 'customer_cancelled');
 
             $locked->forceFill([
@@ -97,45 +102,6 @@ final class CancelPendingOrder
             return $locked;
         });
 
-        $this->cancelGatewayInvoice($cancelled);
-
         return $cancelled->fresh() ?? $cancelled;
-    }
-
-    private function gatewayInvoice(Order $order): ?Payment
-    {
-        $payment = $order->payments()
-            ->where('provider', 'paylink')
-            ->whereNotNull('provider_payment_id')
-            ->where('provider_payment_id', '!=', '')
-            ->latest('id')
-            ->first();
-
-        return $payment instanceof Payment ? $payment : null;
-    }
-
-    /**
-     * Close the hosted invoice so the old payment link cannot charge the
-     * customer for an order they just cancelled. Best effort, after commit:
-     * a payment that still slips through lands on the reconciler's anomaly
-     * note for staff to refund, it never silently disappears.
-     */
-    private function cancelGatewayInvoice(Order $order): void
-    {
-        $payment = $this->gatewayInvoice($order);
-
-        if (! $payment instanceof Payment) {
-            return;
-        }
-
-        try {
-            $this->payments->gateway()->cancelInvoice((string) $payment->provider_payment_id);
-        } catch (Throwable $exception) {
-            Log::warning("Paylink invoice for customer-cancelled order [{$order->order_number}] could not be cancelled at the gateway.", [
-                'order_public_id' => (string) $order->public_id,
-                'provider_payment_id' => $payment->provider_payment_id,
-                'error' => $exception->getMessage(),
-            ]);
-        }
     }
 }

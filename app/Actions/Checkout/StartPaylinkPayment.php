@@ -2,8 +2,10 @@
 
 namespace App\Actions\Checkout;
 
+use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Exceptions\Checkout\CheckoutUnavailable;
+use App\Exceptions\Checkout\OrderNoLongerPending;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Payments\PaymentInvoice;
@@ -35,29 +37,47 @@ final readonly class StartPaylinkPayment
             throw new CheckoutUnavailable('Paylink returned a mismatched invoice.');
         }
 
-        DB::transaction(function () use ($payment, $invoice): void {
-            $locked = Payment::query()->whereKey($payment->id)->lockForUpdate()->sole();
+        try {
+            DB::transaction(function () use ($order, $payment, $invoice): void {
+                // The order may have been cancelled while the invoice was being
+                // created. A cancelled order must never keep a chargeable
+                // invoice, so the fresh one is closed again and nothing is
+                // written.
+                $lockedOrder = Order::query()->whereKey($order->id)->lockForUpdate()->sole();
 
-            if (in_array($locked->status, [
-                PaymentStatus::Authorized,
-                PaymentStatus::Paid,
-                PaymentStatus::PartiallyRefunded,
-                PaymentStatus::Refunded,
-            ], true)) {
-                return;
+                if ($lockedOrder->status !== OrderStatus::PendingPayment) {
+                    throw new OrderNoLongerPending;
+                }
+
+                $locked = Payment::query()->whereKey($payment->id)->lockForUpdate()->sole();
+
+                if (in_array($locked->status, [
+                    PaymentStatus::Authorized,
+                    PaymentStatus::Paid,
+                    PaymentStatus::PartiallyRefunded,
+                    PaymentStatus::Refunded,
+                ], true)) {
+                    return;
+                }
+
+                $locked->forceFill([
+                    'provider_payment_id' => $invoice->transactionNo,
+                    'status' => PaymentStatus::Pending,
+                    'captured_halalah' => 0,
+                    'paid_at' => null,
+                    'provider_metadata' => [
+                        'payment_url' => $invoice->paymentUrl,
+                        'provider_status' => $invoice->status,
+                    ],
+                ])->save();
+            }, attempts: 3);
+        } catch (OrderNoLongerPending) {
+            if ($invoice->status === 'pending') {
+                $gateway->cancelInvoice($invoice->transactionNo);
             }
 
-            $locked->forceFill([
-                'provider_payment_id' => $invoice->transactionNo,
-                'status' => PaymentStatus::Pending,
-                'captured_halalah' => 0,
-                'paid_at' => null,
-                'provider_metadata' => [
-                    'payment_url' => $invoice->paymentUrl,
-                    'provider_status' => $invoice->status,
-                ],
-            ])->save();
-        }, attempts: 3);
+            throw new CheckoutUnavailable('The order is no longer awaiting payment.');
+        }
 
         return $invoice;
     }
