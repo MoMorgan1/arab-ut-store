@@ -40,6 +40,8 @@ export type AccountOrder = {
     placedAt: string;
     summary: string;
     itemCount: number;
+    /** Up to two service artworks for the thumbnail stack. */
+    images: string[];
     total: AccountMoney;
     walletPayment?: AccountMoney | null;
     detailUrl: string;
@@ -128,11 +130,6 @@ export type AccountTranslations = {
         search_placeholder?: string;
         search_label?: string;
         search_empty?: string;
-        columns?: {
-            service: string;
-            status: string;
-            total: string;
-        };
         number: string;
         placed_at: string;
         total: string;
@@ -149,6 +146,9 @@ export type AccountTranslations = {
         showing: string;
         items_title: string;
         item_quantity: string;
+        item_count: string;
+        open_search: string;
+        close_search: string;
         credentials_ready: string;
         manual_details: string;
         platform: string;

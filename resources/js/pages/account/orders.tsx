@@ -17,6 +17,11 @@ export default function AccountOrders() {
         page.url.split('?')[0];
 
     const [searchQuery, setSearchQuery] = useState(props.filters.q ?? '');
+    // The search field takes the filter row's place when opened, so the
+    // toolbar stays one line tall on a phone. It stays open while a query
+    // is active so the customer can see and clear what they searched for.
+    const [searchOpen, setSearchOpen] = useState(Boolean(props.filters.q));
+    const searchInput = useRef<HTMLInputElement | null>(null);
     const isFirstMount = useRef(true);
 
     const performSearch = useCallback(
@@ -73,7 +78,13 @@ export default function AccountOrders() {
 
     const handleClearSearch = () => {
         setSearchQuery('');
+        setSearchOpen(false);
         performSearch('');
+    };
+
+    const openSearch = () => {
+        setSearchOpen(true);
+        window.requestAnimationFrame(() => searchInput.current?.focus());
     };
 
     const filterUrl = (filterKey: string) => {
@@ -116,12 +127,6 @@ export default function AccountOrders() {
 
     const isSearching = Boolean(props.filters.q);
 
-    const headings = props.accountUi.orders.columns ?? {
-        service: props.locale === 'ar' ? 'الخدمة' : 'Service',
-        status: props.locale === 'ar' ? 'الحالة' : 'Status',
-        total: props.locale === 'ar' ? 'الإجمالي' : 'Total',
-    };
-
     return (
         <MyAccountLayout {...props} current="orders" currentUrl={page.url}>
             <Head title={props.accountUi.orders.title} />
@@ -133,64 +138,44 @@ export default function AccountOrders() {
                 </header>
 
                 <div className="account-orders-toolbar">
-                    <nav
-                        aria-label={props.accountUi.orders.filters_label}
-                        className="account-order-filters"
-                    >
-                        {filters.map((filter) => (
-                            <Link
-                                aria-current={
-                                    props.filters.status === filter.key
-                                        ? 'page'
-                                        : undefined
-                                }
-                                href={filterUrl(filter.key)}
-                                key={filter.key}
-                                preserveScroll
-                            >
-                                <span>{filter.label}</span>
-                                <span className="account-order-filters__count">
-                                    {filter.count}
-                                </span>
-                            </Link>
-                        ))}
-                    </nav>
-
-                    <form
-                        className="account-orders-search"
-                        onSubmit={handleSearchSubmit}
-                        role="search"
-                    >
-                        <span
-                            aria-hidden="true"
-                            className="account-orders-search__icon"
+                    {searchOpen ? (
+                        <form
+                            className="account-orders-search"
+                            onSubmit={handleSearchSubmit}
+                            role="search"
                         >
-                            <Search />
-                        </span>
-                        <input
-                            aria-label={
-                                props.accountUi.orders.search_label ??
-                                (props.locale === 'ar'
-                                    ? 'البحث في الطلبات'
-                                    : 'Search orders')
-                            }
-                            className="account-orders-search__input"
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder={
-                                props.accountUi.orders.search_placeholder ??
-                                (props.locale === 'ar'
-                                    ? 'ابحث برقم الطلب أو اسم الخدمة'
-                                    : 'Search by order number or service name')
-                            }
-                            type="search"
-                            value={searchQuery}
-                        />
-                        {searchQuery ? (
+                            <span
+                                aria-hidden="true"
+                                className="account-orders-search__icon"
+                            >
+                                <Search />
+                            </span>
+                            <input
+                                aria-label={
+                                    props.accountUi.orders.search_label ??
+                                    (props.locale === 'ar'
+                                        ? 'البحث في الطلبات'
+                                        : 'Search orders')
+                                }
+                                className="account-orders-search__input"
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder={
+                                    props.accountUi.orders.search_placeholder ??
+                                    (props.locale === 'ar'
+                                        ? 'ابحث برقم الطلب أو اسم الخدمة'
+                                        : 'Search by order number or service name')
+                                }
+                                ref={searchInput}
+                                type="search"
+                                value={searchQuery}
+                            />
                             <button
                                 aria-label={
-                                    props.locale === 'ar'
-                                        ? 'مسح البحث'
-                                        : 'Clear search'
+                                    searchQuery
+                                        ? props.locale === 'ar'
+                                            ? 'مسح البحث'
+                                            : 'Clear search'
+                                        : props.accountUi.orders.close_search
                                 }
                                 className="account-orders-search__clear"
                                 onClick={handleClearSearch}
@@ -198,8 +183,43 @@ export default function AccountOrders() {
                             >
                                 <X aria-hidden="true" />
                             </button>
-                        ) : null}
-                    </form>
+                        </form>
+                    ) : (
+                        <>
+                            <nav
+                                aria-label={
+                                    props.accountUi.orders.filters_label
+                                }
+                                className="account-order-filters"
+                            >
+                                {filters.map((filter) => (
+                                    <Link
+                                        aria-current={
+                                            props.filters.status === filter.key
+                                                ? 'page'
+                                                : undefined
+                                        }
+                                        href={filterUrl(filter.key)}
+                                        key={filter.key}
+                                        preserveScroll
+                                    >
+                                        <span>{filter.label}</span>
+                                        <span className="account-order-filters__count">
+                                            {filter.count}
+                                        </span>
+                                    </Link>
+                                ))}
+                            </nav>
+                            <button
+                                aria-label={props.accountUi.orders.open_search}
+                                className="account-orders-search__open"
+                                onClick={openSearch}
+                                type="button"
+                            >
+                                <Search aria-hidden="true" />
+                            </button>
+                        </>
+                    )}
                 </div>
 
                 {props.orders.length === 0 ? (
@@ -231,10 +251,7 @@ export default function AccountOrders() {
                         ) : null}
                     </section>
                 ) : (
-                    <AccountOrderList
-                        aria-label={props.accountUi.orders.title}
-                        headings={headings}
-                    >
+                    <AccountOrderList aria-label={props.accountUi.orders.title}>
                         {props.orders.map((order) => (
                             <AccountOrderRow
                                 key={order.id}

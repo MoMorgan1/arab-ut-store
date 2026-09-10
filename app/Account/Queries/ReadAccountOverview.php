@@ -84,7 +84,7 @@ final readonly class ReadAccountOverview
             ])
             ->where('user_id', $user->id)
             ->with(['items' => fn ($query) => $query
-                ->select(['id', 'order_id', 'name_ar', 'name_en', 'status'])
+                ->select(['id', 'order_id', 'name_ar', 'name_en', 'service_type', 'status'])
                 ->orderBy('id')])
             ->orderByRaw('COALESCE(orders.placed_at, orders.created_at) DESC')
             ->orderByDesc('orders.public_id')

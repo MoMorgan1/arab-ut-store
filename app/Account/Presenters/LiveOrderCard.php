@@ -5,6 +5,7 @@ namespace App\Account\Presenters;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 final class LiveOrderCard
 {
@@ -17,6 +18,7 @@ final class LiveOrderCard
      *     placedAt: string,
      *     summary: string,
      *     itemCount: int,
+     *     images: list<string>,
      *     total: array{amountMinor: string, currency: string},
      *     walletPayment: array{amountMinor: string, currency: string}|null,
      *     detailUrl: string
@@ -38,6 +40,7 @@ final class LiveOrderCard
             'placedAt' => $placedAt instanceof CarbonInterface ? $placedAt->toIso8601String() : '',
             'summary' => $this->summary($firstItem, $itemCount, $locale),
             'itemCount' => $itemCount,
+            'images' => $this->images($items),
             'total' => AccountMoney::fromMinor(
                 (int) $order->getAttribute('total_halalah'),
                 (string) $order->getAttribute('currency'),
@@ -54,6 +57,32 @@ final class LiveOrderCard
                 absolute: false,
             ),
         ];
+    }
+
+    /**
+     * Up to two distinct service artworks, in item order, for the card's
+     * thumbnail stack. A third distinct service is folded into the count.
+     *
+     * @param  Collection<int, OrderItem>  $items
+     * @return list<string>
+     */
+    private function images(Collection $items): array
+    {
+        $images = [];
+
+        foreach ($items as $item) {
+            $artwork = ServiceArtwork::for($item->service_type);
+
+            if (! in_array($artwork, $images, true)) {
+                $images[] = $artwork;
+            }
+
+            if (count($images) === 2) {
+                break;
+            }
+        }
+
+        return $images;
     }
 
     private function summary(?OrderItem $firstItem, int $itemCount, string $locale): string
