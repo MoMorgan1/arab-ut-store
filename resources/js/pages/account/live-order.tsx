@@ -46,6 +46,9 @@ export default function AccountLiveOrder() {
     const [cancelState, setCancelState] = useState<
         'idle' | 'confirming' | 'loading'
     >('idle');
+    // Paying and cancelling are mutually exclusive: while one is in flight the
+    // other is disabled, and the silent refresh waits.
+    const busy = paymentState === 'loading' || cancelState === 'loading';
     const ordersUrl =
         props.accountNavigation.find((item) => item.key === 'orders')?.url ??
         props.storeShell.accountUrl;
@@ -58,6 +61,14 @@ export default function AccountLiveOrder() {
     const closed = order.status === 'cancelled' || order.status === 'refunded';
     const tracked = !pending && !closed;
     const ui = props.accountUi;
+    const flash =
+        props.status === 'order-cancel-refused'
+            ? { text: ui.orders.cancel_refused, tone: 'error' as const }
+            : props.status === 'paylink-unavailable'
+              ? { text: ui.orders.paylink_unavailable, tone: 'error' as const }
+              : props.status === 'order-cancelled'
+                ? { text: ui.orders.cancelled_notice, tone: 'ok' as const }
+                : null;
 
     // Fired once per order per browser; the module keeps the id set that
     // stops a reload from counting a second sale.
@@ -80,7 +91,8 @@ export default function AccountLiveOrder() {
         const tick = () => {
             if (
                 document.visibilityState !== 'visible' ||
-                refreshInFlight.current
+                refreshInFlight.current ||
+                busy
             ) {
                 return;
             }
@@ -99,7 +111,7 @@ export default function AccountLiveOrder() {
             window.clearInterval(timer);
             refreshInFlight.current = false;
         };
-    }, [order.refreshable, order.id]);
+    }, [order.refreshable, order.id, busy]);
 
     // Keyboard users land on the confirmation when it opens and back on the
     // cancel button when it closes, instead of on a button that vanished.
@@ -118,7 +130,7 @@ export default function AccountLiveOrder() {
     }
 
     async function resumePayment() {
-        if (order.paymentStartUrl === null || paymentState === 'loading') {
+        if (order.paymentStartUrl === null || busy) {
             return;
         }
 
@@ -152,7 +164,7 @@ export default function AccountLiveOrder() {
     }
 
     function cancelOrder() {
-        if (order.cancelUrl === null || cancelState === 'loading') {
+        if (order.cancelUrl === null || busy) {
             return;
         }
 
@@ -243,33 +255,47 @@ export default function AccountLiveOrder() {
                     <dl className="account-invoice__totals">
                         {pending ? (
                             <>
-                                {order.walletPayment &&
-                                order.walletPayment.amountMinor !== '0' ? (
-                                    <>
-                                        <div>
-                                            <dt>{ui.invoice.subtotal}</dt>
-                                            <dd>
+                                {order.discount.amountMinor !== '0' ||
+                                (order.walletPayment &&
+                                    order.walletPayment.amountMinor !== '0') ? (
+                                    <div>
+                                        <dt>{ui.invoice.subtotal}</dt>
+                                        <dd>
+                                            {formatAccountMoney(
+                                                order.subtotal,
+                                                props.locale,
+                                            )}
+                                        </dd>
+                                    </div>
+                                ) : null}
+                                {order.discount.amountMinor !== '0' ? (
+                                    <div>
+                                        <dt>{ui.orders.discount}</dt>
+                                        <dd className="account-invoice__deduction">
+                                            <bdi dir="ltr">
+                                                -
                                                 {formatAccountMoney(
-                                                    order.total,
+                                                    order.discount,
                                                     props.locale,
                                                 )}
-                                            </dd>
-                                        </div>
-                                        <div>
-                                            <dt>
-                                                {ui.invoice.wallet_deduction}
-                                            </dt>
-                                            <dd className="account-invoice__deduction">
-                                                <bdi dir="ltr">
-                                                    -
-                                                    {formatAccountMoney(
-                                                        order.walletPayment,
-                                                        props.locale,
-                                                    )}
-                                                </bdi>
-                                            </dd>
-                                        </div>
-                                    </>
+                                            </bdi>
+                                        </dd>
+                                    </div>
+                                ) : null}
+                                {order.walletPayment &&
+                                order.walletPayment.amountMinor !== '0' ? (
+                                    <div>
+                                        <dt>{ui.invoice.wallet_deduction}</dt>
+                                        <dd className="account-invoice__deduction">
+                                            <bdi dir="ltr">
+                                                -
+                                                {formatAccountMoney(
+                                                    order.walletPayment,
+                                                    props.locale,
+                                                )}
+                                            </bdi>
+                                        </dd>
+                                    </div>
                                 ) : null}
                                 <div className="account-invoice__grand">
                                     <dt>{ui.invoice.amount_due}</dt>
@@ -357,6 +383,19 @@ export default function AccountLiveOrder() {
                     ) : null}
                 </section>
 
+                {flash !== null ? (
+                    <p
+                        className={cn(
+                            'account-live-order__flash',
+                            flash.tone === 'error' &&
+                                'account-live-order__flash--error',
+                        )}
+                        role="status"
+                    >
+                        {flash.text}
+                    </p>
+                ) : null}
+
                 {order.statusNote ? (
                     <aside
                         aria-labelledby="account-order-status-note-title"
@@ -385,7 +424,7 @@ export default function AccountLiveOrder() {
 
                 {pending && order.paymentStartUrl !== null ? (
                     <div className="account-live-order__actions">
-                        {cancelState === 'confirming' ? (
+                        {cancelState !== 'idle' ? (
                             <div
                                 aria-labelledby="account-order-cancel-title"
                                 className="account-live-order__confirm"
@@ -397,10 +436,13 @@ export default function AccountLiveOrder() {
                                 <div>
                                     <button
                                         className="account-live-order__cancel account-live-order__cancel--confirm"
+                                        disabled={busy}
                                         onClick={cancelOrder}
                                         type="button"
                                     >
-                                        {ui.orders.cancel_yes}
+                                        {cancelState === 'loading'
+                                            ? ui.orders.cancelling
+                                            : ui.orders.cancel_yes}
                                     </button>
                                     <button
                                         className="account-live-order__cancel"
@@ -416,7 +458,7 @@ export default function AccountLiveOrder() {
                             <>
                                 <button
                                     className="account-live-order__pay"
-                                    disabled={paymentState === 'loading'}
+                                    disabled={busy}
                                     onClick={resumePayment}
                                     type="button"
                                 >
@@ -427,16 +469,14 @@ export default function AccountLiveOrder() {
                                 {order.cancelUrl !== null ? (
                                     <button
                                         className="account-live-order__cancel"
-                                        disabled={cancelState === 'loading'}
+                                        disabled={busy}
                                         onClick={() =>
                                             setCancelState('confirming')
                                         }
                                         ref={cancelButton}
                                         type="button"
                                     >
-                                        {cancelState === 'loading'
-                                            ? ui.orders.cancelling
-                                            : ui.orders.cancel_order}
+                                        {ui.orders.cancel_order}
                                     </button>
                                 ) : null}
                             </>
@@ -463,7 +503,9 @@ function StatusTrack({
     status: AccountLiveOrderPageProps['order']['status'];
     translations: OrderTranslations;
 }) {
-    const reached = status === 'completed' ? 3 : status === 'received' ? 1 : 2;
+    // The customer sees "received" folded into "in progress" (OrderStatus::
+    // forCustomer), so a paid order always starts on step two.
+    const reached = status === 'completed' ? 3 : 2;
     const steps = [
         translations.track_received,
         translations.track_in_progress,

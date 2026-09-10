@@ -166,7 +166,8 @@ test('an order the customer already paid at Paylink is marked paid instead of ca
 
     $this->actingAs($user)
         ->post('/my-account/orders/'.$order->public_id.'/cancel')
-        ->assertStatus(409);
+        ->assertRedirect()
+        ->assertSessionHas('status', 'order-cancel-refused');
 
     expect($order->fresh()->status)->toBe(OrderStatus::Received)
         ->and($payment->fresh()->status)->toBe(PaymentStatus::Paid);
@@ -195,9 +196,59 @@ test('when Paylink cannot confirm the invoice the cancel is refused, not guessed
 
     $this->actingAs($user)
         ->post('/my-account/orders/'.$order->public_id.'/cancel')
-        ->assertStatus(503);
+        ->assertRedirect()
+        ->assertSessionHas('status', 'paylink-unavailable');
 
     expect($order->fresh()->status)->toBe(OrderStatus::PendingPayment);
+});
+
+test('when Paylink will not close the invoice nothing is cancelled and no wallet money moves', function (): void {
+    $user = User::factory()->create();
+    $order = cancellableOrder($user);
+    $order->forceFill(['wallet_halalah' => 2_000])->save();
+    config()->set('services.paylink.environment', 'test');
+    config()->set('services.paylink.api_id', 'merchant-id');
+    config()->set('services.paylink.secret_key', 'merchant-secret');
+    Cache::flush();
+    $payment = Payment::query()->create([
+        'public_id' => (string) Str::ulid(),
+        'order_id' => $order->id,
+        'provider' => 'paylink',
+        'provider_payment_id' => 'INV-99999',
+        'idempotency_key' => (string) Str::ulid(),
+        'status' => PaymentStatus::Pending,
+        'amount_halalah' => 10_000,
+        'captured_halalah' => 0,
+        'currency' => 'SAR',
+    ]);
+    Http::fake(function ($request) use ($order) {
+        if (str_ends_with($request->url(), '/api/auth')) {
+            return Http::response(['id_token' => 'merchant-token']);
+        }
+
+        if (str_ends_with($request->url(), '/api/cancelInvoice')) {
+            return Http::response(['success' => false]);
+        }
+
+        return Http::response([
+            'success' => true,
+            'transactionNo' => 'INV-99999',
+            'orderStatus' => 'Pending',
+            'amount' => 100.00,
+            'url' => 'https://payment.paylink.sa/pay/info/INV-99999',
+            'gatewayOrderRequest' => ['orderNumber' => $order->order_number, 'currency' => 'SAR'],
+            'paymentReceipt' => null,
+        ]);
+    });
+
+    $this->actingAs($user)
+        ->post('/my-account/orders/'.$order->public_id.'/cancel')
+        ->assertRedirect()
+        ->assertSessionHas('status', 'paylink-unavailable');
+
+    expect($order->fresh()->status)->toBe(OrderStatus::PendingPayment)
+        ->and($payment->fresh()->status)->toBe(PaymentStatus::Pending)
+        ->and(WalletEntry::query()->where('reference', "order-wallet-released:{$order->id}")->exists())->toBeFalse();
 });
 
 test('a second cancel of the same order is refused and never credits the wallet twice', function (): void {
@@ -206,7 +257,9 @@ test('a second cancel of the same order is refused and never credits the wallet 
     $order->forceFill(['wallet_halalah' => 2_000])->save();
 
     $this->actingAs($user)->post('/my-account/orders/'.$order->public_id.'/cancel')->assertRedirect();
-    $this->actingAs($user)->post('/my-account/orders/'.$order->public_id.'/cancel')->assertStatus(409);
+    $this->actingAs($user)->post('/my-account/orders/'.$order->public_id.'/cancel')
+        ->assertRedirect()
+        ->assertSessionHas('status', 'order-cancel-refused');
 
     expect(WalletEntry::query()->where('reference', "order-wallet-released:{$order->id}")->count())->toBe(1);
 });
@@ -217,7 +270,8 @@ test('a paid order cannot be cancelled by the customer', function (): void {
 
     $this->actingAs($user)
         ->post('/my-account/orders/'.$order->public_id.'/cancel')
-        ->assertStatus(409);
+        ->assertRedirect()
+        ->assertSessionHas('status', 'order-cancel-refused');
 
     expect($order->fresh()->status)->toBe(OrderStatus::Received);
 });

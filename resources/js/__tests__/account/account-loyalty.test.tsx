@@ -333,6 +333,12 @@ function loyaltyProps(): AccountLoyaltyPageProps {
                 cancel_yes: 'Yes, cancel it',
                 cancel_no: 'Keep it',
                 cancelling: 'Cancelling…',
+                cancel_refused:
+                    'The order could not be cancelled: it was paid or already closed.',
+                cancelled_notice:
+                    'The order was cancelled and any balance you used is back in your wallet.',
+                paylink_unavailable:
+                    'The payment gateway cannot be reached right now. Try again in a moment.',
                 team_note_title: 'A note from the team',
                 closed_title: 'Order closed',
                 refreshing: 'Refreshing…',

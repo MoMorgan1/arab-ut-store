@@ -193,6 +193,9 @@ export type AccountTranslations = {
         cancel_yes: string;
         cancel_no: string;
         cancelling: string;
+        cancel_refused: string;
+        cancelled_notice: string;
+        paylink_unavailable: string;
         team_note_title: string;
         closed_title: string;
         refreshing: string;
@@ -452,6 +455,8 @@ export type AccountOrdersPageProps = AccountPageShellProps & {
 };
 
 export type AccountLiveOrderPageProps = AccountPageShellProps & {
+    /** The session flash after a cancel attempt, if any. */
+    status?: string | null;
     order: {
         id: string;
         number: string;
