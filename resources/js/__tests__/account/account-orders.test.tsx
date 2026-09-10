@@ -180,6 +180,10 @@ it('refreshes only current safe order data on its own and keeps credentials opaq
     expect(inertia.reload).toHaveBeenCalledWith(
         expect.objectContaining({ only: ['order'] }),
     );
+
+    // A slow reload is never stacked on by the next tick.
+    vi.advanceTimersByTime(ORDER_REFRESH_INTERVAL_MS);
+    expect(inertia.reload).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
 });
 
@@ -419,10 +423,11 @@ it('cancels an unpaid order only after the customer confirms', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
 
     expect(inertia.post).not.toHaveBeenCalled();
-    expect(screen.getByRole('alertdialog')).toBeVisible();
+    expect(screen.getByRole('group')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Keep it' })).toHaveFocus();
 
     fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('group')).not.toBeInTheDocument();
     expect(inertia.post).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel order' }));

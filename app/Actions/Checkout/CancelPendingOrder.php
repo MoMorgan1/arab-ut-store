@@ -7,6 +7,8 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
 use App\Enums\PaymentStatus;
 use App\Exceptions\Checkout\CheckoutUnavailable;
+use App\Exceptions\Payments\PaymentConfigurationException;
+use App\Exceptions\Payments\PaymentGatewayException;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
@@ -29,14 +31,26 @@ final class CancelPendingOrder
 {
     public function __construct(
         private readonly ReleaseOrderWalletFunds $releaseOrderWalletFunds,
+        private readonly ReconcilePaylinkPayment $reconcilePaylinkPayment,
         private readonly PaymentManager $payments,
     ) {}
 
     /**
      * @throws CheckoutUnavailable when the order is no longer pending payment
+     * @throws PaymentGatewayException|PaymentConfigurationException when Paylink cannot confirm the invoice
      */
     public function execute(User $customer, Order $order): Order
     {
+        // A local payment row only says what we recorded. If the order reached
+        // Paylink, ask the gateway first: a paid invoice must become a paid
+        // order, never a cancelled one with a refunded wallet. When Paylink
+        // cannot answer, refuse rather than guess; the customer can try again.
+        $invoice = $this->gatewayInvoice($order);
+
+        if ($invoice instanceof Payment) {
+            $this->reconcilePaylinkPayment->execute($invoice);
+        }
+
         $cancelled = DB::transaction(function () use ($customer, $order): Order {
             $locked = Order::query()
                 ->whereKey($order->getKey())
@@ -88,11 +102,7 @@ final class CancelPendingOrder
         return $cancelled->fresh() ?? $cancelled;
     }
 
-    /**
-     * Close the hosted invoice so the old payment link cannot charge the
-     * customer for an order they just cancelled. Best effort, after commit.
-     */
-    private function cancelGatewayInvoice(Order $order): void
+    private function gatewayInvoice(Order $order): ?Payment
     {
         $payment = $order->payments()
             ->where('provider', 'paylink')
@@ -100,6 +110,19 @@ final class CancelPendingOrder
             ->where('provider_payment_id', '!=', '')
             ->latest('id')
             ->first();
+
+        return $payment instanceof Payment ? $payment : null;
+    }
+
+    /**
+     * Close the hosted invoice so the old payment link cannot charge the
+     * customer for an order they just cancelled. Best effort, after commit:
+     * a payment that still slips through lands on the reconciler's anomaly
+     * note for staff to refund, it never silently disappears.
+     */
+    private function cancelGatewayInvoice(Order $order): void
+    {
+        $payment = $this->gatewayInvoice($order);
 
         if (! $payment instanceof Payment) {
             return;

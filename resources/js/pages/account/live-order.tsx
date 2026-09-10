@@ -7,7 +7,7 @@ import {
     Info,
     ShieldCheck,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import OrderReviewCard from '@/components/account/order-review-card';
 import MyAccountLayout from '@/layouts/my-account-layout';
@@ -68,21 +68,54 @@ export default function AccountLiveOrder() {
     }, [order.analytics]);
 
     // Silent refresh while the order can still move. Pauses in a background
-    // tab so a forgotten page does not poll all night.
+    // tab so a forgotten page does not poll all night, and never stacks a
+    // second request on top of one still in flight.
+    const refreshInFlight = useRef(false);
+
     useEffect(() => {
         if (!order.refreshable) {
             return;
         }
 
         const tick = () => {
-            if (document.visibilityState === 'visible') {
-                router.reload({ only: ['order'] });
+            if (
+                document.visibilityState !== 'visible' ||
+                refreshInFlight.current
+            ) {
+                return;
             }
+
+            refreshInFlight.current = true;
+            router.reload({
+                only: ['order'],
+                onFinish: () => {
+                    refreshInFlight.current = false;
+                },
+            });
         };
         const timer = window.setInterval(tick, ORDER_REFRESH_INTERVAL_MS);
 
-        return () => window.clearInterval(timer);
+        return () => {
+            window.clearInterval(timer);
+            refreshInFlight.current = false;
+        };
     }, [order.refreshable, order.id]);
+
+    // Keyboard users land on the confirmation when it opens and back on the
+    // cancel button when it closes, instead of on a button that vanished.
+    const keepButton = useRef<HTMLButtonElement | null>(null);
+    const cancelButton = useRef<HTMLButtonElement | null>(null);
+
+    useEffect(() => {
+        if (cancelState === 'confirming') {
+            keepButton.current?.focus();
+        }
+    }, [cancelState]);
+
+    function closeConfirm() {
+        setCancelState('idle');
+        window.requestAnimationFrame(() => cancelButton.current?.focus());
+    }
 
     async function resumePayment() {
         if (order.paymentStartUrl === null || paymentState === 'loading') {
@@ -354,9 +387,9 @@ export default function AccountLiveOrder() {
                     <div className="account-live-order__actions">
                         {cancelState === 'confirming' ? (
                             <div
-                                className="account-live-order__confirm"
-                                role="alertdialog"
                                 aria-labelledby="account-order-cancel-title"
+                                className="account-live-order__confirm"
+                                role="group"
                             >
                                 <p id="account-order-cancel-title">
                                     {ui.orders.cancel_confirm}
@@ -371,7 +404,8 @@ export default function AccountLiveOrder() {
                                     </button>
                                     <button
                                         className="account-live-order__cancel"
-                                        onClick={() => setCancelState('idle')}
+                                        onClick={closeConfirm}
+                                        ref={keepButton}
                                         type="button"
                                     >
                                         {ui.orders.cancel_no}
@@ -397,6 +431,7 @@ export default function AccountLiveOrder() {
                                         onClick={() =>
                                             setCancelState('confirming')
                                         }
+                                        ref={cancelButton}
                                         type="button"
                                     >
                                         {cancelState === 'loading'

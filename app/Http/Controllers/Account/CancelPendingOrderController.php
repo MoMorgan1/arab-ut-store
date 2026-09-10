@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Account;
 
 use App\Actions\Checkout\CancelPendingOrder;
 use App\Exceptions\Checkout\CheckoutUnavailable;
+use App\Exceptions\Payments\PaymentConfigurationException;
+use App\Exceptions\Payments\PaymentGatewayException;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\User;
@@ -25,7 +27,11 @@ final class CancelPendingOrderController extends Controller
         try {
             $cancel->execute($user, $model);
         } catch (CheckoutUnavailable) {
+            // Paid meanwhile, already closed, or Paylink could not confirm it is
+            // still unpaid: the page reloads and shows whichever it is.
             abort(409);
+        } catch (PaymentConfigurationException|PaymentGatewayException) {
+            abort(503);
         }
 
         return back()->with('status', 'order-cancelled');
