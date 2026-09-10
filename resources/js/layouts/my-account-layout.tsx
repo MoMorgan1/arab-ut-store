@@ -7,7 +7,6 @@ import type {
     AccountDestination,
     AccountPageShellProps,
 } from '@/types/account';
-
 type MyAccountLayoutProps = PropsWithChildren<
     AccountPageShellProps & {
         current: AccountDestination;
@@ -43,6 +42,11 @@ export default function MyAccountLayout({
         ':name',
         firstName || rawName || accountUi.page_title,
     );
+    // The same `attention` flag the desktop sidebar reads, so the phone bar and
+    // the sidebar can never tell the customer two different things.
+    const navAttention = accountNavigation
+        .filter((item) => item.attention)
+        .map((item) => item.key);
 
     return (
         <StoreLayout
@@ -87,6 +91,7 @@ export default function MyAccountLayout({
                 </div>
                 <AccountMobileBottomNav
                     adminUrl={adminUrl}
+                    attention={navAttention}
                     bottomNav={accountUi.bottom_nav}
                     current={current}
                     items={accountNavigation}

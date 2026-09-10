@@ -342,7 +342,281 @@ html.admin-document {
     }
 }
 
+/* Geometry shared by both bottom bars.
+   These live on the root rather than on `.arabut-bottom-bar` because the
+   account page derives its bottom clearance from them, and a custom property
+   only inherits downwards: an element cannot read a value set on a sibling.
+   Getting this wrong silently zeroes the clearance, so the tokens stay here. */
+:root {
+    --bar-surface-radius: 30px;
+    --bar-inset: 6px;
+    --bar-rim: 212 175 106;
+    /* Gap to the screen edge, on top of the safe area. 22px is the gap the
+       account chat widget's geometry is built around; changing it moves the
+       launcher's relationship to the bar as well, and a browser test pins it. */
+    --bar-offset: 22px;
+    --bar-height: 64px;
+}
+
 @layer components {
+    /* ==========================================================================
+       Shared bottom-bar surface.
+
+       Both phone bottom bars — the customer one in «حسابي» and the admin
+       tab bar — render through these classes, so the two surfaces cannot drift
+       apart. The geometry is concentric: an item's radius is the surface radius
+       minus the inset, which is what makes an inner pill sit correctly inside a
+       rounded parent.
+
+       Two deliberate limits, both researched rather than assumed. The full
+       sources live in `docs/research/liquid-glass-bottom-nav.md`.
+
+       - No edge refraction. `backdrop-filter: url()` with an SVG displacement
+         map is Chromium-only, silently ignored in Safari and Firefox, and
+         WebKit's own test case crash-loops the GPU process on trunk. The
+         top-edge scrim below is the portable stand-in.
+       - `prefers-reduced-transparency` is Chromium-only, so it is a bonus on
+         top of the `@supports` fallback rather than the safety net itself.
+       ========================================================================== */
+    .arabut-bottom-bar {
+        position: fixed;
+        inset-inline: 12px;
+        bottom: calc(var(--bar-offset) + env(safe-area-inset-bottom));
+        z-index: 40;
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+    }
+
+    .arabut-bottom-bar__inner {
+        position: relative;
+        display: flex;
+        flex-wrap: nowrap;
+        width: 100%;
+        max-width: 27rem;
+        padding: var(--bar-inset);
+        border-radius: var(--bar-surface-radius);
+        isolation: isolate;
+        /* Warm, restrained material. Brightness sits *below* 1 (Apple's
+           `regular` variant adjusts luminosity rather than lifting it) and
+           saturation comes down from 190% so cold colour behind the bar is not
+           amplified: warmth comes from the tint, never the filter. */
+        background: linear-gradient(
+            to bottom,
+            rgb(20 16 12 / 72%),
+            rgb(12 9 7 / 86%)
+        );
+        -webkit-backdrop-filter: blur(24px) saturate(140%) brightness(0.86);
+        backdrop-filter: blur(24px) saturate(140%) brightness(0.86);
+        /* Two hairlines, top brighter than bottom, so the slab reads convex;
+           a tight shadow instead of a large diffuse one. */
+        box-shadow:
+            inset 0 1px 0 rgb(var(--bar-rim) / 22%),
+            inset 0 -1px 0 rgb(var(--bar-rim) / 7%),
+            0 -8px 24px rgb(0 0 0 / 35%);
+        pointer-events: auto;
+        transition: opacity 180ms ease;
+    }
+
+    /* Gold top hairline plus a corner highlight: a convex slab, not a panel. */
+    .arabut-bottom-bar__inner::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        border-block-start: 1px solid rgb(var(--bar-rim) / 12%);
+        background: linear-gradient(
+            150deg,
+            rgb(255 255 255 / 26%),
+            rgb(255 255 255 / 3%) 26%,
+            transparent 44%,
+            transparent 64%,
+            rgb(var(--bar-rim) / 12%) 100%
+        );
+        -webkit-mask:
+            linear-gradient(#000 0 0) content-box,
+            linear-gradient(#000 0 0);
+        mask:
+            linear-gradient(#000 0 0) content-box,
+            linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    /* The bar's top face: a warm scrim that darkens whatever shows through, plus
+       a specular sheen, both moved only by opacity.
+       The scrim is the scroll edge effect. A `mask-image` on this element would
+       be the obvious tool, but a mask applies to everything the element paints,
+       so it also erased the bar's own rim hairlines and its outward drop shadow
+       — the two things that make it read as a slab rather than a panel. The
+       scrim darkens instead of erasing, and needs no extra compositing layer. */
+    .arabut-bottom-bar__inner::after {
+        content: '';
+        position: absolute;
+        inset: 0 0 auto;
+        height: 55%;
+        border-radius: inherit;
+        background:
+            linear-gradient(180deg, rgb(12 9 7 / 55%), transparent 14px),
+            linear-gradient(180deg, rgb(255 255 255 / 8%), transparent 55%);
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    /* Hidden while a phone keyboard is open, so the bar never fights the
+       on-screen keyboard for the bottom of the viewport. `visibility` takes it
+       out of the accessibility tree as well as off the screen. */
+    .arabut-bottom-bar--keyboard-open .arabut-bottom-bar__inner {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+    }
+
+    .arabut-bottom-bar__item {
+        position: relative;
+        display: flex;
+        flex: 1 1 0;
+        min-width: 0;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.15rem;
+        min-height: 52px;
+        padding: 0.25rem 0.125rem;
+        border-radius: calc(var(--bar-surface-radius) - var(--bar-inset));
+        color: rgb(237 228 208 / 62%);
+        font-size: 0.68rem;
+        font-weight: 600;
+        line-height: 1.15;
+        text-decoration: none;
+        z-index: 3;
+        transition:
+            background-color 200ms ease,
+            color 200ms ease,
+            box-shadow 200ms ease,
+            transform 200ms ease,
+            opacity 200ms ease;
+    }
+
+    .arabut-bottom-bar__item svg {
+        width: 1.4rem;
+        height: 1.4rem;
+        flex: 0 0 auto;
+    }
+
+    .arabut-bottom-bar__label {
+        max-width: 100%;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+
+    .arabut-bottom-bar__item:hover {
+        color: #fff;
+    }
+
+    /* Touch reaction stays on the compositor. */
+    .arabut-bottom-bar__item:active {
+        transform: scale(0.96);
+        opacity: 0.92;
+    }
+
+    .arabut-bottom-bar__item--active {
+        color: var(--arabut-gold-bright);
+        background:
+            linear-gradient(
+                180deg,
+                rgb(255 255 255 / 11%),
+                rgb(255 255 255 / 3%)
+            ),
+            rgb(212 168 67 / 10%);
+        box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 20%),
+            inset 0 0 0 1px rgb(var(--bar-rim) / 20%);
+    }
+
+    /* The active glyph fills in rather than only changing colour, so selection
+       does not rest on colour alone. */
+    .arabut-bottom-bar__item--active svg {
+        fill: rgb(228 183 86 / 18%);
+    }
+
+    .arabut-bottom-bar__item--active .arabut-bottom-bar__label {
+        font-weight: 800;
+    }
+
+    .arabut-bottom-bar__item--active::after {
+        content: '';
+        position: absolute;
+        bottom: 0.3rem;
+        width: 1.1rem;
+        height: 2px;
+        border-radius: 999px;
+        background: var(--arabut-gold-bright);
+        box-shadow: 0 0 0.5rem rgb(228 183 86 / 60%);
+    }
+
+    .arabut-bottom-bar__item:focus-visible {
+        outline: 2px solid var(--arabut-focus);
+        outline-offset: 2px;
+    }
+
+    /* A destination that still needs someone: a quiet dot, never a count. */
+    .arabut-bottom-bar__dot {
+        position: absolute;
+        top: 0.55rem;
+        inset-inline-end: 1.05rem;
+        width: 0.4rem;
+        height: 0.4rem;
+        border-radius: 50%;
+        background: var(--arabut-gold-bright);
+        box-shadow: 0 0 0 2px rgb(14 12 9 / 80%);
+    }
+
+    /* The accessibility net, in four parts. This one is the real safety net for
+       every browser we do not control; `prefers-reduced-transparency` below is
+       Chromium-only and so is a bonus on top of it. The test covers the
+       `-webkit-` spelling too: a Safari that only understands the prefixed
+       property does support the material and must not be handed the opaque
+       surface. */
+    @supports not (
+        (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+    ) {
+        .arabut-bottom-bar__inner {
+            background: #0e0a08;
+        }
+    }
+
+    @media (prefers-contrast: more) {
+        .arabut-bottom-bar__inner {
+            background: #0e0a08;
+            box-shadow:
+                inset 0 0 0 1px var(--arabut-gold),
+                0 -8px 24px rgb(0 0 0 / 35%);
+        }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+        .arabut-bottom-bar__inner {
+            background: #0e0a08;
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .arabut-bottom-bar__inner,
+        .arabut-bottom-bar__item {
+            transition-duration: 0.01ms;
+        }
+
+        .arabut-bottom-bar__item:active {
+            transform: none;
+        }
+    }
+
     .auth-shell {
         position: relative;
         display: flex;
@@ -12892,9 +13166,9 @@ html.admin-document {
     height: 0.85rem;
 }
 
-.account-mobile-bottom-nav {
-    display: none;
-}
+/* The account bar's visibility is decided by the wide-viewport block near the
+   end of this sheet, so the shared `.arabut-bottom-bar` base can own
+   `display: flex` without a second competing rule here. */
 
 .account-overview {
     display: grid;
@@ -13717,28 +13991,15 @@ html.admin-document {
     }
 }
 
+/* The heading carries itself: weight, size and the space above it do the work.
+   It used to sit under a rounded gold icon tile, and briefly behind a gold
+   accent rule — the first is the icon-over-every-heading template, the second
+   is the one-sided coloured accent. Neither earned its place against three
+   repeated headings in one column, and both competed with the row icons and
+   buttons that are the actual content here. */
 .account-profile-card__header {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-block-end: 1rem;
-}
-
-.account-profile-card__header > span {
-    display: inline-flex;
-    width: 2.5rem;
-    height: 2.5rem;
-    flex: 0 0 2.5rem;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0.75rem;
-    background: rgb(212 168 67 / 10%);
-    color: var(--arabut-gold-bright);
-}
-
-.account-profile-card__header svg {
-    width: 1.2rem;
-    height: 1.2rem;
+    margin-block-end: 0.9rem;
+    padding-inline-start: 0.15rem;
 }
 
 .account-profile-card__header h3 {
@@ -13746,6 +14007,7 @@ html.admin-document {
     color: var(--arabut-ink);
     font-size: clamp(1.05rem, 3vw, 1.25rem);
     font-weight: 800;
+    letter-spacing: -0.01em;
 }
 
 .account-profile-card__rows {
@@ -13761,21 +14023,16 @@ html.admin-document {
     overflow: hidden;
 }
 
+/* Two-column row: icon, then everything else.
+   `min-width: 0` on both tracks is what keeps a long email address on one line
+   instead of letting the action column squeeze the value into two. */
 .account-profile-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    column-gap: 0.75rem;
+    row-gap: 0.55rem;
     padding: 0.9rem 1rem;
-}
-
-.account-profile-row__start {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    min-width: 0;
-    flex: 1 1 auto;
 }
 
 .account-profile-row__icon {
@@ -13786,8 +14043,25 @@ html.admin-document {
     align-items: center;
     justify-content: center;
     border-radius: 0.65rem;
-    background: rgb(212 168 67 / 9%);
+    border: 1px solid rgb(212 168 67 / 14%);
+    background: rgb(212 168 67 / 8%);
     color: var(--arabut-gold-bright);
+}
+
+/* The WhatsApp mark reads as WhatsApp: brand shapes stay solid and take a
+   green tint rather than being forced into the gold outline family. */
+.account-profile-row__icon--ok {
+    border-color: rgb(101 193 140 / 20%);
+    background: rgb(101 193 140 / 8%);
+    color: #78d59e;
+}
+
+/* Quiet, near-neutral tile for identity and password rows: gold everywhere was
+   what made every row look alike. */
+.account-profile-row__icon--state {
+    border-color: rgb(255 255 255 / 9%);
+    background: rgb(255 255 255 / 4%);
+    color: var(--arabut-ink);
 }
 
 .account-profile-row__icon svg {
@@ -13814,11 +14088,25 @@ html.admin-document {
     overflow-wrap: anywhere;
 }
 
+/* Email addresses and phone numbers are LTR runs inside an RTL page. */
+.account-profile-row__value--ltr {
+    direction: ltr;
+    unicode-bidi: isolate;
+    text-align: start;
+    overflow-wrap: normal;
+    word-break: break-word;
+}
+
+/* Actions never share a line with the value: the badge and its button keep
+   their own full-width row, right-aligned, so the value above is never
+   squeezed and the row's height is stable. */
 .account-profile-row__end {
     display: flex;
+    grid-column: 2;
     align-items: center;
+    justify-content: flex-end;
     gap: 0.65rem;
-    flex-shrink: 0;
+    min-width: 0;
 }
 
 .account-profile-badge {
@@ -13846,7 +14134,8 @@ html.admin-document {
 }
 
 .account-profile-row__btn {
-    min-height: 2.5rem;
+    /* 44px touch target: these are the primary actions on the page. */
+    min-height: 2.75rem;
     border: 1px solid rgb(212 168 67 / 42%);
     border-radius: 0.65rem;
     background: rgb(212 168 67 / 9%);
@@ -14062,11 +14351,32 @@ html.admin-document {
     font-weight: 600;
 }
 
-.account-profile-password__forgot {
-    display: flex;
+/* The recovery link sits *below* the bordered password row as its own quiet
+   line. Kept inside the row it stretched the row and read as part of the
+   field's label. */
+.account-profile-forgot {
+    margin: 0;
+    padding: 0.15rem 0.2rem 0;
+    text-align: end;
+}
+
+.account-profile-forgot .account-profile-link {
+    display: inline-flex;
+    min-height: 2.75rem;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.6rem 1rem 0.85rem;
+    color: var(--arabut-muted);
+    font-size: 0.82rem;
+    text-decoration-color: rgb(212 168 67 / 45%);
+}
+
+.account-profile-forgot .account-profile-link:hover {
+    color: var(--arabut-ink);
+}
+
+.account-profile-forgot .account-profile-link:focus-visible {
+    outline: 2px solid var(--arabut-focus);
+    outline-offset: 2px;
+    border-radius: 0.35rem;
 }
 
 .account-profile-link {
@@ -14267,50 +14577,6 @@ html.admin-document {
     }
 }
 
-@media (min-width: 48rem) {
-    .account-shell__hero {
-        background-image:
-            linear-gradient(112deg, rgb(28 24 20 / 84%), rgb(13 11 8 / 94%)),
-            var(--store-image-stadium);
-    }
-
-    .account-shell__hero-inner {
-        min-height: 12.875rem;
-        padding-block: 1.5rem;
-    }
-
-    .account-shell__grid {
-        grid-template-columns: minmax(13.5rem, 15.5rem) minmax(0, 1fr);
-        align-items: start;
-        gap: clamp(1.5rem, 3.5vw, 2.75rem);
-        padding-block: 2.25rem;
-    }
-
-    .account-shell__sidebar {
-        display: block !important;
-        position: sticky;
-        inset-block-start: 7.5rem;
-    }
-
-    .account-mobile-bottom-nav,
-    .account-profile-logout {
-        display: none !important;
-    }
-
-    .account-overview__metrics {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-
-    .account-metric--wallet {
-        display: flex;
-    }
-
-    .account-profile-grid,
-    .account-support-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
 @media (max-width: 47.99rem) {
     .chat-widget-root--account {
         bottom: calc(120px + env(safe-area-inset-bottom));
@@ -14395,8 +14661,14 @@ html.admin-document {
         }
     }
 
+    /* Clearance for the floating bar, derived from the bar's own tokens rather
+       than a magic number: its height, its gap to the edge, and a margin so the
+       last control on the page never ends up under the glass. */
     html {
-        scroll-padding-bottom: calc(132px + env(safe-area-inset-bottom));
+        scroll-padding-bottom: calc(
+            var(--bar-height) + var(--bar-offset) + 2rem +
+                env(safe-area-inset-bottom)
+        );
     }
 
     .account-shell__sidebar {
@@ -14404,83 +14676,29 @@ html.admin-document {
     }
 
     .account-shell__content {
-        padding-bottom: calc(132px + env(safe-area-inset-bottom));
-    }
-
-    .account-mobile-bottom-nav {
-        display: flex;
-        justify-content: center;
-        position: fixed;
-        inset-inline: 16px;
-        bottom: calc(22px + env(safe-area-inset-bottom));
-        z-index: 60;
-        pointer-events: none;
-        transition:
-            opacity 180ms ease,
-            transform 180ms ease;
-    }
-
-    .account-mobile-bottom-nav--keyboard-open {
-        opacity: 0 !important;
-        transform: translateY(20px) !important;
-        pointer-events: none !important;
-    }
-
-    .account-mobile-bottom-nav__inner {
-        display: flex;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        overscroll-behavior-x: contain;
-        scroll-snap-type: x proximity;
-        scrollbar-width: none;
-        gap: 4px;
-        width: 100%;
-        max-width: 430px;
-        padding: 6px;
-        border-radius: 28px;
-        border: 1px solid rgb(255 255 255 / 12%);
-        background: linear-gradient(
-            180deg,
-            rgb(36 30 24 / 62%),
-            rgb(20 17 14 / 74%)
+        padding-bottom: calc(
+            var(--bar-height) + var(--bar-offset) + 2rem +
+                env(safe-area-inset-bottom)
         );
-        -webkit-backdrop-filter: blur(34px) saturate(190%);
-        backdrop-filter: blur(34px) saturate(190%);
-        box-shadow:
-            inset 0 1px 0 rgb(255 255 255 / 14%),
-            inset 0 -1px 0 rgb(0 0 0 / 25%),
-            0 18px 44px -10px rgb(0 0 0 / 70%),
-            0 2px 8px rgb(0 0 0 / 35%);
-        pointer-events: auto;
     }
 
-    .account-mobile-bottom-nav__inner::-webkit-scrollbar {
-        display: none;
+    /* The account bar renders through the shared bottom-bar surface, which owns
+       `display`, the material and the keyboard step-aside. On desktop it is
+       hidden by the wide-viewport block below. What is left here is only this
+       bar's stacking order above the storefront. */
+    /* Stacking order is the only thing this bar needs that the shared surface
+       does not provide; the keyboard step-aside belongs to
+       `.arabut-bottom-bar--keyboard-open`. A transition here would never run:
+       the hide animates the inner element's opacity, not this one's. */
+    .account-mobile-bottom-nav {
+        z-index: 60;
     }
 
-    .account-mobile-bottom-nav__item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        flex: 0 0 auto;
-        min-width: 4.6rem;
-        scroll-snap-align: center;
-        min-height: 52px;
-        gap: 3px;
-        padding: 4px 2px;
-        border-radius: 22px;
-        border: 0;
-        color: rgb(237 228 208 / 60%);
-        text-decoration: none;
-        transition:
-            background-color 180ms,
-            color 180ms;
-    }
-
-    .account-mobile-bottom-nav__inner--fits .account-mobile-bottom-nav__item {
-        flex: 1 1 0;
-        min-width: 0;
+    /* The account rules in this file are unlayered, while the shared surface
+       lives in `@layer components`; unlayered styles beat layered ones, which
+       is why these single-class selectors are enough to adjust the surface. */
+    .account-mobile-bottom-nav .account-mobile-bottom-nav__inner {
+        gap: 4px;
     }
 
     .account-mobile-bottom-nav__icon-wrap {
@@ -14489,39 +14707,19 @@ html.admin-document {
         justify-content: center;
     }
 
-    .account-mobile-bottom-nav__icon-wrap svg {
-        width: 1.45rem;
-        height: 1.45rem;
-    }
-
     .account-mobile-bottom-nav__label {
-        max-width: 100%;
-        overflow: hidden;
         font-size: 11px;
-        font-weight: 500;
         line-height: 1.2;
         letter-spacing: -0.01em;
-        white-space: nowrap;
-        text-overflow: ellipsis;
     }
 
-    .account-mobile-bottom-nav__item:hover {
-        color: #ffffff;
-    }
-
-    .account-mobile-bottom-nav__item:active {
-        background: rgb(255 255 255 / 6%);
-    }
-
-    .account-mobile-bottom-nav__item--active {
-        color: var(--arabut-gold-bright);
-        font-weight: 700;
-        background: rgb(255 255 255 / 9%);
-        box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%);
-    }
-
-    .account-mobile-bottom-nav__item--active .account-mobile-bottom-nav__label {
-        font-weight: 700;
+    /* The inactive weight only. This must not match the active item, or it
+       ties the shared active rule on specificity and wins on source order,
+       flattening the selected label back to the inactive weight. */
+    .account-mobile-bottom-nav
+        .account-mobile-bottom-nav__item:not(.arabut-bottom-bar__item--active)
+        .account-mobile-bottom-nav__label {
+        font-weight: 500;
     }
 
     .account-metric dt {
@@ -14533,6 +14731,59 @@ html.admin-document {
         font-size: 1.25rem;
     }
 }
+
+@media (min-width: 48rem) {
+    .account-shell__hero {
+        background-image:
+            linear-gradient(112deg, rgb(28 24 20 / 84%), rgb(13 11 8 / 94%)),
+            var(--store-image-stadium);
+    }
+
+    .account-shell__hero-inner {
+        min-height: 12.875rem;
+        padding-block: 1.5rem;
+    }
+
+    .account-shell__grid {
+        grid-template-columns: minmax(13.5rem, 15.5rem) minmax(0, 1fr);
+        align-items: start;
+        gap: clamp(1.5rem, 3.5vw, 2.75rem);
+        padding-block: 2.25rem;
+    }
+
+    .account-shell__sidebar {
+        display: block !important;
+        position: sticky;
+        inset-block-start: 7.5rem;
+    }
+
+    /* Pointless on desktop, where the sidebar is the navigation. No
+       `!important` is needed and none belongs here: these rules are unlayered
+       while the shared surface's `display: flex` lives in `@layer components`,
+       so they already win. Reserving the escape hatch matters — an inline
+       utility that intentionally re-shows the bar would be silently defeated
+       by one. */
+    .account-mobile-bottom-nav,
+    .account-profile-logout {
+        display: none;
+    }
+
+    .account-overview__metrics {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .account-metric--wallet {
+        display: flex;
+    }
+
+    .account-profile-grid,
+    .account-support-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* The bottom bar's accessibility net lives with the shared surface in
+   `@layer components`, so both bars inherit it from one place. */
 
 @media (min-width: 48rem) {
     .chat-widget-root--account {

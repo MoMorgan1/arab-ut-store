@@ -1,0 +1,1967 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Arab UT · canvas · بياناتي (profile) redesign</title>
+        <!-- The real compiled storefront stylesheet: existing classes below are
+             rendered exactly as they ship today. -->
+        <link rel="stylesheet" href="/build/assets/app-DHOsQjEE.css" />
+        <style>
+            :root {
+                /* Named so the values are reviewable and so a later
+                   `corner-shape: squircle` is a one-line change. */
+                --nav-surface-radius: 30px;
+                --nav-inset: 6px;
+                --nav-item-radius: calc(
+                    var(--nav-surface-radius) - var(--nav-inset)
+                );
+                --nav-rim: 212 175 106;
+            }
+
+            body {
+                margin: 0;
+                background:
+                    radial-gradient(
+                        circle at 15% 0%,
+                        rgb(212 168 67 / 7%),
+                        transparent 45%
+                    ),
+                    #080705;
+                color: var(--arabut-ink, #ede4d0);
+                font-family: 'Thmanyah Sans', Tahoma, Arial, sans-serif;
+            }
+
+            .canvas {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: flex-start;
+                gap: 2.5rem;
+                padding: 2.5rem;
+                max-width: 1400px;
+                margin: 0 auto;
+            }
+
+            .canvas__intro {
+                flex: 1 1 100%;
+            }
+
+            .canvas__intro h1 {
+                margin: 0 0 0.5rem;
+                font-size: 1.5rem;
+                font-weight: 900;
+                color: var(--arabut-gold-bright, #e4b756);
+            }
+
+            .canvas__intro p {
+                margin: 0;
+                max-width: 70ch;
+                color: var(--arabut-muted, #a89880);
+                line-height: 1.6;
+            }
+
+            .art {
+                display: grid;
+                gap: 0.75rem;
+                justify-items: start;
+            }
+
+            .art__caption {
+                display: flex;
+                align-items: baseline;
+                gap: 0.6rem;
+                font-size: 0.85rem;
+                font-weight: 800;
+            }
+
+            .art__caption bdi {
+                font-family: 'Thmanyah Serif Display', serif;
+                font-size: 1.05rem;
+                color: var(--arabut-gold-bright, #e4b756);
+            }
+
+            .art__tag {
+                border: 1px solid var(--arabut-line, rgb(212 168 67 / 16%));
+                border-radius: 999px;
+                padding: 0.15rem 0.5rem;
+                font-size: 0.68rem;
+                font-weight: 700;
+                color: var(--arabut-muted, #a89880);
+            }
+
+            .art__tag--new {
+                border-color: rgb(101 193 140 / 40%);
+                color: #78d59e;
+            }
+
+            /* A phone-shaped viewport: fixed height, scrolls internally so the
+               sticky bottom bar can be shown over scrolling content. */
+            .phone {
+                position: relative;
+                width: 390px;
+                height: 800px;
+                overflow-y: auto;
+                overflow-x: hidden;
+                border: 1px solid rgb(255 255 255 / 10%);
+                border-radius: 2rem;
+                background: #080705;
+                box-shadow: 0 2rem 5rem rgb(0 0 0 / 55%);
+                scrollbar-width: none;
+            }
+
+            .phone::-webkit-scrollbar {
+                display: none;
+            }
+
+            .phone--ltr {
+                direction: ltr;
+            }
+
+            .phone__pad {
+                padding: 1.1rem 1rem 0;
+            }
+
+            .phone__pad--nav {
+                padding-bottom: 8.5rem;
+            }
+
+            .sticky-demo {
+                position: sticky;
+                bottom: 0;
+                margin-top: -6.5rem;
+                padding: 2.5rem 0 1.35rem;
+                pointer-events: none;
+            }
+
+            /* ============================================================
+               Proposed card language (the "after").
+               Class names are canvas-only and do not exist in app.css yet.
+               ============================================================ */
+
+            .au-head {
+                display: flex;
+                align-items: center;
+                gap: 0.6rem;
+                margin: 0 0 0.85rem;
+                color: var(--arabut-ink, #ede4d0);
+                font-size: 1.15rem;
+                font-weight: 900;
+                letter-spacing: -0.01em;
+            }
+
+            .au-head::before {
+                content: '';
+                width: 3px;
+                height: 1.15rem;
+                border-radius: 999px;
+                background: linear-gradient(
+                    180deg,
+                    var(--arabut-gold-bright, #e4b756),
+                    rgb(212 168 67 / 25%)
+                );
+            }
+
+            .au-card {
+                border: 1px solid var(--arabut-line, rgb(212 168 67 / 16%));
+                border-radius: 1.15rem;
+                background:
+                    linear-gradient(
+                        140deg,
+                        rgb(212 168 67 / 5%),
+                        transparent 44%
+                    ),
+                    rgb(24 20 16 / 72%);
+                padding: 1.05rem;
+                box-shadow:
+                    inset 0 1px 0 rgb(255 255 255 / 4%),
+                    0 1rem 2.5rem rgb(0 0 0 / 14%);
+            }
+
+            .au-rows {
+                display: grid;
+                gap: 0.7rem;
+            }
+
+            .au-row {
+                display: flex;
+                align-items: center;
+                gap: 0.8rem;
+                min-height: 3.75rem;
+                border: 1px solid var(--arabut-line, rgb(212 168 67 / 16%));
+                border-radius: 0.95rem;
+                background: rgb(8 7 5 / 40%);
+                padding: 0.75rem 0.85rem;
+            }
+
+            .au-row__icon {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 2.4rem;
+                height: 2.4rem;
+                flex: 0 0 2.4rem;
+                border-radius: 0.75rem;
+                border: 1px solid rgb(212 168 67 / 16%);
+                background: rgb(212 168 67 / 7%);
+                color: var(--arabut-gold-bright, #e4b756);
+            }
+
+            .au-row__icon svg {
+                width: 1.15rem;
+                height: 1.15rem;
+            }
+
+            .au-row__icon--whatsapp {
+                border-color: rgb(101 193 140 / 22%);
+                background: rgb(101 193 140 / 9%);
+                color: #78d59e;
+            }
+
+            .au-row__icon--state {
+                border-color: rgb(255 255 255 / 10%);
+                background: rgb(255 255 255 / 4%);
+                color: var(--arabut-ink, #ede4d0);
+            }
+
+            .au-row__body {
+                display: grid;
+                gap: 0.15rem;
+                min-width: 0;
+                flex: 1 1 auto;
+            }
+
+            .au-row__label {
+                display: flex;
+                align-items: center;
+                gap: 0.4rem;
+                color: var(--arabut-muted, #a89880);
+                font-size: 0.78rem;
+                font-weight: 700;
+            }
+
+            .au-row__value {
+                color: var(--arabut-ink, #ede4d0);
+                font-size: 0.95rem;
+                font-weight: 750;
+                line-height: 1.35;
+                overflow-wrap: anywhere;
+            }
+
+            .au-row__value--ltr {
+                direction: ltr;
+                text-align: right;
+                unicode-bidi: isolate;
+            }
+
+            .phone--ltr .au-row__value--ltr {
+                text-align: left;
+            }
+
+            /* One tidy action column, full width under the value, so a long
+               email always keeps its own line. */
+            .au-row--stacked {
+                flex-wrap: wrap;
+            }
+
+            .au-row--stacked .au-row__body {
+                flex: 1 1 auto;
+            }
+
+            .au-row__action {
+                display: flex;
+                align-items: center;
+                gap: 0.55rem;
+                flex-basis: 100%;
+                justify-content: flex-end;
+                margin-block-start: 0.1rem;
+            }
+
+            .au-state {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.3rem;
+                border-radius: 999px;
+                padding: 0.2rem 0.5rem;
+                font-size: 0.7rem;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .au-state--ok {
+                border: 1px solid rgb(101 193 140 / 28%);
+                background: rgb(101 193 140 / 10%);
+                color: #78d59e;
+            }
+
+            .au-state--warn {
+                border: 1px solid rgb(212 168 67 / 38%);
+                background: rgb(212 168 67 / 10%);
+                color: var(--arabut-gold-bright, #e4b756);
+            }
+
+            .au-state svg {
+                width: 0.8rem;
+                height: 0.8rem;
+            }
+
+            .au-link-action {
+                border: 0;
+                background: transparent;
+                padding: 0;
+                color: var(--arabut-gold-bright, #e4b756);
+                font: inherit;
+                font-size: 0.82rem;
+                font-weight: 850;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+
+            .au-link-action--soft {
+                color: var(--arabut-muted, #a89880);
+            }
+
+            .au-btn {
+                min-height: 2.25rem;
+                border: 1px solid rgb(212 168 67 / 34%);
+                border-radius: 0.65rem;
+                background: rgb(212 168 67 / 8%);
+                padding: 0.4rem 0.8rem;
+                color: var(--arabut-gold-bright, #e4b756);
+                font: inherit;
+                font-size: 0.8rem;
+                font-weight: 850;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+
+            /* The forgot-password link sits *below* the bordered field, as
+               its own quiet line, so the field keeps one fixed height. */
+            .au-below {
+                margin: 0.55rem 0 0;
+                display: flex;
+                justify-content: flex-end;
+            }
+
+            .au-below button {
+                border: 0;
+                background: transparent;
+                padding: 0.2rem 0;
+                color: var(--arabut-muted, #a89880);
+                font: inherit;
+                font-size: 0.8rem;
+                font-weight: 700;
+                text-decoration: underline;
+                text-underline-offset: 4px;
+                text-decoration-color: rgb(212 168 67 / 45%);
+                cursor: pointer;
+            }
+
+            .au-form {
+                display: grid;
+                gap: 0.75rem;
+                border-top: 1px solid var(--arabut-line, rgb(212 168 67 / 16%));
+                margin-top: 0.75rem;
+                padding-top: 0.85rem;
+            }
+
+            .au-field {
+                display: grid;
+                gap: 0.35rem;
+            }
+
+            .au-field > span {
+                color: var(--arabut-muted, #a89880);
+                font-size: 0.8rem;
+                font-weight: 750;
+            }
+
+            .au-field input {
+                width: 100%;
+                height: 3rem;
+                border: 1px solid var(--arabut-line, rgb(212 168 67 / 16%));
+                border-radius: 0.75rem;
+                background: rgb(8 7 5 / 62%);
+                padding: 0.65rem 0.8rem;
+                color: var(--arabut-ink, #ede4d0);
+                font: inherit;
+                font-size: 1rem;
+            }
+
+            .au-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.6rem;
+                margin-top: 0.15rem;
+            }
+
+            .au-btn--primary {
+                min-height: 2.75rem;
+                border: 1px solid var(--arabut-gold, #d4a843);
+                border-radius: 0.75rem;
+                background: var(--arabut-gold, #d4a843);
+                padding: 0.6rem 1.1rem;
+                color: #080705;
+                font: inherit;
+                font-size: 0.88rem;
+                font-weight: 900;
+                cursor: pointer;
+            }
+
+            .au-btn--ghost {
+                min-height: 2.75rem;
+                border: 1px solid rgb(212 168 67 / 28%);
+                border-radius: 0.75rem;
+                background: transparent;
+                padding: 0.6rem 1rem;
+                color: var(--arabut-muted, #a89880);
+                font: inherit;
+                font-size: 0.88rem;
+                font-weight: 750;
+                cursor: pointer;
+            }
+
+            .au-logout {
+                display: flex;
+                width: 100%;
+                min-height: 50px;
+                align-items: center;
+                justify-content: center;
+                gap: 0.55rem;
+                margin-top: 1.1rem;
+                border: 1px solid rgb(255 180 169 / 24%);
+                border-radius: 0.9rem;
+                background: rgb(255 180 169 / 6%);
+                color: var(--arabut-danger, #ffb4a9);
+                font: inherit;
+                font-size: 0.9rem;
+                font-weight: 850;
+                cursor: pointer;
+            }
+
+            .au-logout svg {
+                width: 1.1rem;
+                height: 1.1rem;
+            }
+
+            /* ============================================================
+               Proposed bottom navigation: "liquid glass" pass.
+               Keeps the existing markup contract (nav > inner > item > icon+label)
+               and the keyboard-open hide behaviour.
+               ============================================================ */
+
+            .au-nav {
+                display: flex;
+                justify-content: center;
+                padding: 0 0.9rem;
+            }
+
+            .au-nav__inner {
+                position: relative;
+                display: flex;
+                flex-wrap: nowrap;
+                gap: 0.25rem;
+                width: 100%;
+                max-width: 25rem;
+                padding: var(--nav-inset);
+                border-radius: var(--nav-surface-radius);
+                isolation: isolate;
+                /* 1. Restrained warm filter: brightness below 1 (Apple's
+                   "regular" variant adjusts luminosity rather than lifting it)
+                   and saturation down from 190% so cold colour behind the bar
+                   is not amplified. Warmth comes from the tint, not the filter. */
+                background: linear-gradient(
+                    to bottom,
+                    rgb(20 16 12 / 72%),
+                    rgb(12 9 7 / 86%)
+                );
+                -webkit-backdrop-filter: blur(24px) saturate(140%)
+                    brightness(0.86);
+                backdrop-filter: blur(24px) saturate(140%) brightness(0.86);
+                /* 2. Scroll edge effect: content dissolves into the bar's top
+                   edge instead of meeting a hard line. */
+                -webkit-mask-image: linear-gradient(
+                    to bottom,
+                    transparent,
+                    #000 14px
+                );
+                mask-image: linear-gradient(to bottom, transparent, #000 14px);
+                /* 3. Two-hairline specular rim, top brighter than bottom, and a
+                   tight shadow instead of a large diffuse one. */
+                box-shadow:
+                    inset 0 1px 0 rgb(var(--nav-rim) / 16%),
+                    inset 0 -1px 0 rgb(var(--nav-rim) / 7%),
+                    0 -8px 24px rgb(0 0 0 / 35%);
+            }
+
+            /* Gold top hairline, brighter than the bottom one: reads as a
+               convex slab rather than a flat panel. */
+            .au-nav__inner::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                border-radius: inherit;
+                border-block-start: 1px solid rgb(var(--nav-rim) / 12%);
+                background: linear-gradient(
+                    150deg,
+                    rgb(255 255 255 / 26%),
+                    rgb(255 255 255 / 3%) 26%,
+                    transparent 44%,
+                    transparent 64%,
+                    rgb(var(--nav-rim) / 12%) 100%
+                );
+                -webkit-mask:
+                    linear-gradient(#000 0 0) content-box,
+                    linear-gradient(#000 0 0);
+                mask:
+                    linear-gradient(#000 0 0) content-box,
+                    linear-gradient(#000 0 0);
+                -webkit-mask-composite: xor;
+                mask-composite: exclude;
+                pointer-events: none;
+                z-index: 2;
+            }
+
+            /* Specular sheen panned across the top face; moved only by opacity
+               and transform so it stays on the compositor. */
+            .au-nav__inner::after {
+                content: '';
+                position: absolute;
+                inset: 0 0 auto;
+                height: 55%;
+                border-radius: inherit;
+                background: linear-gradient(
+                    180deg,
+                    rgb(255 255 255 / 8%),
+                    transparent
+                );
+                pointer-events: none;
+                z-index: 1;
+                transition: opacity 200ms ease;
+            }
+
+            .au-nav__item {
+                position: relative;
+                display: flex;
+                flex: 1 1 0;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 0.15rem;
+                min-width: 0;
+                min-height: 52px;
+                border-radius: var(--nav-item-radius);
+                color: rgb(237 228 208 / 62%);
+                text-decoration: none;
+                transition:
+                    color 200ms ease,
+                    background-color 200ms ease,
+                    box-shadow 200ms ease,
+                    transform 200ms ease,
+                    opacity 200ms ease;
+                z-index: 3;
+            }
+
+            /* 5. Touch reaction on the compositor only. */
+            .au-nav__item:active {
+                transform: scale(0.96);
+                opacity: 0.92;
+            }
+
+            .au-nav__item svg {
+                width: 1.4rem;
+                height: 1.4rem;
+            }
+
+            .au-nav__label {
+                max-width: 100%;
+                overflow: hidden;
+                font-size: 0.68rem;
+                font-weight: 600;
+                line-height: 1.15;
+                white-space: nowrap;
+                text-overflow: ellipsis;
+            }
+
+            /* Active: a raised glass capsule inside the bar, gold ink, and a
+               glyph that fills in rather than only changing colour. */
+            .au-nav__item--active {
+                color: var(--arabut-gold-bright, #e4b756);
+                background:
+                    linear-gradient(
+                        180deg,
+                        rgb(255 255 255 / 11%),
+                        rgb(255 255 255 / 3%)
+                    ),
+                    rgb(212 168 67 / 10%);
+                box-shadow:
+                    inset 0 1px 0 rgb(255 255 255 / 20%),
+                    inset 0 0 0 1px rgb(var(--nav-rim) / 20%);
+            }
+
+            .au-nav__item--active svg {
+                fill: rgb(228 183 86 / 18%);
+            }
+
+            .au-nav__item--active .au-nav__label {
+                font-weight: 800;
+            }
+
+            .au-nav__item--active::after {
+                content: '';
+                position: absolute;
+                bottom: 0.3rem;
+                width: 1.1rem;
+                height: 2px;
+                border-radius: 999px;
+                background: var(--arabut-gold-bright, #e4b756);
+                box-shadow: 0 0 0.5rem rgb(228 183 86 / 60%);
+            }
+
+            /* "Needs you" dot on a destination that has something to verify. */
+            .au-nav__dot {
+                position: absolute;
+                top: 0.55rem;
+                inset-inline-end: 1.05rem;
+                width: 0.4rem;
+                height: 0.4rem;
+                border-radius: 50%;
+                background: var(--arabut-gold-bright, #e4b756);
+                box-shadow: 0 0 0 2px rgb(14 12 9 / 80%);
+            }
+
+            .au-nav__item:focus-visible {
+                outline: 2px solid var(--arabut-gold, #d4a843);
+                outline-offset: 2px;
+            }
+
+            /* 6. The accessibility net the real implementation must carry. */
+            @supports not (backdrop-filter: blur(1px)) {
+                .au-nav__inner {
+                    background: #0e0a08;
+                }
+            }
+
+            @media (prefers-contrast: more) {
+                .au-nav__inner {
+                    background: #0e0a08;
+                    border: 1px solid var(--arabut-gold, #d4a843);
+                }
+            }
+
+            @media (prefers-reduced-transparency: reduce) {
+                .au-nav__inner {
+                    background: #0e0a08;
+                    -webkit-backdrop-filter: none;
+                    backdrop-filter: none;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .au-nav__item,
+                .au-nav__inner::after {
+                    transition-duration: 0.01ms;
+                }
+            }
+
+            .art__notes {
+                max-width: 390px;
+                margin: 0;
+                padding-inline-start: 1.1rem;
+                color: var(--arabut-muted, #a89880);
+                font-size: 0.78rem;
+                line-height: 1.7;
+            }
+
+            .art__notes b {
+                color: var(--arabut-ink, #ede4d0);
+            }
+
+            .before-strip {
+                position: relative;
+                width: 390px;
+                border-radius: 1.25rem;
+                overflow: hidden;
+                border: 1px solid rgb(255 255 255 / 8%);
+                background:
+                    linear-gradient(
+                        180deg,
+                        rgb(212 168 67 / 6%),
+                        transparent 40%
+                    ),
+                    #0a0908;
+                padding: 1rem;
+            }
+
+            .before-strip__label {
+                margin: 0 0 0.75rem;
+                color: var(--arabut-gold-bright, #e4b756);
+                font-size: 0.7rem;
+                font-weight: 800;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            /* The shipped public/build bundle predates the current app.css, so
+               the "before" artboards inline the exact rules from
+               resources/css/app.css for the classes they reproduce. Values are
+               copied verbatim; nothing is invented. */
+            .before-strip .account-profile-card {
+                min-width: 0;
+                overflow: hidden;
+                border: 1px solid var(--arabut-line, rgb(212 168 67 / 16%));
+                border-radius: 1rem;
+                background:
+                    linear-gradient(135deg, rgb(212 168 67 / 5%), transparent 42%),
+                    rgb(28 24 20 / 68%);
+                padding: 1.1rem;
+                box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 14%);
+            }
+
+            .before-strip .account-profile-card__header {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                margin-block-end: 1rem;
+            }
+
+            .before-strip .account-profile-card__header > span {
+                display: inline-flex;
+                width: 2.5rem;
+                height: 2.5rem;
+                flex: 0 0 2.5rem;
+                align-items: center;
+                justify-content: center;
+                border-radius: 0.75rem;
+                background: rgb(212 168 67 / 10%);
+                color: var(--arabut-gold-bright, #e4b756);
+            }
+
+            .before-strip .account-profile-card__header svg {
+                width: 1.2rem;
+                height: 1.2rem;
+            }
+
+            .before-strip .account-profile-card__header h3 {
+                margin: 0;
+                color: var(--arabut-ink, #ede4d0);
+                font-size: clamp(1.05rem, 3vw, 1.25rem);
+                font-weight: 800;
+            }
+
+            .before-strip .account-profile-card__rows {
+                display: grid;
+                gap: 0.85rem;
+            }
+
+            .before-strip .account-profile-item {
+                min-width: 0;
+                border: 1px solid var(--arabut-line, rgb(212 168 67 / 16%));
+                border-radius: 0.85rem;
+                background: rgb(8 7 5 / 32%);
+                overflow: hidden;
+            }
+
+            .before-strip .account-profile-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 0.75rem;
+                padding: 0.9rem 1rem;
+            }
+
+            .before-strip .account-profile-row__start {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                min-width: 0;
+                flex: 1 1 auto;
+            }
+
+            .before-strip .account-profile-row__icon {
+                display: inline-flex;
+                width: 2.25rem;
+                height: 2.25rem;
+                flex: 0 0 2.25rem;
+                align-items: center;
+                justify-content: center;
+                border-radius: 0.65rem;
+                background: rgb(212 168 67 / 9%);
+                color: var(--arabut-gold-bright, #e4b756);
+            }
+
+            .before-strip .account-profile-row__icon svg {
+                width: 1.15rem;
+                height: 1.15rem;
+            }
+
+            .before-strip .account-profile-row__info {
+                display: grid;
+                gap: 0.15rem;
+                min-width: 0;
+            }
+
+            .before-strip .account-profile-row__label {
+                color: var(--arabut-muted, #a89880);
+                font-size: 0.8rem;
+                font-weight: 700;
+            }
+
+            .before-strip .account-profile-row__value {
+                color: var(--arabut-ink, #ede4d0);
+                font-size: 0.95rem;
+                font-weight: 750;
+                overflow-wrap: anywhere;
+            }
+
+            .before-strip .account-profile-row__end {
+                display: flex;
+                align-items: center;
+                gap: 0.65rem;
+                flex-shrink: 0;
+            }
+
+            .before-strip .account-profile-badge {
+                display: inline-flex;
+                align-items: center;
+                border: 1px solid transparent;
+                border-radius: 999px;
+                padding: 0.3rem 0.55rem;
+                font-size: 0.75rem;
+                font-weight: 750;
+                white-space: nowrap;
+                line-height: 1;
+            }
+
+            .before-strip .account-profile-badge--ok {
+                border-color: rgb(101 193 140 / 30%);
+                background: rgb(101 193 140 / 12%);
+                color: #78d59e;
+            }
+
+            .before-strip .account-profile-badge--warn {
+                border-color: rgb(212 168 67 / 40%);
+                background: rgb(212 168 67 / 12%);
+                color: var(--arabut-gold-bright, #e4b756);
+            }
+
+            .before-strip .account-profile-row__btn {
+                min-height: 2.5rem;
+                border: 1px solid rgb(212 168 67 / 42%);
+                border-radius: 0.65rem;
+                background: rgb(212 168 67 / 9%);
+                padding: 0.5rem 0.85rem;
+                color: var(--arabut-gold-bright, #e4b756);
+                font: inherit;
+                font-size: 0.82rem;
+                font-weight: 800;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+
+            h3,
+            p,
+            ul {
+                margin-block: 0;
+            }
+
+            /* ?debug=1 — measurement readout used while reviewing the canvas. */
+            #debug {
+                position: fixed;
+                inset-block-start: 0;
+                inset-inline-start: 0;
+                z-index: 999;
+                max-width: 46rem;
+                margin: 0;
+                padding: 0.75rem 1rem;
+                border: 1px solid rgb(101 193 140 / 40%);
+                border-radius: 0 0 0.75rem 0;
+                background: rgb(4 20 12 / 94%);
+                color: #9ff0bd;
+                font-family: ui-monospace, Consolas, monospace;
+                font-size: 11px;
+                line-height: 1.5;
+                white-space: pre-wrap;
+                direction: ltr;
+                text-align: left;
+            }
+
+            #debug[hidden] {
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="canvas">
+            <header class="canvas__intro">
+                <h1>بياناتي — profile redesign canvas</h1>
+                <p>
+                    Every surface below is built from the repository's real
+                    tokens (warm black <code>#080705</code>, gold
+                    <code>#d4a843</code>, Thmanyah Sans) and the shipped
+                    <code>app.css</code> classes are used unchanged for the
+                    "before" states. The "after" states introduce only the new
+                    structures described in the captions.
+                </p>
+            </header>
+
+            <!-- ============ ARTBOARD 1: before / after row structure ======== -->
+            <section class="art">
+                <div class="art__caption">
+                    <span>1 ·</span><bdi>صف التواصل</bdi>
+                    <span class="art__tag">before</span>
+                    <span class="art__tag">as shipped today</span>
+                </div>
+                <div class="before-strip">
+                    <p class="before-strip__label">
+                        current classes · badge + button in one row with the value
+                    </p>
+                    <section class="account-profile-card">
+                        <header class="account-profile-card__header">
+                            <span aria-hidden="true">
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <rect
+                                        width="20"
+                                        height="16"
+                                        x="2"
+                                        y="4"
+                                        rx="2"
+                                    />
+                                    <path
+                                        d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"
+                                    />
+                                </svg>
+                            </span>
+                            <h3>التواصل</h3>
+                        </header>
+                        <div class="account-profile-card__rows">
+                            <div class="account-profile-item">
+                                <div class="account-profile-row">
+                                    <div class="account-profile-row__start">
+                                        <span
+                                            aria-hidden="true"
+                                            class="account-profile-row__icon"
+                                        >
+                                            <svg
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            >
+                                                <path
+                                                    d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"
+                                                />
+                                            </svg>
+                                        </span>
+                                        <div class="account-profile-row__info">
+                                            <span
+                                                class="account-profile-row__label"
+                                                >رقم واتساب</span
+                                            >
+                                            <strong
+                                                class="account-profile-row__value"
+                                                ><bdi>غير مضاف</bdi></strong
+                                            >
+                                        </div>
+                                    </div>
+                                    <div class="account-profile-row__end">
+                                        <span
+                                            class="account-profile-badge account-profile-badge--warn"
+                                            >غير موثّق</span
+                                        >
+                                        <button
+                                            class="account-profile-row__btn"
+                                            type="button"
+                                        >
+                                            توثيق
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="account-profile-item">
+                                <div class="account-profile-row">
+                                    <div class="account-profile-row__start">
+                                        <span
+                                            aria-hidden="true"
+                                            class="account-profile-row__icon"
+                                        >
+                                            <svg
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            >
+                                                <rect
+                                                    width="20"
+                                                    height="16"
+                                                    x="2"
+                                                    y="4"
+                                                    rx="2"
+                                                />
+                                                <path
+                                                    d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"
+                                                />
+                                            </svg>
+                                        </span>
+                                        <div class="account-profile-row__info">
+                                            <span
+                                                class="account-profile-row__label"
+                                                >البريد الإلكتروني</span
+                                            >
+                                            <strong
+                                                class="account-profile-row__value"
+                                                ><bdi
+                                                    >mahamedsaid.com@gmail.com</bdi
+                                                ></strong
+                                            >
+                                        </div>
+                                    </div>
+                                    <div class="account-profile-row__end">
+                                        <span
+                                            class="account-profile-badge account-profile-badge--ok"
+                                            >موثّق</span
+                                        >
+                                        <button
+                                            class="account-profile-row__btn"
+                                            type="button"
+                                        >
+                                            تغيير
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <p class="art__notes">
+                        Problems visible here: the email is pushed onto
+                        <b>two lines</b> because the badge + button column
+                        competes for width; the empty number still shouts
+                        <b>«غير موثّق»</b> even though there is nothing to
+                        verify; and every icon is the same generic outline glyph
+                        inside the same gold rounded square.
+                    </p>
+                </div>
+
+                <div class="art__caption">
+                    <span>2 ·</span><bdi>صف التواصل</bdi>
+                    <span class="art__tag art__tag--new">after</span>
+                </div>
+                <div class="before-strip">
+                    <p class="before-strip__label">
+                        proposed · one action per row, badge only when it means something
+                    </p>
+                    <section class="au-card">
+                        <h3 class="au-head">التواصل</h3>
+                        <div class="au-rows">
+                            <div class="au-row au-row--stacked">
+                                <span
+                                    class="au-row__icon au-row__icon--whatsapp"
+                                    aria-hidden="true"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path
+                                            d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"
+                                        />
+                                    </svg>
+                                </span>
+                                <div class="au-row__body">
+                                    <span class="au-row__label">رقم واتساب</span>
+                                    <strong class="au-row__value"
+                                        >غير مضاف</strong
+                                    >
+                                </div>
+                                <div class="au-row__action">
+                                    <button
+                                        class="au-link-action"
+                                        type="button"
+                                    >
+                                        أضف رقم جوال
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="au-row au-row--stacked">
+                                <span
+                                    class="au-row__icon au-row__icon--whatsapp"
+                                    aria-hidden="true"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path
+                                            d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"
+                                        />
+                                    </svg>
+                                </span>
+                                <div class="au-row__body">
+                                    <span class="au-row__label">رقم واتساب</span>
+                                    <strong class="au-row__value"
+                                        ><span class="au-row__value--ltr"
+                                            >+966 ••• 4567</span
+                                        ></strong
+                                    >
+                                </div>
+                                <div class="au-row__action">
+                                    <span class="au-state au-state--warn">
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2.2"
+                                            stroke-linecap="round"
+                                        >
+                                            <path d="M12 9v4" />
+                                            <path d="M12 17h.01" />
+                                            <circle cx="12" cy="12" r="9" />
+                                        </svg>
+                                        غير موثّق
+                                    </span>
+                                    <button class="au-btn" type="button">
+                                        توثيق الرقم
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="au-row au-row--stacked">
+                                <span class="au-row__icon" aria-hidden="true">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.9"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <rect
+                                            width="20"
+                                            height="16"
+                                            x="2"
+                                            y="4"
+                                            rx="2.5"
+                                        />
+                                        <path
+                                            d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"
+                                        />
+                                    </svg>
+                                </span>
+                                <div class="au-row__body">
+                                    <span class="au-row__label"
+                                        >البريد الإلكتروني</span
+                                    >
+                                    <strong
+                                        class="au-row__value au-row__value--ltr"
+                                        >mahamedsaid.com@gmail.com</strong
+                                    >
+                                </div>
+                                <div class="au-row__action">
+                                    <button
+                                        class="au-link-action au-link-action--soft"
+                                        type="button"
+                                    >
+                                        تغيير
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <p class="art__notes">
+                        The three states of the number row are shown together:
+                        <b>not added</b> (no badge — one clear action),
+                        <b>added but unverified</b> (badge + verify), and
+                        <b>verified</b> (quiet change link). The action column is
+                        a fixed-width stack, so the email keeps its own line.
+                        The WhatsApp row now uses the official glyph in a green
+                        tint instead of a generic chat bubble.
+                    </p>
+                </div>
+            </section>
+
+            <!-- ============ ARTBOARD 2: full RTL screen ==================== -->
+            <section class="art">
+                <div class="art__caption">
+                    <span>3 ·</span><bdi>شاشة بياناتي كاملة</bdi>
+                    <span class="art__tag art__tag--new">after · 390px · RTL</span>
+                </div>
+                <div class="phone" id="art-rtl">
+                    <div class="phone__pad phone__pad--nav">
+                        <div class="account-page-heading">
+                            <p>حساب Arab UT</p>
+                            <h2>بياناتي</h2>
+                        </div>
+
+                        <section class="au-card" style="margin-top: 1.1rem">
+                            <h3 class="au-head">بياناتي</h3>
+                            <div class="au-rows">
+                                <div class="au-row au-row--stacked">
+                                    <span
+                                        class="au-row__icon au-row__icon--state"
+                                        aria-hidden="true"
+                                    >
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.9"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        >
+                                            <path
+                                                d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"
+                                            />
+                                            <circle cx="12" cy="7" r="4" />
+                                        </svg>
+                                    </span>
+                                    <div class="au-row__body">
+                                        <span class="au-row__label">الاسم</span>
+                                        <strong class="au-row__value"
+                                            >محمد سعيد</strong
+                                        >
+                                    </div>
+                                    <div class="au-row__action">
+                                        <button
+                                            class="au-link-action au-link-action--soft"
+                                            type="button"
+                                        >
+                                            تعديل
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="au-card" style="margin-top: 1rem">
+                            <h3 class="au-head">التواصل</h3>
+                            <div class="au-rows">
+                                <div class="au-row au-row--stacked">
+                                    <span
+                                        class="au-row__icon au-row__icon--whatsapp"
+                                        aria-hidden="true"
+                                    >
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            fill="currentColor"
+                                        >
+                                            <path
+                                                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"
+                                            />
+                                        </svg>
+                                    </span>
+                                    <div class="au-row__body">
+                                        <span class="au-row__label"
+                                            >رقم واتساب</span
+                                        >
+                                        <strong class="au-row__value"
+                                            ><span class="au-row__value--ltr"
+                                                >+966 ••• 4567</span
+                                            ></strong
+                                        >
+                                    </div>
+                                    <div class="au-row__action">
+                                        <button
+                                            class="au-link-action au-link-action--soft"
+                                            type="button"
+                                        >
+                                            تغيير
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="au-row au-row--stacked">
+                                    <span class="au-row__icon" aria-hidden="true">
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.9"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        >
+                                            <rect
+                                                width="20"
+                                                height="16"
+                                                x="2"
+                                                y="4"
+                                                rx="2.5"
+                                            />
+                                            <path
+                                                d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"
+                                            />
+                                        </svg>
+                                    </span>
+                                    <div class="au-row__body">
+                                        <span class="au-row__label"
+                                            >البريد الإلكتروني</span
+                                        >
+                                        <strong
+                                            class="au-row__value au-row__value--ltr"
+                                            >mahamedsaid.com@gmail.com</strong
+                                        >
+                                    </div>
+                                    <div class="au-row__action">
+                                        <button
+                                            class="au-link-action au-link-action--soft"
+                                            type="button"
+                                        >
+                                            تغيير
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="au-card" style="margin-top: 1rem">
+                            <h3 class="au-head">كلمة المرور</h3>
+                            <div class="au-row au-row--stacked">
+                                <span
+                                    class="au-row__icon au-row__icon--state"
+                                    aria-hidden="true"
+                                >
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.9"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <rect
+                                            width="18"
+                                            height="11"
+                                            x="3"
+                                            y="11"
+                                            rx="2"
+                                        />
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                    </svg>
+                                </span>
+                                <div class="au-row__body">
+                                    <span class="au-row__label"
+                                        >كلمة المرور</span
+                                    >
+                                    <strong class="au-row__value"
+                                        >آخر تحديث قبل ٣ أشهر</strong
+                                    >
+                                </div>
+                                <div class="au-row__action">
+                                    <button class="au-btn" type="button">
+                                        تغيير
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="au-below">
+                                <button type="button">نسيت كلمة المرور؟</button>
+                            </p>
+                        </section>
+
+                        <!-- opened password editor, shown for reference -->
+                        <section class="au-card" style="margin-top: 1rem">
+                            <h3 class="au-head">كلمة المرور · أثناء التعديل</h3>
+                            <div class="au-row au-row--stacked">
+                                <span
+                                    class="au-row__icon au-row__icon--state"
+                                    aria-hidden="true"
+                                >
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.9"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <rect
+                                            width="18"
+                                            height="11"
+                                            x="3"
+                                            y="11"
+                                            rx="2"
+                                        />
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                    </svg>
+                                </span>
+                                <div class="au-row__body">
+                                    <span class="au-row__label"
+                                        >كلمة المرور</span
+                                    >
+                                </div>
+                                <div class="au-row__action">
+                                    <button
+                                        class="au-link-action au-link-action--soft"
+                                        type="button"
+                                    >
+                                        إلغاء
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="au-form">
+                                <label class="au-field">
+                                    <span>كلمة المرور الحالية</span>
+                                    <input type="password" value="password" />
+                                </label>
+                                <label class="au-field">
+                                    <span>كلمة المرور الجديدة</span>
+                                    <input type="password" value="password" />
+                                </label>
+                                <label class="au-field">
+                                    <span>تأكيد كلمة المرور الجديدة</span>
+                                    <input type="password" value="password" />
+                                </label>
+                                <div class="au-actions">
+                                    <button class="au-btn--primary" type="button">
+                                        تغيير كلمة المرور
+                                    </button>
+                                    <button class="au-btn--ghost" type="button">
+                                        إلغاء
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <button class="au-logout" type="button">
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.9"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                <path d="m16 17 5-5-5-5" />
+                                <path d="M21 12H9" />
+                            </svg>
+                            <span>تسجيل الخروج</span>
+                        </button>
+                    </div>
+
+                    <div class="sticky-demo">
+                        <nav class="au-nav" aria-label="أقسام الحساب">
+                            <div class="au-nav__inner">
+                                <a class="au-nav__item" href="#">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.7"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <rect
+                                            width="7"
+                                            height="9"
+                                            x="3"
+                                            y="3"
+                                            rx="1.5"
+                                        />
+                                        <rect
+                                            width="7"
+                                            height="5"
+                                            x="14"
+                                            y="3"
+                                            rx="1.5"
+                                        />
+                                        <rect
+                                            width="7"
+                                            height="9"
+                                            x="14"
+                                            y="12"
+                                            rx="1.5"
+                                        />
+                                        <rect
+                                            width="7"
+                                            height="5"
+                                            x="3"
+                                            y="16"
+                                            rx="1.5"
+                                        />
+                                    </svg>
+                                    <span class="au-nav__label">الرئيسية</span>
+                                </a>
+                                <a class="au-nav__item" href="#">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.7"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path
+                                            d="m7.5 4.27 9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                                        />
+                                        <path
+                                            d="m3.3 7 8.7 5 8.7-5M12 22V12"
+                                        />
+                                    </svg>
+                                    <span class="au-nav__label">طلباتي</span>
+                                </a>
+                                <a class="au-nav__item" href="#">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.7"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path
+                                            d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3v4a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2V5"
+                                        />
+                                    </svg>
+                                    <span class="au-nav__label">المحفظة</span>
+                                </a>
+                                <a
+                                    class="au-nav__item au-nav__item--active"
+                                    aria-current="page"
+                                    href="#"
+                                >
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.7"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path
+                                            d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"
+                                        />
+                                        <circle cx="12" cy="7" r="4" />
+                                    </svg>
+                                    <span class="au-nav__label">حسابي</span>
+                                </a>
+                            </div>
+                        </nav>
+                    </div>
+                </div>
+                <p class="art__notes">
+                    <b>Notes:</b> «مضبوطة» is gone — the row now says when the
+                    password was last changed, which is information the customer
+                    can act on. «نسيت كلمة المرور؟» sits under the bordered row
+                    as a quiet line, so the row never stretches. The phone row
+                    shows the verified state; an unverified number would carry a
+                    gold dot on «حسابي» in the bar below.
+                </p>
+            </section>
+
+            <!-- ============ ARTBOARD 3: bottom nav, before / after ========= -->
+            <section class="art">
+                <div class="art__caption">
+                    <span>4 ·</span><bdi>الشريط السفلي</bdi>
+                    <span class="art__tag art__tag--new">after · liquid glass</span>
+                </div>
+
+                <div class="phone phone--ltr" id="art-ltr">
+                    <div class="phone__pad phone__pad--nav">
+                        <div class="account-page-heading">
+                            <p>Arab UT account</p>
+                            <h2>My orders</h2>
+                        </div>
+                        <div class="au-rows" style="margin-top: 1rem">
+                            <div class="au-row au-row--stacked">
+                                <div class="au-row__body">
+                                    <span class="au-row__label">AUT-2481</span>
+                                    <strong class="au-row__value"
+                                        >1,200 Coins · PS / Xbox</strong
+                                    >
+                                </div>
+                                <div class="au-row__action">
+                                    <span class="au-state au-state--ok">
+                                        Completed
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="au-row au-row--stacked">
+                                <div class="au-row__body">
+                                    <span class="au-row__label">AUT-2479</span>
+                                    <strong class="au-row__value"
+                                        >FC 27 Rivals Boost</strong
+                                    >
+                                </div>
+                                <div class="au-row__action">
+                                    <span class="au-state au-state--warn">
+                                        In progress
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="au-row au-row--stacked">
+                                <div class="au-row__body">
+                                    <span class="au-row__label">AUT-2476</span>
+                                    <strong class="au-row__value"
+                                        >400 Coins · PC</strong
+                                    >
+                                </div>
+                                <div class="au-row__action">
+                                    <span class="au-state au-state--ok">
+                                        Completed
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="au-row au-row--stacked">
+                                <div class="au-row__body">
+                                    <span class="au-row__label">AUT-2470</span>
+                                    <strong class="au-row__value"
+                                        >EA FC 27 Backup Codes</strong
+                                    >
+                                </div>
+                                <div class="au-row__action">
+                                    <span class="au-state au-state--ok">
+                                        Completed
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="au-row au-row--stacked">
+                                <div class="au-row__body">
+                                    <span class="au-row__label">AUT-2465</span>
+                                    <strong class="au-row__value"
+                                        >2,000 Coins � PC</strong
+                                    >
+                                </div>
+                                <div class="au-row__action">
+                                    <span class="au-state au-state--warn">
+                                        Pending payment
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="art__notes" style="margin-top: 1rem">
+                            Scroll this artboard: the bar keeps its fixed place
+                            and the order rows travel behind the glass, so the
+                            top edge mask and the tint can be judged against real
+                            content.
+                        </p>
+                    </div>
+                    <div class="sticky-demo">
+                        <nav class="au-nav" aria-label="Account sections">
+                            <div class="au-nav__inner">
+                                <a class="au-nav__item" href="#">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.7"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <rect
+                                            width="7"
+                                            height="9"
+                                            x="3"
+                                            y="3"
+                                            rx="1.5"
+                                        />
+                                        <rect
+                                            width="7"
+                                            height="5"
+                                            x="14"
+                                            y="3"
+                                            rx="1.5"
+                                        />
+                                        <rect
+                                            width="7"
+                                            height="9"
+                                            x="14"
+                                            y="12"
+                                            rx="1.5"
+                                        />
+                                        <rect
+                                            width="7"
+                                            height="5"
+                                            x="3"
+                                            y="16"
+                                            rx="1.5"
+                                        />
+                                    </svg>
+                                    <span class="au-nav__label">Home</span>
+                                </a>
+                                <a
+                                    class="au-nav__item au-nav__item--active"
+                                    aria-current="page"
+                                    href="#"
+                                >
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.7"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path
+                                            d="m7.5 4.27 9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                                        />
+                                        <path d="m3.3 7 8.7 5 8.7-5M12 22V12" />
+                                    </svg>
+                                    <span class="au-nav__label">Orders</span>
+                                </a>
+                                <a class="au-nav__item" href="#">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.7"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path
+                                            d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3v4a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2V5"
+                                        />
+                                    </svg>
+                                    <span class="au-nav__label">Wallet</span>
+                                </a>
+                                <a class="au-nav__item" href="#">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.7"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path
+                                            d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"
+                                        />
+                                        <circle cx="12" cy="7" r="4" />
+                                    </svg>
+                                    <span class="au-nav__label">Account</span>
+                                    <span class="au-nav__dot"></span>
+                                </a>
+                            </div>
+                        </nav>
+                    </div>
+                </div>
+
+                <ul class="art__notes">
+                    <li>
+                        <b>Warm, restrained filter</b> — blur 24px, saturate
+                        140%, <b>brightness 0.86</b> (today: 34px, 190%, no
+                        brightness). Apple's <code>regular</code> variant
+                        <i>adjusts luminosity</i> rather than lifting it, and
+                        warmth is meant to come from the tint, never the filter.
+                    </li>
+                    <li>
+                        <b>Scroll edge effect</b> — a
+                        <code>mask-image</code> gradient dissolves content into
+                        the bar's top edge instead of meeting a hard line. This
+                        is the cheap stand-in for Apple's lensing, and it is what
+                        stops the bar reading as a generic glassmorphism
+                        rectangle.
+                    </li>
+                    <li>
+                        <b>Two-hairline specular rim</b> — gold top hairline
+                        brighter than the bottom one, so the bar reads as a
+                        convex slab. The large diffuse drop shadow is gone,
+                        replaced by a tight <code>0 -8px 24px</code>.
+                    </li>
+                    <li>
+                        <b>Concentric geometry</b> — the inner capsule radius is
+                        <code>calc(surface − inset)</code>, Apple's concentricity
+                        rule, with the tokens named so a later
+                        <code>corner-shape: squircle</code> is one line.
+                    </li>
+                    <li>
+                        <b>Touch reaction on the compositor</b> —
+                        <code>:active</code> scales to 0.96 and drops to 92%
+                        opacity; the sheen moves by opacity alone. No
+                        <code>pointermove</code> handler writing paint
+                        properties.
+                    </li>
+                    <li>
+                        <b>Four-way accessibility net</b> — opaque
+                        <code>#0E0A08</code> when <code>backdrop-filter</code> is
+                        unsupported, when <code>prefers-contrast: more</code>,
+                        and when <code>prefers-reduced-transparency</code>;
+                        0.01ms transitions under
+                        <code>prefers-reduced-motion</code>.
+                    </li>
+                    <li>
+                        <b>Deliberately skipped</b> — SVG
+                        <code>feDisplacementMap</code> refraction: Chromium-only,
+                        silent in Safari, and WebKit's own test case currently
+                        crash-loops the GPU process. Also skipped: chromatic
+                        aberration and JS pointer tracking. Sources:
+                        <code>docs/research/liquid-glass-bottom-nav.md</code>.
+                    </li>
+                    <li>
+                        <b>Overflow</b> — four items share the width
+                        (<code>flex: 1 1 0</code>), so no horizontal scrolling
+                        and no clipped fifth item.
+                    </li>
+                </ul>
+            </section>
+        </div>
+
+        <pre id="debug" hidden></pre>
+        <script>
+            if (
+                new URLSearchParams(window.location.search).get('debug') === '1'
+            ) {
+                window.addEventListener('load', function () {
+                    const out = [];
+                    const push = (k, v) =>
+                        out.push(
+                            k.padEnd(22) +
+                                ' ' +
+                                (typeof v === 'string'
+                                    ? v
+                                    : JSON.stringify(v)),
+                        );
+
+                    push('doc.overflow', {
+                        scrollWidth: document.documentElement.scrollWidth,
+                        clientWidth: document.documentElement.clientWidth,
+                    });
+
+                    document.querySelectorAll('.phone').forEach((phone, i) => {
+                        push('phone[' + i + '].overflow', {
+                            scrollWidth: phone.scrollWidth,
+                            clientWidth: phone.clientWidth,
+                        });
+                    });
+
+                    const value = document.querySelector(
+                        '.au-row__value--ltr',
+                    );
+                    if (value) {
+                        const rect = value.getBoundingClientRect();
+                        const style = getComputedStyle(value);
+                        push('after.email', {
+                            w: Math.round(rect.width),
+                            h: Math.round(rect.height),
+                            lineHeight: style.lineHeight,
+                            lines: Math.round(
+                                rect.height /
+                                    parseFloat(style.lineHeight || '1'),
+                            ),
+                            font: style.fontSize,
+                        });
+                    }
+
+                    const beforeValue = document.querySelector(
+                        '.before-strip .account-profile-row__value',
+                    );
+                    if (beforeValue) {
+                        const rect = beforeValue.getBoundingClientRect();
+                        push('before.value', {
+                            w: Math.round(rect.width),
+                            h: Math.round(rect.height),
+                            font: getComputedStyle(beforeValue).fontSize,
+                        });
+                    }
+
+                    // The exact email cell in the "before" artboard (the second
+                    // contact row), which is the one that wraps today.
+                    const beforeEmail = document.querySelectorAll(
+                        '.before-strip .account-profile-row__value',
+                    )[1];
+                    if (beforeEmail) {
+                        const rect = beforeEmail.getBoundingClientRect();
+                        const style = getComputedStyle(beforeEmail);
+                        push('before.email', {
+                            text: beforeEmail.textContent.trim(),
+                            w: Math.round(rect.width),
+                            h: Math.round(rect.height),
+                            lineHeight: style.lineHeight,
+                            fontSize: style.fontSize,
+                            wrap: style.overflowWrap,
+                            lines: Math.round(
+                                rect.height /
+                                    parseFloat(style.lineHeight || '1'),
+                            ),
+                        });
+                        push('before.email.parent', {
+                            w: Math.round(
+                                beforeEmail.parentElement.getBoundingClientRect()
+                                    .width,
+                            ),
+                        });
+                    }
+
+                    // The same email cell in the "after" artboard.
+                    const afterEmail = document.querySelector(
+                        '.au-row__value--ltr',
+                    );
+                    if (afterEmail) {
+                        const rect = afterEmail.getBoundingClientRect();
+                        const style = getComputedStyle(afterEmail);
+                        push('after.email', {
+                            text: afterEmail.textContent.trim(),
+                            w: Math.round(rect.width),
+                            h: Math.round(rect.height),
+                            lineHeight: style.lineHeight,
+                            fontSize: style.fontSize,
+                            wrap: style.overflowWrap,
+                            lines: Math.round(
+                                rect.height /
+                                    parseFloat(style.lineHeight || '1'),
+                            ),
+                        });
+                    }
+
+                    const nav = document.querySelector('.phone .au-nav__inner');
+                    if (nav) {
+                        const rect = nav.getBoundingClientRect();
+                        const style = getComputedStyle(nav);
+                        push('nav', {
+                            w: Math.round(rect.width),
+                            h: Math.round(rect.height),
+                            radius: style.borderRadius,
+                            backdrop: style.backdropFilter,
+                        });
+                    }
+
+                    const items = Array.from(
+                        document.querySelectorAll('.phone .au-nav__item'),
+                    ).map((item) => {
+                        const rect = item.getBoundingClientRect();
+
+                        return {
+                            label: (
+                                item.querySelector('.au-nav__label')
+                                    ?.textContent ?? ''
+                            ).trim(),
+                            w: Math.round(rect.width),
+                            h: Math.round(rect.height),
+                            active: item.classList.contains(
+                                'au-nav__item--active',
+                            ),
+                        };
+                    });
+                    push('nav.items', items);
+
+                    const label = document.querySelector('.phone .au-nav__label');
+                    if (label) {
+                        push('nav.label', {
+                            font: getComputedStyle(label).fontSize,
+                            weight: getComputedStyle(label).fontWeight,
+                        });
+                    }
+
+                    push(
+                        'fonts.loaded',
+                        Array.from(document.fonts).filter(
+                            (f) => f.status === 'loaded',
+                        ).length,
+                    );
+                    push('fonts.thmanyah', document.fonts.check('16px "Thmanyah Sans"'));
+                    push(
+                        'body.font',
+                        getComputedStyle(document.body).fontFamily,
+                    );
+
+                    const debug = document.getElementById('debug');
+                    debug.textContent = out.join('\n');
+                    debug.hidden = false;
+                });
+            }
+        </script>
+    </body>
+</html>

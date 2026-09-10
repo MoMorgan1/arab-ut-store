@@ -95,6 +95,8 @@ export type AccountTranslations = {
         logout: string;
         admin?: string;
         coming_soon?: string;
+        /** Announced for a destination that still needs the customer. */
+        attention: string;
     };
     bottom_nav?: {
         home: string;
@@ -276,10 +278,12 @@ export type AccountTranslations = {
         name: string;
         edit: string;
         change: string;
-        verify: string;
         verified: string;
         unverified: string;
         not_set: string;
+        add_phone: string;
+        verify_phone: string;
+        verify_email: string;
         first_name: string;
         last_name: string;
         email: string;
@@ -313,8 +317,6 @@ export type AccountTranslations = {
     };
     security: {
         card_title: string;
-        state_set: string;
-        state_missing: string;
         forgot: string;
         current_password: string;
         new_password: string;

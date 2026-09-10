@@ -1,14 +1,8 @@
 import { Link } from '@inertiajs/react';
-import {
-    LayoutDashboard,
-    PackageSearch,
-    ShieldCheck,
-    UserRound,
-    WalletCards,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
+import AppIcon from '@/components/account/app-icon';
+import type { AppIconName } from '@/components/account/app-icon';
+import { useKeyboardOpen } from '@/hooks/use-keyboard-open';
 import { cn } from '@/lib/utils';
 import type {
     AccountDestination,
@@ -16,11 +10,11 @@ import type {
     AccountTranslations,
 } from '@/types/account';
 
-const destinationIcons: Record<AccountDestination, LucideIcon> = {
-    overview: LayoutDashboard,
-    orders: PackageSearch,
-    wallet: WalletCards,
-    profile: UserRound,
+const destinationIcons: Record<AccountDestination, AppIconName> = {
+    overview: 'grid',
+    orders: 'cube',
+    wallet: 'wallet',
+    profile: 'user',
 };
 
 type AccountMobileBottomNavProps = {
@@ -28,6 +22,11 @@ type AccountMobileBottomNavProps = {
     bottomNav?: { home: string; account: string };
     current: AccountDestination;
     items: AccountNavigationItem[];
+    /**
+     * Destinations that still need the customer (an unverified number or
+     * email). Rendered as a quiet dot, never a count.
+     */
+    attention?: AccountDestination[];
     translations: AccountTranslations['navigation'];
 };
 
@@ -40,88 +39,36 @@ const ALLOWED_KEYS: AccountDestination[] = [
 
 export function AccountMobileBottomNav({
     adminUrl,
+    attention = [],
     bottomNav,
     current,
     items,
     translations,
 }: AccountMobileBottomNavProps) {
-    const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-
-    useEffect(() => {
-        const closeTimer = { current: undefined as number | undefined };
-
-        function clearPendingClose() {
-            if (closeTimer.current !== undefined) {
-                window.clearTimeout(closeTimer.current);
-                closeTimer.current = undefined;
-            }
-        }
-
-        const handleFocusIn = (event: FocusEvent) => {
-            const target = event.target as HTMLElement | null;
-
-            if (
-                target &&
-                (target.tagName === 'INPUT' ||
-                    target.tagName === 'TEXTAREA' ||
-                    target.tagName === 'SELECT')
-            ) {
-                clearPendingClose();
-                setIsKeyboardOpen(true);
-            }
-        };
-
-        const handleFocusOut = (event: FocusEvent) => {
-            const target = event.target as HTMLElement | null;
-
-            if (
-                !target ||
-                (target.tagName !== 'INPUT' &&
-                    target.tagName !== 'TEXTAREA' &&
-                    target.tagName !== 'SELECT')
-            ) {
-                return;
-            }
-
-            clearPendingClose();
-            closeTimer.current = window.setTimeout(() => {
-                closeTimer.current = undefined;
-                setIsKeyboardOpen(false);
-            }, 120);
-        };
-
-        window.addEventListener('focusin', handleFocusIn);
-        window.addEventListener('focusout', handleFocusOut);
-
-        return () => {
-            clearPendingClose();
-            window.removeEventListener('focusin', handleFocusIn);
-            window.removeEventListener('focusout', handleFocusOut);
-        };
-    }, []);
+    const isKeyboardOpen = useKeyboardOpen();
 
     // Filter to ensure strictly the 4 destinations
     const bottomNavItems = items.filter((item) =>
         ALLOWED_KEYS.includes(item.key),
     );
-    const fits = bottomNavItems.length + (adminUrl ? 1 : 0) <= 4;
 
     return (
         <nav
             aria-label={translations.label}
             className={cn(
+                'arabut-bottom-bar',
                 'account-mobile-bottom-nav',
-                isKeyboardOpen && 'account-mobile-bottom-nav--keyboard-open',
+                isKeyboardOpen && 'arabut-bottom-bar--keyboard-open',
             )}
         >
             <div
                 className={cn(
+                    'arabut-bottom-bar__inner',
                     'account-mobile-bottom-nav__inner',
-                    fits && 'account-mobile-bottom-nav__inner--fits',
                 )}
             >
                 {bottomNavItems.map((item) => {
-                    const Icon = destinationIcons[item.key] || LayoutDashboard;
+                    const name = destinationIcons[item.key] || 'grid';
                     const selected = item.key === current;
                     const label =
                         item.key === 'overview'
@@ -134,31 +81,46 @@ export function AccountMobileBottomNav({
                         <Link
                             aria-current={selected ? 'page' : undefined}
                             className={cn(
+                                'arabut-bottom-bar__item',
                                 'account-mobile-bottom-nav__item',
-                                selected &&
-                                    'account-mobile-bottom-nav__item--active',
+                                selected && 'arabut-bottom-bar__item--active',
                             )}
                             href={item.url}
                             key={item.key}
                         >
                             <span className="account-mobile-bottom-nav__icon-wrap">
-                                <Icon aria-hidden="true" strokeWidth={1.7} />
+                                <AppIcon name={name} />
                             </span>
-                            <span className="account-mobile-bottom-nav__label">
+                            <span className="arabut-bottom-bar__label account-mobile-bottom-nav__label">
                                 {label}
                             </span>
+                            {attention.includes(item.key) ? (
+                                <>
+                                    <span
+                                        aria-hidden="true"
+                                        className="arabut-bottom-bar__dot"
+                                    />
+                                    {/* The dot is decorative, so the state it
+                                        signals needs a text equivalent or the
+                                        customer is never told something is
+                                        waiting for them. */}
+                                    <span className="sr-only">
+                                        {translations.attention}
+                                    </span>
+                                </>
+                            ) : null}
                         </Link>
                     );
                 })}
                 {adminUrl ? (
                     <Link
-                        className="account-mobile-bottom-nav__item"
+                        className="arabut-bottom-bar__item account-mobile-bottom-nav__item"
                         href={adminUrl}
                     >
                         <span className="account-mobile-bottom-nav__icon-wrap">
-                            <ShieldCheck aria-hidden="true" strokeWidth={1.7} />
+                            <AppIcon name="shield" />
                         </span>
-                        <span className="account-mobile-bottom-nav__label">
+                        <span className="arabut-bottom-bar__label account-mobile-bottom-nav__label">
                             {translations.admin}
                         </span>
                     </Link>
