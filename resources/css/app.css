@@ -13982,53 +13982,23 @@ html.admin-document {
     }
 }
 
-/* The card heading is set by weight and a short gold rule. The icon that used
-   to sit in a rounded square beside every heading was the single strongest
-   "template" tell on this page: three identical gold tiles, one above each
-   card, competing with the row icons below them. */
+/* The heading carries itself: weight, size and the space above it do the work.
+   It used to sit under a rounded gold icon tile, and briefly behind a gold
+   accent rule — the first is the icon-over-every-heading template, the second
+   is the one-sided coloured accent. Neither earned its place against three
+   repeated headings in one column, and both competed with the row icons and
+   buttons that are the actual content here. */
 .account-profile-card__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-block-end: 1rem;
-}
-
-.account-profile-card__mark {
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-items: center;
-    justify-content: flex-end;
-    color: var(--arabut-gold-bright);
-    opacity: 0.75;
-}
-
-.account-profile-card__mark svg {
-    width: 1.25rem;
-    height: 1.25rem;
+    margin-block-end: 0.9rem;
+    padding-inline-start: 0.15rem;
 }
 
 .account-profile-card__header h3 {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
     margin: 0;
     color: var(--arabut-ink);
     font-size: clamp(1.05rem, 3vw, 1.25rem);
     font-weight: 800;
-}
-
-.account-profile-card__header h3::before {
-    content: '';
-    width: 3px;
-    height: 1.1rem;
-    flex: 0 0 3px;
-    border-radius: 999px;
-    background: linear-gradient(
-        180deg,
-        var(--arabut-gold-bright),
-        rgb(212 168 67 / 25%)
-    );
+    letter-spacing: -0.01em;
 }
 
 .account-profile-card__rows {

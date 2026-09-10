@@ -1,6 +1,6 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
-import type { FormEvent, ReactNode } from 'react';
+import type { FormEvent } from 'react';
 
 import AppIcon from '@/components/account/app-icon';
 import InputError from '@/components/input-error';
@@ -281,7 +281,6 @@ export default function AccountProfile() {
                 {/* Card 1: My Details */}
                 <section className="account-profile-card">
                     <CardHeader
-                        icon={<AppIcon name="user" />}
                         title={props.accountUi.profile.personal_card_title}
                     />
 
@@ -366,7 +365,6 @@ export default function AccountProfile() {
                 {/* Card 2: Contact */}
                 <section className="account-profile-card">
                     <CardHeader
-                        icon={<AppIcon name="mail" />}
                         title={props.accountUi.profile.contact_card_title}
                     />
 
@@ -765,10 +763,7 @@ export default function AccountProfile() {
 
                 {/* Card 3: Password */}
                 <section className="account-profile-card">
-                    <CardHeader
-                        icon={<AppIcon name="lock" />}
-                        title={props.accountUi.security.card_title}
-                    />
+                    <CardHeader title={props.accountUi.security.card_title} />
 
                     <div className="account-profile-card__rows">
                         <div className="account-profile-item">
@@ -1021,13 +1016,10 @@ function Field({
     );
 }
 
-function CardHeader({ icon, title }: { icon: ReactNode; title: string }) {
+function CardHeader({ title }: { title: string }) {
     return (
         <header className="account-profile-card__header">
             <h3>{title}</h3>
-            <span aria-hidden="true" className="account-profile-card__mark">
-                {icon}
-            </span>
         </header>
     );
 }
