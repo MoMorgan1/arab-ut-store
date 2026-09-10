@@ -58,7 +58,12 @@ class User extends Authenticatable implements MustVerifyEmail
     protected static function booted(): void
     {
         static::creating(function (self $user): void {
-            if ($user->customer_number === null && $user->role === UserRole::Customer) {
+            // A role left unset means the column default, which is customer:
+            // registration and Google sign-in never set it explicitly, and
+            // those customers were the ones left showing a 26-character ULID.
+            $role = $user->role ?? UserRole::Customer;
+
+            if ($user->customer_number === null && $role === UserRole::Customer) {
                 $user->customer_number = CustomerNumber::generate();
             }
         });
