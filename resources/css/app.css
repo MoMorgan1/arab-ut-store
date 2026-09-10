@@ -6979,11 +6979,15 @@ html.admin-document {
 }
 
 .account-order-review__star svg {
-    width: 1.65rem;
-    height: 1.65rem;
+    width: 2rem;
+    height: 2rem;
     fill: none;
-    stroke: currentcolor;
-    stroke-width: 1.75;
+    stroke: rgb(212 168 67 / 55%);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    transition:
+        transform 120ms ease,
+        filter 120ms ease;
 }
 
 .account-order-review__star[data-filled='true'] {
@@ -6992,6 +6996,15 @@ html.admin-document {
 
 .account-order-review__star[data-filled='true'] svg {
     fill: currentcolor;
+    stroke: var(--arabut-gold-bright);
+    filter: drop-shadow(0 0 6px rgb(228 183 86 / 45%));
+    transform: scale(1.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .account-order-review__star svg {
+        transition: none;
+    }
 }
 
 .account-order-review__star:focus-visible {
@@ -7342,6 +7355,10 @@ html.admin-document {
     line-height: 1.6;
 }
 
+.account-invoice__meta bdi {
+    white-space: nowrap;
+}
+
 .account-invoice__mark {
     display: inline-flex;
     flex: none;
@@ -7620,7 +7637,7 @@ html.admin-document {
 
 .account-live-order__cancel {
     border-color: rgb(212 168 67 / 24%);
-    background: rgb(28 24 20 / 72%);
+    background: var(--arabut-navy-raised);
     color: var(--arabut-muted);
 }
 
@@ -7664,14 +7681,6 @@ html.admin-document {
 }
 
 @media (max-width: 34rem) {
-    .account-invoice__item {
-        grid-template-columns: 3.5rem minmax(0, 1fr);
-    }
-
-    .account-invoice__item-total {
-        grid-column: 2;
-    }
-
     .account-order-fulfillment__credentials {
         grid-template-columns: minmax(0, 1fr);
     }
@@ -7687,9 +7696,15 @@ html.admin-document {
         inset-inline: 16px;
         bottom: calc(100px + env(safe-area-inset-bottom));
         z-index: 55;
+        border: 1px solid rgb(212 168 67 / 18%);
+        border-radius: 1rem;
+        background: rgb(20 17 14 / 88%);
+        -webkit-backdrop-filter: blur(18px);
+        backdrop-filter: blur(18px);
+        padding: 0.6rem;
         /* The chat launcher is fixed to the physical right in both
            directions, so the gap is a physical one too. */
-        padding-right: 4.25rem;
+        padding-right: 4.6rem;
     }
 }
 
