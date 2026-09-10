@@ -18,6 +18,7 @@ export type AppIconName =
     | 'chevron'
     | 'coin'
     | 'cube'
+    | 'ellipsis'
     | 'grid'
     | 'lock'
     | 'logout'
@@ -140,6 +141,14 @@ export function AppIcon({ name, ...props }: AppIconProps) {
             return (
                 <svg {...stroked} {...props}>
                     <path d="m9.5 6 6 6-6 6" />
+                </svg>
+            );
+        case 'ellipsis':
+            return (
+                <svg {...stroked} strokeWidth={2.4} {...props}>
+                    <path d="M6 12h.01" />
+                    <path d="M12 12h.01" />
+                    <path d="M18 12h.01" />
                 </svg>
             );
     }
