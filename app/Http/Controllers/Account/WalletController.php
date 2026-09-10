@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Account;
 
 use App\Account\Presenters\AccountShell;
+use App\Account\Queries\ReadLoyaltyOverview;
 use App\Account\Queries\ReadWalletLedger;
-use App\Account\Queries\ResolveLoyaltyProgress;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -15,7 +15,7 @@ final class WalletController extends Controller
 {
     public function __construct(
         private readonly ReadWalletLedger $ledger,
-        private readonly ResolveLoyaltyProgress $loyalty,
+        private readonly ReadLoyaltyOverview $loyalty,
         private readonly AccountShell $shell,
     ) {}
 

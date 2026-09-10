@@ -244,15 +244,7 @@ export type AccountTranslations = {
     wallet: {
         title: string;
         description: string;
-        coming_soon?: string;
-        coming_soon_notice?: string;
-        page_coming_soon_title?: string;
-        page_coming_soon_desc?: string;
-        feature_balance?: string;
-        feature_refund?: string;
-        feature_checkout?: string;
         available_balance: string;
-        unavailable_balance: string;
         loyalty_title: string;
         ledger_title: string;
         empty_title: string;
@@ -269,33 +261,13 @@ export type AccountTranslations = {
         next: string;
         pagination: string;
         page_status: string;
-    };
-    loyalty?: {
-        title: string;
-        description: string;
-        hero_badge: string;
-        current_tier: string;
-        unranked: string;
-        eligible_spend: string;
-        progress_remaining: string;
-        progress_complete: string;
-        back_to_overview: string;
-        table_title: string;
-        table_tier: string;
-        table_spend: string;
-        table_cashback: string;
-        current_badge: string;
-        how_it_works_title: string;
-        how_it_works_1: string;
-        how_it_works_2: string;
-        how_it_works_3: string;
-        lifetime_cashback?: string;
-        recent_cashback_title: string;
-        empty_cashback_title: string;
-        empty_cashback_desc: string;
-        empty_tiers_title: string;
-        empty_tiers_desc: string;
-        cashback_percent: string;
+        tier_current: string;
+        cashback_rate: string;
+        cashback_earned: string;
+        remaining_to: string;
+        top_tier: string;
+        tier_from: string;
+        no_programme: string;
     };
     profile: {
         title: string;
@@ -561,7 +533,17 @@ export type AccountWalletPageProps = AccountPageShellProps & {
             previousUrl: string | null;
         };
     };
-    loyalty: AccountLoyalty | null;
+    loyalty: {
+        tiers: AccountLoyaltyTier[];
+        currentTier: AccountTier | null;
+        nextTier: AccountTier | null;
+        remaining: AccountMoney | null;
+        progressPercent: number;
+        eligibleSpend: AccountMoney;
+        cashback: {
+            lifetime: AccountMoney;
+        };
+    } | null;
 };
 
 export type AccountLoyaltyTier = {
@@ -569,29 +551,6 @@ export type AccountLoyaltyTier = {
     name: string;
     minimum: AccountMoney;
     cashbackPercent: number;
-};
-
-export type AccountLoyaltyCashbackEntry = {
-    id: string;
-    sequence: number;
-    type: 'cashback' | 'cashback_reversal';
-    effect: 'credit' | 'debit';
-    amount: AccountMoney;
-    createdAt: string | null;
-    order: { number: string; url: string } | null;
-};
-
-export type AccountLoyaltyPageProps = AccountPageShellProps & {
-    tiers: AccountLoyaltyTier[];
-    currentTier: AccountTier | null;
-    nextTier: AccountTier | null;
-    remaining: AccountMoney | null;
-    progressPercent: number;
-    eligibleSpend: AccountMoney;
-    cashback: {
-        lifetime: AccountMoney;
-        entries: AccountLoyaltyCashbackEntry[];
-    };
 };
 
 export type AccountProfilePageProps = AccountPageShellProps & {

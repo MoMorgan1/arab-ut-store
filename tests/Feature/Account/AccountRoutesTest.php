@@ -68,3 +68,15 @@ test('the legacy dashboard sends customers to their preferred account locale', f
     'Arabic preference' => ['ar', '/my-account'],
     'English preference' => ['en', '/en/my-account'],
 ]);
+
+test('the deprecated loyalty destination returns 404 for signed-in customers', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/my-account/loyalty')
+        ->assertNotFound();
+
+    $this->actingAs($user)
+        ->get('/en/my-account/loyalty')
+        ->assertNotFound();
+});

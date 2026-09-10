@@ -57,6 +57,41 @@ it('renders exact balance, typed text semantics, order context, and bounded pagi
     );
 });
 
+it('renders loyalty card with tier chips, current marked, progress bar, and cashback pill', () => {
+    render(<AccountWallet />);
+
+    expect(screen.getByText('Your tier: Silver')).toBeVisible();
+    expect(screen.getAllByText('2% cashback')[0]).toBeVisible();
+
+    const progress = screen.getByRole('progressbar', {
+        name: 'Loyalty programme',
+    });
+    expect(progress).toHaveAttribute('aria-valuenow', '33');
+
+    expect(screen.getByText(/SAR\s100\.00 to reach Gold/)).toBeVisible();
+
+    expect(screen.getByText('Bronze')).toBeVisible();
+    expect(screen.getByText('Silver')).toBeVisible();
+    expect(screen.getByText('Gold')).toBeVisible();
+
+    const silverChip = screen
+        .getByText('Silver')
+        .closest('.account-wallet-loyalty__chip');
+    expect(silverChip).toHaveAttribute('aria-current', 'true');
+
+    const bronzeChip = screen
+        .getByText('Bronze')
+        .closest('.account-wallet-loyalty__chip');
+    expect(bronzeChip).not.toHaveAttribute('aria-current');
+
+    const goldChip = screen
+        .getByText('Gold')
+        .closest('.account-wallet-loyalty__chip');
+    expect(goldChip).not.toHaveAttribute('aria-current');
+
+    expect(screen.getByText(/Cashback earned SAR\s40\.00/)).toBeVisible();
+});
+
 it('renders balance as 0.00 and empty state when customer has no wallet account yet', () => {
     page.props = {
         ...walletProps(),
@@ -92,6 +127,19 @@ it('renders balance as 0.00 and empty state when customer has no wallet account 
     expect(screen.getByText('No wallet activity yet')).toBeVisible();
 });
 
+it('renders loyalty: null with no_programme line without crashing', () => {
+    page.props = {
+        ...walletProps(),
+        loyalty: null,
+    };
+    render(<AccountWallet />);
+
+    expect(
+        screen.getByText('The loyalty programme is not available right now'),
+    ).toBeVisible();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+});
+
 function walletProps() {
     return {
         locale: 'en',
@@ -101,7 +149,6 @@ function walletProps() {
                 title: 'Wallet',
                 description: 'Your balance and verified wallet activity.',
                 available_balance: 'Available balance',
-                unavailable_balance: 'Wallet is not active yet',
                 loyalty_title: 'Loyalty programme',
                 ledger_title: 'Wallet activity',
                 empty_title: 'No wallet activity yet',
@@ -119,6 +166,14 @@ function walletProps() {
                 next: 'Next',
                 pagination: 'Wallet activity pages',
                 page_status: 'Page :current of :total',
+                tier_current: 'Your tier: :tier',
+                cashback_rate: ':percent% cashback',
+                cashback_earned: 'Cashback earned :amount',
+                remaining_to: ':amount to reach :tier',
+                top_tier: 'Top tier',
+                tier_from: 'From :amount',
+                no_programme:
+                    'The loyalty programme is not available right now',
             },
             overview: {
                 loyalty_remaining: ':amount remaining to reach :tier.',
@@ -147,7 +202,44 @@ function walletProps() {
                 nextUrl: '/en/my-account/wallet?page=2',
             },
         },
-        loyalty: null,
+        loyalty: {
+            tiers: [
+                {
+                    key: 'bronze',
+                    name: 'Bronze',
+                    minimum: { amountMinor: '0', currency: 'SAR' },
+                    cashbackPercent: 1,
+                },
+                {
+                    key: 'silver',
+                    name: 'Silver',
+                    minimum: { amountMinor: '10000', currency: 'SAR' },
+                    cashbackPercent: 2,
+                },
+                {
+                    key: 'gold',
+                    name: 'Gold',
+                    minimum: { amountMinor: '25000', currency: 'SAR' },
+                    cashbackPercent: 3,
+                },
+            ],
+            currentTier: {
+                key: 'silver',
+                name: 'Silver',
+                minimum: { amountMinor: '10000', currency: 'SAR' },
+            },
+            nextTier: {
+                key: 'gold',
+                name: 'Gold',
+                minimum: { amountMinor: '25000', currency: 'SAR' },
+            },
+            remaining: { amountMinor: '10000', currency: 'SAR' },
+            progressPercent: 33,
+            eligibleSpend: { amountMinor: '15000', currency: 'SAR' },
+            cashback: {
+                lifetime: { amountMinor: '4000', currency: 'SAR' },
+            },
+        },
     };
 }
 

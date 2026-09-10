@@ -10,7 +10,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 
 import { formatAccountMoney } from '@/lib/account-money';
-import { DATE_LOCALE } from '@/lib/date-locale';
+import { formatOrderAge } from '@/lib/account-order-format';
 import type { AccountTranslations, AccountWalletEntry } from '@/types/account';
 
 type WalletLedgerProps = {
@@ -33,11 +33,6 @@ export default function WalletLedger({
     locale,
     translations,
 }: WalletLedgerProps) {
-    const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    });
-
     return (
         <section
             aria-label={translations.ledger_title}
@@ -64,15 +59,16 @@ export default function WalletLedger({
                                 <Icon />
                             </span>
                             <div className="account-wallet-ledger__main">
-                                <div>
+                                <div className="account-wallet-ledger__line">
                                     <strong>{translations[entry.type]}</strong>
                                     <bdi>{signedAmount}</bdi>
                                 </div>
                                 <p>
                                     {entry.createdAt === null ? null : (
                                         <time dateTime={entry.createdAt}>
-                                            {dateFormatter.format(
-                                                new Date(entry.createdAt),
+                                            {formatOrderAge(
+                                                entry.createdAt,
+                                                locale,
                                             )}
                                         </time>
                                     )}
