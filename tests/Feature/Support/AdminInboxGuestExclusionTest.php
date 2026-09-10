@@ -14,7 +14,7 @@ it('never lists a guest conversation', function (): void {
         ->get('/admin/conversations')
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('rows', 1)
-            ->where('rows.0.publicId', (string) $customer->public_id));
+            ->where('rows.0.shortId', (string) $customer->short_id));
 });
 
 it('404s on a guest transcript', function (): void {

@@ -10,10 +10,10 @@ use App\Enums\AdminPermission;
 use App\Exceptions\Support\TicketAlreadyAssignedException;
 use App\Http\Controllers\Admin\Concerns\RespondsToAdminChatAction;
 use App\Http\Controllers\Controller;
-use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\SupportTicket;
 use App\Models\User;
+use App\Support\PublicHandle\ConversationHandle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,20 +31,14 @@ final class ConversationReplyController extends Controller
         private readonly RecordStaffAudit $recordStaffAudit,
     ) {}
 
-    public function __invoke(Request $request, string $publicId): JsonResponse|RedirectResponse
+    public function __invoke(Request $request, string $conversation): JsonResponse|RedirectResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
         Gate::forUser($actor)->authorize(AdminPermission::ChatReply->value);
 
         // Guest conversations are excluded from the admin queue and return 404 unconditionally.
-        /** @var ChatConversation|null $conversation */
-        $conversation = ChatConversation::query()
-            ->where('public_id', $publicId)
-            ->whereNotNull('user_id')
-            ->first();
-
-        abort_if($conversation === null, 404);
+        $record = ConversationHandle::resolveForAdmin($conversation);
 
         $maxLength = (int) config('chat.max_message_length', 4000);
         $validated = $request->validate([
@@ -65,8 +59,8 @@ final class ConversationReplyController extends Controller
         try {
             // Implicit takeover inside the same transaction ensures the ticket exists and handoff is active before replying.
             /** @var array{message: ChatMessage, ticket: SupportTicket} $result */
-            $result = DB::transaction(function () use ($conversation, $actor, $content, $clientMessageId): array {
-                $ticket = $this->takeOverConversation->execute($conversation, $actor);
+            $result = DB::transaction(function () use ($record, $actor, $content, $clientMessageId): array {
+                $ticket = $this->takeOverConversation->execute($record, $actor);
                 $message = $this->sendStaffReply->execute($ticket, $actor, $content, $clientMessageId);
 
                 return ['message' => $message, 'ticket' => $ticket];
@@ -90,8 +84,8 @@ final class ConversationReplyController extends Controller
                 action: 'chat.reply.sent',
                 metadata: [
                     'ticket_number' => (string) $ticket->ticket_number,
-                    'conversation_short_id' => (string) $conversation->short_id,
-                    'target_user_id' => (int) $conversation->user_id,
+                    'conversation_short_id' => (string) $record->short_id,
+                    'target_user_id' => (int) $record->user_id,
                     'character_count' => mb_strlen($content),
                 ],
                 ipAddress: $request->ip(),
@@ -111,7 +105,7 @@ final class ConversationReplyController extends Controller
                 'ticketNumber' => (string) $ticket->ticket_number,
                 'status' => $ticket->status->value,
             ],
-            'handoffState' => $conversation->fresh()->handoff_state->value,
+            'handoffState' => $record->fresh()->handoff_state->value,
         ], 201);
     }
 }

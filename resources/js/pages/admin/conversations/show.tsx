@@ -184,10 +184,7 @@ export default function AdminConversationDetailPage() {
                                 <span>{conversation.locale}</span>
                             </span>
                         </div>
-                        <p
-                            className="text-xs [overflow-wrap:anywhere] text-muted-foreground tabular-nums"
-                            title={conversation.publicId}
-                        >
+                        <p className="text-xs [overflow-wrap:anywhere] text-muted-foreground tabular-nums">
                             <bdi>{conversation.shortId}</bdi>
                         </p>
                     </div>
@@ -366,9 +363,10 @@ export default function AdminConversationDetailPage() {
 
             {props.canReply && !isGuest ? (
                 <StaffReplyPanel
-                    basePath={conversationsListUrl}
-                    conversationPublicId={conversation.publicId}
                     copy={copy}
+                    noteUrl={props.noteUrl}
+                    replyUrl={props.replyUrl}
+                    takeOverUrl={props.takeOverUrl}
                     ticket={props.ticket}
                 />
             ) : null}
@@ -430,14 +428,9 @@ export default function AdminConversationDetailPage() {
                                 </TableHeader>
                                 <TableBody className="divide-y divide-border/60">
                                     {props.turns.map((turn) => (
-                                        <TableRow key={turn.publicId}>
-                                            <TableCell
-                                                className="font-mono text-xs text-muted-foreground tabular-nums"
-                                                title={turn.publicId}
-                                            >
-                                                <bdi>
-                                                    {turn.publicId.slice(-8)}
-                                                </bdi>
+                                        <TableRow key={turn.ordinal}>
+                                            <TableCell className="font-mono text-xs text-muted-foreground tabular-nums">
+                                                <bdi>{turn.ordinal}</bdi>
                                             </TableCell>
                                             <TableCell>
                                                 <AdminBadge
@@ -677,14 +670,16 @@ function TranscriptMessageItem({
  * separate "take over first" step nobody would remember to press.
  */
 function StaffReplyPanel({
-    basePath,
-    conversationPublicId,
     copy,
+    noteUrl,
+    replyUrl,
+    takeOverUrl,
     ticket,
 }: {
-    basePath: string;
-    conversationPublicId: string;
     copy: AdminConversationDetailPageProps['adminUi']['conversationDetail'];
+    noteUrl: string;
+    replyUrl: string;
+    takeOverUrl: string;
     ticket: AdminSupportTicket | null;
 }) {
     const [mode, setMode] = useState<'reply' | 'note'>('reply');
@@ -697,8 +692,6 @@ function StaffReplyPanel({
     const canSubmit = trimmed !== '' && !isSubmitting;
     const isResolved = ticket !== null && ticket.status !== 'open';
 
-    const conversationPath = `${basePath}/${conversationPublicId}`;
-
     const submit = () => {
         if (!canSubmit) {
             return;
@@ -708,7 +701,7 @@ function StaffReplyPanel({
         setError(null);
 
         router.post(
-            `${conversationPath}/${mode === 'reply' ? 'reply' : 'note'}`,
+            mode === 'reply' ? replyUrl : noteUrl,
             { content: trimmed },
             {
                 preserveScroll: true,
@@ -806,7 +799,7 @@ function StaffReplyPanel({
                         onClick={() => {
                             setIsSubmitting(true);
                             router.patch(
-                                `${basePath.replace('/conversations', '/tickets')}/${ticket.publicId}`,
+                                ticket.resolveUrl,
                                 { status: 'resolved' },
                                 {
                                     preserveScroll: true,
@@ -828,7 +821,7 @@ function StaffReplyPanel({
                         onClick={() => {
                             setIsSubmitting(true);
                             router.post(
-                                `${conversationPath}/take-over`,
+                                takeOverUrl,
                                 {},
                                 {
                                     preserveScroll: true,

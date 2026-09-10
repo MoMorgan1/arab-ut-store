@@ -49,7 +49,7 @@ it('still sends the away-customer email when the reply goes through the endpoint
     ])->saveQuietly();
 
     $this->actingAs($admin)
-        ->postJson(route('admin.conversations.reply', ['publicId' => $conversation->public_id]), [
+        ->postJson(route('admin.conversations.reply', ['conversation' => $conversation->short_id]), [
             'content' => 'Checking on it now.',
         ])
         ->assertCreated();

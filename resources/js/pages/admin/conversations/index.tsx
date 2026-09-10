@@ -52,10 +52,6 @@ export default function AdminConversationsIndexPage() {
     const { props, url } = usePage<AdminConversationsPageProps>();
     const copy = props.adminUi.conversations;
     const pathname = new URL(url, window.location.origin).pathname;
-    const isLocalized = pathname.startsWith('/en/admin');
-    const basePath = isLocalized
-        ? '/en/admin/conversations'
-        : '/admin/conversations';
 
     const [isNavigating, setIsNavigating] = useState(false);
     const [queryFailed, setQueryFailed] = useState(false);
@@ -401,11 +397,11 @@ export default function AdminConversationsIndexPage() {
                         <TableBody>
                             {props.rows.length > 0 ? (
                                 props.rows.map((row) => (
-                                    <TableRow key={row.publicId}>
+                                    <TableRow key={row.shortId}>
                                         <TableCell className="font-semibold">
                                             <Link
                                                 className="text-sm font-semibold text-foreground tabular-nums underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary focus-visible:outline-2 focus-visible:outline-ring"
-                                                href={`${basePath}/${row.publicId}`}
+                                                href={row.url}
                                             >
                                                 {row.hasUnread ? (
                                                     <span
@@ -501,7 +497,7 @@ export default function AdminConversationsIndexPage() {
                                         <TableCell className="text-end">
                                             <Link
                                                 className="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-xs font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-                                                href={`${basePath}/${row.publicId}`}
+                                                href={row.url}
                                             >
                                                 {copy.viewDetail}
                                             </Link>
@@ -547,10 +543,9 @@ export default function AdminConversationsIndexPage() {
                     {props.rows.length > 0 ? (
                         props.rows.map((row) => (
                             <ConversationMobileCard
-                                basePath={basePath}
                                 copy={copy}
                                 dateFormatter={dateFormatter}
-                                key={row.publicId}
+                                key={row.shortId}
                                 row={row}
                             />
                         ))
@@ -768,12 +763,10 @@ function FilterSelect({
 }
 
 function ConversationMobileCard({
-    basePath,
     copy,
     dateFormatter,
     row,
 }: {
-    basePath: string;
     copy: AdminConversationsPageProps['adminUi']['conversations'];
     dateFormatter: Intl.DateTimeFormat;
     row: AdminConversationRow;
@@ -787,7 +780,7 @@ function ConversationMobileCard({
                 <div className="flex flex-col gap-0.5">
                     <Link
                         className="text-xs font-semibold text-foreground tabular-nums underline decoration-border underline-offset-4"
-                        href={`${basePath}/${row.publicId}`}
+                        href={row.url}
                     >
                         {row.hasUnread ? (
                             <span
@@ -837,7 +830,7 @@ function ConversationMobileCard({
 
             <Link
                 className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-accent/40 text-xs font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
-                href={`${basePath}/${row.publicId}`}
+                href={row.url}
             >
                 {copy.viewDetail}
             </Link>

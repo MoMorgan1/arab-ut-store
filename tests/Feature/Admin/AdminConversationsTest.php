@@ -84,7 +84,8 @@ test('an admin can load the conversations index and sees a seeded conversation',
             ->where('locale', 'en')
             ->where('direction', 'ltr')
             ->has('rows', 1)
-            ->where('rows.0.publicId', (string) $conversation->public_id)
+            ->where('rows.0.shortId', (string) $conversation->short_id)
+            ->where('rows.0.url', rtrim($path, '/').'/'.$conversation->short_id)
             ->where('rows.0.status', 'open')
             ->where('rows.0.locale', 'ar')
             ->where('rows.0.ownerType', 'customer')
@@ -130,10 +131,10 @@ test('status filter returns only open conversations when status=open', function 
     $response->assertOk();
 
     $rows = $response->original->getData()['page']['props']['rows'];
-    $publicIds = array_column($rows, 'publicId');
+    $shortIds = array_column($rows, 'shortId');
 
-    expect($publicIds)->toContain((string) $openConv->public_id)
-        ->and($publicIds)->not->toContain((string) $closedConv->public_id);
+    expect($shortIds)->toContain((string) $openConv->short_id)
+        ->and($shortIds)->not->toContain((string) $closedConv->short_id);
 });
 
 test('owner=guest filter normalizes to all customers and excludes guests', function (): void {
@@ -147,13 +148,13 @@ test('owner=guest filter normalizes to all customers and excludes guests', funct
     $response->assertOk();
 
     $rows = $response->original->getData()['page']['props']['rows'];
-    $publicIds = array_column($rows, 'publicId');
+    $shortIds = array_column($rows, 'shortId');
 
-    expect($publicIds)->toContain((string) $customerConv->public_id)
-        ->and($publicIds)->not->toContain((string) $guestConv->public_id);
+    expect($shortIds)->toContain((string) $customerConv->short_id)
+        ->and($shortIds)->not->toContain((string) $guestConv->short_id);
 });
 
-test('searching a known public_id returns exactly that conversation', function (): void {
+test('searching a known short id returns exactly that conversation', function (): void {
     $admin = adminConversationsActor(UserRole::Admin);
     $customer = User::factory()->create(['role' => UserRole::Customer]);
 
@@ -164,12 +165,12 @@ test('searching a known public_id returns exactly that conversation', function (
     $targetConv = ChatConversation::factory()->forUser($customer)->create();
     ChatConversation::factory()->forUser($otherCustomer)->create();
 
-    $response = $this->actingAs($admin)->get('/admin/conversations?q='.(string) $targetConv->public_id);
+    $response = $this->actingAs($admin)->get('/admin/conversations?q='.(string) $targetConv->short_id);
     $response->assertOk();
 
     $rows = $response->original->getData()['page']['props']['rows'];
     expect($rows)->toHaveCount(1)
-        ->and($rows[0]['publicId'])->toBe((string) $targetConv->public_id);
+        ->and($rows[0]['shortId'])->toBe((string) $targetConv->short_id);
 });
 
 test('the detail page returns the messages in ascending order and agent turns', function (): void {
@@ -224,11 +225,12 @@ test('the detail page returns the messages in ascending order and agent turns', 
         'output_tokens' => 45,
     ]);
 
-    $response = $this->actingAs($admin)->get("/admin/conversations/{$conversation->public_id}");
+    $response = $this->actingAs($admin)->get("/admin/conversations/{$conversation->short_id}");
     $response->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/conversations/show', false)
-            ->where('conversation.publicId', (string) $conversation->public_id)
+            ->where('conversation.shortId', (string) $conversation->short_id)
+            ->where('conversation.url', "/admin/conversations/{$conversation->short_id}")
             ->where('conversation.status', 'open')
             ->where('conversation.customerName', 'Sultan Al-Ghamdi')
             ->has('messages', 3)
@@ -242,13 +244,24 @@ test('the detail page returns the messages in ascending order and agent turns', 
             ->where('messages.2.content', 'Third message from customer')
             ->where('messages.2.senderType', 'customer')
             ->has('turns', 1)
-            ->where('turns.0.publicId', (string) $turn->public_id)
+            ->where('turns.0.ordinal', 1)
             ->where('turns.0.status', 'completed')
             ->where('turns.0.promptVersion', 'v1.0.0')
             ->where('turns.0.model', 'gemini-2.5-flash')
             ->where('turns.0.latencyMs', 450)
             ->where('turns.0.inputTokens', 120)
             ->where('turns.0.outputTokens', 45));
+});
+
+test('a legacy public_id detail URL permanently redirects to the short URL and preserves the query string', function (): void {
+    $admin = adminConversationsActor(UserRole::Admin);
+    $customer = User::factory()->create(['role' => UserRole::Customer]);
+    $conversation = ChatConversation::factory()->forUser($customer)->create();
+
+    $this->actingAs($admin)
+        ->get("/admin/conversations/{$conversation->public_id}?status=open")
+        ->assertStatus(301)
+        ->assertRedirect("/admin/conversations/{$conversation->short_id}?status=open");
 });
 
 test('an unknown publicId returns 404', function (): void {

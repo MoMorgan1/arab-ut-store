@@ -65,27 +65,27 @@ it('floats waiting customers above more recent threads without hiding them', fun
 
     $response->assertInertia(function (AssertableInertia $page) use ($waiting, $answered, $plain): void {
         $rows = $page->toArray()['props']['rows'];
-        $ids = array_column($rows, 'publicId');
+        $ids = array_column($rows, 'shortId');
 
-        expect($ids[0])->toBe($waiting->public_id)
+        expect($ids[0])->toBe($waiting->short_id)
             // Nothing is dropped: the ordering must not act as a filter.
-            ->and($ids)->toContain($answered->public_id)
-            ->and($ids)->toContain($plain->public_id);
+            ->and($ids)->toContain($answered->short_id)
+            ->and($ids)->toContain($plain->short_id);
 
-        $byId = collect($rows)->keyBy('publicId');
+        $byId = collect($rows)->keyBy('shortId');
 
-        expect($byId[$waiting->public_id]['hasUnread'])->toBeTrue()
-            ->and($byId[$answered->public_id]['hasUnread'])->toBeFalse()
+        expect($byId[$waiting->short_id]['hasUnread'])->toBeTrue()
+            ->and($byId[$answered->short_id]['hasUnread'])->toBeFalse()
             // The dot means "you owe them an answer", so a ticketless chat
             // never carries one however recently the customer wrote.
-            ->and($byId[$plain->public_id]['hasUnread'])->toBeFalse()
-            ->and($byId[$waiting->public_id]['ticketNumber'])->toStartWith('TKT-')
-            ->and($byId[$plain->public_id]['ticketNumber'])->toBeNull()
-            ->and($byId[$plain->public_id]['shortId'])->toStartWith('CHT-');
+            ->and($byId[$plain->short_id]['hasUnread'])->toBeFalse()
+            ->and($byId[$waiting->short_id]['ticketNumber'])->toStartWith('TKT-')
+            ->and($byId[$plain->short_id]['ticketNumber'])->toBeNull()
+            ->and($byId[$plain->short_id]['shortId'])->toStartWith('CHT-');
     });
 });
 
-it('finds a conversation by short id, ticket number, or raw ulid, case-insensitively', function (): void {
+it('finds a conversation by short id or ticket number, case-insensitively', function (): void {
     $admin = inboxAdmin();
     $customer = User::factory()->create();
 
@@ -100,16 +100,15 @@ it('finds a conversation by short id, ticket number, or raw ulid, case-insensiti
 
     foreach ([
         strtolower((string) $conversation->short_id),
-        (string) $ticket->ticket_number,
-        (string) $conversation->public_id,
+        strtolower((string) $ticket->ticket_number),
     ] as $term) {
         $this->actingAs($admin)
             ->get('/en/admin/conversations?q='.urlencode($term))
             ->assertOk()
             ->assertInertia(function (AssertableInertia $page) use ($conversation, $term): void {
-                $ids = array_column($page->toArray()['props']['rows'], 'publicId');
+                $ids = array_column($page->toArray()['props']['rows'], 'shortId');
 
-                expect($ids)->toBe([$conversation->public_id], "search term: {$term}");
+                expect($ids)->toBe([$conversation->short_id], "search term: {$term}");
             });
     }
 });
