@@ -77,6 +77,7 @@ return [
         'items_title' => 'Service details',
         'item_quantity' => 'Quantity: :count',
         'item_count' => ':count items',
+        'item_count_one' => '1 item',
         'open_search' => 'Search',
         'show_all_items' => 'Show all (:count)',
         'show_fewer_items' => 'Show fewer',

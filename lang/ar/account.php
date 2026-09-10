@@ -77,6 +77,7 @@ return [
         'items_title' => 'تفاصيل الخدمات',
         'item_quantity' => 'الكمية: :count',
         'item_count' => ':count منتجات',
+        'item_count_one' => 'منتج واحد',
         'open_search' => 'بحث',
         'show_all_items' => 'عرض الكل (:count)',
         'show_fewer_items' => 'عرض أقل',

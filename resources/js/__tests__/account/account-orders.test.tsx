@@ -101,6 +101,9 @@ it('renders canonical filters, safe order cards, and bounded pagination', () => 
     expect(within(filters).getByText('1')).toBeVisible();
     expect(within(filters).getByText('10')).toBeVisible();
     expect(screen.getByText('#000001')).toBeVisible();
+    // Placed "how long ago", not a calendar date, in the list.
+    expect(screen.getByText(/ago|yesterday|last/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
     expect(screen.getByText('FC 27 Coins service')).toBeVisible();
     expect(screen.getByText('Showing 1 of 11 orders')).toBeVisible();
     expect(screen.getByRole('link', { name: /Next/ })).toHaveAttribute(
@@ -641,19 +644,17 @@ it('stacks two artworks and counts the items when an order mixes services', () =
     expect(art?.querySelectorAll('img')).toHaveLength(2);
     expect(art).toHaveTextContent('3');
     expect(screen.getByText(/3 items/)).toBeVisible();
-    // The first line is the title; two lines show, the third waits behind
-    // "show all" and opens in place.
+    // The number is the title; the lines wait behind "details" and open in
+    // place.
     expect(
-        screen.getByRole('heading', {
-            level: 3,
-            name: 'FUT Champions service',
-        }),
+        screen.getByRole('heading', { level: 3, name: '#000078' }),
     ).toBeVisible();
-    expect(screen.getByText('FC 27 Coins')).toBeVisible();
     expect(screen.queryByText('SBC weekly challenge')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Show all (3)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    expect(screen.getByText('FUT Champions service')).toBeVisible();
+    expect(screen.getByText('FC 27 Coins')).toBeVisible();
     expect(screen.getByText('SBC weekly challenge')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Show fewer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hide details' }));
     expect(screen.queryByText('SBC weekly challenge')).not.toBeInTheDocument();
     // An unpaid order carries the one thing to do next, inside the card.
     expect(
@@ -865,9 +866,8 @@ function shellProps() {
                 items_title: 'Service details',
                 item_quantity: 'Quantity: :count',
                 item_count: ':count items',
+                item_count_one: '1 item',
                 open_search: 'Search',
-                show_all_items: 'Show all (:count)',
-                show_fewer_items: 'Show fewer',
                 close_search: 'Close search',
                 credentials_ready: 'Fulfilment details stored securely',
                 manual_details: 'Manual service details',

@@ -67,6 +67,13 @@ const mockPage = vi.hoisted(() => ({
                 pagination: 'الصفحات',
                 page_status: 'صفحة :current من :total',
             },
+            orders: {
+                item_count: ':count منتجات',
+                item_count_one: 'منتج واحد',
+                details: 'التفاصيل',
+                hide_details: 'إخفاء التفاصيل',
+                wallet_paid: 'مدفوع من المحفظة :amount',
+            },
             statuses: {
                 pending_payment: 'بانتظار الدفع',
                 received: 'تم استلام الدفع',
@@ -294,6 +301,9 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
     const recentOrders = screen.getByRole('region', { name: 'أحدث الطلبات' });
 
     expect(within(recentOrders).getByTitle('UT-10000000')).toBeVisible();
+    fireEvent.click(
+        within(recentOrders).getByRole('button', { name: 'التفاصيل' }),
+    );
     expect(within(recentOrders).getByText('خدمة SBC')).toBeVisible();
     expect(
         document.documentElement.querySelector('[lang="ar"]'),

@@ -149,9 +149,8 @@ export type AccountTranslations = {
         items_title: string;
         item_quantity: string;
         item_count: string;
+        item_count_one: string;
         open_search: string;
-        show_all_items: string;
-        show_fewer_items: string;
         close_search: string;
         credentials_ready: string;
         manual_details: string;

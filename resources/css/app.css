@@ -6460,6 +6460,10 @@ html.admin-document {
 .account-live-order {
     display: grid;
     min-width: 0;
+    /* One fluid track: an implicit `auto` track takes the widest child's
+       min-content (the English filter chips, a long card) and pushes the
+       page past a phone's width. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 1.25rem;
 }
 
@@ -6949,6 +6953,7 @@ html.admin-document {
    their place), then one card per order (owner canvas, 2026-09-10). */
 .account-orders-toolbar {
     display: flex;
+    min-width: 0;
     align-items: center;
     gap: 0.5rem;
     margin-block-end: 0.85rem;
@@ -7170,9 +7175,8 @@ html.admin-document {
     font-size: 0.95rem;
     font-weight: 800;
     line-height: 1.3;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /* The number is the title; it wraps rather than being cut short. */
+    overflow-wrap: anywhere;
 }
 
 .account-order-row__title-link {

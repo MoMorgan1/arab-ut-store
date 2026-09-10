@@ -2,7 +2,7 @@ import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { formatAccountMoney } from '@/lib/account-money';
-import { formatOrderDate, formatOrderNumber } from '@/lib/account-order-format';
+import { formatOrderAge, formatOrderNumber } from '@/lib/account-order-format';
 import { formatInteger } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import type { AccountOrder, AccountTranslations } from '@/types/account';
@@ -33,16 +33,14 @@ export default function AccountOrderRow({
             : order.status === 'waiting_for_customer'
               ? 'provide_details'
               : 'view_order');
-    const date = formatOrderDate(order.placedAt);
+    const age = formatOrderAge(order.placedAt, locale);
     const displayNumber = formatOrderNumber(order.number);
     const statusLabel = translations.statuses[order.status];
     const images = order.images.slice(0, 2);
-    // A mixed order lists its first two lines under the title; the rest open
-    // in place, so the customer never has to leave the list to see what an
-    // order held (owner suggestion, 2026-09-10).
-    const [showAllItems, setShowAllItems] = useState(false);
-    const visibleItems = showAllItems ? order.items : order.items.slice(0, 2);
-    const hiddenCount = order.items.length - 2;
+    // The order number is the title and the lines wait behind one "details"
+    // button that opens them in place (owner decision, 2026-09-10).
+    const [showItems, setShowItems] = useState(false);
+    const itemsId = `account-order-items-${order.id}`;
 
     return (
         <li
@@ -71,51 +69,40 @@ export default function AccountOrderRow({
                     <Link
                         className="account-order-row__title-link"
                         href={order.detailUrl}
+                        title={order.number}
                     >
-                        {order.items[0]?.name ?? order.summary}
+                        <bdi dir="ltr">{displayNumber}</bdi>
                     </Link>
                 </h3>
                 <p className="account-order-row__meta">
-                    <bdi dir="ltr" title={order.number}>
-                        {displayNumber}
-                    </bdi>
+                    <time dateTime={order.placedAt}>{age}</time>
                     {' · '}
                     <bdi>
-                        <time dateTime={order.placedAt}>{date}</time>
+                        {order.itemCount === 1
+                            ? translations.orders.item_count_one
+                            : translations.orders.item_count.replace(
+                                  ':count',
+                                  formatInteger(order.itemCount, locale),
+                              )}
                     </bdi>
-                    {order.itemCount > 1 ? (
-                        <>
-                            {' · '}
-                            <bdi>
-                                {translations.orders.item_count.replace(
-                                    ':count',
-                                    formatInteger(order.itemCount, locale),
-                                )}
-                            </bdi>
-                        </>
-                    ) : null}
                 </p>
-                {order.items.length > 1 ? (
-                    <ul className="account-order-row__items">
-                        {visibleItems.map((item, index) => (
+                <button
+                    aria-controls={itemsId}
+                    aria-expanded={showItems}
+                    className="account-order-row__more"
+                    onClick={() => setShowItems((value) => !value)}
+                    type="button"
+                >
+                    {showItems
+                        ? translations.orders.hide_details
+                        : translations.orders.details}
+                </button>
+                {showItems ? (
+                    <ul className="account-order-row__items" id={itemsId}>
+                        {order.items.map((item, index) => (
                             <li key={`${index}-${item.name}`}>{item.name}</li>
                         ))}
                     </ul>
-                ) : null}
-                {hiddenCount > 0 ? (
-                    <button
-                        aria-expanded={showAllItems}
-                        className="account-order-row__more"
-                        onClick={() => setShowAllItems((value) => !value)}
-                        type="button"
-                    >
-                        {showAllItems
-                            ? translations.orders.show_fewer_items
-                            : translations.orders.show_all_items.replace(
-                                  ':count',
-                                  formatInteger(order.items.length, locale),
-                              )}
-                    </button>
                 ) : null}
             </div>
             <div className="account-order-row__side">
