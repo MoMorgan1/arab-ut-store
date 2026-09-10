@@ -242,6 +242,7 @@ describe('AdminCouponDetailPage', () => {
                         code: 'SUMMER20-SPECIAL',
                         id: '01KCOUPONNEW',
                         isActive: false,
+                        url: '/admin/marketing/coupons/SUMMER20-SPECIAL',
                     },
                 }),
                 { status: 201 },
@@ -281,7 +282,7 @@ describe('AdminCouponDetailPage', () => {
         });
 
         expect(inertia.visit).toHaveBeenCalledWith(
-            '/admin/marketing/coupons/01KCOUPONNEW',
+            '/admin/marketing/coupons/SUMMER20-SPECIAL',
         );
     });
 
@@ -293,6 +294,7 @@ describe('AdminCouponDetailPage', () => {
                         code: 'SUMMER20',
                         id: '01KCOUPON0000000000000001',
                         isActive: false,
+                        url: '/admin/marketing/coupons/SUMMER20',
                     },
                 }),
                 { status: 200 },

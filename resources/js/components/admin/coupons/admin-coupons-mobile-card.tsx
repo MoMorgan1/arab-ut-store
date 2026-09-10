@@ -81,7 +81,7 @@ export default function AdminCouponsMobileCard({
     const copy = adminUi.coupons;
     const coupon = row.original;
     const canManage = permissions.includes('marketing.manage');
-    const detailUrl = showUrlTemplate.replace('__ID__', coupon.id);
+    const detailUrl = showUrlTemplate.replace('__CODE__', coupon.code);
 
     const badge = resolveStatusBadge(coupon.status, copy);
     const isPercent = coupon.discountType === 'percent';

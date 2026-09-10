@@ -219,7 +219,7 @@ test('admin customer surfaces never emit an internal ULID customer href', functi
         $this->actingAs($admin)->get("/admin/customers/{$customer->customer_number}")->assertOk(),
         $this->actingAs($admin)->get('/admin/orders')->assertOk(),
         $this->actingAs($admin)->get("/admin/orders/{$order->order_number}")->assertOk(),
-        $this->actingAs($admin)->get("/admin/marketing/coupons/{$coupon->public_id}")->assertOk(),
+        $this->actingAs($admin)->get("/admin/marketing/coupons/{$coupon->code}")->assertOk(),
     ];
 
     foreach ($responses as $response) {

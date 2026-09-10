@@ -133,6 +133,30 @@ test('products list can search by name, slug, and variant SKU', function (): voi
         );
 });
 
+test('products list never matches the internal public id in search', function (): void {
+    $admin = adminProductsActor(UserRole::Admin);
+
+    $product = Product::factory()->create([
+        'name_en' => 'Searchable Coins Product',
+        'slug' => 'searchable-coins-product',
+    ]);
+
+    // The ULID is the internal join key and must not be reachable through the
+    // search box; the slug stays searchable.
+    $this->actingAs($admin)
+        ->get('/admin/products?search='.(string) $product->public_id)
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('products', 0));
+
+    $this->actingAs($admin)
+        ->get('/admin/products?search=searchable-coins')
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('products', 1)
+            ->where('products.0.slug', 'searchable-coins-product')
+        );
+});
+
 test('products list can filter by authority, service type, visibility, and source', function (): void {
     $admin = adminProductsActor(UserRole::Admin);
 

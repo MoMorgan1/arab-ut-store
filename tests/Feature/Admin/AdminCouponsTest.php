@@ -224,7 +224,7 @@ test('the detail page returns the right totals for paid orders and excludes unpa
     ]);
 
     $this->actingAs($admin)
-        ->get("/admin/marketing/coupons/{$coupon->public_id}")
+        ->get("/admin/marketing/coupons/{$coupon->code}")
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/marketing/coupons/show', false)
@@ -236,6 +236,28 @@ test('the detail page returns the right totals for paid orders and excludes unpa
             ->has('recentRedemptions', 2)
             ->has('rules')
             ->has('chart', 1)); // 1 day of paid orders
+});
+
+test('legacy coupon publicId redirects to the code URL', function (): void {
+    $admin = adminCouponsActor(UserRole::Admin);
+    $coupon = Coupon::query()->create(couponAttributes(['code' => 'LEGACY30']));
+
+    $this->actingAs($admin)
+        ->get("/admin/marketing/coupons/{$coupon->public_id}")
+        ->assertRedirect('/admin/marketing/coupons/LEGACY30')
+        ->assertStatus(301);
+});
+
+test('coupon detail resolves a lowercase code in place', function (): void {
+    $admin = adminCouponsActor(UserRole::Admin);
+    $coupon = Coupon::query()->create(couponAttributes(['code' => 'MIXEDCASE40']));
+
+    $this->actingAs($admin)
+        ->get('/admin/marketing/coupons/mixedcase40')
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('admin/marketing/coupons/show', false)
+            ->where('coupon.code', 'MIXEDCASE40'));
 });
 
 test('duplicate copies fields and targets, creates paused, writes audit record, and is refused without marketing.manage', function (): void {

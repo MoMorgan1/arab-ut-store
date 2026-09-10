@@ -119,6 +119,30 @@ describe('AdminProductsPage', () => {
         ).toBeVisible();
     });
 
+    it('links product rows from the server url and never from the internal id', () => {
+        render(<AdminProductsPage />);
+
+        // The desktop table and the mobile card stack both render the row name,
+        // so every matching link must point at the server-provided url.
+        const links = screen.getAllByRole('link', { name: 'FC 26 Coins PS5' });
+
+        expect(links.length).toBeGreaterThanOrEqual(1);
+
+        for (const node of links) {
+            expect(node.getAttribute('href')).toBe(
+                '/admin/products/fc-26-coins-ps5',
+            );
+        }
+
+        expect(
+            screen
+                .getAllByRole('link')
+                .some((node) =>
+                    (node.getAttribute('href') ?? '').includes('01K5PROD'),
+                ),
+        ).toBe(false);
+    });
+
     it('renders authority and visibility badges correctly', () => {
         render(<AdminProductsPage />);
 

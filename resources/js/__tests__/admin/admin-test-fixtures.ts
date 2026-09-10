@@ -2265,6 +2265,7 @@ export const sampleAdminProductRows = [
     {
         id: '01K5PROD00000000000000001',
         slug: 'fc-26-coins-ps5',
+        url: '/admin/products/fc-26-coins-ps5',
         name: 'FC 26 Coins PS5',
         nameAr: 'كوينز فيفا 26 بلايستيشن 5',
         nameEn: 'FC 26 Coins PS5',
@@ -2281,6 +2282,7 @@ export const sampleAdminProductRows = [
     {
         id: '01K5PROD00000000000000002',
         slug: 'fc-26-sbc-service',
+        url: '/admin/products/fc-26-sbc-service',
         name: 'FC 26 SBC Service',
         nameAr: 'خدمة تحديات التشكيلات فيفا 26',
         nameEn: 'FC 26 SBC Service',
@@ -2300,6 +2302,7 @@ export const sampleAdminProductRows = [
     {
         id: '01K5PROD00000000000000003',
         slug: 'fc-25-coins-xbox',
+        url: '/admin/products/fc-25-coins-xbox',
         name: 'FC 25 Coins Xbox',
         nameAr: 'كوينز فيفا 25 إكس بوكس',
         nameEn: 'FC 25 Coins Xbox',

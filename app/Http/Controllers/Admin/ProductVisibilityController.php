@@ -8,6 +8,7 @@ use App\Exceptions\AdminProductVisibilityConflict;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SetAdminProductVisibility;
 use App\Models\User;
+use App\Support\PublicHandle\ProductHandle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
@@ -17,16 +18,18 @@ final class ProductVisibilityController extends Controller
         private readonly SetAdminProductStorefrontVisibility $action,
     ) {}
 
-    public function __invoke(SetAdminProductVisibility $request, string $publicId): JsonResponse
+    public function __invoke(SetAdminProductVisibility $request, string $product): JsonResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
         Gate::forUser($actor)->authorize(AdminPermission::CatalogManage->value);
 
+        $target = ProductHandle::resolveForAdmin($product);
+
         try {
-            $product = $this->action->execute(
+            $productModel = $this->action->execute(
                 actor: $actor,
-                productPublicId: $publicId,
+                productPublicId: (string) $target->public_id,
                 hidden: $request->hidden(),
                 expectedHidden: $request->expectedHidden(),
                 ipAddress: $request->ip(),
@@ -41,8 +44,8 @@ final class ProductVisibilityController extends Controller
         }
 
         return response()->json([
-            'product' => (string) $product->public_id,
-            'adminHidden' => $product->admin_hidden_at !== null,
+            'product' => (string) $productModel->public_id,
+            'adminHidden' => $productModel->admin_hidden_at !== null,
         ])
             ->header('Cache-Control', 'no-store, private')
             ->header('Content-Type', 'application/json');

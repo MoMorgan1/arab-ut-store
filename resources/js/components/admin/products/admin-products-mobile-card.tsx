@@ -1,6 +1,6 @@
 'use no memo'; // TanStack Table exposes mutable row objects.
 
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import type { Row } from '@tanstack/react-table';
 import { Bot, Eye, EyeOff, UserCheck } from 'lucide-react';
 
@@ -20,13 +20,10 @@ export default function AdminProductsMobileCard({
     dateFormatter,
     row,
 }: AdminProductsMobileCardProps) {
-    const { url } = usePage();
-    const isLocalized = url.startsWith('/en/admin');
-    const basePath = isLocalized ? '/en/admin/products' : '/admin/products';
     const copy = adminUi.products;
     const orderServices = adminUi.orders.services ?? {};
     const product = row.original;
-    const detailUrl = `${basePath}/${product.id}`;
+    const detailUrl = product.url;
     const isManual = product.authority === 'manual';
     const isVisible = product.isVisible;
     const serviceLabel =

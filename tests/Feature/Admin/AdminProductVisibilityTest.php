@@ -49,7 +49,7 @@ function hideProduct(User $actor, Product $product, bool $hidden = true, ?bool $
     return test()
         ->actingAs($actor)
         ->withSession(['auth.password_confirmed_at' => time()])
-        ->postJson(route('admin.products.visibility.store', ['publicId' => $product->public_id]), [
+        ->postJson(route('admin.products.visibility.store', ['product' => $product->public_id]), [
             'hidden' => $hidden,
             'expected_hidden' => $expected ?? ! $hidden,
         ]);
@@ -146,7 +146,7 @@ it('rejects unknown fields', function (): void {
 
     test()->actingAs($actor)
         ->withSession(['auth.password_confirmed_at' => time()])
-        ->postJson(route('admin.products.visibility.store', ['publicId' => $product->public_id]), [
+        ->postJson(route('admin.products.visibility.store', ['product' => $product->public_id]), [
             'hidden' => true,
             'expected_hidden' => false,
             'is_visible' => false,

@@ -162,10 +162,10 @@ function defaultProps(): AdminCouponsPageProps {
         products: [{ id: 1, publicId: '01PROD1', name: '100K Coins' }],
         serviceTypes: [{ value: 'coins', label: 'Coins Delivery' }],
         createUrl: '/admin/api/marketing/coupons',
-        updateUrlTemplate: '/admin/api/marketing/coupons/__ID__',
-        statusUrlTemplate: '/admin/api/marketing/coupons/__ID__/status',
-        duplicateUrlTemplate: '/admin/api/marketing/coupons/__ID__/duplicate',
-        showUrlTemplate: '/admin/marketing/coupons/__ID__',
+        updateUrlTemplate: '/admin/api/marketing/coupons/__CODE__',
+        statusUrlTemplate: '/admin/api/marketing/coupons/__CODE__/status',
+        duplicateUrlTemplate: '/admin/api/marketing/coupons/__CODE__/duplicate',
+        showUrlTemplate: '/admin/marketing/coupons/__CODE__',
         logoutUrl: '/logout',
     };
 }
@@ -217,7 +217,12 @@ describe('AdminCouponsPage', () => {
         const fetchMock = vi.fn().mockResolvedValue(
             new Response(
                 JSON.stringify({
-                    data: { code: 'SAVE20', id: 'x', isActive: true },
+                    data: {
+                        code: 'SAVE20',
+                        id: 'x',
+                        isActive: true,
+                        url: '/admin/marketing/coupons/SAVE20',
+                    },
                 }),
                 { status: 201 },
             ),
@@ -260,7 +265,12 @@ describe('AdminCouponsPage', () => {
         const fetchMock = vi.fn().mockResolvedValue(
             new Response(
                 JSON.stringify({
-                    data: { code: 'WELCOME10', id: 'x', isActive: true },
+                    data: {
+                        code: 'WELCOME10',
+                        id: 'x',
+                        isActive: true,
+                        url: '/admin/marketing/coupons/WELCOME10',
+                    },
                 }),
                 { status: 200 },
             ),
@@ -289,7 +299,7 @@ describe('AdminCouponsPage', () => {
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith(
-                '/admin/api/marketing/coupons/01KCOUPON0000000000000001',
+                '/admin/api/marketing/coupons/WELCOME10',
                 expect.objectContaining({ method: 'PUT' }),
             );
         });
@@ -303,6 +313,7 @@ describe('AdminCouponsPage', () => {
                         code: 'WELCOME10-COPY',
                         id: '01KCOUPONCOPY',
                         isActive: false,
+                        url: '/admin/marketing/coupons/WELCOME10-COPY',
                     },
                 }),
                 { status: 201 },
@@ -326,7 +337,7 @@ describe('AdminCouponsPage', () => {
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith(
-                '/admin/api/marketing/coupons/01KCOUPON0000000000000001/duplicate',
+                '/admin/api/marketing/coupons/WELCOME10/duplicate',
                 expect.objectContaining({ method: 'POST' }),
             );
         });
@@ -336,7 +347,12 @@ describe('AdminCouponsPage', () => {
         const fetchMock = vi.fn().mockResolvedValue(
             new Response(
                 JSON.stringify({
-                    data: { code: 'WELCOME10', id: 'x', isActive: false },
+                    data: {
+                        code: 'WELCOME10',
+                        id: 'x',
+                        isActive: false,
+                        url: '/admin/marketing/coupons/WELCOME10',
+                    },
                 }),
                 { status: 200 },
             ),
@@ -359,7 +375,7 @@ describe('AdminCouponsPage', () => {
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith(
-                '/admin/api/marketing/coupons/01KCOUPON0000000000000001/status',
+                '/admin/api/marketing/coupons/WELCOME10/status',
                 expect.objectContaining({ method: 'POST' }),
             );
         });
@@ -367,6 +383,20 @@ describe('AdminCouponsPage', () => {
         const [, init] = fetchMock.mock.calls[0];
 
         expect(JSON.parse(init.body)).toEqual({ is_active: false });
+    });
+
+    it('links each coupon row to its detail page by code', () => {
+        render(<AdminCouponsPage />);
+
+        const link = screen
+            .getAllByRole('link', { name: 'WELCOME10' })
+            .find(
+                (node) =>
+                    node.getAttribute('href') ===
+                    '/admin/marketing/coupons/WELCOME10',
+            );
+
+        expect(link).toBeTruthy();
     });
 
     it('hides management controls for viewers without marketing.manage', () => {

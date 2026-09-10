@@ -79,7 +79,7 @@ test('confirmed Admin can view manual product detail page with variants and medi
         new StaffAuditEvent('products.updated', ['product_changed' => ['sort_order']], null),
     );
 
-    $path = "{$prefix}/products/{$product->public_id}";
+    $path = "{$prefix}/products/{$product->slug}";
 
     $this->actingAs($admin)
         ->get($path)
@@ -103,8 +103,18 @@ test('confirmed Admin can view manual product detail page with variants and medi
             ->has('product.recentAuditLogs', 1)
             // The write URL stays inside the route family the page was reached
             // through, the same way the team and contact URLs do.
-            ->where('updateUrl', "{$prefix}/api/products/{$product->public_id}")
+            ->where('updateUrl', "{$prefix}/api/products/{$product->slug}")
         );
+})->with(['/admin', '/en/admin']);
+
+test('legacy product publicId redirects to the slug URL', function (string $prefix): void {
+    $admin = adminProductDetailActor(UserRole::Admin);
+    $product = Product::factory()->create();
+
+    $this->actingAs($admin)
+        ->get("{$prefix}/products/{$product->public_id}")
+        ->assertRedirect("{$prefix}/products/{$product->slug}")
+        ->assertStatus(301);
 })->with(['/admin', '/en/admin']);
 
 test('confirmed Admin can view automation product with sync run info', function (): void {
@@ -140,7 +150,7 @@ test('confirmed Admin can view automation product with sync run info', function 
     ]);
 
     $this->actingAs($admin)
-        ->get("/admin/products/{$product->public_id}")
+        ->get("/admin/products/{$product->slug}")
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('product.authority', 'automation')

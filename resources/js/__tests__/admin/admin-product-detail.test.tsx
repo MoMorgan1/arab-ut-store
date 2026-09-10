@@ -131,6 +131,14 @@ describe('AdminProductDetailPage', () => {
         expect(screen.getByText('COINS-PS5-500K')).toBeInTheDocument();
     });
 
+    it('never renders the internal 26-character public id as visible text', () => {
+        const { container } = render(<AdminProductDetailPage />);
+
+        expect(container.textContent ?? '').not.toMatch(
+            /[0-9A-HJKMNP-TV-Z]{26}/i,
+        );
+    });
+
     it('renders automation product as read-only with automation history panel', () => {
         pageState.props.product = { ...sampleAdminAutomationProductDetail };
         pageState.props.updateUrl =

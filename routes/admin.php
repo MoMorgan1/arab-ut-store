@@ -64,8 +64,10 @@ use App\Http\Middleware\EnsureAdminMfa;
 use App\Http\Middleware\EnsureAdminPassword;
 use App\Http\Middleware\PrivateNoStore;
 use App\Support\PublicHandle\ConversationHandle;
+use App\Support\PublicHandle\CouponHandle;
 use App\Support\PublicHandle\CustomerHandle;
 use App\Support\PublicHandle\OrderHandle;
+use App\Support\PublicHandle\ProductHandle;
 use App\Support\PublicHandle\TicketHandle;
 use Illuminate\Support\Facades\Route;
 
@@ -316,7 +318,8 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $products->defaults('locale', $locale);
                 }
 
-                $productDetail = Route::get('/products/{publicId}', ProductDetailController::class)
+                $productDetail = Route::get('/products/{product}', ProductDetailController::class)
+                    ->where('product', ProductHandle::routePattern())
                     ->middleware('can:catalog.view')
                     ->name('products.show');
 
@@ -324,7 +327,8 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $productDetail->defaults('locale', $locale);
                 }
 
-                $product = Route::post('/api/products/{publicId}', ProductController::class)
+                $product = Route::post('/api/products/{product}', ProductController::class)
+                    ->where('product', ProductHandle::routePattern())
                     ->middleware('can:catalog.manage')
                     ->name('products.update');
 
@@ -332,7 +336,8 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $product->defaults('locale', $locale);
                 }
 
-                $productVisibility = Route::post('/api/products/{publicId}/visibility', ProductVisibilityController::class)
+                $productVisibility = Route::post('/api/products/{product}/visibility', ProductVisibilityController::class)
+                    ->where('product', ProductHandle::routePattern())
                     ->middleware('can:catalog.manage')
                     ->name('products.visibility.store');
 
@@ -388,7 +393,8 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $coupons->defaults('locale', $locale);
                 }
 
-                $couponDetail = Route::get('/marketing/coupons/{publicId}', CouponDetailController::class)
+                $couponDetail = Route::get('/marketing/coupons/{coupon}', CouponDetailController::class)
+                    ->where('coupon', CouponHandle::routePattern())
                     ->middleware('can:marketing.view')
                     ->name('marketing.coupons.show');
 
@@ -404,7 +410,8 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $createCoupon->defaults('locale', $locale);
                 }
 
-                $updateCoupon = Route::put('/api/marketing/coupons/{publicId}', UpdateCouponController::class)
+                $updateCoupon = Route::put('/api/marketing/coupons/{coupon}', UpdateCouponController::class)
+                    ->where('coupon', CouponHandle::routePattern())
                     ->middleware('can:marketing.manage')
                     ->name('marketing.coupons.update');
 
@@ -412,7 +419,8 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $updateCoupon->defaults('locale', $locale);
                 }
 
-                $toggleCoupon = Route::post('/api/marketing/coupons/{publicId}/status', ToggleCouponStatusController::class)
+                $toggleCoupon = Route::post('/api/marketing/coupons/{coupon}/status', ToggleCouponStatusController::class)
+                    ->where('coupon', CouponHandle::routePattern())
                     ->middleware('can:marketing.manage')
                     ->name('marketing.coupons.status.store');
 
@@ -420,7 +428,8 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $toggleCoupon->defaults('locale', $locale);
                 }
 
-                $duplicateCoupon = Route::post('/api/marketing/coupons/{publicId}/duplicate', DuplicateCouponController::class)
+                $duplicateCoupon = Route::post('/api/marketing/coupons/{coupon}/duplicate', DuplicateCouponController::class)
+                    ->where('coupon', CouponHandle::routePattern())
                     ->middleware('can:marketing.manage')
                     ->name('marketing.coupons.duplicate');
 

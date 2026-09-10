@@ -4,8 +4,8 @@ namespace App\Http\Requests\Admin;
 
 use App\Enums\AdminPermission;
 use App\Enums\ServiceType;
-use App\Models\Coupon;
 use App\Models\User;
+use App\Support\PublicHandle\CouponHandle;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -39,8 +39,8 @@ final class UpdateAdminCoupon extends FormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
-        $publicId = (string) $this->route('publicId');
-        $coupon = Coupon::query()->where('public_id', $publicId)->first();
+        $handle = (string) $this->route('coupon');
+        $coupon = $handle !== '' ? CouponHandle::resolveForAdmin($handle) : null;
 
         return [
             'code' => [

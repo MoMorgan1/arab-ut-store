@@ -143,7 +143,10 @@ export function getAdminCouponColumns({
             accessorKey: 'code',
             cell: ({ row }) => {
                 const coupon = row.original;
-                const detailUrl = showUrlTemplate.replace('__ID__', coupon.id);
+                const detailUrl = showUrlTemplate.replace(
+                    '__CODE__',
+                    coupon.code,
+                );
 
                 const description =
                     locale === 'ar'
@@ -424,7 +427,10 @@ export function getAdminCouponColumns({
             header: copy.columns.actions,
             cell: ({ row }) => {
                 const coupon = row.original;
-                const detailUrl = showUrlTemplate.replace('__ID__', coupon.id);
+                const detailUrl = showUrlTemplate.replace(
+                    '__CODE__',
+                    coupon.code,
+                );
 
                 return (
                     <div className="flex items-center gap-1">

@@ -1,6 +1,6 @@
 'use no memo'; // TanStack Table exposes mutable row and table objects.
 
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
     ArrowDown,
@@ -28,10 +28,7 @@ export type ProductColumnOptions = {
 };
 
 function ProductNameCell({ row }: { row: { original: AdminProductRow } }) {
-    const { url } = usePage();
-    const isLocalized = url.startsWith('/en/admin');
-    const basePath = isLocalized ? '/en/admin/products' : '/admin/products';
-    const detailUrl = `${basePath}/${row.original.id}`;
+    const detailUrl = row.original.url;
 
     return (
         <div className="flex max-w-56 flex-col gap-0.5">
@@ -54,7 +51,6 @@ export function getAdminProductColumns({
     adminUi,
     currentSort,
     currentDirection,
-    locale,
     onSortChange,
 }: ProductColumnOptions): ColumnDef<AdminProductRow>[] {
     const copy = adminUi.products;
@@ -250,11 +246,7 @@ export function getAdminProductColumns({
         },
         {
             cell: ({ row }) => {
-                const isLocalized = locale === 'en';
-                const basePath = isLocalized
-                    ? '/en/admin/products'
-                    : '/admin/products';
-                const detailUrl = `${basePath}/${row.original.id}`;
+                const detailUrl = row.original.url;
 
                 return (
                     <Link

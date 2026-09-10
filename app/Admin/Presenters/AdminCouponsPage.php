@@ -79,10 +79,10 @@ final readonly class AdminCouponsPage
             'products' => $this->products(),
             'serviceTypes' => $serviceOptions,
             'createUrl' => route($prefix.'marketing.coupons.store', absolute: false),
-            'updateUrlTemplate' => route($prefix.'marketing.coupons.update', ['publicId' => '__ID__'], absolute: false),
-            'statusUrlTemplate' => route($prefix.'marketing.coupons.status.store', ['publicId' => '__ID__'], absolute: false),
-            'duplicateUrlTemplate' => route($prefix.'marketing.coupons.duplicate', ['publicId' => '__ID__'], absolute: false),
-            'showUrlTemplate' => route($prefix.'marketing.coupons.show', ['publicId' => '__ID__'], absolute: false),
+            'updateUrlTemplate' => route($prefix.'marketing.coupons.update', ['coupon' => '__CODE__'], absolute: false),
+            'statusUrlTemplate' => route($prefix.'marketing.coupons.status.store', ['coupon' => '__CODE__'], absolute: false),
+            'duplicateUrlTemplate' => route($prefix.'marketing.coupons.duplicate', ['coupon' => '__CODE__'], absolute: false),
+            'showUrlTemplate' => route($prefix.'marketing.coupons.show', ['coupon' => '__CODE__'], absolute: false),
         ];
     }
 

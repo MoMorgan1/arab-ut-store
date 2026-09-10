@@ -147,7 +147,10 @@ export default function AdminCouponsPage() {
 
         setToggling(true);
         setActionMessage(null);
-        const targetUrl = props.statusUrlTemplate.replace('__ID__', coupon.id);
+        const targetUrl = props.statusUrlTemplate.replace(
+            '__CODE__',
+            coupon.code,
+        );
 
         try {
             const res = await fetch(targetUrl, {
@@ -202,8 +205,8 @@ export default function AdminCouponsPage() {
         setDuplicating(true);
         setActionMessage(null);
         const targetUrl = props.duplicateUrlTemplate.replace(
-            '__ID__',
-            coupon.id,
+            '__CODE__',
+            coupon.code,
         );
 
         try {
