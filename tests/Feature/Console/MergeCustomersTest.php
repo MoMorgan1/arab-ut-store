@@ -57,7 +57,7 @@ test('a duplicate account folds into the survivor: rows move, the duplicate is c
     // The default drops the duplicate balance: it is written off, not lost silently.
     expect((int) WalletAccount::query()->where('user_id', $duplicate->id)->value('balance_halalah'))->toBe(0)
         ->and((int) WalletAccount::query()->where('user_id', $survivor->id)->value('balance_halalah'))->toBe(5_000)
-        ->and(WalletEntry::query()->where('reference', "customer-merge:{$duplicate->id}:{$survivor->id}")->count())->toBe(1);
+        ->and(WalletEntry::query()->where('reference', "customer-merge:{$duplicate->id}:{$survivor->id}:out")->count())->toBe(1);
 
     $log = StaffAuditLog::query()->where('action', 'customer.merged')->sole();
 
@@ -70,7 +70,8 @@ test('a duplicate account folds into the survivor: rows move, the duplicate is c
 
 test('the survivor can take the duplicate email and password, and its balance', function (): void {
     $survivor = User::factory()->create(['email' => 'old@example.test']);
-    $duplicate = User::factory()->create(['email' => 'new@example.test', 'password' => 'hashed-new']);
+    $duplicate = User::factory()->create(['email' => 'new@example.test', 'password' => 'new-secret']);
+    $duplicateHash = (string) $duplicate->getRawOriginal('password');
     creditWallet($duplicate, 5_000);
 
     $this->artisan('customers:merge', [
@@ -83,7 +84,7 @@ test('the survivor can take the duplicate email and password, and its balance', 
     $survivor->refresh();
 
     expect($survivor->email)->toBe('new@example.test')
-        ->and($survivor->password)->toBe('hashed-new')
+        ->and((string) $survivor->getRawOriginal('password'))->toBe($duplicateHash)
         ->and($duplicate->fresh()->email)->toBeNull()
         ->and((int) WalletAccount::query()->where('user_id', $survivor->id)->value('balance_halalah'))->toBe(5_000)
         ->and((int) WalletAccount::query()->where('user_id', $duplicate->id)->value('balance_halalah'))->toBe(0);
@@ -124,6 +125,7 @@ test('reviews follow the customer so the storefront keeps attributing them', fun
     $review = Review::query()->create([
         'user_id' => $duplicate->id,
         'order_id' => $order->id,
+        'reviewer_name' => 'متعب',
         'rating' => 5,
         'body_ar' => 'ممتاز',
         'is_visible' => true,

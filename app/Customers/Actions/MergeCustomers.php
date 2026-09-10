@@ -161,6 +161,7 @@ final class MergeCustomers
             return $balance;
         }
 
+        // The reference is unique across the ledger, so each side gets its own.
         $reference = "customer-merge:{$from->id}:{$into->id}";
         $metadata = ['merged_into_user_id' => $into->id, 'wallet' => $wallet];
 
@@ -171,7 +172,7 @@ final class MergeCustomers
             'order_id' => null,
             'refund_id' => null,
             'created_by_user_id' => null,
-            'reference' => $reference,
+            'reference' => $reference.':out',
             'metadata' => $metadata,
         ]);
 
@@ -184,7 +185,7 @@ final class MergeCustomers
                 'order_id' => null,
                 'refund_id' => null,
                 'created_by_user_id' => null,
-                'reference' => $reference,
+                'reference' => $reference.':in',
                 'metadata' => ['merged_from_user_id' => $from->id, 'wallet' => $wallet],
             ]);
         }
