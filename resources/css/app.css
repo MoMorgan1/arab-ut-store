@@ -397,23 +397,24 @@ html.admin-document {
         padding: var(--bar-inset);
         border-radius: var(--bar-surface-radius);
         isolation: isolate;
-        /* Warm, restrained material. Brightness sits *below* 1 (Apple's
-           `regular` variant adjusts luminosity rather than lifting it) and
-           saturation comes down from 190% so cold colour behind the bar is not
-           amplified: warmth comes from the tint, never the filter. */
+        /* Warm, light glass. The tint has to stay weak enough that the page
+           still reads through it, or the bar stops looking like glass and
+           starts looking like a dark panel: the first pass sat at 72–86% tint
+           with brightness(0.86) on top, which multiplied out to an almost
+           solid surface. Warmth comes from the tint's hue, not its density. */
         background: linear-gradient(
             to bottom,
-            rgb(20 16 12 / 72%),
-            rgb(12 9 7 / 86%)
+            rgb(26 21 16 / 42%),
+            rgb(16 12 9 / 58%)
         );
-        -webkit-backdrop-filter: blur(24px) saturate(140%) brightness(0.86);
-        backdrop-filter: blur(24px) saturate(140%) brightness(0.86);
+        -webkit-backdrop-filter: blur(22px) saturate(160%) brightness(1.06);
+        backdrop-filter: blur(22px) saturate(160%) brightness(1.06);
         /* Two hairlines, top brighter than bottom, so the slab reads convex;
            a tight shadow instead of a large diffuse one. */
         box-shadow:
-            inset 0 1px 0 rgb(var(--bar-rim) / 22%),
-            inset 0 -1px 0 rgb(var(--bar-rim) / 7%),
-            0 -8px 24px rgb(0 0 0 / 35%);
+            inset 0 1px 0 rgb(var(--bar-rim) / 26%),
+            inset 0 -1px 0 rgb(var(--bar-rim) / 8%),
+            0 -8px 24px rgb(0 0 0 / 30%);
         pointer-events: auto;
         transition: opacity 180ms ease;
     }
@@ -459,8 +460,8 @@ html.admin-document {
         height: 55%;
         border-radius: inherit;
         background:
-            linear-gradient(180deg, rgb(12 9 7 / 55%), transparent 14px),
-            linear-gradient(180deg, rgb(255 255 255 / 8%), transparent 55%);
+            linear-gradient(180deg, rgb(12 9 7 / 32%), transparent 14px),
+            linear-gradient(180deg, rgb(255 255 255 / 9%), transparent 55%);
         pointer-events: none;
         z-index: 1;
     }
@@ -492,12 +493,16 @@ html.admin-document {
         line-height: 1.15;
         text-decoration: none;
         z-index: 3;
+        /* Only properties that cannot force a repaint of the blurred surface.
+           This used to animate `box-shadow` and, worse, swap a two-layer
+           `background` between states: a gradient cannot be interpolated, so
+           the browser snapped between them mid-transition while re-rasterising
+           a `backdrop-filter` on every frame. That read as the animation
+           sticking. Colour and opacity interpolate smoothly and stay cheap. */
         transition:
-            background-color 200ms ease,
-            color 200ms ease,
-            box-shadow 200ms ease,
-            transform 200ms ease,
-            opacity 200ms ease;
+            background-color 160ms ease-out,
+            color 160ms ease-out,
+            opacity 160ms ease-out;
     }
 
     .arabut-bottom-bar__item svg {
@@ -517,24 +522,19 @@ html.admin-document {
         color: #fff;
     }
 
-    /* Touch reaction stays on the compositor. */
+    /* Touch reaction: opacity only. A `transform` here creates a stacking
+       context inside a `backdrop-filter`ed parent, so the compositor re-samples
+       the blur under the finger every frame — the same stutter as above, in the
+       one interaction where it is most noticeable. */
     .arabut-bottom-bar__item:active {
-        transform: scale(0.96);
-        opacity: 0.92;
+        opacity: 0.72;
     }
 
+    /* A flat translucent colour, not a gradient: it interpolates cleanly with
+       the idle state and needs no box-shadow to read as raised. */
     .arabut-bottom-bar__item--active {
         color: var(--arabut-gold-bright);
-        background:
-            linear-gradient(
-                180deg,
-                rgb(255 255 255 / 11%),
-                rgb(255 255 255 / 3%)
-            ),
-            rgb(212 168 67 / 10%);
-        box-shadow:
-            inset 0 1px 0 rgb(255 255 255 / 20%),
-            inset 0 0 0 1px rgb(var(--bar-rim) / 20%);
+        background-color: rgb(212 168 67 / 16%);
     }
 
     /* The active glyph fills in rather than only changing colour, so selection
@@ -547,16 +547,9 @@ html.admin-document {
         font-weight: 800;
     }
 
-    .arabut-bottom-bar__item--active::after {
-        content: '';
-        position: absolute;
-        bottom: 0.3rem;
-        width: 1.1rem;
-        height: 2px;
-        border-radius: 999px;
-        background: var(--arabut-gold-bright);
-        box-shadow: 0 0 0.5rem rgb(228 183 86 / 60%);
-    }
+    /* No underline beneath the selected tab. It was decorative on top of two
+       signals that already say "selected" — the gold ink and the filled glyph —
+       and a third mark under the label only crowded the bar's bottom edge. */
 
     .arabut-bottom-bar__item:focus-visible {
         outline: 2px solid var(--arabut-focus);
@@ -612,8 +605,9 @@ html.admin-document {
             transition-duration: 0.01ms;
         }
 
+        /* Keep the pressed state legible without any movement. */
         .arabut-bottom-bar__item:active {
-            transform: none;
+            opacity: 0.85;
         }
     }
 
@@ -13748,9 +13742,12 @@ html.admin-document {
     color: var(--arabut-gold);
 }
 
+/* The tier marks are the one place in the row where the shape carries meaning,
+   so they get enough size to be told apart. At 1rem the four read as the same
+   smudge. */
 .account-wallet-loyalty__chip-icon svg {
-    width: 1rem;
-    height: 1rem;
+    width: 1.35rem;
+    height: 1.35rem;
 }
 
 .account-wallet-loyalty__chip-name {
@@ -14923,13 +14920,11 @@ html.admin-document {
     border-radius: 1px;
 }
 
-@supports not (
-    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
-) {
-    .account-mobile-bottom-nav__inner {
-        background: rgb(20 17 14 / 96%) !important;
-    }
-}
+/* The account bar's no-`backdrop-filter` fallback lives with the shared surface
+   in `@layer components`, so both bars fall back to the same opaque colour.
+   A second, older block here carried `!important` and a different colour, so a
+   browser without the filter got a different bar depending on which surface it
+   happened to match. */
 
 @media (prefers-reduced-motion: reduce) {
     .account-mobile-bottom-nav *,
