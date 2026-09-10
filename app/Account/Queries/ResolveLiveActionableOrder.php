@@ -62,10 +62,7 @@ final readonly class ResolveLiveActionableOrder
             return null;
         }
 
-        return [
-            ...$this->presenter->for($order, $locale),
-            'action' => $this->action($order),
-        ];
+        return $this->presenter->for($order, $locale);
     }
 
     /** @return list<string> */
@@ -77,24 +74,5 @@ final readonly class ResolveLiveActionableOrder
             OrderStatus::InProgress->value,
             OrderStatus::WaitingForCustomer->value,
         ];
-    }
-
-    /** @return array{type: string} */
-    private function action(Order $order): array
-    {
-        if ($order->status === OrderStatus::WaitingForCustomer) {
-            return ['type' => 'provide_details'];
-        }
-
-        if ($order->status === OrderStatus::PendingPayment
-            && (bool) $order->getAttribute('has_failed_payment')) {
-            return ['type' => 'retry_payment'];
-        }
-
-        if ($order->status === OrderStatus::PendingPayment) {
-            return ['type' => 'pay_now'];
-        }
-
-        return ['type' => 'view_order'];
     }
 }

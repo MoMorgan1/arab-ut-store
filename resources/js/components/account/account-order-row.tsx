@@ -24,15 +24,9 @@ export default function AccountOrderRow({
     const isAttention =
         order.status === 'waiting_for_customer' ||
         order.status === 'pending_payment';
-    // The card's one action names the next step: pay, or give the details
-    // staff are waiting for. Anything else opens the order from its title.
-    const action =
-        order.action?.type ??
-        (order.status === 'pending_payment'
-            ? 'pay_now'
-            : order.status === 'waiting_for_customer'
-              ? 'provide_details'
-              : 'view_order');
+    // The server names the next step (pay, retry after a failed attempt, or
+    // give the details staff wait for); the card never guesses it.
+    const action = order.action.type;
     const age = formatOrderAge(order.placedAt, locale);
     const displayNumber = formatOrderNumber(order.number);
     const statusLabel = translations.statuses[order.status];

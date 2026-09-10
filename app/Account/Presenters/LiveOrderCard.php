@@ -2,6 +2,7 @@
 
 namespace App\Account\Presenters;
 
+use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Carbon\CarbonInterface;
@@ -20,6 +21,7 @@ final class LiveOrderCard
      *     itemCount: int,
      *     images: list<string>,
      *     items: list<array{name: string}>,
+     *     action: array{type: string},
      *     total: array{amountMinor: string, currency: string},
      *     walletPayment: array{amountMinor: string, currency: string}|null,
      *     detailUrl: string
@@ -43,6 +45,7 @@ final class LiveOrderCard
             'itemCount' => $itemCount,
             'images' => $this->images($items),
             'items' => $this->itemNames($items, $locale),
+            'action' => $this->action($order),
             'total' => AccountMoney::fromMinor(
                 (int) $order->getAttribute('total_halalah'),
                 (string) $order->getAttribute('currency'),
@@ -85,6 +88,31 @@ final class LiveOrderCard
         }
 
         return $images;
+    }
+
+    /**
+     * The one thing the customer can do next. A failed Paylink attempt reads
+     * as "retry", so the list and the overview never disagree about it; the
+     * query must select `has_failed_payment` (withExists) for that to work.
+     *
+     * @return array{type: string}
+     */
+    private function action(Order $order): array
+    {
+        if ($order->status === OrderStatus::WaitingForCustomer) {
+            return ['type' => 'provide_details'];
+        }
+
+        if ($order->status === OrderStatus::PendingPayment
+            && (bool) $order->getAttribute('has_failed_payment')) {
+            return ['type' => 'retry_payment'];
+        }
+
+        if ($order->status === OrderStatus::PendingPayment) {
+            return ['type' => 'pay_now'];
+        }
+
+        return ['type' => 'view_order'];
     }
 
     /**

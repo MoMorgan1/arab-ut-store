@@ -38,20 +38,23 @@ export default function AccountWallet() {
         currency: 'SAR',
     };
 
-    const lifetimeCashback = props.loyalty?.cashback.lifetime;
-    const hasLifetimeCashback =
-        lifetimeCashback !== undefined &&
-        lifetimeCashback !== null &&
-        Number(lifetimeCashback.amountMinor) > 0;
+    const lifetimeCashback = props.wallet.lifetimeCashback;
+    const hasLifetimeCashback = Number(lifetimeCashback.amountMinor) > 0;
 
     const loyalty = props.loyalty;
-    const isTopTier = loyalty !== null && loyalty.nextTier === null;
+    // "Top tier" only when the customer actually holds a tier and none is
+    // above it; below the first tier the card says what is left to reach it.
+    const isTopTier =
+        loyalty !== null &&
+        loyalty.currentTier !== null &&
+        loyalty.nextTier === null;
 
-    const currentTierKey = loyalty?.currentTier?.key;
+    const currentTierKey = loyalty?.currentTier?.key ?? null;
     const currentTierInList =
-        loyalty?.tiers.find((t) => t.key === currentTierKey) ??
-        loyalty?.tiers[0];
-    const currentCashbackPercent = currentTierInList?.cashbackPercent ?? 0;
+        currentTierKey === null
+            ? undefined
+            : loyalty?.tiers.find((t) => t.key === currentTierKey);
+    const currentCashbackPercent = currentTierInList?.cashbackPercent ?? null;
 
     const tierHeading = isTopTier
         ? props.accountUi.wallet.top_tier
@@ -60,7 +63,7 @@ export default function AccountWallet() {
                 ':tier',
                 loyalty.currentTier.name,
             )
-          : props.accountUi.wallet.top_tier;
+          : props.accountUi.wallet.loyalty_title;
 
     const remainingText =
         !isTopTier &&
@@ -135,15 +138,17 @@ export default function AccountWallet() {
                                 </span>
                                 <h3>{tierHeading}</h3>
                             </div>
-                            <div className="account-wallet-loyalty__rate-pill">
-                                <Percent aria-hidden="true" />
-                                <span>
-                                    {props.accountUi.wallet.cashback_rate.replace(
-                                        ':percent',
-                                        String(currentCashbackPercent),
-                                    )}
-                                </span>
-                            </div>
+                            {currentCashbackPercent === null ? null : (
+                                <div className="account-wallet-loyalty__rate-pill">
+                                    <Percent aria-hidden="true" />
+                                    <span>
+                                        {props.accountUi.wallet.cashback_rate.replace(
+                                            ':percent',
+                                            String(currentCashbackPercent),
+                                        )}
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
                         <div

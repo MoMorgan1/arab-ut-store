@@ -3,11 +3,14 @@
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
+use App\Enums\PaymentStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
+use App\Models\Payment;
 use App\Models\User;
 use App\Support\OrderClosingNote;
+use Illuminate\Support\Str;
 
 function ordersTestOrder(
     User $user,
@@ -359,4 +362,29 @@ test('a refund of nothing names no figure', function (): void {
 
     expect($note['note_en'])->not->toContain('0.00')
         ->and($note['note_en'])->toContain('not charged');
+});
+
+test('a pending order whose Paylink attempt failed reads as retry in the list, as it does on the overview', function (): void {
+    $user = User::factory()->create();
+    $order = ordersTestOrder($user, 21, OrderStatus::PendingPayment);
+    Payment::query()->create([
+        'public_id' => (string) Str::ulid(),
+        'order_id' => $order->id,
+        'provider' => 'paylink',
+        'provider_payment_id' => 'INV-FAILED',
+        'idempotency_key' => (string) Str::ulid(),
+        'status' => PaymentStatus::Failed,
+        'amount_halalah' => 21_000,
+        'captured_halalah' => 0,
+        'currency' => 'SAR',
+    ]);
+    ordersTestOrder($user, 22, OrderStatus::PendingPayment);
+
+    $this->actingAs($user)
+        ->get('/my-account/orders')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            // Newest first: 21 days old sits above 22 days old.
+            ->where('orders.0.action.type', 'retry_payment')
+            ->where('orders.1.action.type', 'pay_now'));
 });
