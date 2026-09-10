@@ -119,6 +119,7 @@ final class AdminOrderDetail
             'cancelledAt' => self::isoDate($order->getAttribute('cancelled_at')),
             'customer' => [
                 'id' => (string) $customer?->public_id,
+                'number' => $customer?->customer_number,
                 'name' => trim((string) $customer?->first_name.' '.(string) $customer?->last_name),
                 'email' => (string) $customer?->email,
                 'phone' => $customer?->phone !== null ? (string) $customer->phone : null,

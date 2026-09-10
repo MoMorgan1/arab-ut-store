@@ -90,9 +90,6 @@ export default function AdminOrderDetailPage() {
                                 {statuses[order.status] ?? order.status}
                             </AdminBadge>
                         </div>
-                        <p className="text-xs [overflow-wrap:anywhere] text-muted-foreground">
-                            <bdi>{order.id}</bdi>
-                        </p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground md:hidden">
@@ -387,8 +384,14 @@ export default function AdminOrderDetailPage() {
                                 <span className="text-muted-foreground">
                                     ID
                                 </span>
-                                <span className="[overflow-wrap:anywhere] text-muted-foreground tabular-nums">
-                                    <bdi>{order.customer.id}</bdi>
+                                <span
+                                    className="[overflow-wrap:anywhere] text-muted-foreground tabular-nums"
+                                    title={order.customer.id}
+                                >
+                                    <bdi>
+                                        {order.customer.number ??
+                                            order.customer.id}
+                                    </bdi>
                                 </span>
                             </div>
                         </div>

@@ -117,6 +117,24 @@ this is a future partial-install recovery procedure.
 The Hostinger maintenance workflow does not activate, delete, or edit n8n
 workflows, credentials, or static data.
 
+## Customer accounts
+
+Two operator commands, run over SSH from the current release directory:
+
+- `php artisan customers:backfill-numbers` gives a `CUS-` number to every
+  customer row that still shows a ULID in the admin. Safe to re-run; it skips
+  rows that already have one.
+- `php artisan customers:merge <duplicate> <survivor> [--wallet=drop|transfer]
+  [--email=into|from] [--dry-run]` folds a duplicate customer account into the
+  one that survives. Both handles accept a customer number, a public id, or an
+  email. Orders, reviews, conversations, carts, coupon uses and sign-in
+  identities move; the duplicate is deactivated and its email and phone are
+  released. `--wallet=drop` (default) writes the duplicate's balance off with an
+  adjustment entry, `--wallet=transfer` carries it over to the survivor.
+  `--email=from` makes the survivor take the duplicate's email and password.
+  Run with `--dry-run` first; the merge is recorded in the staff audit log as
+  `customer.merged`.
+
 ## Bounded maintenance
 
 Run the manual `hostinger-maintenance` workflow with `mode=audit` first. It

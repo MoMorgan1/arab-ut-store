@@ -1977,6 +1977,7 @@ export const sampleAdminOrderDetail = {
     cancelledAt: null,
     customer: {
         id: '01K5CUST00000000000000001',
+        number: 'CUS-7K4QXM',
         name: 'Saud Al-Otaibi',
         email: 'saud@example.test',
         phone: '+966500000001',

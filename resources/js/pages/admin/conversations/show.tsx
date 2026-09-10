@@ -143,9 +143,7 @@ export default function AdminConversationDetailPage() {
 
     return (
         <article className="space-y-6" dir={props.direction}>
-            <Head
-                title={copy.headTitle.replace(':id', conversation.publicId)}
-            />
+            <Head title={copy.headTitle.replace(':id', conversation.shortId)} />
 
             {/* Page Header */}
             <header className="flex flex-col gap-4 border-b border-border pb-5">
@@ -190,7 +188,7 @@ export default function AdminConversationDetailPage() {
                             className="text-xs [overflow-wrap:anywhere] text-muted-foreground tabular-nums"
                             title={conversation.publicId}
                         >
-                            <bdi>{conversation.publicId}</bdi>
+                            <bdi>{conversation.shortId}</bdi>
                         </p>
                     </div>
 
@@ -433,8 +431,13 @@ export default function AdminConversationDetailPage() {
                                 <TableBody className="divide-y divide-border/60">
                                     {props.turns.map((turn) => (
                                         <TableRow key={turn.publicId}>
-                                            <TableCell className="font-mono text-xs text-muted-foreground tabular-nums">
-                                                <bdi>{turn.publicId}</bdi>
+                                            <TableCell
+                                                className="font-mono text-xs text-muted-foreground tabular-nums"
+                                                title={turn.publicId}
+                                            >
+                                                <bdi>
+                                                    {turn.publicId.slice(-8)}
+                                                </bdi>
                                             </TableCell>
                                             <TableCell>
                                                 <AdminBadge
