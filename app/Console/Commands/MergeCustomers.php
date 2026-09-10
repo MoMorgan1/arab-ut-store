@@ -23,10 +23,8 @@ final class MergeCustomers extends Command
 
     public function handle(MergeCustomersAction $merge): int
     {
-        $fromHandle = $this->argument('from');
-        $intoHandle = $this->argument('into');
-        $from = is_string($fromHandle) ? $this->resolve($fromHandle) : null;
-        $into = is_string($intoHandle) ? $this->resolve($intoHandle) : null;
+        $from = $this->resolve((string) $this->argument('from'));
+        $into = $this->resolve((string) $this->argument('into'));
 
         if (! $from instanceof User || ! $into instanceof User) {
             $this->components->error('Both accounts must exist. Use the customer number (CUS-…), the public id, or the email.');
@@ -34,10 +32,8 @@ final class MergeCustomers extends Command
             return self::FAILURE;
         }
 
-        $walletOption = $this->option('wallet');
-        $emailOption = $this->option('email');
-        $wallet = is_string($walletOption) ? $walletOption : 'drop';
-        $email = is_string($emailOption) ? $emailOption : 'into';
+        $wallet = (string) $this->option('wallet');
+        $email = (string) $this->option('email');
 
         $this->components->twoColumnDetail('Duplicate', $this->describe($from));
         $this->components->twoColumnDetail('Survivor', $this->describe($into));
