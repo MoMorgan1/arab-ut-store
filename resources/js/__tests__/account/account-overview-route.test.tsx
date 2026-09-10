@@ -276,7 +276,7 @@ it('uses the canonical Arabic customer account identity inside the storefront sh
     expect(screen.getByText('90%')).toBeVisible();
     expect(
         screen.getByRole('link', { name: 'عرض برنامج الولاء' }),
-    ).toHaveAttribute('href', '/my-account/loyalty');
+    ).toHaveAttribute('href', '/my-account/wallet');
 
     const metricsDl = container.querySelector('dl.account-overview__metrics');
     expect(metricsDl).not.toBeNull();
