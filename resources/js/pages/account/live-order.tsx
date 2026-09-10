@@ -2,11 +2,9 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     ArrowRight,
-    CheckCircle2,
     ChevronDown,
     Copy,
     Info,
-    RefreshCw,
     ShieldCheck,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -25,15 +23,28 @@ import {
     PaylinkCheckoutError,
     resumePaylinkCheckout,
 } from '@/lib/paylink-checkout-api';
+import { cn } from '@/lib/utils';
 import type { AccountLiveOrderPageProps } from '@/types/account';
+
+/**
+ * How often an open order asks the server where it is. Replaces the old
+ * "refresh status" button (owner decision, 2026-09-10): the page keeps itself
+ * current and the customer never has to press anything.
+ */
+export const ORDER_REFRESH_INTERVAL_MS = 30_000;
+
+type LiveOrderItem = AccountLiveOrderPageProps['order']['items'][number];
+type OrderTranslations = AccountLiveOrderPageProps['accountUi']['orders'];
 
 export default function AccountLiveOrder() {
     const page = usePage<AccountLiveOrderPageProps>();
     const props = page.props;
     const BackArrow = props.locale === 'ar' ? ArrowRight : ArrowLeft;
-    const [refreshing, setRefreshing] = useState(false);
     const [paymentState, setPaymentState] = useState<
         'idle' | 'loading' | 'error'
+    >('idle');
+    const [cancelState, setCancelState] = useState<
+        'idle' | 'confirming' | 'loading'
     >('idle');
     const ordersUrl =
         props.accountNavigation.find((item) => item.key === 'orders')?.url ??
@@ -42,50 +53,55 @@ export default function AccountLiveOrder() {
         dateStyle: 'long',
         timeStyle: 'short',
     }).format(new Date(props.order.placedAt));
+    const order = props.order;
+    const pending = order.status === 'pending_payment';
+    const closed = order.status === 'cancelled' || order.status === 'refunded';
+    const tracked = !pending && !closed;
+    const ui = props.accountUi;
 
     // Fired once per order per browser; the module keeps the id set that
     // stops a reload from counting a second sale.
     useEffect(() => {
-        if (props.order.analytics !== null) {
-            trackPurchase(props.order.analytics);
+        if (order.analytics !== null) {
+            trackPurchase(order.analytics);
         }
-    }, [props.order.analytics]);
+    }, [order.analytics]);
 
-    function refreshStatus() {
-        if (refreshing) {
+    // Silent refresh while the order can still move. Pauses in a background
+    // tab so a forgotten page does not poll all night.
+    useEffect(() => {
+        if (!order.refreshable) {
             return;
         }
 
-        setRefreshing(true);
-        router.reload({
-            only: ['order'],
-            onFinish: () => setRefreshing(false),
-        });
-    }
+        const tick = () => {
+            if (document.visibilityState === 'visible') {
+                router.reload({ only: ['order'] });
+            }
+        };
+        const timer = window.setInterval(tick, ORDER_REFRESH_INTERVAL_MS);
+
+        return () => window.clearInterval(timer);
+    }, [order.refreshable, order.id]);
 
     async function resumePayment() {
-        if (
-            props.order.paymentStartUrl === null ||
-            paymentState === 'loading'
-        ) {
+        if (order.paymentStartUrl === null || paymentState === 'loading') {
             return;
         }
 
         setPaymentState('loading');
 
         try {
-            const checkout = await resumePaylinkCheckout(
-                props.order.paymentStartUrl,
-            );
+            const checkout = await resumePaylinkCheckout(order.paymentStartUrl);
 
             trackBeginCheckout(
-                props.order.items.map((item) => ({
+                order.items.map((item) => ({
                     id: item.id,
                     name: item.name,
                     price: Number(item.total.amountMinor) / 100 / item.quantity,
                     quantity: item.quantity,
                 })),
-                Number(props.order.paymentAmount.amountMinor) / 100,
+                Number(order.paymentAmount.amountMinor) / 100,
             );
 
             if (checkout.paymentUrl === null) {
@@ -102,206 +118,168 @@ export default function AccountLiveOrder() {
         }
     }
 
+    function cancelOrder() {
+        if (order.cancelUrl === null || cancelState === 'loading') {
+            return;
+        }
+
+        setCancelState('loading');
+        router.post(
+            order.cancelUrl,
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setCancelState('idle'),
+            },
+        );
+    }
+
     return (
         <MyAccountLayout {...props} current="orders" currentUrl={page.url}>
-            <Head
-                title={`${props.accountUi.orders.title} · ${props.order.number}`}
-            />
-            <div className="account-live-order">
+            <Head title={`${ui.orders.title} · ${order.number}`} />
+            <div
+                className={cn(
+                    'account-live-order',
+                    pending && 'account-live-order--pending',
+                )}
+            >
                 <Link className="account-live-order__back" href={ordersUrl}>
                     <BackArrow aria-hidden="true" />
-                    {props.accountUi.orders.back}
+                    {ui.orders.back}
                 </Link>
 
                 <section
                     aria-labelledby="account-order-invoice-title"
-                    className={
-                        props.order.status === 'pending_payment'
-                            ? 'account-invoice account-invoice--request'
-                            : 'account-invoice'
-                    }
-                >
-                    {props.order.status === 'pending_payment' ? (
-                        <header className="account-invoice__head">
-                            <h2 id="account-order-invoice-title">
-                                {props.accountUi.invoice.request_title}
-                            </h2>
-                            <dl className="account-invoice__meta">
-                                <div>
-                                    <dt>{props.accountUi.orders.number}</dt>
-                                    <dd>
-                                        <bdi>{props.order.number}</bdi>
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt>{props.accountUi.orders.placed_at}</dt>
-                                    <dd>
-                                        <time dateTime={props.order.placedAt}>
-                                            {placedAt}
-                                        </time>
-                                    </dd>
-                                </div>
-                            </dl>
-                        </header>
-                    ) : (
-                        <header className="account-invoice__head">
-                            <div className="account-invoice__brand">
-                                <p>{props.accountUi.invoice.title}</p>
-                                <h2 id="account-order-invoice-title">
-                                    {props.accountUi.invoice.store_name}
-                                </h2>
-                                <span className="account-invoice__freelance">
-                                    {props.accountUi.invoice.freelance_label}{' '}
-                                    <bdi dir="ltr">FL-621205220</bdi>
-                                </span>
-                            </div>
-                            {props.order.status === 'cancelled' ||
-                            props.order.status === 'refunded' ? (
-                                <p
-                                    className="account-invoice__mark"
-                                    data-status={props.order.status}
-                                >
-                                    <span aria-hidden="true" />
-                                    {
-                                        props.accountUi.statuses[
-                                            props.order.status
-                                        ]
-                                    }
-                                </p>
-                            ) : null}
-                            <dl className="account-invoice__meta">
-                                <div>
-                                    <dt>{props.accountUi.orders.number}</dt>
-                                    <dd>
-                                        <bdi>{props.order.number}</bdi>
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt>{props.accountUi.orders.placed_at}</dt>
-                                    <dd>
-                                        <time dateTime={props.order.placedAt}>
-                                            {placedAt}
-                                        </time>
-                                    </dd>
-                                </div>
-                            </dl>
-                        </header>
+                    className={cn(
+                        'account-invoice',
+                        pending && 'account-invoice--request',
                     )}
+                >
+                    <header className="account-invoice__head">
+                        <div className="account-invoice__brand">
+                            <p>
+                                {pending
+                                    ? ui.invoice.request_title
+                                    : `${ui.invoice.title} · ${ui.invoice.store_name}`}
+                            </p>
+                            <h2 id="account-order-invoice-title">
+                                <bdi>{order.number}</bdi>
+                            </h2>
+                            <span className="account-invoice__meta">
+                                <time dateTime={order.placedAt}>
+                                    {placedAt}
+                                </time>
+                                {!pending && !closed ? (
+                                    <>
+                                        {' · '}
+                                        {ui.invoice.freelance_label}{' '}
+                                        <bdi dir="ltr">FL-621205220</bdi>
+                                    </>
+                                ) : null}
+                            </span>
+                        </div>
+                        {pending || closed ? (
+                            <p
+                                className="account-invoice__mark"
+                                data-status={order.status}
+                            >
+                                <span aria-hidden="true" />
+                                {ui.statuses[order.status]}
+                            </p>
+                        ) : null}
+                    </header>
+
+                    {tracked ? (
+                        <StatusTrack
+                            status={order.status}
+                            translations={ui.orders}
+                        />
+                    ) : null}
 
                     <ol className="account-invoice__items">
-                        {props.order.items.map((item) => (
-                            <li key={item.id}>
-                                {item.imageUrl ? (
-                                    <img
-                                        alt=""
-                                        height="44"
-                                        loading="lazy"
-                                        src={item.imageUrl}
-                                        width="44"
-                                    />
-                                ) : (
-                                    <span
-                                        aria-hidden="true"
-                                        className="account-invoice__item-image"
-                                    />
-                                )}
-                                <div className="account-invoice__item-main">
-                                    <h3>{item.name}</h3>
-                                    <span>
-                                        {platformName(
-                                            item.platform,
-                                            props.accountUi.orders,
-                                        )}
-                                    </span>
-                                    <small>
-                                        {props.accountUi.orders.item_quantity.replace(
-                                            ':count',
-                                            formatInteger(
-                                                item.quantity,
-                                                props.locale,
-                                            ),
-                                        )}
-                                    </small>
-                                </div>
-                                <strong className="account-invoice__item-total">
-                                    {formatAccountMoney(
-                                        item.total,
-                                        props.locale,
-                                    )}
-                                </strong>
-                            </li>
+                        {order.items.map((item) => (
+                            <InvoiceItem
+                                item={item}
+                                key={item.id}
+                                locale={props.locale}
+                                translations={ui.orders}
+                            />
                         ))}
                     </ol>
 
-                    {props.order.status === 'pending_payment' ? (
-                        <>
-                            <dl className="account-invoice__totals">
+                    <dl className="account-invoice__totals">
+                        {pending ? (
+                            <>
+                                {order.walletPayment &&
+                                order.walletPayment.amountMinor !== '0' ? (
+                                    <>
+                                        <div>
+                                            <dt>{ui.invoice.subtotal}</dt>
+                                            <dd>
+                                                {formatAccountMoney(
+                                                    order.total,
+                                                    props.locale,
+                                                )}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt>
+                                                {ui.invoice.wallet_deduction}
+                                            </dt>
+                                            <dd className="account-invoice__deduction">
+                                                <bdi dir="ltr">
+                                                    -
+                                                    {formatAccountMoney(
+                                                        order.walletPayment,
+                                                        props.locale,
+                                                    )}
+                                                </bdi>
+                                            </dd>
+                                        </div>
+                                    </>
+                                ) : null}
                                 <div className="account-invoice__grand">
-                                    <dt>
-                                        {props.accountUi.invoice.amount_due}
-                                    </dt>
+                                    <dt>{ui.invoice.amount_due}</dt>
                                     <dd>
                                         {formatAccountMoney(
-                                            props.order.paymentAmount,
+                                            order.paymentAmount,
                                             props.locale,
                                         )}
                                     </dd>
                                 </div>
-                            </dl>
-                            {props.order.paymentStartUrl === null ? null : (
-                                <button
-                                    className="account-invoice__pay"
-                                    disabled={paymentState === 'loading'}
-                                    onClick={resumePayment}
-                                    type="button"
-                                >
-                                    {paymentState === 'loading'
-                                        ? props.accountUi.orders.refreshing
-                                        : props.accountUi.invoice.pay_action}
-                                </button>
-                            )}
-                        </>
-                    ) : (
-                        <>
-                            <dl className="account-invoice__totals">
+                            </>
+                        ) : (
+                            <>
                                 <div>
-                                    <dt>{props.accountUi.invoice.subtotal}</dt>
+                                    <dt>{ui.invoice.subtotal}</dt>
                                     <dd>
                                         {formatAccountMoney(
-                                            props.order.subtotal,
+                                            order.subtotal,
                                             props.locale,
                                         )}
                                     </dd>
                                 </div>
-                                {props.order.discount.amountMinor !== '0' ? (
+                                {order.discount.amountMinor !== '0' ? (
                                     <div>
-                                        <dt>
-                                            {props.accountUi.orders.discount}
-                                        </dt>
+                                        <dt>{ui.orders.discount}</dt>
                                         <dd className="account-invoice__deduction">
                                             <bdi dir="ltr">
                                                 -
                                                 {formatAccountMoney(
-                                                    props.order.discount,
+                                                    order.discount,
                                                     props.locale,
                                                 )}
                                             </bdi>
                                         </dd>
                                     </div>
                                 ) : null}
-                                {props.order.walletPayment &&
-                                props.order.walletPayment.amountMinor !==
-                                    '0' ? (
+                                {order.walletPayment &&
+                                order.walletPayment.amountMinor !== '0' ? (
                                     <div>
-                                        <dt>
-                                            {
-                                                props.accountUi.invoice
-                                                    .wallet_deduction
-                                            }
-                                        </dt>
+                                        <dt>{ui.invoice.wallet_deduction}</dt>
                                         <dd>
                                             {formatAccountMoney(
-                                                props.order.walletPayment,
+                                                order.walletPayment,
                                                 props.locale,
                                             )}
                                         </dd>
@@ -309,80 +287,44 @@ export default function AccountLiveOrder() {
                                 ) : null}
                                 <div className="account-invoice__grand">
                                     <dt>
-                                        {props.accountUi.invoice.total_paid}
+                                        {closed
+                                            ? ui.orders.total
+                                            : ui.invoice.total_paid}
                                     </dt>
                                     <dd>
                                         {formatAccountMoney(
-                                            props.order.total,
+                                            order.total,
                                             props.locale,
                                         )}
                                     </dd>
                                 </div>
-                            </dl>
+                            </>
+                        )}
+                    </dl>
 
-                            {props.order.paymentMethod != null ? (
-                                <p className="account-invoice__method">
-                                    {props.accountUi.invoice.payment_method}
-                                    {': '}
-                                    {
-                                        props.accountUi.invoice.methods[
-                                            props.order.paymentMethod
-                                        ]
-                                    }
-                                    {props.order.paymentMethod !== 'wallet' &&
-                                    props.order.walletPayment &&
-                                    props.order.walletPayment.amountMinor !==
-                                        '0' ? (
-                                        <>
-                                            {' · '}
-                                            <bdi>
-                                                {formatAccountMoney(
-                                                    props.order.paymentAmount,
-                                                    props.locale,
-                                                )}
-                                            </bdi>
-                                        </>
-                                    ) : null}
-                                </p>
+                    {!pending && order.paymentMethod != null ? (
+                        <p className="account-invoice__method">
+                            {ui.invoice.payment_method}
+                            {': '}
+                            {ui.invoice.methods[order.paymentMethod]}
+                            {order.paymentMethod !== 'wallet' &&
+                            order.walletPayment &&
+                            order.walletPayment.amountMinor !== '0' ? (
+                                <>
+                                    {' · '}
+                                    <bdi>
+                                        {formatAccountMoney(
+                                            order.paymentAmount,
+                                            props.locale,
+                                        )}
+                                    </bdi>
+                                </>
                             ) : null}
-                        </>
-                    )}
+                        </p>
+                    ) : null}
                 </section>
 
-                <div className="account-live-order__statusbar">
-                    <div aria-live="polite">
-                        <span>{props.accountUi.orders.status}</span>
-                        <strong>
-                            {props.accountUi.statuses[props.order.status]}
-                        </strong>
-                    </div>
-                    {props.order.refreshable ? (
-                        <button
-                            disabled={refreshing}
-                            onClick={refreshStatus}
-                            type="button"
-                        >
-                            <RefreshCw
-                                aria-hidden="true"
-                                className={refreshing ? 'is-spinning' : ''}
-                            />
-                            {refreshing
-                                ? props.accountUi.orders.refreshing
-                                : props.accountUi.orders.refresh_status}
-                        </button>
-                    ) : null}
-                </div>
-
-                {props.order.review !== null ? (
-                    <OrderReviewCard
-                        customerName={props.accountIdentity.name}
-                        locale={props.locale === 'en' ? 'en' : 'ar'}
-                        review={props.order.review}
-                        translations={props.accountUi.orders.review}
-                    />
-                ) : null}
-
-                {props.order.statusNote ? (
+                {order.statusNote ? (
                     <aside
                         aria-labelledby="account-order-status-note-title"
                         className="account-live-order__status-note"
@@ -390,93 +332,141 @@ export default function AccountLiveOrder() {
                         <Info aria-hidden="true" />
                         <div>
                             <h2 id="account-order-status-note-title">
-                                {props.accountUi.orders.status_note_title}
+                                {closed
+                                    ? ui.orders.closed_title
+                                    : ui.orders.team_note_title}
                             </h2>
-                            <p>{props.order.statusNote}</p>
+                            <p>{order.statusNote}</p>
                         </div>
                     </aside>
                 ) : null}
 
-                <section
-                    aria-labelledby="account-order-items-title"
-                    className="account-live-order__items"
-                >
-                    <h2 id="account-order-items-title">
-                        {props.accountUi.orders.items_title}
-                    </h2>
-                    <ol>
-                        {props.order.items.map((item) => (
-                            <li key={item.id}>
-                                <div className="account-live-order__item-mark">
-                                    <CheckCircle2 aria-hidden="true" />
-                                </div>
-                                <div className="account-live-order__item-main">
-                                    <h3>{item.name}</h3>
-                                    <span>
-                                        {props.accountUi.statuses[item.status]}
-                                    </span>
-                                    {item.credentialsPresent ? (
-                                        <small>
-                                            {
-                                                props.accountUi.orders
-                                                    .credentials_ready
-                                            }
-                                        </small>
-                                    ) : null}
-                                </div>
-                                <div className="account-live-order__item-total">
-                                    <small>
-                                        {props.accountUi.orders.item_quantity.replace(
-                                            ':count',
-                                            String(item.quantity),
-                                        )}
-                                    </small>
-                                    <strong>
-                                        {formatAccountMoney(
-                                            item.total,
-                                            props.locale,
-                                        )}
-                                    </strong>
-                                </div>
-                                {item.manualFulfillment !== null ? (
-                                    <ManualOrderFulfillment
-                                        item={item}
-                                        locale={props.locale}
-                                        translations={props.accountUi.orders}
-                                    />
-                                ) : null}
-                            </li>
-                        ))}
-                    </ol>
-                </section>
+                {order.review !== null ? (
+                    <OrderReviewCard
+                        customerName={props.accountIdentity.name}
+                        locale={props.locale === 'en' ? 'en' : 'ar'}
+                        review={order.review}
+                        translations={ui.orders.review}
+                    />
+                ) : null}
 
-                {props.order.paymentStartUrl === null ? null : (
-                    <section className="account-live-order__payment">
-                        <button
-                            disabled={paymentState === 'loading'}
-                            onClick={resumePayment}
-                            type="button"
-                        >
-                            {paymentState === 'loading'
-                                ? props.accountUi.orders.refreshing
-                                : props.accountUi.actions.pay_now}
-                        </button>
+                {pending && order.paymentStartUrl !== null ? (
+                    <div className="account-live-order__actions">
+                        {cancelState === 'confirming' ? (
+                            <div
+                                className="account-live-order__confirm"
+                                role="alertdialog"
+                                aria-labelledby="account-order-cancel-title"
+                            >
+                                <p id="account-order-cancel-title">
+                                    {ui.orders.cancel_confirm}
+                                </p>
+                                <div>
+                                    <button
+                                        className="account-live-order__cancel account-live-order__cancel--confirm"
+                                        onClick={cancelOrder}
+                                        type="button"
+                                    >
+                                        {ui.orders.cancel_yes}
+                                    </button>
+                                    <button
+                                        className="account-live-order__cancel"
+                                        onClick={() => setCancelState('idle')}
+                                        type="button"
+                                    >
+                                        {ui.orders.cancel_no}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <button
+                                    className="account-live-order__pay"
+                                    disabled={paymentState === 'loading'}
+                                    onClick={resumePayment}
+                                    type="button"
+                                >
+                                    {paymentState === 'loading'
+                                        ? ui.orders.refreshing
+                                        : `${ui.invoice.pay_action} · ${formatAccountMoney(order.paymentAmount, props.locale)}`}
+                                </button>
+                                {order.cancelUrl !== null ? (
+                                    <button
+                                        className="account-live-order__cancel"
+                                        disabled={cancelState === 'loading'}
+                                        onClick={() =>
+                                            setCancelState('confirming')
+                                        }
+                                        type="button"
+                                    >
+                                        {cancelState === 'loading'
+                                            ? ui.orders.cancelling
+                                            : ui.orders.cancel_order}
+                                    </button>
+                                ) : null}
+                            </>
+                        )}
                         {paymentState === 'error' ? (
-                            <p role="alert">
-                                {props.accountUi.errors.unexpected}
-                            </p>
+                            <p role="alert">{ui.errors.unexpected}</p>
                         ) : null}
-                    </section>
-                )}
+                    </div>
+                ) : null}
             </div>
         </MyAccountLayout>
     );
 }
 
-type LiveOrderItem = AccountLiveOrderPageProps['order']['items'][number];
-type OrderTranslations = AccountLiveOrderPageProps['accountUi']['orders'];
+/**
+ * Where a paid order is, in three steps. "Received" and "in progress" are one
+ * step to the customer, and a paused order sits on that step with the note
+ * below explaining why.
+ */
+function StatusTrack({
+    status,
+    translations,
+}: {
+    status: AccountLiveOrderPageProps['order']['status'];
+    translations: OrderTranslations;
+}) {
+    const reached = status === 'completed' ? 3 : status === 'received' ? 1 : 2;
+    const steps = [
+        translations.track_received,
+        translations.track_in_progress,
+        translations.track_completed,
+    ];
 
-function ManualOrderFulfillment({
+    return (
+        <ol aria-label={translations.status} className="account-order-track">
+            {steps.map((label, index) => {
+                const position = index + 1;
+                const state =
+                    position < reached || reached === 3
+                        ? 'done'
+                        : position === reached
+                          ? 'now'
+                          : 'next';
+
+                return (
+                    <li
+                        aria-current={state === 'now' ? 'step' : undefined}
+                        data-state={state}
+                        key={label}
+                    >
+                        <span aria-hidden="true" />
+                        {label}
+                    </li>
+                );
+            })}
+        </ol>
+    );
+}
+
+/**
+ * One invoice line. The header row is all a customer usually needs; the
+ * options they chose and, for a manual service, the account details sit
+ * behind one "details" button so the invoice stays short.
+ */
+function InvoiceItem({
     item,
     locale,
     translations,
@@ -485,24 +475,175 @@ function ManualOrderFulfillment({
     locale: 'ar' | 'en';
     translations: OrderTranslations;
 }) {
-    const fulfillment = item.manualFulfillment;
+    const [expanded, setExpanded] = useState(false);
+    const contentId = `order-item-${item.id}`;
+
+    return (
+        <li className="account-invoice__item">
+            <img
+                alt=""
+                height="56"
+                loading="lazy"
+                src={item.imageUrl}
+                width="56"
+            />
+            <div className="account-invoice__item-main">
+                <h3>{item.name}</h3>
+                <span>
+                    {platformName(item.platform, translations)}
+                    {' · '}
+                    {translations.item_quantity.replace(
+                        ':count',
+                        formatInteger(item.quantity, locale),
+                    )}
+                </span>
+            </div>
+            <strong className="account-invoice__item-total">
+                {formatAccountMoney(item.total, locale)}
+            </strong>
+            <button
+                aria-controls={contentId}
+                aria-expanded={expanded}
+                className="account-invoice__item-more"
+                onClick={() => setExpanded((value) => !value)}
+                type="button"
+            >
+                {expanded ? translations.hide_details : translations.details}
+                <ChevronDown aria-hidden="true" />
+            </button>
+            {expanded ? (
+                <div className="account-invoice__item-details" id={contentId}>
+                    <dl className="account-order-facts">
+                        <OrderFact
+                            label={translations.platform}
+                            value={platformName(item.platform, translations)}
+                        />
+                        {item.manualFulfillment !== null ? (
+                            <ManualFacts
+                                fulfillment={item.manualFulfillment}
+                                locale={locale}
+                                translations={translations}
+                            />
+                        ) : null}
+                    </dl>
+                    {item.manualFulfillment !== null ? (
+                        <ManualCredentials
+                            fulfillment={item.manualFulfillment}
+                            itemId={item.id}
+                            translations={translations}
+                        />
+                    ) : null}
+                </div>
+            ) : null}
+        </li>
+    );
+}
+
+type ManualFulfillment = NonNullable<LiveOrderItem['manualFulfillment']>;
+
+function ManualFacts({
+    fulfillment,
+    locale,
+    translations,
+}: {
+    fulfillment: ManualFulfillment;
+    locale: 'ar' | 'en';
+    translations: OrderTranslations;
+}) {
+    return (
+        <>
+            {fulfillment.pcLauncher !== undefined ? (
+                <OrderFact
+                    label={translations.launcher}
+                    value={
+                        fulfillment.pcLauncher === 'steam'
+                            ? translations.launcher_steam
+                            : translations.launcher_ea_app
+                    }
+                />
+            ) : null}
+            {fulfillment.targetRank !== undefined ? (
+                <OrderFact
+                    label={translations.rank}
+                    value={translations.rank_value.replace(
+                        ':rank',
+                        formatInteger(fulfillment.targetRank, locale),
+                    )}
+                />
+            ) : null}
+            {fulfillment.urgent !== undefined ? (
+                <OrderFact
+                    label={translations.urgent}
+                    value={
+                        fulfillment.urgent
+                            ? translations.urgent_yes
+                            : translations.urgent_no
+                    }
+                />
+            ) : null}
+            {fulfillment.matchesPlayed !== undefined ? (
+                <OrderFact
+                    label={translations.matches_played}
+                    value={formatInteger(fulfillment.matchesPlayed, locale)}
+                />
+            ) : null}
+            {fulfillment.weeklyMatches ? (
+                <OrderFact
+                    label={translations.mode}
+                    value={translations.mode_weekly}
+                />
+            ) : null}
+            {fulfillment.includedWins !== undefined ? (
+                <OrderFact
+                    label={translations.included_wins}
+                    value={formatInteger(fulfillment.includedWins, locale)}
+                />
+            ) : null}
+            {fulfillment.fromDivision !== undefined ? (
+                <OrderFact
+                    label={translations.from_division}
+                    value={divisionName(
+                        fulfillment.fromDivision,
+                        locale,
+                        translations,
+                    )}
+                />
+            ) : null}
+            {fulfillment.toDivision !== undefined ? (
+                <OrderFact
+                    label={translations.to_division}
+                    value={divisionName(
+                        fulfillment.toDivision,
+                        locale,
+                        translations,
+                    )}
+                />
+            ) : null}
+        </>
+    );
+}
+
+function ManualCredentials({
+    fulfillment,
+    itemId,
+    translations,
+}: {
+    fulfillment: ManualFulfillment;
+    itemId: string;
+    translations: OrderTranslations;
+}) {
     const [expanded, setExpanded] = useState(false);
     const [loading, setLoading] = useState(false);
     const [failed, setFailed] = useState(false);
     const [credentials, setCredentials] = useState<OrderCredentials | null>(
         null,
     );
+    const contentId = `order-fulfillment-${itemId}`;
+    const credentialsUrl = fulfillment.credentialsUrl;
 
-    if (fulfillment === null) {
+    if (credentialsUrl === null && fulfillment.squadImageUrl === null) {
         return null;
     }
-
-    const contentId = `order-fulfillment-${item.id}`;
-    const credentialsUrl = fulfillment.credentialsUrl;
-    const platform =
-        fulfillment.platform === 'playstation'
-            ? translations.platform_playstation
-            : translations.platform_pc;
 
     async function toggleDetails() {
         if (expanded) {
@@ -531,97 +672,24 @@ function ManualOrderFulfillment({
 
     return (
         <div className="account-order-fulfillment">
-            <h4>{translations.manual_details}</h4>
-            <dl className="account-order-fulfillment__summary">
-                <OrderFact label={translations.platform} value={platform} />
-                {fulfillment.pcLauncher !== undefined ? (
-                    <OrderFact
-                        label={translations.launcher}
-                        value={
-                            fulfillment.pcLauncher === 'steam'
-                                ? translations.launcher_steam
-                                : translations.launcher_ea_app
-                        }
-                    />
-                ) : null}
-                {fulfillment.targetRank !== undefined ? (
-                    <OrderFact
-                        label={translations.rank}
-                        value={translations.rank_value.replace(
-                            ':rank',
-                            formatInteger(fulfillment.targetRank, locale),
-                        )}
-                    />
-                ) : null}
-                {fulfillment.urgent !== undefined ? (
-                    <OrderFact
-                        label={translations.urgent}
-                        value={
-                            fulfillment.urgent
-                                ? translations.urgent_yes
-                                : translations.urgent_no
-                        }
-                    />
-                ) : null}
-                {fulfillment.matchesPlayed !== undefined ? (
-                    <OrderFact
-                        label={translations.matches_played}
-                        value={formatInteger(fulfillment.matchesPlayed, locale)}
-                    />
-                ) : null}
-                {fulfillment.weeklyMatches ? (
-                    <OrderFact
-                        label={translations.mode}
-                        value={translations.mode_weekly}
-                    />
-                ) : null}
-                {fulfillment.includedWins !== undefined ? (
-                    <OrderFact
-                        label={translations.included_wins}
-                        value={formatInteger(fulfillment.includedWins, locale)}
-                    />
-                ) : null}
-                {fulfillment.fromDivision !== undefined ? (
-                    <OrderFact
-                        label={translations.from_division}
-                        value={divisionName(
-                            fulfillment.fromDivision,
-                            locale,
-                            translations,
-                        )}
-                    />
-                ) : null}
-                {fulfillment.toDivision !== undefined ? (
-                    <OrderFact
-                        label={translations.to_division}
-                        value={divisionName(
-                            fulfillment.toDivision,
-                            locale,
-                            translations,
-                        )}
-                    />
-                ) : null}
-            </dl>
-            {fulfillment.credentialsUrl !== null ? (
-                <button
-                    aria-controls={contentId}
-                    aria-expanded={expanded}
-                    className="account-order-fulfillment__toggle"
-                    disabled={loading}
-                    onClick={toggleDetails}
-                    type="button"
-                >
-                    <span>
-                        <ShieldCheck aria-hidden="true" />
-                        {loading
-                            ? translations.credentials_loading
-                            : expanded
-                              ? translations.hide_credentials
-                              : translations.show_credentials}
-                    </span>
-                    <ChevronDown aria-hidden="true" />
-                </button>
-            ) : null}
+            <button
+                aria-controls={contentId}
+                aria-expanded={expanded}
+                className="account-order-fulfillment__toggle"
+                disabled={loading}
+                onClick={toggleDetails}
+                type="button"
+            >
+                <span>
+                    <ShieldCheck aria-hidden="true" />
+                    {loading
+                        ? translations.credentials_loading
+                        : expanded
+                          ? translations.hide_credentials
+                          : translations.show_credentials}
+                </span>
+                <ChevronDown aria-hidden="true" />
+            </button>
             {expanded ? (
                 <div
                     className="account-order-fulfillment__revealed"
@@ -833,9 +901,7 @@ function OrderFact({ label, value }: { label: string; value: string }) {
 }
 
 function divisionName(
-    value: NonNullable<
-        NonNullable<LiveOrderItem['manualFulfillment']>['fromDivision']
-    >,
+    value: NonNullable<ManualFulfillment['fromDivision']>,
     locale: 'ar' | 'en',
     translations: OrderTranslations,
 ): string {

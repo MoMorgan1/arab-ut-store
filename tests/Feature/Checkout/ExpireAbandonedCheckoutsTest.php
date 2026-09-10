@@ -17,6 +17,8 @@ use App\Models\OrderStatusHistory;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\WalletEntry;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 function abandonedCheckoutCoupon(): Coupon
@@ -39,6 +41,7 @@ function pendingOrderFor(User $user, Coupon $coupon, int $ageHours): Order
         'status' => OrderStatus::PendingPayment,
         'paid_at' => null,
         'total_halalah' => 10_000,
+        'payment_halalah' => 10_000,
     ]);
 
     $order->forceFill(['created_at' => now()->subHours($ageHours)])->save();
@@ -130,29 +133,103 @@ test('a completed order is untouched', function (): void {
         ->and($order->fresh()->status)->toBe(OrderStatus::Completed);
 });
 
-test('an order with a gateway invoice is left alone even when no payment has settled locally', function (): void {
-    $user = User::factory()->create();
-    $coupon = abandonedCheckoutCoupon();
-    $order = pendingOrderFor($user, $coupon, ExpireAbandonedCheckouts::GRACE_HOURS + 50);
+/**
+ * A Paylink invoice the order got as far as raising, with the gateway
+ * answering getInvoice with the given status. Wraps the order number and
+ * amount the reconciler checks, so a "Paid" answer is accepted.
+ */
+function gatewayInvoiceFor(Order $order, string $status, bool $cancelSucceeds = true, bool $gatewayDown = false): Payment
+{
+    config()->set('services.paylink.environment', 'test');
+    config()->set('services.paylink.api_id', 'merchant-id');
+    config()->set('services.paylink.secret_key', 'merchant-secret');
+    Cache::flush();
 
-    // The real danger: an invoice exists at Paylink, the customer paid it, and
-    // the webhook was lost. Locally the payment still reads Pending. Cancelling
-    // here charges the customer and delivers nothing, and a later reconcile
-    // cannot undo it because it only transitions PendingPayment orders.
-    Payment::query()->create([
+    $payment = Payment::query()->create([
         'public_id' => (string) Str::ulid(),
         'order_id' => $order->id,
         'provider' => 'paylink',
         'provider_payment_id' => 'INV-90210',
         'idempotency_key' => (string) Str::ulid(),
         'status' => PaymentStatus::Pending,
-        'amount_halalah' => 10_000,
+        'amount_halalah' => (int) $order->payment_halalah,
         'captured_halalah' => 0,
         'currency' => 'SAR',
     ]);
 
+    Http::fake(function ($request) use ($order, $status, $cancelSucceeds, $gatewayDown) {
+        if ($gatewayDown) {
+            return Http::response(['error' => 'down'], 503);
+        }
+
+        if (str_ends_with($request->url(), '/api/auth')) {
+            return Http::response(['id_token' => 'merchant-token']);
+        }
+
+        if (str_ends_with($request->url(), '/api/cancelInvoice')) {
+            return Http::response(['success' => $cancelSucceeds]);
+        }
+
+        return Http::response([
+            'success' => true,
+            'transactionNo' => 'INV-90210',
+            'orderStatus' => $status,
+            'amount' => $order->payment_halalah / 100,
+            'url' => strtolower($status) === 'pending' ? 'https://payment.paylink.sa/pay/info/INV-90210' : null,
+            'gatewayOrderRequest' => ['orderNumber' => $order->order_number, 'currency' => 'SAR'],
+            'paymentReceipt' => strtolower($status) === 'paid' ? ['paymentMethod' => 'mada'] : null,
+        ]);
+    });
+
+    return $payment;
+}
+
+test('an order whose Paylink invoice is still unpaid past the grace period is cancelled here and at the gateway', function (): void {
+    $user = User::factory()->create();
+    $coupon = abandonedCheckoutCoupon();
+    $order = pendingOrderFor($user, $coupon, ExpireAbandonedCheckouts::GRACE_HOURS + 1);
+    $payment = gatewayInvoiceFor($order, 'Pending');
+
+    expect(app(ExpireAbandonedCheckouts::class)->execute())->toBe(1)
+        ->and($order->fresh()->status)->toBe(OrderStatus::Cancelled)
+        ->and($payment->fresh()->status)->toBe(PaymentStatus::Cancelled);
+
+    Http::assertSent(fn ($request) => str_ends_with($request->url(), '/api/cancelInvoice')
+        && $request['transactionNo'] === 'INV-90210');
+});
+
+test('an order the customer paid at Paylink while the callback was lost is marked paid, never cancelled', function (): void {
+    $user = User::factory()->create();
+    $coupon = abandonedCheckoutCoupon();
+    $order = pendingOrderFor($user, $coupon, ExpireAbandonedCheckouts::GRACE_HOURS + 50);
+    $payment = gatewayInvoiceFor($order, 'Paid');
+
+    expect(app(ExpireAbandonedCheckouts::class)->execute())->toBe(0)
+        ->and($order->fresh()->status)->toBe(OrderStatus::Received)
+        ->and($order->fresh()->paid_at)->not->toBeNull()
+        ->and($payment->fresh()->status)->toBe(PaymentStatus::Paid);
+
+    Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '/api/cancelInvoice'));
+});
+
+test('an order Paylink cannot be asked about is left alone for the next run', function (): void {
+    $user = User::factory()->create();
+    $coupon = abandonedCheckoutCoupon();
+    $order = pendingOrderFor($user, $coupon, ExpireAbandonedCheckouts::GRACE_HOURS + 50);
+    gatewayInvoiceFor($order, 'Pending', gatewayDown: true);
+
     expect(app(ExpireAbandonedCheckouts::class)->execute())->toBe(0)
         ->and($order->fresh()->status)->toBe(OrderStatus::PendingPayment);
+});
+
+test('a gateway that refuses to close the invoice does not undo the local cancellation', function (): void {
+    $user = User::factory()->create();
+    $coupon = abandonedCheckoutCoupon();
+    $order = pendingOrderFor($user, $coupon, ExpireAbandonedCheckouts::GRACE_HOURS + 1);
+    gatewayInvoiceFor($order, 'Pending', cancelSucceeds: false);
+
+    expect(app(ExpireAbandonedCheckouts::class)->execute())->toBe(1)
+        ->and($order->fresh()->status)->toBe(OrderStatus::Cancelled);
 });
 
 test('cancelling a part-wallet checkout gives the customer their balance back', function (): void {

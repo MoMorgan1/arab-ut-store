@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Account\CancelPendingOrderController;
 use App\Http\Controllers\Account\LiveOrderController;
 use App\Http\Controllers\Account\LoyaltyController;
 use App\Http\Controllers\Account\OrderItemCredentialsController;
@@ -38,6 +39,10 @@ Route::middleware($accountMiddleware)->group(function (): void {
     Route::get('/my-account/orders/{order}', LiveOrderController::class)
         ->whereUlid('order')
         ->name('account.orders.show');
+    Route::post('/my-account/orders/{order}/cancel', CancelPendingOrderController::class)
+        ->middleware('throttle:10,1')
+        ->whereUlid('order')
+        ->name('account.orders.cancel');
     Route::post('/my-account/orders/{order}/review', [OrderReviewController::class, 'store'])
         ->middleware('throttle:6,1')
         ->whereUlid('order')
@@ -94,6 +99,11 @@ Route::prefix('en')
             ->whereUlid('order')
             ->defaults('locale', 'en')
             ->name('account.orders.show');
+        Route::post('/my-account/orders/{order}/cancel', CancelPendingOrderController::class)
+            ->middleware('throttle:10,1')
+            ->whereUlid('order')
+            ->defaults('locale', 'en')
+            ->name('account.orders.cancel');
         Route::post('/my-account/orders/{order}/review', [OrderReviewController::class, 'store'])
             ->middleware('throttle:6,1')
             ->whereUlid('order')

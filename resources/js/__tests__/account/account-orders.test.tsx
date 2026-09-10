@@ -11,7 +11,9 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import AccountOrderCard from '@/components/account/account-order-card';
 import AccountOrderList from '@/components/account/account-order-list';
 import AccountOrderRow from '@/components/account/account-order-row';
-import AccountLiveOrder from '@/pages/account/live-order';
+import AccountLiveOrder, {
+    ORDER_REFRESH_INTERVAL_MS,
+} from '@/pages/account/live-order';
 import AccountOrders from '@/pages/account/orders';
 import type {
     AccountLiveOrderPageProps,
@@ -153,7 +155,8 @@ it('renders prominent active order card', () => {
     expect(screen.getByTitle('UT-00000099')).toBeVisible();
 });
 
-it('refreshes only current safe order data and keeps credentials opaque', () => {
+it('refreshes only current safe order data on its own and keeps credentials opaque', () => {
+    vi.useFakeTimers();
     page.url = '/en/my-account/orders/01ORDER1';
     page.props = {
         ...shellProps(),
@@ -162,21 +165,37 @@ it('refreshes only current safe order data and keeps credentials opaque', () => 
 
     render(<AccountLiveOrder />);
 
-    // The order number lives in the invoice block now; the tracking section
-    // below no longer repeats it.
     expect(screen.getByText('UT-00000001')).toBeVisible();
-    expect(
-        screen.getByText('Fulfilment details stored securely'),
-    ).toBeVisible();
     expect(
         screen.queryByText(/password|credential value/i),
     ).not.toBeInTheDocument();
+    // No refresh button: the page polls quietly while the order is open.
+    expect(
+        screen.queryByRole('button', { name: 'Refresh status' }),
+    ).not.toBeInTheDocument();
+    expect(inertia.reload).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh status' }));
+    vi.advanceTimersByTime(ORDER_REFRESH_INTERVAL_MS);
 
     expect(inertia.reload).toHaveBeenCalledWith(
         expect.objectContaining({ only: ['order'] }),
     );
+    vi.useRealTimers();
+});
+
+it('does not poll a finished order', () => {
+    vi.useFakeTimers();
+    page.url = '/en/my-account/orders/01ORDER1';
+    page.props = {
+        ...shellProps(),
+        order: { ...liveOrder(null), status: 'completed', refreshable: false },
+    };
+
+    render(<AccountLiveOrder />);
+    vi.advanceTimersByTime(ORDER_REFRESH_INTERVAL_MS * 2);
+
+    expect(inertia.reload).not.toHaveBeenCalled();
+    vi.useRealTimers();
 });
 
 it('shows why a paused order stopped, and shows nothing when it has not', () => {
@@ -202,7 +221,7 @@ it('shows why a paused order stopped, and shows nothing when it has not', () => 
 
     rerender(<AccountLiveOrder />);
 
-    expect(screen.getByText('Status details')).toBeVisible();
+    expect(screen.getByText('A note from the team')).toBeVisible();
     expect(screen.getByText(/Coin balance is too low\./)).toBeVisible();
 });
 it('reveals manual-service credentials and squad image only after the owner asks', async () => {
@@ -243,6 +262,12 @@ it('reveals manual-service credentials and squad image only after the owner asks
 
     expect(document.body.textContent).not.toContain('owner@example.test');
     expect(fetchMock).not.toHaveBeenCalled();
+    // The options sit behind one "details" button per line; the account
+    // details behind a second one inside it.
+    expect(screen.queryByText('Rank 3')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    expect(screen.getByText('Rank 3')).toBeVisible();
+    expect(screen.getByText('Urgent — 24–36 hours')).toBeVisible();
     fireEvent.click(
         screen.getByRole('button', { name: 'Show account details' }),
     );
@@ -314,17 +339,30 @@ it('renders the paid invoice with letterhead, totals, and method, and no payment
     );
 
     expect(
-        invoice.getByRole('heading', { level: 2, name: 'Arab UT' }),
+        invoice.getByRole('heading', { level: 2, name: 'UT-00000001' }),
     ).toBeVisible();
-    expect(invoice.getByText('Invoice')).toBeVisible();
-    expect(invoice.getByText('Freelance No.')).toBeVisible();
-    expect(invoice.getByText('FL-621205220')).toBeVisible();
+    expect(invoice.getByText('Invoice · Arab UT')).toBeVisible();
+    expect(invoice.getByText(/FL-621205220/)).toBeVisible();
     expect(invoice.getByText('Total paid')).toBeVisible();
     // The method the customer used, not the gateway that moved the money.
     expect(invoice.getByText('Payment method: mada')).toBeVisible();
     expect(invoice.queryByText('Amount due')).not.toBeInTheDocument();
-    expect(container.querySelector('.account-invoice__pay')).toBeNull();
+    // Where the order is, in three steps; a paused order sits on the middle one.
+    const track = container.querySelector('.account-order-track');
+    expect(track).not.toBeNull();
+    expect(
+        within(track as HTMLElement).getByText('In progress'),
+    ).toHaveAttribute('aria-current', 'step');
+    expect(container.querySelector('.account-live-order__pay')).toBeNull();
+    expect(container.querySelector('.account-live-order__cancel')).toBeNull();
     expect(container.querySelector('.account-invoice__mark')).toBeNull();
+    // Each line is listed once, with its image.
+    expect(container.querySelectorAll('.account-invoice__item')).toHaveLength(
+        1,
+    );
+    expect(
+        container.querySelector('.account-invoice__item > img'),
+    ).toHaveAttribute('src', '/images/store/coins/ut-coin-80.webp');
 });
 
 it('renders a payment request, not an invoice, while payment is pending', () => {
@@ -344,19 +382,57 @@ it('renders a payment request, not an invoice, while payment is pending', () => 
         container.querySelector('.account-invoice') as HTMLElement,
     );
 
-    expect(
-        screen.getByRole('heading', { level: 2, name: 'Payment request' }),
-    ).toBeVisible();
+    expect(invoice.getByText('Payment request')).toBeVisible();
     expect(invoice.getByText('Amount due')).toBeVisible();
-    expect(container.querySelector('.account-invoice__pay')).toBeVisible();
+    // The wallet part is stated so the amount due adds up; nothing else.
+    expect(invoice.getByText('Paid from wallet')).toBeVisible();
     expect(invoice.queryByText(/Total paid/)).not.toBeInTheDocument();
     expect(invoice.queryByText(/Payment method/)).not.toBeInTheDocument();
-    expect(invoice.queryByText(/Paid from wallet/)).not.toBeInTheDocument();
-    expect(invoice.queryByText(/Subtotal/)).not.toBeInTheDocument();
     expect(invoice.queryByText(/Discount/)).not.toBeInTheDocument();
-    expect(invoice.queryByText('Invoice')).not.toBeInTheDocument();
-    expect(invoice.queryByText('FL-621205220')).not.toBeInTheDocument();
-    expect(container.querySelector('.account-invoice__mark')).toBeNull();
+    expect(invoice.queryByText(/Invoice ·/)).not.toBeInTheDocument();
+    expect(invoice.queryByText(/FL-621205220/)).not.toBeInTheDocument();
+    expect(container.querySelector('.account-order-track')).toBeNull();
+    expect(container.querySelector('.account-invoice__mark')).toHaveTextContent(
+        'Awaiting payment',
+    );
+    // Exactly one way to pay, and a quieter way out.
+    expect(
+        screen.getAllByRole('button', { name: /Complete payment/ }),
+    ).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Cancel order' })).toBeVisible();
+    expect(
+        screen.queryByRole('button', { name: 'Refresh status' }),
+    ).not.toBeInTheDocument();
+});
+
+it('cancels an unpaid order only after the customer confirms', () => {
+    page.url = '/en/my-account/orders/01ORDER1';
+    page.props = {
+        ...shellProps(),
+        order: {
+            ...liveOrder('/en/orders/01ORDER1/payments/paylink'),
+            status: 'pending_payment',
+        },
+    };
+
+    render(<AccountLiveOrder />);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
+
+    expect(inertia.post).not.toHaveBeenCalled();
+    expect(screen.getByRole('alertdialog')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(inertia.post).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel it' }));
+
+    expect(inertia.post).toHaveBeenCalledWith(
+        '/en/my-account/orders/01ORDER1/cancel',
+        {},
+        expect.objectContaining({ preserveScroll: true }),
+    );
 });
 
 it('offers a browse services CTA from the orders empty state', () => {
@@ -417,9 +493,9 @@ it('resumes the existing Paylink payment from the canonical detail', async () =>
     fireEvent.click(
         within(
             container.querySelector(
-                '.account-live-order__payment',
+                '.account-live-order__actions',
             ) as HTMLElement,
-        ).getByRole('button', { name: 'Complete payment' }),
+        ).getByRole('button', { name: /Complete payment/ }),
     );
 
     await waitFor(() =>
@@ -605,6 +681,10 @@ function liveOrder(
         refreshable: true,
         analytics: null,
         paymentStartUrl,
+        cancelUrl:
+            paymentStartUrl === null
+                ? null
+                : '/en/my-account/orders/01ORDER1/cancel',
         review: null,
         items: [
             {
@@ -722,8 +802,19 @@ function shellProps() {
                 steam_password: 'Steam password',
                 ea_codes: 'EA backup codes',
                 playstation_codes: 'PlayStation backup codes',
-                refresh_status: 'Refresh status',
-                status_note_title: 'Status details',
+                details: 'Details',
+                hide_details: 'Hide details',
+                track_received: 'Received',
+                track_in_progress: 'In progress',
+                track_completed: 'Completed',
+                cancel_order: 'Cancel order',
+                cancel_confirm:
+                    'Cancel this order? Your wallet balance and coupon come back right away.',
+                cancel_yes: 'Yes, cancel it',
+                cancel_no: 'Keep it',
+                cancelling: 'Cancelling…',
+                team_note_title: 'A note from the team',
+                closed_title: 'Order closed',
                 refreshing: 'Refreshing…',
                 back: 'Back to Orders',
                 copy: 'Copy',

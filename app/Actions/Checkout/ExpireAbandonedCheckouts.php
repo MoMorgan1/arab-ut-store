@@ -7,8 +7,12 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
 use App\Enums\PaymentStatus;
 use App\Models\Order;
+use App\Models\Payment;
+use App\Services\Payments\PaymentManager;
 use App\Support\OrderClosingNote;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Cancel checkouts that were started and never paid.
@@ -23,20 +27,30 @@ use Illuminate\Support\Facades\DB;
  * Cancelling the order is what releases the hold, because the redemption count
  * in DiscountEngine excludes orders that are cancelled. The redemption row is
  * kept rather than deleted so the history stays auditable.
+ *
+ * An order that reached Paylink is asked about first: the gateway is the only
+ * party that knows whether the customer paid while a callback was lost. Paid
+ * invoices are reconciled into Received, cancelled ones into Cancelled, and an
+ * invoice still pending past the grace period is cancelled here and at the
+ * gateway. When Paylink cannot be reached the order is left alone; a stale
+ * "unpaid" row is far cheaper than a stranded payment (owner decision,
+ * 2026-09-10).
  */
 final class ExpireAbandonedCheckouts
 {
     /**
      * How long a customer has to complete payment before the order is released.
      *
-     * Generous on purpose: a bank transfer can legitimately take a while, and
-     * cancelling an order somebody is about to pay for is far worse than
-     * holding a coupon reservation a little longer.
+     * Three hours (owner decision, 2026-09-10): long enough for a card or a
+     * bank app to come back, short enough that the customer's order list does
+     * not carry a dead "unpaid" row for a day.
      */
-    public const GRACE_HOURS = 24;
+    public const GRACE_HOURS = 3;
 
     public function __construct(
         private readonly ReleaseOrderWalletFunds $releaseOrderWalletFunds,
+        private readonly ReconcilePaylinkPayment $reconcilePaylinkPayment,
+        private readonly PaymentManager $payments,
     ) {}
 
     /** @return int the number of orders cancelled */
@@ -52,9 +66,40 @@ final class ExpireAbandonedCheckouts
             ->orderBy('id')
             ->chunkById(100, function ($orders) use (&$cancelled): void {
                 foreach ($orders as $order) {
-                    $cancelled += $this->cancel($order);
+                    $cancelled += $this->expire($order);
                 }
             });
+
+        return $cancelled;
+    }
+
+    private function expire(Order $order): int
+    {
+        $invoice = $this->gatewayInvoice($order);
+
+        // Ask Paylink before touching an order it knows about. The reconcile
+        // moves a paid invoice to Received and a cancelled one to Cancelled on
+        // its own; only a still-pending invoice falls through to the cancel
+        // below. A gateway error leaves the order for the next run.
+        if ($invoice instanceof Payment) {
+            try {
+                $this->reconcilePaylinkPayment->execute($invoice);
+            } catch (Throwable $exception) {
+                Log::warning("Abandoned checkout [{$order->order_number}] could not be reconciled with Paylink; leaving it for the next run.", [
+                    'order_public_id' => (string) $order->public_id,
+                    'provider_payment_id' => $invoice->provider_payment_id,
+                    'error' => $exception->getMessage(),
+                ]);
+
+                return 0;
+            }
+        }
+
+        $cancelled = $this->cancel($order);
+
+        if ($cancelled === 1 && $invoice instanceof Payment) {
+            $this->cancelGatewayInvoice($order, $invoice);
+        }
 
         return $cancelled;
     }
@@ -69,7 +114,8 @@ final class ExpireAbandonedCheckouts
                 ->first();
 
             // Re-check under the lock: the customer may have paid in the moment
-            // between the query above and this transaction.
+            // between the query above and this transaction, or the reconcile
+            // above may already have moved the order on.
             if (! $locked instanceof Order || $locked->status !== OrderStatus::PendingPayment) {
                 return 0;
             }
@@ -85,22 +131,6 @@ final class ExpireAbandonedCheckouts
                 ->exists();
 
             if ($settled || $locked->paid_at !== null) {
-                return 0;
-            }
-
-            // A local payment row only reports what WE recorded. If an invoice
-            // was raised at the gateway the customer may have paid it while a
-            // webhook was lost, and reconciliation only ever runs from a
-            // controller - nothing scheduled re-checks it. Cancelling such an
-            // order would charge the customer and deliver nothing, and a later
-            // reconcile cannot rescue it, because it only transitions orders
-            // that are still PendingPayment. Leave these alone rather than
-            // guess: a stuck coupon hold is far cheaper than a stranded payment.
-            $hasGatewayInvoice = $locked->payments()
-                ->whereNotNull('provider_payment_id')
-                ->exists();
-
-            if ($hasGatewayInvoice) {
                 return 0;
             }
 
@@ -121,6 +151,10 @@ final class ExpireAbandonedCheckouts
             // cancelled order.
             $locked->items()->update(['status' => OrderItemStatus::Cancelled->value]);
 
+            $locked->payments()
+                ->where('status', PaymentStatus::Pending->value)
+                ->update(['status' => PaymentStatus::Cancelled->value]);
+
             $locked->statusHistory()->create([
                 'status' => OrderStatusHistoryStatus::Cancelled,
                 ...OrderClosingNote::reason('checkout_expired'),
@@ -129,5 +163,40 @@ final class ExpireAbandonedCheckouts
 
             return 1;
         });
+    }
+
+    /**
+     * The newest Paylink payment that actually reached the gateway, or null
+     * when the checkout never got that far (no invoice to ask about).
+     */
+    private function gatewayInvoice(Order $order): ?Payment
+    {
+        $payment = $order->payments()
+            ->where('provider', 'paylink')
+            ->whereNotNull('provider_payment_id')
+            ->where('provider_payment_id', '!=', '')
+            ->latest('id')
+            ->first();
+
+        return $payment instanceof Payment ? $payment : null;
+    }
+
+    /**
+     * Close the hosted invoice so a late click on the old payment link cannot
+     * charge the customer for an order that no longer exists. Best effort: the
+     * order is already cancelled locally, and a payment that slips through is
+     * caught by the reconciler's anomaly note.
+     */
+    private function cancelGatewayInvoice(Order $order, Payment $payment): void
+    {
+        try {
+            $this->payments->gateway()->cancelInvoice((string) $payment->provider_payment_id);
+        } catch (Throwable $exception) {
+            Log::warning("Paylink invoice for expired checkout [{$order->order_number}] could not be cancelled at the gateway.", [
+                'order_public_id' => (string) $order->public_id,
+                'provider_payment_id' => $payment->provider_payment_id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 }
