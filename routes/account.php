@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Account\CancelPendingOrderController;
 use App\Http\Controllers\Account\LiveOrderController;
-use App\Http\Controllers\Account\LoyaltyController;
 use App\Http\Controllers\Account\OrderItemCredentialsController;
 use App\Http\Controllers\Account\OrderItemSquadImageController;
 use App\Http\Controllers\Account\OrderReviewController;
@@ -48,7 +47,6 @@ Route::middleware($accountMiddleware)->group(function (): void {
         ->whereUlid('order')
         ->name('account.orders.review.store');
     Route::get('/my-account/wallet', WalletController::class)->name('account.wallet');
-    Route::get('/my-account/loyalty', LoyaltyController::class)->name('account.loyalty.show');
     Route::get('/my-account/profile', [ProfileController::class, 'show'])->name('account.profile.show');
     Route::patch('/my-account/profile', [ProfileController::class, 'update'])->name('account.profile.update');
     Route::post('/my-account/profile/email', [ProfileEmailController::class, 'store'])
@@ -112,9 +110,6 @@ Route::prefix('en')
         Route::get('/my-account/wallet', WalletController::class)
             ->defaults('locale', 'en')
             ->name('account.wallet');
-        Route::get('/my-account/loyalty', LoyaltyController::class)
-            ->defaults('locale', 'en')
-            ->name('account.loyalty.show');
         Route::get('/my-account/profile', [ProfileController::class, 'show'])
             ->defaults('locale', 'en')
             ->name('account.profile.show');

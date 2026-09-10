@@ -4,6 +4,7 @@ namespace App\Account\Queries;
 
 use App\Account\Presenters\LiveOrderCard;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Models\Order;
 use App\Models\User;
 
@@ -70,7 +71,9 @@ final readonly class ReadLiveOrders
             ->where('orders.user_id', $user->id)
             ->with(['items' => fn ($items) => $items
                 ->select(['id', 'order_id', 'name_ar', 'name_en', 'service_type', 'status'])
-                ->orderBy('id')]);
+                ->orderBy('id')])
+            ->withExists(['payments as has_failed_payment' => fn ($query) => $query
+                ->where('status', PaymentStatus::Failed->value)]);
 
         if ($status === 'open') {
             $query->whereIn('orders.status', self::OPEN_STATUSES);

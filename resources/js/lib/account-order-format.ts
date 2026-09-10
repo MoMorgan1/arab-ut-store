@@ -33,8 +33,11 @@ export function formatOrderAge(
     locale: 'ar' | 'en',
     now: Date = new Date(),
 ): string {
-    const seconds = Math.round(
-        (new Date(placedAt).getTime() - now.getTime()) / 1000,
+    // Clamped at "now": a client clock a little behind the server must never
+    // announce that an order will be placed in two minutes.
+    const seconds = Math.min(
+        0,
+        Math.round((new Date(placedAt).getTime() - now.getTime()) / 1000),
     );
     const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
 

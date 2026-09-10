@@ -750,6 +750,7 @@ function order(id: string, number: string, status: string): AccountOrder {
         items: [{ name: 'FC 27 Coins service' }],
         total: { amountMinor: '12999', currency: 'SAR' },
         detailUrl: `/en/my-account/orders/${id}`,
+        action: { type: 'view_order' },
     };
 }
 

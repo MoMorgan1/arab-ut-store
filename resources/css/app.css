@@ -12892,108 +12892,6 @@ html.admin-document {
     height: 0.85rem;
 }
 
-.account-wallet-coming-soon__badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 9999px;
-    border: 1px solid rgb(212 168 67 / 45%);
-    background: linear-gradient(
-        135deg,
-        rgb(212 168 67 / 25%),
-        rgb(212 168 67 / 10%)
-    );
-    padding: 0.3rem 0.85rem;
-    color: var(--arabut-gold-bright);
-    font-size: 0.78rem;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-}
-
-.account-wallet-coming-soon {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: clamp(2rem, 5vw, 3.5rem) 1.5rem;
-    border: 1px solid var(--arabut-line);
-    border-radius: 1.25rem;
-    background:
-        radial-gradient(
-            circle at 50% 15%,
-            rgb(212 168 67 / 14%) 0%,
-            transparent 65%
-        ),
-        rgb(28 24 20 / 75%);
-    box-shadow: 0 1rem 3rem rgb(0 0 0 / 25%);
-}
-
-.account-wallet-coming-soon__icon {
-    display: flex;
-    width: 4.5rem;
-    height: 4.5rem;
-    align-items: center;
-    justify-content: center;
-    border-radius: 1.25rem;
-    border: 1px solid rgb(212 168 67 / 35%);
-    background: linear-gradient(
-        135deg,
-        rgb(212 168 67 / 20%),
-        rgb(212 168 67 / 5%)
-    );
-    color: var(--arabut-gold-bright);
-    margin-block: 1rem 1.25rem;
-    box-shadow: 0 8px 24px rgb(212 168 67 / 15%);
-}
-
-.account-wallet-coming-soon__icon svg {
-    width: 2.25rem;
-    height: 2.25rem;
-}
-
-.account-wallet-coming-soon h2 {
-    margin: 0;
-    color: var(--arabut-ink);
-    font-size: clamp(1.4rem, 4vw, 1.85rem);
-    font-weight: 850;
-}
-
-.account-wallet-coming-soon p {
-    max-width: 46ch;
-    margin: 0.65rem auto 1.5rem;
-    color: var(--arabut-muted);
-    font-size: 0.95rem;
-    line-height: 1.6;
-}
-
-.account-wallet-coming-soon__features {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.85rem;
-    width: 100%;
-    max-width: 38rem;
-}
-
-.account-wallet-coming-soon__feature {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.6rem 1rem;
-    border-radius: 0.75rem;
-    border: 1px solid var(--arabut-line);
-    background: rgb(20 17 14 / 65%);
-    color: var(--arabut-ink);
-    font-size: 0.85rem;
-    font-weight: 750;
-}
-
-.account-wallet-coming-soon__feature svg {
-    width: 0.95rem;
-    height: 0.95rem;
-    color: var(--arabut-gold-bright);
-}
-
 .account-mobile-bottom-nav {
     display: none;
 }
@@ -13359,439 +13257,276 @@ html.admin-document {
 
 .account-wallet-metrics {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    min-width: 0;
     gap: 1rem;
 }
 
 .account-wallet-balance {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: 1rem;
-    overflow: hidden;
-    border: 1px solid rgb(212 168 67 / 34%);
-    border-radius: 1rem;
-    background:
-        radial-gradient(
-            circle at 90% 10%,
-            rgb(228 183 86 / 18%),
-            transparent 34%
-        ),
-        linear-gradient(135deg, rgb(212 168 67 / 10%), transparent 58%),
-        var(--arabut-navy-raised);
-    padding: clamp(1.15rem, 4vw, 1.75rem);
-    box-shadow: 0 1rem 2.75rem rgb(0 0 0 / 20%);
-}
-
-.account-loyalty-page {
     display: grid;
     min-width: 0;
-    gap: 1.5rem;
-}
-
-.account-loyalty-hero {
-    display: grid;
-    min-width: 0;
-    gap: 1rem;
-    overflow: hidden;
-    border: 1px solid rgb(212 168 67 / 34%);
-    border-radius: 1rem;
-    background:
-        radial-gradient(
-            circle at 90% 10%,
-            rgb(228 183 86 / 16%),
-            transparent 38%
-        ),
-        linear-gradient(135deg, rgb(212 168 67 / 10%), transparent 60%),
-        var(--arabut-navy-raised);
-    padding: clamp(1.15rem, 4vw, 1.75rem);
-    box-shadow: 0 1rem 2.75rem rgb(0 0 0 / 20%);
-}
-
-.account-loyalty-hero__top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-}
-
-.account-loyalty-hero__tier-meta {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.account-loyalty-hero__icon {
-    display: inline-flex;
-    width: 3.25rem;
-    height: 3.25rem;
-    flex: 0 0 3.25rem;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgb(212 168 67 / 24%);
-    border-radius: 0.85rem;
-    background: rgb(212 168 67 / 11%);
-}
-
-.account-loyalty-hero__icon svg {
-    width: 1.5rem;
-    height: 1.5rem;
-}
-
-.account-loyalty-hero__tier-meta p {
-    margin: 0;
-    color: var(--arabut-muted);
-    font-size: 0.82rem;
-    line-height: 1.4;
-}
-
-.account-loyalty-hero__tier-badge-row {
-    display: flex;
-    align-items: center;
     gap: 0.5rem;
-    margin-block-start: 0.35rem;
-}
-
-.account-loyalty-hero__badge {
-    display: inline-flex;
-    min-height: 2rem;
-    align-items: center;
-    border: 1px solid transparent;
-    border-radius: 999px;
-    padding: 0.25rem 0.85rem;
-    font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
-    font-size: clamp(1.1rem, 3vw, 1.35rem);
-    font-weight: 850;
-    line-height: 1.2;
-}
-
-.account-loyalty-hero__percent strong {
-    color: var(--arabut-ink);
-    font-size: clamp(1.4rem, 4vw, 1.85rem);
-    font-weight: 850;
-}
-
-.account-loyalty-hero__progress {
-    margin-block-start: 0.25rem;
-}
-
-.account-loyalty-hero__progress span {
-    transition: inline-size 400ms var(--store-ease-out);
-}
-
-.account-loyalty-hero__copy {
-    margin: 0;
-    color: var(--arabut-muted);
-    font-size: 0.9rem;
-    line-height: 1.5;
-}
-
-.account-loyalty-hero__stats {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-    border-block-start: 1px solid var(--arabut-line);
-    padding-block-start: 1rem;
-    margin-block-start: 0.25rem;
-}
-
-.account-loyalty-hero__stat span {
-    display: block;
-    color: var(--arabut-muted);
-    font-size: 0.8rem;
-}
-
-.account-loyalty-hero__stat strong {
-    display: block;
-    margin-block-start: 0.25rem;
-    color: var(--arabut-ink);
-    font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
-    font-size: clamp(1.1rem, 3vw, 1.35rem);
-    font-weight: 800;
-}
-
-/* 4-tier table section */
-.account-loyalty-tiers-section,
-.account-loyalty-rules,
-.account-loyalty-cashback-section {
     border: 1px solid var(--arabut-line);
     border-radius: 1rem;
-    background: rgb(28 24 20 / 62%);
+    background:
+        radial-gradient(
+            circle at 90% 10%,
+            rgb(228 183 86 / 14%),
+            transparent 45%
+        ),
+        rgb(28 24 20 / 68%);
+    padding: clamp(1.15rem, 4vw, 1.5rem);
     box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 14%);
-    overflow: hidden;
 }
 
-.account-loyalty-tiers-section > h3,
-.account-loyalty-rules > h3,
-.account-loyalty-cashback-section > h3 {
-    margin: 0;
-    padding: 1rem clamp(1rem, 3vw, 1.25rem);
-    border-block-end: 1px solid var(--arabut-line);
-    color: var(--arabut-ink);
-    font-size: clamp(1.1rem, 3vw, 1.3rem);
-    font-weight: 800;
-}
-
-.account-loyalty-table-container {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.account-loyalty-table {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: start;
-}
-
-.account-loyalty-table th {
-    padding: 0.85rem clamp(1rem, 3vw, 1.25rem);
-    border-block-end: 1px solid var(--arabut-line);
-    color: var(--arabut-muted);
-    font-size: 0.82rem;
-    font-weight: 750;
-    white-space: nowrap;
-}
-
-.account-loyalty-table td {
-    padding: 1rem clamp(1rem, 3vw, 1.25rem);
-    border-block-end: 1px solid rgb(255 255 255 / 6%);
-    color: var(--arabut-ink);
-    font-size: 0.95rem;
-    white-space: nowrap;
-}
-
-.account-loyalty-table tbody tr:last-child td {
-    border-block-end: 0;
-}
-
-.account-loyalty-table__row--current {
-    background: rgb(212 168 67 / 10%);
-}
-
-.account-loyalty-table__tier-cell {
+.account-wallet-balance__header {
     display: flex;
     align-items: center;
     gap: 0.65rem;
 }
 
-.account-loyalty-tier-dot {
-    display: inline-block;
-    width: 0.75rem;
-    height: 0.75rem;
-    border-radius: 50%;
+.account-wallet-balance__icon {
+    display: inline-flex;
+    width: 2.25rem;
+    height: 2.25rem;
     flex-shrink: 0;
-}
-
-.account-loyalty-tier-badge {
-    display: inline-flex;
-    align-items: center;
-    border: 1px solid rgb(212 168 67 / 35%);
-    border-radius: 999px;
-    background: rgb(212 168 67 / 16%);
-    padding: 0.15rem 0.55rem;
-    color: var(--arabut-gold-bright);
-    font-size: 0.72rem;
-    font-weight: 750;
-}
-
-/* How it works */
-.account-loyalty-rules__list {
-    display: grid;
-    margin: 0;
-    padding: clamp(1rem, 3vw, 1.35rem);
-    gap: 1rem;
-    list-style: none;
-}
-
-.account-loyalty-rules__item {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: flex-start;
-    gap: 0.75rem;
-}
-
-.account-loyalty-rules__icon {
-    display: inline-flex;
-    width: 1.6rem;
-    height: 1.6rem;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    background: rgb(212 168 67 / 12%);
-    color: var(--arabut-gold-bright);
-    margin-block-start: 0.15rem;
-}
-
-.account-loyalty-rules__icon svg {
-    width: 1rem;
-    height: 1rem;
-}
-
-.account-loyalty-rules__item p {
-    margin: 0;
-    color: var(--arabut-ink);
-    font-size: 0.95rem;
-    line-height: 1.55;
-}
-
-/* Recent Cashback list rows */
-.account-loyalty-row {
-    padding: 1rem clamp(1rem, 3vw, 1.25rem);
-}
-
-.account-loyalty-row__mark {
-    display: inline-flex;
-    width: 2.6rem;
-    height: 2.6rem;
-    align-items: center;
-    justify-content: center;
+    border: 1px solid rgb(212 168 67 / 24%);
     border-radius: 0.75rem;
-    background: rgb(212 168 67 / 10%);
+    background: rgb(212 168 67 / 11%);
+    color: var(--arabut-gold-bright);
 }
 
-.account-loyalty-row__mark svg {
+.account-wallet-balance__icon svg {
     width: 1.15rem;
     height: 1.15rem;
 }
 
-.account-loyalty-row__heading {
+.account-wallet-balance p {
+    margin: 0;
+    color: var(--arabut-muted);
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.account-wallet-balance__amount {
+    margin: 0.15rem 0 0;
+    overflow-wrap: anywhere;
+    color: var(--arabut-gold-bright);
+    font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
+    font-weight: 850;
+    line-height: 1.1;
+}
+
+.account-wallet-balance__cashback {
+    margin: 0;
+    color: var(--arabut-muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.account-wallet-no-programme {
+    margin: 0;
+    color: var(--arabut-muted);
+    font-size: 0.88rem;
+}
+
+.account-wallet-loyalty {
+    display: grid;
+    min-width: 0;
+    gap: 0.85rem;
+    border: 1px solid var(--arabut-line);
+    border-radius: 1rem;
+    background: rgb(28 24 20 / 68%);
+    padding: clamp(1rem, 3vw, 1.35rem);
+    box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 14%);
+}
+
+.account-wallet-loyalty__top {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
 }
 
-.account-loyalty-row__heading h3 {
-    margin: 0;
-    color: var(--arabut-ink);
-    font-size: 1rem;
-    font-weight: 800;
+.account-wallet-loyalty__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
 }
 
-.account-loyalty-row__amount {
-    font-size: 1rem;
-    font-weight: 800;
-}
-
-.account-loyalty-row[data-effect='credit'] .account-loyalty-row__amount,
-.account-loyalty-row[data-effect='credit'] .account-loyalty-row__mark {
-    color: #78d59e;
-}
-
-.account-loyalty-row[data-effect='debit'] .account-loyalty-row__amount,
-.account-loyalty-row[data-effect='debit'] .account-loyalty-row__mark {
-    color: var(--arabut-danger);
-}
-
-@media (max-width: 34rem) {
-    .account-loyalty-hero__top {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .account-loyalty-hero__percent {
-        align-self: flex-end;
-    }
-
-    .account-loyalty-hero__stats {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .account-loyalty-hero__progress span {
-        transition: none;
-    }
-}
-
-.account-wallet-balance > span,
-.account-wallet-loyalty > div > span {
+.account-wallet-loyalty__icon {
     display: inline-flex;
-    width: 3rem;
-    height: 3rem;
-    flex: 0 0 3rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex-shrink: 0;
     align-items: center;
     justify-content: center;
     border: 1px solid rgb(212 168 67 / 24%);
-    border-radius: 0.85rem;
+    border-radius: 0.75rem;
     background: rgb(212 168 67 / 11%);
     color: var(--arabut-gold-bright);
 }
 
-.account-wallet-balance svg,
-.account-wallet-loyalty svg {
-    width: 1.35rem;
-    height: 1.35rem;
+.account-wallet-loyalty__icon svg {
+    width: 1.15rem;
+    height: 1.15rem;
 }
 
-.account-wallet-balance p,
-.account-wallet-loyalty p {
-    margin: 0;
-    color: var(--arabut-muted);
-    line-height: 1.5;
-}
-
-.account-wallet-balance h3 {
-    margin: 0.35rem 0 0;
-    overflow-wrap: anywhere;
-    color: var(--arabut-ink);
-    font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
-    font-size: clamp(1.45rem, 5vw, 2.35rem);
-    font-weight: 850;
-    line-height: 1;
-}
-
-.account-wallet-loyalty,
-.account-wallet-ledger {
-    border: 1px solid var(--arabut-line);
-    border-radius: 1rem;
-    background: rgb(28 24 20 / 62%);
-    box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 14%);
-}
-
-.account-wallet-loyalty {
-    padding: clamp(1rem, 3vw, 1.35rem);
-}
-
-.account-wallet-loyalty > div:first-child {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0.8rem;
-}
-
-.account-wallet-loyalty h3,
-.account-wallet-ledger > h3 {
+.account-wallet-loyalty__meta h3 {
     margin: 0;
     color: var(--arabut-ink);
-    font-size: clamp(1.15rem, 3vw, 1.4rem);
+    font-size: clamp(0.95rem, 3vw, 1.15rem);
     font-weight: 800;
 }
 
-.account-wallet-loyalty > div > strong {
+.account-wallet-loyalty__rate-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(212 168 67 / 45%);
+    background: rgb(212 168 67 / 16%);
+    padding: 0.25rem 0.65rem;
     color: var(--arabut-gold-bright);
-    font-size: 1.1rem;
+    font-size: 0.8rem;
+    font-weight: 800;
+    line-height: 1;
 }
 
-.account-wallet-loyalty > p {
-    margin-block-start: 0.75rem;
+.account-wallet-loyalty__rate-pill svg {
+    width: 0.85rem;
+    height: 0.85rem;
 }
 
-.account-wallet-ledger {
-    min-width: 0;
+.account-wallet-loyalty__progress {
+    position: relative;
+    height: 0.5rem;
+    width: 100%;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 10%);
     overflow: hidden;
 }
 
+.account-wallet-loyalty__progress span {
+    display: block;
+    height: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(
+        90deg,
+        var(--arabut-gold),
+        var(--arabut-gold-bright)
+    );
+    transition: inline-size 400ms var(--store-ease-out);
+}
+
+.account-wallet-loyalty__remaining {
+    margin: 0;
+    color: var(--arabut-muted);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.account-wallet-loyalty__chips {
+    /* One row whatever the tier count (four are seeded); the row scrolls
+       sideways on a phone instead of wrapping a lone chip underneath. */
+    display: flex;
+    gap: 0.5rem;
+    margin-block-start: 0.25rem;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    padding-block-end: 0.15rem;
+}
+
+.account-wallet-loyalty__chips > * {
+    flex: 1 0 6.25rem;
+}
+
+.account-wallet-loyalty__chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 0.65rem 0.4rem;
+    border: 1px solid var(--arabut-line);
+    border-radius: 0.75rem;
+    background: rgb(20 17 14 / 65%);
+    gap: 0.25rem;
+    min-width: 0;
+    transition:
+        border-color 200ms ease,
+        background-color 200ms ease;
+}
+
+.account-wallet-loyalty__chip--current,
+.account-wallet-loyalty__chip[aria-current='true'] {
+    border-color: var(--arabut-gold-bright);
+    background: rgb(212 168 67 / 14%);
+    box-shadow: 0 0 12px rgb(212 168 67 / 15%);
+}
+
+.account-wallet-loyalty__chip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--arabut-gold);
+}
+
+.account-wallet-loyalty__chip-icon svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.account-wallet-loyalty__chip-name {
+    color: var(--arabut-ink);
+    font-size: 0.8rem;
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+}
+
+.account-wallet-loyalty__chip-spend {
+    color: var(--arabut-muted);
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+.account-wallet-loyalty__chip-rate {
+    color: var(--arabut-gold-bright);
+    font-size: 0.72rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .account-wallet-loyalty__progress span {
+        transition: none;
+    }
+}
+
+.account-wallet-ledger {
+    display: grid;
+    min-width: 0;
+    gap: 0.85rem;
+}
+
 .account-wallet-ledger > h3 {
-    padding: 1rem clamp(1rem, 3vw, 1.25rem);
-    border-block-end: 1px solid var(--arabut-line);
+    margin: 0;
+    color: var(--arabut-ink);
+    font-size: clamp(1.1rem, 3vw, 1.3rem);
+    font-weight: 800;
 }
 
 .account-wallet-ledger ol {
+    display: grid;
+    gap: 0.65rem;
+    list-style: none;
     margin: 0;
     padding: 0;
-    list-style: none;
 }
 
 .account-wallet-ledger li {
@@ -13799,38 +13534,39 @@ html.admin-document {
     min-width: 0;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 0.85rem;
-    padding: 1rem clamp(1rem, 3vw, 1.25rem);
-}
-
-.account-wallet-ledger li + li {
-    border-block-start: 1px solid var(--arabut-line);
+    gap: 0.75rem;
+    padding: 0.9rem clamp(0.85rem, 3vw, 1.15rem);
+    border: 1px solid var(--arabut-line);
+    border-radius: 0.9rem;
+    background: rgb(28 24 20 / 68%);
+    box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 12%);
 }
 
 .account-wallet-ledger__icon {
     display: inline-flex;
-    width: 2.6rem;
-    height: 2.6rem;
+    width: 2.35rem;
+    height: 2.35rem;
     align-items: center;
     justify-content: center;
     border-radius: 0.75rem;
     background: rgb(212 168 67 / 10%);
     color: var(--arabut-gold-bright);
+    flex-shrink: 0;
 }
 
 .account-wallet-ledger [data-effect='credit'] .account-wallet-ledger__icon,
-.account-wallet-ledger [data-effect='credit'] .account-wallet-ledger__main bdi {
+.account-wallet-ledger [data-effect='credit'] .account-wallet-ledger__line bdi {
     color: #78d59e;
 }
 
 .account-wallet-ledger [data-effect='debit'] .account-wallet-ledger__icon,
-.account-wallet-ledger [data-effect='debit'] .account-wallet-ledger__main bdi {
+.account-wallet-ledger [data-effect='debit'] .account-wallet-ledger__line bdi {
     color: var(--arabut-danger);
 }
 
 .account-wallet-ledger__icon svg {
-    width: 1.15rem;
-    height: 1.15rem;
+    width: 1.1rem;
+    height: 1.1rem;
 }
 
 .account-wallet-ledger__main,
@@ -13838,34 +13574,35 @@ html.admin-document {
     min-width: 0;
 }
 
-.account-wallet-ledger__main > div {
+.account-wallet-ledger__line {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0.5rem;
 }
 
-.account-wallet-ledger__main strong,
-.account-wallet-ledger__main bdi,
+.account-wallet-ledger__line strong,
+.account-wallet-ledger__line bdi,
 .account-wallet-ledger__balance bdi {
     color: var(--arabut-ink);
     font-weight: 800;
+    font-size: 0.92rem;
 }
 
 .account-wallet-ledger__main p {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    margin: 0.35rem 0 0;
-    gap: 0.35rem 0.75rem;
+    margin: 0.25rem 0 0;
+    gap: 0.35rem 0.65rem;
     color: var(--arabut-muted);
-    font-size: 0.8rem;
+    font-size: 0.78rem;
 }
 
 .account-wallet-ledger__main a {
     display: inline-flex;
-    min-height: 2.75rem;
     align-items: center;
+    min-height: 2rem;
     color: var(--arabut-gold-bright);
     font-weight: 750;
     text-decoration-thickness: 0.08em;
@@ -13878,16 +13615,16 @@ html.admin-document {
 
 .account-wallet-ledger__balance span {
     display: block;
-    max-width: 18ch;
+    max-width: 16ch;
     color: var(--arabut-muted);
-    font-size: 0.75rem;
-    line-height: 1.35;
+    font-size: 0.72rem;
+    line-height: 1.3;
 }
 
 .account-wallet-ledger__balance bdi {
     display: block;
-    margin-block-start: 0.3rem;
-    font-size: 0.9rem;
+    margin-block-start: 0.2rem;
+    font-size: 0.85rem;
 }
 
 .account-profile-page {

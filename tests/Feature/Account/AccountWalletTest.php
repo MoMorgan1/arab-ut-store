@@ -1,7 +1,9 @@
 <?php
 
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Enums\WalletEntryType;
+use App\Models\LoyaltyTier;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\WalletAccount;
@@ -22,6 +24,7 @@ test('the bilingual wallet destinations render an explicit no-wallet state', fun
             ->where('locale', $locale)
             ->where('wallet.exists', false)
             ->where('wallet.balance', null)
+            ->where('wallet.lifetimeCashback', ['amountMinor' => '0', 'currency' => 'SAR'])
             ->where('wallet.entries', [])
             ->where('wallet.pagination.total', 0)
             ->where('accountNavigation', fn ($items): bool => collect($items)->pluck('key')->all() === [
@@ -144,4 +147,77 @@ test('cashback and its reversal land in the single wallet balance and stay visib
             ->where('wallet.entries.0.effect', 'debit')
             ->where('wallet.entries.1.type', 'cashback')
             ->where('wallet.entries.1.effect', 'credit'));
+});
+
+test('the wallet destination presents loyalty overview with active tiers and lifetime cashback', function (): void {
+    $user = User::factory()->create();
+
+    LoyaltyTier::query()->create([
+        'key' => 'bronze',
+        'name_ar' => 'برونزي',
+        'name_en' => 'Bronze',
+        'rank' => 1,
+        'minimum_lifetime_spend_halalah' => 0,
+        'cashback_basis_points' => 100,
+        'is_active' => true,
+    ]);
+    LoyaltyTier::query()->create([
+        'key' => 'silver',
+        'name_ar' => 'فضي',
+        'name_en' => 'Silver',
+        'rank' => 2,
+        'minimum_lifetime_spend_halalah' => 10_000,
+        'cashback_basis_points' => 200,
+        'is_active' => true,
+    ]);
+    LoyaltyTier::query()->create([
+        'key' => 'gold',
+        'name_ar' => 'ذهبي',
+        'name_en' => 'Gold',
+        'rank' => 3,
+        'minimum_lifetime_spend_halalah' => 25_000,
+        'cashback_basis_points' => 300,
+        'is_active' => true,
+    ]);
+
+    $order = Order::factory()->for($user)->create([
+        'order_number' => 'UT-12345678',
+        'status' => OrderStatus::Completed,
+        'subtotal_halalah' => 15_000,
+        'payment_halalah' => 15_000,
+        'total_halalah' => 15_000,
+        'currency' => 'SAR',
+        'completed_at' => now(),
+    ]);
+    $order->payments()->create([
+        'provider' => 'paylink',
+        'provider_payment_id' => (string) str()->ulid(),
+        'status' => PaymentStatus::Paid,
+        'currency' => 'SAR',
+        'amount_halalah' => 15_000,
+        'captured_halalah' => 15_000,
+        'refunded_halalah' => 0,
+        'idempotency_key' => (string) str()->ulid(),
+    ]);
+
+    $this->actingAs($user)
+        ->get('/my-account/wallet')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('loyalty.tiers', 3)
+            ->where('loyalty.currentTier.key', 'silver')
+            ->where('loyalty.nextTier.key', 'gold')
+            ->where('loyalty.progressPercent', fn ($val): bool => is_int($val))
+            ->has('loyalty.cashback.lifetime')
+            ->missing('loyalty.cashback.entries'));
+});
+
+test('the wallet destination presents null loyalty when no tiers exist', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/my-account/wallet')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('loyalty', null));
 });
