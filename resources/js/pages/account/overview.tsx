@@ -9,19 +9,24 @@ import {
 import { useState } from 'react';
 
 import AccountMetric from '@/components/account/account-metric';
-import AccountOrderCard from '@/components/account/account-order-card';
 import AccountOrderList from '@/components/account/account-order-list';
 import AccountOrderRow from '@/components/account/account-order-row';
 import { useResendCountdown } from '@/hooks/use-resend-countdown';
 import MyAccountLayout from '@/layouts/my-account-layout';
 import { formatAccountMoney } from '@/lib/account-money';
+import { formatInteger } from '@/lib/money';
 import type { AccountOverviewPageProps } from '@/types/account';
 
+/**
+ * The account's front door: two numbers that matter (wallet, open orders),
+ * the one order that needs the customer, the latest orders, and where they
+ * stand on loyalty (owner canvas, 2026-09-10).
+ */
 export default function AccountOverview() {
     const inertia = usePage<AccountOverviewPageProps>();
     const props = inertia.props;
     const Arrow = props.locale === 'ar' ? ArrowLeft : ArrowRight;
-    const numberFormatter = new Intl.NumberFormat(props.locale);
+    const ui = props.accountUi;
     const hasOrders = props.summary.orderCount > 0;
 
     const user = props.auth?.user;
@@ -29,7 +34,7 @@ export default function AccountOverview() {
     // target someone who has an address that is still unverified.
     const hasEmail = Boolean(user?.email);
     const isEmailUnverified = hasEmail && user?.email_verified_at === null;
-    const emailAlert = props.accountUi.email_alert;
+    const emailAlert = ui.email_alert;
     const verificationSendUrl =
         props.locale === 'en' ? '/en/verify-email/send' : '/verify-email/send';
     const [isSendingVerification, setIsSendingVerification] = useState(false);
@@ -48,7 +53,7 @@ export default function AccountOverview() {
         );
     }
 
-    // Filter recent orders to ensure activeOrder is never duplicated
+    // The active order is shown once, in its own section, never again below.
     const visibleRecentOrders = props.recentOrders
         .filter(
             (order) =>
@@ -62,19 +67,23 @@ export default function AccountOverview() {
         (props.locale === 'en'
             ? '/en/my-account/orders'
             : '/my-account/orders');
+    const walletUrl =
+        props.accountNavigation.find((n) => n.key === 'wallet')?.url ??
+        (props.locale === 'en'
+            ? '/en/my-account/wallet'
+            : '/my-account/wallet');
 
     const isActionNeeded =
         props.activeOrder?.status === 'waiting_for_customer' ||
         props.activeOrder?.status === 'pending_payment';
-
     const activeOrderHeading = isActionNeeded
-        ? props.accountUi.overview.active_order
-        : (props.accountUi.overview.current_order ??
-          props.accountUi.overview.active_order);
+        ? ui.overview.active_order
+        : (ui.overview.current_order ?? ui.overview.active_order);
+    const tierName = props.loyalty?.currentTier?.name ?? null;
 
     return (
         <MyAccountLayout {...props} current="overview" currentUrl={inertia.url}>
-            <Head title={props.accountUi.page_title} />
+            <Head title={ui.page_title} />
             <div className="account-overview">
                 {isEmailUnverified && emailAlert ? (
                     <aside
@@ -134,37 +143,47 @@ export default function AccountOverview() {
                 ) : null}
 
                 <dl
-                    aria-label={props.accountUi.overview.title}
+                    aria-label={ui.overview.title}
                     className="account-overview__metrics"
                 >
                     <AccountMetric
-                        kind="orders"
-                        label={props.accountUi.overview.orders_metric}
-                        value={numberFormatter.format(props.summary.orderCount)}
-                    />
-                    <AccountMetric
                         accent
-                        kind="open"
-                        label={props.accountUi.overview.open_orders_metric}
-                        value={numberFormatter.format(
-                            props.summary.openOrderCount,
-                        )}
-                    />
-                    <AccountMetric
-                        kind="completed"
-                        label={props.accountUi.overview.completed_orders_metric}
-                        value={numberFormatter.format(
-                            props.summary.completedOrderCount,
-                        )}
-                    />
-                    <AccountMetric
+                        href={walletUrl}
                         kind="wallet"
-                        label={props.accountUi.overview.wallet_metric}
+                        label={ui.overview.wallet_metric}
+                        note={
+                            tierName === null
+                                ? undefined
+                                : ui.overview.wallet_tier.replace(
+                                      ':tier',
+                                      tierName,
+                                  )
+                        }
                         value={formatAccountMoney(
                             props.summary.walletBalance ?? {
                                 amountMinor: '0',
                                 currency: 'SAR',
                             },
+                            props.locale,
+                        )}
+                    />
+                    <AccountMetric
+                        href={`${ordersUrl}?status=open`}
+                        kind="open"
+                        label={ui.overview.open_orders_metric}
+                        note={
+                            hasOrders
+                                ? ui.overview.open_of_total.replace(
+                                      ':count',
+                                      formatInteger(
+                                          props.summary.orderCount,
+                                          props.locale,
+                                      ),
+                                  )
+                                : ui.overview.no_orders_yet
+                        }
+                        value={formatInteger(
+                            props.summary.openOrderCount,
                             props.locale,
                         )}
                     />
@@ -175,20 +194,23 @@ export default function AccountOverview() {
                         aria-labelledby="account-active-order-title"
                         className="account-overview__section"
                     >
-                        <h2 id="account-active-order-title">
-                            {activeOrderHeading}
-                        </h2>
-                        <AccountOrderCard
-                            description={
-                                isActionNeeded
-                                    ? props.accountUi.overview
-                                          .attention_description
-                                    : undefined
-                            }
-                            locale={props.locale}
-                            order={props.activeOrder}
-                            translations={props.accountUi}
-                        />
+                        <div className="account-overview__section-heading">
+                            <h2 id="account-active-order-title">
+                                {activeOrderHeading}
+                            </h2>
+                        </div>
+                        {isActionNeeded ? (
+                            <p className="account-overview__section-note">
+                                {ui.overview.attention_description}
+                            </p>
+                        ) : null}
+                        <AccountOrderList>
+                            <AccountOrderRow
+                                locale={props.locale}
+                                order={props.activeOrder}
+                                translations={ui}
+                            />
+                        </AccountOrderList>
                     </section>
                 )}
 
@@ -199,14 +221,13 @@ export default function AccountOverview() {
                     >
                         <div className="account-overview__section-heading">
                             <h2 id="account-recent-orders-title">
-                                {props.accountUi.overview.recent_orders}
+                                {ui.overview.recent_orders}
                             </h2>
                             <Link
                                 className="account-overview__view-all"
                                 href={ordersUrl}
                             >
-                                {props.accountUi.overview.view_all ??
-                                    'عرض الكل'}
+                                {ui.overview.view_all ?? 'عرض الكل'}
                                 <Arrow aria-hidden="true" />
                             </Link>
                         </div>
@@ -216,7 +237,7 @@ export default function AccountOverview() {
                                     key={order.id}
                                     locale={props.locale}
                                     order={order}
-                                    translations={props.accountUi}
+                                    translations={ui}
                                 />
                             ))}
                         </AccountOrderList>
@@ -234,14 +255,14 @@ export default function AccountOverview() {
                             </span>
                             <div>
                                 <h2 id="account-loyalty-title">
-                                    {props.accountUi.overview.loyalty}
+                                    {ui.overview.loyalty}
                                 </h2>
-                                <p>{props.loyalty.currentTier?.name ?? '—'}</p>
+                                <p>{tierName ?? '—'}</p>
                             </div>
                             <strong>{props.loyalty.progressPercent}%</strong>
                         </div>
                         <div
-                            aria-label={props.accountUi.overview.loyalty}
+                            aria-label={ui.overview.loyalty}
                             aria-valuemax={100}
                             aria-valuemin={0}
                             aria-valuenow={props.loyalty.progressPercent}
@@ -257,8 +278,8 @@ export default function AccountOverview() {
                         <p className="account-overview__loyalty-copy">
                             {props.loyalty.nextTier === null ||
                             props.loyalty.remaining === null
-                                ? props.accountUi.overview.loyalty_complete
-                                : props.accountUi.overview.loyalty_remaining
+                                ? ui.overview.loyalty_complete
+                                : ui.overview.loyalty_remaining
                                       .replace(
                                           ':amount',
                                           formatAccountMoney(
@@ -274,13 +295,9 @@ export default function AccountOverview() {
                         <div className="account-overview__loyalty-actions">
                             <Link
                                 className="account-overview__loyalty-link"
-                                href={
-                                    props.locale === 'en'
-                                        ? '/en/my-account/loyalty'
-                                        : '/my-account/loyalty'
-                                }
+                                href={walletUrl}
                             >
-                                {props.accountUi.overview.view_loyalty ??
+                                {ui.overview.view_loyalty ??
                                     'عرض برنامج الولاء'}
                                 <Arrow aria-hidden="true" />
                             </Link>
@@ -293,13 +310,13 @@ export default function AccountOverview() {
                         <span aria-hidden="true">
                             <Sparkles />
                         </span>
-                        <h2>{props.accountUi.overview.empty_title}</h2>
-                        <p>{props.accountUi.overview.empty_description}</p>
+                        <h2>{ui.overview.empty_title}</h2>
+                        <p>{ui.overview.empty_description}</p>
                         <Link
                             className="account-overview__empty-cta"
                             href={props.storeShell.coinsUrl}
                         >
-                            {props.accountUi.overview.browse_services}
+                            {ui.overview.browse_services}
                             <Arrow aria-hidden="true" />
                         </Link>
                     </section>

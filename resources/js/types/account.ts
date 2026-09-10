@@ -108,6 +108,9 @@ export type AccountTranslations = {
         open_orders_metric: string;
         completed_orders_metric: string;
         wallet_metric: string;
+        wallet_tier: string;
+        open_of_total: string;
+        no_orders_yet: string;
         active_order: string;
         current_order?: string;
         recent_orders: string;
