@@ -105,9 +105,55 @@ it('renders the three cards with their rows, values, and badges', () => {
     expect(screen.getByText('WhatsApp number')).toBeVisible();
     expect(screen.getByText('Email address')).toBeVisible();
     expect(screen.getByText('owner@example.test')).toBeVisible();
-    expect(screen.getAllByText('Verified')).toHaveLength(2);
 
-    expect(screen.getByText('Set')).toBeVisible();
+    // A settled contact carries no badge at all: `verified` is the absence of a
+    // warning, not a decoration on every row.
+    expect(screen.queryByText('Verified')).not.toBeInTheDocument();
+    expect(screen.queryByText('Not verified')).not.toBeInTheDocument();
+    expect(screen.queryByText('Set')).not.toBeInTheDocument();
+});
+
+it('never says "not verified" about a contact that was never added', () => {
+    const baseProps = profileProps();
+    page.props = {
+        ...baseProps,
+        profile: {
+            ...baseProps.profile,
+            phone: { value: null, verified: false, pending: null },
+        },
+    };
+
+    render(<AccountProfile />);
+
+    expect(screen.getByText('Not added')).toBeVisible();
+    expect(screen.queryByText('Not verified')).not.toBeInTheDocument();
+    expect(
+        screen.getByRole('button', { name: 'Add a mobile number' }),
+    ).toBeVisible();
+    expect(
+        screen.queryByRole('button', { name: 'Verify number' }),
+    ).not.toBeInTheDocument();
+});
+
+it('asks to verify a number that exists but is unverified', () => {
+    const baseProps = profileProps();
+    page.props = {
+        ...baseProps,
+        profile: {
+            ...baseProps.profile,
+            phone: {
+                value: '+201001234567',
+                verified: false,
+                pending: null,
+            },
+        },
+    };
+
+    render(<AccountProfile />);
+
+    expect(screen.getByText('Not verified')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Verify number' })).toBeVisible();
+    expect(screen.queryByText('Not added')).not.toBeInTheDocument();
 });
 
 it('opens the name form in place on edit and closes on cancel_edit', () => {
@@ -146,8 +192,8 @@ it('renders contact rows, verified states, and safe autocomplete contracts', () 
     ).not.toBeInTheDocument();
 
     const changeButtons = screen.getAllByRole('button', { name: 'Change' });
-    // Phone row, Email row, Password row all have "Change" when verified/set
-    expect(changeButtons.length).toBeGreaterThanOrEqual(2);
+    // Phone, Email and Password rows all offer Change when settled.
+    expect(changeButtons).toHaveLength(3);
 
     // Click Change on phone
     fireEvent.click(changeButtons[0]!);
@@ -170,6 +216,7 @@ it('focuses the inline contact field when validation fails', () => {
     render(<AccountProfile />);
 
     const changeButtons = screen.getAllByRole('button', { name: 'Change' });
+
     // Phone
     fireEvent.click(changeButtons[0]!);
     fireEvent.click(screen.getByRole('button', { name: 'Send WhatsApp code' }));
@@ -189,13 +236,16 @@ it('excludes every secret identity field from remembered Inertia state', () => {
     expect(excluded).toContainEqual(['code']);
 });
 
-it('shows state_set and change for a password account, and state_missing and set_password otherwise', () => {
+it('shows a change action for a password account, and only a set action otherwise', () => {
     const { unmount } = render(<AccountProfile />);
 
-    expect(screen.getByText('Set')).toBeVisible();
+    expect(screen.queryByText('Set')).not.toBeInTheDocument();
+    expect(screen.queryByText('Not created yet')).not.toBeInTheDocument();
     expect(
         screen.queryByRole('button', { name: 'Set a password' }),
     ).not.toBeInTheDocument();
+    // Phone, Email and Password rows each offer Change when settled.
+    expect(screen.getAllByRole('button', { name: 'Change' })).toHaveLength(3);
 
     unmount();
 
@@ -211,10 +261,10 @@ it('shows state_set and change for a password account, and state_missing and set
 
     render(<AccountProfile />);
 
-    expect(screen.getByText('Not created yet')).toBeVisible();
     expect(
         screen.getByRole('button', { name: 'Set a password' }),
     ).toBeVisible();
+    expect(screen.queryByText('Not created yet')).not.toBeInTheDocument();
 });
 
 it('submits the password change form via put to changeUrl', () => {
@@ -371,10 +421,12 @@ function profileProps() {
                 name: 'Name',
                 edit: 'Edit',
                 change: 'Change',
-                verify: 'Verify',
                 verified: 'Verified',
                 unverified: 'Not verified',
                 not_set: 'Not added',
+                add_phone: 'Add a mobile number',
+                verify_phone: 'Verify number',
+                verify_email: 'Verify email',
                 first_name: 'First name',
                 last_name: 'Last name',
                 email: 'Email address',
@@ -404,8 +456,6 @@ function profileProps() {
             },
             security: {
                 card_title: 'Password',
-                state_set: 'Set',
-                state_missing: 'Not created yet',
                 forgot: 'Forgot your password?',
                 current_password: 'Current password',
                 new_password: 'New password',

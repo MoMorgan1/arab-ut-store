@@ -1,14 +1,8 @@
 import { Link } from '@inertiajs/react';
-import {
-    LayoutDashboard,
-    PackageSearch,
-    ShieldCheck,
-    UserRound,
-    WalletCards,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import AppIcon from '@/components/account/app-icon';
+import type { AppIconName } from '@/components/account/app-icon';
 import { cn } from '@/lib/utils';
 import type {
     AccountDestination,
@@ -16,11 +10,11 @@ import type {
     AccountTranslations,
 } from '@/types/account';
 
-const destinationIcons: Record<AccountDestination, LucideIcon> = {
-    overview: LayoutDashboard,
-    orders: PackageSearch,
-    wallet: WalletCards,
-    profile: UserRound,
+const destinationIcons: Record<AccountDestination, AppIconName> = {
+    overview: 'grid',
+    orders: 'cube',
+    wallet: 'wallet',
+    profile: 'user',
 };
 
 type AccountMobileBottomNavProps = {
@@ -28,6 +22,11 @@ type AccountMobileBottomNavProps = {
     bottomNav?: { home: string; account: string };
     current: AccountDestination;
     items: AccountNavigationItem[];
+    /**
+     * Destinations that still need the customer (an unverified number or
+     * email). Rendered as a quiet dot, never a count.
+     */
+    attention?: AccountDestination[];
     translations: AccountTranslations['navigation'];
 };
 
@@ -40,6 +39,7 @@ const ALLOWED_KEYS: AccountDestination[] = [
 
 export function AccountMobileBottomNav({
     adminUrl,
+    attention = [],
     bottomNav,
     current,
     items,
@@ -121,7 +121,7 @@ export function AccountMobileBottomNav({
                 )}
             >
                 {bottomNavItems.map((item) => {
-                    const Icon = destinationIcons[item.key] || LayoutDashboard;
+                    const name = destinationIcons[item.key] || 'grid';
                     const selected = item.key === current;
                     const label =
                         item.key === 'overview'
@@ -142,11 +142,17 @@ export function AccountMobileBottomNav({
                             key={item.key}
                         >
                             <span className="account-mobile-bottom-nav__icon-wrap">
-                                <Icon aria-hidden="true" strokeWidth={1.7} />
+                                <AppIcon name={name} />
                             </span>
                             <span className="account-mobile-bottom-nav__label">
                                 {label}
                             </span>
+                            {attention.includes(item.key) ? (
+                                <span
+                                    aria-hidden="true"
+                                    className="account-mobile-bottom-nav__dot"
+                                />
+                            ) : null}
                         </Link>
                     );
                 })}
@@ -156,7 +162,7 @@ export function AccountMobileBottomNav({
                         href={adminUrl}
                     >
                         <span className="account-mobile-bottom-nav__icon-wrap">
-                            <ShieldCheck aria-hidden="true" strokeWidth={1.7} />
+                            <AppIcon name="shield" />
                         </span>
                         <span className="account-mobile-bottom-nav__label">
                             {translations.admin}

@@ -13717,35 +13717,53 @@ html.admin-document {
     }
 }
 
+/* The card heading is set by weight and a short gold rule. The icon that used
+   to sit in a rounded square beside every heading was the single strongest
+   "template" tell on this page: three identical gold tiles, one above each
+   card, competing with the row icons below them. */
 .account-profile-card__header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
     margin-block-end: 1rem;
 }
 
-.account-profile-card__header > span {
+.account-profile-card__mark {
     display: inline-flex;
-    width: 2.5rem;
-    height: 2.5rem;
-    flex: 0 0 2.5rem;
+    flex: 0 0 auto;
     align-items: center;
-    justify-content: center;
-    border-radius: 0.75rem;
-    background: rgb(212 168 67 / 10%);
+    justify-content: flex-end;
     color: var(--arabut-gold-bright);
+    opacity: 0.75;
 }
 
-.account-profile-card__header svg {
-    width: 1.2rem;
-    height: 1.2rem;
+.account-profile-card__mark svg {
+    width: 1.25rem;
+    height: 1.25rem;
 }
 
 .account-profile-card__header h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
     margin: 0;
     color: var(--arabut-ink);
     font-size: clamp(1.05rem, 3vw, 1.25rem);
     font-weight: 800;
+}
+
+.account-profile-card__header h3::before {
+    content: '';
+    width: 3px;
+    height: 1.1rem;
+    flex: 0 0 3px;
+    border-radius: 999px;
+    background: linear-gradient(
+        180deg,
+        var(--arabut-gold-bright),
+        rgb(212 168 67 / 25%)
+    );
 }
 
 .account-profile-card__rows {
@@ -13761,21 +13779,16 @@ html.admin-document {
     overflow: hidden;
 }
 
+/* Two-column row: icon, then everything else.
+   `min-width: 0` on both tracks is what keeps a long email address on one line
+   instead of letting the action column squeeze the value into two. */
 .account-profile-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    column-gap: 0.75rem;
+    row-gap: 0.55rem;
     padding: 0.9rem 1rem;
-}
-
-.account-profile-row__start {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    min-width: 0;
-    flex: 1 1 auto;
 }
 
 .account-profile-row__icon {
@@ -13786,8 +13799,25 @@ html.admin-document {
     align-items: center;
     justify-content: center;
     border-radius: 0.65rem;
-    background: rgb(212 168 67 / 9%);
+    border: 1px solid rgb(212 168 67 / 14%);
+    background: rgb(212 168 67 / 8%);
     color: var(--arabut-gold-bright);
+}
+
+/* The WhatsApp mark reads as WhatsApp: brand shapes stay solid and take a
+   green tint rather than being forced into the gold outline family. */
+.account-profile-row__icon--ok {
+    border-color: rgb(101 193 140 / 20%);
+    background: rgb(101 193 140 / 8%);
+    color: #78d59e;
+}
+
+/* Quiet, near-neutral tile for identity and password rows: gold everywhere was
+   what made every row look alike. */
+.account-profile-row__icon--state {
+    border-color: rgb(255 255 255 / 9%);
+    background: rgb(255 255 255 / 4%);
+    color: var(--arabut-ink);
 }
 
 .account-profile-row__icon svg {
@@ -13814,11 +13844,29 @@ html.admin-document {
     overflow-wrap: anywhere;
 }
 
+/* Email addresses and phone numbers are LTR runs inside an RTL page. */
+.account-profile-row__value--ltr {
+    direction: ltr;
+    unicode-bidi: isolate;
+    text-align: start;
+    overflow-wrap: normal;
+    word-break: break-word;
+}
+
+.phone--ltr .account-profile-row__value--ltr {
+    text-align: left;
+}
+
+/* Actions never share a line with the value: the badge and its button keep
+   their own full-width row, right-aligned, so the value above is never
+   squeezed and the row's height is stable. */
 .account-profile-row__end {
     display: flex;
+    grid-column: 2;
     align-items: center;
+    justify-content: flex-end;
     gap: 0.65rem;
-    flex-shrink: 0;
+    min-width: 0;
 }
 
 .account-profile-badge {
@@ -13846,7 +13894,8 @@ html.admin-document {
 }
 
 .account-profile-row__btn {
-    min-height: 2.5rem;
+    /* 44px touch target: these are the primary actions on the page. */
+    min-height: 2.75rem;
     border: 1px solid rgb(212 168 67 / 42%);
     border-radius: 0.65rem;
     background: rgb(212 168 67 / 9%);
@@ -14062,11 +14111,32 @@ html.admin-document {
     font-weight: 600;
 }
 
-.account-profile-password__forgot {
-    display: flex;
+/* The recovery link sits *below* the bordered password row as its own quiet
+   line. Kept inside the row it stretched the row and read as part of the
+   field's label. */
+.account-profile-forgot {
+    margin: 0;
+    padding: 0.15rem 0.2rem 0;
+    text-align: end;
+}
+
+.account-profile-forgot .account-profile-link {
+    display: inline-flex;
+    min-height: 2.75rem;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.6rem 1rem 0.85rem;
+    color: var(--arabut-muted);
+    font-size: 0.82rem;
+    text-decoration-color: rgb(212 168 67 / 45%);
+}
+
+.account-profile-forgot .account-profile-link:hover {
+    color: var(--arabut-ink);
+}
+
+.account-profile-forgot .account-profile-link:focus-visible {
+    outline: 2px solid var(--arabut-focus);
+    outline-offset: 2px;
+    border-radius: 0.35rem;
 }
 
 .account-profile-link {
@@ -14427,6 +14497,7 @@ html.admin-document {
     }
 
     .account-mobile-bottom-nav__inner {
+        position: relative;
         display: flex;
         flex-wrap: nowrap;
         overflow-x: auto;
@@ -14436,22 +14507,74 @@ html.admin-document {
         gap: 4px;
         width: 100%;
         max-width: 430px;
-        padding: 6px;
-        border-radius: 28px;
-        border: 1px solid rgb(255 255 255 / 12%);
+        /* Concentric geometry: inner pill radius = surface radius − inset. */
+        --nav-surface-radius: 30px;
+        --nav-inset: 6px;
+        --nav-rim: 212 175 106;
+        padding: var(--nav-inset);
+        border-radius: var(--nav-surface-radius);
+        /* Warm, restrained material. Brightness sits *below* 1 (Apple's
+           `regular` variant adjusts luminosity rather than lifting it) and
+           saturation is down from 190% so cold colour behind the bar is not
+           amplified: the warmth comes from the tint, never the filter. */
         background: linear-gradient(
-            180deg,
-            rgb(36 30 24 / 62%),
-            rgb(20 17 14 / 74%)
+            to bottom,
+            rgb(20 16 12 / 72%),
+            rgb(12 9 7 / 86%)
         );
-        -webkit-backdrop-filter: blur(34px) saturate(190%);
-        backdrop-filter: blur(34px) saturate(190%);
+        -webkit-backdrop-filter: blur(24px) saturate(140%) brightness(0.86);
+        backdrop-filter: blur(24px) saturate(140%) brightness(0.86);
+        /* Scroll edge effect: content dissolves into the bar's top edge
+           instead of meeting a hard line. */
+        -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14px);
+        mask-image: linear-gradient(to bottom, transparent, #000 14px);
+        /* Two-hairline rim, top brighter than bottom, and a tight shadow
+           instead of a large diffuse one. */
         box-shadow:
-            inset 0 1px 0 rgb(255 255 255 / 14%),
-            inset 0 -1px 0 rgb(0 0 0 / 25%),
-            0 18px 44px -10px rgb(0 0 0 / 70%),
-            0 2px 8px rgb(0 0 0 / 35%);
+            inset 0 1px 0 rgb(var(--nav-rim) / 16%),
+            inset 0 -1px 0 rgb(var(--nav-rim) / 7%),
+            0 -8px 24px rgb(0 0 0 / 35%);
         pointer-events: auto;
+        isolation: isolate;
+    }
+
+    /* Gold top hairline plus a corner highlight: reads as a convex slab. */
+    .account-mobile-bottom-nav__inner::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        border-block-start: 1px solid rgb(var(--nav-rim) / 12%);
+        background: linear-gradient(
+            150deg,
+            rgb(255 255 255 / 26%),
+            rgb(255 255 255 / 3%) 26%,
+            transparent 44%,
+            transparent 64%,
+            rgb(var(--nav-rim) / 12%) 100%
+        );
+        -webkit-mask:
+            linear-gradient(#000 0 0) content-box,
+            linear-gradient(#000 0 0);
+        mask:
+            linear-gradient(#000 0 0) content-box,
+            linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    /* Specular sheen panned across the top face, moved only by opacity. */
+    .account-mobile-bottom-nav__inner::after {
+        content: '';
+        position: absolute;
+        inset: 0 0 auto;
+        height: 55%;
+        border-radius: inherit;
+        background: linear-gradient(180deg, rgb(255 255 255 / 8%), transparent);
+        pointer-events: none;
+        z-index: 1;
     }
 
     .account-mobile-bottom-nav__inner::-webkit-scrollbar {
@@ -14459,6 +14582,7 @@ html.admin-document {
     }
 
     .account-mobile-bottom-nav__item {
+        position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -14469,13 +14593,23 @@ html.admin-document {
         min-height: 52px;
         gap: 3px;
         padding: 4px 2px;
-        border-radius: 22px;
+        border-radius: calc(var(--nav-surface-radius) - var(--nav-inset));
         border: 0;
-        color: rgb(237 228 208 / 60%);
+        color: rgb(237 228 208 / 62%);
         text-decoration: none;
+        z-index: 3;
         transition:
-            background-color 180ms,
-            color 180ms;
+            background-color 200ms ease,
+            color 200ms ease,
+            box-shadow 200ms ease,
+            transform 200ms ease,
+            opacity 200ms ease;
+    }
+
+    /* Touch reaction stays on the compositor. */
+    .account-mobile-bottom-nav__item:active {
+        transform: scale(0.96);
+        opacity: 0.92;
     }
 
     .account-mobile-bottom-nav__inner--fits .account-mobile-bottom-nav__item {
@@ -14515,13 +14649,48 @@ html.admin-document {
 
     .account-mobile-bottom-nav__item--active {
         color: var(--arabut-gold-bright);
-        font-weight: 700;
-        background: rgb(255 255 255 / 9%);
-        box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%);
+        background:
+            linear-gradient(
+                180deg,
+                rgb(255 255 255 / 11%),
+                rgb(255 255 255 / 3%)
+            ),
+            rgb(212 168 67 / 10%);
+        box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 20%),
+            inset 0 0 0 1px rgb(var(--nav-rim) / 20%);
+    }
+
+    .account-mobile-bottom-nav__item--active svg {
+        fill: rgb(228 183 86 / 18%);
     }
 
     .account-mobile-bottom-nav__item--active .account-mobile-bottom-nav__label {
-        font-weight: 700;
+        font-weight: 800;
+    }
+
+    .account-mobile-bottom-nav__item--active::after {
+        content: '';
+        position: absolute;
+        bottom: 0.3rem;
+        width: 1.1rem;
+        height: 2px;
+        border-radius: 999px;
+        background: var(--arabut-gold-bright);
+        box-shadow: 0 0 0.5rem rgb(228 183 86 / 60%);
+    }
+
+    /* A destination that still needs the customer: a quiet dot, never a
+       count or a badge. */
+    .account-mobile-bottom-nav__dot {
+        position: absolute;
+        top: 0.55rem;
+        inset-inline-end: 1.05rem;
+        width: 0.4rem;
+        height: 0.4rem;
+        border-radius: 50%;
+        background: var(--arabut-gold-bright);
+        box-shadow: 0 0 0 2px rgb(14 12 9 / 80%);
     }
 
     .account-metric dt {
@@ -14531,6 +14700,41 @@ html.admin-document {
 
     .account-metric dd {
         font-size: 1.25rem;
+    }
+}
+
+/* The bottom bar's accessibility net.
+   `prefers-reduced-transparency` is Chromium-only, so it is a bonus on top of
+   the `@supports` fallback rather than the safety net itself. */
+@supports not (backdrop-filter: blur(1px)) {
+    .account-mobile-bottom-nav__inner {
+        background: #0e0a08;
+    }
+}
+
+@media (prefers-contrast: more) {
+    .account-mobile-bottom-nav__inner {
+        background: #0e0a08;
+        border: 1px solid var(--arabut-gold);
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .account-mobile-bottom-nav__inner {
+        background: #0e0a08;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .account-mobile-bottom-nav__item,
+    .account-mobile-bottom-nav__inner::after {
+        transition-duration: 0.01ms;
+    }
+
+    .account-mobile-bottom-nav__item:active {
+        transform: none;
     }
 }
 

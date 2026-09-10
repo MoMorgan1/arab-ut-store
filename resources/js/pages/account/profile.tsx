@@ -1,9 +1,8 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { KeyRound, LogOut, Mail, MessageCircle, UserRound } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 
+import AppIcon from '@/components/account/app-icon';
 import InputError from '@/components/input-error';
 import OneTimeCodeField from '@/components/one-time-code-field';
 import PhoneNumberField from '@/components/phone-number-field';
@@ -231,9 +230,9 @@ export default function AccountProfile() {
                         data-testid="add-email-prompt"
                         role="region"
                     >
-                        <Mail
-                            aria-hidden="true"
+                        <AppIcon
                             className="account-profile-prompt__icon"
+                            name="mail"
                         />
                         <span className="account-profile-prompt__title">
                             {props.accountUi.profile.add_email_prompt_title ??
@@ -281,36 +280,36 @@ export default function AccountProfile() {
                 {/* Card 1: My Details */}
                 <section className="account-profile-card">
                     <CardHeader
-                        icon={UserRound}
+                        icon={<AppIcon name="user" />}
                         title={props.accountUi.profile.personal_card_title}
                     />
 
                     {!isEditingName ? (
                         <div className="account-profile-item">
                             <div className="account-profile-row">
-                                <div className="account-profile-row__start">
-                                    <span
-                                        aria-hidden="true"
-                                        className="account-profile-row__icon"
-                                    >
-                                        <UserRound />
-                                    </span>
-                                    <div className="account-profile-row__info">
-                                        <span className="account-profile-row__label">
-                                            {props.accountUi.profile.name}
-                                        </span>
-                                        <strong className="account-profile-row__value">
-                                            {`${props.profile.firstName} ${props.profile.lastName}`.trim()}
-                                        </strong>
-                                    </div>
-                                </div>
-                                <button
-                                    className="account-profile-row__btn"
-                                    onClick={() => setIsEditingName(true)}
-                                    type="button"
+                                <span
+                                    aria-hidden="true"
+                                    className="account-profile-row__icon account-profile-row__icon--state"
                                 >
-                                    {props.accountUi.profile.edit}
-                                </button>
+                                    <AppIcon name="user" />
+                                </span>
+                                <div className="account-profile-row__info">
+                                    <span className="account-profile-row__label">
+                                        {props.accountUi.profile.name}
+                                    </span>
+                                    <strong className="account-profile-row__value">
+                                        {`${props.profile.firstName} ${props.profile.lastName}`.trim()}
+                                    </strong>
+                                </div>
+                                <div className="account-profile-row__end">
+                                    <button
+                                        className="account-profile-row__btn"
+                                        onClick={() => setIsEditingName(true)}
+                                        type="button"
+                                    >
+                                        {props.accountUi.profile.edit}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ) : (
@@ -366,7 +365,7 @@ export default function AccountProfile() {
                 {/* Card 2: Contact */}
                 <section className="account-profile-card">
                     <CardHeader
-                        icon={Mail}
+                        icon={<AppIcon name="mail" />}
                         title={props.accountUi.profile.contact_card_title}
                     />
 
@@ -374,44 +373,43 @@ export default function AccountProfile() {
                         {/* WhatsApp row */}
                         <div className="account-profile-item">
                             <div className="account-profile-row">
-                                <div className="account-profile-row__start">
-                                    <span
-                                        aria-hidden="true"
-                                        className="account-profile-row__icon"
-                                    >
-                                        <MessageCircle />
+                                <span
+                                    aria-hidden="true"
+                                    className={`account-profile-row__icon${
+                                        props.profile.phone.value
+                                            ? 'account-profile-row__icon--whatsapp'
+                                            : ''
+                                    }`}
+                                >
+                                    <AppIcon name="whatsapp" />
+                                </span>
+                                <div className="account-profile-row__info">
+                                    <span className="account-profile-row__label">
+                                        {props.accountUi.profile.phone}
                                     </span>
-                                    <div className="account-profile-row__info">
-                                        <span className="account-profile-row__label">
-                                            {props.accountUi.profile.phone}
-                                        </span>
-                                        <strong className="account-profile-row__value">
-                                            <bdi>
-                                                {props.profile.phone.value
-                                                    ? maskPhoneNumber(
-                                                          props.profile.phone
-                                                              .value,
-                                                      )
-                                                    : props.accountUi.profile
-                                                          .not_set}
-                                            </bdi>
+                                    {props.profile.phone.value ? (
+                                        <strong className="account-profile-row__value account-profile-row__value--ltr">
+                                            {maskPhoneNumber(
+                                                props.profile.phone.value,
+                                            )}
                                         </strong>
-                                    </div>
+                                    ) : (
+                                        <strong className="account-profile-row__value">
+                                            {props.accountUi.profile.not_set}
+                                        </strong>
+                                    )}
                                 </div>
 
                                 <div className="account-profile-row__end">
-                                    <span
-                                        className={`account-profile-badge ${
-                                            props.profile.phone.verified
-                                                ? 'account-profile-badge--ok'
-                                                : 'account-profile-badge--warn'
-                                        }`}
-                                    >
-                                        {props.profile.phone.verified
-                                            ? props.accountUi.profile.verified
-                                            : props.accountUi.profile
-                                                  .unverified}
-                                    </span>
+                                    {/* Nothing to verify before a number
+                                        exists, so the badge only appears once
+                                        there is one. */}
+                                    {props.profile.phone.value &&
+                                    !props.profile.phone.verified ? (
+                                        <span className="account-profile-badge account-profile-badge--warn">
+                                            {props.accountUi.profile.unverified}
+                                        </span>
+                                    ) : null}
                                     <button
                                         aria-expanded={
                                             editingContact === 'phone'
@@ -429,9 +427,13 @@ export default function AccountProfile() {
                                         {editingContact === 'phone'
                                             ? props.accountUi.profile
                                                   .cancel_edit
-                                            : props.profile.phone.verified
-                                              ? props.accountUi.profile.change
-                                              : props.accountUi.profile.verify}
+                                            : !props.profile.phone.value
+                                              ? props.accountUi.profile
+                                                    .add_phone
+                                              : props.profile.phone.verified
+                                                ? props.accountUi.profile.change
+                                                : props.accountUi.profile
+                                                      .verify_phone}
                                     </button>
                                 </div>
                             </div>
@@ -635,40 +637,34 @@ export default function AccountProfile() {
                         {/* Email row */}
                         <div className="account-profile-item">
                             <div className="account-profile-row">
-                                <div className="account-profile-row__start">
-                                    <span
-                                        aria-hidden="true"
-                                        className="account-profile-row__icon"
-                                    >
-                                        <Mail />
+                                <span
+                                    aria-hidden="true"
+                                    className="account-profile-row__icon"
+                                >
+                                    <AppIcon name="mail" />
+                                </span>
+                                <div className="account-profile-row__info">
+                                    <span className="account-profile-row__label">
+                                        {props.accountUi.profile.email}
                                     </span>
-                                    <div className="account-profile-row__info">
-                                        <span className="account-profile-row__label">
-                                            {props.accountUi.profile.email}
-                                        </span>
-                                        <strong className="account-profile-row__value">
-                                            <bdi>
-                                                {props.profile.email.value ??
-                                                    props.accountUi.profile
-                                                        .not_set}
-                                            </bdi>
-                                        </strong>
-                                    </div>
+                                    <strong className="account-profile-row__value account-profile-row__value--ltr">
+                                        {props.profile.email.value ??
+                                            props.accountUi.profile.not_set}
+                                    </strong>
                                 </div>
 
                                 <div className="account-profile-row__end">
-                                    <span
-                                        className={`account-profile-badge ${
-                                            props.profile.email.verified
-                                                ? 'account-profile-badge--ok'
-                                                : 'account-profile-badge--warn'
-                                        }`}
-                                    >
-                                        {props.profile.email.verified
-                                            ? props.accountUi.profile.verified
-                                            : props.accountUi.profile
-                                                  .unverified}
-                                    </span>
+                                    {/* Same rule as the number: never claim
+                                        "unverified" about an address that does
+                                        not exist, and never spend a badge
+                                        saying "fine". The badge exists only to
+                                        flag what is still outstanding. */}
+                                    {hasEmail &&
+                                    !props.profile.email.verified ? (
+                                        <span className="account-profile-badge account-profile-badge--warn">
+                                            {props.accountUi.profile.unverified}
+                                        </span>
+                                    ) : null}
                                     <button
                                         aria-expanded={
                                             editingContact === 'email'
@@ -695,7 +691,7 @@ export default function AccountProfile() {
                                               : props.profile.email.verified
                                                 ? props.accountUi.profile.change
                                                 : props.accountUi.profile
-                                                      .verify}
+                                                      .verify_email}
                                     </button>
                                 </div>
                             </div>
@@ -760,43 +756,26 @@ export default function AccountProfile() {
                 {/* Card 3: Password */}
                 <section className="account-profile-card">
                     <CardHeader
-                        icon={KeyRound}
+                        icon={<AppIcon name="lock" />}
                         title={props.accountUi.security.card_title}
                     />
 
                     <div className="account-profile-card__rows">
                         <div className="account-profile-item">
                             <div className="account-profile-row">
-                                <div className="account-profile-row__start">
-                                    <span
-                                        aria-hidden="true"
-                                        className="account-profile-row__icon"
-                                    >
-                                        <KeyRound />
+                                <span
+                                    aria-hidden="true"
+                                    className="account-profile-row__icon account-profile-row__icon--state"
+                                >
+                                    <AppIcon name="lock" />
+                                </span>
+                                <div className="account-profile-row__info">
+                                    <span className="account-profile-row__label">
+                                        {props.accountUi.security.card_title}
                                     </span>
-                                    <div className="account-profile-row__info">
-                                        <span className="account-profile-row__label">
-                                            {
-                                                props.accountUi.security
-                                                    .card_title
-                                            }
-                                        </span>
-                                    </div>
                                 </div>
 
                                 <div className="account-profile-row__end">
-                                    <span
-                                        className={`account-profile-badge ${
-                                            props.security.hasPassword
-                                                ? 'account-profile-badge--ok'
-                                                : 'account-profile-badge--warn'
-                                        }`}
-                                    >
-                                        {props.security.hasPassword
-                                            ? props.accountUi.security.state_set
-                                            : props.accountUi.security
-                                                  .state_missing}
-                                    </span>
                                     {props.security.hasPassword ||
                                     props.security.canSetPassword ? (
                                         <button
@@ -946,7 +925,7 @@ export default function AccountProfile() {
                             ) : null}
 
                             {props.security.emailVerified ? (
-                                <div className="account-profile-password__forgot">
+                                <p className="account-profile-forgot">
                                     <button
                                         className="account-profile-link"
                                         disabled={resetLink.processing}
@@ -963,18 +942,15 @@ export default function AccountProfile() {
                                     >
                                         {props.accountUi.security.forgot}
                                     </button>
-                                    {resetLink.recentlySuccessful ? (
-                                        <p
-                                            className="account-profile-success"
-                                            role="status"
-                                        >
-                                            {
-                                                props.accountUi.security
-                                                    .reset_link_sent
-                                            }
-                                        </p>
-                                    ) : null}
-                                </div>
+                                </p>
+                            ) : null}
+                            {resetLink.recentlySuccessful ? (
+                                <p
+                                    className="account-profile-success"
+                                    role="status"
+                                >
+                                    {props.accountUi.security.reset_link_sent}
+                                </p>
                             ) : null}
                         </div>
                     </div>
@@ -985,7 +961,7 @@ export default function AccountProfile() {
                     onClick={logout}
                     type="button"
                 >
-                    <LogOut aria-hidden="true" />
+                    <AppIcon name="logout" />
                     <span>{props.accountUi.navigation.logout}</span>
                 </button>
             </div>
@@ -1035,19 +1011,13 @@ function Field({
     );
 }
 
-function CardHeader({
-    icon: Icon,
-    title,
-}: {
-    icon: LucideIcon;
-    title: string;
-}) {
+function CardHeader({ icon, title }: { icon: ReactNode; title: string }) {
     return (
         <header className="account-profile-card__header">
-            <span aria-hidden="true">
-                <Icon />
-            </span>
             <h3>{title}</h3>
+            <span aria-hidden="true" className="account-profile-card__mark">
+                {icon}
+            </span>
         </header>
     );
 }
