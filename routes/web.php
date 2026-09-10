@@ -30,6 +30,7 @@ use App\Http\Controllers\Store\SitemapPageController;
 use App\Http\Middleware\NoStore;
 use App\Http\Middleware\RequireCatalogCartJson;
 use App\Http\Middleware\RequireCoinsCartJson;
+use App\Support\PublicHandle\OrderHandle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
@@ -60,8 +61,10 @@ Route::get('/payments/paylink/callback', PaylinkReturnController::class)
 Route::get('/payments/paylink/cancel', PaylinkReturnController::class)
     ->middleware([NoStore::class, 'auth'])->name('payments.paylink.cancel');
 Route::get('/orders/{order}', OrderController::class)
+    ->where('order', OrderHandle::routePattern())
     ->middleware(['auth', NoStore::class])->name('store.orders.show');
-Route::post('/orders/{order:public_id}/payments/paylink', PaylinkOrderPaymentController::class)
+Route::post('/orders/{order}/payments/paylink', PaylinkOrderPaymentController::class)
+    ->where('order', OrderHandle::routePattern())
     ->middleware(['auth', NoStore::class, 'throttle:coins-cart'])
     ->name('store.orders.paylink-payment');
 Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])
@@ -180,8 +183,10 @@ Route::prefix('{locale}')
         Route::get('/payments/paylink/cancel', PaylinkReturnController::class)
             ->middleware([NoStore::class, 'auth'])->name('localized.payments.paylink.cancel');
         Route::get('/orders/{order}', OrderController::class)
+            ->where('order', OrderHandle::routePattern())
             ->middleware(['auth', NoStore::class])->name('localized.store.orders.show');
-        Route::post('/orders/{order:public_id}/payments/paylink', PaylinkOrderPaymentController::class)
+        Route::post('/orders/{order}/payments/paylink', PaylinkOrderPaymentController::class)
+            ->where('order', OrderHandle::routePattern())
             ->middleware(['auth', NoStore::class, 'throttle:coins-cart'])
             ->name('localized.store.orders.paylink-payment');
         Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])

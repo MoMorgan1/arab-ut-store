@@ -36,7 +36,7 @@ final class ReviewInviteNotification extends Notification implements ShouldQueue
         $locale = $this->order->locale === 'en' ? 'en' : 'ar';
         $orderUrl = rtrim((string) config('app.url'), '/')
             .($locale === 'en' ? '/en' : '')
-            .'/my-account/orders/'.$this->order->public_id;
+            .'/my-account/orders/'.$this->order->order_number;
 
         $this->locale($locale);
 

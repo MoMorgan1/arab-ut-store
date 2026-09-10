@@ -12,6 +12,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RefundPaylinkRequest;
 use App\Models\Order;
 use App\Models\User;
+use App\Support\PublicHandle\OrderHandle;
 use Illuminate\Http\JsonResponse;
 
 final class PaylinkRefundController extends Controller
@@ -22,7 +23,7 @@ final class PaylinkRefundController extends Controller
 
     public function __invoke(
         RefundPaylinkRequest $request,
-        Order $order,
+        string $order,
         RefundPaylinkOrder $refundOrder,
     ): JsonResponse {
         $amount = (int) $request->validated('amountHalalah');
@@ -32,6 +33,9 @@ final class PaylinkRefundController extends Controller
         if (! $actor instanceof User) {
             return $this->error('authentication_required', 'Authentication is required.', 401);
         }
+
+        /** @var Order $order */
+        $order = OrderHandle::resolveForAdmin($order);
 
         if ($amount !== $order->total_halalah) {
             $this->recordStaffAudit->execute(

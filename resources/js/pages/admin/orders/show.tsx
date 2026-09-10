@@ -315,7 +315,6 @@ export default function AdminOrderDetailPage() {
                                             direction={props.direction}
                                             item={item}
                                             locale={props.locale}
-                                            orderId={order.id}
                                             orderNumber={order.orderNumber}
                                             revealUrlTemplate={
                                                 props.revealUrlTemplate
@@ -384,14 +383,8 @@ export default function AdminOrderDetailPage() {
                                 <span className="text-muted-foreground">
                                     ID
                                 </span>
-                                <span
-                                    className="[overflow-wrap:anywhere] text-muted-foreground tabular-nums"
-                                    title={order.customer.id}
-                                >
-                                    <bdi>
-                                        {order.customer.number ??
-                                            order.customer.id}
-                                    </bdi>
+                                <span className="[overflow-wrap:anywhere] text-muted-foreground tabular-nums">
+                                    <bdi>{order.customer.number || '—'}</bdi>
                                 </span>
                             </div>
                         </div>

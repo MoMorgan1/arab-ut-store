@@ -72,7 +72,7 @@ export default function AdminReviewsMobileCard({
                             className="font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                             href={reviewOrderUrl(
                                 orderUrlTemplate,
-                                review.order.publicId,
+                                review.order.number,
                             )}
                         >
                             <bdi>{review.order.number}</bdi>

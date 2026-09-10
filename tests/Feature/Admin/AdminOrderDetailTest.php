@@ -12,7 +12,6 @@ use App\Models\Order;
 use App\Models\OrderItemSecret;
 use App\Models\User;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 use Laravel\Fortify\Fortify;
 
@@ -23,16 +22,16 @@ afterEach(function (): void {
 test('guests and nonprivileged accounts cannot open the Admin order detail', function (): void {
     $order = createDetailTestOrder();
 
-    $this->get("/admin/orders/{$order->public_id}")->assertRedirect('/en/login');
+    $this->get("/admin/orders/{$order->order_number}")->assertRedirect('/en/login');
 
     foreach ([UserRole::Customer, UserRole::ServiceAccount] as $role) {
         $account = User::factory()->create(['role' => $role]);
-        $this->actingAs($account)->get("/admin/orders/{$order->public_id}")->assertForbidden();
+        $this->actingAs($account)->get("/admin/orders/{$order->order_number}")->assertForbidden();
     }
 
     $inactiveStaff = createDetailTestActor(UserRole::Staff);
     $inactiveStaff->forceFill(['is_active' => false])->save();
-    $this->actingAs($inactiveStaff)->get("/admin/orders/{$order->public_id}")->assertForbidden();
+    $this->actingAs($inactiveStaff)->get("/admin/orders/{$order->order_number}")->assertForbidden();
 });
 
 test('unconfirmed MFA privileged users are redirected to MFA setup', function (): void {
@@ -41,7 +40,7 @@ test('unconfirmed MFA privileged users are redirected to MFA setup', function ()
     $order = createDetailTestOrder();
 
     $this->actingAs($admin)
-        ->get("/admin/orders/{$order->public_id}")
+        ->get("/admin/orders/{$order->order_number}")
         ->assertRedirect('/admin/settings');
 });
 
@@ -53,7 +52,7 @@ test('confirmed privileged actors can open localized private order detail routes
     $order = createDetailTestOrder();
 
     $this->actingAs($actor)
-        ->get("{$prefix}/orders/{$order->public_id}")
+        ->get("{$prefix}/orders/{$order->order_number}")
         ->assertOk()
         ->assertHeader('Cache-Control', 'no-store, private')
         ->assertInertia(fn (AssertableInertia $page) => $page
@@ -94,7 +93,7 @@ test('order detail props never serialize credentials, provider metadata, or raw 
     ]);
 
     $order = Order::factory()->for($customer)->create([
-        'order_number' => 'AUT-PRIVACY-DETAIL-1',
+        'order_number' => 'AUT-900003',
         'status' => OrderStatus::Received,
         'subtotal_halalah' => 5000,
         'discount_halalah' => 0,
@@ -140,7 +139,7 @@ test('order detail props never serialize credentials, provider metadata, or raw 
         'paid_at' => now(),
     ]);
 
-    $response = $this->actingAs($admin)->get("/admin/orders/{$order->public_id}");
+    $response = $this->actingAs($admin)->get("/admin/orders/{$order->order_number}");
     $content = $response->getContent();
 
     $response->assertOk();
@@ -185,7 +184,7 @@ test('audit context is populated for Admin but null for Staff actors', function 
 
     // Admin has audit.view permission -> receives auditContext array
     $this->actingAs($admin)
-        ->get("/admin/orders/{$order->public_id}")
+        ->get("/admin/orders/{$order->order_number}")
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('order.auditContext', 1)
@@ -195,7 +194,7 @@ test('audit context is populated for Admin but null for Staff actors', function 
 
     // Staff lacks audit.view permission -> receives auditContext: null
     $this->actingAs($staff)
-        ->get("/admin/orders/{$order->public_id}")
+        ->get("/admin/orders/{$order->order_number}")
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('order.auditContext', null)
@@ -228,7 +227,7 @@ function createDetailTestOrder(): Order
     ]);
 
     $order = Order::factory()->for($customer)->create([
-        'order_number' => 'AUT-DETAIL-'.Str::random(6),
+        'order_number' => 'AUT-'.random_int(100000, 999999),
         'status' => OrderStatus::Received,
         'subtotal_halalah' => 10000,
         'discount_halalah' => 1000,

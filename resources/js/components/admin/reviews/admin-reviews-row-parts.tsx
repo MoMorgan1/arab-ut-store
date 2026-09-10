@@ -7,8 +7,8 @@ import type { AdminReviewRow, AdminTranslations } from '@/types/admin';
 
 type ReviewCopy = AdminTranslations['reviews'];
 
-export function reviewOrderUrl(template: string, publicId: string): string {
-    return template.replace('__ID__', publicId);
+export function reviewOrderUrl(template: string, handle: string): string {
+    return template.replace('__ID__', handle);
 }
 
 export function StorefrontState({

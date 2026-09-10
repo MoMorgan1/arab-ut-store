@@ -63,9 +63,9 @@ test('the owner can cancel an unpaid order and gets the wallet money back at onc
     $order->forceFill(['wallet_halalah' => 2_000])->save();
 
     $this->actingAs($user)
-        ->from('/my-account/orders/'.$order->public_id)
-        ->post('/my-account/orders/'.$order->public_id.'/cancel')
-        ->assertRedirect('/my-account/orders/'.$order->public_id)
+        ->from('/my-account/orders/'.$order->order_number)
+        ->post('/my-account/orders/'.$order->order_number.'/cancel')
+        ->assertRedirect('/my-account/orders/'.$order->order_number)
         ->assertSessionHas('status', 'order-cancelled');
 
     $order->refresh();
@@ -125,7 +125,7 @@ test('cancelling closes the Paylink invoice so the old payment link cannot charg
     });
 
     $this->actingAs($user)
-        ->post('/en/my-account/orders/'.$order->public_id.'/cancel')
+        ->post('/en/my-account/orders/'.$order->order_number.'/cancel')
         ->assertRedirect();
 
     expect($order->fresh()->status)->toBe(OrderStatus::Cancelled)
@@ -165,7 +165,7 @@ test('an order the customer already paid at Paylink is marked paid instead of ca
         ]));
 
     $this->actingAs($user)
-        ->post('/my-account/orders/'.$order->public_id.'/cancel')
+        ->post('/my-account/orders/'.$order->order_number.'/cancel')
         ->assertRedirect()
         ->assertSessionHas('status', 'order-cancel-refused');
 
@@ -195,7 +195,7 @@ test('when Paylink cannot confirm the invoice the cancel is refused, not guessed
     Http::fake(fn () => Http::response(['error' => 'down'], 503));
 
     $this->actingAs($user)
-        ->post('/my-account/orders/'.$order->public_id.'/cancel')
+        ->post('/my-account/orders/'.$order->order_number.'/cancel')
         ->assertRedirect()
         ->assertSessionHas('status', 'paylink-unavailable');
 
@@ -242,7 +242,7 @@ test('when Paylink will not close the invoice nothing is cancelled and no wallet
     });
 
     $this->actingAs($user)
-        ->post('/my-account/orders/'.$order->public_id.'/cancel')
+        ->post('/my-account/orders/'.$order->order_number.'/cancel')
         ->assertRedirect()
         ->assertSessionHas('status', 'paylink-unavailable');
 
@@ -256,8 +256,8 @@ test('a second cancel of the same order is refused and never credits the wallet 
     $order = cancellableOrder($user);
     $order->forceFill(['wallet_halalah' => 2_000])->save();
 
-    $this->actingAs($user)->post('/my-account/orders/'.$order->public_id.'/cancel')->assertRedirect();
-    $this->actingAs($user)->post('/my-account/orders/'.$order->public_id.'/cancel')
+    $this->actingAs($user)->post('/my-account/orders/'.$order->order_number.'/cancel')->assertRedirect();
+    $this->actingAs($user)->post('/my-account/orders/'.$order->order_number.'/cancel')
         ->assertRedirect()
         ->assertSessionHas('status', 'order-cancel-refused');
 
@@ -269,7 +269,7 @@ test('a paid order cannot be cancelled by the customer', function (): void {
     $order = cancellableOrder($user, OrderStatus::Received);
 
     $this->actingAs($user)
-        ->post('/my-account/orders/'.$order->public_id.'/cancel')
+        ->post('/my-account/orders/'.$order->order_number.'/cancel')
         ->assertRedirect()
         ->assertSessionHas('status', 'order-cancel-refused');
 
@@ -282,7 +282,7 @@ test('another customer cannot cancel, or learn about, an order that is not their
     $order = cancellableOrder($owner);
 
     $this->actingAs($other)
-        ->post('/my-account/orders/'.$order->public_id.'/cancel')
+        ->post('/my-account/orders/'.$order->order_number.'/cancel')
         ->assertNotFound();
 
     expect($order->fresh()->status)->toBe(OrderStatus::PendingPayment);

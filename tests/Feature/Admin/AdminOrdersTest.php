@@ -177,7 +177,7 @@ test('orders request validates all query filter boundaries', function (
     'search exceeds 100 chars' => ['search='.str_repeat('a', 101)],
 ]);
 
-test('exact normalized search finds orders by order number, public ULID, customer ULID, email, or phone without wildcard matching', function (): void {
+test('exact normalized search finds orders by order number, customer number, email, or phone without wildcard matching', function (): void {
     $customer = User::factory()->create([
         'role' => UserRole::Customer,
         'first_name' => 'Saud',
@@ -202,10 +202,6 @@ test('exact normalized search finds orders by order number, public ULID, custome
     $results = app(ListAdminOrders::class)->paginate(['search' => '  AUT-SEARCH-1001  ']);
     expect($results['orders'])->toHaveCount(1);
 
-    // Exact public ULID
-    $results = app(ListAdminOrders::class)->paginate(['search' => '01K5ADM1N0RD3R000000000001']);
-    expect($results['orders'])->toHaveCount(1);
-
     // Case-insensitive lowercase email comparison
     $results = app(ListAdminOrders::class)->paginate(['search' => 'SAUD.OTAIBI@EXAMPLE.TEST']);
     expect($results['orders'])->toHaveCount(1);
@@ -214,9 +210,19 @@ test('exact normalized search finds orders by order number, public ULID, custome
     $results = app(ListAdminOrders::class)->paginate(['search' => '+966501234567']);
     expect($results['orders'])->toHaveCount(1);
 
-    // Exact customer public ID
-    $results = app(ListAdminOrders::class)->paginate(['search' => $customer->public_id]);
+    // Exact customer number, and the same number typed lowercase
+    $results = app(ListAdminOrders::class)->paginate(['search' => $customer->customer_number]);
     expect($results['orders'])->toHaveCount(1);
+
+    $results = app(ListAdminOrders::class)->paginate(['search' => mb_strtolower((string) $customer->customer_number)]);
+    expect($results['orders'])->toHaveCount(1);
+
+    // The internal ULIDs are not searchable: staff use the order or customer number.
+    $results = app(ListAdminOrders::class)->paginate(['search' => $order->public_id]);
+    expect($results['orders'])->toHaveCount(0);
+
+    $results = app(ListAdminOrders::class)->paginate(['search' => $customer->public_id]);
+    expect($results['orders'])->toHaveCount(0);
 
     // No wildcard substring match (e.g. 'AUT-SEARCH' must not match 'AUT-SEARCH-1001')
     $results = app(ListAdminOrders::class)->paginate(['search' => 'AUT-SEARCH']);
@@ -380,13 +386,12 @@ test('order list presenter projects only safe row DTO and never leaks secrets or
         'latestPaymentStatus',
         'total',
         'placedAt',
-    ])->and(array_keys($row['customer']))->toBe(['id', 'name', 'email', 'phone'])
+    ])->and(array_keys($row['customer']))->toBe(['name', 'email', 'phone'])
         ->and(array_keys($row['total']))->toBe(['amountMinor', 'currency'])
         ->and($row)->toMatchArray([
             'id' => '01K5ADM1NPR1VACY0000000001',
             'orderNumber' => 'AUT-PRIVACY-1',
             'customer' => [
-                'id' => $customer->public_id,
                 'name' => 'Privacy Tester',
                 'email' => 'privacy.test@example.test',
                 'phone' => null,

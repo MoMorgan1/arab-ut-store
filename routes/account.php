@@ -16,6 +16,7 @@ use App\Http\Controllers\Account\WalletController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureMyAccountEnabled;
 use App\Http\Middleware\NoStore;
+use App\Support\PublicHandle\OrderHandle;
 use Illuminate\Support\Facades\Route;
 
 $accountMiddleware = [
@@ -30,21 +31,23 @@ Route::middleware($accountMiddleware)->group(function (): void {
     Route::get('/my-account', OverviewController::class)->name('account.overview');
     Route::get('/my-account/orders', OrdersController::class)->name('account.orders');
     Route::get('/my-account/orders/{order}/items/{orderItem}/credentials', OrderItemCredentialsController::class)
-        ->whereUlid(['order', 'orderItem'])
+        ->where('order', OrderHandle::routePattern())
+        ->whereUlid('orderItem')
         ->name('account.orders.items.credentials');
     Route::get('/my-account/orders/{order}/items/{orderItem}/squad-image', OrderItemSquadImageController::class)
-        ->whereUlid(['order', 'orderItem'])
+        ->where('order', OrderHandle::routePattern())
+        ->whereUlid('orderItem')
         ->name('account.orders.items.squad-image');
     Route::get('/my-account/orders/{order}', LiveOrderController::class)
-        ->whereUlid('order')
+        ->where('order', OrderHandle::routePattern())
         ->name('account.orders.show');
     Route::post('/my-account/orders/{order}/cancel', CancelPendingOrderController::class)
         ->middleware('throttle:10,1')
-        ->whereUlid('order')
+        ->where('order', OrderHandle::routePattern())
         ->name('account.orders.cancel');
     Route::post('/my-account/orders/{order}/review', [OrderReviewController::class, 'store'])
         ->middleware('throttle:6,1')
-        ->whereUlid('order')
+        ->where('order', OrderHandle::routePattern())
         ->name('account.orders.review.store');
     Route::get('/my-account/wallet', WalletController::class)->name('account.wallet');
     Route::get('/my-account/profile', [ProfileController::class, 'show'])->name('account.profile.show');
@@ -86,25 +89,27 @@ Route::prefix('en')
             ->defaults('locale', 'en')
             ->name('account.orders');
         Route::get('/my-account/orders/{order}/items/{orderItem}/credentials', OrderItemCredentialsController::class)
-            ->whereUlid(['order', 'orderItem'])
+            ->where('order', OrderHandle::routePattern())
+            ->whereUlid('orderItem')
             ->defaults('locale', 'en')
             ->name('account.orders.items.credentials');
         Route::get('/my-account/orders/{order}/items/{orderItem}/squad-image', OrderItemSquadImageController::class)
-            ->whereUlid(['order', 'orderItem'])
+            ->where('order', OrderHandle::routePattern())
+            ->whereUlid('orderItem')
             ->defaults('locale', 'en')
             ->name('account.orders.items.squad-image');
         Route::get('/my-account/orders/{order}', LiveOrderController::class)
-            ->whereUlid('order')
+            ->where('order', OrderHandle::routePattern())
             ->defaults('locale', 'en')
             ->name('account.orders.show');
         Route::post('/my-account/orders/{order}/cancel', CancelPendingOrderController::class)
             ->middleware('throttle:10,1')
-            ->whereUlid('order')
+            ->where('order', OrderHandle::routePattern())
             ->defaults('locale', 'en')
             ->name('account.orders.cancel');
         Route::post('/my-account/orders/{order}/review', [OrderReviewController::class, 'store'])
             ->middleware('throttle:6,1')
-            ->whereUlid('order')
+            ->where('order', OrderHandle::routePattern())
             ->defaults('locale', 'en')
             ->name('account.orders.review.store');
         Route::get('/my-account/wallet', WalletController::class)

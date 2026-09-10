@@ -6,6 +6,7 @@ use App\Actions\Reviews\SubmitOrderReview;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Account\StoreOrderReviewRequest;
 use App\Models\User;
+use App\Support\PublicHandle\OrderHandle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -19,9 +20,11 @@ final class OrderReviewController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User, 401);
 
+        $model = OrderHandle::resolveForCustomer($user, $order);
+
         $review = $this->action->execute(
             $user,
-            $order,
+            $model,
             $request->rating(),
             $request->body(),
         );
@@ -40,7 +43,7 @@ final class OrderReviewController extends Controller
             'message' => trans('account.orders.review.submitted_toast'),
         ]);
 
-        return redirect()->to($this->orderUrl($order));
+        return redirect()->to($this->orderUrl((string) $model->getAttribute('order_number')));
     }
 
     private function orderUrl(string $order): string

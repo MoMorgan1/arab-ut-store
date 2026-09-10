@@ -52,7 +52,7 @@ final class PaylinkReturnController extends Controller
 
         return redirect()->to(route(
             $localized ? 'localized.store.orders.show' : 'store.orders.show',
-            [...($localized ? ['locale' => 'en'] : []), 'order' => $payment->order->public_id],
+            [...($localized ? ['locale' => 'en'] : []), 'order' => (string) $payment->order->getAttribute('order_number')],
             absolute: false,
         ));
     }

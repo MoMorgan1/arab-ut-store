@@ -13,7 +13,6 @@ use App\Models\SecretAccessLog;
 use App\Models\StaffAuditLog;
 use App\Models\User;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 use Laravel\Fortify\Fortify;
 
 afterEach(function (): void {
@@ -28,7 +27,7 @@ test('admin and staff actors can reveal order item secret without password confi
     [$order, $item, $secret] = createRevealTestOrderWithSecret();
 
     $response = $this->actingAs($actor)
-        ->postJson("{$prefix}/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
+        ->postJson("{$prefix}/api/orders/{$order->order_number}/items/{$item->public_id}/reveal", [
             'purpose' => 'fulfillment',
             'case_reference' => 'TICKET-101',
         ]);
@@ -81,7 +80,7 @@ test('admin and staff actors can reveal order item secret without password confi
 
 test('guests and nonprivileged accounts cannot reveal order item secrets', function (): void {
     [$order, $item] = createRevealTestOrderWithSecret();
-    $url = "/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal";
+    $url = "/admin/api/orders/{$order->order_number}/items/{$item->public_id}/reveal";
     $payload = ['purpose' => 'fulfillment'];
 
     $this->postJson($url, $payload)->assertUnauthorized();
@@ -107,7 +106,7 @@ test('unconfirmed MFA privileged actors are redirected to MFA setup', function (
     [$order, $item] = createRevealTestOrderWithSecret();
 
     $this->actingAs($admin)
-        ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
+        ->postJson("/admin/api/orders/{$order->order_number}/items/{$item->public_id}/reveal", [
             'purpose' => 'fulfillment',
         ])
         ->assertRedirect('/admin/settings');
@@ -118,7 +117,7 @@ test('reveal endpoint reveals without a confirmation step', function (): void {
     [$order, $item] = createRevealTestOrderWithSecret();
 
     $this->actingAs($admin)
-        ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
+        ->postJson("/admin/api/orders/{$order->order_number}/items/{$item->public_id}/reveal", [
             'purpose' => 'fulfillment',
         ])
         ->assertOk()
@@ -130,7 +129,7 @@ test('purpose defaults to fulfillment and is recorded in SecretAccessLog + audit
     [$order, $item, $secret] = createRevealTestOrderWithSecret();
 
     $response = $this->actingAs($admin)
-        ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", []);
+        ->postJson("/admin/api/orders/{$order->order_number}/items/{$item->public_id}/reveal", []);
 
     $response->assertOk()
         ->assertJsonPath('data.ea_email', 'player@example.com');
@@ -172,7 +171,7 @@ test('unknown order, unknown item, or missing secret returns 404', function (): 
 
     // Unknown item
     $this->actingAs($admin)
-        ->postJson("/admin/api/orders/{$order->public_id}/items/01K5UNKNOWN0000000000000000/reveal", [
+        ->postJson("/admin/api/orders/{$order->order_number}/items/01K5UNKNOWN0000000000000000/reveal", [
             'purpose' => 'fulfillment',
         ])
         ->assertNotFound();
@@ -193,7 +192,7 @@ test('unknown order, unknown item, or missing secret returns 404', function (): 
     ]);
 
     $this->actingAs($admin)
-        ->postJson("/admin/api/orders/{$order->public_id}/items/{$itemWithoutSecret->public_id}/reveal", [
+        ->postJson("/admin/api/orders/{$order->order_number}/items/{$itemWithoutSecret->public_id}/reveal", [
             'purpose' => 'fulfillment',
         ])
         ->assertNotFound();
@@ -207,7 +206,7 @@ test('all four purpose codes are accepted and invalid purpose codes return 422',
     [$order, $item] = createRevealTestOrderWithSecret();
 
     $response = $this->actingAs($admin)
-        ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
+        ->postJson("/admin/api/orders/{$order->order_number}/items/{$item->public_id}/reveal", [
             'purpose' => $purpose,
         ]);
 
@@ -240,7 +239,7 @@ test('case reference boundary validation enforces length and allowed characters'
     }
 
     $response = $this->actingAs($admin)
-        ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", $body);
+        ->postJson("/admin/api/orders/{$order->order_number}/items/{$item->public_id}/reveal", $body);
 
     if ($isValid) {
         $response->assertOk();
@@ -265,7 +264,7 @@ test('unknown body fields are strictly rejected with 422', function (): void {
     [$order, $item] = createRevealTestOrderWithSecret();
 
     $this->actingAs($admin)
-        ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
+        ->postJson("/admin/api/orders/{$order->order_number}/items/{$item->public_id}/reveal", [
             'purpose' => 'fulfillment',
             'case_reference' => 'CR-101',
             'extra_field' => 'should_fail',
@@ -290,7 +289,7 @@ test('purged or expired secrets return 410 Gone with secret_purged error', funct
     }
 
     $response = $this->actingAs($admin)
-        ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
+        ->postJson("/admin/api/orders/{$order->order_number}/items/{$item->public_id}/reveal", [
             'purpose' => 'fulfillment',
         ]);
 
@@ -313,7 +312,7 @@ test('retained_until in the future is not purged and successfully reveals', func
     $secret->forceFill(['retained_until' => now()->addDays(7)])->save();
 
     $this->actingAs($admin)
-        ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
+        ->postJson("/admin/api/orders/{$order->order_number}/items/{$item->public_id}/reveal", [
             'purpose' => 'order_review',
         ])
         ->assertOk()
@@ -328,7 +327,7 @@ test('audit failure rolls back the entire reveal transaction including access lo
     // insert but BEFORE commit, proving the transactional pairing.
     expect(fn () => app(RevealOrderItemSecret::class)->execute(
         actor: $admin,
-        orderPublicId: (string) $order->public_id,
+        orderHandle: (string) $order->order_number,
         itemPublicId: (string) $item->public_id,
         purpose: 'fulfillment',
         caseReference: null,
@@ -344,7 +343,7 @@ test('successful reveal writes case_reference null in metadata when omitted', fu
     [$order, $item, $secret] = createRevealTestOrderWithSecret();
 
     $this->actingAs($staff)
-        ->postJson("/admin/api/orders/{$order->public_id}/items/{$item->public_id}/reveal", [
+        ->postJson("/admin/api/orders/{$order->order_number}/items/{$item->public_id}/reveal", [
             'purpose' => 'customer_support',
         ])
         ->assertOk();
@@ -370,7 +369,7 @@ function createRevealTestOrderWithSecret(): array
     $customer = User::factory()->create(['role' => UserRole::Customer]);
 
     $order = Order::factory()->for($customer)->create([
-        'order_number' => 'AUT-REVEAL-'.Str::random(6),
+        'order_number' => 'AUT-'.random_int(100000, 999999),
         'status' => OrderStatus::InProgress,
         'subtotal_halalah' => 5000,
         'discount_halalah' => 0,

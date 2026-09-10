@@ -43,7 +43,7 @@ final class PaylinkCheckoutController extends Controller
             $localized = $checkout->order->locale === 'en';
             $orderUrl = route(
                 $localized ? 'localized.store.orders.show' : 'store.orders.show',
-                [...($localized ? ['locale' => 'en'] : []), 'order' => $checkout->order->public_id],
+                [...($localized ? ['locale' => 'en'] : []), 'order' => $checkout->order->order_number],
                 absolute: false,
             );
 

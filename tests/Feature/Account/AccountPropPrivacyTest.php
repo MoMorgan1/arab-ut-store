@@ -1,5 +1,8 @@
 <?php
 
+use App\Enums\OrderStatus;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\User;
 
 test('account destinations never serialize credential or internal data props', function (string $path): void {
@@ -65,6 +68,65 @@ function forbiddenAccountPropPaths(array $props): array
             }
 
             $walk($child, $childPath);
+        }
+    };
+
+    $walk($props);
+
+    return $found;
+}
+
+test('account destinations never embed the internal order ULID in any string prop', function (): void {
+    $user = User::factory()->create([
+        'phone' => '+201001234567',
+        'phone_verified_at' => now(),
+    ]);
+    $order = Order::factory()->for($user)->create([
+        'order_number' => 'AUT-2099',
+        'status' => OrderStatus::PendingPayment,
+    ]);
+    OrderItem::factory()->for($order)->create();
+
+    $paths = [
+        'overview' => '/my-account',
+        'orders' => '/my-account/orders',
+        'wallet' => '/my-account/wallet',
+        'live order' => "/my-account/orders/{$order->order_number}",
+    ];
+
+    foreach ($paths as $name => $path) {
+        $props = $this->actingAs($user)
+            ->get($path)
+            ->assertOk()
+            ->inertiaPage()['props'];
+
+        expect(orderUlidPropPaths($props))->toBe([], "{$name} ({$path}) leaked an order ULID");
+    }
+});
+
+/**
+ * @param  array<string, mixed>  $props
+ * @return list<string>
+ */
+function orderUlidPropPaths(array $props): array
+{
+    $found = [];
+
+    $walk = function (mixed $value, string $path = 'props') use (&$walk, &$found): void {
+        if (is_string($value)) {
+            if (preg_match('#/orders/[0-9A-HJKMNP-TV-Z]{26}#i', $value) === 1) {
+                $found[] = $path.' => '.$value;
+            }
+
+            return;
+        }
+
+        if (! is_array($value)) {
+            return;
+        }
+
+        foreach ($value as $key => $child) {
+            $walk($child, $path.'.'.(string) $key);
         }
     };
 

@@ -117,7 +117,7 @@ final class ReadWalletLedger
                 'number' => $order->order_number,
                 'url' => route(
                     $locale === 'en' ? 'localized.account.orders.show' : 'account.orders.show',
-                    ['order' => $order->public_id],
+                    ['order' => $order->order_number],
                     absolute: false,
                 ),
             ] : null,

@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Account;
 use App\Enums\ServiceType;
 use App\Http\Controllers\Controller;
 use App\Models\FulfillmentAttachment;
-use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
+use App\Support\PublicHandle\OrderHandle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -20,10 +20,7 @@ final class OrderItemSquadImageController extends Controller
 
         abort_unless($user instanceof User, 404);
 
-        $order = Order::query()
-            ->where('public_id', (string) $request->route('order'))
-            ->where('user_id', $user->id)
-            ->firstOrFail();
+        $order = OrderHandle::resolveForCustomer($user, (string) $request->route('order'));
         $item = OrderItem::query()
             ->where('public_id', (string) $request->route('orderItem'))
             ->where('order_id', $order->id)

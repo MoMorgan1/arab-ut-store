@@ -1866,7 +1866,6 @@ export const sampleAdminOrderRows = [
         id: '01K5ADM1N00000000000000001',
         orderNumber: 'AUT-1001',
         customer: {
-            id: '01K5CUST00000000000000001',
             name: 'Saud Al-Otaibi',
             email: 'saud@example.test',
             phone: '+966500000001',
@@ -1886,7 +1885,6 @@ export const sampleAdminOrderRows = [
         id: '01K5ADM1N00000000000000002',
         orderNumber: 'AUT-1002',
         customer: {
-            id: '01K5CUST00000000000000002',
             name: 'Fahad Al-Harbi',
             email: 'fahad@example.test',
             phone: null,
@@ -1906,7 +1904,6 @@ export const sampleAdminOrderRows = [
         id: '01K5ADM1N00000000000000003',
         orderNumber: 'AUT-1003',
         customer: {
-            id: '01K5CUST00000000000000003',
             name: 'Tariq Al-Ghamdi',
             email: 'tariq@example.test',
             phone: '+966500000003',
@@ -1976,7 +1973,6 @@ export const sampleAdminOrderDetail = {
     completedAt: null,
     cancelledAt: null,
     customer: {
-        id: '01K5CUST00000000000000001',
         number: 'CUS-7K4QXM',
         name: 'Saud Al-Otaibi',
         email: 'saud@example.test',

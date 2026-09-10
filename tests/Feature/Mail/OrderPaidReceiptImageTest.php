@@ -59,3 +59,16 @@ test('coins are drawn from the mail asset, never the storefront WebP', function 
     expect($html)->toContain('/images/mail/ut-coin-mail.png')
         ->and($html)->not->toContain('.webp');
 });
+
+test('the paid receipt links to the order number, never the internal ULID', function (): void {
+    $user = User::factory()->create();
+    $order = Order::factory()->for($user)->create([
+        'order_number' => 'AUT-1043',
+        'locale' => 'ar',
+    ]);
+
+    $html = (string) (new OrderPaidNotification($order->fresh()))->toMail($user)->render();
+
+    expect($html)->toContain('/my-account/orders/AUT-1043')
+        ->and($html)->not->toContain((string) $order->public_id);
+});

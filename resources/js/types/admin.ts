@@ -1851,7 +1851,6 @@ export type AdminSettingsPageProps = {
 };
 
 export type AdminOrderCustomer = {
-    id: string;
     /** The short CUS- number; only the order detail carries it. */
     number?: string | null;
     name: string;

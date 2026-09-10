@@ -6,6 +6,7 @@ use App\Enums\AdminPermission;
 use App\Models\Order;
 use App\Models\StaffAuditLog;
 use App\Models\User;
+use App\Support\PublicHandle\OrderHandle;
 
 final class ReadAdminOrderDetail
 {
@@ -15,11 +16,11 @@ final class ReadAdminOrderDetail
      *     auditLogs: list<StaffAuditLog>|null
      * }|null
      */
-    public function findByPublicId(string $publicId, User $actor): ?array
+    public function findByHandle(string $handle, User $actor): ?array
     {
         /** @var Order|null $order */
         $order = Order::query()
-            ->where('public_id', $publicId)
+            ->where(OrderHandle::column($handle), OrderHandle::value($handle))
             ->with([
                 'user',
                 'items' => fn ($query) => $query->orderBy('id'),

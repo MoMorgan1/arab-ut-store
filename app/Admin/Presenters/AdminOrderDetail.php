@@ -27,7 +27,7 @@ final class AdminOrderDetail
      *     paidAt: ?string,
      *     completedAt: ?string,
      *     cancelledAt: ?string,
-     *     customer: array{id: string, name: string, email: string, phone: ?string},
+     *     customer: array{number: ?string, name: string, email: string, phone: ?string},
      *     money: array{
      *         subtotal: array{amountMinor: string, currency: string},
      *         discount: array{amountMinor: string, currency: string},
@@ -118,8 +118,7 @@ final class AdminOrderDetail
             'completedAt' => self::isoDate($order->getAttribute('completed_at')),
             'cancelledAt' => self::isoDate($order->getAttribute('cancelled_at')),
             'customer' => [
-                'id' => (string) $customer?->public_id,
-                'number' => $customer?->customer_number,
+                'number' => $customer?->customer_number !== null ? (string) $customer->customer_number : null,
                 'name' => trim((string) $customer?->first_name.' '.(string) $customer?->last_name),
                 'email' => (string) $customer?->email,
                 'phone' => $customer?->phone !== null ? (string) $customer->phone : null,

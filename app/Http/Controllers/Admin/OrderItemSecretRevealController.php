@@ -16,7 +16,7 @@ final class OrderItemSecretRevealController extends Controller
 
     public function __invoke(
         RevealOrderItemSecretRequest $request,
-        string $publicId,
+        string $order,
         string $itemPublicId,
     ): JsonResponse {
         $actor = $request->user();
@@ -24,7 +24,7 @@ final class OrderItemSecretRevealController extends Controller
 
         $payload = $this->action->execute(
             actor: $actor,
-            orderPublicId: $publicId,
+            orderHandle: $order,
             itemPublicId: $itemPublicId,
             purpose: $request->purpose(),
             caseReference: $request->caseReference(),

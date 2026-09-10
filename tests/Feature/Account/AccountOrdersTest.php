@@ -160,7 +160,7 @@ test('live order detail exposes current safe item progress and payment recovery 
     ]);
 
     $response = $this->actingAs($owner)
-        ->get('/en/my-account/orders/'.$order->public_id)
+        ->get('/en/my-account/orders/'.$order->order_number)
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('account/live-order')
@@ -171,8 +171,8 @@ test('live order detail exposes current safe item progress and payment recovery 
             ->where('order.total', ['amountMinor' => '7000', 'currency' => 'SAR'])
             ->where('order.discount', ['amountMinor' => '500', 'currency' => 'SAR'])
             ->where('order.refreshable', true)
-            ->where('order.paymentStartUrl', '/en/orders/'.$order->public_id.'/payments/paylink')
-            ->where('order.cancelUrl', '/en/my-account/orders/'.$order->public_id.'/cancel')
+            ->where('order.paymentStartUrl', '/en/orders/'.$order->order_number.'/payments/paylink')
+            ->where('order.cancelUrl', '/en/my-account/orders/'.$order->order_number.'/cancel')
             ->has('order.items', 1)
             // An SBC line without product media shows the storefront SBC artwork,
             // never an empty box.
@@ -191,7 +191,7 @@ test('live order detail exposes current safe item progress and payment recovery 
         ->not->toContain('masked_summary');
 
     $this->actingAs($other)
-        ->get('/my-account/orders/'.$order->public_id)
+        ->get('/my-account/orders/'.$order->order_number)
         ->assertNotFound();
 });
 
@@ -200,7 +200,7 @@ test('terminal live orders cannot expose operational refresh or payment actions'
     $order = ordersTestOrder($user, 8, OrderStatus::Completed);
 
     $this->actingAs($user)
-        ->get('/my-account/orders/'.$order->public_id)
+        ->get('/my-account/orders/'.$order->order_number)
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('order.refreshable', false)
@@ -213,12 +213,12 @@ test('legacy direct order URLs redirect their owner to the canonical locale', fu
     $order = ordersTestOrder($owner, 9);
 
     $this->actingAs($owner)
-        ->get('/orders/'.$order->public_id)
-        ->assertRedirect('/my-account/orders/'.$order->public_id);
+        ->get('/orders/'.$order->order_number)
+        ->assertRedirect('/my-account/orders/'.$order->order_number);
 
     $this->actingAs($owner)
-        ->get('/en/orders/'.$order->public_id)
-        ->assertRedirect('/en/my-account/orders/'.$order->public_id);
+        ->get('/en/orders/'.$order->order_number)
+        ->assertRedirect('/en/my-account/orders/'.$order->order_number);
 });
 
 test('legacy direct order URLs do not reveal another customers order', function (): void {
@@ -227,7 +227,7 @@ test('legacy direct order URLs do not reveal another customers order', function 
     $order = ordersTestOrder($owner, 10);
 
     $this->actingAs($other)
-        ->get('/orders/'.$order->public_id)
+        ->get('/orders/'.$order->order_number)
         ->assertNotFound();
 });
 
@@ -246,14 +246,14 @@ test('a paused order tells the customer why, in their own language', function ()
     ]);
 
     $this->actingAs($owner)
-        ->get('/my-account/orders/'.$order->public_id)
+        ->get('/my-account/orders/'.$order->order_number)
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('order.status', 'waiting_for_customer')
             ->where('order.statusNote', 'رصيد الكوينز غير كافٍ.'));
 
     $this->actingAs($owner)
-        ->get('/en/my-account/orders/'.$order->public_id)
+        ->get('/en/my-account/orders/'.$order->order_number)
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('order.statusNote', 'Coin balance is too low.'));
@@ -284,7 +284,7 @@ test('resuming an order clears the explanation instead of leaving it stale', fun
     ]);
 
     $this->actingAs($owner)
-        ->get('/my-account/orders/'.$order->public_id)
+        ->get('/my-account/orders/'.$order->order_number)
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('order.status', 'in_progress')
@@ -299,12 +299,12 @@ test('the customer is shown four states where staff track seven', function (): v
     $refunded = ordersTestOrder($owner, 14, OrderStatus::Refunded);
 
     $this->actingAs($owner)
-        ->get('/my-account/orders/'.$received->public_id)
+        ->get('/my-account/orders/'.$received->order_number)
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('order.status', 'in_progress'));
 
     $this->actingAs($owner)
-        ->get('/my-account/orders/'.$refunded->public_id)
+        ->get('/my-account/orders/'.$refunded->order_number)
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('order.status', 'cancelled'));
 
@@ -328,7 +328,7 @@ test('a refunded order tells the customer the money came back, and where', funct
     ]);
 
     $this->actingAs($owner)
-        ->get('/my-account/orders/'.$order->public_id)
+        ->get('/my-account/orders/'.$order->order_number)
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('order.status', 'cancelled')
@@ -336,7 +336,7 @@ test('a refunded order tells the customer the money came back, and where', funct
                 && str_contains($note, '20.00')));
 
     $this->actingAs($owner)
-        ->get('/en/my-account/orders/'.$order->public_id)
+        ->get('/en/my-account/orders/'.$order->order_number)
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('order.statusNote', fn (string $note): bool => str_contains($note, 'wallet')

@@ -163,7 +163,7 @@ describe('AdminReviewsPage', () => {
         expect(within(table).getByText('Fahad')).toBeVisible();
         expect(
             within(table).getByRole('link', { name: 'UT-00000101' }),
-        ).toHaveAttribute('href', '/admin/orders/order-101');
+        ).toHaveAttribute('href', '/admin/orders/UT-00000101');
     });
 
     it('labels the storefront state and source of each row', () => {

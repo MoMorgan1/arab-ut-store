@@ -28,7 +28,7 @@ function OrderNumberCell({ row }: { row: { original: AdminOrderRow } }) {
     const { url } = usePage();
     const isLocalized = url.startsWith('/en/admin');
     const basePath = isLocalized ? '/en/admin/orders' : '/admin/orders';
-    const detailUrl = `${basePath}/${row.original.id}`;
+    const detailUrl = `${basePath}/${row.original.orderNumber}`;
 
     return (
         <div className="flex max-w-44 flex-col gap-0.5">
@@ -38,12 +38,6 @@ function OrderNumberCell({ row }: { row: { original: AdminOrderRow } }) {
             >
                 <bdi>{row.original.orderNumber}</bdi>
             </Link>
-            <span
-                className="truncate text-xs text-muted-foreground"
-                title={row.original.id}
-            >
-                <bdi>{row.original.id}</bdi>
-            </span>
         </div>
     );
 }

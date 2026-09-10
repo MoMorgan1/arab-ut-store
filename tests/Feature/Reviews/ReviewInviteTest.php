@@ -49,7 +49,7 @@ function completeOrder(User $actor, Order $order): Order
 {
     return app(TransitionAdminOrder::class)->execute(
         actor: $actor,
-        orderPublicId: (string) $order->public_id,
+        orderHandle: (string) $order->order_number,
         targetStatus: OrderStatus::Completed,
         expectedStatus: $order->status,
     );
@@ -114,7 +114,7 @@ it('sends the invitation in the order locale with a link to the order', function
         ['number' => $order->order_number],
         $locale,
     ))
-        ->and($mail->viewData['orderUrl'])->toEndWith($path.$order->public_id)
+        ->and($mail->viewData['orderUrl'])->toEndWith($path.$order->order_number)
         ->and($mail->viewData['number'])->toBe((string) $order->order_number)
         ->and($mail->markdown)->toBe('mail.review-invite');
 })->with([
@@ -130,5 +130,5 @@ it('renders the invitation mail with the order number and the review button', fu
 
     expect($rendered)->toContain((string) $order->order_number)
         ->and($rendered)->toContain(trans('mail.review_invite_action', [], 'ar'))
-        ->and($rendered)->toContain((string) $order->public_id);
+        ->and($rendered)->toContain('/my-account/orders/'.$order->order_number);
 });

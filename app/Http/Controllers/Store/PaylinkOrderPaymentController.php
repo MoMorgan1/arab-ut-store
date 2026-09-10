@@ -9,9 +9,9 @@ use App\Exceptions\Checkout\CheckoutUnavailable;
 use App\Exceptions\Payments\PaymentConfigurationException;
 use App\Exceptions\Payments\PaymentGatewayException;
 use App\Http\Controllers\Controller;
-use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
+use App\Support\PublicHandle\OrderHandle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -19,13 +19,15 @@ final class PaylinkOrderPaymentController extends Controller
 {
     public function __invoke(
         Request $request,
-        Order $order,
+        string $order,
         StartPaylinkPayment $startPayment,
         ReconcilePaylinkPayment $reconcile,
     ): JsonResponse {
         $user = $request->user();
 
-        abort_unless($user instanceof User && $order->user_id === $user->id, 404);
+        abort_unless($user instanceof User, 404);
+
+        $order = OrderHandle::resolveForCustomer($user, $order);
 
         $payment = $order->payments()
             ->where('provider', 'paylink')
@@ -49,7 +51,7 @@ final class PaylinkOrderPaymentController extends Controller
         $localized = $order->locale === 'en';
         $orderUrl = route(
             $localized ? 'localized.store.orders.show' : 'store.orders.show',
-            [...($localized ? ['locale' => 'en'] : []), 'order' => $order->public_id],
+            [...($localized ? ['locale' => 'en'] : []), 'order' => (string) $order->getAttribute('order_number')],
             absolute: false,
         );
 

@@ -10,6 +10,7 @@ use App\Models\OrderItem;
 use App\Models\OrderItemSecret;
 use App\Models\SecretAccessLog;
 use App\Models\User;
+use App\Support\PublicHandle\OrderHandle;
 use Carbon\CarbonInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -30,7 +31,7 @@ final readonly class RevealOrderItemSecret
      */
     public function execute(
         User $actor,
-        string $orderPublicId,
+        string $orderHandle,
         string $itemPublicId,
         string $purpose,
         ?string $caseReference,
@@ -44,7 +45,7 @@ final readonly class RevealOrderItemSecret
 
         /** @var Order $order */
         $order = Order::query()
-            ->where('public_id', $orderPublicId)
+            ->where(OrderHandle::column($orderHandle), OrderHandle::value($orderHandle))
             ->firstOrFail();
 
         /** @var OrderItem $item */

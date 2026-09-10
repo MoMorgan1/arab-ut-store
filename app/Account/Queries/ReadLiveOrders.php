@@ -86,7 +86,6 @@ final readonly class ReadLiveOrders
             $query->where(function ($orderQuery) use ($pattern): void {
                 $orderQuery
                     ->where('orders.order_number', 'LIKE', $pattern)
-                    ->orWhere('orders.public_id', 'LIKE', $pattern)
                     ->orWhereHas('items', function ($itemQuery) use ($pattern): void {
                         $itemQuery
                             ->where('name_ar', 'LIKE', $pattern)

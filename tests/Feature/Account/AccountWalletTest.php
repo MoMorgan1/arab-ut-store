@@ -94,7 +94,7 @@ test('the wallet ledger is owner scoped ordered by newest sequence and exact for
             ->where('wallet.entries.0.effect', 'neutral')
             ->where('wallet.entries.0.amount.amountMinor', '9007199254740991')
             ->where('wallet.entries.0.order.number', 'UT-00000071')
-            ->where('wallet.entries.0.order.url', '/en/my-account/orders/'.$order->public_id)
+            ->where('wallet.entries.0.order.url', '/en/my-account/orders/'.$order->order_number)
             ->where('wallet.entries.9.sequence', 2));
 
     $payload = json_encode($response->inertiaPage(), JSON_THROW_ON_ERROR);
