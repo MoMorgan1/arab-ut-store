@@ -26,6 +26,7 @@ final class ReadWalletLedger
             return ['wallet' => [
                 'exists' => false,
                 'balance' => null,
+                'lifetimeCashback' => AccountMoney::fromMinor(0, 'SAR'),
                 'entries' => [],
                 'pagination' => $this->emptyPagination(),
             ]];
@@ -70,6 +71,9 @@ final class ReadWalletLedger
         return ['wallet' => [
             'exists' => true,
             'balance' => AccountMoney::fromMinor($balance, 'SAR'),
+            // Earned over the account's life, net of reversals; shown whether
+            // or not a loyalty tier is active today.
+            'lifetimeCashback' => AccountMoney::fromMinor(max(0, $cashbackHalalah - $reversalHalalah), 'SAR'),
             'entries' => $paginator->getCollection()
                 ->map(fn (WalletEntry $entry): array => $this->present($entry, $locale))
                 ->values()

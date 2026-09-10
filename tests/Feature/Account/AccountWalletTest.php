@@ -24,6 +24,7 @@ test('the bilingual wallet destinations render an explicit no-wallet state', fun
             ->where('locale', $locale)
             ->where('wallet.exists', false)
             ->where('wallet.balance', null)
+            ->where('wallet.lifetimeCashback', ['amountMinor' => '0', 'currency' => 'SAR'])
             ->where('wallet.entries', [])
             ->where('wallet.pagination.total', 0)
             ->where('accountNavigation', fn ($items): bool => collect($items)->pluck('key')->all() === [

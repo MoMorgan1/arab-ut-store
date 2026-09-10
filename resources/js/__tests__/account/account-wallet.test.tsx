@@ -98,6 +98,7 @@ it('renders balance as 0.00 and empty state when customer has no wallet account 
         wallet: {
             exists: false,
             balance: null,
+            lifetimeCashback: { amountMinor: '0', currency: 'SAR' },
             entries: [],
             pagination: pagination(0),
         },
@@ -117,6 +118,7 @@ it('renders balance as 0.00 and empty state when customer has no wallet account 
         wallet: {
             exists: true,
             balance: { amountMinor: '0', currency: 'SAR' },
+            lifetimeCashback: { amountMinor: '0', currency: 'SAR' },
             entries: [],
             pagination: pagination(0),
         },
@@ -186,6 +188,7 @@ function walletProps() {
                 amountMinor: '9007199254740991',
                 currency: 'SAR',
             },
+            lifetimeCashback: { amountMinor: '4000', currency: 'SAR' },
             entries: [
                 entry(5, 'cashback', 'credit', '2500'),
                 entry(4, 'cashback_reversal', 'debit', '1000'),

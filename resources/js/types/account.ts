@@ -47,7 +47,7 @@ export type AccountOrder = {
     total: AccountMoney;
     walletPayment?: AccountMoney | null;
     detailUrl: string;
-    action?: { type: AccountOrderAction };
+    action: { type: AccountOrderAction };
 };
 
 export type AccountNavigationItem = {
@@ -511,6 +511,8 @@ export type AccountWalletPageProps = AccountPageShellProps & {
         exists: boolean;
         status?: WalletStatus;
         balance: AccountMoney | null;
+        /** Cashback earned over the account's life, net of reversals. */
+        lifetimeCashback: AccountMoney;
         entries: AccountWalletEntry[];
         pagination: {
             currentPage: number;

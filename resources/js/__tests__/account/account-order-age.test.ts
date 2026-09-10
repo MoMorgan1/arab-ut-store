@@ -25,5 +25,7 @@ describe('formatOrderAge', () => {
 
     it('never says a future order was placed later', () => {
         expect(formatOrderAge('2026-09-10T11:59:50Z', 'en', now)).toBe('now');
+        // A client clock behind the server: still "now", never "in 2 minutes".
+        expect(formatOrderAge('2026-09-10T12:02:00Z', 'en', now)).toBe('now');
     });
 });

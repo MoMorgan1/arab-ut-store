@@ -158,6 +158,7 @@ const mockPage = vi.hoisted(() => ({
                 items: [{ name: 'خدمة SBC' }],
                 total: { amountMinor: '98765', currency: 'SAR' },
                 detailUrl: '/orders/01RECENT',
+                action: { type: 'view_order' },
             },
         ],
         storeShell: {
@@ -356,6 +357,7 @@ it('never duplicates activeOrder inside recentOrders even if present in the rece
             items: [{ name: 'خدمة كوينز FC 27' }],
             total: { amountMinor: '12999', currency: 'SAR' },
             detailUrl: '/orders/01ACTIVE',
+            action: { type: 'view_order' },
         },
         {
             id: '01RECENT',
@@ -369,6 +371,7 @@ it('never duplicates activeOrder inside recentOrders even if present in the rece
             items: [{ name: 'خدمة SBC' }],
             total: { amountMinor: '98765', currency: 'SAR' },
             detailUrl: '/orders/01RECENT',
+            action: { type: 'view_order' },
         },
     ];
 

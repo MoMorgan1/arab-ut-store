@@ -5,6 +5,7 @@ namespace App\Account\Queries;
 use App\Account\Presenters\AccountMoney;
 use App\Account\Presenters\LiveOrderCard;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\WalletAccount;
@@ -86,6 +87,8 @@ final readonly class ReadAccountOverview
             ->with(['items' => fn ($query) => $query
                 ->select(['id', 'order_id', 'name_ar', 'name_en', 'service_type', 'status'])
                 ->orderBy('id')])
+            ->withExists(['payments as has_failed_payment' => fn ($query) => $query
+                ->where('status', PaymentStatus::Failed->value)])
             ->orderByRaw('COALESCE(orders.placed_at, orders.created_at) DESC')
             ->orderByDesc('orders.public_id')
             ->limit(3)
