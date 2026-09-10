@@ -395,7 +395,10 @@ it('renders a payment request, not an invoice, while payment is pending', () => 
     expect(invoice.getByText('Paid from wallet')).toBeVisible();
     expect(invoice.queryByText(/Total paid/)).not.toBeInTheDocument();
     expect(invoice.queryByText(/Payment method/)).not.toBeInTheDocument();
-    expect(invoice.queryByText(/Discount/)).not.toBeInTheDocument();
+    // The request adds up: subtotal, the discount and the wallet part, then
+    // what is still due.
+    expect(invoice.getByText('Subtotal')).toBeVisible();
+    expect(invoice.getByText('Discount')).toBeVisible();
     expect(invoice.queryByText(/Invoice ·/)).not.toBeInTheDocument();
     expect(invoice.queryByText(/FL-621205220/)).not.toBeInTheDocument();
     expect(container.querySelector('.account-order-track')).toBeNull();
@@ -441,6 +444,29 @@ it('cancels an unpaid order only after the customer confirms', () => {
         {},
         expect.objectContaining({ preserveScroll: true }),
     );
+    // While the cancel is in flight there is no way to start a payment.
+    expect(
+        screen.queryByRole('button', { name: /Complete payment/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancelling…' })).toBeDisabled();
+});
+
+it('tells the customer when a cancel was refused, with the order reloaded', () => {
+    page.url = '/en/my-account/orders/01ORDER1';
+    page.props = {
+        ...shellProps(),
+        status: 'order-cancel-refused',
+        order: { ...liveOrder(null), status: 'received' },
+    };
+
+    render(<AccountLiveOrder />);
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+        'The order could not be cancelled: it was paid or already closed.',
+    );
+    expect(
+        screen.queryByRole('button', { name: 'Cancel order' }),
+    ).not.toBeInTheDocument();
 });
 
 it('offers a browse services CTA from the orders empty state', () => {
@@ -909,6 +935,12 @@ function shellProps() {
                 cancel_yes: 'Yes, cancel it',
                 cancel_no: 'Keep it',
                 cancelling: 'Cancelling…',
+                cancel_refused:
+                    'The order could not be cancelled: it was paid or already closed.',
+                cancelled_notice:
+                    'The order was cancelled and any balance you used is back in your wallet.',
+                paylink_unavailable:
+                    'The payment gateway cannot be reached right now. Try again in a moment.',
                 team_note_title: 'A note from the team',
                 closed_title: 'Order closed',
                 refreshing: 'Refreshing…',

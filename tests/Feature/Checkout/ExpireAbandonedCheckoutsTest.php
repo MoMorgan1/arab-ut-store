@@ -222,14 +222,27 @@ test('an order Paylink cannot be asked about is left alone for the next run', fu
         ->and($order->fresh()->status)->toBe(OrderStatus::PendingPayment);
 });
 
-test('a gateway that refuses to close the invoice does not undo the local cancellation', function (): void {
+test('a gateway that refuses to close the invoice leaves the order pending, so it can never be paid after cancellation', function (): void {
     $user = User::factory()->create();
     $coupon = abandonedCheckoutCoupon();
     $order = pendingOrderFor($user, $coupon, ExpireAbandonedCheckouts::GRACE_HOURS + 1);
-    gatewayInvoiceFor($order, 'Pending', cancelSucceeds: false);
+    $payment = gatewayInvoiceFor($order, 'Pending', cancelSucceeds: false);
 
-    expect(app(ExpireAbandonedCheckouts::class)->execute())->toBe(1)
-        ->and($order->fresh()->status)->toBe(OrderStatus::Cancelled);
+    expect(app(ExpireAbandonedCheckouts::class)->execute())->toBe(0)
+        ->and($order->fresh()->status)->toBe(OrderStatus::PendingPayment)
+        ->and($payment->fresh()->status)->toBe(PaymentStatus::Pending);
+});
+
+test('a Paylink invoice still inside the grace period is not even asked about', function (): void {
+    $user = User::factory()->create();
+    $coupon = abandonedCheckoutCoupon();
+    $order = pendingOrderFor($user, $coupon, ExpireAbandonedCheckouts::GRACE_HOURS - 1);
+    gatewayInvoiceFor($order, 'Pending');
+
+    expect(app(ExpireAbandonedCheckouts::class)->execute())->toBe(0)
+        ->and($order->fresh()->status)->toBe(OrderStatus::PendingPayment);
+
+    Http::assertNothingSent();
 });
 
 test('cancelling a part-wallet checkout gives the customer their balance back', function (): void {

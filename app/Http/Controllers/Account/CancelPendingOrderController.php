@@ -27,11 +27,11 @@ final class CancelPendingOrderController extends Controller
         try {
             $cancel->execute($user, $model);
         } catch (CheckoutUnavailable) {
-            // Paid meanwhile, already closed, or Paylink could not confirm it is
-            // still unpaid: the page reloads and shows whichever it is.
-            abort(409);
+            // Paid meanwhile, or already closed: the page reloads with the
+            // order's real state and says why nothing was cancelled.
+            return back()->with('status', 'order-cancel-refused');
         } catch (PaymentConfigurationException|PaymentGatewayException) {
-            abort(503);
+            return back()->with('status', 'paylink-unavailable');
         }
 
         return back()->with('status', 'order-cancelled');

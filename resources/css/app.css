@@ -7663,6 +7663,22 @@ html.admin-document {
     font-size: 0.82rem;
 }
 
+.account-live-order__flash {
+    margin: 0;
+    border: 1px solid rgb(140 227 173 / 30%);
+    border-radius: 0.9rem;
+    background: rgb(140 227 173 / 8%);
+    padding: 0.75rem 0.9rem;
+    color: var(--arabut-ink);
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.account-live-order__flash--error {
+    border-color: rgb(255 180 169 / 30%);
+    background: rgb(255 180 169 / 8%);
+}
+
 .account-live-order__actions {
     display: grid;
     gap: 0.5rem;
