@@ -2,22 +2,19 @@
     "version": "delegate-fleet.v1",
     "lanes": {
         "feature": {
-            "implementer": "agy",
-            "model": "gemini-3.8-flash-high"
+            "implementer": "opencode",
+            "model": "deepseek/deepseek-flash",
+            "variant": "high"
+        },
+        "review": {
+            "implementer": "opencode",
+            "model": "deepseek/deepseek-flash",
+            "variant": "max",
+            "readOnly": true
         },
         "fallback": {
-            "implementer": "opencode",
-            "model": "opencode-go/glm-5.3-flash"
-        },
-        "fast": {
-            "implementer": "codex",
-            "model": "gpt-5.6-luna",
-            "effort": "xhigh"
-        },
-        "tests": {
-            "implementer": "codex",
-            "model": "gpt-5.6-luna",
-            "effort": "max"
+            "implementer": "agy",
+            "model": "gemini-3.8-flash-high"
         }
     }
 }
