@@ -250,7 +250,6 @@ return [
         'add_email_prompt_dismiss' => 'إغلاق الإشعار',
     ],
     'security' => [
-        'title' => 'الأمان',
         'card_title' => 'كلمة المرور',
         'state_set' => 'مضبوطة',
         'state_missing' => 'لم تُنشأ بعد',
@@ -261,8 +260,8 @@ return [
         'change_password' => 'تغيير كلمة المرور',
         'set_password' => 'إنشاء كلمة مرور',
         'password_changed' => 'تم تحديث كلمة المرور بأمان.',
-        'reset_link_button' => 'إرسال رابط تغيير كلمة المرور',
         'reset_link_sent' => 'أرسلنا رابط تغيير كلمة المرور إلى بريدك.',
+        'reset_link_needs_email' => 'وثّق بريدك أولًا.',
     ],
     'support' => [
         'title' => 'الدعم',
@@ -294,14 +293,6 @@ return [
         'provide_details' => 'استكمال البيانات',
         'retry' => 'إعادة المحاولة',
         'back_to_account' => 'العودة إلى حسابي',
-    ],
-    'verification' => [
-        'verified' => 'موثّق',
-        'unverified' => 'غير موثّق',
-        'pending' => 'بانتظار التوثيق',
-        'send_code' => 'إرسال رمز التحقق',
-        'verify' => 'تحقق',
-        'code' => 'رمز التحقق',
     ],
     'errors' => [
         'section_title' => 'تعذر تحميل هذا الجزء',

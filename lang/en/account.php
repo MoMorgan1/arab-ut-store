@@ -250,7 +250,6 @@ return [
         'add_email_prompt_dismiss' => 'Dismiss prompt',
     ],
     'security' => [
-        'title' => 'Security',
         'card_title' => 'Password',
         'state_set' => 'Set',
         'state_missing' => 'Not created yet',
@@ -261,8 +260,8 @@ return [
         'change_password' => 'Change password',
         'set_password' => 'Set a password',
         'password_changed' => 'Your password was updated securely.',
-        'reset_link_button' => 'Email me a password link',
         'reset_link_sent' => 'We emailed you a password-change link.',
+        'reset_link_needs_email' => 'Verify your email first.',
     ],
     'support' => [
         'title' => 'Support',
@@ -294,14 +293,6 @@ return [
         'provide_details' => 'Provide details',
         'retry' => 'Try again',
         'back_to_account' => 'Back to My Account',
-    ],
-    'verification' => [
-        'verified' => 'Verified',
-        'unverified' => 'Not verified',
-        'pending' => 'Verification pending',
-        'send_code' => 'Send verification code',
-        'verify' => 'Verify',
-        'code' => 'Verification code',
     ],
     'errors' => [
         'section_title' => 'This section could not be loaded',

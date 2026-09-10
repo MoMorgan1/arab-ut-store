@@ -24,10 +24,15 @@ final class VerifySensitiveIdentityAction
             return;
         }
 
-        $confirmedAt = $request->session()->get('auth.identity_confirmed_at');
-
-        if (! is_int($confirmedAt) || $confirmedAt < now()->subMinutes(10)->timestamp) {
+        if (! $this->recentlyConfirmed($request)) {
             throw new AuthorizationException('Recent identity verification is required.');
         }
+    }
+
+    public function recentlyConfirmed(Request $request): bool
+    {
+        $confirmedAt = $request->session()->get('auth.identity_confirmed_at');
+
+        return is_int($confirmedAt) && $confirmedAt >= now()->subMinutes(10)->timestamp;
     }
 }

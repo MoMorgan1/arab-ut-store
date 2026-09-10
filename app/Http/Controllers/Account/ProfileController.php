@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Account;
 
+use App\Account\Actions\VerifySensitiveIdentityAction;
 use App\Account\Presenters\AccountShell;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Account\ProfileUpdateRequest;
@@ -16,6 +17,7 @@ final class ProfileController extends Controller
 {
     public function __construct(
         private readonly AccountShell $shell,
+        private readonly VerifySensitiveIdentityAction $sensitiveIdentity,
     ) {}
 
     public function show(Request $request): Response
@@ -30,6 +32,7 @@ final class ProfileController extends Controller
             ->where('expires_at', '>', now())
             ->get()
             ->keyBy('kind');
+        $hasPassword = is_string($user->password) && $user->password !== '';
 
         return Inertia::render('account/profile', [
             ...$this->shell->for($user, $locale),
@@ -51,7 +54,8 @@ final class ProfileController extends Controller
             ],
             'security' => [
                 'emailVerified' => $user->email_verified_at !== null,
-                'hasPassword' => $user->password !== null,
+                'hasPassword' => $hasPassword,
+                'canSetPassword' => ! $hasPassword && $this->sensitiveIdentity->recentlyConfirmed($request),
             ],
             'securityActions' => [
                 'resetLinkUrl' => $this->route('account.security.password.link', $locale),

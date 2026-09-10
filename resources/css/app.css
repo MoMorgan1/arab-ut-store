@@ -14704,16 +14704,6 @@ html.admin-document {
         text-align: start;
     }
 
-    .account-profile-contact__summary {
-        grid-template-columns: auto minmax(0, 1fr);
-    }
-
-    .account-profile-contact__summary > strong,
-    .account-profile-contact__edit {
-        grid-column: 2;
-        justify-self: start;
-    }
-
     .account-security-recovery {
         grid-template-columns: auto minmax(0, 1fr);
     }

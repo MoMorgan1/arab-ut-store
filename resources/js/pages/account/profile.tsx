@@ -246,12 +246,14 @@ export default function AccountProfile() {
                             data-testid="trigger-add-email"
                             onClick={() => {
                                 setEditingContact('email');
-                                document
-                                    .getElementById('new_email')
-                                    ?.scrollIntoView({
-                                        behavior: 'smooth',
-                                        block: 'center',
-                                    });
+                                window.requestAnimationFrame(() =>
+                                    document
+                                        .getElementById('new_email')
+                                        ?.scrollIntoView({
+                                            behavior: 'smooth',
+                                            block: 'center',
+                                        }),
+                                );
                             }}
                             type="button"
                         >
@@ -795,28 +797,32 @@ export default function AccountProfile() {
                                             : props.accountUi.security
                                                   .state_missing}
                                     </span>
-                                    <button
-                                        aria-expanded={isEditingPassword}
-                                        className="account-profile-row__btn"
-                                        onClick={() => {
-                                            if (isEditingPassword) {
-                                                setIsEditingPassword(false);
-                                                passwordForm.reset();
-                                            } else {
-                                                setIsEditingPassword(true);
-                                                setPasswordSuccess(false);
-                                            }
-                                        }}
-                                        type="button"
-                                    >
-                                        {isEditingPassword
-                                            ? props.accountUi.profile
-                                                  .cancel_edit
-                                            : props.security.hasPassword
-                                              ? props.accountUi.profile.change
-                                              : props.accountUi.security
-                                                    .set_password}
-                                    </button>
+                                    {props.security.hasPassword ||
+                                    props.security.canSetPassword ? (
+                                        <button
+                                            aria-expanded={isEditingPassword}
+                                            className="account-profile-row__btn"
+                                            onClick={() => {
+                                                if (isEditingPassword) {
+                                                    setIsEditingPassword(false);
+                                                    passwordForm.reset();
+                                                } else {
+                                                    setIsEditingPassword(true);
+                                                    setPasswordSuccess(false);
+                                                }
+                                            }}
+                                            type="button"
+                                        >
+                                            {isEditingPassword
+                                                ? props.accountUi.profile
+                                                      .cancel_edit
+                                                : props.security.hasPassword
+                                                  ? props.accountUi.profile
+                                                        .change
+                                                  : props.accountUi.security
+                                                        .set_password}
+                                        </button>
+                                    ) : null}
                                 </div>
                             </div>
 

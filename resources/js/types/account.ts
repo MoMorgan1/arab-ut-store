@@ -312,7 +312,6 @@ export type AccountTranslations = {
         add_email_prompt_dismiss?: string;
     };
     security: {
-        title: string;
         card_title: string;
         state_set: string;
         state_missing: string;
@@ -323,7 +322,6 @@ export type AccountTranslations = {
         change_password: string;
         set_password: string;
         password_changed: string;
-        reset_link_button: string;
         reset_link_sent: string;
     };
     support: {
@@ -338,14 +336,6 @@ export type AccountTranslations = {
         order_context: string;
         unavailable_title: string;
         unavailable_description: string;
-    };
-    verification: {
-        verified: string;
-        unverified: string;
-        pending: string;
-        send_code: string;
-        verify: string;
-        code: string;
     };
     statuses: Record<AccountOrderStatus, string>;
     actions: {
@@ -556,6 +546,7 @@ export type AccountProfilePageProps = AccountPageShellProps & {
     security: {
         emailVerified: boolean;
         hasPassword: boolean;
+        canSetPassword: boolean;
     };
     securityActions: {
         resetLinkUrl: string;

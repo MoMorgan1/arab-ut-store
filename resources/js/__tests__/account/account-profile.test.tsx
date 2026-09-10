@@ -205,6 +205,7 @@ it('shows state_set and change for a password account, and state_missing and set
         security: {
             ...noPasswordProps.security,
             hasPassword: false,
+            canSetPassword: true,
         },
     };
 
@@ -402,7 +403,6 @@ function profileProps() {
                 add_email_prompt_dismiss: 'Dismiss prompt',
             },
             security: {
-                title: 'Security',
                 card_title: 'Password',
                 state_set: 'Set',
                 state_missing: 'Not created yet',
@@ -413,7 +413,6 @@ function profileProps() {
                 change_password: 'Change password',
                 set_password: 'Set a password',
                 password_changed: 'Your password was updated securely.',
-                reset_link_button: 'Email me a password link',
                 reset_link_sent: 'We emailed you a password-change link.',
             },
             support: {
@@ -428,14 +427,6 @@ function profileProps() {
                 order_context: 'Regarding order',
                 unavailable_title: 'Support unavailable',
                 unavailable_description: 'Contact options are not configured.',
-            },
-            verification: {
-                verified: 'Verified',
-                unverified: 'Not verified',
-                pending: 'Verification pending',
-                send_code: 'Send code',
-                verify: 'Verify',
-                code: 'Verification code',
             },
             actions: { retry: 'Try again' },
         },
@@ -458,6 +449,7 @@ function profileProps() {
         security: {
             emailVerified: true,
             hasPassword: true,
+            canSetPassword: false,
         },
         securityActions: {
             resetLinkUrl: '/en/my-account/security/password-link',
