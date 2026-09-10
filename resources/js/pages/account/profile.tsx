@@ -9,6 +9,7 @@ import PhoneNumberField from '@/components/phone-number-field';
 import { useResendCountdown } from '@/hooks/use-resend-countdown';
 import MyAccountLayout from '@/layouts/my-account-layout';
 import { splitE164 } from '@/lib/phone-country-codes';
+import { cn } from '@/lib/utils';
 import type { AccountProfilePageProps } from '@/types/account';
 
 function renderWithNumber(template: string, number: string) {
@@ -375,11 +376,11 @@ export default function AccountProfile() {
                             <div className="account-profile-row">
                                 <span
                                     aria-hidden="true"
-                                    className={`account-profile-row__icon${
-                                        props.profile.phone.value
-                                            ? 'account-profile-row__icon--whatsapp'
-                                            : ''
-                                    }`}
+                                    className={cn(
+                                        'account-profile-row__icon',
+                                        props.profile.phone.value &&
+                                            'account-profile-row__icon--ok',
+                                    )}
                                 >
                                     <AppIcon name="whatsapp" />
                                 </span>
@@ -647,10 +648,19 @@ export default function AccountProfile() {
                                     <span className="account-profile-row__label">
                                         {props.accountUi.profile.email}
                                     </span>
-                                    <strong className="account-profile-row__value account-profile-row__value--ltr">
-                                        {props.profile.email.value ??
-                                            props.accountUi.profile.not_set}
-                                    </strong>
+                                    {/* Only a real address is an LTR run. The
+                                        "not added" placeholder is Arabic prose
+                                        and must align with the RTL row, the way
+                                        the number row's placeholder does. */}
+                                    {hasEmail ? (
+                                        <strong className="account-profile-row__value account-profile-row__value--ltr">
+                                            {props.profile.email.value}
+                                        </strong>
+                                    ) : (
+                                        <strong className="account-profile-row__value">
+                                            {props.accountUi.profile.not_set}
+                                        </strong>
+                                    )}
                                 </div>
 
                                 <div className="account-profile-row__end">
