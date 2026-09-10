@@ -88,9 +88,9 @@ final readonly class AdminCouponDetailPage
             'categories' => $this->categories(),
             'products' => $this->products(),
             'serviceTypes' => $serviceOptions,
-            'updateUrl' => route($prefix.'marketing.coupons.update', ['publicId' => $coupon['id']], absolute: false),
-            'statusUrl' => route($prefix.'marketing.coupons.status.store', ['publicId' => $coupon['id']], absolute: false),
-            'duplicateUrl' => route($prefix.'marketing.coupons.duplicate', ['publicId' => $coupon['id']], absolute: false),
+            'updateUrl' => route($prefix.'marketing.coupons.update', ['coupon' => $coupon['code']], absolute: false),
+            'statusUrl' => route($prefix.'marketing.coupons.status.store', ['coupon' => $coupon['code']], absolute: false),
+            'duplicateUrl' => route($prefix.'marketing.coupons.duplicate', ['coupon' => $coupon['code']], absolute: false),
             'listUrl' => route($prefix.'marketing.coupons', absolute: false),
         ];
     }

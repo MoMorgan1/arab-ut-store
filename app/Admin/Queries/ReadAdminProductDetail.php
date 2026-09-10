@@ -19,19 +19,11 @@ final class ReadAdminProductDetail
      *     media: list<ProductMedia>,
      *     lastSyncItem: CatalogSyncItem|null,
      *     auditLogs: list<StaffAuditLog>|null
-     * }|null
+     * }
      */
-    public function findByPublicId(string $publicId, User $actor): ?array
+    public function forProduct(Product $product, User $actor): array
     {
-        /** @var Product|null $product */
-        $product = Product::query()
-            ->where('public_id', $publicId)
-            ->with(['category', 'source'])
-            ->first();
-
-        if ($product === null) {
-            return null;
-        }
+        $product->loadMissing(['category', 'source']);
 
         /** @var list<ProductVariant> $variants */
         $variants = ProductVariant::query()

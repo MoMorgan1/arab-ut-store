@@ -7,6 +7,7 @@ use App\Enums\AdminPermission;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ToggleAdminCouponStatus as ToggleCouponRequest;
 use App\Models\User;
+use App\Support\PublicHandle\CouponHandle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
@@ -16,19 +17,22 @@ final class ToggleCouponStatusController extends Controller
         private readonly ToggleAdminCouponStatus $action,
     ) {}
 
-    public function __invoke(ToggleCouponRequest $request, string $publicId): JsonResponse
+    public function __invoke(ToggleCouponRequest $request, string $coupon): JsonResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
         Gate::forUser($actor)->authorize(AdminPermission::MarketingManage->value);
 
-        $coupon = $this->action->execute($actor, $publicId, $request->boolean('is_active'));
+        $target = CouponHandle::resolveForAdmin($coupon);
+
+        $updated = $this->action->execute($actor, (string) $target->public_id, $request->boolean('is_active'));
 
         return response()->json([
             'data' => [
-                'id' => $coupon->public_id,
-                'code' => $coupon->code,
-                'isActive' => (bool) $coupon->is_active,
+                'id' => $updated->public_id,
+                'code' => $updated->code,
+                'isActive' => (bool) $updated->is_active,
+                'url' => CouponHandle::adminDetailUrl($request, $updated),
             ],
         ], 200)
             ->header('Cache-Control', 'no-store, private')

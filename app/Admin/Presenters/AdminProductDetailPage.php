@@ -8,6 +8,7 @@ use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\StaffAuditLog;
 use App\Models\User;
+use App\Support\PublicHandle\ProductHandle;
 
 final readonly class AdminProductDetailPage
 {
@@ -51,8 +52,8 @@ final readonly class AdminProductDetailPage
             'adminUi' => (array) trans('admin', locale: $locale),
             ...$this->shell->for($actor, $locale),
             'product' => $presented,
-            'updateUrl' => route($prefix.'products.update', ['publicId' => (string) $detail['product']->public_id], absolute: false),
-            'visibilityUrl' => route($prefix.'products.visibility.store', ['publicId' => (string) $detail['product']->public_id], absolute: false),
+            'updateUrl' => route($prefix.'products.update', ['product' => ProductHandle::handleFor($detail['product'])], absolute: false),
+            'visibilityUrl' => route($prefix.'products.visibility.store', ['product' => ProductHandle::handleFor($detail['product'])], absolute: false),
             // A template because the page posts per variant; the id is
             // substituted client-side rather than building one URL per row.
             'variantPriceUrlTemplate' => route($prefix.'variants.price.store', ['publicId' => '__ID__'], absolute: false),

@@ -302,13 +302,6 @@ export default function AdminProductDetailPage() {
                                     {product.slug}
                                 </strong>
                             </span>
-                            <span>•</span>
-                            <span>
-                                ID:{' '}
-                                <strong className="font-mono text-foreground">
-                                    {product.id}
-                                </strong>
-                            </span>
                         </div>
                     </div>
 

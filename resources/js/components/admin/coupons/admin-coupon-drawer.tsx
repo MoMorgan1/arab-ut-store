@@ -110,7 +110,7 @@ export type AdminCouponDrawerProps = {
     editingCoupon: AdminCouponRow | null;
     mode: 'create' | 'edit' | null;
     onClose: () => void;
-    onSaved?: () => void;
+    onSaved?: (savedUrl: string) => void;
     products: Array<{ id: number; publicId: string; name: string }>;
     serviceTypes: Array<{ value: string; label: string }>;
     updateUrlTemplate: string;
@@ -183,7 +183,7 @@ export default function AdminCouponDrawer({
 
         const isEdit = mode === 'edit' && editingCoupon !== null;
         const targetUrl = isEdit
-            ? updateUrlTemplate.replace('__ID__', editingCoupon.id)
+            ? updateUrlTemplate.replace('__CODE__', editingCoupon.code)
             : createUrl;
         const method = isEdit ? 'PUT' : 'POST';
 
@@ -272,10 +272,13 @@ export default function AdminCouponDrawer({
                         ? copy.messages.updated
                         : copy.messages.created,
                 });
+                const json = (await res.json().catch(() => null)) as {
+                    data?: { url?: string };
+                } | null;
                 onClose();
 
-                if (onSaved) {
-                    onSaved();
+                if (onSaved && json?.data?.url) {
+                    onSaved(json.data.url);
                 } else {
                     router.reload();
                 }

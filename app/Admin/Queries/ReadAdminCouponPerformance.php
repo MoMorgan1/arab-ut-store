@@ -63,19 +63,11 @@ use stdClass;
 final class ReadAdminCouponPerformance
 {
     /**
-     * @return AdminCouponPerformanceResult|null
+     * @return AdminCouponPerformanceResult
      */
-    public function findByPublicId(string $publicId, string $locale = 'en'): ?array
+    public function forCoupon(Coupon $coupon, string $locale = 'en'): array
     {
-        /** @var Coupon|null $coupon */
-        $coupon = Coupon::query()
-            ->where('public_id', $publicId)
-            ->with('targets')
-            ->first();
-
-        if ($coupon === null) {
-            return null;
-        }
+        $coupon->loadMissing('targets');
 
         $now = now();
 

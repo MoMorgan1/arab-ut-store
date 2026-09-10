@@ -190,15 +190,14 @@ export default function AdminCouponDetailPage() {
                     text: copy.messages.genericError,
                 });
             } else {
-                const json = (await res.json()) as { data: { id: string } };
+                const json = (await res.json()) as {
+                    data: { code: string; url: string };
+                };
                 setActionMessage({
                     type: 'success',
                     text: copy.messages.duplicated,
                 });
-                const newDetailUrl = isLocalized
-                    ? `/en/admin/marketing/coupons/${json.data.id}`
-                    : `/admin/marketing/coupons/${json.data.id}`;
-                router.visit(newDetailUrl);
+                router.visit(json.data.url);
             }
         } catch {
             setActionMessage({
@@ -653,6 +652,7 @@ export default function AdminCouponDetailPage() {
                 editingCoupon={coupon}
                 mode={editDrawerOpen ? 'edit' : null}
                 onClose={() => setEditDrawerOpen(false)}
+                onSaved={(savedUrl) => router.visit(savedUrl)}
                 products={props.products}
                 serviceTypes={props.serviceTypes}
                 updateUrlTemplate={props.updateUrl}

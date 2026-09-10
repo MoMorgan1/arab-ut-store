@@ -25,6 +25,7 @@ use stdClass;
  * @phpstan-type AdminProductRow array{
  *     id: string,
  *     slug: string,
+ *     url: string,
  *     name: string,
  *     nameAr: string,
  *     nameEn: string,
@@ -162,8 +163,7 @@ final class ListAdminProducts
         $lowercaseSearch = mb_strtolower($search);
 
         $query->where(function (Builder $productQuery) use ($search, $lowercaseSearch): void {
-            $productQuery->where('products.public_id', $search)
-                ->orWhere('products.slug', 'like', '%'.$search.'%')
+            $productQuery->where('products.slug', 'like', '%'.$search.'%')
                 ->orWhereRaw('LOWER(products.name_en) LIKE ?', ['%'.$lowercaseSearch.'%'])
                 ->orWhereRaw('products.name_ar LIKE ?', ['%'.$search.'%'])
                 ->orWhereExists(function (Builder $sub) use ($search): void {
@@ -181,10 +181,17 @@ final class ListAdminProducts
      */
     private function projectProducts(array $products, string $locale): array
     {
-        return array_map(function (stdClass $product) use ($locale): array {
+        $prefix = $this->urlPrefix();
+
+        return array_map(function (stdClass $product) use ($locale, $prefix): array {
             return [
                 'id' => (string) $product->public_id,
                 'slug' => (string) $product->slug,
+                'url' => route(
+                    $prefix.'products.show',
+                    ['product' => (string) $product->slug],
+                    absolute: false,
+                ),
                 'name' => $locale === 'en'
                     ? (string) $product->name_en
                     : (string) $product->name_ar,
@@ -210,6 +217,21 @@ final class ListAdminProducts
                     : '',
             ];
         }, $products);
+    }
+
+    /**
+     * Route names differ between the default and localized admin groups; the
+     * application is under a locale-prefixed route when the current request is.
+     * Both groups resolve to the same controller, so only the name prefix and
+     * the generated URL change.
+     */
+    private function urlPrefix(): string
+    {
+        $currentRouteName = (string) request()->route()?->getName();
+
+        return str_starts_with($currentRouteName, 'localized.admin.')
+            ? 'localized.admin.'
+            : 'admin.';
     }
 
     /**

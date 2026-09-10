@@ -2417,6 +2417,7 @@ export type AdminPromotionsPageProps = {
 export type AdminProductRow = {
     id: string;
     slug: string;
+    url: string;
     name: string;
     nameAr: string;
     nameEn: string;
