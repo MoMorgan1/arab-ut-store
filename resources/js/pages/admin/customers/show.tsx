@@ -518,7 +518,7 @@ export default function AdminCustomerDetailPage() {
                                         {customer.recentOrders.map((order) => (
                                             <Link
                                                 className="flex min-h-11 items-center justify-between gap-3 py-2.5 text-xs transition-colors hover:bg-muted/30 focus-visible:outline-2 focus-visible:outline-ring"
-                                                href={`${ordersBasePath}/${order.id}`}
+                                                href={`${ordersBasePath}/${order.orderNumber}`}
                                                 key={order.id}
                                             >
                                                 <div className="flex min-w-0 flex-col gap-0.5">
@@ -594,7 +594,7 @@ export default function AdminCustomerDetailPage() {
                                                             <td className="py-2.5 font-semibold">
                                                                 <Link
                                                                     className="text-foreground tabular-nums underline decoration-border underline-offset-4 hover:text-primary hover:decoration-primary"
-                                                                    href={`${ordersBasePath}/${order.id}`}
+                                                                    href={`${ordersBasePath}/${order.orderNumber}`}
                                                                 >
                                                                     <bdi>
                                                                         {

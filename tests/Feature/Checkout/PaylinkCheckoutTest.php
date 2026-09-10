@@ -260,6 +260,17 @@ test('a retry whose Paylink invoice is already paid returns the order instead of
         ->and(Payment::sole()->status->value)->toBe('paid');
 });
 
+test('a pending payment can be resumed through the legacy order ULID', function () {
+    ['user' => $owner] = paylinkCheckoutCart();
+    fakePaylinkCheckout();
+    $this->actingAs($owner)->postJson('/checkout/paylink', [], paylinkCheckoutHeaders('checkout-http-legacy'))->assertCreated();
+
+    $this->actingAs($owner)
+        ->postJson('/orders/'.Order::sole()->public_id.'/payments/paylink')
+        ->assertOk()
+        ->assertJsonPath('data.orderUrl', '/orders/'.Order::sole()->order_number);
+});
+
 test('only the pending order owner can resume its Paylink payment', function () {
     ['user' => $owner] = paylinkCheckoutCart();
     $otherUser = User::factory()->create();

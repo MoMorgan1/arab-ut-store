@@ -137,7 +137,6 @@ function defaultDetailProps(): AdminCouponDetailPageProps {
         recentRedemptions: [
             {
                 id: '1',
-                orderId: '01KORDER0000000000000001',
                 orderNumber: 'ORD-1001',
                 orderStatus: 'completed',
                 isPaid: true,

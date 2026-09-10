@@ -568,7 +568,7 @@ export default function AdminCouponDetailPage() {
                                                 <TableCell>
                                                     <Link
                                                         className="font-mono text-xs font-semibold text-foreground underline decoration-border underline-offset-4 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
-                                                        href={`${orderBasePath}/${redemption.orderId}`}
+                                                        href={`${orderBasePath}/${redemption.orderNumber}`}
                                                     >
                                                         {redemption.orderNumber}
                                                     </Link>

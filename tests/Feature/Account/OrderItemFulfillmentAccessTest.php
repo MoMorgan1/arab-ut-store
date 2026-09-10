@@ -75,6 +75,15 @@ function ownerManualOrder(): array
     return compact('owner', 'order', 'item', 'secret', 'attachment');
 }
 
+it('reveals credentials through a legacy order ULID without a canonicalizing redirect', function () {
+    $state = ownerManualOrder();
+    $url = "/en/my-account/orders/{$state['order']->public_id}/items/{$state['item']->public_id}/credentials";
+
+    $this->actingAs($state['owner'])->getJson($url)
+        ->assertOk()
+        ->assertJsonPath('data.playstationEmail', 'reveal@example.test');
+});
+
 it('reveals normalized credentials only to the order owner and records the access', function () {
     $state = ownerManualOrder();
     $url = "/en/my-account/orders/{$state['order']->order_number}/items/{$state['item']->public_id}/credentials";

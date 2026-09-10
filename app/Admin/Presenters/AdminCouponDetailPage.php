@@ -50,7 +50,6 @@ final readonly class AdminCouponDetailPage
         $presentedRecentRedemptions = array_map(function (array $r): array {
             return [
                 'id' => $r['id'],
-                'orderId' => $r['orderId'],
                 'orderNumber' => $r['orderNumber'],
                 'orderStatus' => $r['orderStatus'],
                 'isPaid' => $r['isPaid'],
