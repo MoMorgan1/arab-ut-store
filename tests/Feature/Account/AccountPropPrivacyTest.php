@@ -33,6 +33,8 @@ function forbiddenAccountPropPaths(array $props): array
 {
     $forbidden = ['raw_payload', 'password', 'otp', 'credentials', 'secret', 'internal_notes'];
     $safeMetadata = [
+        'hasPassword',
+        'canSetPassword',
         'passwordMode',
         'passwordRules',
         'passwordConfirmationRequired',

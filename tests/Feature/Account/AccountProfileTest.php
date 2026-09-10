@@ -42,7 +42,11 @@ test('the bilingual profile page exposes only editable identity state', function
             ->where('profile.preferredLocale', 'ar')
             ->where('profile.displayCurrency', 'SAR')
             ->where('security.emailVerified', true)
+            ->where('security.hasPassword', true)
+            ->where('security.canSetPassword', false)
             ->has('securityActions.resetLinkUrl')
+            ->has('securityActions.changeUrl')
+            ->has('securityActions.setupUrl')
             ->where('accountNavigation', fn ($items): bool => collect($items)->pluck('key')->all() === [
                 'overview', 'orders', 'wallet', 'profile',
             ])
@@ -53,6 +57,25 @@ test('the bilingual profile page exposes only editable identity state', function
     'Arabic profile' => ['/my-account/profile', 'ar'],
     'English profile' => ['/en/my-account/profile', 'en'],
 ]);
+
+test('set-a-password is offered only to passwordless accounts with a recent trusted login', function (): void {
+    $user = User::factory()->create(['password' => null]);
+
+    $this->actingAs($user)->get('/my-account/profile')
+        ->assertInertia(fn ($page) => $page
+            ->where('security.hasPassword', false)
+            ->where('security.canSetPassword', false));
+
+    $this->actingAs($user)
+        ->withSession(['auth.identity_confirmed_at' => now()->timestamp])
+        ->get('/my-account/profile')
+        ->assertInertia(fn ($page) => $page->where('security.canSetPassword', true));
+
+    $this->actingAs($user)
+        ->withSession(['auth.identity_confirmed_at' => now()->subMinutes(11)->timestamp])
+        ->get('/my-account/profile')
+        ->assertInertia(fn ($page) => $page->where('security.canSetPassword', false));
+});
 
 test('names and preferences update without changing verified contact identities', function (): void {
     $user = User::factory()->create([
