@@ -14671,8 +14671,10 @@ html.admin-document {
         );
     }
 
+    /* Redundant with the base `display: none`, kept only as the explicit
+       statement of intent for this breakpoint. */
     .account-shell__sidebar {
-        display: none !important;
+        display: none;
     }
 
     .account-shell__content {
@@ -14751,8 +14753,11 @@ html.admin-document {
         padding-block: 2.25rem;
     }
 
+    /* The sidebar takes over from the bottom bar at this width and stays put.
+       `display: block` beats the base `display: none` on source order alone —
+       both rules are unlayered — so neither needs `!important`. */
     .account-shell__sidebar {
-        display: block !important;
+        display: block;
         position: sticky;
         inset-block-start: 7.5rem;
     }
