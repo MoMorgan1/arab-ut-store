@@ -28,10 +28,10 @@ afterEach(function (): void {
 
 it('protects admin support routes behind EnsureAdminMfa and can:chat.reply middleware', function (): void {
     $routes = [
-        'admin.conversations.reply' => ['POST', 'conversations/{publicId}/reply'],
-        'admin.conversations.note' => ['POST', 'conversations/{publicId}/note'],
-        'admin.conversations.take-over' => ['POST', 'conversations/{publicId}/take-over'],
-        'admin.tickets.resolve' => ['PATCH', 'tickets/{publicId}'],
+        'admin.conversations.reply' => ['POST', 'conversations/{conversation}/reply'],
+        'admin.conversations.note' => ['POST', 'conversations/{conversation}/note'],
+        'admin.conversations.take-over' => ['POST', 'conversations/{conversation}/take-over'],
+        'admin.tickets.resolve' => ['PATCH', 'tickets/{ticket}'],
     ];
 
     foreach ($routes as $name => [$method, $uri]) {
@@ -331,7 +331,7 @@ it('resolves a ticket under conversation lock, posts resumption notice, and allo
 
     $ticket = SupportTicket::query()->where('conversation_id', $conversation->id)->firstOrFail();
 
-    // Resolve ticket via PATCH /admin/tickets/{publicId}
+    // Resolve the ticket by its legacy ULID via PATCH /admin/tickets/{ticket}
     $response = $this->actingAs($admin)
         ->patchJson("/admin/tickets/{$ticket->public_id}");
 

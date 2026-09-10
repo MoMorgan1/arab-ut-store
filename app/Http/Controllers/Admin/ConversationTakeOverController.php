@@ -9,8 +9,8 @@ use App\Enums\AdminPermission;
 use App\Exceptions\Support\TicketAlreadyAssignedException;
 use App\Http\Controllers\Admin\Concerns\RespondsToAdminChatAction;
 use App\Http\Controllers\Controller;
-use App\Models\ChatConversation;
 use App\Models\User;
+use App\Support\PublicHandle\ConversationHandle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,23 +25,17 @@ final class ConversationTakeOverController extends Controller
         private readonly RecordStaffAudit $recordStaffAudit,
     ) {}
 
-    public function __invoke(Request $request, string $publicId): JsonResponse|RedirectResponse
+    public function __invoke(Request $request, string $conversation): JsonResponse|RedirectResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
         Gate::forUser($actor)->authorize(AdminPermission::ChatReply->value);
 
         // Guest conversations are excluded from staff queue operations and return 404.
-        /** @var ChatConversation|null $conversation */
-        $conversation = ChatConversation::query()
-            ->where('public_id', $publicId)
-            ->whereNotNull('user_id')
-            ->first();
-
-        abort_if($conversation === null, 404);
+        $record = ConversationHandle::resolveForAdmin($conversation);
 
         try {
-            $ticket = $this->takeOverConversation->execute($conversation, $actor);
+            $ticket = $this->takeOverConversation->execute($record, $actor);
         } catch (TicketAlreadyAssignedException $exception) {
             return $this->refuseChatAction(
                 $request,
@@ -58,8 +52,8 @@ final class ConversationTakeOverController extends Controller
                 action: 'chat.ticket.assigned',
                 metadata: [
                     'ticket_number' => (string) $ticket->ticket_number,
-                    'conversation_short_id' => (string) $conversation->short_id,
-                    'target_user_id' => (int) $conversation->user_id,
+                    'conversation_short_id' => (string) $record->short_id,
+                    'target_user_id' => (int) $record->user_id,
                 ],
                 ipAddress: $request->ip(),
             ),
@@ -72,7 +66,7 @@ final class ConversationTakeOverController extends Controller
                 'status' => $ticket->status->value,
                 'assignedAdminId' => $ticket->assigned_admin_id,
             ],
-            'handoffState' => $conversation->fresh()->handoff_state->value,
+            'handoffState' => $record->fresh()->handoff_state->value,
         ], 200);
     }
 }

@@ -10,8 +10,8 @@ use App\Enums\Chat\ChatHandoffState;
 use App\Http\Controllers\Admin\Concerns\RespondsToAdminChatAction;
 use App\Http\Controllers\Controller;
 use App\Models\ChatConversation;
-use App\Models\SupportTicket;
 use App\Models\User;
+use App\Support\PublicHandle\TicketHandle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,26 +26,21 @@ final class ResolveTicketController extends Controller
         private readonly RecordStaffAudit $recordStaffAudit,
     ) {}
 
-    public function __invoke(Request $request, string $publicId): JsonResponse|RedirectResponse
+    public function __invoke(Request $request, string $ticket): JsonResponse|RedirectResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
         Gate::forUser($actor)->authorize(AdminPermission::ChatReply->value);
 
-        // Resolve ticket by public_id without a lock first; ResolveSupportTicket establishes
-        // the canonical conversation -> ticket lock order inside its transaction (design 3.4).
-        /** @var SupportTicket|null $ticket */
-        $ticket = SupportTicket::query()
-            ->where('public_id', $publicId)
-            ->with('conversation')
-            ->first();
+        // Resolve ticket by short number or legacy public_id without a lock first;
+        // ResolveSupportTicket establishes the canonical conversation -> ticket lock
+        // order inside its transaction (design 3.4).
+        $resolved = TicketHandle::resolveForAdmin($ticket);
 
-        abort_if($ticket === null, 404);
-
-        $conversation = $ticket->conversation;
+        $conversation = $resolved->conversation;
         abort_if(! $conversation instanceof ChatConversation || $conversation->user_id === null, 404);
 
-        $resolvedTicket = $this->resolveSupportTicket->execute($ticket, $actor);
+        $resolvedTicket = $this->resolveSupportTicket->execute($resolved, $actor);
 
         // Audit metadata contains identifiers only, maintaining transcript privacy.
         $this->recordStaffAudit->execute(

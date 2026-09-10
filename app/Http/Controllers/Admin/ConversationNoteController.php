@@ -8,9 +8,9 @@ use App\Admin\Audit\StaffAuditEvent;
 use App\Enums\AdminPermission;
 use App\Http\Controllers\Admin\Concerns\RespondsToAdminChatAction;
 use App\Http\Controllers\Controller;
-use App\Models\ChatConversation;
 use App\Models\SupportTicket;
 use App\Models\User;
+use App\Support\PublicHandle\ConversationHandle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,20 +26,14 @@ final class ConversationNoteController extends Controller
         private readonly RecordStaffAudit $recordStaffAudit,
     ) {}
 
-    public function __invoke(Request $request, string $publicId): JsonResponse|RedirectResponse
+    public function __invoke(Request $request, string $conversation): JsonResponse|RedirectResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
         Gate::forUser($actor)->authorize(AdminPermission::ChatReply->value);
 
         // Guest conversations are excluded from staff queue operations and return 404.
-        /** @var ChatConversation|null $conversation */
-        $conversation = ChatConversation::query()
-            ->where('public_id', $publicId)
-            ->whereNotNull('user_id')
-            ->first();
-
-        abort_if($conversation === null, 404);
+        $record = ConversationHandle::resolveForAdmin($conversation);
 
         $maxLength = (int) config('chat.max_message_length', 4000);
         $validated = $request->validate([
@@ -54,14 +48,14 @@ final class ConversationNoteController extends Controller
             ]);
         }
 
-        $message = $this->addInternalNote->execute($conversation, $actor, $content);
+        $message = $this->addInternalNote->execute($record, $actor, $content);
 
         /** @var SupportTicket|null $ticket */
-        $ticket = $conversation->liveTicket ?? $conversation->tickets()->latest('id')->first();
+        $ticket = $record->liveTicket ?? $record->tickets()->latest('id')->first();
 
         $metadata = [
-            'conversation_short_id' => (string) $conversation->short_id,
-            'target_user_id' => (int) $conversation->user_id,
+            'conversation_short_id' => (string) $record->short_id,
+            'target_user_id' => (int) $record->user_id,
             'character_count' => mb_strlen($content),
         ];
 

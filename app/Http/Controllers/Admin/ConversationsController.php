@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ListAdminConversations;
 use App\Models\ChatConversation;
 use App\Models\User;
+use App\Support\PublicHandle\ConversationHandle;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -65,12 +66,10 @@ final class ConversationsController extends Controller
 
         if ($filters['q'] !== null) {
             // Operators read these numbers off a screen, so the short forms have
-            // to match case-insensitively; the raw ULID stays searchable because
-            // it is what a log line or a bug report carries.
+            // to match case-insensitively.
             $term = mb_strtoupper($filters['q']);
             $query->where(function (Builder $search) use ($term): void {
                 $search->whereRaw('UPPER(chat_conversations.short_id) = ?', [$term])
-                    ->orWhereRaw('UPPER(chat_conversations.public_id) = ?', [$term])
                     ->orWhereHas('tickets', function (Builder $ticket) use ($term): void {
                         $ticket->whereRaw('UPPER(support_tickets.ticket_number) = ?', [$term]);
                     });
@@ -82,13 +81,21 @@ final class ConversationsController extends Controller
             page: $filters['page'],
         );
 
-        $rows = array_map(function (ChatConversation $conversation): array {
+        $prefix = str_starts_with((string) $request->route()?->getName(), 'localized.admin.')
+            ? 'localized.admin.'
+            : 'admin.';
+
+        $rows = array_map(function (ChatConversation $conversation) use ($prefix): array {
             $ticket = $conversation->liveTicket;
             $lastStaffAt = $conversation->last_staff_message_at;
 
             return [
-                'publicId' => (string) $conversation->public_id,
                 'shortId' => (string) $conversation->short_id,
+                'url' => route(
+                    $prefix.'conversations.show',
+                    ['conversation' => ConversationHandle::handleFor($conversation)],
+                    absolute: false,
+                ),
                 'ticketNumber' => $ticket === null ? null : (string) $ticket->ticket_number,
                 'ticketStatus' => $ticket === null ? null : $ticket->status->value,
                 // The dot means "they are waiting on you", which is only ever

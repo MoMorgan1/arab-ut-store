@@ -100,7 +100,7 @@ denormalisation bought nothing and created a drift pair with two independent
 | Column | Type | Notes |
 | --- | --- | --- |
 | `id` | bigint pk | |
-| `public_id` | ulid unique | Used in URLs, never as authorization. |
+| `public_id` | ulid unique | Internal join key. No longer used in admin URLs (§4.1, 2026-09-10 amendment). |
 | `ticket_number` | `string(10)` unique | `TKT-XXXXXX`. |
 | `conversation_id` | FK → `chat_conversations`, cascade delete | |
 | `user_id` | FK → `users`, cascade delete, **not nullable** | This column is the enforcement of "no ticket without login". |
@@ -111,6 +111,16 @@ denormalisation bought nothing and created a drift pair with two independent
 | `last_notified_at` | timestamp nullable | Throttles the customer email (§6.2). |
 | `resolved_at`, `closed_at` | timestamp nullable | |
 | `created_at`, `updated_at` | | |
+
+> **Post-approval amendment (2026-09-10):** the admin surface no longer exposes
+> internal ULIDs. Conversations are addressed by `short_id` (`CHT-XXXXXX`) and
+> tickets by `ticket_number` (`TKT-XXXXXX`) in every admin URL; `public_id`
+> remains the internal join key and is still used by the customer chat API
+> (`/chat/conversations/{conversation}/...`), which is unchanged. A legacy
+> admin GET with a `public_id` permanently redirects (301) to the canonical
+> short URL, preserving the query string. This supersedes "Used in URLs" for
+> `support_tickets.public_id` in §1.2 and the `public_id` search/param
+> behaviour in §4.1–§4.2 below.
 
 **One live ticket per conversation.** A generated column
 `active_conversation_key` equals `conversation_id` **only when `status = 'open'`**
@@ -315,9 +325,9 @@ conversation. The accepted order is extended by exactly one step:
 
 > **conversation → ticket → turn → run**
 
-Every ticket mutation — including `PATCH /admin/tickets/{publicId}`, which is
+Every ticket mutation — including `PATCH /admin/tickets/{ticket}`, which is
 addressed by ticket and would naturally invite locking the ticket first —
-resolves the ticket by `public_id` **without** a lock, then opens its transaction
+resolves the ticket by its handle **without** a lock, then opens its transaction
 by locking the *conversation* row, then re-reads and locks the ticket. Without
 this rule, two admins acting at once (one replying, one resolving) deadlock, and
 MariaDB picks a victim during exactly the "two admins at once" moment.
@@ -339,13 +349,13 @@ No lock spans provider I/O, unchanged from Phase 2.
   a choice which does not exist. Remove that option list and the `owner` prop the
   page reads, but keep the request tolerating `?owner=...` and normalising it to
   null, so a stale bookmark degrades instead of returning 422.
-- Search (`q`) matches `short_id`, `ticket_number`, or the full `public_id`,
-  case-insensitively. It does not search message content — that needs a
-  full-text index and is out of scope.
+- Search (`q`) matches `short_id` or `ticket_number`, case-insensitively, and
+  does not search message content, which would need a full-text index and is out
+  of scope.
 - Default sort: live tickets with unread customer messages first, then last
   activity descending.
 
-### 4.2 Detail (`/admin/conversations/{publicId}`)
+### 4.2 Detail (`/admin/conversations/{conversation}`)
 
 Existing transcript and agent-turn diagnostics stay. Added:
 

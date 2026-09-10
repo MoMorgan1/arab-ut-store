@@ -1335,7 +1335,6 @@ export type AdminTranslations = {
         outputTokens: string;
         owner: string;
         promptVersion: string;
-        publicId: string;
         runStatus: string;
         status: string;
         summarySection: string;
@@ -2572,8 +2571,8 @@ export type AdminProductDetailPageProps = {
 export type AdminSupportTicketStatus = 'open' | 'resolved' | 'closed';
 
 export type AdminConversationRow = {
-    publicId: string;
     shortId: string;
+    url: string;
     ticketNumber: string | null;
     ticketStatus: AdminSupportTicketStatus | null;
     hasUnread: boolean;
@@ -2625,8 +2624,8 @@ export type AdminChatMessage = {
 };
 
 export type AdminSupportTicket = {
-    publicId: string;
-    ticketNumber: string;
+    number: string;
+    resolveUrl: string;
     status: AdminSupportTicketStatus;
     subject: string | null;
     assignedAdminName: string | null;
@@ -2635,7 +2634,7 @@ export type AdminSupportTicket = {
 };
 
 export type AdminAgentTurn = {
-    publicId: string;
+    ordinal: number;
     status: 'waiting' | 'running' | 'completed' | 'failed' | 'cancelled';
     promptVersion: string;
     createdAt: string;
@@ -2647,8 +2646,8 @@ export type AdminAgentTurn = {
 };
 
 export type AdminConversationDetail = {
-    publicId: string;
     shortId: string;
+    url: string;
     handoffState: 'none' | 'offered' | 'requested' | 'active' | 'resolved';
     status: 'open' | 'closed' | 'archived';
     locale: string;
@@ -2673,6 +2672,9 @@ export type AdminConversationDetailPageProps = {
     canReply: boolean;
     messages: AdminChatMessage[];
     turns: AdminAgentTurn[];
+    replyUrl: string;
+    noteUrl: string;
+    takeOverUrl: string;
     logoutUrl: string;
 };
 

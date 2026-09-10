@@ -63,8 +63,10 @@ use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureAdminMfa;
 use App\Http\Middleware\EnsureAdminPassword;
 use App\Http\Middleware\PrivateNoStore;
+use App\Support\PublicHandle\ConversationHandle;
 use App\Support\PublicHandle\CustomerHandle;
 use App\Support\PublicHandle\OrderHandle;
+use App\Support\PublicHandle\TicketHandle;
 use Illuminate\Support\Facades\Route;
 
 $adminMiddleware = [
@@ -253,8 +255,9 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $conversations->defaults('locale', $locale);
                 }
 
-                $conversationDetail = Route::get('/conversations/{publicId}', ConversationDetailController::class)
+                $conversationDetail = Route::get('/conversations/{conversation}', ConversationDetailController::class)
                     ->middleware('can:chat.view')
+                    ->where('conversation', ConversationHandle::routePattern())
                     ->name('conversations.show');
 
                 if ($locale !== null) {
@@ -269,32 +272,36 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                     $supportUnreadCount->defaults('locale', $locale);
                 }
 
-                $conversationReply = Route::post('/conversations/{publicId}/reply', ConversationReplyController::class)
+                $conversationReply = Route::post('/conversations/{conversation}/reply', ConversationReplyController::class)
                     ->middleware(['can:chat.reply', 'throttle:60,1'])
+                    ->where('conversation', ConversationHandle::routePattern())
                     ->name('conversations.reply');
 
                 if ($locale !== null) {
                     $conversationReply->defaults('locale', $locale);
                 }
 
-                $conversationNote = Route::post('/conversations/{publicId}/note', ConversationNoteController::class)
+                $conversationNote = Route::post('/conversations/{conversation}/note', ConversationNoteController::class)
                     ->middleware('can:chat.reply')
+                    ->where('conversation', ConversationHandle::routePattern())
                     ->name('conversations.note');
 
                 if ($locale !== null) {
                     $conversationNote->defaults('locale', $locale);
                 }
 
-                $conversationTakeOver = Route::post('/conversations/{publicId}/take-over', ConversationTakeOverController::class)
+                $conversationTakeOver = Route::post('/conversations/{conversation}/take-over', ConversationTakeOverController::class)
                     ->middleware('can:chat.reply')
+                    ->where('conversation', ConversationHandle::routePattern())
                     ->name('conversations.take-over');
 
                 if ($locale !== null) {
                     $conversationTakeOver->defaults('locale', $locale);
                 }
 
-                $ticketResolve = Route::patch('/tickets/{publicId}', ResolveTicketController::class)
+                $ticketResolve = Route::patch('/tickets/{ticket}', ResolveTicketController::class)
                     ->middleware('can:chat.reply')
+                    ->where('ticket', TicketHandle::routePattern())
                     ->name('tickets.resolve');
 
                 if ($locale !== null) {

@@ -8,9 +8,11 @@ use App\Enums\Chat\ChatSenderType;
 use App\Http\Controllers\Controller;
 use App\Models\AgentRun;
 use App\Models\AgentTurn;
-use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\User;
+use App\Support\PublicHandle\ConversationHandle;
+use App\Support\PublicHandle\TicketHandle;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -21,32 +23,36 @@ final class ConversationDetailController extends Controller
 {
     public function __construct(private readonly AdminShell $shell) {}
 
-    public function __invoke(Request $request, string $publicId): Response
+    public function __invoke(Request $request, string $conversation): Response|RedirectResponse
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 401);
         Gate::forUser($actor)->authorize(AdminPermission::ChatView->value);
         $locale = $request->route('locale') === 'en' ? 'en' : 'ar';
 
-        /** @var ChatConversation|null $conversation */
-        $conversation = ChatConversation::query()
-            ->where('public_id', $publicId)
-            ->whereNotNull('user_id')
-            ->with([
-                'user',
-                'liveTicket.assignedAdmin',
-                'tickets.assignedAdmin',
-                // Staff bubbles carry a responder name; without this the map
-                // below would lazy-load one user per staff message.
-                'messages' => fn ($q) => $q->with('staffUser')->orderBy('id', 'asc'),
-                'agentTurns' => fn ($q) => $q->with('runs')->orderBy('id', 'asc'),
-            ])
-            ->withCount('messages')
-            ->first();
+        $model = ConversationHandle::resolveForAdmin($conversation);
 
-        abort_if($conversation === null, 404);
+        // A legacy ULID still resolves, then the browser is sent to the short
+        // URL so the address bar and every generated link agree. A request that
+        // already used the short id — in any case — stays put.
+        $redirect = ConversationHandle::legacyRedirect($request, $model);
 
-        $messages = $conversation->messages->map(function (ChatMessage $msg): array {
+        if ($redirect instanceof RedirectResponse) {
+            return $redirect;
+        }
+
+        $model->load([
+            'user',
+            'liveTicket.assignedAdmin',
+            'tickets.assignedAdmin',
+            // Staff bubbles carry a responder name; without this the map
+            // below would lazy-load one user per staff message.
+            'messages.staffUser',
+            'agentTurns.runs',
+        ]);
+        $model->loadCount('messages');
+
+        $messages = $model->messages->map(function (ChatMessage $msg): array {
             return [
                 'publicId' => (string) $msg->public_id,
                 'senderType' => $msg->sender_type->value,
@@ -59,12 +65,14 @@ final class ConversationDetailController extends Controller
             ];
         })->values()->all();
 
-        $turns = $conversation->agentTurns->map(function (AgentTurn $turn): array {
+        $turns = $model->agentTurns->values()->map(function (AgentTurn $turn, int $index): array {
             /** @var AgentRun|null $latestRun */
             $latestRun = $turn->runs->sortByDesc('id')->first();
 
             return [
-                'publicId' => (string) $turn->public_id,
+                // Position within the conversation, oldest first. The internal
+                // turn ULID is never shown.
+                'ordinal' => $index + 1,
                 'status' => $turn->status->value,
                 'promptVersion' => (string) $turn->prompt_version,
                 'createdAt' => $turn->created_at !== null
@@ -76,40 +84,55 @@ final class ConversationDetailController extends Controller
                 'outputTokens' => $latestRun?->output_tokens,
                 'model' => $latestRun?->model,
             ];
-        })->values()->all();
+        })->all();
+
+        $currentRouteName = (string) $request->route()?->getName();
+        $prefix = str_starts_with($currentRouteName, 'localized.admin.')
+            ? 'localized.admin.'
+            : 'admin.';
+
+        $handle = ConversationHandle::handleFor($model);
 
         $conversationSummary = [
-            'publicId' => (string) $conversation->public_id,
-            'status' => $conversation->status->value,
-            'locale' => (string) $conversation->locale,
-            'ownerType' => $conversation->user_id !== null ? 'customer' : 'guest',
-            'customerName' => $conversation->user?->name,
-            'messageCount' => (int) ($conversation->messages_count ?? $conversation->messages->count()),
-            'lastMessageAt' => $conversation->last_message_at !== null
-                ? Carbon::parse($conversation->last_message_at, 'UTC')->utc()->toIso8601String()
+            'shortId' => (string) $model->short_id,
+            'url' => route(
+                $prefix.'conversations.show',
+                ['conversation' => $handle],
+                absolute: false,
+            ),
+            'status' => $model->status->value,
+            'locale' => (string) $model->locale,
+            'ownerType' => $model->user_id !== null ? 'customer' : 'guest',
+            'customerName' => $model->user?->name,
+            'messageCount' => (int) ($model->messages_count ?? $model->messages->count()),
+            'lastMessageAt' => $model->last_message_at !== null
+                ? Carbon::parse($model->last_message_at, 'UTC')->utc()->toIso8601String()
                 : null,
-            'createdAt' => $conversation->created_at !== null
-                ? Carbon::parse($conversation->created_at, 'UTC')->utc()->toIso8601String()
+            'createdAt' => $model->created_at !== null
+                ? Carbon::parse($model->created_at, 'UTC')->utc()->toIso8601String()
                 : '',
-            'closedAt' => $conversation->closed_at !== null
-                ? Carbon::parse($conversation->closed_at, 'UTC')->utc()->toIso8601String()
+            'closedAt' => $model->closed_at !== null
+                ? Carbon::parse($model->closed_at, 'UTC')->utc()->toIso8601String()
                 : null,
-            'closeReason' => $conversation->close_reason?->value,
-            'shortId' => (string) $conversation->short_id,
-            'handoffState' => $conversation->handoff_state->value,
+            'closeReason' => $model->close_reason?->value,
+            'handoffState' => $model->handoff_state->value,
         ];
 
-        $ticket = $conversation->liveTicket;
+        $ticket = $model->liveTicket;
 
         if ($ticket === null) {
-            $ticket = $conversation->tickets->sortByDesc('id')->first();
+            $ticket = $model->tickets->sortByDesc('id')->first();
         }
 
         $assignedAdmin = $ticket?->assignedAdmin;
 
         $ticketSummary = $ticket === null ? null : [
-            'publicId' => (string) $ticket->public_id,
-            'ticketNumber' => (string) $ticket->ticket_number,
+            'number' => (string) $ticket->ticket_number,
+            'resolveUrl' => route(
+                $prefix.'tickets.resolve',
+                ['ticket' => TicketHandle::handleFor($ticket)],
+                absolute: false,
+            ),
             'status' => $ticket->status->value,
             'subject' => $ticket->subject,
             'assignedAdminName' => $assignedAdmin?->name,
@@ -134,6 +157,21 @@ final class ConversationDetailController extends Controller
             'canReply' => $actor->can(AdminPermission::ChatReply->value),
             'messages' => $messages,
             'turns' => $turns,
+            'replyUrl' => route(
+                $prefix.'conversations.reply',
+                ['conversation' => $handle],
+                absolute: false,
+            ),
+            'noteUrl' => route(
+                $prefix.'conversations.note',
+                ['conversation' => $handle],
+                absolute: false,
+            ),
+            'takeOverUrl' => route(
+                $prefix.'conversations.take-over',
+                ['conversation' => $handle],
+                absolute: false,
+            ),
         ]);
     }
 
