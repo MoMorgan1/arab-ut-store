@@ -127,7 +127,7 @@ export default function AdminLayout({ children }: PropsWithChildren) {
             <div className="md:grid md:grid-cols-[16rem_minmax(0,1fr)]">
                 <AdminSidebar {...navigationProps} />
                 <main
-                    className="min-w-0 pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.25rem,env(safe-area-inset-right))] pb-[calc(var(--bar-height)+var(--bar-offset)+2rem+env(safe-area-inset-bottom))] pl-[max(1.25rem,env(safe-area-inset-left))] md:pt-8 md:pr-10 md:pb-12 md:pl-10"
+                    className="min-w-0 pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.25rem,env(safe-area-inset-right))] pb-[calc(var(--bar-height)+var(--bar-offset)+3.5rem+env(safe-area-inset-bottom))] pl-[max(1.25rem,env(safe-area-inset-left))] md:pt-8 md:pr-10 md:pb-12 md:pl-10"
                     id="admin-main-content"
                     tabIndex={-1}
                 >

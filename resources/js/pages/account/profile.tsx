@@ -286,10 +286,10 @@ export default function AccountProfile() {
 
                     {!isEditingName ? (
                         <div className="account-profile-item">
-                            {/* One line: icon, then the name, then the action at
-                                the far end. A short value does not need the
-                                action on its own row below it. */}
-                            <div className="account-profile-row account-profile-row--compact">
+                            {/* Every field row shares one shape: label and its
+                                action on the icon's line, value on the line
+                                beneath. */}
+                            <div className="account-profile-row">
                                 <span
                                     aria-hidden="true"
                                     className="account-profile-row__icon account-profile-row__icon--state"
@@ -297,14 +297,9 @@ export default function AccountProfile() {
                                     <AppIcon name="user" />
                                 </span>
                                 <div className="account-profile-row__line">
-                                    <div className="account-profile-row__info">
-                                        <span className="account-profile-row__label">
-                                            {props.accountUi.profile.name}
-                                        </span>
-                                        <strong className="account-profile-row__value">
-                                            {`${props.profile.firstName} ${props.profile.lastName}`.trim()}
-                                        </strong>
-                                    </div>
+                                    <span className="account-profile-row__label">
+                                        {props.accountUi.profile.name}
+                                    </span>
                                     <button
                                         className="account-profile-row__btn"
                                         onClick={() => setIsEditingName(true)}
@@ -313,6 +308,9 @@ export default function AccountProfile() {
                                         {props.accountUi.profile.edit}
                                     </button>
                                 </div>
+                                <strong className="account-profile-row__value account-profile-row__value--under">
+                                    {`${props.profile.firstName} ${props.profile.lastName}`.trim()}
+                                </strong>
                             </div>
                         </div>
                     ) : (
@@ -385,59 +383,66 @@ export default function AccountProfile() {
                                 >
                                     <AppIcon name="whatsapp" />
                                 </span>
-                                <div className="account-profile-row__info">
+                                <div className="account-profile-row__line">
                                     <span className="account-profile-row__label">
                                         {props.accountUi.profile.phone}
                                     </span>
-                                    {props.profile.phone.value ? (
-                                        <strong className="account-profile-row__value account-profile-row__value--ltr">
-                                            {maskPhoneNumber(
-                                                props.profile.phone.value,
-                                            )}
-                                        </strong>
-                                    ) : (
-                                        <strong className="account-profile-row__value">
-                                            {props.accountUi.profile.not_set}
-                                        </strong>
-                                    )}
+                                    <div className="account-profile-row__end">
+                                        {/* Nothing to verify before a number
+                                            exists, so the badge only appears
+                                            once there is one. */}
+                                        {props.profile.phone.value &&
+                                        !props.profile.phone.verified ? (
+                                            <span className="account-profile-badge account-profile-badge--warn">
+                                                {
+                                                    props.accountUi.profile
+                                                        .unverified
+                                                }
+                                            </span>
+                                        ) : null}
+                                        <button
+                                            aria-expanded={
+                                                editingContact === 'phone'
+                                            }
+                                            className="account-profile-row__btn"
+                                            onClick={() =>
+                                                setEditingContact((current) =>
+                                                    current === 'phone'
+                                                        ? null
+                                                        : 'phone',
+                                                )
+                                            }
+                                            type="button"
+                                        >
+                                            {editingContact === 'phone'
+                                                ? props.accountUi.profile
+                                                      .cancel_edit
+                                                : !props.profile.phone.value
+                                                  ? props.accountUi.profile
+                                                        .add_phone
+                                                  : props.profile.phone.verified
+                                                    ? props.accountUi.profile
+                                                          .change
+                                                    : props.accountUi.profile
+                                                          .verify_phone}
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div className="account-profile-row__end">
-                                    {/* Nothing to verify before a number
-                                        exists, so the badge only appears once
-                                        there is one. */}
-                                    {props.profile.phone.value &&
-                                    !props.profile.phone.verified ? (
-                                        <span className="account-profile-badge account-profile-badge--warn">
-                                            {props.accountUi.profile.unverified}
-                                        </span>
-                                    ) : null}
-                                    <button
-                                        aria-expanded={
-                                            editingContact === 'phone'
-                                        }
-                                        className="account-profile-row__btn"
-                                        onClick={() =>
-                                            setEditingContact((current) =>
-                                                current === 'phone'
-                                                    ? null
-                                                    : 'phone',
-                                            )
-                                        }
-                                        type="button"
-                                    >
-                                        {editingContact === 'phone'
-                                            ? props.accountUi.profile
-                                                  .cancel_edit
-                                            : !props.profile.phone.value
-                                              ? props.accountUi.profile
-                                                    .add_phone
-                                              : props.profile.phone.verified
-                                                ? props.accountUi.profile.change
-                                                : props.accountUi.profile
-                                                      .verify_phone}
-                                    </button>
-                                </div>
+                                {/* The value keeps its own line: it is a longer
+                                    string than the label and the action needs
+                                    the top line to itself. */}
+                                {props.profile.phone.value ? (
+                                    <strong className="account-profile-row__value account-profile-row__value--ltr account-profile-row__value--under">
+                                        {maskPhoneNumber(
+                                            props.profile.phone.value,
+                                        )}
+                                    </strong>
+                                ) : (
+                                    <strong className="account-profile-row__value account-profile-row__value--under">
+                                        {props.accountUi.profile.not_set}
+                                    </strong>
+                                )}
                             </div>
 
                             {props.profile.phone.pending ? (
@@ -645,66 +650,70 @@ export default function AccountProfile() {
                                 >
                                     <AppIcon name="mail" />
                                 </span>
-                                <div className="account-profile-row__info">
+                                <div className="account-profile-row__line">
                                     <span className="account-profile-row__label">
                                         {props.accountUi.profile.email}
                                     </span>
-                                    {/* Only a real address is an LTR run. The
-                                        "not added" placeholder is Arabic prose
-                                        and must align with the RTL row, the way
-                                        the number row's placeholder does. */}
-                                    {hasEmail ? (
-                                        <strong className="account-profile-row__value account-profile-row__value--ltr">
-                                            {props.profile.email.value}
-                                        </strong>
-                                    ) : (
-                                        <strong className="account-profile-row__value">
-                                            {props.accountUi.profile.not_set}
-                                        </strong>
-                                    )}
+                                    <div className="account-profile-row__end">
+                                        {/* Same rule as the number: never claim
+                                            "unverified" about an address that
+                                            does not exist, and never spend a
+                                            badge saying "fine". The badge exists
+                                            only to flag what is outstanding. */}
+                                        {hasEmail &&
+                                        !props.profile.email.verified ? (
+                                            <span className="account-profile-badge account-profile-badge--warn">
+                                                {
+                                                    props.accountUi.profile
+                                                        .unverified
+                                                }
+                                            </span>
+                                        ) : null}
+                                        <button
+                                            aria-expanded={
+                                                editingContact === 'email'
+                                            }
+                                            className="account-profile-row__btn"
+                                            onClick={() =>
+                                                setEditingContact((current) =>
+                                                    current === 'email'
+                                                        ? null
+                                                        : 'email',
+                                                )
+                                            }
+                                            type="button"
+                                        >
+                                            {editingContact === 'email'
+                                                ? props.accountUi.profile
+                                                      .cancel_edit
+                                                : !hasEmail
+                                                  ? (props.accountUi.profile
+                                                        .add_email_prompt_action ??
+                                                    (props.locale === 'en'
+                                                        ? 'Add email'
+                                                        : 'إضافة بريد إلكتروني'))
+                                                  : props.profile.email.verified
+                                                    ? props.accountUi.profile
+                                                          .change
+                                                    : props.accountUi.profile
+                                                          .verify_email}
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div className="account-profile-row__end">
-                                    {/* Same rule as the number: never claim
-                                        "unverified" about an address that does
-                                        not exist, and never spend a badge
-                                        saying "fine". The badge exists only to
-                                        flag what is still outstanding. */}
-                                    {hasEmail &&
-                                    !props.profile.email.verified ? (
-                                        <span className="account-profile-badge account-profile-badge--warn">
-                                            {props.accountUi.profile.unverified}
-                                        </span>
-                                    ) : null}
-                                    <button
-                                        aria-expanded={
-                                            editingContact === 'email'
-                                        }
-                                        className="account-profile-row__btn"
-                                        onClick={() =>
-                                            setEditingContact((current) =>
-                                                current === 'email'
-                                                    ? null
-                                                    : 'email',
-                                            )
-                                        }
-                                        type="button"
-                                    >
-                                        {editingContact === 'email'
-                                            ? props.accountUi.profile
-                                                  .cancel_edit
-                                            : !hasEmail
-                                              ? (props.accountUi.profile
-                                                    .add_email_prompt_action ??
-                                                (props.locale === 'en'
-                                                    ? 'Add email'
-                                                    : 'إضافة بريد إلكتروني'))
-                                              : props.profile.email.verified
-                                                ? props.accountUi.profile.change
-                                                : props.accountUi.profile
-                                                      .verify_email}
-                                    </button>
-                                </div>
+                                {/* Only a real address is an LTR run. The "not
+                                    added" placeholder is Arabic prose and must
+                                    align with the RTL row, the way the number
+                                    row's placeholder does. */}
+                                {hasEmail ? (
+                                    <strong className="account-profile-row__value account-profile-row__value--ltr account-profile-row__value--under">
+                                        {props.profile.email.value}
+                                    </strong>
+                                ) : (
+                                    <strong className="account-profile-row__value account-profile-row__value--under">
+                                        {props.accountUi.profile.not_set}
+                                    </strong>
+                                )}
                             </div>
 
                             {props.profile.email.pending ? (
@@ -770,6 +779,10 @@ export default function AccountProfile() {
 
                     <div className="account-profile-card__rows">
                         <div className="account-profile-item">
+                            {/* One line, action at the far end — the same shape
+                                as the name row, so the two cards do not teach
+                                the reader two different layouts for the same
+                                gesture. */}
                             <div className="account-profile-row">
                                 <span
                                     aria-hidden="true"
@@ -777,13 +790,16 @@ export default function AccountProfile() {
                                 >
                                     <AppIcon name="lock" />
                                 </span>
-                                <div className="account-profile-row__info">
-                                    <span className="account-profile-row__label">
-                                        {props.accountUi.security.card_title}
-                                    </span>
-                                </div>
+                                <div className="account-profile-row__line">
+                                    <div className="account-profile-row__info">
+                                        <span className="account-profile-row__label">
+                                            {
+                                                props.accountUi.security
+                                                    .card_title
+                                            }
+                                        </span>
+                                    </div>
 
-                                <div className="account-profile-row__end">
                                     {props.security.hasPassword ||
                                     props.security.canSetPassword ? (
                                         <button
@@ -954,7 +970,7 @@ export default function AccountProfile() {
                             ) : null}
                             {resetLink.recentlySuccessful ? (
                                 <p
-                                    className="account-profile-success"
+                                    className="account-profile-success account-profile-success--inset"
                                     role="status"
                                 >
                                     {props.accountUi.security.reset_link_sent}
