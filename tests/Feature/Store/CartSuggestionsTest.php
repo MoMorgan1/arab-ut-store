@@ -78,25 +78,26 @@ function suggestFor(Cart $cart, string $locale = 'ar'): array
     );
 }
 
-test('cart suggestions exclude products already in the cart and cap at two', function (): void {
+test('cart suggestions exclude products already in the cart and cap at four', function (): void {
     ['variant' => $ownedVariant] = suggestionSbcProduct(1);
     suggestionSbcProduct(2);
     suggestionSbcProduct(3);
     suggestionSbcProduct(4);
+    suggestionSbcProduct(5);
 
     $cart = suggestionCart();
     suggestionCartItem($cart, $ownedVariant, 'sbc', ['completion_count' => 1]);
 
     $result = suggestFor($cart);
 
-    expect(array_column($result['products'], 'name'))->toBe(['تحدي 2', 'تحدي 3'])
+    expect(array_column($result['products'], 'name'))->toBe(['تحدي 2', 'تحدي 3', 'تحدي 4', 'تحدي 5'])
         ->and($result['services'])->toHaveCount(2)
         ->and(array_column($result['services'], 'key'))->toBe(['rivals', 'fut_champions'])
         ->and($result['reason'])->toBe('مع التحدي')
         ->and($result['sbcUrl'])->toBe('/sbc');
 });
 
-test('a coins-only cart suggests two challenges plus both manual services', function (): void {
+test('a coins-only cart suggests every available challenge plus both manual services', function (): void {
     suggestionSbcProduct(1);
     suggestionSbcProduct(2);
 

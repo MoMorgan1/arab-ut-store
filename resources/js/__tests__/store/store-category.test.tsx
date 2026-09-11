@@ -19,6 +19,24 @@ const appCss = readFileSync(
     'utf8',
 );
 
+/**
+ * The price list carries no accessible name on purpose. The whole card is one
+ * link, and an authored name on the list replaced its contents when the link's
+ * own name was computed - so `aria-label="Platform prices"` made every amount
+ * inside unreachable for a screen reader. Locate it by class instead.
+ */
+function sbcPriceList(): HTMLElement {
+    const list = document.querySelector<HTMLElement>(
+        '.store-catalog-card__prices',
+    );
+
+    if (list === null) {
+        throw new Error('No SBC price list was rendered.');
+    }
+
+    return list;
+}
+
 const mocks = vi.hoisted(() => ({
     get: vi.fn(),
     submit: vi.fn(),
@@ -101,9 +119,10 @@ it('renders the refined SBC hierarchy and trust strip', () => {
     expect(document.querySelector('.store-catalog-page')).toHaveClass(
         'store-catalog-page--sbc',
     );
-    expect(
-        screen.getByRole('list', { name: 'Platform prices' }).closest('li'),
-    ).toHaveClass('store-catalog-card', 'store-catalog-card--sbc');
+    expect(sbcPriceList().closest('li')).toHaveClass(
+        'store-catalog-card',
+        'store-catalog-card--sbc',
+    );
     expect(
         document.querySelector(
             '.store-catalog-card--sbc .store-catalog-card__image img',
@@ -123,11 +142,7 @@ it('renders the refined SBC hierarchy and trust strip', () => {
         screen.getByRole('group', { name: 'Filter' }).parentElement,
     ).toHaveClass('store-catalog-toolbar__filter-shell');
     expect(screen.getByText('Coins + completion')).toBeVisible();
-    expect(
-        within(
-            screen.getByRole('list', { name: 'Platform prices' }),
-        ).getAllByRole('listitem'),
-    ).toHaveLength(2);
+    expect(within(sbcPriceList()).getAllByRole('listitem')).toHaveLength(2);
     expect(
         within(
             screen.getByRole('list', { name: 'Store assurances' }),
@@ -153,9 +168,7 @@ it('keeps the mobile SBC filter rail inside its shell while scrolling', () => {
 it('keeps the included-service label below the artwork', () => {
     render(<StoreCategory />);
 
-    const card = screen
-        .getByRole('list', { name: 'Platform prices' })
-        .closest('.store-catalog-card--sbc');
+    const card = sbcPriceList().closest('.store-catalog-card--sbc');
     const media = card?.querySelector('.store-catalog-card__media');
     const ribbon = screen.getByText('Coins + completion');
     const body = card?.querySelector('.store-catalog-card__body');
@@ -168,9 +181,7 @@ it('keeps the included-service label below the artwork', () => {
 it('keeps touch feedback active while the finger scrolls the page', () => {
     render(<StoreCategory />);
 
-    const card = screen
-        .getByRole('list', { name: 'Platform prices' })
-        .closest('.store-catalog-card--sbc');
+    const card = sbcPriceList().closest('.store-catalog-card--sbc');
 
     fireEvent.touchStart(card as Element, {
         touches: [{ clientX: 24, clientY: 40, identifier: 7 }],
@@ -191,9 +202,7 @@ it('keeps touch feedback active while the finger scrolls the page', () => {
 it('clears touch feedback when the browser cancels the touch', () => {
     render(<StoreCategory />);
 
-    const card = screen
-        .getByRole('list', { name: 'Platform prices' })
-        .closest('.store-catalog-card--sbc');
+    const card = sbcPriceList().closest('.store-catalog-card--sbc');
 
     fireEvent.touchStart(card as Element, {
         touches: [{ clientX: 24, clientY: 40, identifier: 9 }],
@@ -206,9 +215,7 @@ it('clears touch feedback when the browser cancels the touch', () => {
 it('clears touch feedback as soon as a stationary touch ends', () => {
     render(<StoreCategory />);
 
-    const card = screen
-        .getByRole('list', { name: 'Platform prices' })
-        .closest('.store-catalog-card--sbc');
+    const card = sbcPriceList().closest('.store-catalog-card--sbc');
 
     fireEvent.touchStart(card as Element, {
         touches: [{ clientX: 24, clientY: 40, identifier: 8 }],
@@ -243,9 +250,9 @@ it('separates the console logos from the non-wrapping platform label', () => {
 it('tilts SBC artwork toward a fine pointer and resets on exit', async () => {
     render(<StoreCategory />);
 
-    const card = screen
-        .getByRole('list', { name: 'Platform prices' })
-        .closest('.store-catalog-card--sbc') as HTMLElement;
+    const card = sbcPriceList().closest(
+        '.store-catalog-card--sbc',
+    ) as HTMLElement;
 
     vi.spyOn(card, 'getBoundingClientRect').mockReturnValue({
         bottom: 400,
@@ -279,9 +286,7 @@ it('tilts SBC artwork toward a fine pointer and resets on exit', async () => {
 it('renders a decorative glow layer behind SBC artwork', () => {
     render(<StoreCategory />);
 
-    const card = screen
-        .getByRole('list', { name: 'Platform prices' })
-        .closest('.store-catalog-card--sbc');
+    const card = sbcPriceList().closest('.store-catalog-card--sbc');
     const media = card?.querySelector('.store-catalog-card__media');
     const glow = media?.querySelector('.store-catalog-card__artwork-glow');
 
@@ -383,7 +388,7 @@ it('returns to the first product after changing result pages', () => {
 it('makes the complete SBC card a product link with informational prices', () => {
     render(<StoreCategory />);
 
-    const prices = screen.getByRole('list', { name: 'Platform prices' });
+    const prices = sbcPriceList();
     const cardLink = screen.getByRole('link', { name: /Icon Service/i });
 
     expect(within(prices).queryAllByRole('button')).toHaveLength(0);
@@ -417,9 +422,7 @@ it('keeps unavailable SBC platform prices informational and linkable', () => {
     render(<StoreCategory />);
 
     expect(
-        within(
-            screen.getByRole('list', { name: 'Platform prices' }),
-        ).getAllByText('Price temporarily unavailable'),
+        within(sbcPriceList()).getAllByText('Price temporarily unavailable'),
     ).toHaveLength(2);
     expect(screen.getByRole('link', { name: /Icon Service/i })).toHaveAttribute(
         'href',
@@ -549,7 +552,7 @@ function catalogTranslations() {
         page_status: 'Page :current of :total',
         add_to_cart: 'Add to cart',
         added: 'Added to cart',
-        adding: 'Adding…',
+        adding: 'Addingâ€¦',
         add_error: 'Could not add this item.',
         platform: 'Platform',
         platform_prices: 'Platform prices',

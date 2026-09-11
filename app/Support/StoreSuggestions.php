@@ -57,10 +57,10 @@ class StoreSuggestions
     }
 
     /**
-     * Up to four cards for the cart page: SBC products first (recommended
-     * order, excluding anything already in the cart), then the manual
-     * services not yet in the cart. The first card carries a reason tag
-     * derived from the first cart line's service type.
+     * The cart page's suggestions: up to four SBC products (recommended order,
+     * excluding anything already in the cart) and the manual services not yet
+     * in the cart. The reason tag is derived from the first cart line's service
+     * type; it is no longer rendered on the card face.
      *
      * @return array{products: list<array<string, mixed>>, services: list<array{key: string, title: string, description: string, href: string, imageUrl: string}>, reason: string|null, sbcUrl: string}
      */
@@ -97,7 +97,11 @@ class StoreSuggestions
 
                 $products[] = $product;
 
-                if (count($products) >= 2) {
+                // Four fills a desktop rail exactly. The old cap of two was
+                // sized for a rail that also carried the two manual services;
+                // those now render as their own cards beneath the rail, so a
+                // two-card rail left most of the row empty.
+                if (count($products) >= 4) {
                     break;
                 }
             }
