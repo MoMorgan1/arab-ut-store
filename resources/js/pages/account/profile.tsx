@@ -286,22 +286,25 @@ export default function AccountProfile() {
 
                     {!isEditingName ? (
                         <div className="account-profile-item">
-                            <div className="account-profile-row">
+                            {/* One line: icon, then the name, then the action at
+                                the far end. A short value does not need the
+                                action on its own row below it. */}
+                            <div className="account-profile-row account-profile-row--compact">
                                 <span
                                     aria-hidden="true"
                                     className="account-profile-row__icon account-profile-row__icon--state"
                                 >
                                     <AppIcon name="user" />
                                 </span>
-                                <div className="account-profile-row__info">
-                                    <span className="account-profile-row__label">
-                                        {props.accountUi.profile.name}
-                                    </span>
-                                    <strong className="account-profile-row__value">
-                                        {`${props.profile.firstName} ${props.profile.lastName}`.trim()}
-                                    </strong>
-                                </div>
-                                <div className="account-profile-row__end">
+                                <div className="account-profile-row__line">
+                                    <div className="account-profile-row__info">
+                                        <span className="account-profile-row__label">
+                                            {props.accountUi.profile.name}
+                                        </span>
+                                        <strong className="account-profile-row__value">
+                                            {`${props.profile.firstName} ${props.profile.lastName}`.trim()}
+                                        </strong>
+                                    </div>
                                     <button
                                         className="account-profile-row__btn"
                                         onClick={() => setIsEditingName(true)}
