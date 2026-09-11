@@ -19,7 +19,6 @@ const shell: StoreShellConfig = {
     warrantyUrl: '/en/warranty',
     eaBackupCodesUrl: '/en/ea-backup-codes',
     termsUrl: '/en/terms',
-    sitemapUrl: '/en/sitemap',
     whatsappUrl: 'https://wa.me/966537998099',
     email: 'info@arab-ut.com',
     socials: {
@@ -95,10 +94,9 @@ const translations = {
         warranty: 'Warranty and Compensation',
         ea_backup_codes: 'EA Backup Codes',
         terms: 'Terms and Conditions',
-        sitemap: 'Site map',
         customer_service: 'Customer service',
         whatsapp: 'WhatsApp support',
-        payment_methods: 'Payment methods at launch',
+        payment_methods: 'Payment methods',
         copyright: 'Copyright © :year Arab UT. All rights reserved.',
         ea_disclaimer:
             'All EA FC assets are the property of EA Sports. Arab UT is an independent service and is not affiliated with EA Sports or Electronic Arts Inc.',
@@ -150,12 +148,17 @@ describe('StoreFooter', () => {
             ['Warranty and Compensation', '/en/warranty'],
             ['EA Backup Codes', '/en/ea-backup-codes'],
             ['Terms and Conditions', '/en/terms'],
-            ['Site map', '/en/sitemap'],
         ]) {
             expect(
                 within(importantLinks).getByRole('link', { name }),
             ).toHaveAttribute('href', href);
         }
+
+        // The site map page still exists at /en/sitemap, but it is deliberately
+        // not linked from the footer any more.
+        expect(
+            within(importantLinks).queryByRole('link', { name: 'Site map' }),
+        ).not.toBeInTheDocument();
 
         expect(
             within(footer).getByRole('link', {
@@ -222,7 +225,7 @@ describe('StoreFooter', () => {
 
         const footer = renderFooter();
 
-        expect(footer).toHaveTextContent('Payment methods at launch');
+        expect(footer).toHaveTextContent('Payment methods');
         expect(footer).not.toHaveTextContent('Accepted payment methods');
         expect(within(footer).getAllByRole('img')).toHaveLength(4);
 

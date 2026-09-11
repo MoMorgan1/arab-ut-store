@@ -947,36 +947,38 @@ export default function AccountProfile() {
                                     </form>
                                 </div>
                             ) : null}
-
-                            {props.security.emailVerified ? (
-                                <p className="account-profile-forgot">
-                                    <button
-                                        className="account-profile-link"
-                                        disabled={resetLink.processing}
-                                        onClick={() =>
-                                            resetLink.post(
-                                                props.securityActions
-                                                    .resetLinkUrl,
-                                                {
-                                                    preserveScroll: true,
-                                                },
-                                            )
-                                        }
-                                        type="button"
-                                    >
-                                        {props.accountUi.security.forgot}
-                                    </button>
-                                </p>
-                            ) : null}
-                            {resetLink.recentlySuccessful ? (
-                                <p
-                                    className="account-profile-success account-profile-success--inset"
-                                    role="status"
-                                >
-                                    {props.accountUi.security.reset_link_sent}
-                                </p>
-                            ) : null}
                         </div>
+
+                        {/* The recovery link is a row in the card, not part of
+                            the password field: it sits below the field's
+                            bordered box rather than inside it. */}
+                        {props.security.emailVerified ? (
+                            <p className="account-profile-forgot">
+                                <button
+                                    className="account-profile-link"
+                                    disabled={resetLink.processing}
+                                    onClick={() =>
+                                        resetLink.post(
+                                            props.securityActions.resetLinkUrl,
+                                            {
+                                                preserveScroll: true,
+                                            },
+                                        )
+                                    }
+                                    type="button"
+                                >
+                                    {props.accountUi.security.forgot}
+                                </button>
+                            </p>
+                        ) : null}
+                        {resetLink.recentlySuccessful ? (
+                            <p
+                                className="account-profile-success account-profile-success--inset"
+                                role="status"
+                            >
+                                {props.accountUi.security.reset_link_sent}
+                            </p>
+                        ) : null}
                     </div>
                 </section>
 

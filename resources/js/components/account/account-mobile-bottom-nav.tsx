@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { useState } from 'react';
 
 import AppIcon from '@/components/account/app-icon';
 import type { AppIconName } from '@/components/account/app-icon';
@@ -46,6 +47,10 @@ export function AccountMobileBottomNav({
     translations,
 }: AccountMobileBottomNavProps) {
     const isKeyboardOpen = useKeyboardOpen();
+    // The tab lights up the moment it is pressed, rather than when the server
+    // answers. On a phone the round trip is what made the bar feel heavy, and
+    // this removes the wait from what the finger sees.
+    const [pending, setPending] = useState<AccountDestination | null>(null);
 
     // Filter to ensure strictly the 4 destinations
     const bottomNavItems = items.filter((item) =>
@@ -70,6 +75,8 @@ export function AccountMobileBottomNav({
                 {bottomNavItems.map((item) => {
                     const name = destinationIcons[item.key] || 'grid';
                     const selected = item.key === current;
+                    const optimisticallySelected =
+                        selected || pending === item.key;
                     const label =
                         item.key === 'overview'
                             ? (bottomNav?.home ?? item.label)
@@ -83,10 +90,17 @@ export function AccountMobileBottomNav({
                             className={cn(
                                 'arabut-bottom-bar__item',
                                 'account-mobile-bottom-nav__item',
-                                selected && 'arabut-bottom-bar__item--active',
+                                optimisticallySelected &&
+                                    'arabut-bottom-bar__item--active',
                             )}
                             href={item.url}
                             key={item.key}
+                            // Every destination in this bar is on screen at all
+                            // times, so the bar warms them all: the tap itself
+                            // costs no server round trip.
+                            cacheFor="1m"
+                            prefetch="hover"
+                            onStart={() => setPending(item.key)}
                         >
                             <span className="account-mobile-bottom-nav__icon-wrap">
                                 <AppIcon name={name} />

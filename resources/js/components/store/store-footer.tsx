@@ -73,9 +73,9 @@ export function StoreFooter({ locale, shell, translations }: StoreFooterProps) {
         [translations.footer.terms, shell.termsUrl],
     ];
 
-    if (translations.footer.sitemap && shell.sitemapUrl) {
-        legalLinks.push([translations.footer.sitemap, shell.sitemapUrl]);
-    }
+    // The site map is deliberately not linked here. The page and its route stay
+    // live for anyone who has the URL and for crawlers through `sitemap.xml`;
+    // it is only the footer link that was asked for and removed.
 
     const year = new Date().getFullYear();
 

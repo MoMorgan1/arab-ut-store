@@ -4099,14 +4099,38 @@ html.admin-document {
         outline-offset: 2px;
     }
 
+    /* One horizontal row, never two. This was `grid-template-columns:
+       repeat(auto-fit, minmax(..., 1fr))`, which fits as many columns as the
+       width allows and wraps the rest onto a second row — so the same content
+       was one row on a wide phone and two on a narrow one, and the cards below
+       the fold were easy to miss.
+       The track is a fixed card width, not `1fr`: with only two or three
+       suggestions, a fractional track stretches each card across a third of a
+       desktop and the card artwork balloons with it. */
     .store-cart-suggestions__rail {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+        grid-auto-flow: column;
+        grid-auto-columns: 15rem;
+        grid-template-columns: none;
         align-items: start;
         gap: 1rem;
         margin: 0;
         padding: 0;
         list-style: none;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scroll-snap-type: inline mandatory;
+        scrollbar-color: var(--arabut-gold) rgb(255 255 255 / 10%);
+        scrollbar-width: thin;
+        /* A horizontal scroller clips vertical overflow too, so the raised card
+           art gets its room inside the scroll box instead. */
+        margin-block-start: -1.5rem;
+        padding-block: 3.75rem 0.5rem;
+        padding-inline: 0.25rem;
+    }
+
+    .store-cart-suggestions__rail > li {
+        scroll-snap-align: start;
     }
 
     .store-cart-suggestions__reason {
@@ -4170,24 +4194,11 @@ html.admin-document {
         font-weight: 800;
     }
 
+    /* On a phone the cards are wider than a thumbnail so the artwork stays
+       readable; the row still scrolls rather than wrapping. */
     @media (max-width: 40rem) {
         .store-cart-suggestions__rail {
-            grid-auto-flow: column;
             grid-auto-columns: 78%;
-            grid-template-columns: none;
-            overflow-x: auto;
-            overscroll-behavior-inline: contain;
-            scroll-snap-type: inline mandatory;
-            scrollbar-color: var(--arabut-gold) rgb(255 255 255 / 10%);
-            /* A horizontal scroller clips vertical overflow too, so the raised
-               card art gets its room inside the scroll box instead. */
-            margin-block-start: -1.5rem;
-            padding-block: 3.75rem 0.5rem;
-            padding-inline: 0.25rem;
-        }
-
-        .store-cart-suggestions__rail > li {
-            scroll-snap-align: start;
         }
     }
 
