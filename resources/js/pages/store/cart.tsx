@@ -1377,31 +1377,19 @@ function CartSuggestions({
                 </a>
             </header>
             <ul className="store-cart-suggestions__rail">
-                {suggestions.products.map((product, index) => (
+                {suggestions.products.map((product) => (
                     <SbcCatalogCard
                         key={product.id}
                         locale={locale}
                         product={product}
-                        reason={
-                            index === 0
-                                ? (suggestions.reason ?? undefined)
-                                : undefined
-                        }
                         translations={cardTranslations}
                     />
                 ))}
-                {suggestions.services.map((service, index) => (
+                {suggestions.services.map((service) => (
                     <li
                         className="store-cart-suggestions__service"
                         key={service.key}
                     >
-                        {suggestions.products.length === 0 &&
-                        index === 0 &&
-                        suggestions.reason !== null ? (
-                            <span className="store-cart-suggestions__reason">
-                                {suggestions.reason}
-                            </span>
-                        ) : null}
                         <a
                             className="store-cart-suggestions__service-target"
                             href={service.href}

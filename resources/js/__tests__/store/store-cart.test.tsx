@@ -1804,7 +1804,7 @@ describe('cart suggestions', () => {
         },
     ];
 
-    it('renders the rail with the reason tag on the first card only', () => {
+    it('renders the rail with its heading, see-all link and cards', () => {
         mockPage.props.cartPage.suggestions = {
             products: [suggestionProduct],
             services: suggestionServices,
@@ -1824,14 +1824,10 @@ describe('cart suggestions', () => {
             screen.getByRole('link', { name: 'All SBC challenges' }),
         ).toHaveAttribute('href', '/en/sbc');
 
-        const reasons = document.querySelectorAll(
-            '.store-cart-suggestions__reason',
-        );
-        expect(reasons).toHaveLength(1);
-        expect(reasons[0]?.textContent).toBe('With coins');
-        expect(reasons[0]?.closest('li')?.textContent).toContain(
-            'Icon Service',
-        );
+        // The reason badge is gone from the card face, on every card.
+        expect(
+            document.querySelectorAll('.store-cart-suggestions__reason'),
+        ).toHaveLength(0);
 
         expect(screen.getByText('Division Rivals')).toBeVisible();
         const suggestions = document.querySelector(
@@ -1848,7 +1844,7 @@ describe('cart suggestions', () => {
         ).toHaveAttribute('src', '/images/store/services/rivals.webp');
     });
 
-    it('puts the reason tag on the service card when no product is suggested', () => {
+    it('keeps the service card clean when no product is suggested', () => {
         mockPage.props.cartPage.suggestions = {
             products: [],
             services: suggestionServices,
@@ -1858,13 +1854,12 @@ describe('cart suggestions', () => {
 
         render(<StoreCart />);
 
-        const reasons = document.querySelectorAll(
-            '.store-cart-suggestions__reason',
-        );
-        expect(reasons).toHaveLength(1);
-        expect(reasons[0]?.closest('li')?.textContent).toContain(
-            'Division Rivals',
-        );
+        // The service card carries its own title and description; the reason
+        // pill is no longer laid over it.
+        expect(
+            document.querySelectorAll('.store-cart-suggestions__reason'),
+        ).toHaveLength(0);
+        expect(screen.getByText('Division Rivals')).toBeVisible();
     });
 
     it('hides the section when both lists are empty', () => {
