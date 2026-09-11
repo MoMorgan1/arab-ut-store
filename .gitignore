@@ -34,3 +34,13 @@ yarn-error.log
 /.playwright-mcp
 /.delegate/briefs
 /.superpowers
+
+# Scratch review tooling. These drivers say in their own headers that they are
+# one-off — they hardcode a single canvas and are meant to be deleted after its
+# review — and `_shots/` is the several megabytes of PNGs they render. All of it
+# regenerates on demand. `tools/canvas-serve.mjs` is deliberately not here: it
+# serves any canvas in `docs/design/` and is tracked.
+/docs/design/_shots/
+/tools/canvas-verify.mjs
+/tools/canvas-details.mjs
+/tools/probe-*.mjs

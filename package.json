@@ -5,6 +5,7 @@
     "scripts": {
         "build": "vite build",
         "build:ssr": "vite build && vite build --ssr",
+        "canvas:serve": "node tools/canvas-serve.mjs",
         "dev": "vite",
         "format": "prettier --write resources/ vitest.config.ts playwright.config.ts tsconfig.playwright.json tests/Browser/",
         "format:check": "prettier --check resources/ vitest.config.ts playwright.config.ts tsconfig.playwright.json tests/Browser/",
